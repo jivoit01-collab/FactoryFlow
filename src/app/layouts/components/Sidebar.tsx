@@ -65,7 +65,12 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col gap-1 p-2">
+      <nav
+        className={cn(
+          'flex flex-col gap-1 py-2', // Remove horizontal padding (px)
+          isCollapsed ? 'items-center' : 'px-2' // Only add horizontal padding when expanded
+        )}
+      >
         {navItems.map((item) => {
           const Icon = iconMap[item.icon] || LayoutDashboard
 
@@ -84,6 +89,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                       )
                     }
                   >
+                    {/* Ensure the icon itself is centered if it's not a square aspect ratio */}
                     <Icon className="h-5 w-5" />
                   </NavLink>
                 </TooltipTrigger>
