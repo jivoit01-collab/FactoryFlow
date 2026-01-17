@@ -19,6 +19,7 @@ const QualityCheckDetailPage = lazy(
 // Gate module pages
 const GateDashboardPage = lazy(() => import('@/modules/gate/pages/GateDashboardPage'))
 const RawMaterialsPage = lazy(() => import('@/modules/gate/pages/RawMaterialsPage'))
+const RawMaterialEntryPage = lazy(() => import('@/modules/gate/pages/RawMaterialEntryPage'))
 const DailyNeedsPage = lazy(() => import('@/modules/gate/pages/DailyNeedsPage'))
 const MaintenancePage = lazy(() => import('@/modules/gate/pages/MaintenancePage'))
 const ConstructionPage = lazy(() => import('@/modules/gate/pages/ConstructionPage'))
@@ -117,6 +118,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute>
                 <RawMaterialsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW.path}
+            element={
+              <ProtectedRoute>
+                <RawMaterialEntryPage />
               </ProtectedRoute>
             }
           />

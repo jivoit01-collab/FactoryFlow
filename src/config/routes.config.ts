@@ -71,6 +71,10 @@ export const ROUTES = {
         path: '/gate/raw-materials',
         title: 'Raw Materials (RM/PM/Assets)',
       },
+      RAW_MATERIALS_NEW: {
+        path: '/gate/raw-materials/new',
+        title: 'New Raw Material Entry',
+      },
       DAILY_NEEDS: {
         path: '/gate/daily-needs',
         title: 'Daily Needs (Food/Consumables)',
