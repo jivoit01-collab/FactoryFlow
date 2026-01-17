@@ -47,3 +47,6 @@ export {
 } from './dropdown-menu'
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './tooltip'
 export { Badge, badgeVariants, type BadgeProps } from './badge'
+export { Collapsible, CollapsibleTrigger, CollapsibleContent } from './collapsible'
+export { Popover, PopoverTrigger, PopoverContent } from './popover'
+export { Calendar, type CalendarProps } from './calendar'

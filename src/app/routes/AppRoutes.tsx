@@ -16,6 +16,16 @@ const QualityCheckListPage = lazy(() => import('@/modules/qualityCheck/pages/Qua
 const QualityCheckDetailPage = lazy(
   () => import('@/modules/qualityCheck/pages/QualityCheckDetailPage')
 )
+// Gate module pages
+const GateDashboardPage = lazy(() => import('@/modules/gate/pages/GateDashboardPage'))
+const RawMaterialsPage = lazy(() => import('@/modules/gate/pages/RawMaterialsPage'))
+const DailyNeedsPage = lazy(() => import('@/modules/gate/pages/DailyNeedsPage'))
+const MaintenancePage = lazy(() => import('@/modules/gate/pages/MaintenancePage'))
+const ConstructionPage = lazy(() => import('@/modules/gate/pages/ConstructionPage'))
+const ReturnableItemsPage = lazy(() => import('@/modules/gate/pages/ReturnableItemsPage'))
+const VisitorPage = lazy(() => import('@/modules/gate/pages/VisitorPage'))
+const EmployeePage = lazy(() => import('@/modules/gate/pages/EmployeePage'))
+const ContractorLaborPage = lazy(() => import('@/modules/gate/pages/ContractorLaborPage'))
 
 // Loading fallback
 function PageLoader() {
@@ -65,32 +75,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Gate In */}
-          <Route
-            path={ROUTES.GATE_IN.path}
-            element={
-              <ProtectedRoute permissions={ROUTES.GATE_IN.permissions}>
-                <GateInListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE_IN.children?.CREATE.path}
-            element={
-              <ProtectedRoute permissions={ROUTES.GATE_IN.children?.CREATE.permissions}>
-                <GateInDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE_IN.children?.DETAIL.path}
-            element={
-              <ProtectedRoute permissions={ROUTES.GATE_IN.children?.DETAIL.permissions}>
-                <GateInDetailPage />
-              </ProtectedRoute>
-            }
-          />
-
           {/* Quality Check */}
           <Route
             path={ROUTES.QUALITY_CHECK.path}
@@ -113,6 +97,82 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={ROUTES.QUALITY_CHECK.children?.DETAIL.permissions}>
                 <QualityCheckDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Gate Dashboard */}
+          <Route
+            path={ROUTES.GATE.path}
+            element={
+              <ProtectedRoute>
+                <GateDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Gate Routes */}
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS.path}
+            element={
+              <ProtectedRoute>
+                <RawMaterialsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.DAILY_NEEDS.path}
+            element={
+              <ProtectedRoute>
+                <DailyNeedsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.MAINTENANCE.path}
+            element={
+              <ProtectedRoute>
+                <MaintenancePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.CONSTRUCTION.path}
+            element={
+              <ProtectedRoute>
+                <ConstructionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.RETURNABLE_ITEMS.path}
+            element={
+              <ProtectedRoute>
+                <ReturnableItemsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.VISITOR.path}
+            element={
+              <ProtectedRoute>
+                <VisitorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.EMPLOYEE.path}
+            element={
+              <ProtectedRoute>
+                <EmployeePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.CONTRACTOR_LABOR.path}
+            element={
+              <ProtectedRoute>
+                <ContractorLaborPage />
               </ProtectedRoute>
             }
           />

@@ -16,6 +16,8 @@ export interface RouteConfig {
   showInSidebar?: boolean
   /** Module prefix for dynamic sidebar filtering (e.g., 'gatein' to show if user has any 'gatein.*' permission) */
   modulePrefix?: string
+  /** Whether this route has a submenu in the sidebar */
+  hasSubmenu?: boolean
   children?: Record<string, RouteConfig>
 }
 
@@ -57,30 +59,45 @@ export const ROUTES = {
     modulePrefix: 'gatein',
   },
 
-  // Gate In - shown if user has any 'gatein.*' permissions
-  GATE_IN: {
-    path: '/gate-in',
-    title: 'Gate In',
-    permissions: ['gatein.view_gateinentry'],
+  // Gate - dropdown menu with multiple gate entry types
+  GATE: {
+    path: '/gate',
+    title: 'Gate',
     icon: 'Truck',
     showInSidebar: true,
-    // Module prefix for dynamic sidebar filtering
-    modulePrefix: 'gatein',
+    hasSubmenu: true,
     children: {
-      LIST: {
-        path: '/gate-in',
-        title: 'Gate In List',
-        permissions: ['gatein.view_gateinentry'],
+      RAW_MATERIALS: {
+        path: '/gate/raw-materials',
+        title: 'Raw Materials (RM/PM/Assets)',
       },
-      DETAIL: {
-        path: '/gate-in/:id',
-        title: 'Gate In Detail',
-        permissions: ['gatein.view_gateinentry'],
+      DAILY_NEEDS: {
+        path: '/gate/daily-needs',
+        title: 'Daily Needs (Food/Consumables)',
       },
-      CREATE: {
-        path: '/gate-in/new',
-        title: 'New Gate In',
-        permissions: ['gatein.add_gateinentry'],
+      MAINTENANCE: {
+        path: '/gate/maintenance',
+        title: 'Maintenance (Spare parts/Tools)',
+      },
+      CONSTRUCTION: {
+        path: '/gate/construction',
+        title: 'Construction (Civil/Building Work)',
+      },
+      RETURNABLE_ITEMS: {
+        path: '/gate/returnable-items',
+        title: 'Returnable Items (Tools /Equipments)',
+      },
+      VISITOR: {
+        path: '/gate/visitor',
+        title: 'Visitor',
+      },
+      EMPLOYEE: {
+        path: '/gate/employee',
+        title: 'Employee',
+      },
+      CONTRACTOR_LABOR: {
+        path: '/gate/contractor-labor',
+        title: 'Contractor/Labor',
       },
     },
   },
