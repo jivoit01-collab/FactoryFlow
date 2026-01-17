@@ -1,4 +1,4 @@
-export const APP_NAME = 'Factory Management System'
+export const APP_NAME = 'Factory Flow'
 export const APP_VERSION = '1.0.0'
 export const APP_DESCRIPTION = 'Factory Management System for Jivo Wellness'
 

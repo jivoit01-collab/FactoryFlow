@@ -6,7 +6,7 @@
 export interface RouteConfig {
   path: string
   title: string
-  /** Required permissions (Django format: 'app_label.permission_codename') */
+  /** Required permissions (Django format: 'app_label.permission_codename') - permissions come from backend API */
   permissions?: readonly string[]
   /** Required groups */
   groups?: readonly string[]
@@ -14,33 +14,10 @@ export interface RouteConfig {
   requireAll?: boolean
   icon?: string
   showInSidebar?: boolean
+  /** Module prefix for dynamic sidebar filtering (e.g., 'gatein' to show if user has any 'gatein.*' permission) */
+  modulePrefix?: string
   children?: Record<string, RouteConfig>
 }
-
-/**
- * Django permission constants for the application
- * Format: 'app_label.action_modelname'
- */
-export const PERMISSIONS = {
-  // Gate In
-  GATE_IN: {
-    VIEW: 'gatein.view_gateinentry',
-    ADD: 'gatein.add_gateinentry',
-    CHANGE: 'gatein.change_gateinentry',
-    DELETE: 'gatein.delete_gateinentry',
-  },
-  // Quality Check
-  QUALITY_CHECK: {
-    VIEW: 'qualitycheck.view_qualitycheckentry',
-    ADD: 'qualitycheck.add_qualitycheckentry',
-    CHANGE: 'qualitycheck.change_qualitycheckentry',
-    DELETE: 'qualitycheck.delete_qualitycheckentry',
-  },
-  // Dashboard (generic)
-  DASHBOARD: {
-    VIEW: 'core.view_dashboard',
-  },
-} as const
 
 export const ROUTES = {
   // Public routes
@@ -69,60 +46,69 @@ export const ROUTES = {
   },
 
   // Protected routes
+  // Dashboard permission: 'gatein.view_dashboard' - shown if user has any gatein permissions
   DASHBOARD: {
     path: '/',
     title: 'Dashboard',
-    permissions: [PERMISSIONS.DASHBOARD.VIEW],
+    permissions: ['gatein.view_dashboard'],
     icon: 'LayoutDashboard',
     showInSidebar: true,
+    // Module prefix for dynamic sidebar filtering
+    modulePrefix: 'gatein',
   },
 
+  // Gate In - shown if user has any 'gatein.*' permissions
   GATE_IN: {
     path: '/gate-in',
     title: 'Gate In',
-    permissions: [PERMISSIONS.GATE_IN.VIEW],
+    permissions: ['gatein.view_gateinentry'],
     icon: 'Truck',
     showInSidebar: true,
+    // Module prefix for dynamic sidebar filtering
+    modulePrefix: 'gatein',
     children: {
       LIST: {
         path: '/gate-in',
         title: 'Gate In List',
-        permissions: [PERMISSIONS.GATE_IN.VIEW],
+        permissions: ['gatein.view_gateinentry'],
       },
       DETAIL: {
         path: '/gate-in/:id',
         title: 'Gate In Detail',
-        permissions: [PERMISSIONS.GATE_IN.VIEW],
+        permissions: ['gatein.view_gateinentry'],
       },
       CREATE: {
         path: '/gate-in/new',
         title: 'New Gate In',
-        permissions: [PERMISSIONS.GATE_IN.ADD],
+        permissions: ['gatein.add_gateinentry'],
       },
     },
   },
 
+  // Quality Check - shown if user has any 'qualitycheck.*' permissions
   QUALITY_CHECK: {
     path: '/quality-check',
     title: 'Quality Check',
-    permissions: [PERMISSIONS.QUALITY_CHECK.VIEW],
+    permissions: ['qualitycheck.view_qualitycheckentry'],
     icon: 'ClipboardCheck',
     showInSidebar: true,
+    // Module prefix for dynamic sidebar filtering
+    modulePrefix: 'qualitycheck',
     children: {
       LIST: {
         path: '/quality-check',
         title: 'Quality Check List',
-        permissions: [PERMISSIONS.QUALITY_CHECK.VIEW],
+        permissions: ['qualitycheck.view_qualitycheckentry'],
       },
       DETAIL: {
         path: '/quality-check/:id',
         title: 'Quality Check Detail',
-        permissions: [PERMISSIONS.QUALITY_CHECK.VIEW],
+        permissions: ['qualitycheck.view_qualitycheckentry'],
       },
       CREATE: {
         path: '/quality-check/new',
         title: 'New Quality Check',
-        permissions: [PERMISSIONS.QUALITY_CHECK.ADD],
+        permissions: ['qualitycheck.add_qualitycheckentry'],
       },
     },
   },

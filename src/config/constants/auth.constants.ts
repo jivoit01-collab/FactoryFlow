@@ -22,22 +22,3 @@ export const AUTH_ROUTES = {
   logout: '/logout',
   unauthorized: '/unauthorized',
 } as const
-
-/**
- * Permission string format from Django
- * Format: app_label.permission_codename
- * Example: 'gatein.add_gateinentry', 'gatein.view_gateinentry'
- */
-export const PERMISSION_ACTIONS = {
-  ADD: 'add',
-  VIEW: 'view',
-  CHANGE: 'change',
-  DELETE: 'delete',
-} as const
-
-/**
- * Helper to build Django permission string
- */
-export function buildPermissionString(appLabel: string, action: string, model: string): string {
-  return `${appLabel}.${action}_${model}`
-}

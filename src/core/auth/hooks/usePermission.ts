@@ -132,6 +132,23 @@ export function usePermission() {
   )
 
   /**
+   * Check if user has any permission for a module prefix
+   * Used for dynamically showing modules in sidebar based on user's permissions
+   * @param modulePrefix - Module prefix (e.g., 'gatein', 'qualitycheck')
+   * @returns true if user has any permission starting with the module prefix
+   * @example
+   * hasModulePermission('gatein') // returns true if user has any 'gatein.*' permission
+   */
+  const hasModulePermission = useCallback(
+    (modulePrefix: string): boolean => {
+      if (user?.is_staff) return true
+      const prefix = `${modulePrefix}.`
+      return permissions.some((permission) => permission.startsWith(prefix))
+    },
+    [permissions, user?.is_staff]
+  )
+
+  /**
    * Get permissions as a set for faster lookups
    */
   const permissionSet = useMemo(() => new Set(permissions), [permissions])
@@ -148,6 +165,7 @@ export function usePermission() {
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
+    hasModulePermission,
 
     // Company role checks
     hasCompanyRole,
