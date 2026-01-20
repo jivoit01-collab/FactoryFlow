@@ -32,6 +32,36 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/quality-check/${id}`,
     DELETE: (id: string) => `/quality-check/${id}`,
   },
+  // Vehicle Management
+  VEHICLE: {
+    TRANSPORTERS: '/vehicle-management/transporters/',
+    VEHICLES: '/vehicle-management/vehicles/',
+    VEHICLE_ENTRIES: '/vehicle-management/vehicle-entries/',
+    VEHICLE_ENTRY_BY_ID: (id: number) => `/vehicle-management/vehicle-entries/${id}/`,
+  },
+  // Driver Management
+  DRIVER: {
+    DRIVERS: '/driver-management/drivers/',
+  },
+  // Security Checks
+  SECURITY: {
+    GATE_ENTRY_SECURITY: (entryId: number) =>
+      `/security-checks/gate-entries/${entryId}/security/`,
+    GATE_ENTRY_SECURITY_VIEW: (entryId: number) =>
+      `/security-checks/gate-entries/${entryId}/security/view`,
+  },
+  // Purchase Orders
+  PO: {
+    OPEN_POS: (supplierCode?: string) =>
+      supplierCode ? `/po/open-pos/?supplier_code=${supplierCode}` : '/po/open-pos/',
+  },
+  // Raw Material Gate In
+  RAW_MATERIAL_GATEIN: {
+    PO_RECEIPTS: (entryId: number) =>
+      `/raw-material-gatein/gate-entries/${entryId}/po-receipts/`,
+    PO_RECEIPTS_VIEW: (entryId: number) =>
+      `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
+  },
 } as const
 
 export const HTTP_STATUS = {

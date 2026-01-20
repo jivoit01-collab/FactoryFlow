@@ -1,22 +1,102 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { Button, Input } from '@/shared/components/ui'
-
-// Mock data - replace with actual API call when ready
-// const { data, isLoading } = useRawMaterialsList()
-const mockData: any[] = []
+import { useVehicleEntries } from '../api/vehicleEntry.queries'
+import { DateRangePicker } from '../components/DateRangePicker'
+import type { DateRange } from 'react-day-picker'
 
 export default function RawMaterialsPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  const { data: entries = [], isLoading } = useVehicleEntries()
 
-  // TODO: Replace with actual API call
-  // const { data, isLoading } = useRawMaterialsList({ search })
-  const data = mockData
-  const isLoading = false
+  // Filter entries based on search query and date range
+  const filteredData = useMemo(() => {
+    let filtered = entries
 
-  const filteredData = data.filter(() => true) // Add filtering logic when needed
+    // Apply search filter
+    if (search.trim()) {
+      const searchLower = search.toLowerCase()
+      filtered = filtered.filter(
+        (entry) =>
+          entry.entry_no?.toLowerCase().includes(searchLower) ||
+          entry.status?.toLowerCase().includes(searchLower) ||
+          entry.remarks?.toLowerCase().includes(searchLower) ||
+          entry.vehicle?.vehicle_number?.toLowerCase().includes(searchLower) ||
+          entry.driver?.name?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Apply date range filter
+    if (dateRange?.from || dateRange?.to) {
+      filtered = filtered.filter((entry) => {
+        if (!entry.entry_time) return false
+
+        try {
+          const entryDate = new Date(entry.entry_time)
+          entryDate.setHours(0, 0, 0, 0)
+
+          const fromDate = dateRange.from ? new Date(dateRange.from) : null
+          if (fromDate) {
+            fromDate.setHours(0, 0, 0, 0)
+          }
+
+          const toDate = dateRange.to ? new Date(dateRange.to) : null
+          if (toDate) {
+            toDate.setHours(23, 59, 59, 999)
+          }
+
+          // Check if entry date is within range
+          if (fromDate && toDate) {
+            return entryDate >= fromDate && entryDate <= toDate
+          } else if (fromDate) {
+            return entryDate >= fromDate
+          } else if (toDate) {
+            return entryDate <= toDate
+          }
+
+          return true
+        } catch {
+          return false
+        }
+      })
+    }
+
+    return filtered
+  }, [entries, search, dateRange])
+
+  // Format date/time for display
+  const formatDateTime = (dateTime?: string) => {
+    if (!dateTime) return '-'
+    try {
+      const date = new Date(dateTime)
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return dateTime
+    }
+  }
+
+  // Format status badge
+  const getStatusBadgeClass = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case 'DRAFT':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      case 'IN_PROGRESS':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -33,14 +113,21 @@ export default function RawMaterialsPage() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by vehicle, driver, or supplier..."
+            placeholder="Search by entry number, status, or remarks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
+          />
+        </div>
+        <div className="w-full sm:w-auto">
+          <DateRangePicker
+            date={dateRange}
+            onDateChange={(date) => setDateRange(date as DateRange | undefined)}
+            mode="range"
           />
         </div>
       </div>
@@ -54,33 +141,49 @@ export default function RawMaterialsPage() {
           <p className="text-lg">No entries present</p>
         </div>
       ) : (
-        <div className="rounded-md border">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="p-3 text-left text-sm font-medium">Vehicle No.</th>
-                <th className="p-3 text-left text-sm font-medium">Driver</th>
-                <th className="p-3 text-left text-sm font-medium">Material</th>
-                <th className="p-3 text-left text-sm font-medium">Quantity</th>
-                <th className="p-3 text-left text-sm font-medium">Entry Time</th>
-                <th className="p-3 text-left text-sm font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.map((entry) => (
-                <tr key={entry.id} className="border-t">
-                  <td className="p-3 text-sm font-medium">{entry.vehicleNumber}</td>
-                  <td className="p-3 text-sm">{entry.driverName}</td>
-                  <td className="p-3 text-sm">{entry.materialType}</td>
-                  <td className="p-3 text-sm">
-                    {entry.quantity} {entry.unit}
-                  </td>
-                  <td className="p-3 text-sm">{entry.entryTime}</td>
-                  <td className="p-3 text-sm">{entry.status}</td>
+        <div className="rounded-md border overflow-hidden">
+          <div className="overflow-x-auto max-w-full">
+            <table className="w-full min-w-[700px]">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="p-3 text-left text-sm font-medium">Entry No.</th>
+                  <th className="p-3 text-left text-sm font-medium">Vehicle</th>
+                  <th className="p-3 text-left text-sm font-medium">Driver</th>
+                  <th className="p-3 text-left text-sm font-medium">Entry Time</th>
+                  <th className="p-3 text-left text-sm font-medium">Status</th>
+                  <th className="p-3 text-left text-sm font-medium">Remarks</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredData.map((entry) => (
+                  <tr
+                    key={entry.id}
+                    className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => {
+                      navigate(`/gate/raw-materials/edit/${entry.id}/step1`)
+                    }}
+                  >
+                    <td className="p-3 text-sm font-medium">{entry.entry_no || '-'}</td>
+                    <td className="p-3 text-sm">{entry.vehicle?.vehicle_number || '-'}</td>
+                    <td className="p-3 text-sm">{entry.driver?.name || '-'}</td>
+                    <td className="p-3 text-sm text-muted-foreground">
+                      {formatDateTime(entry.entry_time)}
+                    </td>
+                    <td className="p-3 text-sm">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(
+                          entry.status || ''
+                        )}`}
+                      >
+                        {entry.status || '-'}
+                      </span>
+                    </td>
+                    <td className="p-3 text-sm text-muted-foreground">{entry.remarks || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

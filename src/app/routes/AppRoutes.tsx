@@ -19,7 +19,9 @@ const QualityCheckDetailPage = lazy(
 // Gate module pages
 const GateDashboardPage = lazy(() => import('@/modules/gate/pages/GateDashboardPage'))
 const RawMaterialsPage = lazy(() => import('@/modules/gate/pages/RawMaterialsPage'))
-const RawMaterialEntryPage = lazy(() => import('@/modules/gate/pages/RawMaterialEntryPage'))
+const Step1Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step1Page'))
+const Step2Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step2Page'))
+const Step3Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step3Page'))
 const DailyNeedsPage = lazy(() => import('@/modules/gate/pages/DailyNeedsPage'))
 const MaintenancePage = lazy(() => import('@/modules/gate/pages/MaintenancePage'))
 const ConstructionPage = lazy(() => import('@/modules/gate/pages/ConstructionPage'))
@@ -125,7 +127,48 @@ export function AppRoutes() {
             path={ROUTES.GATE.children?.RAW_MATERIALS_NEW.path}
             element={
               <ProtectedRoute>
-                <RawMaterialEntryPage />
+                <Step1Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gate/raw-materials/new/step2"
+            element={
+              <ProtectedRoute>
+                <Step2Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gate/raw-materials/new/step3"
+            element={
+              <ProtectedRoute>
+                <Step3Page />
+              </ProtectedRoute>
+            }
+          />
+          {/* Edit routes */}
+          <Route
+            path="/gate/raw-materials/edit/:entryId/step1"
+            element={
+              <ProtectedRoute>
+                <Step1Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gate/raw-materials/edit/:entryId/step2"
+            element={
+              <ProtectedRoute>
+                <Step2Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gate/raw-materials/edit/:entryId/step3"
+            element={
+              <ProtectedRoute>
+                <Step3Page />
               </ProtectedRoute>
             }
           />

@@ -214,6 +214,29 @@ function createApiClient(): AxiosInstance {
       // Transform error to ApiError format
       // Check for both 'detail' (Django REST framework) and 'message' (custom API) fields
       const responseData = (error.response?.data as unknown) as Record<string, unknown> | undefined
+      
+      // Check if errors are nested under 'errors' key or directly on response data
+      // Some APIs return: {"errors": {"name": ["error"]}}
+      // Others return: {"name": ["error"]} directly
+      let errors: Record<string, string[]> | undefined
+      if (responseData?.errors && typeof responseData.errors === 'object') {
+        errors = responseData.errors as Record<string, string[]>
+      } else if (responseData) {
+        // Check if response data itself contains field errors (flat structure)
+        const fieldErrors: Record<string, string[]> = {}
+        Object.entries(responseData).forEach(([key, value]) => {
+          // Skip common error properties that aren't field errors
+          if (key !== 'detail' && key !== 'message' && key !== 'errors' && key !== 'success') {
+            if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+              fieldErrors[key] = value as string[]
+            }
+          }
+        })
+        if (Object.keys(fieldErrors).length > 0) {
+          errors = fieldErrors
+        }
+      }
+      
       const apiError: ApiError = {
         message:
           (responseData?.detail as string) ||
@@ -221,7 +244,7 @@ function createApiClient(): AxiosInstance {
           error.message ||
           'An error occurred',
         code: error.code,
-        errors: responseData?.errors as Record<string, string[]> | undefined,
+        errors: errors,
         status: error.response?.status || 500,
       }
 
