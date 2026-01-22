@@ -36,6 +36,13 @@ export const securityCheckApi = {
     return response.data
   },
 
+  async submit(securityId: number): Promise<{ status: string }> {
+    const response = await apiClient.post<{ status: string }>(
+      API_ENDPOINTS.SECURITY.SUBMIT(securityId)
+    )
+    return response.data
+  },
+
   async create(entryId: number, data: CreateSecurityCheckRequest): Promise<SecurityCheck> {
     // API expects form-data format
     const formData = new FormData()

@@ -1,18 +1,49 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, Search, X } from 'lucide-react'
 import { Button, Input } from '@/shared/components/ui'
 import { useVehicleEntries } from '../api/vehicleEntry.queries'
 import { DateRangePicker } from '../components/DateRangePicker'
-import type { DateRange } from 'react-day-picker'
+import { useGlobalDateRange } from '@/core/store/hooks'
+
+// Status label mapping
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  IN_PROGRESS: 'In Progress',
+  QC_COMPLETED: 'QC Completed',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+  REJECTED: 'Rejected',
+}
 
 export default function RawMaterialsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
-  const { data: entries = [], isLoading } = useVehicleEntries()
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
+  
+  // Get status filter from URL
+  const statusFilter = searchParams.get('status') || undefined
+  
+  // Convert date range to API params
+  const apiParams = useMemo(() => {
+    return {
+      from_date: dateRange.from,
+      to_date: dateRange.to,
+      entry_type: 'RAW_MATERIAL',
+      status: statusFilter,
+    }
+  }, [dateRange, statusFilter])
+  
+  const { data: entries = [], isLoading } = useVehicleEntries(apiParams)
+  
+  // Clear status filter
+  const clearStatusFilter = () => {
+    searchParams.delete('status')
+    setSearchParams(searchParams)
+  }
 
-  // Filter entries based on search query and date range
+  // Filter entries based on search query only (date filtering is done by API)
   const filteredData = useMemo(() => {
     let filtered = entries
 
@@ -29,43 +60,8 @@ export default function RawMaterialsPage() {
       )
     }
 
-    // Apply date range filter
-    if (dateRange?.from || dateRange?.to) {
-      filtered = filtered.filter((entry) => {
-        if (!entry.entry_time) return false
-
-        try {
-          const entryDate = new Date(entry.entry_time)
-          entryDate.setHours(0, 0, 0, 0)
-
-          const fromDate = dateRange.from ? new Date(dateRange.from) : null
-          if (fromDate) {
-            fromDate.setHours(0, 0, 0, 0)
-          }
-
-          const toDate = dateRange.to ? new Date(dateRange.to) : null
-          if (toDate) {
-            toDate.setHours(23, 59, 59, 999)
-          }
-
-          // Check if entry date is within range
-          if (fromDate && toDate) {
-            return entryDate >= fromDate && entryDate <= toDate
-          } else if (fromDate) {
-            return entryDate >= fromDate
-          } else if (toDate) {
-            return entryDate <= toDate
-          }
-
-          return true
-        } catch {
-          return false
-        }
-      })
-    }
-
     return filtered
-  }, [entries, search, dateRange])
+  }, [entries, search])
 
   // Format date/time for display
   const formatDateTime = (dateTime?: string) => {
@@ -93,6 +89,12 @@ export default function RawMaterialsPage() {
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
       case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      case 'QC_COMPLETED':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      case 'REJECTED':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
     }
@@ -125,12 +127,37 @@ export default function RawMaterialsPage() {
         </div>
         <div className="w-full sm:w-auto">
           <DateRangePicker
-            date={dateRange}
-            onDateChange={(date) => setDateRange(date as DateRange | undefined)}
+            date={dateRangeAsDateObjects}
+            onDateChange={(date) => {
+              // Handle the DateRange type (not single Date)
+              if (date && 'from' in date) {
+                setDateRange(date)
+              } else {
+                setDateRange(undefined)
+              }
+            }}
             mode="range"
           />
         </div>
       </div>
+
+      {/* Status Filter Badge */}
+      {statusFilter && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Filtered by status:</span>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${getStatusBadgeClass(statusFilter)}`}
+          >
+            {STATUS_LABELS[statusFilter] || statusFilter}
+            <button
+              onClick={clearStatusFilter}
+              className="hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@/core/store'
 import { switchCompany } from '@/core/auth'
 import { indexedDBService } from '@/core/auth/services/indexedDb.service'
@@ -18,7 +18,11 @@ export default function CompanySelectionPage() {
   const [isLoading, setIsLoading] = useState(false)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAppSelector((state) => state.auth)
+  
+  // Get the intended URL from navigation state (passed from AuthInitializer)
+  const from = (location.state as { from?: string })?.from
 
   // Get active companies from user
   const companies = user?.companies || []
@@ -45,8 +49,8 @@ export default function CompanySelectionPage() {
       // Update Redux state
       dispatch(switchCompany(selectedCompany))
 
-      // Navigate to loading user page
-      navigate(ROUTES.LOADING_USER.path, { replace: true })
+      // Navigate to loading user page, passing through the intended URL
+      navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from } })
     } catch (error) {
       console.error('Failed to select company:', error)
     } finally {

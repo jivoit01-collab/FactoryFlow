@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppDispatch } from '@/core/store'
 import { updateUser } from '@/core/auth'
 import { authService } from '@/core/auth/services/auth.service'
@@ -21,7 +21,20 @@ export default function LoadingUserPage() {
   const [error, setError] = useState<string | null>(null)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const loadingRef = useRef(false)
+  
+  // Get the intended URL from navigation state (passed from AuthInitializer)
+  const from = (location.state as { from?: string })?.from || ROUTES.DASHBOARD.path
+
+  // Prefetch likely next pages while loading user data
+  useEffect(() => {
+    // Prefetch dashboard and common pages in the background
+    // These will be ready by the time the user navigates
+    import('@/modules/dashboard/pages/DashboardPage')
+    import('@/modules/gate/pages/RawMaterialsDashboard')
+    import('@/modules/gate/pages/GateDashboardPage')
+  }, [])
 
   useEffect(() => {
     // Prevent multiple simultaneous loads
@@ -50,8 +63,8 @@ export default function LoadingUserPage() {
         // Update Redux with full user data (this sets permissionsLoaded to true)
         dispatch(updateUser(userData))
 
-        // Navigate to dashboard
-        navigate(ROUTES.DASHBOARD.path, { replace: true })
+        // Navigate to the intended URL (or dashboard if none)
+        navigate(from, { replace: true })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load user data')
         
@@ -63,9 +76,9 @@ export default function LoadingUserPage() {
           await indexedDBService.clearAuthData()
           navigate(AUTH_ROUTES.login, { replace: true })
         } else {
-          // Other errors - still navigate to dashboard after delay
+          // Other errors - still navigate to intended URL after delay
           setTimeout(() => {
-            navigate(ROUTES.DASHBOARD.path, { replace: true })
+            navigate(from, { replace: true })
           }, 2000)
         }
       } finally {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Package,
   Plus,
@@ -21,6 +22,8 @@ import {
 } from '@/shared/components/ui'
 import { useOpenPOs } from '../../api/po.queries'
 import { useCreatePOReceipt, usePOReceipts } from '../../api/poReceipt.queries'
+import { useVehicleEntry } from '../../api/vehicleEntry.queries'
+import { useEntryId } from '../../hooks'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import type { ApiError } from '@/core/api/types'
@@ -47,10 +50,8 @@ interface POFormData {
 
 export default function Step3Page() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const [searchParams] = useSearchParams()
-  const entryId = searchParams.get('entryId') || location.pathname.match(/\/edit\/(\d+)/)?.[1]
-  const isEditMode = location.pathname.includes('/edit/')
+  const queryClient = useQueryClient()
+  const { entryId, entryIdNumber, isEditMode } = useEntryId()
   const totalSteps = 5
   const currentStep = 3
 
@@ -59,11 +60,20 @@ export default function Step3Page() {
     data: existingPOReceipts = [],
     isLoading: isLoadingPOReceipts,
     error: poReceiptsError,
-  } = usePOReceipts(isEditMode && entryId ? parseInt(entryId) : null)
+  } = usePOReceipts(isEditMode && entryIdNumber ? entryIdNumber : null)
 
   // State to track if we should behave like create mode (when Fill Data is clicked)
   const [fillDataMode, setFillDataMode] = useState(false)
+  // State to track if Update button has been clicked (enables editing)
+  const [updateMode, setUpdateMode] = useState(false)
+  // State to keep button disabled after API success until navigation completes
+  const [isNavigating, setIsNavigating] = useState(false)
   const effectiveEditMode = isEditMode && !fillDataMode
+
+  // Fetch vehicle entry to check status
+  const { data: vehicleEntryData } = useVehicleEntry(
+    isEditMode && entryIdNumber ? entryIdNumber : null
+  )
 
   // State for multiple PO forms - start with one empty form
   const [poForms, setPoForms] = useState<POFormData[]>([
@@ -86,7 +96,7 @@ export default function Step3Page() {
   const [fillDataModeForPO, setFillDataModeForPO] = useState<Record<string, boolean>>({})
 
   const handleSupplierNameChange = (poFormId: string, value: string) => {
-    if (effectiveEditMode) return
+    if (effectiveEditMode && !updateMode) return
     setPoForms((prev) =>
       prev.map((form) => (form.id === poFormId ? { ...form, supplierName: value } : form))
     )
@@ -101,7 +111,7 @@ export default function Step3Page() {
   }
 
   const handleSupplierCodeChange = (poFormId: string, value: string) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId]) return
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
     setPoForms((prev) =>
       prev.map((form) => (form.id === poFormId ? { ...form, supplierCode: value } : form))
     )
@@ -116,7 +126,7 @@ export default function Step3Page() {
   }
 
   const handlePOFocus = (poFormId: string) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId]) return
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
     const form = poForms.find((f) => f.id === poFormId)
     if (form?.supplierCode) {
       setOpenPODropdown(poFormId)
@@ -124,7 +134,7 @@ export default function Step3Page() {
   }
 
   const handlePOSelect = (poFormId: string, po: PurchaseOrder) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId]) return
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
 
     setPoForms((prev) =>
       prev.map((form) => {
@@ -159,7 +169,7 @@ export default function Step3Page() {
   }
 
   const handleReceivedQtyChange = (poFormId: string, itemCode: string, value: string) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId]) return
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
 
     const receivedQtyNow = parseFloat(value) || 0
     setPoForms((prev) =>
@@ -184,8 +194,15 @@ export default function Step3Page() {
         return form
       })
     )
-    // Clear error for this field
-    if (apiErrors[`${poFormId}_item_${itemCode}`]) {
+    // Clear error for this field and general error if user starts entering value
+    if (receivedQtyNow > 0) {
+      setApiErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[`${poFormId}_item_${itemCode}`]
+        delete newErrors[`${poFormId}_received`]
+        return newErrors
+      })
+    } else if (apiErrors[`${poFormId}_item_${itemCode}`]) {
       setApiErrors((prev) => {
         const newErrors = { ...prev }
         delete newErrors[`${poFormId}_item_${itemCode}`]
@@ -222,7 +239,8 @@ export default function Step3Page() {
     const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true)
     const thisPOFillDataMode = fillDataModeForPO[poFormId] || false
 
-    if (effectiveEditMode && !fillDataMode && !hasAnyFillDataMode && !thisPOFillDataMode) return
+    if (effectiveEditMode && !fillDataMode && !hasAnyFillDataMode && !thisPOFillDataMode && !updateMode)
+      return
     if (poForms.length === 1) return // Don't allow removing the last one
 
     setPoForms((prev) => prev.filter((form) => form.id !== poFormId))
@@ -316,7 +334,7 @@ export default function Step3Page() {
     }
   }
 
-  const createPOReceipt = useCreatePOReceipt(entryId ? parseInt(entryId) : 0)
+  const createPOReceipt = useCreatePOReceipt(entryIdNumber || 0)
 
   const handleNext = async () => {
     if (!entryId) {
@@ -324,8 +342,8 @@ export default function Step3Page() {
       return
     }
 
-    // In edit mode (and not fill data mode), just navigate without API call
-    if (effectiveEditMode) {
+    // In edit mode (and not fill data mode and not update mode), just navigate without API call
+    if (effectiveEditMode && !updateMode) {
       navigate(`/gate/raw-materials/edit/${entryId}/step4`)
       return
     }
@@ -351,9 +369,17 @@ export default function Step3Page() {
       // Check if at least one item has received quantity > 0
       const hasReceivedQty = form.items.some((item) => item.received_qty_now > 0)
       if (!hasReceivedQty) {
-        setApiErrors({
+        // Set errors on all items that don't have received_qty_now > 0
+        const itemErrors: Record<string, string> = {
           [`${form.id}_received`]: 'Please enter received quantities for at least one item',
+        }
+        form.items.forEach((item) => {
+          if (!item.received_qty_now || item.received_qty_now <= 0) {
+            itemErrors[`${form.id}_item_${item.po_item_code}`] =
+              'Please enter received quantity'
+          }
         })
+        setApiErrors(itemErrors)
         return
       }
     }
@@ -380,6 +406,7 @@ export default function Step3Page() {
       }
 
       // Navigate to step 4
+      setIsNavigating(true)
       if (isEditMode) {
         navigate(`/gate/raw-materials/edit/${entryId}/step4`)
       } else {
@@ -414,8 +441,22 @@ export default function Step3Page() {
     })()
   )
 
+  // Check if PO receipts data exists
+  const hasPOReceiptsData = existingPOReceipts.length > 0
+  // Check if there's no data (empty array or not found error)
+  const hasNoPOReceiptsData =
+    effectiveEditMode && !isLoadingPOReceipts && (!hasPOReceiptsData || isNotFoundError)
+
   // Fields are read-only when in edit mode and there's an error and fill data mode is not active
-  const isReadOnly = effectiveEditMode && isNotFoundError && !fillDataMode
+  // OR when data exists and updateMode is not active
+  const isReadOnly =
+    (effectiveEditMode && hasPOReceiptsData && !updateMode && !fillDataMode) ||
+    (effectiveEditMode && hasNoPOReceiptsData && !fillDataMode)
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== 'COMPLETED' && hasPOReceiptsData
+
+  const handleUpdate = () => {
+    setUpdateMode(true)
+  }
 
   if (effectiveEditMode && isLoadingPOReceipts) {
     return (
@@ -445,17 +486,19 @@ export default function Step3Page() {
         </div>
       </div>
 
-      {/* Show not found error with Fill Data button */}
-      {effectiveEditMode && isNotFoundError && !fillDataMode && (
+      {/* Show Fill Data button when no PO receipts data exists */}
+      {hasNoPOReceiptsData && !fillDataMode && (
         <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
               <span>
-                {(() => {
-                  const error = poReceiptsError as unknown as ApiError
-                  return error.message || 'PO receipts not found'
-                })()}
+                {isNotFoundError
+                  ? (() => {
+                      const error = poReceiptsError as unknown as ApiError
+                      return error.message || 'PO receipts not found'
+                    })()
+                  : 'No PO receipts found for this entry.'}
               </span>
             </div>
             <Button onClick={handleFillData} size="sm">
@@ -524,13 +567,25 @@ export default function Step3Page() {
           Previous
         </Button>
         <div className="flex gap-4">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+              navigate('/gate/raw-materials')
+            }}
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={handleNext} disabled={createPOReceipt.isPending}>
-            {effectiveEditMode && !fillDataMode
+          {effectiveEditMode && canUpdate && !updateMode && (
+            <Button type="button" onClick={handleUpdate}>
+              Update
+            </Button>
+          )}
+          <Button type="button" onClick={handleNext} disabled={createPOReceipt.isPending || isNavigating}>
+            {effectiveEditMode && !updateMode && !fillDataMode
               ? 'Next →'
-              : createPOReceipt.isPending
+              : createPOReceipt.isPending || isNavigating
                 ? 'Saving...'
                 : 'Save and Next →'}
           </Button>
@@ -580,12 +635,13 @@ function POCard({
   const containerRef = useRef<HTMLDivElement>(null)
   const debouncedPOSearch = useDebounce(poSearchTerm, 100)
 
-  // Fetch POs when supplier code is entered and PO dropdown is opened
+  // Fetch POs only when dropdown is opened and supplier code exists
+  const shouldFetchPOs = openPODropdown && !!poForm.supplierCode
   const {
     data: purchaseOrders = [],
     isLoading: isLoadingPOs,
     error: poError,
-  } = useOpenPOs(poForm.supplierCode || undefined)
+  } = useOpenPOs(poForm.supplierCode || undefined, shouldFetchPOs)
 
   // Check if error is an API error that should show Fill Data button
   const isPOError = Boolean(
@@ -605,6 +661,7 @@ function POCard({
   )
 
   // Effective read-only: true if isReadOnly OR (there's a PO error and fillDataMode is false)
+  // Also check updateMode from parent
   const effectiveReadOnly = isReadOnly || (isPOError && !fillDataMode)
 
   // Filter POs based on search
@@ -693,108 +750,118 @@ function POCard({
               )}
             </div>
 
+            {/* PO Number */}
             <div className="space-y-2">
-              <Label htmlFor={`supplier-name-${poForm.id}`}>
-                Supplier Name <span className="text-destructive">*</span>
+              <Label htmlFor={`po-number-${poForm.id}`}>
+                PO Number <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id={`supplier-name-${poForm.id}`}
-                placeholder="Enter supplier name"
-                value={poForm.supplierName}
-                onChange={(e) => onSupplierNameChange(e.target.value)}
-                disabled={isReadOnly}
-                className={cn(apiErrors[`${poForm.id}_supplierName`] && 'border-destructive')}
-              />
-              {apiErrors[`${poForm.id}_supplierName`] && (
-                <p className="text-sm text-destructive">{apiErrors[`${poForm.id}_supplierName`]}</p>
+              <div ref={containerRef} className="relative">
+                <div className="relative">
+                  <Input
+                    id={`po-number-${poForm.id}`}
+                    placeholder="Click to select PO"
+                    value={poForm.poNumber}
+                    onFocus={onPOFocus}
+                    onChange={(e) => {
+                      onPOSearchChange(e.target.value)
+                      if (e.target.value) {
+                        onPOFocus()
+                      }
+                    }}
+                    disabled={effectiveReadOnly || !poForm.supplierCode}
+                    className={cn(
+                      'pr-10',
+                      apiErrors[`${poForm.id}_poNumber`] && 'border-destructive',
+                      (!poForm.supplierCode || effectiveReadOnly) && 'cursor-not-allowed opacity-50'
+                    )}
+                  />
+                  <ChevronDown
+                    className={cn(
+                      'absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none transition-transform',
+                      openPODropdown && 'rotate-180'
+                    )}
+                  />
+                </div>
+
+                {openPODropdown && poForm.supplierCode && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                    {isLoadingPOs ? (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : filteredPOs.length === 0 ? (
+                      <div className="p-4 text-sm text-muted-foreground text-center">
+                        {poSearchTerm ? 'No POs found' : 'Enter supplier code and click to load POs'}
+                      </div>
+                    ) : (
+                      <div className="py-1">
+                        {filteredPOs.map((po) => (
+                          <button
+                            key={po.po_number}
+                            type="button"
+                            className={cn(
+                              'w-full text-left px-4 py-2 hover:bg-accent focus:bg-accent focus:outline-none flex items-center justify-between',
+                              poForm.poNumber === po.po_number && 'bg-accent'
+                            )}
+                            onClick={() => onPOSelect(po)}
+                          >
+                            <div>
+                              <div className="font-medium">{po.po_number}</div>
+                              <div className="text-sm text-muted-foreground">{po.supplier_name}</div>
+                            </div>
+                            {poForm.poNumber === po.po_number && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {apiErrors[`${poForm.id}_poNumber`] && (
+                <p className="text-sm text-destructive">{apiErrors[`${poForm.id}_poNumber`]}</p>
+              )}
+              {!poForm.supplierCode && (
+                <p className="text-sm text-muted-foreground">
+                  Please enter supplier code first to select a PO
+                </p>
               )}
             </div>
           </div>
 
-          {/* PO Number */}
+          {/* Supplier Name */}
           <div className="space-y-2">
-            <Label htmlFor={`po-number-${poForm.id}`}>
-              PO Number <span className="text-destructive">*</span>
+            <Label htmlFor={`supplier-name-${poForm.id}`}>
+              Supplier Name <span className="text-destructive">*</span>
             </Label>
-            <div ref={containerRef} className="relative">
-              <div className="relative">
-                <Input
-                  id={`po-number-${poForm.id}`}
-                  placeholder="Click to select PO"
-                  value={poForm.poNumber}
-                  onFocus={onPOFocus}
-                  onChange={(e) => {
-                    onPOSearchChange(e.target.value)
-                    if (e.target.value) {
-                      onPOFocus()
-                    }
-                  }}
-                  disabled={effectiveReadOnly || !poForm.supplierCode}
-                  className={cn(
-                    'pr-10',
-                    apiErrors[`${poForm.id}_poNumber`] && 'border-destructive',
-                    (!poForm.supplierCode || effectiveReadOnly) && 'cursor-not-allowed opacity-50'
-                  )}
-                />
-                <ChevronDown
-                  className={cn(
-                    'absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none transition-transform',
-                    openPODropdown && 'rotate-180'
-                  )}
-                />
-              </div>
-
-              {openPODropdown && poForm.supplierCode && (
-                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
-                  {isLoadingPOs ? (
-                    <div className="flex items-center justify-center p-4">
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : filteredPOs.length === 0 ? (
-                    <div className="p-4 text-sm text-muted-foreground text-center">
-                      {poSearchTerm ? 'No POs found' : 'Enter supplier code and click to load POs'}
-                    </div>
-                  ) : (
-                    <div className="py-1">
-                      {filteredPOs.map((po) => (
-                        <button
-                          key={po.po_number}
-                          type="button"
-                          className={cn(
-                            'w-full text-left px-4 py-2 hover:bg-accent focus:bg-accent focus:outline-none flex items-center justify-between',
-                            poForm.poNumber === po.po_number && 'bg-accent'
-                          )}
-                          onClick={() => onPOSelect(po)}
-                        >
-                          <div>
-                            <div className="font-medium">{po.po_number}</div>
-                            <div className="text-sm text-muted-foreground">{po.supplier_name}</div>
-                          </div>
-                          {poForm.poNumber === po.po_number && (
-                            <Check className="h-4 w-4 text-primary" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            <Input
+              id={`supplier-name-${poForm.id}`}
+              placeholder="Enter supplier name"
+              value={poForm.supplierName}
+              onChange={(e) => onSupplierNameChange(e.target.value)}
+              disabled={effectiveReadOnly}
+              className={cn(
+                apiErrors[`${poForm.id}_supplierName`] && 'border-destructive',
+                effectiveReadOnly && 'cursor-not-allowed opacity-50'
               )}
-            </div>
-            {apiErrors[`${poForm.id}_poNumber`] && (
-              <p className="text-sm text-destructive">{apiErrors[`${poForm.id}_poNumber`]}</p>
-            )}
-            {!poForm.supplierCode && (
-              <p className="text-sm text-muted-foreground">
-                Please enter supplier code first to select a PO
-              </p>
+            />
+            {apiErrors[`${poForm.id}_supplierName`] && (
+              <p className="text-sm text-destructive">{apiErrors[`${poForm.id}_supplierName`]}</p>
             )}
           </div>
 
           {/* Items Section */}
           {poForm.items.length > 0 && (
             <div className="space-y-4">
-              <div>
+              <div className="flex items-center justify-between">
                 <Label className="text-base font-semibold">Items</Label>
+                {apiErrors[`${poForm.id}_received`] && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4" />
+                    {apiErrors[`${poForm.id}_received`]}
+                  </p>
+                )}
               </div>
               <div className="rounded-md border overflow-hidden">
                 <div className="overflow-x-auto">

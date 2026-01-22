@@ -74,12 +74,27 @@ export default {
           from: { height: "var(--radix-collapsible-content-height)", opacity: "1" },
           to: { height: "0", opacity: "0" },
         },
+        "draw-circle": {
+          to: { strokeDashoffset: "0" },
+        },
+        "draw-check": {
+          to: { strokeDashoffset: "0" },
+        },
+        "fade-in": {
+          to: { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "collapsible-down": "collapsible-down 0.2s ease-out",
         "collapsible-up": "collapsible-up 0.2s ease-out",
+        "draw-circle": "draw-circle 0.6s ease-out forwards",
+        "draw-check": "draw-check 0.4s ease-out 0.5s forwards",
+        "fade-in": "fade-in 0.5s ease-out forwards",
+        "fade-in-delay-1": "fade-in 0.5s ease-out 0.8s forwards",
+        "fade-in-delay-2": "fade-in 0.5s ease-out 0.9s forwards",
+        "fade-in-delay-3": "fade-in 0.5s ease-out 1s forwards",
       },
     },
   },

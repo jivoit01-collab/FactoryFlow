@@ -71,13 +71,57 @@ export const ROUTES = {
         path: '/gate/raw-materials',
         title: 'Raw Materials (RM/PM/Assets)',
       },
+      RAW_MATERIALS_ALL: {
+        path: '/gate/raw-materials/all',
+        title: 'All Raw Material Entries',
+      },
       RAW_MATERIALS_NEW: {
         path: '/gate/raw-materials/new',
         title: 'New Raw Material Entry - Step 1',
       },
-      RAW_MATERIALS_STEP2: {
+      RAW_MATERIALS_NEW_STEP2: {
         path: '/gate/raw-materials/new/step2',
         title: 'New Raw Material Entry - Step 2',
+      },
+      RAW_MATERIALS_NEW_STEP3: {
+        path: '/gate/raw-materials/new/step3',
+        title: 'New Raw Material Entry - Step 3',
+      },
+      RAW_MATERIALS_NEW_STEP4: {
+        path: '/gate/raw-materials/new/step4',
+        title: 'New Raw Material Entry - Step 4',
+      },
+      RAW_MATERIALS_NEW_STEP5: {
+        path: '/gate/raw-materials/new/step5',
+        title: 'New Raw Material Entry - Step 5',
+      },
+      RAW_MATERIALS_NEW_REVIEW: {
+        path: '/gate/raw-materials/new/review',
+        title: 'New Raw Material Entry - Review',
+      },
+      RAW_MATERIALS_EDIT_STEP1: {
+        path: '/gate/raw-materials/edit/:entryId/step1',
+        title: 'Edit Raw Material Entry - Step 1',
+      },
+      RAW_MATERIALS_EDIT_STEP2: {
+        path: '/gate/raw-materials/edit/:entryId/step2',
+        title: 'Edit Raw Material Entry - Step 2',
+      },
+      RAW_MATERIALS_EDIT_STEP3: {
+        path: '/gate/raw-materials/edit/:entryId/step3',
+        title: 'Edit Raw Material Entry - Step 3',
+      },
+      RAW_MATERIALS_EDIT_STEP4: {
+        path: '/gate/raw-materials/edit/:entryId/step4',
+        title: 'Edit Raw Material Entry - Step 4',
+      },
+      RAW_MATERIALS_EDIT_STEP5: {
+        path: '/gate/raw-materials/edit/:entryId/step5',
+        title: 'Edit Raw Material Entry - Step 5',
+      },
+      RAW_MATERIALS_EDIT_REVIEW: {
+        path: '/gate/raw-materials/edit/:entryId/review',
+        title: 'Edit Raw Material Entry - Review',
       },
       DAILY_NEEDS: {
         path: '/gate/daily-needs',

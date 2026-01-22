@@ -1,11 +1,39 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { transporterApi, type CreateTransporterRequest } from './transporter.api'
 
-export function useTransporters() {
+/**
+ * Fetch lightweight transporter names for dropdown
+ */
+export function useTransporterNames(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['transporterNames'],
+    queryFn: () => transporterApi.getNames(),
+    staleTime: 10 * 60 * 1000, // 10 minutes - transporters don't change often
+    enabled,
+  })
+}
+
+/**
+ * Fetch full transporter details by ID
+ */
+export function useTransporterById(id: number | null, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['transporter', id],
+    queryFn: () => transporterApi.getById(id!),
+    staleTime: 10 * 60 * 1000,
+    enabled: enabled && id !== null,
+  })
+}
+
+/**
+ * Legacy: Fetch full list of transporters
+ */
+export function useTransporters(enabled: boolean = true) {
   return useQuery({
     queryKey: ['transporters'],
     queryFn: () => transporterApi.getList(),
     staleTime: 10 * 60 * 1000, // 10 minutes - transporters don't change often
+    enabled,
   })
 }
 
@@ -16,6 +44,7 @@ export function useCreateTransporter() {
     mutationFn: (data: CreateTransporterRequest) => transporterApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transporters'] })
+      queryClient.invalidateQueries({ queryKey: ['transporterNames'] })
     },
   })
 }

@@ -8,12 +8,11 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@/shared/components/ui'
-import { useDrivers } from '../api/driver.queries'
+import { useDriverNames, useDriverById } from '../api/driver.queries'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import { CreateDriverDialog } from './CreateDriverDialog'
-import type { Driver } from '../api/driver.api'
-import { env } from '@/config/env.config'
+import type { DriverName, Driver } from '../api/driver.api'
 
 interface DriverSelectProps {
   value?: string
@@ -45,35 +44,63 @@ export function DriverSelect({
   const [isOpen, setIsOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedDriverDetails, setSelectedDriverDetails] = useState<Driver | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { data: drivers = [], isLoading } = useDrivers()
+  // Fetch lightweight driver names when dropdown is open
+  const { data: driverNames = [], isLoading } = useDriverNames(isOpen && !disabled)
+  
+  // Fetch full driver details when one is selected
+  const { data: driverDetails } = useDriverById(selectedId, selectedId !== null)
+  
   const debouncedSearch = useDebounce(searchTerm, 100)
 
-  // Filter drivers based on search term (name or license number)
-  const filteredDrivers = drivers.filter(
-    (driver) =>
-      driver.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      driver.license_no.toLowerCase().includes(debouncedSearch.toLowerCase())
+  // Filter drivers based on search term (name)
+  const filteredDrivers = driverNames.filter((driver) =>
+    driver.name.toLowerCase().includes(debouncedSearch.toLowerCase())
   )
 
-  // Find selected driver from value
+  // Update selected driver details when fetched and call onChange with full details
   useEffect(() => {
-    if (value && drivers.length > 0) {
-      const driver = drivers.find(
-        (d) => d.name === value || d.id.toString() === value || d.license_no === value
+    if (driverDetails) {
+      setSelectedDriverDetails(driverDetails)
+      // Call onChange with full driver details
+      onChange({
+        driverId: driverDetails.id,
+        driverName: driverDetails.name,
+        mobileNumber: driverDetails.mobile_no,
+        drivingLicenseNumber: driverDetails.license_no,
+        idProofType: driverDetails.id_proof_type,
+        idProofNumber: driverDetails.id_proof_number,
+        driverPhoto: driverDetails.photo,
+      })
+    }
+  }, [driverDetails]) // Intentionally not including onChange to avoid infinite loops
+
+  // Find selected driver from value or display value directly when disabled
+  useEffect(() => {
+    // When disabled, just show the value directly without lookup
+    if (disabled && value) {
+      setSearchTerm(value)
+      return
+    }
+    
+    if (value && driverNames.length > 0) {
+      const driver = driverNames.find(
+        (d) => d.name === value || d.id.toString() === value
       )
       if (driver) {
-        setSelectedDriver(driver)
+        setSelectedId(driver.id)
         setSearchTerm(driver.name)
       }
     } else if (!value) {
-      setSelectedDriver(null)
+      setSelectedId(null)
+      setSelectedDriverDetails(null)
       setSearchTerm('')
     }
-  }, [value, drivers])
+  }, [value, driverNames, disabled])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -89,18 +116,10 @@ export function DriverSelect({
     }
   }, [isOpen])
 
-  const handleSelect = (driver: Driver) => {
-    setSelectedDriver(driver)
+  const handleSelect = (driver: DriverName) => {
+    setSelectedId(driver.id)
     setSearchTerm(driver.name)
-    onChange({
-      driverId: driver.id,
-      driverName: driver.name,
-      mobileNumber: driver.mobile_no,
-      drivingLicenseNumber: driver.license_no,
-      idProofType: driver.id_proof_type,
-      idProofNumber: driver.id_proof_number,
-      driverPhoto: driver.photo,
-    })
+    // Full details and onChange will be called when driverDetails is fetched
     setIsOpen(false)
   }
 
@@ -121,7 +140,8 @@ export function DriverSelect({
         idProofNumber: '',
         driverPhoto: null,
       })
-      setSelectedDriver(null)
+      setSelectedId(null)
+      setSelectedDriverDetails(null)
     }
   }
 
@@ -134,10 +154,9 @@ export function DriverSelect({
   }
 
   const handleCreateSuccess = (driverName: string) => {
-    const newDriver = drivers.find((d) => d.name === driverName)
-    if (newDriver) {
-      handleSelect(newDriver)
-    }
+    // After creating a new driver, set the search term
+    // The driver list will be refreshed due to query invalidation
+    setSearchTerm(driverName)
     setIsOpen(false)
   }
 
@@ -145,12 +164,6 @@ export function DriverSelect({
     e.stopPropagation()
     setIsOpen(false)
     setIsDialogOpen(true)
-  }
-
-  const getPhotoUrl = (photo: string | null) => {
-    if (!photo) return null
-    if (photo.startsWith('http')) return photo
-    return `${env.apiBaseUrl}${photo}`
   }
 
   return (
@@ -171,32 +184,37 @@ export function DriverSelect({
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-80" align="start">
-              {selectedDriver ? (
+              {selectedDriverDetails ? (
                 <div className="space-y-2">
                   <div className="space-y-1.5 text-sm">
                     <div>
                       <span className="font-medium">Name:</span>{' '}
-                      <span className="text-muted-foreground">{selectedDriver.name}</span>
+                      <span className="text-muted-foreground">{selectedDriverDetails.name}</span>
                     </div>
                     <div>
                       <span className="font-medium">Mobile Number:</span>{' '}
-                      <span className="text-muted-foreground">{selectedDriver.mobile_no}</span>
+                      <span className="text-muted-foreground">{selectedDriverDetails.mobile_no}</span>
                     </div>
                     <div>
                       <span className="font-medium">License Number:</span>{' '}
-                      <span className="text-muted-foreground">{selectedDriver.license_no}</span>
+                      <span className="text-muted-foreground">{selectedDriverDetails.license_no}</span>
                     </div>
                     <div>
                       <span className="font-medium">ID Proof Type:</span>{' '}
-                      <span className="text-muted-foreground">{selectedDriver.id_proof_type}</span>
+                      <span className="text-muted-foreground">{selectedDriverDetails.id_proof_type}</span>
                     </div>
                     <div>
                       <span className="font-medium">ID Proof Number:</span>{' '}
                       <span className="text-muted-foreground">
-                        {selectedDriver.id_proof_number}
+                        {selectedDriverDetails.id_proof_number}
                       </span>
                     </div>
                   </div>
+                </div>
+              ) : selectedId ? (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading driver details...
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">
@@ -271,12 +289,12 @@ export function DriverSelect({
                         key={driver.id}
                         className={cn(
                           'px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground flex items-center justify-between',
-                          selectedDriver?.id === driver.id && 'bg-accent'
+                          selectedId === driver.id && 'bg-accent'
                         )}
                         onClick={() => handleSelect(driver)}
                       >
                         <span className="text-sm">{driver.name}</span>
-                        {selectedDriver?.id === driver.id && (
+                        {selectedId === driver.id && (
                           <Check className="h-4 w-4 text-primary" />
                         )}
                       </li>

@@ -136,14 +136,31 @@ export default function ProfilePage() {
           <div>
             <CardTitle className="mb-4 text-lg sm:text-xl">Roles</CardTitle>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-              {user.companies.map((company) => (
-                <Card key={company.company_id} className="border">
-                  <CardContent className="flex flex-col items-center justify-center p-3 text-center sm:p-4">
-                    <p className="text-base font-semibold sm:text-lg">{company.role}</p>
-                    <p className="text-xs text-muted-foreground sm:text-sm break-words">{company.company_name}</p>
-                  </CardContent>
-                </Card>
-              ))}
+              {user.companies.map((company) => {
+                const isCurrentCompany = currentCompany?.company_id === company.company_id
+                return (
+                  <Card 
+                    key={company.company_id} 
+                    className={`border relative ${
+                      isCurrentCompany 
+                        ? 'border-primary border-2 bg-primary/5 ring-2 ring-primary/20' 
+                        : ''
+                    }`}
+                  >
+                    {isCurrentCompany && (
+                      <Badge 
+                        className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5"
+                      >
+                        Current
+                      </Badge>
+                    )}
+                    <CardContent className="flex flex-col items-center justify-center p-3 text-center sm:p-4">
+                      <p className="text-base font-semibold sm:text-lg">{company.role}</p>
+                      <p className="text-xs text-muted-foreground sm:text-sm break-words">{company.company_name}</p>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           </div>
 

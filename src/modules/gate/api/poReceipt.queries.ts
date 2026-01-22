@@ -15,8 +15,8 @@ export function useCreatePOReceipt(entryId: number) {
   return useMutation({
     mutationFn: (data: CreatePOReceiptRequest) => poReceiptApi.create(entryId, data),
     onSuccess: () => {
-      // Invalidate related queries if needed
       queryClient.invalidateQueries({ queryKey: ['poReceipts'] })
+      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
     },
   })
 }

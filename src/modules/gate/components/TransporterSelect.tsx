@@ -8,11 +8,11 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@/shared/components/ui'
-import { useTransporters } from '../api/transporter.queries'
+import { useTransporterNames, useTransporterById } from '../api/transporter.queries'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import { CreateTransporterDialog } from './CreateTransporterDialog'
-import type { Transporter } from '../api/transporter.api'
+import type { TransporterName, Transporter } from '../api/transporter.api'
 
 interface TransporterSelectProps {
   value?: string
@@ -36,31 +36,51 @@ export function TransporterSelect({
   const [isOpen, setIsOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedTransporter, setSelectedTransporter] = useState<Transporter | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedTransporterDetails, setSelectedTransporterDetails] = useState<Transporter | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { data: transporters = [], isLoading } = useTransporters()
+  // Fetch lightweight transporter names when dropdown is open
+  const { data: transporterNames = [], isLoading } = useTransporterNames(isOpen && !disabled)
+  
+  // Fetch full transporter details when one is selected
+  const { data: transporterDetails } = useTransporterById(selectedId, selectedId !== null)
+  
   const debouncedSearch = useDebounce(searchTerm, 100)
 
   // Filter transporters based on search term
-  const filteredTransporters = transporters.filter((transporter) =>
+  const filteredTransporters = transporterNames.filter((transporter) =>
     transporter.name.toLowerCase().includes(debouncedSearch.toLowerCase())
   )
 
-  // Find selected transporter from value
+  // Update selected transporter details when fetched
   useEffect(() => {
-    if (value && transporters.length > 0) {
-      const transporter = transporters.find((t) => t.name === value || t.id.toString() === value)
+    if (transporterDetails) {
+      setSelectedTransporterDetails(transporterDetails)
+    }
+  }, [transporterDetails])
+
+  // Find selected transporter from value or display value directly when disabled
+  useEffect(() => {
+    // When disabled, just show the value directly without lookup
+    if (disabled && value) {
+      setSearchTerm(value)
+      return
+    }
+    
+    if (value && transporterNames.length > 0) {
+      const transporter = transporterNames.find((t) => t.name === value || t.id.toString() === value)
       if (transporter) {
-        setSelectedTransporter(transporter)
+        setSelectedId(transporter.id)
         setSearchTerm(transporter.name)
       }
     } else if (!value) {
-      setSelectedTransporter(null)
+      setSelectedId(null)
+      setSelectedTransporterDetails(null)
       setSearchTerm('')
     }
-  }, [value, transporters])
+  }, [value, transporterNames, disabled])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -76,8 +96,8 @@ export function TransporterSelect({
     }
   }, [isOpen])
 
-  const handleSelect = (transporter: Transporter) => {
-    setSelectedTransporter(transporter)
+  const handleSelect = (transporter: TransporterName) => {
+    setSelectedId(transporter.id)
     setSearchTerm(transporter.name)
     onChange(transporter.name)
     setIsOpen(false)
@@ -92,7 +112,8 @@ export function TransporterSelect({
     setIsOpen(true)
     if (!e.target.value) {
       onChange('')
-      setSelectedTransporter(null)
+      setSelectedId(null)
+      setSelectedTransporterDetails(null)
     }
   }
 
@@ -133,24 +154,29 @@ export function TransporterSelect({
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-80" align="start">
-              {selectedTransporter ? (
+              {selectedTransporterDetails ? (
                 <div className="space-y-2">
                   <div className="space-y-1.5 text-sm">
                     <div>
                       <span className="font-medium">Name:</span>{' '}
-                      <span className="text-muted-foreground">{selectedTransporter.name}</span>
+                      <span className="text-muted-foreground">{selectedTransporterDetails.name}</span>
                     </div>
                     <div>
                       <span className="font-medium">Contact Person:</span>{' '}
                       <span className="text-muted-foreground">
-                        {selectedTransporter.contact_person}
+                        {selectedTransporterDetails.contact_person}
                       </span>
                     </div>
                     <div>
                       <span className="font-medium">Mobile Number:</span>{' '}
-                      <span className="text-muted-foreground">{selectedTransporter.mobile_no}</span>
+                      <span className="text-muted-foreground">{selectedTransporterDetails.mobile_no}</span>
                     </div>
                   </div>
+                </div>
+              ) : selectedId ? (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading transporter details...
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">
@@ -225,12 +251,12 @@ export function TransporterSelect({
                         key={transporter.id}
                         className={cn(
                           'px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground flex items-center justify-between',
-                          selectedTransporter?.id === transporter.id && 'bg-accent'
+                          selectedId === transporter.id && 'bg-accent'
                         )}
                         onClick={() => handleSelect(transporter)}
                       >
                         <span className="text-sm">{transporter.name}</span>
-                        {selectedTransporter?.id === transporter.id && (
+                        {selectedId === transporter.id && (
                           <Check className="h-4 w-4 text-primary" />
                         )}
                       </li>

@@ -4,10 +4,12 @@ import { MainLayout, AuthLayout } from '@/app/layouts'
 import { ProtectedRoute } from '@/core/auth'
 import { ROUTES } from '@/config/routes.config'
 
+// Eagerly load critical auth pages (always used on reload)
+import LoadingUserPage from '@/modules/auth/pages/LoadingUserPage'
+
 // Lazy load modules
 const LoginPage = lazy(() => import('@/modules/auth/pages/LoginPage'))
 const CompanySelectionPage = lazy(() => import('@/modules/auth/pages/CompanySelectionPage'))
-const LoadingUserPage = lazy(() => import('@/modules/auth/pages/LoadingUserPage'))
 const ProfilePage = lazy(() => import('@/modules/auth/pages/ProfilePage'))
 const DashboardPage = lazy(() => import('@/modules/dashboard/pages/DashboardPage'))
 const GateInListPage = lazy(() => import('@/modules/gateIn/pages/GateInListPage'))
@@ -18,10 +20,14 @@ const QualityCheckDetailPage = lazy(
 )
 // Gate module pages
 const GateDashboardPage = lazy(() => import('@/modules/gate/pages/GateDashboardPage'))
+const RawMaterialsDashboard = lazy(() => import('@/modules/gate/pages/RawMaterialsDashboard'))
 const RawMaterialsPage = lazy(() => import('@/modules/gate/pages/RawMaterialsPage'))
 const Step1Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step1Page'))
 const Step2Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step2Page'))
 const Step3Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step3Page'))
+const Step4Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step4Page'))
+const Step5Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step5Page'))
+const ReviewPage = lazy(() => import('@/modules/gate/pages/rawmaterialpages/ReviewPage'))
 const DailyNeedsPage = lazy(() => import('@/modules/gate/pages/DailyNeedsPage'))
 const MaintenancePage = lazy(() => import('@/modules/gate/pages/MaintenancePage'))
 const ConstructionPage = lazy(() => import('@/modules/gate/pages/ConstructionPage'))
@@ -119,6 +125,14 @@ export function AppRoutes() {
             path={ROUTES.GATE.children?.RAW_MATERIALS.path}
             element={
               <ProtectedRoute>
+                <RawMaterialsDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS_ALL.path}
+            element={
+              <ProtectedRoute>
                 <RawMaterialsPage />
               </ProtectedRoute>
             }
@@ -132,7 +146,7 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="/gate/raw-materials/new/step2"
+            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_STEP2.path}
             element={
               <ProtectedRoute>
                 <Step2Page />
@@ -140,16 +154,40 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="/gate/raw-materials/new/step3"
+            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_STEP3.path}
             element={
               <ProtectedRoute>
                 <Step3Page />
               </ProtectedRoute>
             }
           />
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_STEP4.path}
+            element={
+              <ProtectedRoute>
+                <Step4Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_STEP5.path}
+            element={
+              <ProtectedRoute>
+                <Step5Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_REVIEW.path}
+            element={
+              <ProtectedRoute>
+                <ReviewPage />
+              </ProtectedRoute>
+            }
+          />
           {/* Edit routes */}
           <Route
-            path="/gate/raw-materials/edit/:entryId/step1"
+            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP1.path}
             element={
               <ProtectedRoute>
                 <Step1Page />
@@ -157,7 +195,7 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="/gate/raw-materials/edit/:entryId/step2"
+            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP2.path}
             element={
               <ProtectedRoute>
                 <Step2Page />
@@ -165,10 +203,34 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="/gate/raw-materials/edit/:entryId/step3"
+            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP3.path}
             element={
               <ProtectedRoute>
                 <Step3Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP4.path}
+            element={
+              <ProtectedRoute>
+                <Step4Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP5.path}
+            element={
+              <ProtectedRoute>
+                <Step5Page />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_REVIEW.path}
+            element={
+              <ProtectedRoute>
+                <ReviewPage />
               </ProtectedRoute>
             }
           />

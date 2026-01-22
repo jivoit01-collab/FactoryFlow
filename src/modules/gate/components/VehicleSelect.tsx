@@ -8,11 +8,11 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@/shared/components/ui'
-import { useVehicles } from '../api/vehicle.queries'
+import { useVehicleNames, useVehicleById } from '../api/vehicle.queries'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import { CreateVehicleDialog } from './CreateVehicleDialog'
-import type { Vehicle } from '../api/vehicle.api'
+import type { VehicleName, Vehicle } from '../api/vehicle.api'
 
 interface VehicleSelectProps {
   value?: string
@@ -41,31 +41,64 @@ export function VehicleSelect({
   const [isOpen, setIsOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedVehicleDetails, setSelectedVehicleDetails] = useState<Vehicle | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { data: vehicles = [], isLoading } = useVehicles()
+  // Fetch lightweight vehicle names when dropdown is open
+  const { data: vehicleNames = [], isLoading } = useVehicleNames(isOpen && !disabled)
+  
+  // Fetch full vehicle details when one is selected
+  const { data: vehicleDetails } = useVehicleById(selectedId, selectedId !== null)
+  
   const debouncedSearch = useDebounce(searchTerm, 100)
 
   // Filter vehicles based on search term (vehicle number)
-  const filteredVehicles = vehicles.filter((vehicle) =>
+  const filteredVehicles = vehicleNames.filter((vehicle) =>
     vehicle.vehicle_number.toLowerCase().includes(debouncedSearch.toLowerCase())
   )
 
-  // Find selected vehicle from value
+  // Update selected vehicle details when fetched and call onChange with full details
   useEffect(() => {
-    if (value && vehicles.length > 0) {
-      const vehicle = vehicles.find((v) => v.vehicle_number === value || v.id.toString() === value)
+    if (vehicleDetails) {
+      setSelectedVehicleDetails(vehicleDetails)
+      // Call onChange with full vehicle details
+      const vehicleTypeMap: Record<string, string> = {
+        TRUCK: 'TRUCK',
+        CONTAINER: 'CONTAINER',
+        TEMPO: 'TEMPO',
+        TRACTOR: 'TRACTOR',
+      }
+      onChange({
+        vehicleId: vehicleDetails.id,
+        vehicleNumber: vehicleDetails.vehicle_number,
+        vehicleType: vehicleTypeMap[vehicleDetails.vehicle_type] || vehicleDetails.vehicle_type,
+        vehicleCapacity: `${vehicleDetails.capacity_ton} Tons`,
+      })
+    }
+  }, [vehicleDetails]) // Intentionally not including onChange to avoid infinite loops
+
+  // Find selected vehicle from value or display value directly when disabled
+  useEffect(() => {
+    // When disabled, just show the value directly without lookup
+    if (disabled && value) {
+      setSearchTerm(value)
+      return
+    }
+    
+    if (value && vehicleNames.length > 0) {
+      const vehicle = vehicleNames.find((v) => v.vehicle_number === value || v.id.toString() === value)
       if (vehicle) {
-        setSelectedVehicle(vehicle)
+        setSelectedId(vehicle.id)
         setSearchTerm(vehicle.vehicle_number)
       }
     } else if (!value) {
-      setSelectedVehicle(null)
+      setSelectedId(null)
+      setSelectedVehicleDetails(null)
       setSearchTerm('')
     }
-  }, [value, vehicles])
+  }, [value, vehicleNames, disabled])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -81,22 +114,10 @@ export function VehicleSelect({
     }
   }, [isOpen])
 
-  const handleSelect = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle)
+  const handleSelect = (vehicle: VehicleName) => {
+    setSelectedId(vehicle.id)
     setSearchTerm(vehicle.vehicle_number)
-    // Map API vehicle_type to display format
-    const vehicleTypeMap: Record<string, string> = {
-      TRUCK: 'TRUCK',
-      CONTAINER: 'CONTAINER',
-      TEMPO: 'TEMPO',
-      TRACTOR: 'TRACTOR',
-    }
-    onChange({
-      vehicleId: vehicle.id,
-      vehicleNumber: vehicle.vehicle_number,
-      vehicleType: vehicleTypeMap[vehicle.vehicle_type] || vehicle.vehicle_type,
-      vehicleCapacity: `${vehicle.capacity_ton} Tons`,
-    })
+    // Full details and onChange will be called when vehicleDetails is fetched
     setIsOpen(false)
   }
 
@@ -109,7 +130,8 @@ export function VehicleSelect({
     setIsOpen(true)
     if (!e.target.value) {
       onChange({ vehicleId: 0, vehicleNumber: '', vehicleType: '', vehicleCapacity: '' })
-      setSelectedVehicle(null)
+      setSelectedId(null)
+      setSelectedVehicleDetails(null)
     }
   }
 
@@ -122,10 +144,9 @@ export function VehicleSelect({
   }
 
   const handleCreateSuccess = (vehicleNumber: string) => {
-    const newVehicle = vehicles.find((v) => v.vehicle_number === vehicleNumber)
-    if (newVehicle) {
-      handleSelect(newVehicle)
-    }
+    // After creating a new vehicle, set the search term
+    // The vehicle list will be refreshed due to query invalidation
+    setSearchTerm(vehicleNumber)
     setIsOpen(false)
   }
 
@@ -135,7 +156,7 @@ export function VehicleSelect({
     setIsDialogOpen(true)
   }
 
-  const selectedTransporter = selectedVehicle?.transporter || null
+  const selectedTransporter = selectedVehicleDetails?.transporter || null
 
   return (
     <div className="space-y-2">
@@ -155,23 +176,23 @@ export function VehicleSelect({
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-80" align="start">
-              {selectedVehicle ? (
+              {selectedVehicleDetails ? (
                 <div className="space-y-2">
                   <div className="space-y-1.5 text-sm">
                     <div>
                       <span className="font-medium">Vehicle Number:</span>{' '}
                       <span className="text-muted-foreground">
-                        {selectedVehicle.vehicle_number}
+                        {selectedVehicleDetails.vehicle_number}
                       </span>
                     </div>
                     <div>
                       <span className="font-medium">Vehicle Type:</span>{' '}
-                      <span className="text-muted-foreground">{selectedVehicle.vehicle_type}</span>
+                      <span className="text-muted-foreground">{selectedVehicleDetails.vehicle_type}</span>
                     </div>
                     <div>
                       <span className="font-medium">Capacity:</span>{' '}
                       <span className="text-muted-foreground">
-                        {selectedVehicle.capacity_ton} Tons
+                        {selectedVehicleDetails.capacity_ton} Tons
                       </span>
                     </div>
                     {selectedTransporter && (
@@ -181,6 +202,11 @@ export function VehicleSelect({
                       </div>
                     )}
                   </div>
+                </div>
+              ) : selectedId ? (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading vehicle details...
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">
@@ -255,12 +281,12 @@ export function VehicleSelect({
                         key={vehicle.id}
                         className={cn(
                           'px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground flex items-center justify-between',
-                          selectedVehicle?.id === vehicle.id && 'bg-accent'
+                          selectedId === vehicle.id && 'bg-accent'
                         )}
                         onClick={() => handleSelect(vehicle)}
                       >
                         <span className="text-sm">{vehicle.vehicle_number}</span>
-                        {selectedVehicle?.id === vehicle.id && (
+                        {selectedId === vehicle.id && (
                           <Check className="h-4 w-4 text-primary" />
                         )}
                       </li>

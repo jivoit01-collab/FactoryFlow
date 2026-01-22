@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { securityCheckApi, type CreateSecurityCheckRequest } from './securityCheck.api'
 
 export function useSecurityCheck(entryId: number | null) {
@@ -10,7 +10,13 @@ export function useSecurityCheck(entryId: number | null) {
 }
 
 export function useCreateSecurityCheck(entryId: number) {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: CreateSecurityCheckRequest) => securityCheckApi.create(entryId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['securityCheck'] })
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
+    },
   })
 }

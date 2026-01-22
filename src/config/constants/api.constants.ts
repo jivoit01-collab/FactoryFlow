@@ -35,13 +35,21 @@ export const API_ENDPOINTS = {
   // Vehicle Management
   VEHICLE: {
     TRANSPORTERS: '/vehicle-management/transporters/',
+    TRANSPORTER_NAMES: '/vehicle-management/transporters/names/',
+    TRANSPORTER_BY_ID: (id: number) => `/vehicle-management/transporters/${id}/`,
     VEHICLES: '/vehicle-management/vehicles/',
+    VEHICLE_NAMES: '/vehicle-management/vehicles/names/',
+    VEHICLE_BY_ID: (id: number) => `/vehicle-management/vehicles/${id}/`,
     VEHICLE_ENTRIES: '/vehicle-management/vehicle-entries/',
     VEHICLE_ENTRY_BY_ID: (id: number) => `/vehicle-management/vehicle-entries/${id}/`,
+    VEHICLE_ENTRIES_COUNT: '/vehicle-management/vehicle-entries/count/',
+    VEHICLE_ENTRIES_BY_STATUS: '/vehicle-management/vehicle-entries/list-by-status/',
   },
   // Driver Management
   DRIVER: {
     DRIVERS: '/driver-management/drivers/',
+    DRIVER_NAMES: '/driver-management/drivers/names/',
+    DRIVER_BY_ID: (id: number) => `/driver-management/drivers/${id}/`,
   },
   // Security Checks
   SECURITY: {
@@ -49,6 +57,8 @@ export const API_ENDPOINTS = {
       `/security-checks/gate-entries/${entryId}/security/`,
     GATE_ENTRY_SECURITY_VIEW: (entryId: number) =>
       `/security-checks/gate-entries/${entryId}/security/view`,
+    SUBMIT: (securityId: number) =>
+      `/security-checks/security/${securityId}/submit/`,
   },
   // Purchase Orders
   PO: {
@@ -61,6 +71,21 @@ export const API_ENDPOINTS = {
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
+  },
+  // Weighment
+  WEIGHMENT: {
+    CREATE: (entryId: number) => `/weighment/gate-entries/${entryId}/weighment/`,
+    GET: (entryId: number) => `/weighment/gate-entries/${entryId}/weighment/view`,
+  },
+  // Quality Control
+  QUALITY_CONTROL: {
+    CREATE: (poItemId: number) => `/quality-control/po-items/${poItemId}/qc/`,
+    GET: (poItemId: number) => `/quality-control/po-items/${poItemId}/qc/view`,
+  },
+  // Gate Core - Full View
+  GATE_CORE: {
+    FULL_VIEW: (entryId: number) => `/gate-core/raw-material-gate-entry/${entryId}/`,
+    COMPLETE: (entryId: number) => `/raw-material-gatein/gate-entries/${entryId}/complete/`,
   },
 } as const
 

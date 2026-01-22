@@ -1,11 +1,39 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { driverApi, type CreateDriverRequest } from './driver.api'
 
-export function useDrivers() {
+/**
+ * Fetch lightweight driver names for dropdown
+ */
+export function useDriverNames(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['driverNames'],
+    queryFn: () => driverApi.getNames(),
+    staleTime: 10 * 60 * 1000, // 10 minutes - drivers don't change often
+    enabled,
+  })
+}
+
+/**
+ * Fetch full driver details by ID
+ */
+export function useDriverById(id: number | null, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['driver', id],
+    queryFn: () => driverApi.getById(id!),
+    staleTime: 10 * 60 * 1000,
+    enabled: enabled && id !== null,
+  })
+}
+
+/**
+ * Legacy: Fetch full list of drivers
+ */
+export function useDrivers(enabled: boolean = true) {
   return useQuery({
     queryKey: ['drivers'],
     queryFn: () => driverApi.getList(),
     staleTime: 10 * 60 * 1000, // 10 minutes - drivers don't change often
+    enabled,
   })
 }
 
@@ -16,6 +44,7 @@ export function useCreateDriver() {
     mutationFn: (data: CreateDriverRequest) => driverApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drivers'] })
+      queryClient.invalidateQueries({ queryKey: ['driverNames'] })
     },
   })
 }

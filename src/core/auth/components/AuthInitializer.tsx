@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@/core/store'
 import { authService } from '../services/auth.service'
 import { initializeComplete, loginSuccess, updateUser } from '../store/authSlice'
@@ -24,10 +24,14 @@ interface AuthInitializerProps {
 export function AuthInitializer({ children }: AuthInitializerProps) {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth)
   const initializedRef = useRef(false)
   const permissionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const tokenIntervalCleanupRef = useRef<(() => void) | null>(null)
+  
+  // Capture the intended URL on initial load (before any redirects)
+  const intendedUrlRef = useRef(location.pathname + location.search)
 
   // Initialize auth from IndexedDB on mount
   useEffect(() => {
@@ -115,10 +119,12 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
             
             // If no current company, redirect to company selection
             // Otherwise, redirect to loading-user to fetch fresh data
+            // Pass the intended URL so we can redirect back after loading
+            const intendedUrl = intendedUrlRef.current
             if (!currentCompany) {
-              navigate(ROUTES.COMPANY_SELECTION.path, { replace: true })
+              navigate(ROUTES.COMPANY_SELECTION.path, { replace: true, state: { from: intendedUrl } })
             } else {
-              navigate(ROUTES.LOADING_USER.path, { replace: true })
+              navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from: intendedUrl } })
             }
             return
           }

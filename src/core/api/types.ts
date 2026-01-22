@@ -9,6 +9,17 @@ export interface ApiError {
   code?: string
   errors?: Record<string, string[]>
   status: number
+  /** Optional detail message from server response */
+  detail?: string
+  /** Raw response object for accessing nested error data */
+  response?: {
+    data?: {
+      detail?: string
+      message?: string
+      errors?: Record<string, string[]>
+    }
+    status?: number
+  }
 }
 
 export interface PaginatedResponse<T> {

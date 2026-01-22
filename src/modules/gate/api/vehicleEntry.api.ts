@@ -7,6 +7,7 @@ export interface VehicleEntry {
   id: number
   entry_no: string
   status: string
+  entry_type?: string
   vehicle?: Vehicle
   driver?: Driver
   remarks?: string
@@ -19,6 +20,7 @@ export interface CreateVehicleEntryRequest {
   vehicle: number
   driver: number
   remarks?: string
+  entry_type: string
 }
 
 export interface UpdateVehicleEntryRequest {
@@ -27,9 +29,48 @@ export interface UpdateVehicleEntryRequest {
   remarks?: string
 }
 
+export interface VehicleEntriesParams {
+  from_date?: string // Format: YYYY-MM-DD
+  to_date?: string   // Format: YYYY-MM-DD
+  entry_type?: string // e.g., 'RAW_MATERIAL'
+  status?: string    // e.g., 'DRAFT', 'IN_PROGRESS', etc.
+}
+
+export interface StatusCount {
+  status: string
+  count: number
+}
+
+export interface VehicleEntriesCountResponse {
+  total_vehicle_entries: StatusCount[]
+}
+
 export const vehicleEntryApi = {
-  async getList(): Promise<VehicleEntry[]> {
-    const response = await apiClient.get<VehicleEntry[]>(API_ENDPOINTS.VEHICLE.VEHICLE_ENTRIES)
+  async getList(params?: VehicleEntriesParams): Promise<VehicleEntry[]> {
+    const queryParams = new URLSearchParams()
+    if (params?.from_date) {
+      queryParams.append('from_date', params.from_date)
+    }
+    if (params?.to_date) {
+      queryParams.append('to_date', params.to_date)
+    }
+    if (params?.entry_type) {
+      queryParams.append('entry_type', params.entry_type)
+    }
+    if (params?.status) {
+      queryParams.append('status', params.status)
+    }
+
+    // Use list-by-status endpoint when status filter is provided
+    const baseUrl = params?.status
+      ? API_ENDPOINTS.VEHICLE.VEHICLE_ENTRIES_BY_STATUS
+      : API_ENDPOINTS.VEHICLE.VEHICLE_ENTRIES
+
+    const url = queryParams.toString()
+      ? `${baseUrl}?${queryParams.toString()}`
+      : baseUrl
+
+    const response = await apiClient.get<VehicleEntry[]>(url)
     return response.data
   },
 
@@ -47,6 +88,7 @@ export const vehicleEntryApi = {
     if (data.remarks) {
       formData.append('remarks', data.remarks)
     }
+    formData.append('entry_type', data.entry_type)
 
     const response = await apiClient.post<VehicleEntry>(
       API_ENDPOINTS.VEHICLE.VEHICLE_ENTRIES,
@@ -78,6 +120,26 @@ export const vehicleEntryApi = {
         },
       }
     )
+    return response.data
+  },
+
+  async getCount(params?: VehicleEntriesParams): Promise<VehicleEntriesCountResponse> {
+    const queryParams = new URLSearchParams()
+    if (params?.from_date) {
+      queryParams.append('from_date', params.from_date)
+    }
+    if (params?.to_date) {
+      queryParams.append('to_date', params.to_date)
+    }
+    if (params?.entry_type) {
+      queryParams.append('entry_type', params.entry_type)
+    }
+
+    const url = queryParams.toString()
+      ? `${API_ENDPOINTS.VEHICLE.VEHICLE_ENTRIES_COUNT}?${queryParams.toString()}`
+      : API_ENDPOINTS.VEHICLE.VEHICLE_ENTRIES_COUNT
+
+    const response = await apiClient.get<VehicleEntriesCountResponse>(url)
     return response.data
   },
 }

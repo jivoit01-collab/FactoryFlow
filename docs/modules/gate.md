@@ -1,0 +1,560 @@
+# Gate Module
+
+The Gate module is the primary business feature of the Factory Management System, handling all gate entry operations for raw materials, daily needs, maintenance, and other entry types.
+
+## Module Structure
+
+```
+src/modules/gate/
+├── pages/
+│   ├── RawMaterialsDashboard.tsx     # Entry statistics
+│   ├── RawMaterialsPage.tsx          # Entry list with filters
+│   └── rawmaterialpages/             # Multi-step entry workflow
+│       ├── Step1Page.tsx             # Driver, Transporter, Vehicle
+│       ├── Step2Page.tsx             # Purchase Order
+│       ├── Step3Page.tsx             # PO Receipt
+│       ├── Step4Page.tsx             # Weighment
+│       ├── Step5Page.tsx             # Quality Control
+│       └── ReviewPage.tsx            # Final Review
+├── api/
+│   ├── driver.api.ts                 # Driver API functions
+│   ├── driver.queries.ts             # Driver React Query hooks
+│   ├── transporter.api.ts
+│   ├── transporter.queries.ts
+│   ├── vehicle.api.ts
+│   ├── vehicle.queries.ts
+│   ├── vehicleEntry.api.ts
+│   ├── vehicleEntry.queries.ts
+│   ├── po.queries.ts
+│   ├── poReceipt.api.ts
+│   ├── poReceipt.queries.ts
+│   ├── securityCheck.api.ts
+│   ├── securityCheck.queries.ts
+│   ├── weighment.api.ts
+│   ├── weighment.queries.ts
+│   ├── qualityControl.api.ts
+│   ├── qualityControl.queries.ts
+│   └── gateEntryFullView.api.ts
+├── components/
+│   ├── DriverSelect.tsx
+│   ├── TransporterSelect.tsx
+│   ├── VehicleSelect.tsx
+│   ├── CreateVehicleDialog.tsx
+│   ├── StepHeader.tsx
+│   ├── StepFooter.tsx
+│   ├── StepLoadingSpinner.tsx
+│   ├── FillDataAlert.tsx
+│   └── index.ts
+├── hooks/
+│   └── [Custom hooks]
+├── schemas/
+│   └── [Zod schemas]
+├── constants/
+│   └── [Gate constants]
+└── utils/
+    └── [Utility functions]
+```
+
+## Entry Types
+
+The gate module supports multiple entry types:
+
+| Type | Description | Route Prefix |
+|------|-------------|--------------|
+| Raw Materials | Raw material deliveries | `/gate/raw-materials` |
+| Daily Needs | Food and consumables | `/gate/daily-needs` |
+| Maintenance | Spare parts and tools | `/gate/maintenance` |
+| Construction | Civil and building materials | `/gate/construction` |
+| Returnable | Tools and equipment (returnable) | `/gate/returnable` |
+| Visitor | Visitor tracking | `/gate/visitor` |
+| Employee | Employee entry | `/gate/employee` |
+| Contractor | Contractor/Labor entry | `/gate/contractor` |
+
+## Raw Materials Workflow
+
+The raw materials entry follows a 5-step workflow:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              Raw Materials Entry Workflow                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Step 1: Vehicle Information                                     │
+│  ├── Select Driver                                               │
+│  ├── Select Transporter                                          │
+│  └── Select Vehicle (or create new)                              │
+│              │                                                   │
+│              ▼                                                   │
+│  Step 2: Purchase Order                                          │
+│  ├── Enter/Search PO Number                                      │
+│  ├── PO Details display                                          │
+│  └── Validate PO status                                          │
+│              │                                                   │
+│              ▼                                                   │
+│  Step 3: PO Receipt                                              │
+│  ├── Received quantity                                           │
+│  ├── Unit of measure                                             │
+│  └── Receipt remarks                                             │
+│              │                                                   │
+│              ▼                                                   │
+│  Step 4: Weighment                                               │
+│  ├── Gross weight                                                │
+│  ├── Tare weight                                                 │
+│  ├── Net weight (calculated)                                     │
+│  └── Weighbridge details                                         │
+│              │                                                   │
+│              ▼                                                   │
+│  Step 5: Quality Control                                         │
+│  ├── Quality parameters                                          │
+│  ├── Test results                                                │
+│  └── Pass/Fail determination                                     │
+│              │                                                   │
+│              ▼                                                   │
+│  Review: Final Submission                                        │
+│  ├── Review all entered data                                     │
+│  ├── Validate completeness                                       │
+│  └── Submit entry                                                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Pages
+
+### RawMaterialsDashboard
+
+Statistics and overview dashboard for raw material entries.
+
+**Route:** `/gate/raw-materials`
+
+**Features:**
+- Entry counts by status
+- Recent entries list
+- Quick action buttons
+
+### RawMaterialsPage
+
+List view with filtering capabilities.
+
+**Route:** `/gate/raw-materials/all`
+
+**Features:**
+- Paginated entry list
+- Status filtering
+- Date range filtering
+- Search functionality
+- Quick actions (edit, view, delete)
+
+```typescript
+function RawMaterialsPage() {
+  const { dateRange } = useGlobalDateRange();
+  const [filters, setFilters] = useState({ status: 'all', search: '' });
+
+  const { data, isLoading } = useVehicleEntries({
+    ...filters,
+    fromDate: dateRange.from,
+    toDate: dateRange.to,
+  });
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Raw Materials Entries"
+        action={<NewEntryButton />}
+      />
+      <FilterBar filters={filters} onChange={setFilters} />
+      <DataTable
+        data={data?.data}
+        loading={isLoading}
+        pagination={data?.pagination}
+      />
+    </div>
+  );
+}
+```
+
+### Step Pages
+
+Each step page follows a consistent pattern:
+
+```typescript
+// Example: Step1Page.tsx
+function Step1Page() {
+  const { entryId } = useParams();
+  const navigate = useNavigate();
+  const form = useForm<Step1FormData>({
+    resolver: zodResolver(step1Schema),
+  });
+
+  // Load existing data if editing
+  const { data: entry } = useVehicleEntry(entryId);
+
+  useEffect(() => {
+    if (entry) {
+      form.reset({
+        driverId: entry.driverId,
+        transporterId: entry.transporterId,
+        vehicleId: entry.vehicleId,
+      });
+    }
+  }, [entry]);
+
+  const createEntry = useCreateVehicleEntry();
+  const updateEntry = useUpdateVehicleEntry();
+
+  const onSubmit = async (data: Step1FormData) => {
+    try {
+      if (entryId) {
+        await updateEntry.mutateAsync({ id: entryId, data });
+      } else {
+        const newEntry = await createEntry.mutateAsync(data);
+        navigate(`/gate/raw-materials/new/step2?entryId=${newEntry.id}`);
+        return;
+      }
+      navigate('/gate/raw-materials/new/step2');
+    } catch (error) {
+      // Handle error
+    }
+  };
+
+  return (
+    <div>
+      <StepHeader currentStep={1} totalSteps={5} />
+
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <DriverSelect
+          value={form.watch('driverId')}
+          onChange={(value) => form.setValue('driverId', value)}
+          error={form.formState.errors.driverId?.message}
+        />
+
+        <TransporterSelect
+          value={form.watch('transporterId')}
+          onChange={(value) => form.setValue('transporterId', value)}
+          error={form.formState.errors.transporterId?.message}
+        />
+
+        <VehicleSelect
+          transporterId={form.watch('transporterId')}
+          value={form.watch('vehicleId')}
+          onChange={(value) => form.setValue('vehicleId', value)}
+          error={form.formState.errors.vehicleId?.message}
+        />
+
+        <StepFooter
+          onBack={() => navigate(-1)}
+          isSubmitting={createEntry.isPending || updateEntry.isPending}
+        />
+      </form>
+    </div>
+  );
+}
+```
+
+## Components
+
+### DriverSelect
+
+Searchable dropdown for driver selection with create capability.
+
+```typescript
+interface DriverSelectProps {
+  value?: string;
+  onChange: (value: string) => void;
+  error?: string;
+  disabled?: boolean;
+}
+
+function DriverSelect({ value, onChange, error, disabled }: DriverSelectProps) {
+  const { data: drivers, isLoading } = useDriverNames();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <Label>Driver</Label>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select driver" />
+        </SelectTrigger>
+        <SelectContent>
+          {isLoading && <SelectItem disabled>Loading...</SelectItem>}
+          {drivers?.map((driver) => (
+            <SelectItem key={driver.id} value={driver.id}>
+              {driver.name}
+            </SelectItem>
+          ))}
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => setIsCreateOpen(true)}
+          >
+            + Add New Driver
+          </Button>
+        </SelectContent>
+      </Select>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <CreateDriverDialog
+        open={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onCreated={(driver) => onChange(driver.id)}
+      />
+    </div>
+  );
+}
+```
+
+### TransporterSelect
+
+Similar to DriverSelect, for transporter selection.
+
+### VehicleSelect
+
+Vehicle selection with transporter filtering and create capability.
+
+```typescript
+interface VehicleSelectProps {
+  transporterId?: string;
+  value?: string;
+  onChange: (value: string) => void;
+  error?: string;
+}
+
+function VehicleSelect({ transporterId, value, onChange, error }: VehicleSelectProps) {
+  const { data: vehicles, isLoading } = useVehicleNames({ transporterId });
+
+  // Filter vehicles by transporter
+  const filteredVehicles = useMemo(() => {
+    if (!transporterId) return vehicles;
+    return vehicles?.filter(v => v.transporterId === transporterId);
+  }, [vehicles, transporterId]);
+
+  return (
+    <Select value={value} onValueChange={onChange}>
+      {/* Similar structure to DriverSelect */}
+    </Select>
+  );
+}
+```
+
+### StepHeader
+
+Navigation header showing current step progress.
+
+```typescript
+interface StepHeaderProps {
+  currentStep: number;
+  totalSteps: number;
+  title?: string;
+}
+
+function StepHeader({ currentStep, totalSteps, title }: StepHeaderProps) {
+  const steps = [
+    'Vehicle Info',
+    'Purchase Order',
+    'Receipt',
+    'Weighment',
+    'Quality Check',
+  ];
+
+  return (
+    <div className="mb-8">
+      <div className="flex justify-between items-center mb-4">
+        {steps.map((step, index) => (
+          <div
+            key={step}
+            className={cn(
+              'flex items-center',
+              index < currentStep ? 'text-primary' : 'text-muted-foreground'
+            )}
+          >
+            <div className={cn(
+              'w-8 h-8 rounded-full flex items-center justify-center',
+              index < currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted'
+            )}>
+              {index < currentStep - 1 ? '✓' : index + 1}
+            </div>
+            <span className="ml-2 hidden md:inline">{step}</span>
+          </div>
+        ))}
+      </div>
+      <Progress value={(currentStep / totalSteps) * 100} />
+    </div>
+  );
+}
+```
+
+### StepFooter
+
+Navigation footer with back/next buttons.
+
+```typescript
+interface StepFooterProps {
+  onBack?: () => void;
+  onNext?: () => void;
+  isSubmitting?: boolean;
+  isLastStep?: boolean;
+  showSaveDraft?: boolean;
+}
+
+function StepFooter({
+  onBack,
+  onNext,
+  isSubmitting,
+  isLastStep,
+  showSaveDraft
+}: StepFooterProps) {
+  return (
+    <div className="flex justify-between mt-8 pt-4 border-t">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onBack}
+        disabled={isSubmitting}
+      >
+        Back
+      </Button>
+
+      <div className="space-x-2">
+        {showSaveDraft && (
+          <Button type="button" variant="outline">
+            Save Draft
+          </Button>
+        )}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : isLastStep ? 'Submit' : 'Next'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+```
+
+## API Integration
+
+### Query Hooks Pattern
+
+```typescript
+// src/modules/gate/api/vehicleEntry.queries.ts
+
+export const vehicleEntryKeys = {
+  all: ['vehicleEntries'] as const,
+  lists: () => [...vehicleEntryKeys.all, 'list'] as const,
+  list: (filters: VehicleEntryFilters) => [...vehicleEntryKeys.lists(), filters] as const,
+  details: () => [...vehicleEntryKeys.all, 'detail'] as const,
+  detail: (id: string) => [...vehicleEntryKeys.details(), id] as const,
+};
+
+export function useVehicleEntries(filters: VehicleEntryFilters) {
+  return useQuery({
+    queryKey: vehicleEntryKeys.list(filters),
+    queryFn: () => vehicleEntryApi.getAll(filters),
+  });
+}
+
+export function useVehicleEntry(id: string | undefined) {
+  return useQuery({
+    queryKey: vehicleEntryKeys.detail(id!),
+    queryFn: () => vehicleEntryApi.getById(id!),
+    enabled: !!id,
+  });
+}
+
+export function useCreateVehicleEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: vehicleEntryApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: vehicleEntryKeys.all });
+    },
+  });
+}
+
+export function useUpdateVehicleEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateVehicleEntryDto }) =>
+      vehicleEntryApi.update(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: vehicleEntryKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: vehicleEntryKeys.lists() });
+    },
+  });
+}
+```
+
+## Entry Status Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Entry Status Flow                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  DRAFT ──────► IN_PROGRESS ──────► QC_COMPLETED             │
+│    │               │                     │                   │
+│    │               │                     ▼                   │
+│    │               │              ┌─────────────┐           │
+│    │               │              │  COMPLETED  │           │
+│    │               │              └─────────────┘           │
+│    │               │                     │                   │
+│    ▼               ▼                     │                   │
+│  CANCELLED     REJECTED◄─────────────────┘                  │
+│                                                              │
+│  Status Descriptions:                                        │
+│  • DRAFT: Entry started, not submitted                       │
+│  • IN_PROGRESS: Entry submitted, awaiting QC                 │
+│  • QC_COMPLETED: Quality check completed                     │
+│  • COMPLETED: Fully processed                                │
+│  • CANCELLED: Cancelled by user                              │
+│  • REJECTED: Rejected during QC                              │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Validation Schemas
+
+```typescript
+// src/modules/gate/schemas/vehicleEntry.schema.ts
+
+export const step1Schema = z.object({
+  driverId: z.string().min(1, 'Driver is required'),
+  transporterId: z.string().min(1, 'Transporter is required'),
+  vehicleId: z.string().min(1, 'Vehicle is required'),
+});
+
+export const step2Schema = z.object({
+  poNumber: z.string().min(1, 'PO Number is required'),
+  poId: z.string().optional(),
+});
+
+export const step3Schema = z.object({
+  receivedQuantity: z.number().positive('Quantity must be positive'),
+  unit: z.string().min(1, 'Unit is required'),
+  remarks: z.string().optional(),
+});
+
+export const step4Schema = z.object({
+  grossWeight: z.number().positive('Gross weight is required'),
+  tareWeight: z.number().positive('Tare weight is required'),
+  netWeight: z.number().optional(),
+  weighbridgeNumber: z.string().optional(),
+});
+
+export const step5Schema = z.object({
+  parameters: z.array(z.object({
+    name: z.string(),
+    value: z.number(),
+    unit: z.string(),
+    result: z.enum(['pass', 'fail']),
+  })),
+  overallResult: z.enum(['pass', 'fail']),
+  remarks: z.string().optional(),
+});
+```
+
+## Related Documentation
+
+- [Modules Overview](./overview.md)
+- [API Endpoints](../api/endpoints.md)
+- [State Management](../architecture/state-management.md)

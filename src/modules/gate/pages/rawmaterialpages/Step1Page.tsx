@@ -1,7 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Camera, Truck, User, AlertCircle } from 'lucide-react'
 import { env } from '@/config/env.config'
+
+// Get the server base URL for media files (without /api/v1)
+const getMediaBaseUrl = () => {
+  try {
+    const url = new URL(env.apiBaseUrl)
+    return url.origin // Returns just http://192.168.1.84:3000
+  } catch {
+    // Fallback: remove /api/v1 from the end
+    return env.apiBaseUrl.replace(/\/api\/v1\/?$/, '')
+  }
+}
 import {
   Button,
   Input,
@@ -24,6 +36,7 @@ import type { ApiError } from '@/core/api/types'
 
 export default function Step1Page() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { entryId } = useParams<{ entryId?: string }>()
   const isEditMode = !!entryId
   const totalSteps = 5
@@ -33,6 +46,12 @@ export default function Step1Page() {
   const { data: entryData, isLoading: isLoadingEntry } = useVehicleEntry(
     entryId ? parseInt(entryId) : null
   )
+
+  // State to track if Update button has been clicked (enables editing)
+  const [updateMode, setUpdateMode] = useState(false)
+  
+  // State to keep button disabled after API success until navigation completes
+  const [isNavigating, setIsNavigating] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -79,8 +98,8 @@ export default function Step1Page() {
   }, [isEditMode, entryData])
 
   const handleInputChange = (field: string, value: string) => {
-    // In edit mode, Step 1 is read-only
-    if (isEditMode) return
+    // In edit mode, Step 1 is read-only unless updateMode is active
+    if (isEditMode && !updateMode) return
     setFormData((prev) => ({ ...prev, [field]: value }))
     // Clear error for this field when user starts typing
     if (apiErrors[field]) {
@@ -92,14 +111,14 @@ export default function Step1Page() {
     }
   }
 
-  const handleNext = () => {
-    // In edit mode, just navigate to next step without API call
-    if (isEditMode && entryId) {
+  const handleNext = async () => {
+    // In edit mode, navigate to next step without API call (unless in updateMode)
+    if (isEditMode && !updateMode && entryId) {
       navigate(`/gate/raw-materials/edit/${entryId}/step2`)
       return
     }
 
-    // Create mode - validate and create entry
+    // Create mode or update mode - validate and create/update entry
     setApiErrors({})
 
     // Validation
@@ -128,9 +147,11 @@ export default function Step1Page() {
         vehicle: formData.vehicleId,
         driver: formData.driverId,
         remarks: formData.remarks || undefined,
+        entry_type: 'RAW_MATERIAL',
       })
 
       // Navigate to step 2 with entry ID
+      setIsNavigating(true)
       navigate(`/gate/raw-materials/new/step2?entryId=${result.id}`)
     } catch (error) {
       const apiError = error as ApiError
@@ -174,6 +195,7 @@ export default function Step1Page() {
       })
 
       // Navigate to step 2
+      setIsNavigating(true)
       navigate(`/gate/raw-materials/edit/${entryId}/step2`)
     } catch (error) {
       const apiError = error as ApiError
@@ -248,7 +270,7 @@ export default function Step1Page() {
                   placeholder="Enter transporter"
                   label="Transporter Name"
                   required
-                  disabled={isReadOnly}
+                  disabled={isReadOnly || createVehicleEntry.isPending || updateVehicleEntry.isPending}
                 />
               </div>
 
@@ -309,6 +331,8 @@ export default function Step1Page() {
                   placeholder="GPS tracking ID"
                   value={formData.gpsId}
                   onChange={(e) => handleInputChange('gpsId', e.target.value)}
+                  disabled={isReadOnly || createVehicleEntry.isPending || updateVehicleEntry.isPending}
+                  className={cn(isReadOnly && 'cursor-not-allowed opacity-50')}
                 />
               </div>
             </div>
@@ -345,7 +369,7 @@ export default function Step1Page() {
                   label="Driver Name"
                   required
                   error={apiErrors.driver}
-                  disabled={isReadOnly}
+                  disabled={isReadOnly || createVehicleEntry.isPending || updateVehicleEntry.isPending}
                 />
               </div>
 
@@ -416,7 +440,7 @@ export default function Step1Page() {
                       src={
                         formData.driverPhoto.startsWith('http')
                           ? formData.driverPhoto
-                          : `${env.apiBaseUrl}${formData.driverPhoto}`
+                          : `${getMediaBaseUrl()}${formData.driverPhoto}`
                       }
                       alt="Driver photo"
                       className="w-full h-full object-cover"
@@ -464,12 +488,13 @@ export default function Step1Page() {
                 rows={3}
                 className={cn(
                   'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                  apiErrors.entry_no && 'border-destructive'
+                  apiErrors.entry_no && 'border-destructive',
+                  isReadOnly && 'cursor-not-allowed opacity-50',
                 )}
                 placeholder="Enter any additional remarks or notes..."
                 value={formData.remarks}
                 onChange={(e) => handleInputChange('remarks', e.target.value)}
-                disabled={isReadOnly}
+                disabled={isReadOnly || createVehicleEntry.isPending || updateVehicleEntry.isPending}
               />
               {apiErrors.remarks && <p className="text-sm text-destructive">{apiErrors.remarks}</p>}
               {apiErrors.entry_no && (
@@ -482,23 +507,34 @@ export default function Step1Page() {
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+            navigate('/gate/raw-materials')
+          }}
+        >
           Cancel
         </Button>
         {isEditMode ? (
           <>
-            {canUpdate && (
-              <Button type="button" onClick={handleUpdate} disabled={updateVehicleEntry.isPending}>
-                {updateVehicleEntry.isPending ? 'Updating...' : 'Update'}
+            {canUpdate && !updateMode && (
+              <Button type="button" onClick={handleUpdate}>
+                Update
               </Button>
             )}
-            <Button type="button" onClick={handleNext}>
-              Next →
+            <Button type="button" onClick={handleNext} disabled={createVehicleEntry.isPending || updateVehicleEntry.isPending || isNavigating}>
+              {updateMode
+                ? createVehicleEntry.isPending || updateVehicleEntry.isPending || isNavigating
+                  ? 'Saving...'
+                  : 'Save and Next →'
+                : 'Next →'}
             </Button>
           </>
         ) : (
-          <Button type="button" onClick={handleNext} disabled={createVehicleEntry.isPending}>
-            {createVehicleEntry.isPending ? 'Saving...' : 'Save and Next →'}
+          <Button type="button" onClick={handleNext} disabled={createVehicleEntry.isPending || isNavigating}>
+            {createVehicleEntry.isPending || isNavigating ? 'Saving...' : 'Save and Next →'}
           </Button>
         )}
       </div>

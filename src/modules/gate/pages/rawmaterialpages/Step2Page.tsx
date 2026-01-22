@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Shield, Clock, ArrowLeft, AlertCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { Shield, Clock } from 'lucide-react'
 import {
-  Button,
   Input,
   Label,
   Card,
@@ -12,49 +12,50 @@ import {
 } from '@/shared/components/ui'
 import { useCreateSecurityCheck, useSecurityCheck } from '../../api/securityCheck.queries'
 import { useVehicleEntry } from '../../api/vehicleEntry.queries'
+import { useEntryId } from '../../hooks'
+import {
+  StepHeader,
+  StepFooter,
+  StepLoadingSpinner,
+  FillDataAlert,
+} from '../../components'
+import { WIZARD_CONFIG } from '../../constants'
+import { isNotFoundError as checkNotFoundError, getErrorMessage } from '../../utils'
 import { cn } from '@/shared/utils'
-import type { ApiError } from '@/core/api/types'
+import type { ApiError } from '@/core/api'
 
 export default function Step2Page() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const [searchParams] = useSearchParams()
-  const entryId = searchParams.get('entryId') || location.pathname.match(/\/edit\/(\d+)/)?.[1]
-  const isEditMode = location.pathname.includes('/edit/')
-  const totalSteps = 5
-  const currentStep = 2
-  const createSecurityCheck = useCreateSecurityCheck(entryId ? parseInt(entryId) : 0)
+  const queryClient = useQueryClient()
+  const { entryId, entryIdNumber, isEditMode } = useEntryId()
+  const currentStep = WIZARD_CONFIG.STEPS.SECURITY_CHECK
+  const createSecurityCheck = useCreateSecurityCheck(entryIdNumber || 0)
   const {
     data: securityCheckData,
     isLoading: isLoadingSecurityCheck,
     error: securityCheckError,
-  } = useSecurityCheck(isEditMode && entryId ? parseInt(entryId) : null)
+  } = useSecurityCheck(isEditMode && entryIdNumber ? entryIdNumber : null)
   const { data: vehicleEntryData } = useVehicleEntry(
-    isEditMode && entryId ? parseInt(entryId) : null
+    isEditMode && entryIdNumber ? entryIdNumber : null
   )
 
   // State to track if we should behave like create mode (when Fill Data is clicked)
   const [fillDataMode, setFillDataMode] = useState(false)
   // State to track if Update button has been clicked (enables editing)
   const [updateMode, setUpdateMode] = useState(false)
+  // State to keep button disabled after API success until navigation completes
+  const [isNavigating, setIsNavigating] = useState(false)
   const effectiveEditMode = isEditMode && !fillDataMode
 
   // Check if error is "not found" error
-  const isNotFoundError =
-    securityCheckError &&
-    (() => {
-      const error = securityCheckError as unknown as ApiError
-      const errorMessage = error.message?.toLowerCase() || ''
-      const is404 = error.status === 404
-      return is404 || errorMessage.includes('not found')
-    })()
+  const isNotFoundError = checkNotFoundError(securityCheckError)
 
   // Fields are read-only when:
   // 1. In edit mode AND update mode is not active AND there's no not found error, OR
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly =
     (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status === 'DRAFT'
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== 'COMPLETED'
 
   // Form state
   const [formData, setFormData] = useState({
@@ -236,6 +237,7 @@ export default function Step2Page() {
       })
 
       // Navigate to step 3
+      setIsNavigating(true)
       if (isEditMode) {
         navigate(`/gate/raw-materials/edit/${entryId}/step3`)
       } else {
@@ -257,8 +259,6 @@ export default function Step2Page() {
     }
   }
 
-  const progressPercentage = (currentStep / totalSteps) * 100
-
   // Format time for display
   const formatTime = (time: string) => {
     if (!time) return ''
@@ -269,58 +269,19 @@ export default function Step2Page() {
   }
 
   if (effectiveEditMode && isLoadingSecurityCheck) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <StepLoadingSpinner />
   }
 
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Material Inward - Step {currentStep} of {totalSteps}
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <span className="text-sm font-medium text-muted-foreground min-w-[3rem]">
-            {Math.round(progressPercentage)}%
-          </span>
-        </div>
-      </div>
+      <StepHeader currentStep={currentStep} error={apiErrors.general} />
 
       {/* Show not found error with Fill Data button */}
       {effectiveEditMode && isNotFoundError && !fillDataMode && (
-        <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              <span>
-                {(() => {
-                  const error = securityCheckError as unknown as ApiError
-                  return error.message || 'Security check not found'
-                })()}
-              </span>
-            </div>
-            <Button onClick={handleFillData} size="sm">
-              Fill Data
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {apiErrors.general && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {apiErrors.general}
-        </div>
+        <FillDataAlert
+          message={getErrorMessage(securityCheckError, 'Security check not found')}
+          onFillData={handleFillData}
+        />
       )}
 
       <div className="space-y-6">
@@ -548,29 +509,19 @@ export default function Step2Page() {
       </div>
 
       {/* Footer Actions */}
-      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
-        <Button type="button" variant="outline" onClick={handlePrevious}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Previous
-        </Button>
-        <div className="flex gap-4">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-            Cancel
-          </Button>
-          {effectiveEditMode && canUpdate && !updateMode && (
-            <Button type="button" onClick={handleUpdate}>
-              Update
-            </Button>
-          )}
-          <Button type="button" onClick={handleNext} disabled={createSecurityCheck.isPending}>
-            {effectiveEditMode && !updateMode
-              ? 'Next →'
-              : createSecurityCheck.isPending
-                ? 'Saving...'
-                : 'Save and Next →'}
-          </Button>
-        </div>
-      </div>
+      <StepFooter
+        onPrevious={handlePrevious}
+        onCancel={() => {
+          queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+          navigate('/gate/raw-materials')
+        }}
+        onNext={handleNext}
+        showUpdate={effectiveEditMode && canUpdate && !updateMode}
+        onUpdate={handleUpdate}
+        isSaving={createSecurityCheck.isPending || isNavigating}
+        isEditMode={effectiveEditMode}
+        isUpdateMode={updateMode}
+      />
     </div>
   )
 }

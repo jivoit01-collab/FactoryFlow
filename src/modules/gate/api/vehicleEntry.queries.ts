@@ -3,12 +3,20 @@ import {
   vehicleEntryApi,
   type CreateVehicleEntryRequest,
   type UpdateVehicleEntryRequest,
+  type VehicleEntriesParams,
 } from './vehicleEntry.api'
 
-export function useVehicleEntries() {
+export function useVehicleEntries(params?: VehicleEntriesParams) {
   return useQuery({
-    queryKey: ['vehicleEntries'],
-    queryFn: () => vehicleEntryApi.getList(),
+    queryKey: ['vehicleEntries', params?.from_date, params?.to_date, params?.entry_type, params?.status],
+    queryFn: () => vehicleEntryApi.getList(params),
+  })
+}
+
+export function useVehicleEntriesCount(params?: VehicleEntriesParams) {
+  return useQuery({
+    queryKey: ['vehicleEntriesCount', params?.from_date, params?.to_date, params?.entry_type],
+    queryFn: () => vehicleEntryApi.getCount(params),
   })
 }
 
@@ -25,8 +33,9 @@ export function useCreateVehicleEntry() {
   return useMutation({
     mutationFn: (data: CreateVehicleEntryRequest) => vehicleEntryApi.create(data),
     onSuccess: () => {
-      // Invalidate and refetch vehicle entries list
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] })
+      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
     },
   })
 }
@@ -37,9 +46,10 @@ export function useUpdateVehicleEntry() {
     mutationFn: ({ id, data }: { id: number; data: UpdateVehicleEntryRequest }) =>
       vehicleEntryApi.update(id, data),
     onSuccess: () => {
-      // Invalidate and refetch vehicle entries list and individual entry
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] })
       queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] })
+      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
     },
   })
 }

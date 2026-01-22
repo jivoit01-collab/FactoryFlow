@@ -1,6 +1,13 @@
 import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
 
+// Lightweight type for dropdown list (names endpoint)
+export interface TransporterName {
+  id: number
+  name: string
+}
+
+// Full transporter details
 export interface Transporter {
   id: number
   name: string
@@ -16,6 +23,25 @@ export interface CreateTransporterRequest {
 }
 
 export const transporterApi = {
+  /**
+   * Get list of transporter names for dropdown (lightweight)
+   */
+  async getNames(): Promise<TransporterName[]> {
+    const response = await apiClient.get<TransporterName[]>(API_ENDPOINTS.VEHICLE.TRANSPORTER_NAMES)
+    return response.data
+  },
+
+  /**
+   * Get full transporter details by ID
+   */
+  async getById(id: number): Promise<Transporter> {
+    const response = await apiClient.get<Transporter>(API_ENDPOINTS.VEHICLE.TRANSPORTER_BY_ID(id))
+    return response.data
+  },
+
+  /**
+   * Get full list of transporters (legacy - use getNames for dropdowns)
+   */
   async getList(): Promise<Transporter[]> {
     const response = await apiClient.get<Transporter[]>(API_ENDPOINTS.VEHICLE.TRANSPORTERS)
     return response.data

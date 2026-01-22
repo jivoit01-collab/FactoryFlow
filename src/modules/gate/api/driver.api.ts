@@ -1,6 +1,13 @@
 import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
 
+// Lightweight type for dropdown list (names endpoint)
+export interface DriverName {
+  id: number
+  name: string
+}
+
+// Full driver details
 export interface Driver {
   id: number
   name: string
@@ -22,6 +29,25 @@ export interface CreateDriverRequest {
 }
 
 export const driverApi = {
+  /**
+   * Get list of driver names for dropdown (lightweight)
+   */
+  async getNames(): Promise<DriverName[]> {
+    const response = await apiClient.get<DriverName[]>(API_ENDPOINTS.DRIVER.DRIVER_NAMES)
+    return response.data
+  },
+
+  /**
+   * Get full driver details by ID
+   */
+  async getById(id: number): Promise<Driver> {
+    const response = await apiClient.get<Driver>(API_ENDPOINTS.DRIVER.DRIVER_BY_ID(id))
+    return response.data
+  },
+
+  /**
+   * Get full list of drivers (legacy - use getNames for dropdowns)
+   */
   async getList(): Promise<Driver[]> {
     const response = await apiClient.get<Driver[]>(API_ENDPOINTS.DRIVER.DRIVERS)
     return response.data

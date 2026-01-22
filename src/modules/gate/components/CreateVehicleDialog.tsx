@@ -28,7 +28,8 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
   const [selectedTransporterId, setSelectedTransporterId] = useState<number | null>(null)
   const createVehicle = useCreateVehicle()
-  const { data: transporters = [] } = useTransporters()
+  // Only fetch transporters when dialog is open
+  const { data: transporters = [] } = useTransporters(open)
 
   const {
     register,

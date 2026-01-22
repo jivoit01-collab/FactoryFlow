@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { rootReducer } from './rootReducer'
 import { authSyncMiddleware } from '@/core/auth/store/authSyncMiddleware'
+import { saveFiltersToStorage } from './filtersSlice'
 
 export const store = configureStore({
   reducer: rootReducer,
@@ -12,6 +13,17 @@ export const store = configureStore({
       },
     }).concat(authSyncMiddleware),
   devTools: import.meta.env.DEV,
+})
+
+// Subscribe to store changes to persist filters to localStorage
+let previousFilters = store.getState().filters
+store.subscribe(() => {
+  const currentFilters = store.getState().filters
+  // Only save if filters have changed
+  if (currentFilters !== previousFilters) {
+    saveFiltersToStorage(currentFilters)
+    previousFilters = currentFilters
+  }
 })
 
 export type RootState = ReturnType<typeof store.getState>
