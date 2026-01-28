@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown, Check, Loader2, Plus, HelpCircle } from 'lucide-react'
 import {
   Input,
@@ -21,6 +21,9 @@ interface VehicleSelectProps {
     vehicleNumber: string
     vehicleType: string
     vehicleCapacity: string
+    transporterName: string
+    transporterContactPerson: string
+    transporterMobile: string
   }) => void
   placeholder?: string
   disabled?: boolean
@@ -48,10 +51,10 @@ export function VehicleSelect({
 
   // Fetch lightweight vehicle names when dropdown is open
   const { data: vehicleNames = [], isLoading } = useVehicleNames(isOpen && !disabled)
-  
+
   // Fetch full vehicle details when one is selected
   const { data: vehicleDetails } = useVehicleById(selectedId, selectedId !== null)
-  
+
   const debouncedSearch = useDebounce(searchTerm, 100)
 
   // Filter vehicles based on search term (vehicle number)
@@ -59,9 +62,19 @@ export function VehicleSelect({
     vehicle.vehicle_number.toLowerCase().includes(debouncedSearch.toLowerCase())
   )
 
-  // Update selected vehicle details when fetched and call onChange with full details
+  const prevVehicleDetailsRef = useRef(vehicleDetails)
+  const prevValueRef = useRef(value)
+  const onChangeRef = useRef(onChange)
+
+  // Keep onChange ref updated
   useEffect(() => {
-    if (vehicleDetails) {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  // Update selected vehicle details when fetched and call onChange with full details
+  const syncVehicleDetails = useCallback(() => {
+    if (vehicleDetails && vehicleDetails !== prevVehicleDetailsRef.current) {
+      prevVehicleDetailsRef.current = vehicleDetails
       setSelectedVehicleDetails(vehicleDetails)
       // Call onChange with full vehicle details
       const vehicleTypeMap: Record<string, string> = {
@@ -70,35 +83,52 @@ export function VehicleSelect({
         TEMPO: 'TEMPO',
         TRACTOR: 'TRACTOR',
       }
-      onChange({
+      onChangeRef.current({
         vehicleId: vehicleDetails.id,
         vehicleNumber: vehicleDetails.vehicle_number,
         vehicleType: vehicleTypeMap[vehicleDetails.vehicle_type] || vehicleDetails.vehicle_type,
         vehicleCapacity: `${vehicleDetails.capacity_ton} Tons`,
+        transporterName: vehicleDetails.transporter?.name || '',
+        transporterContactPerson: vehicleDetails.transporter?.contact_person || '',
+        transporterMobile: vehicleDetails.transporter?.mobile_no || '',
       })
     }
-  }, [vehicleDetails]) // Intentionally not including onChange to avoid infinite loops
+  }, [vehicleDetails])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with fetched data is a valid pattern
+    syncVehicleDetails()
+  }, [syncVehicleDetails])
 
   // Find selected vehicle from value or display value directly when disabled
-  useEffect(() => {
+  const syncWithValue = useCallback(() => {
     // When disabled, just show the value directly without lookup
     if (disabled && value) {
       setSearchTerm(value)
       return
     }
-    
+
     if (value && vehicleNames.length > 0) {
-      const vehicle = vehicleNames.find((v) => v.vehicle_number === value || v.id.toString() === value)
+      const vehicle = vehicleNames.find(
+        (v) => v.vehicle_number === value || v.id.toString() === value
+      )
       if (vehicle) {
         setSelectedId(vehicle.id)
         setSearchTerm(vehicle.vehicle_number)
       }
-    } else if (!value) {
+    } else if (value !== prevValueRef.current && !value) {
+      prevValueRef.current = value
       setSelectedId(null)
       setSelectedVehicleDetails(null)
       setSearchTerm('')
     }
   }, [value, vehicleNames, disabled])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props is a valid pattern
+    syncWithValue()
+    prevValueRef.current = value
+  }, [syncWithValue, value])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -129,7 +159,15 @@ export function VehicleSelect({
     setSearchTerm(e.target.value)
     setIsOpen(true)
     if (!e.target.value) {
-      onChange({ vehicleId: 0, vehicleNumber: '', vehicleType: '', vehicleCapacity: '' })
+      onChange({
+        vehicleId: 0,
+        vehicleNumber: '',
+        vehicleType: '',
+        vehicleCapacity: '',
+        transporterName: '',
+        transporterContactPerson: '',
+        transporterMobile: '',
+      })
       setSelectedId(null)
       setSelectedVehicleDetails(null)
     }
@@ -187,7 +225,9 @@ export function VehicleSelect({
                     </div>
                     <div>
                       <span className="font-medium">Vehicle Type:</span>{' '}
-                      <span className="text-muted-foreground">{selectedVehicleDetails.vehicle_type}</span>
+                      <span className="text-muted-foreground">
+                        {selectedVehicleDetails.vehicle_type}
+                      </span>
                     </div>
                     <div>
                       <span className="font-medium">Capacity:</span>{' '}
@@ -286,9 +326,7 @@ export function VehicleSelect({
                         onClick={() => handleSelect(vehicle)}
                       >
                         <span className="text-sm">{vehicle.vehicle_number}</span>
-                        {selectedId === vehicle.id && (
-                          <Check className="h-4 w-4 text-primary" />
-                        )}
+                        {selectedId === vehicle.id && <Check className="h-4 w-4 text-primary" />}
                       </li>
                     ))}
                   </ul>

@@ -3,7 +3,10 @@ import { env } from '@/config/env.config'
 import { API_CONFIG, HTTP_STATUS, AUTH_CONFIG, API_ENDPOINTS } from '@/config/constants'
 import type { ApiError } from './types'
 import { indexedDBService } from '@/core/auth/services/indexedDb.service'
-import { refreshAccessToken, shouldRefreshToken as shouldProactivelyRefresh } from '@/core/auth/utils/tokenRefresh.util'
+import {
+  refreshAccessToken,
+  shouldRefreshToken as shouldProactivelyRefresh,
+} from '@/core/auth/utils/tokenRefresh.util'
 
 let isRefreshing = false
 let isInitialized = false
@@ -62,7 +65,7 @@ const processQueue = (error: unknown, token: string | null = null) => {
 /**
  * Check if URL is an auth endpoint that should skip token handling
  * Only login and refresh endpoints should skip token (they don't need/use access token)
- * 
+ *
  * @param url - The request URL to check
  * @returns True if token should be skipped for this endpoint
  */
@@ -73,13 +76,13 @@ function shouldSkipToken(url: string | undefined): boolean {
 
 /**
  * Perform token refresh using the shared utility
- * 
+ *
  * @returns Promise resolving to the new access token
  * @throws Error if refresh fails
  */
 async function performTokenRefresh(): Promise<string> {
   const result = await refreshAccessToken()
-  
+
   if (!result.success || !result.access) {
     throw result.error || new Error('Token refresh failed')
   }
@@ -120,7 +123,7 @@ function createApiClient(): AxiosInstance {
             try {
               const newToken = await performTokenRefresh()
               config.headers.Authorization = `${AUTH_CONFIG.tokenPrefix} ${newToken}`
-            } catch (error) {
+            } catch {
               // Continue with existing token, will be caught by response interceptor
               config.headers.Authorization = `${AUTH_CONFIG.tokenPrefix} ${token}`
             } finally {
@@ -158,7 +161,9 @@ function createApiClient(): AxiosInstance {
         if (shouldSkipToken(originalRequest.url)) {
           // Transform error to ApiError format before rejecting
           // Backend may return 'detail' (Django REST framework) or 'message' field
-          const responseData = (error.response?.data as unknown) as Record<string, unknown> | undefined
+          const responseData = error.response?.data as unknown as
+            | Record<string, unknown>
+            | undefined
           const apiError: ApiError = {
             message:
               (responseData?.detail as string) ||
@@ -213,8 +218,8 @@ function createApiClient(): AxiosInstance {
 
       // Transform error to ApiError format
       // Check for both 'detail' (Django REST framework) and 'message' (custom API) fields
-      const responseData = (error.response?.data as unknown) as Record<string, unknown> | undefined
-      
+      const responseData = error.response?.data as unknown as Record<string, unknown> | undefined
+
       // Check if errors are nested under 'errors' key or directly on response data
       // Some APIs return: {"errors": {"name": ["error"]}}
       // Others return: {"name": ["error"]} directly
@@ -236,7 +241,7 @@ function createApiClient(): AxiosInstance {
           errors = fieldErrors
         }
       }
-      
+
       const apiError: ApiError = {
         message:
           (responseData?.detail as string) ||
@@ -271,7 +276,7 @@ export function setupTokenRefreshInterval(): () => void {
       isRefreshing = true
       try {
         await performTokenRefresh()
-      } catch (error) {
+      } catch {
         // Token refresh failed - will be handled on next API call
         // Error is silently logged to avoid console spam
       } finally {

@@ -23,9 +23,7 @@ export function useEntryId(): UseEntryIdResult {
   const isEditMode = location.pathname.includes('/edit/')
 
   // In edit mode, use route params; in create mode, use query params
-  const entryId = isEditMode
-    ? routeEntryId || null
-    : searchParams.get('entryId')
+  const entryId = isEditMode ? routeEntryId || null : searchParams.get('entryId')
 
   const entryIdNumber = entryId ? parseInt(entryId, 10) : null
   const validEntryIdNumber = entryIdNumber && !isNaN(entryIdNumber) ? entryIdNumber : null

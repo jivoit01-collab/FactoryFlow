@@ -77,10 +77,7 @@ function SuccessScreen({
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
       {/* Animated Checkmark */}
       <div className="relative mb-8">
-        <svg
-          className="h-32 w-32 text-green-500"
-          viewBox="0 0 100 100"
-        >
+        <svg className="h-32 w-32 text-green-500" viewBox="0 0 100 100">
           {/* Circle */}
           <circle
             cx="50"
@@ -116,20 +113,11 @@ function SuccessScreen({
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-4 sm:flex-row opacity-0 animate-fade-in-delay-3">
-        <Button
-          size="lg"
-          onClick={onNavigateToDashboard}
-          className="min-w-[200px]"
-        >
+        <Button size="lg" onClick={onNavigateToDashboard} className="min-w-[200px]">
           <Package className="mr-2 h-5 w-5" />
           Raw Material Dashboard
         </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          onClick={onNavigateToHome}
-          className="min-w-[200px]"
-        >
+        <Button size="lg" variant="outline" onClick={onNavigateToHome} className="min-w-[200px]">
           <Home className="mr-2 h-5 w-5" />
           Home
         </Button>
@@ -161,11 +149,7 @@ export default function ReviewPage() {
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
 
   // Fetch full gate entry data
-  const {
-    data: gateEntry,
-    isLoading,
-    error: fetchError,
-  } = useGateEntryFullView(entryIdNumber)
+  const { data: gateEntry, isLoading, error: fetchError } = useGateEntryFullView(entryIdNumber)
 
   const completeGateEntry = useCompleteGateEntry()
 
@@ -199,9 +183,11 @@ export default function ReviewPage() {
       if (!isSecurityAlreadySubmitted) {
         // Step 1: Get security data to retrieve the security ID
         const securityData = await securityCheckApi.get(entryIdNumber!)
-        
+
         if (!securityData.id) {
-          setApiErrors({ general: 'Security check data not found. Please complete security check first.' })
+          setApiErrors({
+            general: 'Security check data not found. Please complete security check first.',
+          })
           setIsCompleting(false)
           return
         }
@@ -212,15 +198,21 @@ export default function ReviewPage() {
 
       // Step 3: Complete the gate entry
       await completeGateEntry.mutateAsync(entryIdNumber!)
-      
+
       // Show success screen
       setShowSuccess(true)
     } catch (error) {
       const apiError = error as ApiError & { detail?: string }
       // Check if the error is about QC pending
       const errorMessage = apiError.message || apiError.detail || 'Failed to complete gate entry'
-      if (errorMessage.toLowerCase().includes('qc') || errorMessage.toLowerCase().includes('quality') || errorMessage.toLowerCase().includes('pending')) {
-        setApiErrors({ general: 'Cannot complete entry: Quality check is still pending for some items.' })
+      if (
+        errorMessage.toLowerCase().includes('qc') ||
+        errorMessage.toLowerCase().includes('quality') ||
+        errorMessage.toLowerCase().includes('pending')
+      ) {
+        setApiErrors({
+          general: 'Cannot complete entry: Quality check is still pending for some items.',
+        })
       } else {
         setApiErrors({ general: errorMessage })
       }
@@ -291,9 +283,7 @@ export default function ReviewPage() {
           <FileCheck className="h-8 w-8" />
           Final Review
         </h2>
-        <p className="text-muted-foreground">
-          Review all details before completing the gate entry
-        </p>
+        <p className="text-muted-foreground">Review all details before completing the gate entry</p>
       </div>
 
       {apiErrors.general && (
@@ -447,15 +437,21 @@ export default function ReviewPage() {
               <div className="grid gap-4 md:grid-cols-4">
                 <div>
                   <Label className="text-muted-foreground text-xs">Gross Weight</Label>
-                  <p className="font-medium text-lg">{gateEntry.weighment.gross_weight.toLocaleString()} kg</p>
+                  <p className="font-medium text-lg">
+                    {gateEntry.weighment.gross_weight.toLocaleString()} kg
+                  </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">Tare Weight</Label>
-                  <p className="font-medium text-lg">{gateEntry.weighment.tare_weight.toLocaleString()} kg</p>
+                  <p className="font-medium text-lg">
+                    {gateEntry.weighment.tare_weight.toLocaleString()} kg
+                  </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">Net Weight</Label>
-                  <p className="font-medium text-lg text-primary">{gateEntry.weighment.net_weight.toLocaleString()} kg</p>
+                  <p className="font-medium text-lg text-primary">
+                    {gateEntry.weighment.net_weight.toLocaleString()} kg
+                  </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">Weighbridge Slip No.</Label>
@@ -588,9 +584,14 @@ export default function ReviewPage() {
             <Button
               type="button"
               onClick={handleComplete}
-              disabled={isCompleting || (!gateEntry?.security_check?.is_submitted && !securityInspectionCompleted)}
+              disabled={
+                isCompleting ||
+                (!gateEntry?.security_check?.is_submitted && !securityInspectionCompleted)
+              }
               className={cn(
-                (!gateEntry?.security_check?.is_submitted && !securityInspectionCompleted) && 'opacity-50 cursor-not-allowed'
+                !gateEntry?.security_check?.is_submitted &&
+                  !securityInspectionCompleted &&
+                  'opacity-50 cursor-not-allowed'
               )}
             >
               {isCompleting ? 'Completing...' : 'Complete Entry'}

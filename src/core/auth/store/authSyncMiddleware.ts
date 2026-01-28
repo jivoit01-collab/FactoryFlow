@@ -1,15 +1,22 @@
 import type { Middleware } from '@reduxjs/toolkit'
 import { indexedDBService } from '../services/indexedDb.service'
-import { loginSuccess, updateTokens, updateUser, logout, switchCompany, clearCurrentCompany } from './authSlice'
+import {
+  loginSuccess,
+  updateTokens,
+  updateUser,
+  logout,
+  switchCompany,
+  clearCurrentCompany,
+} from './authSlice'
 import { AUTH_CONFIG } from '@/config/constants'
 
 /**
  * Middleware to sync Redux auth state changes to IndexedDB
- * 
+ *
  * This middleware automatically persists auth state changes to IndexedDB
  * whenever relevant Redux actions are dispatched. Errors are silently
  * handled to prevent middleware from breaking the action flow.
- * 
+ *
  * Synced actions:
  * - loginSuccess: Saves login data with tokens
  * - updateTokens: Updates access and refresh tokens
@@ -18,7 +25,7 @@ import { AUTH_CONFIG } from '@/config/constants'
  * - clearCurrentCompany: Clears current company
  * - logout: Clears all auth data
  */
-export const authSyncMiddleware: Middleware = (_store) => (next) => (action) => {
+export const authSyncMiddleware: Middleware = () => (next) => (action) => {
   const result = next(action)
 
   // Sync to IndexedDB after action is dispatched

@@ -54,8 +54,11 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
   useEffect(() => {
     if (open) {
       reset()
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting state on dialog open is a valid pattern
       setApiErrors({})
+
       setSelectedTransporterId(null)
+
       setTransporterName('')
     }
   }, [open, reset])
@@ -65,6 +68,7 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
     if (transporterName && transporters.length > 0) {
       const transporter = transporters.find((t) => t.name === transporterName)
       if (transporter) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with form value is a valid pattern
         setSelectedTransporterId(transporter.id)
         setValue('transporter', transporter.id)
       } else {

@@ -8,7 +8,13 @@ import {
 
 export function useVehicleEntries(params?: VehicleEntriesParams) {
   return useQuery({
-    queryKey: ['vehicleEntries', params?.from_date, params?.to_date, params?.entry_type, params?.status],
+    queryKey: [
+      'vehicleEntries',
+      params?.from_date,
+      params?.to_date,
+      params?.entry_type,
+      params?.status,
+    ],
     queryFn: () => vehicleEntryApi.getList(params),
   })
 }

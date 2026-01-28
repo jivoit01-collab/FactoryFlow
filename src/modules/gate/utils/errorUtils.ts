@@ -36,11 +36,7 @@ export function getErrorDetailLower(error: unknown): string {
 
   const apiError = error as ApiError
 
-  const detail =
-    apiError.response?.data?.detail ||
-    apiError.detail ||
-    apiError.message ||
-    ''
+  const detail = apiError.response?.data?.detail || apiError.detail || apiError.message || ''
 
   return detail.toLowerCase()
 }

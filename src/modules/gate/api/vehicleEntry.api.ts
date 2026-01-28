@@ -31,9 +31,9 @@ export interface UpdateVehicleEntryRequest {
 
 export interface VehicleEntriesParams {
   from_date?: string // Format: YYYY-MM-DD
-  to_date?: string   // Format: YYYY-MM-DD
+  to_date?: string // Format: YYYY-MM-DD
   entry_type?: string // e.g., 'RAW_MATERIAL'
-  status?: string    // e.g., 'DRAFT', 'IN_PROGRESS', etc.
+  status?: string // e.g., 'DRAFT', 'IN_PROGRESS', etc.
 }
 
 export interface StatusCount {
@@ -66,16 +66,16 @@ export const vehicleEntryApi = {
       ? API_ENDPOINTS.VEHICLE.VEHICLE_ENTRIES_BY_STATUS
       : API_ENDPOINTS.VEHICLE.VEHICLE_ENTRIES
 
-    const url = queryParams.toString()
-      ? `${baseUrl}?${queryParams.toString()}`
-      : baseUrl
+    const url = queryParams.toString() ? `${baseUrl}?${queryParams.toString()}` : baseUrl
 
     const response = await apiClient.get<VehicleEntry[]>(url)
     return response.data
   },
 
   async getById(id: number): Promise<VehicleEntry> {
-    const response = await apiClient.get<VehicleEntry>(API_ENDPOINTS.VEHICLE.VEHICLE_ENTRY_BY_ID(id))
+    const response = await apiClient.get<VehicleEntry>(
+      API_ENDPOINTS.VEHICLE.VEHICLE_ENTRY_BY_ID(id)
+    )
     return response.data
   },
 

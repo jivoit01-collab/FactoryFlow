@@ -5,7 +5,9 @@ export { StepLoadingSpinner } from './StepLoadingSpinner'
 export { FillDataAlert } from './FillDataAlert'
 
 // Form components
+export { CategorySelect } from './CategorySelect'
 export { DateRangePicker } from './DateRangePicker'
+export { DepartmentSelect } from './DepartmentSelect'
 export { DriverSelect } from './DriverSelect'
 export { TransporterSelect } from './TransporterSelect'
 export { VehicleSelect } from './VehicleSelect'
@@ -14,3 +16,14 @@ export { VehicleSelect } from './VehicleSelect'
 export { CreateDriverDialog } from './CreateDriverDialog'
 export { CreateTransporterDialog } from './CreateTransporterDialog'
 export { CreateVehicleDialog } from './CreateVehicleDialog'
+
+// Reusable form shells
+export { VehicleDriverFormShell, SecurityCheckFormShell } from './forms'
+export type {
+  VehicleDriverFormShellProps,
+  VehicleDriverFormData,
+  VehicleSelection,
+  DriverSelection,
+  SecurityCheckFormShellProps,
+  SecurityCheckFormData,
+} from './forms'

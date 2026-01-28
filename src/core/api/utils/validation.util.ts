@@ -29,7 +29,7 @@ function isValidNumber(value: unknown): value is number {
 
 /**
  * Validates LoginResponse structure
- * 
+ *
  * @param data - Data to validate
  * @returns Validated LoginResponse
  * @throws ValidationError if data is invalid
@@ -77,7 +77,10 @@ export function validateLoginResponse(data: unknown): LoginResponse {
   }
 
   if (!isValidNumber(token.refresh_expires_in)) {
-    throw new ValidationError('refresh_expires_in must be a valid number', 'token.refresh_expires_in')
+    throw new ValidationError(
+      'refresh_expires_in must be a valid number',
+      'token.refresh_expires_in'
+    )
   }
 
   return {
@@ -98,7 +101,7 @@ export function validateLoginResponse(data: unknown): LoginResponse {
 
 /**
  * Validates RefreshTokenResponse structure
- * 
+ *
  * @param data - Data to validate
  * @returns Validated RefreshTokenResponse
  * @throws ValidationError if data is invalid
@@ -130,7 +133,10 @@ export function validateRefreshTokenResponse(data: unknown): RefreshTokenRespons
   }
 
   if (!isValidNumber(token.refresh_expires_in)) {
-    throw new ValidationError('refresh_expires_in must be a valid number', 'token.refresh_expires_in')
+    throw new ValidationError(
+      'refresh_expires_in must be a valid number',
+      'token.refresh_expires_in'
+    )
   }
 
   return {
@@ -145,7 +151,7 @@ export function validateRefreshTokenResponse(data: unknown): RefreshTokenRespons
 
 /**
  * Validates User object structure (from /auth/me endpoint)
- * 
+ *
  * @param data - Data to validate
  * @returns Validated User
  * @throws ValidationError if data is invalid

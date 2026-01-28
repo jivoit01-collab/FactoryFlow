@@ -3,6 +3,7 @@
 
 export function useTranslation() {
   // When implementing i18n, this will use useTranslation from react-i18next
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const t = (key: string, _options?: Record<string, unknown>): string => {
     // For now, just return the key
     // Future: return i18next.t(key, options)

@@ -128,7 +128,7 @@ export default function Step5Page() {
     if (allItems.length > 0 && Object.keys(itemForms).length === 0) {
       const initialForms: Record<number, ItemFormData> = {}
       const initialSaved: Record<number, boolean> = {}
-      
+
       allItems.forEach((item) => {
         // Use default values initially
         initialForms[item.poItemId] = { ...item }
@@ -144,7 +144,7 @@ export default function Step5Page() {
     if (effectiveEditMode && Object.keys(qcDataMap).length > 0) {
       const updatedForms: Record<number, ItemFormData> = {}
       const updatedSaved: Record<number, boolean> = {}
-      
+
       allItems.forEach((item) => {
         const qcData = qcDataMap[item.poItemId]
         if (qcData) {
@@ -173,9 +173,13 @@ export default function Step5Page() {
     const hasExistingData = qcDataMap[poItemId] !== null && qcDataMap[poItemId] !== undefined
     const isItemInEditMode = itemEditModes[poItemId]
     const isItemSaved = savedItems[poItemId]
-    
+
     // Item is not editable if: saved (and not in edit mode) OR (has existing data from API and not in edit mode)
-    if ((isItemSaved && !isItemInEditMode) || (effectiveEditMode && hasExistingData && !isItemInEditMode)) return
+    if (
+      (isItemSaved && !isItemInEditMode) ||
+      (effectiveEditMode && hasExistingData && !isItemInEditMode)
+    )
+      return
 
     setItemForms((prev) => ({
       ...prev,
@@ -231,7 +235,7 @@ export default function Step5Page() {
     }
 
     setSavingItems((prev) => ({ ...prev, [poItemId]: true }))
-    
+
     // Clear previous errors for this item
     setApiErrors((prev) => {
       const newErrors = { ...prev }
@@ -429,26 +433,35 @@ export default function Step5Page() {
               const isItemInEditMode = itemEditModes[item.poItemId]
               const isSaving = savingItems[item.poItemId]
               const isSaved = savedItems[item.poItemId]
-              
+
               // Item is locked if: is_locked is true OR status is PASSED/FAILED
-              const isItemLocked = hasExistingData && (
-                qcData.is_locked || 
-                qcData.qc_status === 'PASSED' || 
-                qcData.qc_status === 'FAILED'
-              )
-              
+              const isItemLocked =
+                hasExistingData &&
+                (qcData.is_locked || qcData.qc_status === 'PASSED' || qcData.qc_status === 'FAILED')
+
               // Item is read-only if: locked OR saved (and not in edit mode) OR (has existing data AND not in edit mode) OR (no QC data exists for any item - waiting for Fill Data)
-              const isItemReadOnly = isItemLocked || (isSaved && !isItemInEditMode) || (effectiveEditMode && hasExistingData && !isItemInEditMode) || hasNoQCData
+              const isItemReadOnly =
+                isItemLocked ||
+                (isSaved && !isItemInEditMode) ||
+                (effectiveEditMode && hasExistingData && !isItemInEditMode) ||
+                hasNoQCData
               // Can update if: (saved OR has existing data) AND not locked AND not already in edit mode AND entry is not completed
-              const canItemUpdate = (isSaved || hasExistingData) && !isItemLocked && !isItemInEditMode && vehicleEntryData?.status !== 'COMPLETED'
+              const canItemUpdate =
+                (isSaved || hasExistingData) &&
+                !isItemLocked &&
+                !isItemInEditMode &&
+                vehicleEntryData?.status !== 'COMPLETED'
               // Show save button if: not locked AND not read-only
               const showSaveButton = !isItemLocked && !isItemReadOnly
 
               return (
-                <Card key={item.poItemId} className={cn(
-                  isSaved && !isItemLocked && 'border-green-500/50',
-                  isItemLocked && 'border-amber-500/50 bg-amber-50/30 dark:bg-amber-950/10'
-                )}>
+                <Card
+                  key={item.poItemId}
+                  className={cn(
+                    isSaved && !isItemLocked && 'border-green-500/50',
+                    isItemLocked && 'border-amber-500/50 bg-amber-50/30 dark:bg-amber-950/10'
+                  )}
+                >
                   <CardHeader>
                     <CardTitle className="text-base flex items-center justify-between">
                       <span>
@@ -641,7 +654,11 @@ export default function Step5Page() {
             Cancel
           </Button>
           <Button type="button" onClick={handleNext} disabled={isNavigating}>
-            {isNavigating ? 'Loading...' : allItemsSaved || effectiveEditMode ? 'Next →' : 'Skip to Review →'}
+            {isNavigating
+              ? 'Loading...'
+              : allItemsSaved || effectiveEditMode
+                ? 'Next →'
+                : 'Skip to Review →'}
           </Button>
         </div>
       </div>

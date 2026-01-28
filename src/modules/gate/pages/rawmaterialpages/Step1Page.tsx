@@ -1,37 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Camera, Truck, User, AlertCircle } from 'lucide-react'
-import { env } from '@/config/env.config'
-
-// Get the server base URL for media files (without /api/v1)
-const getMediaBaseUrl = () => {
-  try {
-    const url = new URL(env.apiBaseUrl)
-    return url.origin // Returns just http://192.168.1.84:3000
-  } catch {
-    // Fallback: remove /api/v1 from the end
-    return env.apiBaseUrl.replace(/\/api\/v1\/?$/, '')
-  }
-}
-import {
-  Button,
-  Input,
-  Label,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui'
-import { TransporterSelect } from '../../components/TransporterSelect'
-import { VehicleSelect } from '../../components/VehicleSelect'
-import { DriverSelect } from '../../components/DriverSelect'
 import {
   useCreateVehicleEntry,
   useVehicleEntry,
   useUpdateVehicleEntry,
 } from '../../api/vehicleEntry.queries'
-import { cn } from '@/shared/utils'
+import {
+  VehicleDriverFormShell,
+  type VehicleDriverFormData,
+  type VehicleSelection,
+  type DriverSelection,
+} from '../../components'
 import type { ApiError } from '@/core/api/types'
 
 export default function Step1Page() {
@@ -48,17 +28,20 @@ export default function Step1Page() {
   )
 
   // State to track if Update button has been clicked (enables editing)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- setUpdateMode will be used when Update button is implemented
   const [updateMode, setUpdateMode] = useState(false)
-  
+
   // State to keep button disabled after API success until navigation completes
   const [isNavigating, setIsNavigating] = useState(false)
 
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<VehicleDriverFormData>({
     vehicleId: 0,
     vehicleNumber: '',
     vehicleType: '',
     transporterName: '',
+    transporterContactPerson: '',
+    transporterMobile: '',
     vehicleCapacity: '',
     gpsId: '',
     driverId: 0,
@@ -67,7 +50,7 @@ export default function Step1Page() {
     drivingLicenseNumber: '',
     idProofType: '',
     idProofNumber: '',
-    driverPhoto: null as string | null,
+    driverPhoto: null,
     remarks: '',
   })
 
@@ -76,11 +59,14 @@ export default function Step1Page() {
   // Load entry data when in edit mode
   useEffect(() => {
     if (isEditMode && entryData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing form state with fetched data is a valid pattern
       setFormData({
         vehicleId: entryData.vehicle?.id || 0,
         vehicleNumber: entryData.vehicle?.vehicle_number || '',
         vehicleType: entryData.vehicle?.vehicle_type || '',
         transporterName: entryData.vehicle?.transporter?.name || '',
+        transporterContactPerson: entryData.vehicle?.transporter?.contact_person || '',
+        transporterMobile: entryData.vehicle?.transporter?.mobile_no || '',
         vehicleCapacity: entryData.vehicle?.capacity_ton
           ? `${entryData.vehicle.capacity_ton} Tons`
           : '',
@@ -100,7 +86,7 @@ export default function Step1Page() {
   const handleInputChange = (field: string, value: string) => {
     // In edit mode, Step 1 is read-only unless updateMode is active
     if (isEditMode && !updateMode) return
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData((prev: VehicleDriverFormData) => ({ ...prev, [field]: value }))
     // Clear error for this field when user starts typing
     if (apiErrors[field]) {
       setApiErrors((prev) => {
@@ -109,6 +95,37 @@ export default function Step1Page() {
         return newErrors
       })
     }
+  }
+
+  const handleVehicleSelect = (vehicle: VehicleSelection) => {
+    setFormData((prev: VehicleDriverFormData) => ({
+      ...prev,
+      vehicleId: vehicle.vehicleId,
+      vehicleNumber: vehicle.vehicleNumber,
+      vehicleType: vehicle.vehicleType,
+      vehicleCapacity: vehicle.vehicleCapacity,
+      transporterName: vehicle.transporterName,
+      transporterContactPerson: vehicle.transporterContactPerson,
+      transporterMobile: vehicle.transporterMobile,
+    }))
+  }
+
+  const handleDriverSelect = (driver: DriverSelection) => {
+    setFormData((prev: VehicleDriverFormData) => ({
+      ...prev,
+      driverId: driver.driverId,
+      driverName: driver.driverName,
+      mobileNumber: driver.mobileNumber,
+      drivingLicenseNumber: driver.drivingLicenseNumber,
+      idProofType: driver.idProofType,
+      idProofNumber: driver.idProofNumber,
+      driverPhoto: driver.driverPhoto,
+    }))
+  }
+
+  const handleCancel = () => {
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+    navigate('/gate/raw-materials')
   }
 
   const handleNext = async () => {
@@ -137,7 +154,6 @@ export default function Step1Page() {
   const handleCreate = async () => {
     try {
       // Generate entry number (format: GE-YYYY-NNNN)
-      // Using timestamp to ensure uniqueness - backend should ideally generate this
       const year = new Date().getFullYear()
       const timestamp = Date.now().toString().slice(-4)
       const entryNo = `GE-${year}-${timestamp}`
@@ -213,331 +229,28 @@ export default function Step1Page() {
     }
   }
 
-  const progressPercentage = (currentStep / totalSteps) * 100
   const canUpdate = isEditMode && entryData?.status === 'DRAFT'
   const isReadOnly = isEditMode
 
-  if (isEditMode && isLoadingEntry) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Material Inward - Step {currentStep} of {totalSteps}
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <span className="text-sm font-medium text-muted-foreground min-w-[3rem]">
-            {Math.round(progressPercentage)}%
-          </span>
-        </div>
-      </div>
-
-      {apiErrors.general && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {apiErrors.general}
-        </div>
-      )}
-
-      <div className="space-y-6">
-        {/* Vehicle Details Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5" />
-              Vehicle Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <TransporterSelect
-                  value={formData.transporterName}
-                  onChange={(value) => handleInputChange('transporterName', value)}
-                  placeholder="Enter transporter"
-                  label="Transporter Name"
-                  required
-                  disabled={isReadOnly || createVehicleEntry.isPending || updateVehicleEntry.isPending}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <VehicleSelect
-                  value={formData.vehicleNumber}
-                  onChange={(vehicle) => {
-                    if (isReadOnly) return
-                    setFormData((prev) => ({
-                      ...prev,
-                      vehicleId: vehicle.vehicleId,
-                      vehicleNumber: vehicle.vehicleNumber,
-                      vehicleType: vehicle.vehicleType,
-                      vehicleCapacity: vehicle.vehicleCapacity,
-                    }))
-                  }}
-                  placeholder="Enter vehicle number"
-                  label="Vehicle Number"
-                  required
-                  error={apiErrors.vehicle}
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="vehicleType">
-                  Vehicle Type <span className="text-destructive">*</span>
-                </Label>
-                <select
-                  id="vehicleType"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.vehicleType}
-                  onChange={(e) => handleInputChange('vehicleType', e.target.value)}
-                  disabled
-                >
-                  <option value="TRUCK">Truck</option>
-                  <option value="CONTAINER">Container</option>
-                  <option value="TEMPO">Tempo</option>
-                  <option value="TRACTOR">Tractor</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="vehicleCapacity">Vehicle Capacity</Label>
-                <Input
-                  id="vehicleCapacity"
-                  placeholder="e.g., 10 Tons / 50 CBM"
-                  value={formData.vehicleCapacity}
-                  onChange={(e) => handleInputChange('vehicleCapacity', e.target.value)}
-                  disabled
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="gpsId">GPS ID (if available)</Label>
-                <Input
-                  id="gpsId"
-                  placeholder="GPS tracking ID"
-                  value={formData.gpsId}
-                  onChange={(e) => handleInputChange('gpsId', e.target.value)}
-                  disabled={isReadOnly || createVehicleEntry.isPending || updateVehicleEntry.isPending}
-                  className={cn(isReadOnly && 'cursor-not-allowed opacity-50')}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Driver Information Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Driver Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <DriverSelect
-                  value={formData.driverName}
-                  onChange={(driver) => {
-                    if (isReadOnly) return
-                    setFormData((prev) => ({
-                      ...prev,
-                      driverId: driver.driverId,
-                      driverName: driver.driverName,
-                      mobileNumber: driver.mobileNumber,
-                      drivingLicenseNumber: driver.drivingLicenseNumber,
-                      idProofType: driver.idProofType,
-                      idProofNumber: driver.idProofNumber,
-                      driverPhoto: driver.driverPhoto,
-                    }))
-                  }}
-                  placeholder="Enter driver name or license number"
-                  label="Driver Name"
-                  required
-                  error={apiErrors.driver}
-                  disabled={isReadOnly || createVehicleEntry.isPending || updateVehicleEntry.isPending}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="mobileNumber">
-                  Mobile Number <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="mobileNumber"
-                  placeholder="+91 9876543210"
-                  value={formData.mobileNumber}
-                  onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
-                  disabled
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="drivingLicenseNumber">
-                  Driving License Number <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="drivingLicenseNumber"
-                  placeholder="DL number"
-                  value={formData.drivingLicenseNumber}
-                  onChange={(e) => handleInputChange('drivingLicenseNumber', e.target.value)}
-                  disabled
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="idProofType">
-                  ID Proof Type <span className="text-destructive">*</span>
-                </Label>
-                <select
-                  id="idProofType"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={formData.idProofType}
-                  onChange={(e) => handleInputChange('idProofType', e.target.value)}
-                  disabled
-                >
-                  <option value="">Select ID proof type</option>
-                  <option value="Aadhar">Aadhar</option>
-                  <option value="PAN Card">PAN Card</option>
-                  <option value="Driving License">Driving License</option>
-                  <option value="Voter ID">Voter ID</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="idProofNumber">
-                  ID Proof Number <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="idProofNumber"
-                  placeholder="ID number"
-                  value={formData.idProofNumber}
-                  onChange={(e) => handleInputChange('idProofNumber', e.target.value)}
-                  disabled
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Driver Photo</Label>
-                {formData.driverPhoto ? (
-                  <div className="relative w-full h-48 border rounded-md overflow-hidden bg-muted">
-                    <img
-                      src={
-                        formData.driverPhoto.startsWith('http')
-                          ? formData.driverPhoto
-                          : `${getMediaBaseUrl()}${formData.driverPhoto}`
-                      }
-                      alt="Driver photo"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                        const placeholder = e.currentTarget.nextElementSibling as HTMLElement
-                        if (placeholder) {
-                          placeholder.style.display = 'flex'
-                        }
-                      }}
-                    />
-                    <div
-                      className="absolute inset-0 items-center justify-center text-muted-foreground"
-                      style={{ display: 'none' }}
-                    >
-                      <div className="text-center">
-                        <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Photo not available</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-48 border rounded-md flex items-center justify-center bg-muted text-muted-foreground">
-                    <div className="text-center">
-                      <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No photo available</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Remarks Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Remarks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="remarks">Additional Remarks (Optional)</Label>
-              <textarea
-                id="remarks"
-                rows={3}
-                className={cn(
-                  'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                  apiErrors.entry_no && 'border-destructive',
-                  isReadOnly && 'cursor-not-allowed opacity-50',
-                )}
-                placeholder="Enter any additional remarks or notes..."
-                value={formData.remarks}
-                onChange={(e) => handleInputChange('remarks', e.target.value)}
-                disabled={isReadOnly || createVehicleEntry.isPending || updateVehicleEntry.isPending}
-              />
-              {apiErrors.remarks && <p className="text-sm text-destructive">{apiErrors.remarks}</p>}
-              {apiErrors.entry_no && (
-                <p className="text-sm text-destructive">{apiErrors.entry_no}</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-            navigate('/gate/raw-materials')
-          }}
-        >
-          Cancel
-        </Button>
-        {isEditMode ? (
-          <>
-            {canUpdate && !updateMode && (
-              <Button type="button" onClick={handleUpdate}>
-                Update
-              </Button>
-            )}
-            <Button type="button" onClick={handleNext} disabled={createVehicleEntry.isPending || updateVehicleEntry.isPending || isNavigating}>
-              {updateMode
-                ? createVehicleEntry.isPending || updateVehicleEntry.isPending || isNavigating
-                  ? 'Saving...'
-                  : 'Save and Next →'
-                : 'Next →'}
-            </Button>
-          </>
-        ) : (
-          <Button type="button" onClick={handleNext} disabled={createVehicleEntry.isPending || isNavigating}>
-            {createVehicleEntry.isPending || isNavigating ? 'Saving...' : 'Save and Next →'}
-          </Button>
-        )}
-      </div>
-    </div>
+    <VehicleDriverFormShell
+      formData={formData}
+      onFormChange={handleInputChange}
+      isReadOnly={isReadOnly}
+      isLoading={isEditMode && isLoadingEntry}
+      isSaving={createVehicleEntry.isPending || updateVehicleEntry.isPending || isNavigating}
+      apiErrors={apiErrors}
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onVehicleSelect={handleVehicleSelect}
+      onDriverSelect={handleDriverSelect}
+      onCancel={handleCancel}
+      onNext={handleNext}
+      onUpdate={handleUpdate}
+      isEditMode={isEditMode}
+      canUpdate={canUpdate}
+      updateMode={updateMode}
+      headerTitle="Material Inward"
+    />
   )
 }

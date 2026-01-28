@@ -15,7 +15,7 @@ interface ErrorBoundaryState {
 
 /**
  * React Error Boundary component to catch and handle errors in the component tree
- * 
+ *
  * @example
  * ```tsx
  * <ErrorBoundary>

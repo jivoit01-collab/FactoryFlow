@@ -43,10 +43,10 @@ export default function ProfilePage() {
     try {
       // Clear current company from IndexedDB
       await indexedDBService.updateCurrentCompany(null)
-      
+
       // Clear from Redux
       dispatch(clearCurrentCompany())
-      
+
       // Navigate to company selection page
       navigate(ROUTES.COMPANY_SELECTION.path, { replace: true })
     } catch (error) {
@@ -62,14 +62,18 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
               {/* User Avatar */}
               <Avatar className="h-20 w-20 border-2 sm:h-24 sm:w-24">
-                <AvatarFallback className="text-xl font-bold sm:text-2xl">{initials}</AvatarFallback>
+                <AvatarFallback className="text-xl font-bold sm:text-2xl">
+                  {initials}
+                </AvatarFallback>
               </Avatar>
 
               {/* User Details */}
               <div className="flex w-full flex-col gap-2 text-center sm:w-auto sm:text-left">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground sm:text-sm">employee_code</p>
-                  <p className="text-sm font-medium break-words sm:text-base">{user.employee_code || 'N/A'}</p>
+                  <p className="text-sm font-medium break-words sm:text-base">
+                    {user.employee_code || 'N/A'}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground sm:text-sm">employee name</p>
@@ -97,7 +101,9 @@ export default function ProfilePage() {
                 {/* Joined Date */}
                 <div className="space-y-1 pt-2">
                   <p className="text-xs text-muted-foreground sm:text-sm">Joined On:</p>
-                  <p className="text-sm font-medium break-words sm:text-base">{formatDate(user.date_joined)}</p>
+                  <p className="text-sm font-medium break-words sm:text-base">
+                    {formatDate(user.date_joined)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -139,24 +145,24 @@ export default function ProfilePage() {
               {user.companies.map((company) => {
                 const isCurrentCompany = currentCompany?.company_id === company.company_id
                 return (
-                  <Card 
-                    key={company.company_id} 
+                  <Card
+                    key={company.company_id}
                     className={`border relative ${
-                      isCurrentCompany 
-                        ? 'border-primary border-2 bg-primary/5 ring-2 ring-primary/20' 
+                      isCurrentCompany
+                        ? 'border-primary border-2 bg-primary/5 ring-2 ring-primary/20'
                         : ''
                     }`}
                   >
                     {isCurrentCompany && (
-                      <Badge 
-                        className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5"
-                      >
+                      <Badge className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5">
                         Current
                       </Badge>
                     )}
                     <CardContent className="flex flex-col items-center justify-center p-3 text-center sm:p-4">
                       <p className="text-base font-semibold sm:text-lg">{company.role}</p>
-                      <p className="text-xs text-muted-foreground sm:text-sm break-words">{company.company_name}</p>
+                      <p className="text-xs text-muted-foreground sm:text-sm break-words">
+                        {company.company_name}
+                      </p>
                     </CardContent>
                   </Card>
                 )
@@ -177,7 +183,11 @@ export default function ProfilePage() {
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {appPermissions.map((permission) => (
-                      <Badge key={permission} variant="outline" className="px-2 py-1 text-xs sm:px-3 sm:py-1">
+                      <Badge
+                        key={permission}
+                        variant="outline"
+                        className="px-2 py-1 text-xs sm:px-3 sm:py-1"
+                      >
                         {formatPermissionName(permission)}
                       </Badge>
                     ))}
@@ -190,10 +200,7 @@ export default function ProfilePage() {
       </Card>
 
       {/* Change Password Dialog */}
-      <ChangePasswordDialog
-        open={isChangePasswordOpen}
-        onOpenChange={setIsChangePasswordOpen}
-      />
+      <ChangePasswordDialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown, Check, Loader2, Plus, HelpCircle } from 'lucide-react'
 import {
   Input,
@@ -14,6 +14,12 @@ import { useDebounce } from '@/shared/hooks'
 import { CreateTransporterDialog } from './CreateTransporterDialog'
 import type { TransporterName, Transporter } from '../api/transporter.api'
 
+export interface TransporterDetails {
+  name: string
+  contact_person: string
+  mobile_no: string
+}
+
 interface TransporterSelectProps {
   value?: string
   onChange: (value: string) => void
@@ -22,6 +28,8 @@ interface TransporterSelectProps {
   error?: string
   label?: string
   required?: boolean
+  /** Externally provided transporter details (e.g., from vehicle data) */
+  externalDetails?: TransporterDetails | null
 }
 
 export function TransporterSelect({
@@ -32,21 +40,24 @@ export function TransporterSelect({
   error,
   label,
   required = false,
+  externalDetails,
 }: TransporterSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [selectedTransporterDetails, setSelectedTransporterDetails] = useState<Transporter | null>(null)
+  const [selectedTransporterDetails, setSelectedTransporterDetails] = useState<Transporter | null>(
+    null
+  )
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Fetch lightweight transporter names when dropdown is open
   const { data: transporterNames = [], isLoading } = useTransporterNames(isOpen && !disabled)
-  
+
   // Fetch full transporter details when one is selected
   const { data: transporterDetails } = useTransporterById(selectedId, selectedId !== null)
-  
+
   const debouncedSearch = useDebounce(searchTerm, 100)
 
   // Filter transporters based on search term
@@ -54,33 +65,51 @@ export function TransporterSelect({
     transporter.name.toLowerCase().includes(debouncedSearch.toLowerCase())
   )
 
+  const prevTransporterDetailsRef = useRef(transporterDetails)
+  const prevValueRef = useRef(value)
+
   // Update selected transporter details when fetched
-  useEffect(() => {
-    if (transporterDetails) {
+  const syncTransporterDetails = useCallback(() => {
+    if (transporterDetails && transporterDetails !== prevTransporterDetailsRef.current) {
+      prevTransporterDetailsRef.current = transporterDetails
       setSelectedTransporterDetails(transporterDetails)
     }
   }, [transporterDetails])
 
-  // Find selected transporter from value or display value directly when disabled
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with fetched data is a valid pattern
+    syncTransporterDetails()
+  }, [syncTransporterDetails])
+
+  // Find selected transporter from value or display value directly when disabled
+  const syncWithValue = useCallback(() => {
     // When disabled, just show the value directly without lookup
     if (disabled && value) {
       setSearchTerm(value)
       return
     }
-    
+
     if (value && transporterNames.length > 0) {
-      const transporter = transporterNames.find((t) => t.name === value || t.id.toString() === value)
+      const transporter = transporterNames.find(
+        (t) => t.name === value || t.id.toString() === value
+      )
       if (transporter) {
         setSelectedId(transporter.id)
         setSearchTerm(transporter.name)
       }
-    } else if (!value) {
+    } else if (value !== prevValueRef.current && !value) {
+      prevValueRef.current = value
       setSelectedId(null)
       setSelectedTransporterDetails(null)
       setSearchTerm('')
     }
   }, [value, transporterNames, disabled])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props is a valid pattern
+    syncWithValue()
+    prevValueRef.current = value
+  }, [syncWithValue, value])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -154,12 +183,33 @@ export function TransporterSelect({
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-80" align="start">
-              {selectedTransporterDetails ? (
+              {externalDetails ? (
                 <div className="space-y-2">
                   <div className="space-y-1.5 text-sm">
                     <div>
                       <span className="font-medium">Name:</span>{' '}
-                      <span className="text-muted-foreground">{selectedTransporterDetails.name}</span>
+                      <span className="text-muted-foreground">{externalDetails.name}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Contact Person:</span>{' '}
+                      <span className="text-muted-foreground">
+                        {externalDetails.contact_person}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Mobile Number:</span>{' '}
+                      <span className="text-muted-foreground">{externalDetails.mobile_no}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedTransporterDetails ? (
+                <div className="space-y-2">
+                  <div className="space-y-1.5 text-sm">
+                    <div>
+                      <span className="font-medium">Name:</span>{' '}
+                      <span className="text-muted-foreground">
+                        {selectedTransporterDetails.name}
+                      </span>
                     </div>
                     <div>
                       <span className="font-medium">Contact Person:</span>{' '}
@@ -169,7 +219,9 @@ export function TransporterSelect({
                     </div>
                     <div>
                       <span className="font-medium">Mobile Number:</span>{' '}
-                      <span className="text-muted-foreground">{selectedTransporterDetails.mobile_no}</span>
+                      <span className="text-muted-foreground">
+                        {selectedTransporterDetails.mobile_no}
+                      </span>
                     </div>
                   </div>
                 </div>

@@ -53,12 +53,10 @@ export const API_ENDPOINTS = {
   },
   // Security Checks
   SECURITY: {
-    GATE_ENTRY_SECURITY: (entryId: number) =>
-      `/security-checks/gate-entries/${entryId}/security/`,
+    GATE_ENTRY_SECURITY: (entryId: number) => `/security-checks/gate-entries/${entryId}/security/`,
     GATE_ENTRY_SECURITY_VIEW: (entryId: number) =>
       `/security-checks/gate-entries/${entryId}/security/view`,
-    SUBMIT: (securityId: number) =>
-      `/security-checks/security/${securityId}/submit/`,
+    SUBMIT: (securityId: number) => `/security-checks/security/${securityId}/submit/`,
   },
   // Purchase Orders
   PO: {
@@ -67,8 +65,7 @@ export const API_ENDPOINTS = {
   },
   // Raw Material Gate In
   RAW_MATERIAL_GATEIN: {
-    PO_RECEIPTS: (entryId: number) =>
-      `/raw-material-gatein/gate-entries/${entryId}/po-receipts/`,
+    PO_RECEIPTS: (entryId: number) => `/raw-material-gatein/gate-entries/${entryId}/po-receipts/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
   },
@@ -86,6 +83,18 @@ export const API_ENDPOINTS = {
   GATE_CORE: {
     FULL_VIEW: (entryId: number) => `/gate-core/raw-material-gate-entry/${entryId}/`,
     COMPLETE: (entryId: number) => `/raw-material-gatein/gate-entries/${entryId}/complete/`,
+  },
+  // Daily Needs Gate In
+  DAILY_NEEDS_GATEIN: {
+    CATEGORIES: '/daily-needs-gatein/gate-entries/daily-need/categories/',
+    GET: (entryId: number) => `/daily-needs-gatein/gate-entries/${entryId}/daily-need/`,
+    CREATE: (entryId: number) => `/daily-needs-gatein/gate-entries/${entryId}/daily-need/`,
+    FULL_VIEW: (entryId: number) => `/gate-core/daily-need-gate-entry/${entryId}/`,
+    COMPLETE: (entryId: number) => `/daily-needs-gatein/gate-entries/${entryId}/complete/`,
+  },
+  // Accounts / Departments
+  ACCOUNTS: {
+    DEPARTMENTS: '/accounts/departments',
   },
 } as const
 

@@ -29,7 +29,7 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
   const initializedRef = useRef(false)
   const permissionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const tokenIntervalCleanupRef = useRef<(() => void) | null>(null)
-  
+
   // Capture the intended URL on initial load (before any redirects)
   const intendedUrlRef = useRef(location.pathname + location.search)
 
@@ -86,15 +86,21 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
 
             // Check if we have a current company set
             const currentCompany = await indexedDBService.getCurrentCompany()
-            
+
             // Always redirect to loading-user page to fetch fresh user data from /auth/me
             // This ensures IndexedDB is updated with latest permissions and user data
             if (authData.user && 'id' in authData.user && 'email' in authData.user) {
               // Reconstruct tokensExpiresIn object from stored expiry timestamps
               // Calculate access_expires_in from stored expiry (convert milliseconds to seconds)
-              const accessExpiresIn = Math.max(0, Math.floor((authData.accessExpiresAt - Date.now()) / 1000))
+              const accessExpiresIn = Math.max(
+                0,
+                Math.floor((authData.accessExpiresAt - Date.now()) / 1000)
+              )
               // Calculate refresh_expires_in from stored expiry (convert milliseconds to seconds)
-              const refreshExpiresIn = Math.max(0, Math.floor((authData.refreshExpiresAt - Date.now()) / 1000))
+              const refreshExpiresIn = Math.max(
+                0,
+                Math.floor((authData.refreshExpiresAt - Date.now()) / 1000)
+              )
 
               dispatch(
                 loginSuccess({
@@ -116,13 +122,16 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
 
             dispatch(initializeComplete())
             markAuthInitialized()
-            
+
             // If no current company, redirect to company selection
             // Otherwise, redirect to loading-user to fetch fresh data
             // Pass the intended URL so we can redirect back after loading
             const intendedUrl = intendedUrlRef.current
             if (!currentCompany) {
-              navigate(ROUTES.COMPANY_SELECTION.path, { replace: true, state: { from: intendedUrl } })
+              navigate(ROUTES.COMPANY_SELECTION.path, {
+                replace: true,
+                state: { from: intendedUrl },
+              })
             } else {
               navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from: intendedUrl } })
             }
@@ -131,7 +140,7 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
 
           // No tokens found, initialization complete
           dispatch(initializeComplete())
-        } catch (error) {
+        } catch {
           // Critical error during initialization
           dispatch(initializeComplete())
         } finally {
@@ -158,7 +167,7 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
         try {
           const userData = await authService.getCurrentUser()
           dispatch(updateUser(userData))
-        } catch (error) {
+        } catch {
           // Permission refresh failed - will retry on next interval
           // Error is silently handled to avoid console spam
         }

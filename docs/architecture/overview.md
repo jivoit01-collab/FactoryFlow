@@ -6,23 +6,23 @@ This document describes the high-level architecture of the Factory Management Sy
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Browser Client                            │
+│                        Browser Client                           │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │   React UI   │  │    Redux     │  │    React Query       │  │
-│  │  Components  │◄─┤    Store     │  │   (Server State)     │  │
-│  │              │  │ (Client State)│  │                      │  │
-│  └──────┬───────┘  └──────────────┘  └──────────┬───────────┘  │
-│         │                                        │               │
-│         └────────────────┬───────────────────────┘               │
-│                          │                                       │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │   React UI   │  │    Redux     │  │    React Query       │   │
+│  │  Components  │◄─┤    Store     │  │   (Server State)     │   │
+│  │              │  │ (Client State)│ │                      │   │
+│  └──────┬───────┘  └──────────────┘  └──────────┬───────────┘   │
+│         │                                       │               │
+│         └────────────────┬──────────────────────┘               │
+│                          │                                      │
 │                    ┌─────▼─────┐                                │
 │                    │   Axios   │                                │
 │                    │  Client   │                                │
 │                    └─────┬─────┘                                │
-│                          │                                       │
-└──────────────────────────┼───────────────────────────────────────┘
+│                          │                                      │
+└──────────────────────────┼──────────────────────────────────────┘
                            │ HTTPS
                     ┌──────▼──────┐
                     │  REST API   │
@@ -87,7 +87,7 @@ User Action
         │
         ▼
 ┌───────────────────────────────────────┐
-│         State Update                   │
+│         State Update                  │
 │  ┌─────────────┐  ┌────────────────┐  │
 │  │   Redux     │  │  React Query   │  │
 │  │  Dispatch   │  │   Mutation     │  │
@@ -138,16 +138,16 @@ The application uses a dual state management approach:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    Auth Flow                                  │
+│                    Auth Flow                                 │
 ├──────────────────────────────────────────────────────────────┤
-│                                                               │
-│  1. App Start                                                 │
-│     │                                                         │
-│     ▼                                                         │
+│                                                              │
+│  1. App Start                                                │
+│     │                                                        │
+│     ▼                                                        │
 │  ┌─────────────────┐                                         │
 │  │ AuthInitializer │──── Load cached auth from IndexedDB     │
 │  └────────┬────────┘                                         │
-│           │                                                   │
+│           │                                                  │
 │     ┌─────┴─────┐                                            │
 │     ▼           ▼                                            │
 │  Has Token   No Token                                        │
@@ -155,17 +155,17 @@ The application uses a dual state management approach:
 │     ▼           ▼                                            │
 │  Validate    Redirect                                        │
 │   Token      to Login                                        │
-│     │                                                         │
-│     ▼                                                         │
+│     │                                                        │
+│     ▼                                                        │
 │  2. Token Refresh (Proactive)                                │
 │     - Check every 30 seconds                                 │
 │     - Refresh if < 1 minute to expiry                        │
-│                                                               │
-│  3. Permission Check                                          │
+│                                                              │
+│  3. Permission Check                                         │
 │     - Django-format permissions                              │
 │     - Route-level protection                                 │
 │     - Component-level checks                                 │
-│                                                               │
+│                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -184,17 +184,17 @@ The application uses a dual state management approach:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        MainLayout                            │
+│                        MainLayout                           │
 ├─────────────────────────────────────────────────────────────┤
 │ ┌──────────┐ ┌────────────────────────────────────────────┐ │
-│ │          │ │              Header                         │ │
+│ │          │ │              Header                        │ │
 │ │          │ ├────────────────────────────────────────────┤ │
-│ │ Sidebar  │ │              Breadcrumbs                    │ │
+│ │ Sidebar  │ │              Breadcrumbs                   │ │
 │ │          │ ├────────────────────────────────────────────┤ │
-│ │          │ │                                             │ │
-│ │          │ │              Page Content                   │ │
-│ │          │ │              (Outlet)                       │ │
-│ │          │ │                                             │ │
+│ │          │ │                                            │ │
+│ │          │ │              Page Content                  │ │
+│ │          │ │              (Outlet)                      │ │
+│ │          │ │                                            │ │
 │ └──────────┘ └────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -280,9 +280,9 @@ interface ApiError {
 ### Route Protection
 
 ```
-┌──────────────────────────────────────────┐
+┌───────────────────────────────────────────┐
 │              Route Access                 │
-├──────────────────────────────────────────┤
+├───────────────────────────────────────────┤
 │                                           │
 │  Public Routes                            │
 │  ├── /login                               │
@@ -298,7 +298,7 @@ interface ApiError {
 │  └── Routes with specific permission      │
 │      requirements checked at render       │
 │                                           │
-└──────────────────────────────────────────┘
+└───────────────────────────────────────────┘
 ```
 
 ### Nested Routing
@@ -323,9 +323,9 @@ interface ApiError {
 4. **Error Boundary**: Catches unhandled React errors
 
 ```
-┌─────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────┐
 │             Error Handling Flow                  │
-├─────────────────────────────────────────────────┤
+├──────────────────────────────────────────────────┤
 │                                                  │
 │  API Error                                       │
 │      │                                           │
@@ -341,7 +341,7 @@ interface ApiError {
 │      ▼                                           │
 │  Error Boundary (fallback UI)                    │
 │                                                  │
-└─────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────┘
 ```
 
 ## Performance Considerations

@@ -1,40 +1,8 @@
-import { Suspense, lazy } from 'react'
+import { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { MainLayout, AuthLayout } from '@/app/layouts'
 import { ProtectedRoute } from '@/core/auth'
-import { ROUTES } from '@/config/routes.config'
-
-// Eagerly load critical auth pages (always used on reload)
-import LoadingUserPage from '@/modules/auth/pages/LoadingUserPage'
-
-// Lazy load modules
-const LoginPage = lazy(() => import('@/modules/auth/pages/LoginPage'))
-const CompanySelectionPage = lazy(() => import('@/modules/auth/pages/CompanySelectionPage'))
-const ProfilePage = lazy(() => import('@/modules/auth/pages/ProfilePage'))
-const DashboardPage = lazy(() => import('@/modules/dashboard/pages/DashboardPage'))
-const GateInListPage = lazy(() => import('@/modules/gateIn/pages/GateInListPage'))
-const GateInDetailPage = lazy(() => import('@/modules/gateIn/pages/GateInDetailPage'))
-const QualityCheckListPage = lazy(() => import('@/modules/qualityCheck/pages/QualityCheckListPage'))
-const QualityCheckDetailPage = lazy(
-  () => import('@/modules/qualityCheck/pages/QualityCheckDetailPage')
-)
-// Gate module pages
-const GateDashboardPage = lazy(() => import('@/modules/gate/pages/GateDashboardPage'))
-const RawMaterialsDashboard = lazy(() => import('@/modules/gate/pages/RawMaterialsDashboard'))
-const RawMaterialsPage = lazy(() => import('@/modules/gate/pages/RawMaterialsPage'))
-const Step1Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step1Page'))
-const Step2Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step2Page'))
-const Step3Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step3Page'))
-const Step4Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step4Page'))
-const Step5Page = lazy(() => import('@/modules/gate/pages/rawmaterialpages/Step5Page'))
-const ReviewPage = lazy(() => import('@/modules/gate/pages/rawmaterialpages/ReviewPage'))
-const DailyNeedsPage = lazy(() => import('@/modules/gate/pages/DailyNeedsPage'))
-const MaintenancePage = lazy(() => import('@/modules/gate/pages/MaintenancePage'))
-const ConstructionPage = lazy(() => import('@/modules/gate/pages/ConstructionPage'))
-const ReturnableItemsPage = lazy(() => import('@/modules/gate/pages/ReturnableItemsPage'))
-const VisitorPage = lazy(() => import('@/modules/gate/pages/VisitorPage'))
-const EmployeePage = lazy(() => import('@/modules/gate/pages/EmployeePage'))
-const ContractorLaborPage = lazy(() => import('@/modules/gate/pages/ContractorLaborPage'))
+import { getRoutesByLayout } from '@/app/modules'
 
 // Loading fallback
 function PageLoader() {
@@ -56,17 +24,21 @@ function UnauthorizedPage() {
 }
 
 export function AppRoutes() {
+  // Get routes organized by layout type from module registry
+  const authRoutes = getRoutesByLayout('auth')
+  const mainRoutes = getRoutesByLayout('main')
+
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Auth routes */}
+        {/* Auth routes (public) */}
         <Route element={<AuthLayout />}>
-          <Route path={ROUTES.LOGIN.path} element={<LoginPage />} />
-          <Route path={ROUTES.COMPANY_SELECTION.path} element={<CompanySelectionPage />} />
-          <Route path={ROUTES.LOADING_USER.path} element={<LoadingUserPage />} />
+          {authRoutes.map((route) => (
+            <Route key={route.path} path={route.path} element={route.element} />
+          ))}
         </Route>
 
-        {/* Protected routes */}
+        {/* Protected routes (require authentication) */}
         <Route
           element={
             <ProtectedRoute>
@@ -74,225 +46,19 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          {/* Dashboard */}
-          <Route
-            path={ROUTES.DASHBOARD.path}
-            element={
-              <ProtectedRoute permissions={ROUTES.DASHBOARD.permissions}>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Quality Check */}
-          <Route
-            path={ROUTES.QUALITY_CHECK.path}
-            element={
-              <ProtectedRoute permissions={ROUTES.QUALITY_CHECK.permissions}>
-                <QualityCheckListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.QUALITY_CHECK.children?.CREATE.path}
-            element={
-              <ProtectedRoute permissions={ROUTES.QUALITY_CHECK.children?.CREATE.permissions}>
-                <QualityCheckDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.QUALITY_CHECK.children?.DETAIL.path}
-            element={
-              <ProtectedRoute permissions={ROUTES.QUALITY_CHECK.children?.DETAIL.permissions}>
-                <QualityCheckDetailPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Gate Dashboard */}
-          <Route
-            path={ROUTES.GATE.path}
-            element={
-              <ProtectedRoute>
-                <GateDashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Gate Routes */}
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS.path}
-            element={
-              <ProtectedRoute>
-                <RawMaterialsDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_ALL.path}
-            element={
-              <ProtectedRoute>
-                <RawMaterialsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW.path}
-            element={
-              <ProtectedRoute>
-                <Step1Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_STEP2.path}
-            element={
-              <ProtectedRoute>
-                <Step2Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_STEP3.path}
-            element={
-              <ProtectedRoute>
-                <Step3Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_STEP4.path}
-            element={
-              <ProtectedRoute>
-                <Step4Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_STEP5.path}
-            element={
-              <ProtectedRoute>
-                <Step5Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_NEW_REVIEW.path}
-            element={
-              <ProtectedRoute>
-                <ReviewPage />
-              </ProtectedRoute>
-            }
-          />
-          {/* Edit routes */}
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP1.path}
-            element={
-              <ProtectedRoute>
-                <Step1Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP2.path}
-            element={
-              <ProtectedRoute>
-                <Step2Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP3.path}
-            element={
-              <ProtectedRoute>
-                <Step3Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP4.path}
-            element={
-              <ProtectedRoute>
-                <Step4Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_STEP5.path}
-            element={
-              <ProtectedRoute>
-                <Step5Page />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RAW_MATERIALS_EDIT_REVIEW.path}
-            element={
-              <ProtectedRoute>
-                <ReviewPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.DAILY_NEEDS.path}
-            element={
-              <ProtectedRoute>
-                <DailyNeedsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.MAINTENANCE.path}
-            element={
-              <ProtectedRoute>
-                <MaintenancePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.CONSTRUCTION.path}
-            element={
-              <ProtectedRoute>
-                <ConstructionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.RETURNABLE_ITEMS.path}
-            element={
-              <ProtectedRoute>
-                <ReturnableItemsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.VISITOR.path}
-            element={
-              <ProtectedRoute>
-                <VisitorPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.EMPLOYEE.path}
-            element={
-              <ProtectedRoute>
-                <EmployeePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.GATE.children?.CONTRACTOR_LABOR.path}
-            element={
-              <ProtectedRoute>
-                <ContractorLaborPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Profile */}
-          <Route path={ROUTES.PROFILE.path} element={<ProfilePage />} />
+          {mainRoutes.map((route) => (
+            <Route
+              key={route.path}
+              path={route.path}
+              element={
+                route.permissions ? (
+                  <ProtectedRoute permissions={route.permissions}>{route.element}</ProtectedRoute>
+                ) : (
+                  route.element
+                )
+              }
+            />
+          ))}
 
           {/* Unauthorized */}
           <Route path="/unauthorized" element={<UnauthorizedPage />} />

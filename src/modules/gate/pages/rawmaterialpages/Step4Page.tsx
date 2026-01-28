@@ -1,31 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Scale } from 'lucide-react'
-import {
-  Input,
-  Label,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui'
+import { Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
 import { useWeighment, useCreateWeighment } from '../../api/weighment.queries'
 import { useVehicleEntry } from '../../api/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
-import {
-  StepHeader,
-  StepFooter,
-  StepLoadingSpinner,
-  FillDataAlert,
-} from '../../components'
+import { StepHeader, StepFooter, StepLoadingSpinner, FillDataAlert } from '../../components'
 import { WIZARD_CONFIG } from '../../constants'
-import {
-  isNotFoundError as checkNotFoundError,
-  getErrorMessage,
-  getFieldErrors,
-} from '../../utils'
+import { isNotFoundError as checkNotFoundError, getErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api'
 
 export default function Step4Page() {
@@ -47,14 +31,20 @@ export default function Step4Page() {
   const [formData, setFormData] = useState({
     grossWeight: '0',
     tareWeight: '0',
-    netWeight: '0', // Auto-calculated
     weighbridgeTicketNo: '',
     firstWeighmentTime: '',
     secondWeighmentTime: '',
   })
 
+  // Calculate net weight as derived value (not stored in state)
+  const netWeight = useMemo(() => {
+    const gross = parseFloat(formData.grossWeight) || 0
+    const tare = parseFloat(formData.tareWeight) || 0
+    return Math.max(0, gross - tare).toFixed(3)
+  }, [formData.grossWeight, formData.tareWeight])
+
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
-  
+
   // State to track if we should behave like create mode (when Fill Data is clicked)
   const [fillDataMode, setFillDataMode] = useState(false)
   // State to track if Update button has been clicked (enables editing)
@@ -83,24 +73,16 @@ export default function Step4Page() {
         }
       }
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing form state with fetched data is a valid pattern
       setFormData({
         grossWeight: weighmentData.gross_weight || '0',
         tareWeight: weighmentData.tare_weight || '0',
-        netWeight: weighmentData.net_weight || '0',
         weighbridgeTicketNo: weighmentData.weighbridge_slip_no || '',
         firstWeighmentTime,
         secondWeighmentTime,
       })
     }
   }, [effectiveEditMode, weighmentData])
-
-  // Calculate net weight whenever gross or tare weight changes
-  useEffect(() => {
-    const gross = parseFloat(formData.grossWeight) || 0
-    const tare = parseFloat(formData.tareWeight) || 0
-    const net = Math.max(0, gross - tare)
-    setFormData((prev) => ({ ...prev, netWeight: net.toFixed(3) }))
-  }, [formData.grossWeight, formData.tareWeight])
 
   const handleInputChange = (field: string, value: string) => {
     // In edit mode (not fillDataMode and not updateMode), fields are read-only
@@ -122,7 +104,6 @@ export default function Step4Page() {
     setFormData({
       grossWeight: '0',
       tareWeight: '0',
-      netWeight: '0',
       weighbridgeTicketNo: '',
       firstWeighmentTime: '',
       secondWeighmentTime: '',
@@ -326,7 +307,7 @@ export default function Step4Page() {
                   id="netWeight"
                   type="text"
                   placeholder="Auto-calculated"
-                  value={formData.netWeight === '0' ? '' : formData.netWeight}
+                  value={netWeight === '0.000' ? '' : netWeight}
                   readOnly
                   disabled
                   className="bg-muted cursor-not-allowed"

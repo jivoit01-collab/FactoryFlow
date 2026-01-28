@@ -43,10 +43,7 @@ export const weighmentApi = {
   },
 
   async create(entryId: number, data: CreateWeighmentRequest): Promise<Weighment> {
-    const response = await apiClient.post<Weighment>(
-      API_ENDPOINTS.WEIGHMENT.CREATE(entryId),
-      data
-    )
+    const response = await apiClient.post<Weighment>(API_ENDPOINTS.WEIGHMENT.CREATE(entryId), data)
     return response.data
   },
 }

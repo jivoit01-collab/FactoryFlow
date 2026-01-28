@@ -54,7 +54,9 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
   useEffect(() => {
     if (open) {
       reset()
+
       setApiErrors({})
+
       setPhotoPreview(null)
     }
   }, [open, reset])

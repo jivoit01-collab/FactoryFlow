@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown, Check, Loader2, Plus, HelpCircle } from 'lucide-react'
 import {
   Input,
@@ -51,10 +51,10 @@ export function DriverSelect({
 
   // Fetch lightweight driver names when dropdown is open
   const { data: driverNames = [], isLoading } = useDriverNames(isOpen && !disabled)
-  
+
   // Fetch full driver details when one is selected
   const { data: driverDetails } = useDriverById(selectedId, selectedId !== null)
-  
+
   const debouncedSearch = useDebounce(searchTerm, 100)
 
   // Filter drivers based on search term (name)
@@ -62,12 +62,22 @@ export function DriverSelect({
     driver.name.toLowerCase().includes(debouncedSearch.toLowerCase())
   )
 
-  // Update selected driver details when fetched and call onChange with full details
+  const prevDriverDetailsRef = useRef(driverDetails)
+  const prevValueRef = useRef(value)
+  const onChangeRef = useRef(onChange)
+
+  // Keep onChange ref updated
   useEffect(() => {
-    if (driverDetails) {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  // Update selected driver details when fetched and call onChange with full details
+  const syncDriverDetails = useCallback(() => {
+    if (driverDetails && driverDetails !== prevDriverDetailsRef.current) {
+      prevDriverDetailsRef.current = driverDetails
       setSelectedDriverDetails(driverDetails)
       // Call onChange with full driver details
-      onChange({
+      onChangeRef.current({
         driverId: driverDetails.id,
         driverName: driverDetails.name,
         mobileNumber: driverDetails.mobile_no,
@@ -77,30 +87,40 @@ export function DriverSelect({
         driverPhoto: driverDetails.photo,
       })
     }
-  }, [driverDetails]) // Intentionally not including onChange to avoid infinite loops
+  }, [driverDetails])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with fetched data is a valid pattern
+    syncDriverDetails()
+  }, [syncDriverDetails])
 
   // Find selected driver from value or display value directly when disabled
-  useEffect(() => {
+  const syncWithValue = useCallback(() => {
     // When disabled, just show the value directly without lookup
     if (disabled && value) {
       setSearchTerm(value)
       return
     }
-    
+
     if (value && driverNames.length > 0) {
-      const driver = driverNames.find(
-        (d) => d.name === value || d.id.toString() === value
-      )
+      const driver = driverNames.find((d) => d.name === value || d.id.toString() === value)
       if (driver) {
         setSelectedId(driver.id)
         setSearchTerm(driver.name)
       }
-    } else if (!value) {
+    } else if (value !== prevValueRef.current && !value) {
+      prevValueRef.current = value
       setSelectedId(null)
       setSelectedDriverDetails(null)
       setSearchTerm('')
     }
   }, [value, driverNames, disabled])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props is a valid pattern
+    syncWithValue()
+    prevValueRef.current = value
+  }, [syncWithValue, value])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -193,15 +213,21 @@ export function DriverSelect({
                     </div>
                     <div>
                       <span className="font-medium">Mobile Number:</span>{' '}
-                      <span className="text-muted-foreground">{selectedDriverDetails.mobile_no}</span>
+                      <span className="text-muted-foreground">
+                        {selectedDriverDetails.mobile_no}
+                      </span>
                     </div>
                     <div>
                       <span className="font-medium">License Number:</span>{' '}
-                      <span className="text-muted-foreground">{selectedDriverDetails.license_no}</span>
+                      <span className="text-muted-foreground">
+                        {selectedDriverDetails.license_no}
+                      </span>
                     </div>
                     <div>
                       <span className="font-medium">ID Proof Type:</span>{' '}
-                      <span className="text-muted-foreground">{selectedDriverDetails.id_proof_type}</span>
+                      <span className="text-muted-foreground">
+                        {selectedDriverDetails.id_proof_type}
+                      </span>
                     </div>
                     <div>
                       <span className="font-medium">ID Proof Number:</span>{' '}
@@ -294,9 +320,7 @@ export function DriverSelect({
                         onClick={() => handleSelect(driver)}
                       >
                         <span className="text-sm">{driver.name}</span>
-                        {selectedId === driver.id && (
-                          <Check className="h-4 w-4 text-primary" />
-                        )}
+                        {selectedId === driver.id && <Check className="h-4 w-4 text-primary" />}
                       </li>
                     ))}
                   </ul>

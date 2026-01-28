@@ -26,7 +26,7 @@ export interface User {
   permissions: string[]
 }
 
-export interface UserLogin extends Pick<User, 'id' | 'email' | 'full_name' | 'companies'> {}
+export type UserLogin = Pick<User, 'id' | 'email' | 'full_name' | 'companies'>
 
 export interface AuthState {
   user: User | null

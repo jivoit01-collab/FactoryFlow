@@ -10,10 +10,10 @@ import { ensureValidToken } from '@/core/auth/utils/tokenRefresh.util'
 
 /**
  * LoadingUserPage component
- * 
+ *
  * Fetches full user data from /auth/me endpoint after login.
  * Handles token validation, refresh, and error states.
- * 
+ *
  * This page is shown after login to ensure fresh user data and permissions
  * are loaded before navigating to the dashboard.
  */
@@ -23,7 +23,7 @@ export default function LoadingUserPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const loadingRef = useRef(false)
-  
+
   // Get the intended URL from navigation state (passed from AuthInitializer)
   const from = (location.state as { from?: string })?.from || ROUTES.DASHBOARD.path
 
@@ -67,7 +67,7 @@ export default function LoadingUserPage() {
         navigate(from, { replace: true })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load user data')
-        
+
         // If token is invalid (401), redirect to login
         if (
           err instanceof Error &&

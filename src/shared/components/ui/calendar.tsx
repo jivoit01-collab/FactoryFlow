@@ -103,9 +103,11 @@ export function Calendar({
       }}
       modifiersClassNames={{
         selected: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        range_start: 'bg-primary text-primary-foreground hover:bg-primary/90 rounded-l-md rounded-r-none',
+        range_start:
+          'bg-primary text-primary-foreground hover:bg-primary/90 rounded-l-md rounded-r-none',
         range_middle: 'bg-primary/20 text-foreground rounded-none',
-        range_end: 'bg-primary text-primary-foreground hover:bg-primary/90 rounded-r-md rounded-l-none',
+        range_end:
+          'bg-primary text-primary-foreground hover:bg-primary/90 rounded-r-md rounded-l-none',
         today: 'bg-accent text-accent-foreground font-semibold',
       }}
       components={{ MonthCaption: CustomMonthCaption }}

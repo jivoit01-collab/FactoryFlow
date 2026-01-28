@@ -1,27 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  Truck,
-  ClipboardCheck,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  type LucideIcon,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard } from 'lucide-react'
 import { cn } from '@/shared/utils'
 import { Button, Collapsible, CollapsibleContent } from '@/shared/components/ui'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui'
-import { ROUTES, type RouteConfig } from '@/config/routes.config'
 import { usePermission } from '@/core/auth'
 import { SIDEBAR_CONFIG } from '@/config/constants'
-
-const iconMap: Record<string, LucideIcon> = {
-  LayoutDashboard,
-  Truck,
-  ClipboardCheck,
-}
+import { getAllNavigation } from '@/app/modules'
+import type { ModuleNavItem } from '@/core/types'
 
 interface SidebarProps {
   isCollapsed: boolean
@@ -33,14 +19,13 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const location = useLocation()
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set())
 
-  type SidebarRoute = (typeof ROUTES)[keyof typeof ROUTES] & {
-    icon: string
-    showInSidebar: true
-  }
+  // Get navigation items from module registry
+  const allNavItems = useMemo(() => getAllNavigation(), [])
 
-  const navItems = (Object.values(ROUTES) as Array<(typeof ROUTES)[keyof typeof ROUTES]>).filter(
-    (route): route is SidebarRoute => {
-      if (route.showInSidebar !== true || !('icon' in route) || !route.icon) return false
+  // Filter navigation items based on permissions
+  const navItems = useMemo(() => {
+    return allNavItems.filter((item) => {
+      if (!item.showInSidebar) return false
 
       // Wait for permissions to load before filtering
       if (!permissionsLoaded) return false
@@ -49,21 +34,19 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       if (isStaff) return true
 
       // If route has a modulePrefix, check if user has any permission for that module
-      const routeWithModulePrefix = route as typeof route & { modulePrefix?: string }
-      if (routeWithModulePrefix.modulePrefix) {
-        return hasModulePermission(routeWithModulePrefix.modulePrefix)
+      if (item.modulePrefix) {
+        return hasModulePermission(item.modulePrefix)
       }
 
       // Fallback: if route has explicit permissions, check those
-      const routeWithPerms = route as typeof route & { permissions?: readonly string[] }
-      if (routeWithPerms.permissions && routeWithPerms.permissions.length > 0) {
-        return hasAnyPermission([...routeWithPerms.permissions])
+      if (item.permissions && item.permissions.length > 0) {
+        return hasAnyPermission([...item.permissions])
       }
 
-      // Routes without modulePrefix or permissions are shown (like Profile or Gate)
+      // Routes without modulePrefix or permissions are shown (like Gate)
       return true
-    }
-  )
+    })
+  }, [allNavItems, permissionsLoaded, isStaff, hasModulePermission, hasAnyPermission])
 
   const toggleSubmenu = (routePath: string) => {
     setOpenSubmenus((prev) => {
@@ -79,35 +62,30 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
   const isSubmenuOpen = (routePath: string) => openSubmenus.has(routePath)
 
-  const isRouteActive = (routePath: string) => {
-    if (location.pathname === routePath) return true
+  const isRouteActive = (item: ModuleNavItem) => {
+    if (location.pathname === item.path) return true
     // Check if any child route is active
-    const route = Object.values(ROUTES).find((r) => r.path === routePath)
-    if (route && 'children' in route && route.children) {
-      return Object.values(route.children).some(
-        (child: RouteConfig) => location.pathname === child.path
-      )
+    if (item.children) {
+      return item.children.some((child) => location.pathname === child.path)
     }
     return false
   }
 
   // Auto-open submenu if current route is a child
   useEffect(() => {
-    Object.values(ROUTES).forEach((route) => {
+    navItems.forEach((item) => {
       if (
-        route.showInSidebar &&
-        'hasSubmenu' in route &&
-        route.hasSubmenu &&
-        'children' in route &&
-        route.children &&
-        isRouteActive(route.path) &&
-        !isSubmenuOpen(route.path)
+        item.showInSidebar &&
+        item.hasSubmenu &&
+        item.children &&
+        isRouteActive(item) &&
+        !isSubmenuOpen(item.path)
       ) {
-        setOpenSubmenus((prev) => new Set([...prev, route.path]))
+        setOpenSubmenus((prev) => new Set([...prev, item.path]))
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname])
+  }, [location.pathname, navItems])
 
   return (
     <aside
@@ -127,49 +105,22 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           src="/JivoWellnessLogo.png"
           alt="Jivo Wellness Logo"
           className={cn(
-            'dark:invert transition-all object-contain', // added object-contain
-            isCollapsed ? 'h-8 w-8' : 'h-10 w-auto' // ensure width is auto when expanded
+            'dark:invert transition-all object-contain',
+            isCollapsed ? 'h-8 w-8' : 'h-10 w-auto'
           )}
         />
       </div>
 
       {/* Navigation */}
-      <nav
-        className={cn(
-          'flex flex-col gap-1 py-2', // Remove horizontal padding (px)
-          isCollapsed ? 'items-center' : 'px-2' // Only add horizontal padding when expanded
-        )}
-      >
+      <nav className={cn('flex flex-col gap-1 py-2', isCollapsed ? 'items-center' : 'px-2')}>
         {navItems.map((item) => {
-          const Icon = iconMap[item.icon] || LayoutDashboard
-          const hasSubmenu = 'hasSubmenu' in item && item.hasSubmenu && item.children
+          // Icon comes directly from module config, fallback to LayoutDashboard
+          const Icon = item.icon || LayoutDashboard
+          const hasSubmenu = item.hasSubmenu && item.children && item.children.length > 0
           const isOpen = hasSubmenu ? isSubmenuOpen(item.path) : false
-          const isActive = isRouteActive(item.path)
+          const isActive = isRouteActive(item)
 
           if (isCollapsed) {
-            if (hasSubmenu) {
-              return (
-                <Tooltip key={item.path} delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <NavLink
-                      to={item.path}
-                      className={({ isActive }) =>
-                        cn(
-                          'flex h-10 w-10 items-center justify-center rounded-md transition-colors',
-                          isActive
-                            ? 'bg-primary text-primary-foreground'
-                            : 'hover:bg-accent hover:text-accent-foreground'
-                        )
-                      }
-                    >
-                      <Icon className="h-5 w-5" />
-                    </NavLink>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{item.title}</TooltipContent>
-                </Tooltip>
-              )
-            }
-
             return (
               <Tooltip key={item.path} delayDuration={0}>
                 <TooltipTrigger asChild>
@@ -192,11 +143,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             )
           }
 
-          // Expanded sidebar
+          // Expanded sidebar with submenu
           if (hasSubmenu) {
-            const itemWithChildren = item as typeof item & {
-              children?: Record<string, RouteConfig>
-            }
             return (
               <Collapsible
                 key={item.path}
@@ -234,33 +182,32 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                     )}
                   </Button>
                 </div>
-                {itemWithChildren.children && (
-                  <CollapsibleContent className="ml-4 space-y-1 border-l pl-3">
-                    {Object.values(itemWithChildren.children).map((child: RouteConfig) => {
-                      const childIsActive = location.pathname === child.path
-                      return (
-                        <NavLink
-                          key={child.path}
-                          to={child.path}
-                          className={({ isActive }) =>
-                            cn(
-                              'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
-                              isActive || childIsActive
-                                ? 'bg-accent text-accent-foreground font-medium'
-                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                            )
-                          }
-                        >
-                          <span>{child.title}</span>
-                        </NavLink>
-                      )
-                    })}
-                  </CollapsibleContent>
-                )}
+                <CollapsibleContent className="ml-4 space-y-1 border-l pl-3">
+                  {item.children!.map((child) => {
+                    const childIsActive = location.pathname === child.path
+                    return (
+                      <NavLink
+                        key={child.path}
+                        to={child.path}
+                        className={({ isActive }) =>
+                          cn(
+                            'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                            isActive || childIsActive
+                              ? 'bg-accent text-accent-foreground font-medium'
+                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                          )
+                        }
+                      >
+                        <span>{child.title}</span>
+                      </NavLink>
+                    )
+                  })}
+                </CollapsibleContent>
               </Collapsible>
             )
           }
 
+          // Expanded sidebar without submenu
           return (
             <NavLink
               key={item.path}

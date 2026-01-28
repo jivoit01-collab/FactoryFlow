@@ -75,7 +75,15 @@ const authSlice = createSlice({
      * Update tokens after refresh
      * Note: expiresIn is accessExpiresAt, refreshExpiresAt should be calculated from tokensExpiresIn.refresh_expires_in in the calling code
      */
-    updateTokens: (state, action: PayloadAction<{ access: string; refresh: string; expiresIn: number; refreshExpiresAt: number }>) => {
+    updateTokens: (
+      state,
+      action: PayloadAction<{
+        access: string
+        refresh: string
+        expiresIn: number
+        refreshExpiresAt: number
+      }>
+    ) => {
       const { access, refresh, expiresIn } = action.payload
 
       state.access = access

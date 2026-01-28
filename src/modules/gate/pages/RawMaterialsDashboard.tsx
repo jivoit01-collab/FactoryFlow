@@ -1,6 +1,14 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ChevronRight, FileText, Clock, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
+import {
+  Plus,
+  ChevronRight,
+  FileText,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+} from 'lucide-react'
 import { Button, Card, CardContent } from '@/shared/components/ui'
 import { useVehicleEntries, useVehicleEntriesCount } from '../api/vehicleEntry.queries'
 import { DateRangePicker } from '../components/DateRangePicker'
@@ -27,7 +35,16 @@ const STATUS_ORDER: (keyof StatusCounts)[] = [
 ]
 
 // Status configuration with colors and icons
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType; key: keyof StatusCounts }> = {
+const STATUS_CONFIG: Record<
+  string,
+  {
+    label: string
+    color: string
+    bgColor: string
+    icon: React.ElementType
+    key: keyof StatusCounts
+  }
+> = {
   DRAFT: {
     label: 'Draft',
     color: 'text-yellow-600 dark:text-yellow-400',
@@ -75,7 +92,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
 export default function RawMaterialsDashboard() {
   const navigate = useNavigate()
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
-  
+
   // Convert date range to API params
   const apiParams = useMemo(() => {
     return {
@@ -84,13 +101,13 @@ export default function RawMaterialsDashboard() {
       entry_type: 'RAW_MATERIAL',
     }
   }, [dateRange])
-  
+
   // Fetch recent entries with entry_type and date filter
   const { data: apiEntries = [], isLoading: entriesLoading } = useVehicleEntries(apiParams)
-  
+
   // Fetch status counts with the same filters
   const { data: countData, isLoading: countLoading } = useVehicleEntriesCount(apiParams)
-  
+
   // Transform API count response to StatusCounts object
   const statusCounts = useMemo((): StatusCounts => {
     const defaultCounts: StatusCounts = {
@@ -101,19 +118,19 @@ export default function RawMaterialsDashboard() {
       cancelled: 0,
       rejected: 0,
     }
-    
+
     if (!countData?.total_vehicle_entries) return defaultCounts
-    
+
     countData.total_vehicle_entries.forEach(({ status, count }) => {
       const key = status.toLowerCase() as keyof StatusCounts
       if (key in defaultCounts) {
         defaultCounts[key] = count
       }
     })
-    
+
     return defaultCounts
   }, [countData])
-  
+
   const entries = apiEntries
   const isLoading = entriesLoading || countLoading
 
@@ -205,7 +222,7 @@ export default function RawMaterialsDashboard() {
             <ChevronRight className="h-3 w-3" />
           </button>
         </div>
-        
+
         {isLoading ? (
           <div className="flex items-center justify-center h-16">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -236,7 +253,9 @@ export default function RawMaterialsDashboard() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{formatDateTime(entry.entry_time)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDateTime(entry.entry_time)}
+                  </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
@@ -258,7 +277,7 @@ export default function RawMaterialsDashboard() {
               const statusUpper = statusKey.toUpperCase()
               const config = STATUS_CONFIG[statusUpper]
               if (!config) return null
-              
+
               const Icon = config.icon
               const count = statusCounts[statusKey] || 0
 
@@ -273,9 +292,7 @@ export default function RawMaterialsDashboard() {
                       <Icon className={`h-4 w-4 ${config.color}`} />
                       <span className={`text-xl font-bold ${config.color}`}>{count}</span>
                     </div>
-                    <p className={`mt-1 text-xs font-medium ${config.color}`}>
-                      {config.label}
-                    </p>
+                    <p className={`mt-1 text-xs font-medium ${config.color}`}>{config.label}</p>
                   </CardContent>
                 </Card>
               )

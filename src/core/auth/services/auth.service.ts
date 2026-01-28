@@ -18,16 +18,16 @@ import {
 export const authService = {
   /**
    * Login with credentials
-   * 
+   *
    * Validates the response structure and stores tokens and user data in IndexedDB.
-   * 
+   *
    * @param credentials - Login credentials (email and password)
    * @returns Promise resolving to LoginResponse with tokens and user data
    * @throws Error if login fails or response is invalid
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>(API_ENDPOINTS.AUTH.LOGIN, credentials)
-    
+
     // Validate response structure
     const data = validateLoginResponse(response.data)
 
@@ -57,9 +57,9 @@ export const authService = {
 
   /**
    * Refresh access token using the provided refresh token
-   * 
+   *
    * Validates the response structure and updates tokens in IndexedDB.
-   * 
+   *
    * @param refresh - The refresh token to use for refreshing
    * @returns Promise resolving to RefreshTokenResponse with new access and refresh tokens
    * @throws Error if refresh fails or response is invalid
@@ -77,23 +77,28 @@ export const authService = {
     const refreshExpiresAt = Date.now() + data.tokensExpiresIn.refresh_expires_in * 1000
 
     // Update IndexedDB
-    await indexedDBService.updateTokens(data.access, data.refresh, accessExpiresAt, refreshExpiresAt)
+    await indexedDBService.updateTokens(
+      data.access,
+      data.refresh,
+      accessExpiresAt,
+      refreshExpiresAt
+    )
 
     return data
   },
 
   /**
    * Get current user data from /auth/me endpoint
-   * 
+   *
    * Validates the response structure and updates user data in IndexedDB.
    * The response includes all permissions in the user object.
-   * 
+   *
    * @returns Promise resolving to User object with permissions and companies
    * @throws Error if request fails or response is invalid
    */
   async getCurrentUser(): Promise<User> {
     const response = await apiClient.get<MeResponse>(API_ENDPOINTS.AUTH.ME)
-    
+
     // Validate response structure
     const user = validateUserResponse(response.data)
 
@@ -184,7 +189,7 @@ export const authService = {
 
   /**
    * Change user password
-   * 
+   *
    * @param oldPassword - Current password
    * @param newPassword - New password
    * @returns Promise resolving to success message

@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useSyncExternalStore,
+} from 'react'
 import type { ReactNode } from 'react'
 import { THEME_OPTIONS, type Theme } from '@/config/constants/app.constants'
 import { storage } from '../utils/storage'
@@ -30,6 +38,18 @@ function applyTheme(theme: 'light' | 'dark') {
   root.classList.add(theme)
 }
 
+// Subscribe to system theme changes
+function subscribeToSystemTheme(callback: () => void) {
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  if (mediaQuery.addEventListener) {
+    mediaQuery.addEventListener('change', callback)
+    return () => mediaQuery.removeEventListener('change', callback)
+  } else {
+    mediaQuery.addListener(callback)
+    return () => mediaQuery.removeListener(callback)
+  }
+}
+
 interface ThemeProviderProps {
   children: ReactNode
 }
@@ -50,53 +70,19 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     return THEME_OPTIONS.SYSTEM
   })
 
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
-    const initialTheme =
-      theme === THEME_OPTIONS.SYSTEM ? getSystemTheme() : (theme as 'light' | 'dark')
-    // Apply theme immediately on mount to prevent flash
-    if (typeof window !== 'undefined') {
-      applyTheme(initialTheme)
-    }
-    return initialTheme
-  })
+  // Use useSyncExternalStore to track system theme changes
+  const systemTheme = useSyncExternalStore(
+    subscribeToSystemTheme,
+    getSystemTheme,
+    () => 'light' as const
+  )
 
-  // Update resolved theme when theme changes
-  useEffect(() => {
-    if (theme === THEME_OPTIONS.SYSTEM) {
-      const systemTheme = getSystemTheme()
-      setResolvedTheme(systemTheme)
-      applyTheme(systemTheme)
-    } else {
-      const themeValue = theme as 'light' | 'dark'
-      setResolvedTheme(themeValue)
-      applyTheme(themeValue)
-    }
-  }, [theme])
+  // Compute resolved theme synchronously (no setState in effect)
+  const resolvedTheme = useMemo(() => {
+    return theme === THEME_OPTIONS.SYSTEM ? systemTheme : (theme as 'light' | 'dark')
+  }, [theme, systemTheme])
 
-  // Listen for system theme changes when theme is 'system'
-  useEffect(() => {
-    if (theme !== THEME_OPTIONS.SYSTEM) return
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = (e: MediaQueryListEvent) => {
-      const newTheme = e.matches ? 'dark' : 'light'
-      setResolvedTheme(newTheme)
-      applyTheme(newTheme)
-    }
-
-    // Modern browsers
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange)
-      return () => mediaQuery.removeEventListener('change', handleChange)
-    }
-    // Fallback for older browsers
-    else {
-      mediaQuery.addListener(handleChange)
-      return () => mediaQuery.removeListener(handleChange)
-    }
-  }, [theme])
-
-  // Apply theme on mount
+  // Apply theme to DOM when resolved theme changes
   useEffect(() => {
     applyTheme(resolvedTheme)
   }, [resolvedTheme])

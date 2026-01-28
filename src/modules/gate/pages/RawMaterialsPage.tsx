@@ -1,30 +1,20 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, X } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { Button, Input } from '@/shared/components/ui'
 import { useVehicleEntries } from '../api/vehicleEntry.queries'
 import { DateRangePicker } from '../components/DateRangePicker'
 import { useGlobalDateRange } from '@/core/store/hooks'
 
-// Status label mapping
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Draft',
-  IN_PROGRESS: 'In Progress',
-  QC_COMPLETED: 'QC Completed',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled',
-  REJECTED: 'Rejected',
-}
-
 export default function RawMaterialsPage() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
-  
+
   // Get status filter from URL
   const statusFilter = searchParams.get('status') || undefined
-  
+
   // Convert date range to API params
   const apiParams = useMemo(() => {
     return {
@@ -34,14 +24,8 @@ export default function RawMaterialsPage() {
       status: statusFilter,
     }
   }, [dateRange, statusFilter])
-  
+
   const { data: entries = [], isLoading } = useVehicleEntries(apiParams)
-  
-  // Clear status filter
-  const clearStatusFilter = () => {
-    searchParams.delete('status')
-    setSearchParams(searchParams)
-  }
 
   // Filter entries based on search query only (date filtering is done by API)
   const filteredData = useMemo(() => {
@@ -142,7 +126,7 @@ export default function RawMaterialsPage() {
       </div>
 
       {/* Status Filter Badge */}
-      {statusFilter && (
+      {/* {statusFilter && (
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Filtered by status:</span>
           <span
@@ -157,7 +141,7 @@ export default function RawMaterialsPage() {
             </button>
           </span>
         </div>
-      )}
+      )} */}
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">

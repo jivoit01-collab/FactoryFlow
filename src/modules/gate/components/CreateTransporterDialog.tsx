@@ -49,6 +49,7 @@ export function CreateTransporterDialog({
   useEffect(() => {
     if (open) {
       reset()
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting state on dialog open is a valid pattern
       setApiErrors({})
     }
   }, [open, reset])

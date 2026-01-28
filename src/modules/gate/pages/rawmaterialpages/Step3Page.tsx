@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -55,6 +55,10 @@ export default function Step3Page() {
   const totalSteps = 5
   const currentStep = 3
 
+  // Stable ID generation using useId
+  const baseId = useId()
+  const poFormCounterRef = useRef(1)
+
   // Fetch existing PO receipts in edit mode
   const {
     data: existingPOReceipts = [],
@@ -76,9 +80,10 @@ export default function Step3Page() {
   )
 
   // State for multiple PO forms - start with one empty form
+  // Note: We use baseId with initial counter of 1 for stable initial ID
   const [poForms, setPoForms] = useState<POFormData[]>([
     {
-      id: `po-${Date.now()}`,
+      id: 'po-initial-1',
       supplierName: '',
       supplierCode: '',
       poNumber: '',
@@ -216,8 +221,9 @@ export default function Step3Page() {
     const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true)
     if (effectiveEditMode && !fillDataMode && !hasAnyFillDataMode) return
 
-    // Generate unique ID with timestamp and random number to avoid collisions
-    const newId = `po-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    // Generate unique ID using counter
+    poFormCounterRef.current += 1
+    const newId = `${baseId}-po-${poFormCounterRef.current}`
 
     setPoForms((prev) => [
       ...prev,
@@ -239,7 +245,13 @@ export default function Step3Page() {
     const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true)
     const thisPOFillDataMode = fillDataModeForPO[poFormId] || false
 
-    if (effectiveEditMode && !fillDataMode && !hasAnyFillDataMode && !thisPOFillDataMode && !updateMode)
+    if (
+      effectiveEditMode &&
+      !fillDataMode &&
+      !hasAnyFillDataMode &&
+      !thisPOFillDataMode &&
+      !updateMode
+    )
       return
     if (poForms.length === 1) return // Don't allow removing the last one
 
@@ -264,9 +276,10 @@ export default function Step3Page() {
 
   const handleFillData = () => {
     setFillDataMode(true)
+    poFormCounterRef.current += 1
     setPoForms([
       {
-        id: `po-${Date.now()}`,
+        id: `${baseId}-po-${poFormCounterRef.current}`,
         supplierName: '',
         supplierCode: '',
         poNumber: '',
@@ -322,6 +335,7 @@ export default function Step3Page() {
           }
         }),
       }))
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing form state with fetched data is a valid pattern
       setPoForms(forms)
     }
   }, [effectiveEditMode, existingPOReceipts])
@@ -375,8 +389,7 @@ export default function Step3Page() {
         }
         form.items.forEach((item) => {
           if (!item.received_qty_now || item.received_qty_now <= 0) {
-            itemErrors[`${form.id}_item_${item.po_item_code}`] =
-              'Please enter received quantity'
+            itemErrors[`${form.id}_item_${item.po_item_code}`] = 'Please enter received quantity'
           }
         })
         setApiErrors(itemErrors)
@@ -452,7 +465,8 @@ export default function Step3Page() {
   const isReadOnly =
     (effectiveEditMode && hasPOReceiptsData && !updateMode && !fillDataMode) ||
     (effectiveEditMode && hasNoPOReceiptsData && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== 'COMPLETED' && hasPOReceiptsData
+  const canUpdate =
+    effectiveEditMode && vehicleEntryData?.status !== 'COMPLETED' && hasPOReceiptsData
 
   const handleUpdate = () => {
     setUpdateMode(true)
@@ -582,7 +596,11 @@ export default function Step3Page() {
               Update
             </Button>
           )}
-          <Button type="button" onClick={handleNext} disabled={createPOReceipt.isPending || isNavigating}>
+          <Button
+            type="button"
+            onClick={handleNext}
+            disabled={createPOReceipt.isPending || isNavigating}
+          >
             {effectiveEditMode && !updateMode && !fillDataMode
               ? 'Next →'
               : createPOReceipt.isPending || isNavigating
@@ -791,7 +809,9 @@ function POCard({
                       </div>
                     ) : filteredPOs.length === 0 ? (
                       <div className="p-4 text-sm text-muted-foreground text-center">
-                        {poSearchTerm ? 'No POs found' : 'Enter supplier code and click to load POs'}
+                        {poSearchTerm
+                          ? 'No POs found'
+                          : 'Enter supplier code and click to load POs'}
                       </div>
                     ) : (
                       <div className="py-1">
@@ -807,7 +827,9 @@ function POCard({
                           >
                             <div>
                               <div className="font-medium">{po.po_number}</div>
-                              <div className="text-sm text-muted-foreground">{po.supplier_name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {po.supplier_name}
+                              </div>
                             </div>
                             {poForm.poNumber === po.po_number && (
                               <Check className="h-4 w-4 text-primary" />

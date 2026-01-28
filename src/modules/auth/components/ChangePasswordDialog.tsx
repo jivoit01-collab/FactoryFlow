@@ -26,7 +26,7 @@ interface ChangePasswordDialogProps {
 
 /**
  * ChangePasswordDialog component
- * 
+ *
  * Provides a dialog form for users to change their password.
  * Validates old and new passwords and calls the change password API.
  */
@@ -55,7 +55,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     try {
       await authService.changePassword(data.old_password, data.new_password)
       setSuccess(true)
-      
+
       // Reset form and close dialog after 2 seconds
       setTimeout(() => {
         reset()
@@ -127,11 +127,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={showOldPassword ? 'Hide password' : 'Show password'}
               >
-                {showOldPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showOldPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {errors.old_password && (
@@ -157,11 +153,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={showNewPassword ? 'Hide password' : 'Show password'}
               >
-                {showNewPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
+                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {errors.new_password && (
@@ -170,12 +162,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isLoading}
-            >
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading || success}>

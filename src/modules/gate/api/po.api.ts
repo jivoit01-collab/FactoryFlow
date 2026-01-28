@@ -34,9 +34,7 @@ export interface CreatePOReceiptRequest {
 
 export const poApi = {
   async getOpenPOs(supplierCode?: string): Promise<PurchaseOrder[]> {
-    const response = await apiClient.get<PurchaseOrder[]>(
-      API_ENDPOINTS.PO.OPEN_POS(supplierCode)
-    )
+    const response = await apiClient.get<PurchaseOrder[]>(API_ENDPOINTS.PO.OPEN_POS(supplierCode))
     return response.data
   },
 }
