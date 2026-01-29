@@ -28,8 +28,8 @@ import {
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
 import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
-import { useMaintenanceFullView, useCompleteMaintenanceEntry } from '../../api/maintenance.queries'
-import { securityCheckApi } from '../../api/securityCheck.api'
+import { useMaintenanceFullView, useCompleteMaintenanceEntry } from '../../api/maintenance/maintenance.queries'
+import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
 import { useEntryId } from '../../hooks'
 
 // Status badge component

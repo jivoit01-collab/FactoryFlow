@@ -5,7 +5,7 @@ import {
   useCreateVehicleEntry,
   useVehicleEntry,
   useUpdateVehicleEntry,
-} from '../../api/vehicleEntry.queries'
+} from '../../api/vehicle/vehicleEntry.queries'
 import {
   VehicleDriverFormShell,
   type VehicleDriverFormData,

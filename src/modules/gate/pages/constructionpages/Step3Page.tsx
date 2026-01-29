@@ -12,8 +12,8 @@ import {
   Button,
 } from '@/shared/components/ui'
 import { useEntryId } from '../../hooks'
-import { useVehicleEntry } from '../../api/vehicleEntry.queries'
-import { useConstructionEntry, useCreateConstructionEntry, useUpdateConstructionEntry, useConstructionCategories } from '../../api/construction.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import { useConstructionEntry, useCreateConstructionEntry, useUpdateConstructionEntry, useConstructionCategories } from '../../api/construction/construction.queries'
 import { FillDataAlert } from '../../components'
 import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
 import { cn } from '@/shared/utils'

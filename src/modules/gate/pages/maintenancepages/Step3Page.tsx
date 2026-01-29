@@ -10,9 +10,9 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui'
-import { useMaintenanceTypes, useMaintenanceEntry, useCreateMaintenanceEntry, useUpdateMaintenanceEntry } from '../../api/maintenance.queries'
-import { useDepartments } from '../../api/department.queries'
-import { useVehicleEntry } from '../../api/vehicleEntry.queries'
+import { useMaintenanceTypes, useMaintenanceEntry, useCreateMaintenanceEntry, useUpdateMaintenanceEntry } from '../../api/maintenance/maintenance.queries'
+import { useDepartments } from '../../api/department/department.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
 import { StepHeader, StepFooter, FillDataAlert } from '../../components'
 import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'

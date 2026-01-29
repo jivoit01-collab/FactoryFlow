@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown, Check, Loader2 } from 'lucide-react'
 import { Input, Label } from '@/shared/components/ui'
-import { useDepartments } from '../api/department.queries'
+import { useDepartments } from '../api/department/department.queries'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
-import type { Department } from '../api/department.api'
+import type { Department } from '../api/department/department.api'
 
 interface DepartmentSelectProps {
   value?: number | ''

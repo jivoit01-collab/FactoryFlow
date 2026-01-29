@@ -20,15 +20,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui'
-import { useOpenPOs } from '../../api/po.queries'
-import { useCreatePOReceipt, usePOReceipts } from '../../api/poReceipt.queries'
-import { useVehicleEntry } from '../../api/vehicleEntry.queries'
+import { useOpenPOs } from '../../api/po/po.queries'
+import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api/types'
-import type { PurchaseOrder } from '../../api/po.api'
+import type { PurchaseOrder } from '../../api/po/po.api'
 
 interface POItemFormData {
   po_item_code: string

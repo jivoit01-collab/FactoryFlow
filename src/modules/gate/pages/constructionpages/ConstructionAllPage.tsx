@@ -2,11 +2,11 @@ import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { Button, Input } from '@/shared/components/ui'
-import { useVehicleEntries } from '../api/vehicleEntry.queries'
-import { DateRangePicker } from '../components/DateRangePicker'
+import { useVehicleEntries } from '../../api/vehicle/vehicleEntry.queries'
+import { DateRangePicker } from '../../components/DateRangePicker'
 import { useGlobalDateRange } from '@/core/store/hooks'
 
-export default function MaintenanceAllPage() {
+export default function ConstructionAllPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
@@ -20,7 +20,7 @@ export default function MaintenanceAllPage() {
     return {
       from_date: dateRange.from,
       to_date: dateRange.to,
-      entry_type: 'MAINTENANCE',
+      entry_type: 'CONSTRUCTION',
       status: statusFilter,
     }
   }, [dateRange, statusFilter])
@@ -82,12 +82,12 @@ export default function MaintenanceAllPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Maintenance (Spare parts/Tools)</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Construction (Civil/Building Work)</h2>
           <p className="text-muted-foreground">
-            Manage maintenance items, spare parts, and tools gate entries
+            Manage construction materials and building work gate entries
           </p>
         </div>
-        <Button onClick={() => navigate('/gate/maintenance/new')} className="w-full sm:w-auto">
+        <Button onClick={() => navigate('/gate/construction/new')} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Add New Entry
         </Button>
@@ -146,7 +146,7 @@ export default function MaintenanceAllPage() {
                     key={entry.id}
                     className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
                     onClick={() => {
-                      navigate(`/gate/maintenance/edit/${entry.id}/step1`)
+                      navigate(`/gate/construction/edit/${entry.id}/step1`)
                     }}
                   >
                     <td className="p-3 text-sm font-medium">{entry.entry_no || '-'}</td>

@@ -12,8 +12,8 @@ import {
   CardTitle,
 } from '@/shared/components/ui'
 import { useEntryId } from '../../hooks'
-import { useVehicleEntry } from '../../api/vehicleEntry.queries'
-import { useDailyNeed, useCreateDailyNeed } from '../../api/dailyNeed.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import { useDailyNeed, useCreateDailyNeed } from '../../api/dailyNeed/dailyNeed.queries'
 import { FillDataAlert, CategorySelect, DepartmentSelect } from '../../components'
 import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
 import { cn } from '@/shared/utils'

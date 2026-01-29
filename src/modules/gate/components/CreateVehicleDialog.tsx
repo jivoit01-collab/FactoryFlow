@@ -12,8 +12,8 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui'
-import { useCreateVehicle } from '../api/vehicle.queries'
-import { useTransporters } from '../api/transporter.queries'
+import { useCreateVehicle } from '../api/vehicle/vehicle.queries'
+import { useTransporters } from '../api/transporter/transporter.queries'
 import { vehicleSchema, type VehicleFormData } from '../schemas/vehicle.schema'
 import type { ApiError } from '@/core/api/types'
 import { TransporterSelect } from './TransporterSelect'

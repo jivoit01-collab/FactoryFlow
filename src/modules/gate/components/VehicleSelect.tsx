@@ -8,11 +8,11 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@/shared/components/ui'
-import { useVehicleNames, useVehicleById } from '../api/vehicle.queries'
+import { useVehicleNames, useVehicleById } from '../api/vehicle/vehicle.queries'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import { CreateVehicleDialog } from './CreateVehicleDialog'
-import type { VehicleName, Vehicle } from '../api/vehicle.api'
+import type { VehicleName, Vehicle } from '../api/vehicle/vehicle.api'
 
 interface VehicleSelectProps {
   value?: string

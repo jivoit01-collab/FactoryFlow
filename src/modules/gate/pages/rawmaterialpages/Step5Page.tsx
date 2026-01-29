@@ -14,9 +14,9 @@ import {
 import { cn } from '@/shared/utils'
 import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api/types'
-import { usePOReceipts } from '../../api/poReceipt.queries'
-import { qualityControlApi, type QualityControl } from '../../api/qualityControl.api'
-import { useVehicleEntry } from '../../api/vehicleEntry.queries'
+import { usePOReceipts } from '../../api/po/poReceipt.queries'
+import { qualityControlApi, type QualityControl } from '../../api/quality/qualityControl.api'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
 
 interface ItemFormData {

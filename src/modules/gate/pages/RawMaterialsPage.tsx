@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { Button, Input } from '@/shared/components/ui'
-import { useVehicleEntries } from '../api/vehicleEntry.queries'
+import { useVehicleEntries } from '../api/vehicle/vehicleEntry.queries'
 import { DateRangePicker } from '../components/DateRangePicker'
 import { useGlobalDateRange } from '@/core/store/hooks'
 

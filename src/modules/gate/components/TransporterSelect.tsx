@@ -8,11 +8,11 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@/shared/components/ui'
-import { useTransporterNames, useTransporterById } from '../api/transporter.queries'
+import { useTransporterNames, useTransporterById } from '../api/transporter/transporter.queries'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import { CreateTransporterDialog } from './CreateTransporterDialog'
-import type { TransporterName, Transporter } from '../api/transporter.api'
+import type { TransporterName, Transporter } from '../api/transporter/transporter.api'
 
 export interface TransporterDetails {
   name: string

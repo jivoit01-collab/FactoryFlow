@@ -1,6 +1,6 @@
 import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
-import type { Transporter } from './transporter.api'
+import type { Transporter } from '../transporter/transporter.api'
 
 // Lightweight type for dropdown list (names endpoint)
 export interface VehicleName {

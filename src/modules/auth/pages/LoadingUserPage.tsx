@@ -32,7 +32,7 @@ export default function LoadingUserPage() {
     // Prefetch dashboard and common pages in the background
     // These will be ready by the time the user navigates
     import('@/modules/dashboard/pages/DashboardPage')
-    import('@/modules/gate/pages/RawMaterialsDashboard')
+    import('@/modules/gate/pages/rawmaterialpages/RawMaterialsDashboard')
     import('@/modules/gate/pages/GateDashboardPage')
   }, [])
 

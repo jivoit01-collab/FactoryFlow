@@ -8,11 +8,11 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@/shared/components/ui'
-import { useDriverNames, useDriverById } from '../api/driver.queries'
+import { useDriverNames, useDriverById } from '../api/driver/driver.queries'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import { CreateDriverDialog } from './CreateDriverDialog'
-import type { DriverName, Driver } from '../api/driver.api'
+import type { DriverName, Driver } from '../api/driver/driver.api'
 
 interface DriverSelectProps {
   value?: string

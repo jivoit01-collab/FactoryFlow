@@ -31,8 +31,8 @@ import { isServerError as checkServerError, getServerErrorMessage } from '../../
 import {
   useDailyNeedFullView,
   useCompleteDailyNeedEntry,
-} from '../../api/dailyNeedFullView.queries'
-import { securityCheckApi } from '../../api/securityCheck.api'
+} from '../../api/dailyNeed/dailyNeedFullView.queries'
+import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
 import { useEntryId } from '../../hooks'
 
 // Status badge component

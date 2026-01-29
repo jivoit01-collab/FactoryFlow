@@ -1,38 +1,20 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Plus,
-  ChevronRight,
-  FileText,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
-} from 'lucide-react'
+import { Plus, ChevronRight, FileText, Clock, CheckCircle2 } from 'lucide-react'
 import { Button, Card, CardContent } from '@/shared/components/ui'
-import { useVehicleEntries, useVehicleEntriesCount } from '../api/vehicleEntry.queries'
-import { DateRangePicker } from '../components/DateRangePicker'
+import { useVehicleEntries, useVehicleEntriesCount } from '../../api/vehicle/vehicleEntry.queries'
+import { DateRangePicker } from '../../components/DateRangePicker'
 import { useGlobalDateRange } from '@/core/store/hooks'
 
-// Status counts mapped from API
+// Status counts for Maintenance (only 3 statuses)
 interface StatusCounts {
   draft: number
   in_progress: number
-  qc_completed: number
   completed: number
-  cancelled: number
-  rejected: number
 }
 
-// Ordered list of statuses
-const STATUS_ORDER: (keyof StatusCounts)[] = [
-  'draft',
-  'in_progress',
-  'qc_completed',
-  'completed',
-  'cancelled',
-  'rejected',
-]
+// Ordered list of statuses for Maintenance
+const STATUS_ORDER: (keyof StatusCounts)[] = ['draft', 'in_progress', 'completed']
 
 // Status configuration with colors and icons
 const STATUS_CONFIG: Record<
@@ -59,13 +41,6 @@ const STATUS_CONFIG: Record<
     icon: Clock,
     key: 'in_progress',
   },
-  QC_COMPLETED: {
-    label: 'QC Completed',
-    color: 'text-purple-600 dark:text-purple-400',
-    bgColor: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800',
-    icon: CheckCircle2,
-    key: 'qc_completed',
-  },
   COMPLETED: {
     label: 'Completed',
     color: 'text-green-600 dark:text-green-400',
@@ -73,23 +48,9 @@ const STATUS_CONFIG: Record<
     icon: CheckCircle2,
     key: 'completed',
   },
-  CANCELLED: {
-    label: 'Cancelled',
-    color: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-    icon: XCircle,
-    key: 'cancelled',
-  },
-  REJECTED: {
-    label: 'Rejected',
-    color: 'text-orange-600 dark:text-orange-400',
-    bgColor: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
-    icon: AlertCircle,
-    key: 'rejected',
-  },
 }
 
-export default function RawMaterialsDashboard() {
+export default function MaintenanceDashboard() {
   const navigate = useNavigate()
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
 
@@ -98,7 +59,7 @@ export default function RawMaterialsDashboard() {
     return {
       from_date: dateRange.from,
       to_date: dateRange.to,
-      entry_type: 'RAW_MATERIAL',
+      entry_type: 'MAINTENANCE',
     }
   }, [dateRange])
 
@@ -113,10 +74,7 @@ export default function RawMaterialsDashboard() {
     const defaultCounts: StatusCounts = {
       draft: 0,
       in_progress: 0,
-      qc_completed: 0,
       completed: 0,
-      cancelled: 0,
-      rejected: 0,
     }
 
     if (!countData?.total_vehicle_entries) return defaultCounts
@@ -134,7 +92,7 @@ export default function RawMaterialsDashboard() {
   const entries = apiEntries
   const isLoading = entriesLoading || countLoading
 
-  // Get 2 most recent entries (already sorted in dummy data)
+  // Get 2 most recent entries
   const recentEntries = useMemo(() => {
     return [...entries]
       .sort((a, b) => {
@@ -170,12 +128,6 @@ export default function RawMaterialsDashboard() {
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
       case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-      case 'QC_COMPLETED':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-      case 'CANCELLED':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-      case 'REJECTED':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
     }
@@ -186,16 +138,15 @@ export default function RawMaterialsDashboard() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Raw Materials (RM/PM/Assets)</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Maintenance (Spare parts/Tools)</h2>
           <p className="text-muted-foreground">
-            Manage raw materials, packing materials, and assets gate entries
+            Manage maintenance items, spare parts, and tools gate entries
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <DateRangePicker
             date={dateRangeAsDateObjects}
             onDateChange={(date) => {
-              // Handle the DateRange type (not single Date)
               if (date && 'from' in date) {
                 setDateRange(date)
               } else {
@@ -203,19 +154,19 @@ export default function RawMaterialsDashboard() {
               }
             }}
           />
-          <Button onClick={() => navigate('/gate/raw-materials/new')} className="w-full sm:w-auto">
+          <Button onClick={() => navigate('/gate/maintenance/new')} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Add New Entry
           </Button>
         </div>
       </div>
 
-      {/* Recent Entries Section - Compact */}
+      {/* Recent Entries Section */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-muted-foreground">Recent Entries</h3>
           <button
-            onClick={() => navigate('/gate/raw-materials/all')}
+            onClick={() => navigate('/gate/maintenance/all')}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
           >
             Show more
@@ -237,7 +188,7 @@ export default function RawMaterialsDashboard() {
               <div
                 key={entry.id}
                 className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => navigate(`/gate/raw-materials/edit/${entry.id}/step1`)}
+                onClick={() => navigate(`/gate/maintenance/edit/${entry.id}/step1`)}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="font-medium text-sm">{entry.entry_no}</span>
@@ -272,7 +223,7 @@ export default function RawMaterialsDashboard() {
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {STATUS_ORDER.map((statusKey) => {
               const statusUpper = statusKey.toUpperCase()
               const config = STATUS_CONFIG[statusUpper]
@@ -285,7 +236,7 @@ export default function RawMaterialsDashboard() {
                 <Card
                   key={statusKey}
                   className={`${config.bgColor} border cursor-pointer hover:shadow-md transition-shadow`}
-                  onClick={() => navigate(`/gate/raw-materials/all?status=${statusUpper}`)}
+                  onClick={() => navigate(`/gate/maintenance/all?status=${statusUpper}`)}
                 >
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">

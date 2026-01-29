@@ -13,7 +13,7 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui'
-import { useCreateDriver } from '../api/driver.queries'
+import { useCreateDriver } from '../api/driver/driver.queries'
 import { driverSchema, type DriverFormData } from '../schemas/driver.schema'
 import type { ApiError } from '@/core/api/types'
 

@@ -1,7 +1,7 @@
 import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
 import type { Vehicle } from './vehicle.api'
-import type { Driver } from './driver.api'
+import type { Driver } from '../driver/driver.api'
 
 export interface VehicleEntry {
   id: number

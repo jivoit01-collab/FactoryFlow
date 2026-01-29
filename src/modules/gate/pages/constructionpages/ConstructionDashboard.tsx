@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, ChevronRight, FileText, Clock, CheckCircle2 } from 'lucide-react'
 import { Button, Card, CardContent } from '@/shared/components/ui'
-import { useVehicleEntries, useVehicleEntriesCount } from '../api/vehicleEntry.queries'
-import { DateRangePicker } from '../components/DateRangePicker'
+import { useVehicleEntries, useVehicleEntriesCount } from '../../api/vehicle/vehicleEntry.queries'
+import { DateRangePicker } from '../../components/DateRangePicker'
 import { useGlobalDateRange } from '@/core/store/hooks'
 
 // Status counts for Construction (only 3 statuses)

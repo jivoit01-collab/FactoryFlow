@@ -12,7 +12,7 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui'
-import { useCreateTransporter } from '../api/transporter.queries'
+import { useCreateTransporter } from '../api/transporter/transporter.queries'
 import { transporterSchema, type TransporterFormData } from '../schemas/transporter.schema'
 import type { ApiError } from '@/core/api/types'
 

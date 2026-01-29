@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown, Check, Loader2 } from 'lucide-react'
 import { Input, Label } from '@/shared/components/ui'
-import { useDailyNeedCategories } from '../api/dailyNeed.queries'
+import { useDailyNeedCategories } from '../api/dailyNeed/dailyNeed.queries'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
-import type { DailyNeedCategory } from '../api/dailyNeed.api'
+import type { DailyNeedCategory } from '../api/dailyNeed/dailyNeed.api'
 
 interface CategorySelectProps {
   value?: number | ''
