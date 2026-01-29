@@ -56,6 +56,9 @@ export interface SecurityCheckFormShellProps {
   onFillData?: () => void
   fillDataMessage?: string
 
+  // Server error message (5xx errors)
+  serverError?: string | null
+
   // Custom content (optional)
   headerTitle?: string
 }
@@ -88,6 +91,7 @@ export function SecurityCheckFormShell({
   showFillDataAlert = false,
   onFillData,
   fillDataMessage = 'Security check not found',
+  serverError,
   headerTitle = 'Material Inward',
 }: SecurityCheckFormShellProps) {
   const progressPercentage = (currentStep / totalSteps) * 100
@@ -120,10 +124,10 @@ export function SecurityCheckFormShell({
         </div>
       </div>
 
-      {apiErrors.general && (
+      {(serverError || apiErrors.general) && (
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
-          {apiErrors.general}
+          {serverError || apiErrors.general}
         </div>
       )}
 

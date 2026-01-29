@@ -8,13 +8,13 @@ import {
   Truck,
   User,
   ShieldCheck,
-  Package,
+  Wrench,
   CheckCircle2,
   XCircle,
   Clock,
   Home,
   FileText,
-  Phone,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   Button,
@@ -28,10 +28,7 @@ import {
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
 import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
-import {
-  useDailyNeedFullView,
-  useCompleteDailyNeedEntry,
-} from '../../api/dailyNeedFullView.queries'
+import { useMaintenanceFullView, useCompleteMaintenanceEntry } from '../../api/maintenance.queries'
 import { securityCheckApi } from '../../api/securityCheck.api'
 import { useEntryId } from '../../hooks'
 
@@ -43,20 +40,40 @@ function StatusBadge({ status }: { status: string }) {
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
       case 'DRAFT':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-      case 'PASSED':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-      case 'FAILED':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-      case 'PENDING':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-      default:
+      case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
     }
   }
 
   return (
     <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getStatusColor())}>
       {status}
+    </span>
+  )
+}
+
+// Urgency badge component
+function UrgencyBadge({ level }: { level: string }) {
+  const getUrgencyColor = () => {
+    switch (level.toUpperCase()) {
+      case 'CRITICAL':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+      case 'HIGH':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
+      case 'MEDIUM':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+      case 'LOW':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+    }
+  }
+
+  return (
+    <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getUrgencyColor())}>
+      {level}
     </span>
   )
 }
@@ -113,14 +130,14 @@ function SuccessScreen({
         Entry Completed!
       </h1>
       <p className="mb-12 text-muted-foreground opacity-0 animate-fade-in-delay-2">
-        Daily needs gate entry has been successfully completed
+        Maintenance gate entry has been successfully completed
       </p>
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-4 sm:flex-row opacity-0 animate-fade-in-delay-3">
         <Button size="lg" onClick={onNavigateToDashboard} className="min-w-[200px]">
-          <Package className="mr-2 h-5 w-5" />
-          Daily Needs Dashboard
+          <Wrench className="mr-2 h-5 w-5" />
+          Maintenance Dashboard
         </Button>
         <Button size="lg" variant="outline" onClick={onNavigateToHome} className="min-w-[200px]">
           <Home className="mr-2 h-5 w-5" />
@@ -142,27 +159,27 @@ export default function ReviewPage() {
 
   const handleNavigateToList = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    queryClient.invalidateQueries({ queryKey: ['dailyNeedFullView'] })
-    navigate('/gate/daily-needs')
+    queryClient.invalidateQueries({ queryKey: ['maintenanceFullView'] })
+    navigate('/gate/maintenance')
   }
 
   const handleNavigateToHome = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    queryClient.invalidateQueries({ queryKey: ['dailyNeedFullView'] })
+    queryClient.invalidateQueries({ queryKey: ['maintenanceFullView'] })
     navigate('/')
   }
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
 
-  // Fetch full daily need entry data
-  const { data: gateEntry, isLoading, error: fetchError } = useDailyNeedFullView(entryIdNumber)
+  // Fetch full maintenance entry data
+  const { data: gateEntry, isLoading, error: fetchError } = useMaintenanceFullView(entryIdNumber)
 
-  const completeDailyNeedEntry = useCompleteDailyNeedEntry()
+  const completeMaintenanceEntry = useCompleteMaintenanceEntry()
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/daily-needs/edit/${entryId}/step3`)
+      navigate(`/gate/maintenance/edit/${entryId}/step3`)
     } else {
-      navigate(`/gate/daily-needs/new/step3?entryId=${entryId}`)
+      navigate(`/gate/maintenance/new/step3?entryId=${entryId}`)
     }
   }
 
@@ -202,7 +219,7 @@ export default function ReviewPage() {
       }
 
       // Step 3: Complete the gate entry
-      await completeDailyNeedEntry.mutateAsync(entryIdNumber!)
+      await completeMaintenanceEntry.mutateAsync(entryIdNumber!)
 
       // Show success screen
       setShowSuccess(true)
@@ -271,7 +288,7 @@ export default function ReviewPage() {
   }
 
   const isAlreadyCompleted = gateEntry.gate_entry.status === 'COMPLETED'
-  const dailyNeed = gateEntry.daily_need_details
+  const maintenanceDetails = gateEntry.maintenance_details
 
   return (
     <div className="space-y-6 pb-6">
@@ -282,7 +299,7 @@ export default function ReviewPage() {
           Final Review
         </h2>
         <p className="text-muted-foreground">
-          Review all details before completing the daily needs gate entry
+          Review all details before completing the maintenance gate entry
         </p>
       </div>
 
@@ -402,14 +419,6 @@ export default function ReviewPage() {
                   <span className="text-sm">Tyre Condition OK</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <BooleanIcon value={gateEntry.security_check.fire_extinguisher_available} />
-                  <span className="text-sm">Fire Extinguisher Available</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <BooleanIcon value={gateEntry.security_check.alcohol_test_done} />
-                  <span className="text-sm">Alcohol Test Done</span>
-                </div>
-                <div className="flex items-center gap-2">
                   <BooleanIcon value={gateEntry.security_check.alcohol_test_passed} />
                   <span className="text-sm">Alcohol Test Passed</span>
                 </div>
@@ -428,84 +437,120 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* Daily Need Details */}
-        {dailyNeed && (
+        {/* Maintenance Details */}
+        {maintenanceDetails && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Daily Need Details
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Wrench className="h-5 w-5" />
+                  Maintenance Details
+                </span>
+                <UrgencyBadge level={maintenanceDetails.urgency_level} />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Material Info */}
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs">Category</Label>
-                  <p className="font-medium">{dailyNeed.category}</p>
+              {/* Urgency Warning */}
+              {(maintenanceDetails.urgency_level === 'CRITICAL' ||
+                maintenanceDetails.urgency_level === 'HIGH') && (
+                <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      {maintenanceDetails.urgency_level === 'CRITICAL' ? 'Critical' : 'High'} Priority
+                      Item
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      Please ensure expedited processing.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Material Name</Label>
-                  <p className="font-medium">{dailyNeed.material_name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Supplier / Vendor</Label>
-                  <p className="font-medium">{dailyNeed.supplier_name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Receiving Department</Label>
-                  <p className="font-medium">{dailyNeed.receiving_department}</p>
-                </div>
-              </div>
+              )}
 
-              {/* Quantity */}
+              {/* Work Order & Type */}
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <Label className="text-muted-foreground text-xs">Quantity</Label>
-                  <p className="font-medium text-lg text-primary">
-                    {dailyNeed.quantity} {dailyNeed.unit}
-                  </p>
+                  <Label className="text-muted-foreground text-xs">Work Order Number</Label>
+                  <p className="font-medium text-primary">{maintenanceDetails.work_order_number}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground text-xs">Supervisor</Label>
-                  <p className="font-medium">{dailyNeed.canteen_supervisor || '-'}</p>
+                  <Label className="text-muted-foreground text-xs">Maintenance Type</Label>
+                  <p className="font-medium">{maintenanceDetails.maintenance_type}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Supplier Name</Label>
+                  <p className="font-medium">{maintenanceDetails.supplier_name}</p>
                 </div>
               </div>
 
-              {/* Documentation */}
+              {/* Material Info */}
               <div className="border-t pt-4">
                 <h4 className="text-sm font-medium flex items-center gap-2 mb-4">
                   <FileText className="h-4 w-4" />
-                  Documentation & Contact
+                  Material Information
                 </h4>
-                <div className="grid gap-4 md:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground text-xs">Material Description</Label>
+                    <p className="font-medium">{maintenanceDetails.material_description}</p>
+                  </div>
+                  {maintenanceDetails.part_number && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Part Number / Model Number</Label>
+                      <p className="font-medium">{maintenanceDetails.part_number}</p>
+                    </div>
+                  )}
                   <div>
-                    <Label className="text-muted-foreground text-xs">Bill / Challan Number</Label>
-                    <p className="font-medium">{dailyNeed.bill_number || '-'}</p>
+                    <Label className="text-muted-foreground text-xs">Quantity</Label>
+                    <p className="font-medium text-lg text-primary">
+                      {maintenanceDetails.quantity} {maintenanceDetails.unit}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Documentation & Assignment */}
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium flex items-center gap-2 mb-4">
+                  <FileText className="h-4 w-4" />
+                  Documentation & Assignment
+                </h4>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {maintenanceDetails.invoice_number && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Invoice Number</Label>
+                      <p className="font-medium">{maintenanceDetails.invoice_number}</p>
+                    </div>
+                  )}
+                  {maintenanceDetails.equipment_id && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Equipment ID</Label>
+                      <p className="font-medium">{maintenanceDetails.equipment_id}</p>
+                    </div>
+                  )}
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Receiving Department</Label>
+                    <p className="font-medium">{maintenanceDetails.receiving_department}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground text-xs">Delivery Challan Number</Label>
-                    <p className="font-medium">{dailyNeed.delivery_challan_number || '-'}</p>
+                    <Label className="text-muted-foreground text-xs">Inward Time</Label>
+                    <p className="font-medium flex items-center gap-1">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      {formatDateTime(maintenanceDetails.inward_time)}
+                    </p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground text-xs">Vehicle / Person Name</Label>
-                    <p className="font-medium">{dailyNeed.vehicle_or_person_name || '-'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs flex items-center gap-1">
-                      <Phone className="h-3 w-3" />
-                      Contact Number
-                    </Label>
-                    <p className="font-medium">{dailyNeed.contact_number || '-'}</p>
+                    <Label className="text-muted-foreground text-xs">Created By</Label>
+                    <p className="font-medium">{maintenanceDetails.created_by}</p>
                   </div>
                 </div>
               </div>
 
               {/* Remarks */}
-              {dailyNeed.remarks && (
+              {maintenanceDetails.remarks && (
                 <div className="border-t pt-4">
                   <Label className="text-muted-foreground text-xs">Remarks / Notes</Label>
-                  <p className="text-sm">{dailyNeed.remarks}</p>
+                  <p className="text-sm">{maintenanceDetails.remarks}</p>
                 </div>
               )}
             </CardContent>
@@ -534,7 +579,7 @@ export default function ReviewPage() {
                   <Switch
                     checked={securityInspectionCompleted}
                     onChange={setSecurityInspectionCompleted}
-                    disabled={completeDailyNeedEntry.isPending}
+                    disabled={completeMaintenanceEntry.isPending}
                   />
                 </div>
               ) : (

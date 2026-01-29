@@ -21,11 +21,25 @@ const DNStep2Page = lazy(() => import('./pages/dailyneedspages/Step2Page'))
 const DNStep3Page = lazy(() => import('./pages/dailyneedspages/Step3Page'))
 const DNReviewPage = lazy(() => import('./pages/dailyneedspages/ReviewPage'))
 
+// Maintenance wizard pages
+const MaintenanceDashboard = lazy(() => import('./pages/MaintenanceDashboard'))
+const MaintenanceAllPage = lazy(() => import('./pages/MaintenanceAllPage'))
+const MNStep1Page = lazy(() => import('./pages/maintenancepages/Step1Page'))
+const MNStep2Page = lazy(() => import('./pages/maintenancepages/Step2Page'))
+const MNStep3Page = lazy(() => import('./pages/maintenancepages/Step3Page'))
+const MNReviewPage = lazy(() => import('./pages/maintenancepages/ReviewPage'))
+
+// Construction wizard pages
+const ConstructionDashboard = lazy(() => import('./pages/ConstructionDashboard'))
+const ConstructionAllPage = lazy(() => import('./pages/ConstructionAllPage'))
+const COStep1Page = lazy(() => import('./pages/constructionpages/Step1Page'))
+const COStep2Page = lazy(() => import('./pages/constructionpages/Step2Page'))
+const COStep3Page = lazy(() => import('./pages/constructionpages/Step3Page'))
+const COReviewPage = lazy(() => import('./pages/constructionpages/ReviewPage'))
+
 // Other gate entry type pages
 const DailyNeedsPage = lazy(() => import('./pages/DailyNeedsPage'))
 const DailyNeedsAllPage = lazy(() => import('./pages/DailyNeedsAllPage'))
-const MaintenancePage = lazy(() => import('./pages/MaintenancePage'))
-const ConstructionPage = lazy(() => import('./pages/ConstructionPage'))
 const ReturnableItemsPage = lazy(() => import('./pages/ReturnableItemsPage'))
 const VisitorPage = lazy(() => import('./pages/VisitorPage'))
 const EmployeePage = lazy(() => import('./pages/EmployeePage'))
@@ -171,17 +185,115 @@ export const gateModuleConfig: ModuleConfig = {
       element: <DNReviewPage />,
       layout: 'main',
     },
-    // Other Gate Entry Types
+    // Maintenance Dashboard
     {
       path: '/gate/maintenance',
-      element: <MaintenancePage />,
+      element: <MaintenanceDashboard />,
+      layout: 'main',
+    },
+    // Maintenance List
+    {
+      path: '/gate/maintenance/all',
+      element: <MaintenanceAllPage />,
+      layout: 'main',
+    },
+    // New Maintenance Entry - Steps
+    {
+      path: '/gate/maintenance/new',
+      element: <MNStep1Page />,
       layout: 'main',
     },
     {
-      path: '/gate/construction',
-      element: <ConstructionPage />,
+      path: '/gate/maintenance/new/step2',
+      element: <MNStep2Page />,
       layout: 'main',
     },
+    {
+      path: '/gate/maintenance/new/step3',
+      element: <MNStep3Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/maintenance/new/review',
+      element: <MNReviewPage />,
+      layout: 'main',
+    },
+    // Edit Maintenance Entry - Steps
+    {
+      path: '/gate/maintenance/edit/:entryId/step1',
+      element: <MNStep1Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/maintenance/edit/:entryId/step2',
+      element: <MNStep2Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/maintenance/edit/:entryId/step3',
+      element: <MNStep3Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/maintenance/edit/:entryId/review',
+      element: <MNReviewPage />,
+      layout: 'main',
+    },
+    // New Construction Entry - Steps
+    {
+      path: '/gate/construction/new',
+      element: <COStep1Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/construction/new/step2',
+      element: <COStep2Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/construction/new/step3',
+      element: <COStep3Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/construction/new/review',
+      element: <COReviewPage />,
+      layout: 'main',
+    },
+    // Edit Construction Entry - Steps
+    {
+      path: '/gate/construction/edit/:entryId/step1',
+      element: <COStep1Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/construction/edit/:entryId/step2',
+      element: <COStep2Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/construction/edit/:entryId/step3',
+      element: <COStep3Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/construction/edit/:entryId/review',
+      element: <COReviewPage />,
+      layout: 'main',
+    },
+    // Construction Dashboard
+    {
+      path: '/gate/construction',
+      element: <ConstructionDashboard />,
+      layout: 'main',
+    },
+    // Construction List
+    {
+      path: '/gate/construction/all',
+      element: <ConstructionAllPage />,
+      layout: 'main',
+    },
+    // Other Gate Entry Types
     {
       path: '/gate/returnable-items',
       element: <ReturnableItemsPage />,

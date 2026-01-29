@@ -15,7 +15,7 @@ import { useEntryId } from '../../hooks'
 import { useVehicleEntry } from '../../api/vehicleEntry.queries'
 import { useDailyNeed, useCreateDailyNeed } from '../../api/dailyNeed.queries'
 import { FillDataAlert, CategorySelect, DepartmentSelect } from '../../components'
-import { isNotFoundError as checkNotFoundError, getErrorMessage } from '../../utils'
+import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api'
 
@@ -77,6 +77,8 @@ export default function Step3Page() {
 
   // Check if error is "not found" error
   const isNotFoundError = checkNotFoundError(dailyNeedError)
+  // Check if error is a server error (5xx)
+  const hasServerError = checkServerError(dailyNeedError)
 
   // Form state
   const [formData, setFormData] = useState<DailyNeedsFormData>({
@@ -279,15 +281,15 @@ export default function Step3Page() {
         </div>
       </div>
 
-      {apiErrors.general && (
+      {(hasServerError || apiErrors.general) && (
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
-          {apiErrors.general}
+          {hasServerError ? getServerErrorMessage() : apiErrors.general}
         </div>
       )}
 
       {/* Show not found error with Fill Data button */}
-      {effectiveEditMode && isNotFoundError && !fillDataMode && (
+      {effectiveEditMode && isNotFoundError && !fillDataMode && !hasServerError && (
         <FillDataAlert
           message={getErrorMessage(dailyNeedError, 'Daily need entry does not exist')}
           onFillData={handleFillData}

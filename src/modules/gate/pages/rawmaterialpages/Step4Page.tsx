@@ -9,7 +9,7 @@ import { useVehicleEntry } from '../../api/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
 import { StepHeader, StepFooter, StepLoadingSpinner, FillDataAlert } from '../../components'
 import { WIZARD_CONFIG } from '../../constants'
-import { isNotFoundError as checkNotFoundError, getErrorMessage } from '../../utils'
+import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api'
 
 export default function Step4Page() {
@@ -198,6 +198,8 @@ export default function Step4Page() {
 
   // Check if error is "not found" error
   const isNotFoundError = checkNotFoundError(weighmentError)
+  // Check if error is a server error (5xx)
+  const hasServerError = checkServerError(weighmentError)
 
   // Check if weighment data doesn't exist (null means empty array was returned, or error means not found)
   const hasNoWeighmentData =
@@ -224,10 +226,12 @@ export default function Step4Page() {
       <StepHeader
         currentStep={currentStep}
         error={
-          apiErrors.general ||
-          (weighmentError && !isNotFoundError
-            ? getErrorMessage(weighmentError, 'Failed to load weighment data')
-            : null)
+          hasServerError
+            ? getServerErrorMessage()
+            : apiErrors.general ||
+              (weighmentError && !isNotFoundError
+                ? getErrorMessage(weighmentError, 'Failed to load weighment data')
+                : null)
         }
       />
 

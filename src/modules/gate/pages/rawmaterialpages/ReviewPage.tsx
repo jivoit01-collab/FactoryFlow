@@ -26,6 +26,7 @@ import {
 } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
+import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
 import { useGateEntryFullView, useCompleteGateEntry } from '../../api/gateEntryFullView.queries'
 import { securityCheckApi } from '../../api/securityCheck.api'
 import { useEntryId } from '../../hooks'
@@ -251,12 +252,15 @@ export default function ReviewPage() {
   }
 
   if (fetchError) {
+    const errorMessage = checkServerError(fetchError)
+      ? getServerErrorMessage()
+      : 'Failed to load gate entry details. Please try again.'
     return (
       <div className="space-y-6 pb-6">
         <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
-            <span>Failed to load gate entry details. Please try again.</span>
+            <span>{errorMessage}</span>
           </div>
         </div>
         <div className="flex justify-end">

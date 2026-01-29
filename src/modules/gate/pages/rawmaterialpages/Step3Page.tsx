@@ -26,6 +26,7 @@ import { useVehicleEntry } from '../../api/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
+import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api/types'
 import type { PurchaseOrder } from '../../api/po.api'
 
@@ -454,6 +455,9 @@ export default function Step3Page() {
     })()
   )
 
+  // Check if error is a server error (5xx)
+  const hasServerError = checkServerError(poReceiptsError)
+
   // Check if PO receipts data exists
   const hasPOReceiptsData = existingPOReceipts.length > 0
   // Check if there's no data (empty array or not found error)
@@ -500,8 +504,16 @@ export default function Step3Page() {
         </div>
       </div>
 
+      {/* Server error message */}
+      {hasServerError && (
+        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          {getServerErrorMessage()}
+        </div>
+      )}
+
       {/* Show Fill Data button when no PO receipts data exists */}
-      {hasNoPOReceiptsData && !fillDataMode && (
+      {hasNoPOReceiptsData && !fillDataMode && !hasServerError && (
         <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">

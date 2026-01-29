@@ -60,6 +60,30 @@ export function isNotFoundError(error: unknown): boolean {
 }
 
 /**
+ * Checks if an error is a server error (5xx).
+ */
+export function isServerError(error: unknown): boolean {
+  if (!error) return false
+
+  const apiError = error as ApiError
+
+  // Check status code for 5xx errors
+  const status = apiError.status || apiError.response?.status
+  if (status && status >= 500 && status < 600) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Gets a user-friendly message for server errors.
+ */
+export function getServerErrorMessage(): string {
+  return 'Something went wrong on the server. Please check your internet connection or try reloading the page.'
+}
+
+/**
  * Converts API error field errors to a record of field -> message.
  */
 export function getFieldErrors(error: unknown): Record<string, string> {

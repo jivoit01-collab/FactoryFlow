@@ -12,6 +12,7 @@ import {
   type VehicleSelection,
   type DriverSelection,
 } from '../../components'
+import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api/types'
 
 export default function Step1Page() {
@@ -23,9 +24,12 @@ export default function Step1Page() {
   const currentStep = 1
   const createVehicleEntry = useCreateVehicleEntry()
   const updateVehicleEntry = useUpdateVehicleEntry()
-  const { data: entryData, isLoading: isLoadingEntry } = useVehicleEntry(
+  const { data: entryData, isLoading: isLoadingEntry, error: entryError } = useVehicleEntry(
     entryId ? parseInt(entryId) : null
   )
+
+  // Check if error is a server error (5xx)
+  const hasServerError = checkServerError(entryError)
 
   // State to track if Update button has been clicked (enables editing)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- setUpdateMode will be used when Update button is implemented
@@ -250,6 +254,7 @@ export default function Step1Page() {
       isEditMode={isEditMode}
       canUpdate={canUpdate}
       updateMode={updateMode}
+      serverError={hasServerError ? getServerErrorMessage() : null}
       headerTitle="Daily Needs Entry"
     />
   )

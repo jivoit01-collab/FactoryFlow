@@ -136,15 +136,15 @@ export default function Step2Page() {
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/daily-needs/edit/${entryId}/step1`)
+      navigate(`/gate/maintenance/edit/${entryId}/step1`)
     } else {
-      navigate('/gate/daily-needs/new')
+      navigate('/gate/maintenance/new')
     }
   }
 
   const handleCancel = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    navigate('/gate/daily-needs')
+    navigate('/gate/maintenance')
   }
 
   const handleFillData = () => {
@@ -169,9 +169,9 @@ export default function Step2Page() {
       return
     }
 
-    // In edit mode (and not fill data mode and not update mode), just navigate without API call
+    // In edit mode (and not fill data mode and not update mode), navigate to step 3
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/daily-needs/edit/${entryId}/step3`)
+      navigate(`/gate/maintenance/edit/${entryId}/step3`)
       return
     }
 
@@ -225,9 +225,9 @@ export default function Step2Page() {
       // Navigate to step 3
       setIsNavigating(true)
       if (isEditMode) {
-        navigate(`/gate/daily-needs/edit/${entryId}/step3`)
+        navigate(`/gate/maintenance/edit/${entryId}/step3`)
       } else {
-        navigate(`/gate/daily-needs/new/step3?entryId=${entryId}`)
+        navigate(`/gate/maintenance/new/step3?entryId=${entryId}`)
       }
     } catch (error) {
       const apiError = error as ApiError
@@ -266,7 +266,7 @@ export default function Step2Page() {
       onFillData={handleFillData}
       fillDataMessage={getErrorMessage(securityCheckError, 'Security check not found')}
       serverError={hasServerError ? getServerErrorMessage() : null}
-      headerTitle="Daily Needs Entry"
+      headerTitle="Maintenance Entry"
     />
   )
 }

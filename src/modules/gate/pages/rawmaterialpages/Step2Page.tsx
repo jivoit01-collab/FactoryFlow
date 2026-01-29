@@ -6,7 +6,7 @@ import { useVehicleEntry } from '../../api/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
 import { SecurityCheckFormShell, type SecurityCheckFormData } from '../../components'
 import { WIZARD_CONFIG } from '../../constants'
-import { isNotFoundError as checkNotFoundError, getErrorMessage } from '../../utils'
+import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api'
 
 export default function Step2Page() {
@@ -35,6 +35,8 @@ export default function Step2Page() {
 
   // Check if error is "not found" error
   const isNotFoundError = checkNotFoundError(securityCheckError)
+  // Check if error is a server error (5xx)
+  const hasServerError = checkServerError(securityCheckError)
 
   // Fields are read-only when:
   // 1. In edit mode AND update mode is not active AND there's no not found error, OR
@@ -264,6 +266,7 @@ export default function Step2Page() {
       showFillDataAlert={effectiveEditMode && isNotFoundError && !fillDataMode}
       onFillData={handleFillData}
       fillDataMessage={getErrorMessage(securityCheckError, 'Security check not found')}
+      serverError={hasServerError ? getServerErrorMessage() : null}
       headerTitle="Material Inward"
     />
   )

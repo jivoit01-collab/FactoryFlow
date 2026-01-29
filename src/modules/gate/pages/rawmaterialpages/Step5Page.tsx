@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
+import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api/types'
 import { usePOReceipts } from '../../api/poReceipt.queries'
 import { qualityControlApi, type QualityControl } from '../../api/qualityControl.api'
@@ -337,11 +338,14 @@ export default function Step5Page() {
   }
 
   if (poReceiptsError) {
+    const errorMessage = checkServerError(poReceiptsError)
+      ? getServerErrorMessage()
+      : 'Failed to load PO receipts. Please go back and try again.'
     return (
       <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
-          <span>Failed to load PO receipts. Please go back and try again.</span>
+          <span>{errorMessage}</span>
         </div>
       </div>
     )

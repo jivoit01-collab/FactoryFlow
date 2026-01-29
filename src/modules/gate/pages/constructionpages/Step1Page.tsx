@@ -20,7 +20,7 @@ export default function Step1Page() {
   const queryClient = useQueryClient()
   const { entryId } = useParams<{ entryId?: string }>()
   const isEditMode = !!entryId
-  const totalSteps = 5
+  const totalSteps = 3
   const currentStep = 1
   const createVehicleEntry = useCreateVehicleEntry()
   const updateVehicleEntry = useUpdateVehicleEntry()
@@ -129,13 +129,13 @@ export default function Step1Page() {
 
   const handleCancel = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    navigate('/gate/raw-materials')
+    navigate('/gate/construction')
   }
 
   const handleNext = async () => {
     // In edit mode, navigate to next step without API call (unless in updateMode)
     if (isEditMode && !updateMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step2`)
+      navigate(`/gate/construction/edit/${entryId}/step2`)
       return
     }
 
@@ -167,12 +167,12 @@ export default function Step1Page() {
         vehicle: formData.vehicleId,
         driver: formData.driverId,
         remarks: formData.remarks || undefined,
-        entry_type: 'RAW_MATERIAL',
+        entry_type: 'CONSTRUCTION',
       })
 
       // Navigate to step 2 with entry ID
       setIsNavigating(true)
-      navigate(`/gate/raw-materials/new/step2?entryId=${result.id}`)
+      navigate(`/gate/construction/new/step2?entryId=${result.id}`)
     } catch (error) {
       const apiError = error as ApiError
       if (apiError.errors) {
@@ -216,7 +216,7 @@ export default function Step1Page() {
 
       // Navigate to step 2
       setIsNavigating(true)
-      navigate(`/gate/raw-materials/edit/${entryId}/step2`)
+      navigate(`/gate/construction/edit/${entryId}/step2`)
     } catch (error) {
       const apiError = error as ApiError
       if (apiError.errors) {
@@ -255,7 +255,7 @@ export default function Step1Page() {
       canUpdate={canUpdate}
       updateMode={updateMode}
       serverError={hasServerError ? getServerErrorMessage() : null}
-      headerTitle="Material Inward"
+      headerTitle="Construction Entry"
     />
   )
 }
