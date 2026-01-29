@@ -7,6 +7,7 @@ import { indexedDBService } from '@/core/auth/services/indexedDb.service'
 import { AUTH_ROUTES } from '@/config/constants'
 import { ROUTES } from '@/config/routes.config'
 import { ensureValidToken } from '@/core/auth/utils/tokenRefresh.util'
+import { PageLoadError } from '@/shared/components/PageLoadError'
 
 /**
  * LoadingUserPage component
@@ -66,8 +67,6 @@ export default function LoadingUserPage() {
         // Navigate to the intended URL (or dashboard if none)
         navigate(from, { replace: true })
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load user data')
-
         // If token is invalid (401), redirect to login
         if (
           err instanceof Error &&
@@ -76,10 +75,8 @@ export default function LoadingUserPage() {
           await indexedDBService.clearAuthData()
           navigate(AUTH_ROUTES.login, { replace: true })
         } else {
-          // Other errors - still navigate to intended URL after delay
-          setTimeout(() => {
-            navigate(from, { replace: true })
-          }, 2000)
+          // Other errors (timeout, network issues) - show error page
+          setError(err instanceof Error ? err.message : 'Failed to load user data')
         }
       } finally {
         loadingRef.current = false
@@ -88,6 +85,14 @@ export default function LoadingUserPage() {
 
     checkAndLoadUser()
   }, [dispatch, navigate])
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <PageLoadError />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen items-center justify-center">
@@ -99,13 +104,6 @@ export default function LoadingUserPage() {
             Please wait while we fetch your permissions and company information
           </p>
         </div>
-        {error && (
-          <div className="mt-4 max-w-md rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            <p className="font-medium">Error loading user data</p>
-            <p className="text-xs text-destructive/80">{error}</p>
-            <p className="mt-2 text-xs text-muted-foreground">Redirecting to dashboard...</p>
-          </div>
-        )}
       </div>
     </div>
   )
