@@ -37,13 +37,19 @@ const COStep2Page = lazy(() => import('./pages/constructionpages/Step2Page'))
 const COStep3Page = lazy(() => import('./pages/constructionpages/Step3Page'))
 const COReviewPage = lazy(() => import('./pages/constructionpages/ReviewPage'))
 
+// Person Gate-In pages (Visitor/Labour)
+const PersonGateInDashboard = lazy(() => import('./pages/persongateinpages/PersonGateInDashboard'))
+const PersonGateInAllPage = lazy(() => import('./pages/persongateinpages/PersonGateInAllPage'))
+const InsideListPage = lazy(() => import('./pages/persongateinpages/InsideListPage'))
+const NewEntryPage = lazy(() => import('./pages/persongateinpages/NewEntryPage'))
+const EntryDetailPage = lazy(() => import('./pages/persongateinpages/EntryDetailPage'))
+const VisitorsPage = lazy(() => import('./pages/persongateinpages/VisitorsPage'))
+const LaboursPage = lazy(() => import('./pages/persongateinpages/LaboursPage'))
+const ContractorsPage = lazy(() => import('./pages/persongateinpages/ContractorsPage'))
+
 // Other gate entry type pages
 const DailyNeedsPage = lazy(() => import('./pages/DailyNeedsPage'))
 const DailyNeedsAllPage = lazy(() => import('./pages/dailyneedspages/DailyNeedsAllPage'))
-const ReturnableItemsPage = lazy(() => import('./pages/ReturnableItemsPage'))
-const VisitorPage = lazy(() => import('./pages/VisitorPage'))
-const EmployeePage = lazy(() => import('./pages/EmployeePage'))
-const ContractorLaborPage = lazy(() => import('./pages/ContractorLaborPage'))
 
 /**
  * Gate module configuration
@@ -293,25 +299,45 @@ export const gateModuleConfig: ModuleConfig = {
       element: <ConstructionAllPage />,
       layout: 'main',
     },
-    // Other Gate Entry Types
+    // Person Gate-In (Visitor/Labour) Routes
     {
-      path: '/gate/returnable-items',
-      element: <ReturnableItemsPage />,
+      path: '/gate/visitor-labour',
+      element: <PersonGateInDashboard />,
       layout: 'main',
     },
     {
-      path: '/gate/visitor',
-      element: <VisitorPage />,
+      path: '/gate/visitor-labour/all',
+      element: <PersonGateInAllPage />,
       layout: 'main',
     },
     {
-      path: '/gate/employee',
-      element: <EmployeePage />,
+      path: '/gate/visitor-labour/inside',
+      element: <InsideListPage />,
       layout: 'main',
     },
     {
-      path: '/gate/contractor-labor',
-      element: <ContractorLaborPage />,
+      path: '/gate/visitor-labour/new',
+      element: <NewEntryPage />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/visitor-labour/entry/:entryId',
+      element: <EntryDetailPage />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/visitor-labour/visitors',
+      element: <VisitorsPage />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/visitor-labour/labours',
+      element: <LaboursPage />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/visitor-labour/contractors',
+      element: <ContractorsPage />,
       layout: 'main',
     },
   ],
@@ -340,20 +366,8 @@ export const gateModuleConfig: ModuleConfig = {
           title: 'Construction (Civil/Building Work)',
         },
         {
-          path: '/gate/returnable-items',
-          title: 'Returnable Items (Tools/Equipments)',
-        },
-        {
-          path: '/gate/visitor',
-          title: 'Visitor',
-        },
-        {
-          path: '/gate/employee',
-          title: 'Employee',
-        },
-        {
-          path: '/gate/contractor-labor',
-          title: 'Contractor/Labor',
+          path: '/gate/visitor-labour',
+          title: 'Visitor/Labour',
         },
       ],
     },

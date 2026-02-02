@@ -6,9 +6,6 @@ import {
   UtensilsCrossed,
   Wrench,
   Building2,
-  RotateCcw,
-  User,
-  Users,
   HardHat,
   Clock,
 } from 'lucide-react'
@@ -62,31 +59,10 @@ const gateModules: GateModuleCard[] = [
     color: 'text-orange-600',
   },
   {
-    title: 'Returnable Items (Tools /Equipments)',
-    value: '0',
-    icon: <RotateCcw className="h-5 w-5" />,
-    route: ROUTES.GATE.children?.RETURNABLE_ITEMS.path || '/gate/returnable-items',
-    color: 'text-teal-600',
-  },
-  {
-    title: 'Visitor',
-    value: '0',
-    icon: <User className="h-5 w-5" />,
-    route: ROUTES.GATE.children?.VISITOR.path || '/gate/visitor',
-    color: 'text-green-600',
-  },
-  {
-    title: 'Employee',
-    value: '0',
-    icon: <Users className="h-5 w-5" />,
-    route: ROUTES.GATE.children?.EMPLOYEE.path || '/gate/employee',
-    color: 'text-indigo-600',
-  },
-  {
-    title: 'Contractor/Labor',
+    title: 'Visitor/Labour',
     value: '0',
     icon: <HardHat className="h-5 w-5" />,
-    route: ROUTES.GATE.children?.CONTRACTOR_LABOR.path || '/gate/contractor-labor',
+    route: ROUTES.GATE.children?.CONTRACTOR_LABOR.path || '/gate/visitor-labour',
     color: 'text-red-600',
   },
 ]

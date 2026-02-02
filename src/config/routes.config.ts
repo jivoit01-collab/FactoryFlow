@@ -135,21 +135,9 @@ export const ROUTES = {
         path: '/gate/construction',
         title: 'Construction (Civil/Building Work)',
       },
-      RETURNABLE_ITEMS: {
-        path: '/gate/returnable-items',
-        title: 'Returnable Items (Tools /Equipments)',
-      },
-      VISITOR: {
-        path: '/gate/visitor',
-        title: 'Visitor',
-      },
-      EMPLOYEE: {
-        path: '/gate/employee',
-        title: 'Employee',
-      },
       CONTRACTOR_LABOR: {
-        path: '/gate/contractor-labor',
-        title: 'Contractor/Labor',
+        path: '/gate/visitor-labour',
+        title: 'Visitor/Labour',
       },
     },
   },
