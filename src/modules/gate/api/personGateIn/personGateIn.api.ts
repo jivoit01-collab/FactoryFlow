@@ -1,5 +1,11 @@
 import { apiClient } from '@/core/api'
 
+// ===== Person Type IDs =====
+export const PERSON_TYPE_IDS = {
+  LABOUR: 1,
+  VISITOR: 3,
+} as const
+
 // ===== Master Types =====
 
 export interface PersonType {
@@ -251,6 +257,7 @@ export interface EntryFilters {
   to_date?: string
   status?: string
   person_type?: number
+  gate_in?: number
   search?: string
 }
 

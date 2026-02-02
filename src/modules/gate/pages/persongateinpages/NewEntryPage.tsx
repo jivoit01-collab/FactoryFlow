@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, User, Users } from 'lucide-react'
 import {
@@ -10,12 +10,9 @@ import {
   CardTitle,
   Label,
 } from '@/shared/components/ui'
-import {
-  usePersonTypes,
-  useCreatePersonEntry,
-} from '../../api/personGateIn/personGateIn.queries'
+import { useCreatePersonEntry } from '../../api/personGateIn/personGateIn.queries'
 import { VisitorSelect, LabourSelect, GateSelect } from '../../components/persongatein'
-import type { Visitor, Labour, Gate, CreateEntryRequest } from '../../api/personGateIn/personGateIn.api'
+import { PERSON_TYPE_IDS, type Visitor, type Labour, type Gate, type CreateEntryRequest } from '../../api/personGateIn/personGateIn.api'
 
 type PersonTypeValue = 'visitor' | 'labour'
 
@@ -37,7 +34,7 @@ export default function NewEntryPage() {
   // Form state
   const [personType, setPersonType] = useState<PersonTypeValue>(initialType || 'visitor')
   const [formData, setFormData] = useState<FormData>({
-    person_type: null,
+    person_type: initialType === 'labour' ? PERSON_TYPE_IDS.LABOUR : PERSON_TYPE_IDS.VISITOR,
     visitor: null,
     labour: null,
     gate_in: null,
@@ -49,20 +46,7 @@ export default function NewEntryPage() {
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
 
   // API hooks
-  const { data: personTypes = [] } = usePersonTypes()
   const createEntryMutation = useCreatePersonEntry()
-
-  // Set person type ID when person types load
-  useEffect(() => {
-    if (personTypes.length > 0) {
-      const type = personTypes.find(
-        (pt) => pt.name.toLowerCase() === personType.toLowerCase()
-      )
-      if (type) {
-        setFormData((prev) => ({ ...prev, person_type: type.id }))
-      }
-    }
-  }, [personTypes, personType])
 
   // Handle person type change
   const handlePersonTypeChange = (type: PersonTypeValue) => {
@@ -70,6 +54,7 @@ export default function NewEntryPage() {
     setSelectedPerson(null)
     setFormData((prev) => ({
       ...prev,
+      person_type: type === 'labour' ? PERSON_TYPE_IDS.LABOUR : PERSON_TYPE_IDS.VISITOR,
       visitor: null,
       labour: null,
     }))

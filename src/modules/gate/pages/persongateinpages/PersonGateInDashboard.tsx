@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
 import { usePersonGateInDashboard } from '../../api/personGateIn/personGateIn.queries'
+import { PERSON_TYPE_IDS } from '../../api/personGateIn/personGateIn.api'
 
 // Status badge styling
 const getStatusBadgeClass = (status: string) => {
@@ -88,67 +89,41 @@ export default function PersonGateInDashboard() {
         </div>
       ) : (
         <>
-          {/* Current Status Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card
-              className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/gate/visitor-labour/inside')}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+          {/* Current Status */}
+          <Card
+            className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/gate/visitor-labour/inside')}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {dashboard?.current.total_inside ?? 0}
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                    Total Inside Now
                   </span>
                 </div>
-                <p className="mt-1 text-sm font-medium text-green-600 dark:text-green-400">
-                  Total Inside Now
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                    {dashboard?.current.visitors_inside ?? 0}
+                <span className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  {dashboard?.current.total_inside ?? 0}
+                </span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800 flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <span>
+                    <span className="font-semibold text-purple-600 dark:text-purple-400">{dashboard?.current.visitors_inside ?? 0}</span> Visitors
+                  </span>
+                  <span>
+                    <span className="font-semibold text-orange-600 dark:text-orange-400">{dashboard?.current.labours_inside ?? 0}</span> Labours
                   </span>
                 </div>
-                <p className="mt-1 text-sm font-medium text-purple-600 dark:text-purple-400">
-                  Visitors Inside
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {dashboard?.current.labours_inside ?? 0}
+                {(dashboard?.current.long_duration_count ?? 0) > 0 && (
+                  <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    <span className="font-semibold">{dashboard?.current.long_duration_count}</span> Long Duration
                   </span>
-                </div>
-                <p className="mt-1 text-sm font-medium text-orange-600 dark:text-orange-400">
-                  Labours Inside
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                    {dashboard?.current.long_duration_count ?? 0}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm font-medium text-amber-600 dark:text-amber-400">
-                  Long Duration
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Recent Entries - Shown at top, limited to 3 */}
           <div>
@@ -219,23 +194,35 @@ export default function PersonGateInDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="text-center p-3 rounded-lg bg-muted/50">
+                <div
+                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => navigate('/gate/visitor-labour/all')}
+                >
                   <div className="text-2xl font-bold">{dashboard?.today.total_entries ?? 0}</div>
                   <div className="text-xs text-muted-foreground">Total Entries</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
+                <div
+                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => navigate(`/gate/visitor-labour/all?person_type=${PERSON_TYPE_IDS.VISITOR}`)}
+                >
                   <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {dashboard?.today.visitors ?? 0}
                   </div>
                   <div className="text-xs text-muted-foreground">Visitors</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
+                <div
+                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => navigate(`/gate/visitor-labour/all?person_type=${PERSON_TYPE_IDS.LABOUR}`)}
+                >
                   <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                     {dashboard?.today.labours ?? 0}
                   </div>
                   <div className="text-xs text-muted-foreground">Labours</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
+                <div
+                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => navigate('/gate/visitor-labour/all?status=OUT')}
+                >
                   <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {dashboard?.today.exits ?? 0}
                   </div>
@@ -261,7 +248,8 @@ export default function PersonGateInDashboard() {
                     {dashboard.gate_wise.map((gate) => (
                       <div
                         key={gate.id}
-                        className="flex items-center justify-between p-2 rounded-lg bg-muted/30"
+                        className="flex items-center justify-between p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted transition-colors"
+                        onClick={() => navigate(`/gate/visitor-labour/all?gate_in=${gate.id}&status=IN`)}
                       >
                         <span className="text-sm font-medium">{gate.name}</span>
                         <span className="text-sm font-bold text-green-600 dark:text-green-400">
@@ -288,7 +276,8 @@ export default function PersonGateInDashboard() {
                     {dashboard.person_type_wise.map((type) => (
                       <div
                         key={type.id}
-                        className="flex items-center justify-between p-2 rounded-lg bg-muted/30"
+                        className="flex items-center justify-between p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted transition-colors"
+                        onClick={() => navigate(`/gate/visitor-labour/all?person_type=${type.id}`)}
                       >
                         <span className="text-sm font-medium">{type.name}</span>
                         <div className="flex items-center gap-4">

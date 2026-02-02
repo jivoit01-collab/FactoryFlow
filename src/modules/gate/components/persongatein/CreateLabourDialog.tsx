@@ -76,6 +76,7 @@ export function CreateLabourDialog({
         id_proof_no: formData.id_proof_no || undefined,
         skill_type: formData.skill_type || undefined,
         permit_valid_till: formData.permit_valid_till || undefined,
+        is_active: true,
       })
       onOpenChange(false)
       onSuccess?.(result)

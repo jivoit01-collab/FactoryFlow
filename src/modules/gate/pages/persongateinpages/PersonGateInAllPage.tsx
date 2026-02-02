@@ -12,9 +12,10 @@ export default function PersonGateInAllPage() {
   const [search, setSearch] = useState('')
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
 
-  // Get status filter from URL
+  // Get filters from URL
   const statusFilter = searchParams.get('status') || undefined
   const personTypeFilter = searchParams.get('person_type') || undefined
+  const gateInFilter = searchParams.get('gate_in') || undefined
 
   // Convert date range to API params
   const apiParams = useMemo(() => {
@@ -23,8 +24,9 @@ export default function PersonGateInAllPage() {
       to_date: dateRange.to,
       status: statusFilter,
       person_type: personTypeFilter ? Number(personTypeFilter) : undefined,
+      gate_in: gateInFilter ? Number(gateInFilter) : undefined,
     }
-  }, [dateRange, statusFilter, personTypeFilter])
+  }, [dateRange, statusFilter, personTypeFilter, gateInFilter])
 
   const { data: entries = [], isLoading } = usePersonEntries(apiParams)
 
