@@ -31,6 +31,13 @@ export const API_ENDPOINTS = {
     CREATE: '/quality-check',
     UPDATE: (id: string) => `/quality-check/${id}`,
     DELETE: (id: string) => `/quality-check/${id}`,
+    // QC Module specific endpoints
+    ITEMS: '/quality-check/items/',
+    SUMMARY: '/quality-check/summary/',
+    START: (itemId: number) => `/quality-check/items/${itemId}/start/`,
+    SUBMIT: (itemId: number) => `/quality-check/items/${itemId}/submit/`,
+    INSPECTION: (itemId: number) => `/quality-check/items/${itemId}/inspection/`,
+    UPLOAD_ATTACHMENT: (itemId: number) => `/quality-check/items/${itemId}/attachments/`,
   },
   // Vehicle Management
   VEHICLE: {

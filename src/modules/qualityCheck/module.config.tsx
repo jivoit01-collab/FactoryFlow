@@ -3,30 +3,25 @@ import { ClipboardCheck } from 'lucide-react'
 import type { ModuleConfig } from '@/core/types'
 
 // Lazy load quality check pages
-const QualityCheckListPage = lazy(() => import('./pages/QualityCheckListPage'))
-const QualityCheckDetailPage = lazy(() => import('./pages/QualityCheckDetailPage'))
+const QCDashboardPage = lazy(() => import('./pages/QCDashboardPage'))
+const QCInspectionPage = lazy(() => import('./pages/QCInspectionPage'))
 
 /**
- * Quality Check module configuration
+ * Factory Quality Check module configuration
+ * QC Inspection for Raw Materials & Packaging Materials
  */
 export const qualityCheckModuleConfig: ModuleConfig = {
   name: 'qualityCheck',
   routes: [
     {
       path: '/quality-check',
-      element: <QualityCheckListPage />,
+      element: <QCDashboardPage />,
       permissions: ['qualitycheck.view_qualitycheckentry'],
       layout: 'main',
     },
     {
-      path: '/quality-check/new',
-      element: <QualityCheckDetailPage />,
-      permissions: ['qualitycheck.add_qualitycheckentry'],
-      layout: 'main',
-    },
-    {
       path: '/quality-check/:id',
-      element: <QualityCheckDetailPage />,
+      element: <QCInspectionPage />,
       permissions: ['qualitycheck.view_qualitycheckentry'],
       layout: 'main',
     },
@@ -34,7 +29,7 @@ export const qualityCheckModuleConfig: ModuleConfig = {
   navigation: [
     {
       path: '/quality-check',
-      title: 'Quality Check',
+      title: 'Factory QC',
       icon: ClipboardCheck,
       permissions: ['qualitycheck.view_qualitycheckentry'],
       modulePrefix: 'qualitycheck',

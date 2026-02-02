@@ -38,5 +38,8 @@ export const QUERY_KEYS = {
       [...QUERY_KEYS.qualityCheck.lists(), filters] as const,
     details: () => [...QUERY_KEYS.qualityCheck.all, 'detail'] as const,
     detail: (id: string) => [...QUERY_KEYS.qualityCheck.details(), id] as const,
+    items: () => [...QUERY_KEYS.qualityCheck.all, 'items'] as const,
+    summary: () => [...QUERY_KEYS.qualityCheck.all, 'summary'] as const,
+    inspection: (id: number) => [...QUERY_KEYS.qualityCheck.all, 'inspection', id] as const,
   },
 } as const

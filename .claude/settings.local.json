@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(wc -l \"C:\\\\Users\\\\Rohit Rathod\\\\Desktop\\\\Devlopment\\\\FactoryFlow\\\\src\"/**/*.tsx)"
     ]
   }
 }
