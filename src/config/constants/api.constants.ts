@@ -29,6 +29,7 @@ export const API_ENDPOINTS = {
     LIST: '/quality-check',
     DETAIL: (id: string) => `/quality-check/${id}`,
     CREATE: '/quality-check',
+    CREATE_FOR_ENTRY: (entryId: number) => `/quality-check/gate-entries/${entryId}/`,
     UPDATE: (id: string) => `/quality-check/${id}`,
     DELETE: (id: string) => `/quality-check/${id}`,
   },

@@ -32,8 +32,7 @@ export default function Step1Page() {
   const hasServerError = checkServerError(entryError)
 
   // State to track if Update button has been clicked (enables editing)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- setUpdateMode will be used when Update button is implemented
-  const [updateMode, setUpdateMode] = useState(false)
+  const [updateMode, _setUpdateMode] = useState(false)
 
   // State to keep button disabled after API success until navigation completes
   const [isNavigating, setIsNavigating] = useState(false)

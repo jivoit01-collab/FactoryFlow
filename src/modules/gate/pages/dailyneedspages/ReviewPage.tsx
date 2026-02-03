@@ -564,7 +564,7 @@ export default function ReviewPage() {
               onClick={handleComplete}
               disabled={
                 isCompleting ||
-                (gateEntry?.security_check &&
+                !!(gateEntry?.security_check &&
                   !gateEntry?.security_check?.is_submitted &&
                   !securityInspectionCompleted)
               }

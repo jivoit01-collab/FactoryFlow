@@ -21,7 +21,7 @@ export interface QualityCheck {
 export const qualityCheckApi = {
   async create(entryId: number, data: CreateQualityCheckRequest): Promise<QualityCheck> {
     const response = await apiClient.post<QualityCheck>(
-      API_ENDPOINTS.QUALITY_CHECK.CREATE(entryId),
+      API_ENDPOINTS.QUALITY_CHECK.CREATE_FOR_ENTRY(entryId),
       data
     )
     return response.data
