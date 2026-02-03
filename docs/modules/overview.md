@@ -9,10 +9,15 @@ The application follows a feature-based module architecture where each business 
 ```
 src/modules/
 ├── auth/              # Authentication and user management
-├── dashboard/         # Main dashboard
+├── dashboard/         # Main dashboard and overview
 ├── gate/              # Gate entry management (primary module)
-├── gateIn/            # Gate entry operations
-└── qualityCheck/      # Quality control (placeholder)
+│   ├── Raw Materials  # Raw material deliveries workflow
+│   ├── Daily Needs    # Food and consumables entries
+│   ├── Construction   # Construction material entries
+│   ├── Maintenance    # Maintenance and spare parts
+│   └── Visitor/Labour # Person gate-in (visitors and labours)
+├── gateIn/            # Generic gate entry operations
+└── qualityCheck/      # Quality control management
 ```
 
 ## Module Structure Pattern
@@ -150,7 +155,7 @@ See: [Authentication Module Documentation](./auth.md)
 
 ### 2. Gate Module (`/modules/gate/`)
 
-The primary business module for managing gate entries.
+The primary business module for managing all gate entry operations.
 
 **Key Features:**
 - Multi-step raw material entry workflow
@@ -158,37 +163,71 @@ The primary business module for managing gate entries.
 - Purchase order integration
 - Weighment tracking
 - Quality control integration
+- **Visitor/Labour Management** - Person gate-in tracking
+- Daily needs, construction, and maintenance entries
 
 **Routes:**
-- `/gate/raw-materials` - Entry list/dashboard
+- `/gate` - Gate dashboard
+- `/gate/raw-materials` - Raw materials dashboard
+- `/gate/raw-materials/all` - All raw material entries
 - `/gate/raw-materials/new` - Multi-step entry creation
-- `/gate/raw-materials/edit/:id` - Edit existing entry
+- `/gate/daily-needs` - Daily needs entries
+- `/gate/construction` - Construction material entries
+- `/gate/maintenance` - Maintenance entries
+- `/gate/visitor-labour` - Visitor/Labour dashboard
+- `/gate/visitor-labour/new` - New visitor/labour entry
+- `/gate/visitor-labour/all` - All visitor/labour entries
+- `/gate/visitor-labour/visitors` - Manage visitors
+- `/gate/visitor-labour/labours` - Manage labours
 
 See: [Gate Module Documentation](./gate.md)
 
 ### 3. Dashboard Module (`/modules/dashboard/`)
 
-Main application dashboard.
+Main application dashboard providing an overview of factory operations.
 
 **Key Features:**
-- Overview statistics
+- Overview statistics and KPIs
 - Quick access to common actions
 - Recent activity feed
+- Module navigation
 
 **Routes:**
 - `/` - Main dashboard
 
-### 4. Quality Check Module (`/modules/qualityCheck/`)
+See: [Dashboard Module Documentation](./dashboard.md)
 
-Quality control management (in development).
+### 4. Gate Entry Module (`/modules/gateIn/`)
+
+Generic gate entry operations for tracking entries and exits.
+
+**Key Features:**
+- Gate entry logging
+- Entry/exit tracking
+- Status management
+- Entry history
+
+**Routes:**
+- `/gate-in` - Gate entry list
+- `/gate-in/:id` - Entry details
+
+See: [Gate Entry Module Documentation](./gateIn.md)
+
+### 5. Quality Check Module (`/modules/qualityCheck/`)
+
+Quality control management for incoming materials.
 
 **Key Features:**
 - Quality parameter entry
 - Pass/fail determination
 - Quality reports
+- Integration with gate entries
 
 **Routes:**
-- `/quality-check` - Quality check management
+- `/quality-check` - Quality check list
+- `/quality-check/:id` - Quality check details
+
+See: [Quality Check Module Documentation](./qualityCheck.md)
 
 ## Creating a New Module
 
@@ -381,5 +420,8 @@ feature.types.ts
 
 - [Authentication Module](./auth.md)
 - [Gate Module](./gate.md)
+- [Dashboard Module](./dashboard.md)
+- [Gate Entry Module](./gateIn.md)
+- [Quality Check Module](./qualityCheck.md)
 - [Architecture Overview](../architecture/overview.md)
 - [Folder Structure](../architecture/folder-structure.md)

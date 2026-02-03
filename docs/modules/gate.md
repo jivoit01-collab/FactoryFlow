@@ -7,15 +7,28 @@ The Gate module is the primary business feature of the Factory Management System
 ```
 src/modules/gate/
 ├── pages/
-│   ├── RawMaterialsDashboard.tsx     # Entry statistics
-│   ├── RawMaterialsPage.tsx          # Entry list with filters
-│   └── rawmaterialpages/             # Multi-step entry workflow
-│       ├── Step1Page.tsx             # Driver, Transporter, Vehicle
-│       ├── Step2Page.tsx             # Purchase Order
-│       ├── Step3Page.tsx             # PO Receipt
-│       ├── Step4Page.tsx             # Weighment
-│       ├── Step5Page.tsx             # Quality Control
-│       └── ReviewPage.tsx            # Final Review
+│   ├── GateDashboardPage.tsx         # Main gate dashboard
+│   ├── RawMaterialsPage.tsx          # Raw materials entry list
+│   ├── DailyNeedsPage.tsx            # Daily needs entries
+│   ├── ConstructionPage.tsx          # Construction entries
+│   ├── ContractorLaborPage.tsx       # Contractor/Labor redirect
+│   ├── rawmaterialpages/             # Multi-step entry workflow
+│   │   ├── Step1Page.tsx             # Driver, Transporter, Vehicle
+│   │   ├── Step2Page.tsx             # Purchase Order
+│   │   ├── Step3Page.tsx             # PO Receipt
+│   │   ├── Step4Page.tsx             # Weighment
+│   │   ├── Step5Page.tsx             # Quality Control
+│   │   └── ReviewPage.tsx            # Final Review
+│   ├── dailyneedspages/              # Daily needs workflow
+│   ├── constructionpages/            # Construction workflow
+│   ├── maintenancepages/             # Maintenance workflow
+│   └── persongateinpages/            # Visitor/Labour management
+│       ├── PersonGateInDashboard.tsx # Dashboard with stats
+│       ├── PersonGateInAllPage.tsx   # All entries list
+│       ├── NewEntryPage.tsx          # Create new entry
+│       ├── InsidePage.tsx            # Currently inside list
+│       ├── VisitorsPage.tsx          # Visitor management
+│       └── LaboursPage.tsx           # Labour management
 ├── api/
 │   ├── driver.api.ts                 # Driver API functions
 │   ├── driver.queries.ts             # Driver React Query hooks
@@ -25,16 +38,10 @@ src/modules/gate/
 │   ├── vehicle.queries.ts
 │   ├── vehicleEntry.api.ts
 │   ├── vehicleEntry.queries.ts
-│   ├── po.queries.ts
-│   ├── poReceipt.api.ts
-│   ├── poReceipt.queries.ts
-│   ├── securityCheck.api.ts
-│   ├── securityCheck.queries.ts
-│   ├── weighment.api.ts
-│   ├── weighment.queries.ts
-│   ├── qualityControl.api.ts
-│   ├── qualityControl.queries.ts
-│   └── gateEntryFullView.api.ts
+│   ├── personGateIn/                 # Person gate-in API
+│   │   ├── personGateIn.api.ts       # API functions & types
+│   │   └── personGateIn.queries.ts   # React Query hooks
+│   └── [other API files]
 ├── components/
 │   ├── DriverSelect.tsx
 │   ├── TransporterSelect.tsx
@@ -42,8 +49,14 @@ src/modules/gate/
 │   ├── CreateVehicleDialog.tsx
 │   ├── StepHeader.tsx
 │   ├── StepFooter.tsx
-│   ├── StepLoadingSpinner.tsx
-│   ├── FillDataAlert.tsx
+│   ├── DateRangePicker.tsx           # Date range selection
+│   ├── persongatein/                 # Person gate-in components
+│   │   ├── VisitorSelect.tsx         # Visitor search/select
+│   │   ├── LabourSelect.tsx          # Labour search/select
+│   │   ├── GateSelect.tsx            # Gate selection
+│   │   ├── CreateVisitorDialog.tsx   # Create new visitor
+│   │   ├── CreateLabourDialog.tsx    # Create new labour
+│   │   └── index.ts
 │   └── index.ts
 ├── hooks/
 │   └── [Custom hooks]
@@ -65,10 +78,8 @@ The gate module supports multiple entry types:
 | Daily Needs | Food and consumables | `/gate/daily-needs` |
 | Maintenance | Spare parts and tools | `/gate/maintenance` |
 | Construction | Civil and building materials | `/gate/construction` |
+| **Visitor/Labour** | Person gate-in tracking | `/gate/visitor-labour` |
 | Returnable | Tools and equipment (returnable) | `/gate/returnable` |
-| Visitor | Visitor tracking | `/gate/visitor` |
-| Employee | Employee entry | `/gate/employee` |
-| Contractor | Contractor/Labor entry | `/gate/contractor` |
 
 ## Raw Materials Workflow
 
@@ -551,6 +562,292 @@ export const step5Schema = z.object({
   overallResult: z.enum(['pass', 'fail']),
   remarks: z.string().optional(),
 });
+```
+
+## Person Gate In (Visitor/Labour)
+
+The Person Gate In feature manages visitor and labour entry/exit tracking at factory gates.
+
+### Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              Person Gate In Module                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Dashboard (/gate/visitor-labour)                                │
+│  ├── Current Status (Total Inside, Visitors, Labours)           │
+│  ├── Today's Activity (Entries, Exits by type)                  │
+│  ├── Recent Entries                                              │
+│  ├── Gate-wise Inside Count                                      │
+│  └── Person Type Breakdown                                       │
+│                                                                  │
+│  Entry Management                                                │
+│  ├── New Entry (/gate/visitor-labour/new)                       │
+│  ├── All Entries (/gate/visitor-labour/all)                     │
+│  └── Currently Inside (/gate/visitor-labour/inside)             │
+│                                                                  │
+│  Master Data                                                     │
+│  ├── Visitors (/gate/visitor-labour/visitors)                   │
+│  └── Labours (/gate/visitor-labour/labours)                     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Person Types
+
+| ID | Type | Description |
+|----|------|-------------|
+| 1 | Labour | Contract workers under contractors |
+| 3 | Visitor | External visitors to the factory |
+
+### Pages
+
+#### PersonGateInDashboard
+
+Main dashboard showing current status and activity.
+
+**Route:** `/gate/visitor-labour`
+
+**Features:**
+- Total persons currently inside (clickable to view list)
+- Breakdown by visitors and labours
+- Long duration alerts
+- Today's activity statistics (clickable for filtered views)
+- Recent entries list
+- Gate-wise inside count (clickable for filtered views)
+- Person type breakdown (clickable for filtered views)
+- Quick action buttons
+
+#### NewEntryPage
+
+Create a new gate entry for visitor or labour.
+
+**Route:** `/gate/visitor-labour/new`
+
+**Query Parameters:**
+- `type=visitor` - Pre-select visitor type
+- `type=labour` - Pre-select labour type
+
+**Features:**
+- Toggle between visitor and labour entry
+- Search and select existing visitor/labour
+- Create new visitor/labour inline
+- Gate selection
+- Purpose, vehicle number, and remarks fields
+
+#### PersonGateInAllPage
+
+View all entries with filtering capabilities.
+
+**Route:** `/gate/visitor-labour/all`
+
+**Query Parameters:**
+- `person_type` - Filter by person type ID (1=Labour, 3=Visitor)
+- `status` - Filter by status (IN, OUT, CANCELLED)
+- `gate_in` - Filter by entry gate ID
+
+**Features:**
+- Date range filtering (global date range)
+- Status filtering via URL params
+- Person type filtering
+- Gate filtering
+- Search by name, purpose, gate, vehicle
+- Click on row to view entry details
+
+### Components
+
+#### VisitorSelect
+
+Searchable dropdown for selecting existing visitors.
+
+```typescript
+interface VisitorSelectProps {
+  value?: number | null
+  onChange: (visitor: Visitor | null) => void
+  label?: string
+  placeholder?: string
+  error?: string
+  required?: boolean
+}
+```
+
+#### LabourSelect
+
+Searchable dropdown for selecting existing labours.
+
+```typescript
+interface LabourSelectProps {
+  value?: number | null
+  onChange: (labour: Labour | null) => void
+  label?: string
+  placeholder?: string
+  error?: string
+  required?: boolean
+}
+```
+
+#### GateSelect
+
+Dropdown for selecting entry/exit gates.
+
+```typescript
+interface GateSelectProps {
+  value?: number | null
+  onChange: (gate: Gate | null) => void
+  label?: string
+  placeholder?: string
+  error?: string
+  required?: boolean
+}
+```
+
+#### CreateVisitorDialog
+
+Dialog for creating a new visitor inline.
+
+#### CreateLabourDialog
+
+Dialog for creating a new labour inline with contractor selection.
+
+### API Integration
+
+#### Constants
+
+```typescript
+// Person Type IDs
+export const PERSON_TYPE_IDS = {
+  LABOUR: 1,
+  VISITOR: 3,
+} as const
+```
+
+#### Key API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/person-gatein/dashboard/` | GET | Dashboard statistics |
+| `/person-gatein/entry/create/` | POST | Create new entry |
+| `/person-gatein/entry/{id}/` | GET | Get entry details |
+| `/person-gatein/entry/{id}/exit/` | POST | Mark entry as exited |
+| `/person-gatein/entry/{id}/cancel/` | POST | Cancel an entry |
+| `/person-gatein/entry/inside/` | GET | List persons inside |
+| `/person-gatein/entries/` | GET | List all entries with filters |
+| `/person-gatein/visitors/` | GET/POST | Visitor CRUD |
+| `/person-gatein/labours/` | GET/POST | Labour CRUD |
+| `/person-gatein/gates/` | GET | List gates |
+| `/person-gatein/contractors/` | GET | List contractors |
+
+#### Entry Filters
+
+```typescript
+interface EntryFilters {
+  from_date?: string      // Start date (YYYY-MM-DD)
+  to_date?: string        // End date (YYYY-MM-DD)
+  status?: string         // IN, OUT, CANCELLED
+  person_type?: number    // 1=Labour, 3=Visitor
+  gate_in?: number        // Filter by entry gate ID
+  search?: string         // Search query
+}
+```
+
+#### Query Hooks
+
+```typescript
+// Dashboard data
+const { data: dashboard } = usePersonGateInDashboard()
+
+// Create entry
+const createEntry = useCreatePersonEntry()
+await createEntry.mutateAsync({
+  person_type: PERSON_TYPE_IDS.VISITOR,
+  visitor: visitorId,
+  gate_in: gateId,
+  purpose: 'Meeting',
+})
+
+// Get entries with filters
+const { data: entries } = usePersonEntries({
+  from_date: '2026-01-01',
+  to_date: '2026-01-31',
+  person_type: PERSON_TYPE_IDS.VISITOR,
+  status: 'IN',
+})
+```
+
+### Entry Status Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│               Entry Status Flow                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Create Entry                                                │
+│       │                                                      │
+│       ▼                                                      │
+│  ┌─────────┐                                                 │
+│  │   IN    │ ◄─── Entry created, person is inside           │
+│  └────┬────┘                                                 │
+│       │                                                      │
+│       ├──────────────┐                                       │
+│       │              │                                       │
+│       ▼              ▼                                       │
+│  ┌─────────┐    ┌───────────┐                               │
+│  │   OUT   │    │ CANCELLED │                               │
+│  └─────────┘    └───────────┘                               │
+│       │              │                                       │
+│       │              │                                       │
+│  Exit recorded   Entry cancelled                             │
+│  (gate_out set)  (before exit)                              │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Types
+
+```typescript
+interface EntryLog {
+  id: number
+  person_type: EntryPersonType
+  gate_in: EntryGate
+  gate_out: EntryGate | null
+  name_snapshot: string
+  photo_snapshot?: string | null
+  entry_time: string
+  exit_time?: string | null
+  purpose?: string | null
+  vehicle_no?: string | null
+  remarks?: string | null
+  status: 'IN' | 'OUT' | 'CANCELLED'
+  created_at: string
+  updated_at: string
+  visitor?: number | null
+  labour?: number | null
+}
+
+interface Visitor {
+  id: number
+  name: string
+  mobile?: string
+  company_name?: string
+  id_proof_type?: string
+  id_proof_no?: string
+  photo?: string
+  blacklisted: boolean
+}
+
+interface Labour {
+  id: number
+  name: string
+  contractor: number
+  contractor_name?: string
+  mobile?: string
+  id_proof_no?: string
+  photo?: string
+  skill_type?: string
+  permit_valid_till?: string
+  is_active: boolean
+}
 ```
 
 ## Related Documentation
