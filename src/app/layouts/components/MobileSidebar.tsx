@@ -21,7 +21,7 @@ interface MobileSidebarProps {
 }
 
 function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
-  const { hasModulePermission, hasAnyPermission, isStaff, permissionsLoaded } = usePermission()
+  const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission()
   const location = useLocation()
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set())
 
@@ -36,9 +36,6 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       // Wait for permissions to load before filtering
       if (!permissionsLoaded) return false
 
-      // Staff users see everything
-      if (isStaff) return true
-
       // If route has a modulePrefix, check if user has any permission for that module
       if (item.modulePrefix) {
         return hasModulePermission(item.modulePrefix)
@@ -52,7 +49,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       // Routes without modulePrefix or permissions are shown (like Gate)
       return true
     })
-  }, [allNavItems, permissionsLoaded, isStaff, hasModulePermission, hasAnyPermission])
+  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission])
 
   const toggleSubmenu = (routePath: string) => {
     setOpenSubmenus((prev) => {

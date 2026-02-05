@@ -113,9 +113,9 @@ export default function Step4Page() {
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step3`)
+      navigate(`/gate/raw-materials/edit/${entryId}/step4`)
     } else {
-      navigate(`/gate/raw-materials/new/step3?entryId=${entryId || 'test-12345'}`)
+      navigate(`/gate/raw-materials/new/step4?entryId=${entryId}`)
     }
   }
 
@@ -127,7 +127,7 @@ export default function Step4Page() {
 
     // In edit mode (and not fillDataMode and not updateMode), just navigate without API call
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step5`)
+      navigate(`/gate/raw-materials/edit/${entryId}/review`)
       return
     }
 
@@ -173,12 +173,12 @@ export default function Step4Page() {
 
       await createWeighment.mutateAsync(requestData)
 
-      // Navigate to step 5
+      // Navigate to review
       setIsNavigating(true)
       if (isEditMode) {
-        navigate(`/gate/raw-materials/edit/${entryId}/step5`)
+        navigate(`/gate/raw-materials/edit/${entryId}/review`)
       } else {
-        navigate(`/gate/raw-materials/new/step5?entryId=${entryId}`)
+        navigate(`/gate/raw-materials/new/review?entryId=${entryId}`)
       }
     } catch (error) {
       const apiError = error as ApiError

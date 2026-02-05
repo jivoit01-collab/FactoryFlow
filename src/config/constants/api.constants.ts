@@ -97,6 +97,40 @@ export const API_ENDPOINTS = {
   ACCOUNTS: {
     DEPARTMENTS: '/accounts/departments',
   },
+  // Quality Control V2 (New QC Module)
+  QUALITY_CONTROL_V2: {
+    // Arrival Slips
+    ARRIVAL_SLIP_LIST: '/quality-control/arrival-slips/',
+    ARRIVAL_SLIP_CREATE: (poItemReceiptId: number) =>
+      `/quality-control/po-items/${poItemReceiptId}/arrival-slip/`,
+    ARRIVAL_SLIP_GET: (poItemReceiptId: number) =>
+      `/quality-control/po-items/${poItemReceiptId}/arrival-slip/`,
+    ARRIVAL_SLIP_BY_ID: (slipId: number) => `/quality-control/arrival-slips/${slipId}/`,
+    ARRIVAL_SLIP_SUBMIT: (slipId: number) => `/quality-control/arrival-slips/${slipId}/submit/`,
+
+    // Material Types
+    MATERIAL_TYPES: '/quality-control/material-types/',
+    MATERIAL_TYPE_BY_ID: (id: number) => `/quality-control/material-types/${id}/`,
+    MATERIAL_TYPE_PARAMETERS: (materialTypeId: number) =>
+      `/quality-control/material-types/${materialTypeId}/parameters/`,
+
+    // QC Parameters
+    QC_PARAMETER_BY_ID: (id: number) => `/quality-control/parameters/${id}/`,
+
+    // Inspections
+    PENDING_INSPECTIONS: '/quality-control/inspections/pending/',
+    INSPECTION_BY_ID: (id: number) => `/quality-control/inspections/${id}/`,
+    INSPECTION_FOR_SLIP: (slipId: number) =>
+      `/quality-control/arrival-slips/${slipId}/inspection/`,
+    INSPECTION_PARAMETERS: (inspectionId: number) =>
+      `/quality-control/inspections/${inspectionId}/parameters/`,
+    INSPECTION_SUBMIT: (id: number) => `/quality-control/inspections/${id}/submit/`,
+
+    // Approvals
+    APPROVE_CHEMIST: (id: number) => `/quality-control/inspections/${id}/approve/chemist/`,
+    APPROVE_QAM: (id: number) => `/quality-control/inspections/${id}/approve/qam/`,
+    REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
+  },
 } as const
 
 export const HTTP_STATUS = {
