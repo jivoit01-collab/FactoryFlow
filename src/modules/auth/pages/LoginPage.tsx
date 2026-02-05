@@ -61,7 +61,7 @@ export default function LoginPage() {
             className="h-16 w-auto dark:invert"
           />
         </div>
-        <CardTitle className="text-2xl font-bold">Factory Management System</CardTitle>
+        <CardTitle className="text-2xl font-bold">Sampooran</CardTitle>
         <CardDescription>Enter your credentials to access the system</CardDescription>
       </CardHeader>
       <CardContent>

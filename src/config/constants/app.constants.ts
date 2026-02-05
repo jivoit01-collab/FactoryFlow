@@ -1,6 +1,6 @@
-export const APP_NAME = 'Factory Flow'
+export const APP_NAME = 'Sampooran'
 export const APP_VERSION = '1.0.0'
-export const APP_DESCRIPTION = 'Factory Management System for Jivo Wellness'
+export const APP_DESCRIPTION = 'Sampooran - Management System for Jivo Wellness'
 
 export const APP_DEFAULTS = {
   language: 'en',

@@ -196,13 +196,25 @@ export default function InspectionDetailPage() {
     try {
       setApiErrors({})
 
+      // Validate required fields
+      const errors: Record<string, string> = {}
+      if (!formData.material_type_id) {
+        errors.material_type_id = 'Please select a material type'
+      }
+      if (!formData.supplier_batch_lot_no?.trim()) {
+        errors.supplier_batch_lot_no = 'Supplier Batch/Lot No. is required'
+      }
+      if (!formData.purchase_order_no?.trim()) {
+        errors.purchase_order_no = 'Purchase Order No. is required'
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setApiErrors(errors)
+        return
+      }
+
       // If no inspection exists, create one
       if (!inspection) {
-        if (!formData.material_type_id) {
-          setApiErrors({ material_type_id: 'Please select a material type' })
-          return
-        }
-
         await createInspection.mutateAsync({
           slipId: arrivalSlipId,
           data: formData as CreateInspectionRequest,
@@ -455,7 +467,7 @@ export default function InspectionDetailPage() {
 
             {/* User input fields */}
             <MaterialTypeSelect
-              label="Material Type"
+              label="Material Type *"
               value={formData.material_type_id || undefined}
               onChange={(type) => handleInputChange('material_type_id', type?.id || 0)}
               disabled={!canEdit || isSaving || !!inspection}
@@ -482,21 +494,33 @@ export default function InspectionDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Supplier Batch/Lot No.</Label>
+              <Label>
+                Supplier Batch/Lot No. <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={formData.supplier_batch_lot_no || ''}
                 onChange={(e) => handleInputChange('supplier_batch_lot_no', e.target.value)}
                 disabled={!canEdit || isSaving}
+                className={apiErrors.supplier_batch_lot_no ? 'border-destructive' : ''}
               />
+              {apiErrors.supplier_batch_lot_no && (
+                <p className="text-sm text-destructive">{apiErrors.supplier_batch_lot_no}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label>Purchase Order No.</Label>
+              <Label>
+                Purchase Order No. <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={formData.purchase_order_no || ''}
                 onChange={(e) => handleInputChange('purchase_order_no', e.target.value)}
                 disabled={!canEdit || isSaving}
+                className={apiErrors.purchase_order_no ? 'border-destructive' : ''}
               />
+              {apiErrors.purchase_order_no && (
+                <p className="text-sm text-destructive">{apiErrors.purchase_order_no}</p>
+              )}
             </div>
 
             <div className="space-y-2 md:col-span-2 lg:col-span-3">

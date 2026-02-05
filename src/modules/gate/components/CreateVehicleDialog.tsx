@@ -21,7 +21,7 @@ import { TransporterSelect } from './TransporterSelect'
 interface CreateVehicleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: (vehicleNumber: string) => void
+  onSuccess?: (vehicleId: number, vehicleNumber: string) => void
 }
 
 export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVehicleDialogProps) {
@@ -96,7 +96,7 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
       reset()
       onOpenChange(false)
       if (onSuccess) {
-        onSuccess(result.vehicle_number)
+        onSuccess(result.id, result.vehicle_number)
       }
     } catch (error) {
       // Handle API errors

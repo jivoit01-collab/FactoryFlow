@@ -20,7 +20,7 @@ import type { ApiError } from '@/core/api/types'
 interface CreateDriverDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: (driverName: string) => void
+  onSuccess?: (driverId: number, driverName: string) => void
 }
 
 export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriverDialogProps) {
@@ -97,7 +97,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
       setPhotoPreview(null)
       onOpenChange(false)
       if (onSuccess) {
-        onSuccess(result.name)
+        onSuccess(result.id, result.name)
       }
     } catch (error) {
       // Handle API errors

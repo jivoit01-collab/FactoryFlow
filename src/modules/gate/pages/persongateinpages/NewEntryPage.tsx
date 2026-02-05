@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, User, Users } from 'lucide-react'
+import { ArrowLeft, User, Users, AlertCircle } from 'lucide-react'
 import {
   Button,
   Input,
@@ -142,16 +142,28 @@ export default function NewEntryPage() {
       const entry = await createEntryMutation.mutateAsync(requestData)
       navigate(`/gate/visitor-labour/entry/${entry.id}`)
     } catch (error: unknown) {
-      const err = error as { errors?: Record<string, string[]> }
+      const err = error as {
+        errors?: Record<string, string[]>
+        message?: string
+      }
+
+      const fieldErrors: Record<string, string> = {}
+
+      // Handle field-level errors
       if (err.errors) {
-        const fieldErrors: Record<string, string> = {}
         Object.entries(err.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
             fieldErrors[field] = messages[0]
           }
         })
-        setApiErrors(fieldErrors)
       }
+
+      // Handle general error message (API client now properly extracts from 'error', 'detail', 'message')
+      if (err.message) {
+        fieldErrors.general = err.message
+      }
+
+      setApiErrors(fieldErrors)
     }
   }
 
@@ -167,6 +179,16 @@ export default function NewEntryPage() {
           <p className="text-muted-foreground">Create a new gate entry for visitor or labour</p>
         </div>
       </div>
+
+      {/* General Error Display */}
+      {apiErrors.general && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+            <p className="text-sm font-medium text-destructive">{apiErrors.general}</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left Column - Person Selection */}

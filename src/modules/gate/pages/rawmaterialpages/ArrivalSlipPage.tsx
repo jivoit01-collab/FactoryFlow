@@ -15,12 +15,12 @@ import {
 import { cn } from '@/shared/utils'
 import { usePOReceipts } from '../../api/po/poReceipt.queries'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import { useCreateArrivalSlip, useSubmitArrivalSlip } from '../../api/arrivalSlip/arrivalSlip.queries'
 import {
-  useArrivalSlip,
-  useCreateArrivalSlip,
-  useSubmitArrivalSlip,
-} from '../../api/arrivalSlip/arrivalSlip.queries'
-import type { ArrivalSlip, CreateArrivalSlipRequest } from '../../api/arrivalSlip/arrivalSlip.api'
+  arrivalSlipApi,
+  type ArrivalSlip,
+  type CreateArrivalSlipRequest,
+} from '../../api/arrivalSlip/arrivalSlip.api'
 import { useEntryId } from '../../hooks'
 import { StepHeader, StepFooter, StepLoadingSpinner, FillDataAlert } from '../../components'
 import { WIZARD_CONFIG } from '../../constants'
@@ -148,17 +148,8 @@ export default function ArrivalSlipPage() {
         const form = updatedForms[i]
         if (!form.existingSlip) {
           try {
-            const response = await fetch(
-              `/api/v1/quality-control/po-items/${form.id}/arrival-slip/`,
-              {
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-                  'Company-Code': localStorage.getItem('company_code') || '',
-                },
-              }
-            )
-            if (response.ok) {
-              const slip = await response.json()
+            const slip = await arrivalSlipApi.get(form.id)
+            if (slip) {
               updatedForms[i] = {
                 ...form,
                 existingSlip: slip,

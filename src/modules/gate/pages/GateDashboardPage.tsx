@@ -126,8 +126,8 @@ export default function GateDashboardPage() {
       {/* Header Section */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Factory Gate Management</h2>
-          <p className="text-muted-foreground">Complete gate control for all factory movements</p>
+          <h2 className="text-3xl font-bold tracking-tight">Gate Management</h2>
+          <p className="text-muted-foreground">Complete gate control for all movements</p>
         </div>
         <div className="flex items-center gap-4 flex-col sm:flex-row">
           <div className="flex items-center gap-2">

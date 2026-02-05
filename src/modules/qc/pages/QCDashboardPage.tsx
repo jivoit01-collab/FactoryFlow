@@ -12,58 +12,71 @@ import {
   ShieldX,
   RefreshCw,
 } from 'lucide-react'
-import { Button, Card, CardContent } from '@/shared/components/ui'
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
 import { usePendingInspections } from '../api/inspection/inspection.queries'
 import type { ApiError } from '@/core/api/types'
 
-// Status configuration with colors and icons
-const DASHBOARD_CARDS = [
-  {
-    key: 'pending',
-    label: 'Pending Inspection',
-    description: 'Arrival slips awaiting QC inspection',
+// Status configuration - compact like Gate module
+const STATUS_CONFIG = {
+  pending: {
+    label: 'Pending',
     color: 'text-yellow-600 dark:text-yellow-400',
     bgColor: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
     icon: Clock,
-    link: '/qc/pending',
+    link: '/qc/pending?status=pending',
   },
-  {
-    key: 'draft',
+  draft: {
     label: 'Draft',
-    description: 'Inspections started but not submitted',
     color: 'text-gray-600 dark:text-gray-400',
     bgColor: 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800',
     icon: FileText,
-    link: '/qc/pending',
+    link: '/qc/pending?status=draft',
   },
-  {
-    key: 'awaiting_approval',
-    label: 'Awaiting Approval',
-    description: 'Pending chemist or manager approval',
+  awaiting_approval: {
+    label: 'Awaiting',
     color: 'text-blue-600 dark:text-blue-400',
     bgColor: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
     icon: UserCheck,
     link: '/qc/approvals',
   },
-  {
-    key: 'approved',
+  approved: {
     label: 'Approved',
-    description: 'Completed inspections',
     color: 'text-green-600 dark:text-green-400',
     bgColor: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
     icon: CheckCircle2,
-    link: '/qc/pending',
+    link: '/qc/pending?status=approved',
   },
-  {
-    key: 'rejected',
+  rejected: {
     label: 'Rejected',
-    description: 'Rejected inspections',
     color: 'text-red-600 dark:text-red-400',
     bgColor: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
     icon: XCircle,
-    link: '/qc/pending',
+    link: '/qc/pending?status=rejected',
   },
-]
+}
+
+const STATUS_ORDER = ['pending', 'draft', 'awaiting_approval', 'approved', 'rejected'] as const
+
+// Status badge styling - consistent with Gate module
+const getStatusBadgeClass = (status: string | null, hasInspection: boolean) => {
+  if (!hasInspection) {
+    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+  }
+  switch (status) {
+    case 'DRAFT':
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+    case 'SUBMITTED':
+    case 'QA_CHEMIST_APPROVED':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+    case 'QAM_APPROVED':
+    case 'COMPLETED':
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+    case 'REJECTED':
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+  }
+}
 
 export default function QCDashboardPage() {
   const navigate = useNavigate()
@@ -91,236 +104,278 @@ export default function QCDashboardPage() {
         p.has_inspection &&
         (p.inspection_status === 'QAM_APPROVED' || p.inspection_status === 'COMPLETED')
     ).length,
-    rejected: 0, // Will be fetched from a separate endpoint if needed
+    rejected: 0,
   }
 
   const totalPending = counts.pending + counts.draft + counts.awaiting_approval
 
+  // Format date/time for display - consistent with Gate module
+  const formatDateTime = (dateTime?: string) => {
+    if (!dateTime) return '-'
+    try {
+      const date = new Date(dateTime)
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return dateTime
+    }
+  }
+
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <FlaskConical className="h-8 w-8" />
-            Quality Control
-          </h2>
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Quality Control</h2>
           <p className="text-muted-foreground">
             Manage raw material inspections and quality approvals
           </p>
         </div>
-        <Button onClick={() => navigate('/qc/pending')}>
+        <Button onClick={() => navigate('/qc/pending')} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Start Inspection
         </Button>
       </div>
 
-      {/* Permission Error */}
-      {isPermissionError && (
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-full bg-destructive/10">
-                <ShieldX className="h-6 w-6 text-destructive" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-destructive">Permission Denied</p>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          {/* Permission Error */}
+          {isPermissionError && (
+            <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
+              <ShieldX className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-destructive">Permission Denied</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {apiError?.message || 'You do not have permission to view this data.'}
                 </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Please contact your administrator if you believe this is an error.
-                </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
+                <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {/* General API Error */}
-      {error && !isPermissionError && (
-        <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/20">
-                <AlertCircle className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-yellow-800 dark:text-yellow-400">
-                  Failed to Load Data
-                </p>
+          {/* General API Error */}
+          {error && !isPermissionError && (
+            <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+              <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {apiError?.message || 'An error occurred while loading the dashboard.'}
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
+                <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {/* Summary Card */}
-      <Card className="border-primary/50 bg-primary/5">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Pending Actions</p>
-              <p className="text-4xl font-bold text-primary">
-                {isLoading ? '...' : totalPending}
-              </p>
+          {/* Summary Card - Compact like PersonGateInDashboard */}
+          <Card
+            className="bg-primary/5 border-primary/20 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/qc/pending?status=actionable')}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FlaskConical className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium text-primary">Pending Actions</span>
+                </div>
+                <span className="text-3xl font-bold text-primary">{totalPending}</span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-primary/20 flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <span>
+                    <span className="font-semibold text-yellow-600 dark:text-yellow-400">{counts.pending}</span> Pending
+                  </span>
+                  <span>
+                    <span className="font-semibold text-gray-600 dark:text-gray-400">{counts.draft}</span> Draft
+                  </span>
+                  <span>
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">{counts.awaiting_approval}</span> Awaiting
+                  </span>
+                </div>
+                <ChevronRight className="h-4 w-4" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Entries - Compact like RawMaterialsDashboard */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Recent Arrival Slips</h3>
+              <button
+                onClick={() => navigate('/qc/pending')}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                Show more
+                <ChevronRight className="h-3 w-3" />
+              </button>
             </div>
-            <Button variant="outline" onClick={() => navigate('/qc/pending')}>
-              View All
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
+
+            {pendingInspections.length === 0 ? (
+              <div className="flex items-center justify-center h-16 text-sm text-muted-foreground border rounded-lg">
+                No arrival slips yet
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pendingInspections.slice(0, 3).map((item) => (
+                  <div
+                    key={item.arrival_slip.id}
+                    className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() =>
+                      item.has_inspection
+                        ? navigate(`/qc/inspections/${item.arrival_slip.id}`)
+                        : navigate(`/qc/inspections/${item.arrival_slip.id}/new`)
+                    }
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-medium text-sm">{item.arrival_slip.entry_no}</span>
+                      <span
+                        className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(item.inspection_status, item.has_inspection)}`}
+                      >
+                        {item.has_inspection ? item.inspection_status : 'Pending'}
+                      </span>
+                      <span className="text-xs text-muted-foreground hidden sm:inline truncate">
+                        {item.arrival_slip.particulars} • {item.arrival_slip.party_name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(item.arrival_slip.submitted_at)}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Status Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {DASHBOARD_CARDS.map((card) => {
-          const Icon = card.icon
-          const count = counts[card.key as keyof typeof counts] ?? 0
-          return (
-            <Card
-              key={card.key}
-              className={`cursor-pointer transition-all hover:shadow-md border ${card.bgColor}`}
-              onClick={() => navigate(card.link)}
-            >
-              <CardContent className="p-4">
-                <div className="flex flex-col gap-2">
-                  <div className={`${card.color}`}>
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{isLoading ? '...' : count}</p>
-                    <p className={`text-sm font-medium ${card.color}`}>{card.label}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+          {/* Status Overview - Compact grid like RawMaterialsDashboard */}
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Status Overview</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {STATUS_ORDER.map((statusKey) => {
+                const config = STATUS_CONFIG[statusKey]
+                const Icon = config.icon
+                const count = counts[statusKey] || 0
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card
-          className="cursor-pointer transition-all hover:shadow-md"
-          onClick={() => navigate('/qc/pending')}
-        >
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <FlaskConical className="h-6 w-6 text-primary" />
+                return (
+                  <Card
+                    key={statusKey}
+                    className={`${config.bgColor} border cursor-pointer hover:shadow-md transition-shadow`}
+                    onClick={() => navigate(config.link)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <Icon className={`h-4 w-4 ${config.color}`} />
+                        <span className={`text-xl font-bold ${config.color}`}>{count}</span>
+                      </div>
+                      <p className={`mt-1 text-xs font-medium ${config.color}`}>{config.label}</p>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
-            <div>
-              <p className="font-medium">Pending Inspections</p>
-              <p className="text-sm text-muted-foreground">View arrival slips awaiting QC</p>
-            </div>
-            <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card
-          className="cursor-pointer transition-all hover:shadow-md"
-          onClick={() => navigate('/qc/approvals')}
-        >
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/20">
-              <UserCheck className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="font-medium">Approvals</p>
-              <p className="text-sm text-muted-foreground">Review and approve inspections</p>
-            </div>
-            <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        <Card
-          className="cursor-pointer transition-all hover:shadow-md"
-          onClick={() => navigate('/qc/master/material-types')}
-        >
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/20">
-              <FileText className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="font-medium">Material Types</p>
-              <p className="text-sm text-muted-foreground">Manage material type definitions</p>
-            </div>
-            <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        <Card
-          className="cursor-pointer transition-all hover:shadow-md"
-          onClick={() => navigate('/qc/master/parameters')}
-        >
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 rounded-full bg-orange-100 dark:bg-orange-900/20">
-              <FileText className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="font-medium">QC Parameters</p>
-              <p className="text-sm text-muted-foreground">Configure inspection parameters</p>
-            </div>
-            <ChevronRight className="h-5 w-5 ml-auto text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity */}
-      {pendingInspections.length > 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Recent Arrival Slips</h3>
-              <Button variant="link" onClick={() => navigate('/qc/pending')}>
-                View All
+          {/* Quick Actions - Compact button grid like PersonGateInDashboard */}
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <Button
+                variant="outline"
+                className="h-auto py-3 flex flex-col items-center gap-1"
+                onClick={() => navigate('/qc/pending')}
+              >
+                <FlaskConical className="h-5 w-5" />
+                <span className="text-xs">Pending Inspections</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-3 flex flex-col items-center gap-1"
+                onClick={() => navigate('/qc/approvals')}
+              >
+                <UserCheck className="h-5 w-5" />
+                <span className="text-xs">Approvals</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-3 flex flex-col items-center gap-1"
+                onClick={() => navigate('/qc/master/material-types')}
+              >
+                <FileText className="h-5 w-5" />
+                <span className="text-xs">Material Types</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-3 flex flex-col items-center gap-1"
+                onClick={() => navigate('/qc/master/parameters')}
+              >
+                <FileText className="h-5 w-5" />
+                <span className="text-xs">QC Parameters</span>
               </Button>
             </div>
-            <div className="space-y-3">
-              {pendingInspections.slice(0, 5).map((item) => (
+          </div>
+
+          {/* Breakdown Cards - like PersonGateInDashboard's Today's Activity */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Inspection Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div
-                  key={item.arrival_slip.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer"
-                  onClick={() =>
-                    item.has_inspection
-                      ? navigate(`/qc/inspections/${item.arrival_slip.id}`)
-                      : navigate(`/qc/inspections/${item.arrival_slip.id}/new`)
-                  }
+                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => navigate('/qc/pending?status=all')}
                 >
-                  <div>
-                    <p className="font-medium">{item.arrival_slip.entry_no}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.arrival_slip.particulars} | {item.arrival_slip.party_name}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        item.has_inspection
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                      }`}
-                    >
-                      {item.has_inspection ? item.inspection_status : 'Pending'}
-                    </span>
-                  </div>
+                  <div className="text-2xl font-bold">{pendingInspections.length}</div>
+                  <div className="text-xs text-muted-foreground">Total Slips</div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div
+                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => navigate('/qc/pending?status=pending')}
+                >
+                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    {counts.pending}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Awaiting QC</div>
+                </div>
+                <div
+                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => navigate('/qc/approvals')}
+                >
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {counts.awaiting_approval}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Awaiting Approval</div>
+                </div>
+                <div
+                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => navigate('/qc/pending?status=approved')}
+                >
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {counts.approved}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Approved</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   )

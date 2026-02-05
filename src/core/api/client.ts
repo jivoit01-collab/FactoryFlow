@@ -242,12 +242,28 @@ function createApiClient(): AxiosInstance {
         }
       }
 
+      // Extract error message - check various response formats
+      let errorMessage = 'An error occurred'
+      if (responseData?.detail) {
+        errorMessage = responseData.detail as string
+      } else if (responseData?.message) {
+        errorMessage = responseData.message as string
+      } else if (responseData?.error) {
+        // Handle 'error' field (e.g., "['Person already inside']" or plain string)
+        const errValue = responseData.error
+        if (typeof errValue === 'string') {
+          // Handle Python-style stringified list: "['message']"
+          const match = errValue.match(/^\['(.+)'\]$/)
+          errorMessage = match ? match[1] : errValue
+        } else if (Array.isArray(errValue) && errValue.length > 0) {
+          errorMessage = errValue[0]
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
       const apiError: ApiError = {
-        message:
-          (responseData?.detail as string) ||
-          (responseData?.message as string) ||
-          error.message ||
-          'An error occurred',
+        message: errorMessage,
         code: error.code,
         errors: errors,
         status: error.response?.status || 500,
