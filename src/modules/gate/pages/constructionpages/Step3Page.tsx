@@ -11,12 +11,14 @@ import {
   CardTitle,
   Button,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useEntryId } from '../../hooks'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useConstructionEntry, useCreateConstructionEntry, useUpdateConstructionEntry, useConstructionCategories } from '../../api/construction/construction.queries'
 import { FillDataAlert } from '../../components'
 import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
 import { cn } from '@/shared/utils'
+import { VALIDATION_PATTERNS } from '@/config/constants'
 import type { ApiError } from '@/core/api'
 
 // Unit options for dropdown
@@ -111,6 +113,9 @@ export default function Step3Page() {
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
 
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
+
   // Fields are read-only when:
   // 1. In edit mode AND update mode is not active AND there's no not found error, OR
   // 2. There's a not found error AND fill data mode is not active
@@ -204,6 +209,16 @@ export default function Step3Page() {
     }
     if (!formData.contractorName.trim()) {
       setApiErrors({ contractorName: 'Please enter contractor name' })
+      return
+    }
+    // Validate contractor contact (optional, but if provided must be valid phone)
+    if (formData.contractorContact.trim() && !VALIDATION_PATTERNS.phone.test(formData.contractorContact.trim())) {
+      setApiErrors({ contractorContact: 'Please enter a valid 10-digit phone number' })
+      return
+    }
+    // Validate vehicle number (optional, but if provided must be valid format)
+    if (formData.vehicleNumber.trim() && !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicleNumber.trim().toUpperCase())) {
+      setApiErrors({ vehicleNumber: 'Please enter a valid vehicle number (e.g., MH12AB1234)' })
       return
     }
     if (!formData.materialCategory) {
@@ -407,11 +422,22 @@ export default function Step3Page() {
                   <Input
                     id="contractorContact"
                     value={formData.contractorContact}
-                    onChange={(e) => handleInputChange('contractorContact', e.target.value)}
-                    placeholder="Enter contact number"
+                    onChange={(e) => {
+                      // Only allow digits
+                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
+                      handleInputChange('contractorContact', value)
+                    }}
+                    placeholder="9876543210"
+                    maxLength={10}
                     disabled={isReadOnly}
-                    className="border-2 font-medium"
+                    className={cn(
+                      'border-2 font-medium',
+                      apiErrors.contractorContact && 'border-destructive'
+                    )}
                   />
+                  {apiErrors.contractorContact && (
+                    <p className="text-sm text-destructive">{apiErrors.contractorContact}</p>
+                  )}
                 </div>
 
                 {/* Vehicle Number */}
@@ -420,11 +446,21 @@ export default function Step3Page() {
                   <Input
                     id="vehicleNumber"
                     value={formData.vehicleNumber}
-                    onChange={(e) => handleInputChange('vehicleNumber', e.target.value)}
-                    placeholder="Enter vehicle number (if applicable)"
+                    onChange={(e) => {
+                      // Uppercase and remove spaces
+                      const value = e.target.value.toUpperCase().replace(/\s/g, '')
+                      handleInputChange('vehicleNumber', value)
+                    }}
+                    placeholder="MH12AB1234"
                     disabled={isReadOnly}
-                    className="border-2 font-medium"
+                    className={cn(
+                      'border-2 font-medium',
+                      apiErrors.vehicleNumber && 'border-destructive'
+                    )}
                   />
+                  {apiErrors.vehicleNumber && (
+                    <p className="text-sm text-destructive">{apiErrors.vehicleNumber}</p>
+                  )}
                 </div>
               </div>
             </CardContent>

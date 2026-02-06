@@ -10,6 +10,7 @@ import {
   CardTitle,
   Label,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import {
   useVisitors,
   useCreateVisitor,
@@ -17,6 +18,9 @@ import {
   useDeleteVisitor,
 } from '../../api/personGateIn/personGateIn.queries'
 import type { Visitor, CreateVisitorRequest } from '../../api/personGateIn/personGateIn.api'
+import { VALIDATION_PATTERNS } from '@/config/constants'
+import { ID_PROOF_TYPES, ID_PROOF_VALIDATION } from '../../schemas/driver.schema'
+import { cn } from '@/shared/utils'
 
 export default function VisitorsPage() {
   const navigate = useNavigate()
@@ -32,6 +36,9 @@ export default function VisitorsPage() {
     blacklisted: false,
   })
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   const { data: visitors = [], isLoading, refetch } = useVisitors(search)
   const createMutation = useCreateVisitor()
@@ -76,8 +83,23 @@ export default function VisitorsPage() {
 
   // Handle form submit
   const handleSubmit = async () => {
-    if (!formData.name.trim()) {
-      setApiErrors({ name: 'Name is required' })
+    const errors: Record<string, string> = {}
+    if (!formData.name.trim()) errors.name = 'Name is required'
+    // Validate mobile (optional, but if provided must be valid)
+    if (formData.mobile?.trim() && !VALIDATION_PATTERNS.phone.test(formData.mobile.trim())) {
+      errors.mobile = 'Please enter a valid 10-digit phone number'
+    }
+    // Validate id_proof_no based on id_proof_type (optional, but if type is selected, validate number)
+    if (formData.id_proof_type && formData.id_proof_no?.trim()) {
+      const proofType = formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION
+      const validation = ID_PROOF_VALIDATION[proofType]
+      if (validation?.pattern && !validation.pattern.test(formData.id_proof_no.trim().toUpperCase())) {
+        errors.id_proof_no = validation.message
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setApiErrors(errors)
       return
     }
 
@@ -175,10 +197,18 @@ export default function VisitorsPage() {
                   <Label>Mobile</Label>
                   <Input
                     value={formData.mobile || ''}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, mobile: e.target.value }))}
-                    placeholder="Mobile number"
-                    className="mt-1"
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
+                      setFormData((prev) => ({ ...prev, mobile: value }))
+                      if (apiErrors.mobile) {
+                        setApiErrors((prev) => { const n = { ...prev }; delete n.mobile; return n })
+                      }
+                    }}
+                    placeholder="9876543210"
+                    maxLength={10}
+                    className={cn('mt-1', apiErrors.mobile && 'border-destructive')}
                   />
+                  {apiErrors.mobile && <p className="text-xs text-destructive mt-1">{apiErrors.mobile}</p>}
                 </div>
                 <div>
                   <Label>Company</Label>
@@ -196,25 +226,46 @@ export default function VisitorsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>ID Proof Type</Label>
-                  <Input
+                  <select
                     value={formData.id_proof_type || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, id_proof_type: e.target.value }))
-                    }
-                    placeholder="e.g., Aadhar"
-                    className="mt-1"
-                  />
+                    onChange={(e) => {
+                      setFormData((prev) => ({ ...prev, id_proof_type: e.target.value, id_proof_no: '' }))
+                      if (apiErrors.id_proof_no) {
+                        setApiErrors((prev) => { const n = { ...prev }; delete n.id_proof_no; return n })
+                      }
+                    }}
+                    className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="">Select type</option>
+                    {ID_PROOF_TYPES.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <Label>ID Proof No</Label>
                   <Input
                     value={formData.id_proof_no || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, id_proof_no: e.target.value }))
+                    onChange={(e) => {
+                      let value = e.target.value
+                      if (formData.id_proof_type === 'Aadhar') {
+                        value = value.replace(/[^0-9]/g, '').slice(0, 12)
+                      } else if (formData.id_proof_type === 'PAN Card' || formData.id_proof_type === 'Voter ID') {
+                        value = value.toUpperCase()
+                      }
+                      setFormData((prev) => ({ ...prev, id_proof_no: value }))
+                      if (apiErrors.id_proof_no) {
+                        setApiErrors((prev) => { const n = { ...prev }; delete n.id_proof_no; return n })
+                      }
+                    }}
+                    placeholder={
+                      ID_PROOF_VALIDATION[formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION]?.placeholder || 'ID number'
                     }
-                    placeholder="ID number"
-                    className="mt-1"
+                    maxLength={formData.id_proof_type === 'Aadhar' ? 12 : formData.id_proof_type === 'PAN Card' || formData.id_proof_type === 'Voter ID' ? 10 : 50}
+                    disabled={!formData.id_proof_type}
+                    className={cn('mt-1', apiErrors.id_proof_no && 'border-destructive')}
                   />
+                  {apiErrors.id_proof_no && <p className="text-xs text-destructive mt-1">{apiErrors.id_proof_no}</p>}
                 </div>
               </div>
 

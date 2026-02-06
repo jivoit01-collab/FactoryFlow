@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Input, Label } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { gateInSchema, type GateInFormData } from '../schemas/gateIn.schema'
 import { GATE_IN_FORM_DEFAULTS, MATERIAL_TYPES, UNITS } from '../constants/gateIn.constants'
 
@@ -25,6 +26,8 @@ export function GateInForm({
     resolver: zodResolver(gateInSchema),
     defaultValues: { ...GATE_IN_FORM_DEFAULTS, ...defaultValues },
   })
+
+  useScrollToError(errors)
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

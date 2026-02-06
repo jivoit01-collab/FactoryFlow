@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Scale } from 'lucide-react'
 import { Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
 import { useWeighment, useCreateWeighment } from '../../api/weighment/weighment.queries'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
@@ -44,6 +45,9 @@ export default function Step4Page() {
   }, [formData.grossWeight, formData.tareWeight])
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   // State to track if we should behave like create mode (when Fill Data is clicked)
   const [fillDataMode, setFillDataMode] = useState(false)
@@ -140,6 +144,10 @@ export default function Step4Page() {
     }
     if (!formData.tareWeight || parseFloat(formData.tareWeight) <= 0) {
       setApiErrors({ tareWeight: 'Please enter tare weight' })
+      return
+    }
+    if (parseFloat(formData.tareWeight) >= parseFloat(formData.grossWeight)) {
+      setApiErrors({ tareWeight: 'Tare weight must be less than gross weight' })
       return
     }
     if (!formData.weighbridgeTicketNo.trim()) {

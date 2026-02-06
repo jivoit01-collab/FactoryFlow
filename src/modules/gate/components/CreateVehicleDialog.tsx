@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -12,6 +12,7 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useCreateVehicle } from '../api/vehicle/vehicle.queries'
 import { useTransporters } from '../api/transporter/transporter.queries'
 import { vehicleSchema, type VehicleFormData } from '../schemas/vehicle.schema'
@@ -49,6 +50,10 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
   })
 
   const [transporterName, setTransporterName] = useState('')
+
+  // Combine form errors and API errors for scroll-to-error
+  const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors])
+  useScrollToError(combinedErrors)
 
   // Reset form and errors when dialog opens/closes
   useEffect(() => {

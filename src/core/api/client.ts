@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
+import { toast } from 'sonner'
 import { env } from '@/config/env.config'
 import { API_CONFIG, HTTP_STATUS, AUTH_CONFIG, API_ENDPOINTS } from '@/config/constants'
 import type { ApiError } from './types'
@@ -267,6 +268,13 @@ function createApiClient(): AxiosInstance {
         code: error.code,
         errors: errors,
         status: error.response?.status || 500,
+      }
+
+      // Show global toast notification for API errors
+      // Skip 401 (handled by token refresh/redirect) and errors with only field-level errors
+      const status = apiError.status
+      if (status !== HTTP_STATUS.UNAUTHORIZED) {
+        toast.error(errorMessage)
       }
 
       return Promise.reject(apiError)

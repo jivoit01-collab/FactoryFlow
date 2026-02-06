@@ -12,7 +12,7 @@ import {
   ShieldX,
   RefreshCw,
 } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+import { Button, Card, CardContent } from '@/shared/components/ui'
 import { usePendingInspections } from '../api/inspection/inspection.queries'
 import type { ApiError } from '@/core/api/types'
 
@@ -292,23 +292,7 @@ export default function QCDashboardPage() {
           {/* Quick Actions - Compact button grid like PersonGateInDashboard */}
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h3>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Button
-                variant="outline"
-                className="h-auto py-3 flex flex-col items-center gap-1"
-                onClick={() => navigate('/qc/pending')}
-              >
-                <FlaskConical className="h-5 w-5" />
-                <span className="text-xs">Pending Inspections</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-auto py-3 flex flex-col items-center gap-1"
-                onClick={() => navigate('/qc/approvals')}
-              >
-                <UserCheck className="h-5 w-5" />
-                <span className="text-xs">Approvals</span>
-              </Button>
+            <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
                 className="h-auto py-3 flex flex-col items-center gap-1"
@@ -327,54 +311,6 @@ export default function QCDashboardPage() {
               </Button>
             </div>
           </div>
-
-          {/* Breakdown Cards - like PersonGateInDashboard's Today's Activity */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Inspection Breakdown
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div
-                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => navigate('/qc/pending?status=all')}
-                >
-                  <div className="text-2xl font-bold">{pendingInspections.length}</div>
-                  <div className="text-xs text-muted-foreground">Total Slips</div>
-                </div>
-                <div
-                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => navigate('/qc/pending?status=pending')}
-                >
-                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {counts.pending}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Awaiting QC</div>
-                </div>
-                <div
-                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => navigate('/qc/approvals')}
-                >
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {counts.awaiting_approval}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Awaiting Approval</div>
-                </div>
-                <div
-                  className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => navigate('/qc/pending?status=approved')}
-                >
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {counts.approved}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Approved</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </>
       )}
     </div>

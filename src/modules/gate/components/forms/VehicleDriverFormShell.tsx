@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { TransporterSelect } from '../TransporterSelect'
 import { VehicleSelect } from '../VehicleSelect'
 import { DriverSelect } from '../DriverSelect'
@@ -121,6 +122,9 @@ export function VehicleDriverFormShell({
   headerTitle = 'Material Inward',
 }: VehicleDriverFormShellProps) {
   const progressPercentage = (currentStep / totalSteps) * 100
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   if (isLoading) {
     return (

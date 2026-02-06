@@ -169,9 +169,9 @@ export default function Step1Page() {
         entry_type: 'MAINTENANCE',
       })
 
-      // Navigate to step 2 with entry ID
+      // Navigate to step 2 in edit mode (prevents duplicate submissions on back/forward navigation)
       setIsNavigating(true)
-      navigate(`/gate/maintenance/new/step2?entryId=${result.id}`)
+      navigate(`/gate/maintenance/edit/${result.id}/step2`)
     } catch (error) {
       const apiError = error as ApiError
       if (apiError.errors) {

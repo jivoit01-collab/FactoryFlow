@@ -21,6 +21,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useInspectionPermissions } from '../hooks'
 import { cn } from '@/shared/utils'
 import {
@@ -84,7 +85,7 @@ export default function InspectionDetailPage() {
 
   // Parameter results state
   const [parameterResults, setParameterResults] = useState<
-    Record<number, { result_value: string; result_numeric?: number; remarks: string }>
+    Record<number, { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }>
   >({})
 
   // Approval remarks
@@ -92,6 +93,9 @@ export default function InspectionDetailPage() {
   const [finalStatus, setFinalStatus] = useState<InspectionFinalStatus>('ACCEPTED')
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   // Fetch parameters when material type changes
   const { data: qcParameters = [] } = useQCParametersByMaterialType(
@@ -127,12 +131,13 @@ export default function InspectionDetailPage() {
       // Load parameter results
       const resultsMap: Record<
         number,
-        { result_value: string; result_numeric?: number; remarks: string }
+        { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
       > = {}
-      inspection.parameter_results.forEach((result: ParameterResult) => {
+      inspection.parameter_results?.forEach((result: ParameterResult) => {
         resultsMap[result.parameter_master] = {
           result_value: result.result_value,
           result_numeric: result.result_numeric || undefined,
+          is_within_spec: result.is_within_spec ?? undefined,
           remarks: result.remarks,
         }
       })
@@ -178,13 +183,15 @@ export default function InspectionDetailPage() {
 
   const handleParameterChange = (
     parameterId: number,
-    field: 'result_value' | 'result_numeric' | 'remarks',
-    value: string | number
+    field: 'result_value' | 'result_numeric' | 'is_within_spec' | 'remarks',
+    value: string | number | boolean
   ) => {
     setParameterResults((prev) => ({
       ...prev,
       [parameterId]: {
         ...prev[parameterId],
+        result_value: prev[parameterId]?.result_value || '',
+        remarks: prev[parameterId]?.remarks || '',
         [field]: value,
       },
     }))
@@ -213,27 +220,31 @@ export default function InspectionDetailPage() {
         return
       }
 
+      let currentInspectionId = inspection?.id
+
       // If no inspection exists, create one
       if (!inspection) {
-        await createInspection.mutateAsync({
+        const newInspection = await createInspection.mutateAsync({
           slipId: arrivalSlipId,
           data: formData as CreateInspectionRequest,
         })
+        currentInspectionId = newInspection.id
       }
 
-      // Update parameter results if inspection exists
-      if (inspection && Object.keys(parameterResults).length > 0) {
+      // Update parameter results if we have an inspection and parameter results
+      if (currentInspectionId && Object.keys(parameterResults).length > 0) {
         const results: UpdateParameterResultRequest[] = Object.entries(parameterResults).map(
           ([parameterId, values]) => ({
             parameter_master_id: parseInt(parameterId),
             result_value: values.result_value || '',
             result_numeric: values.result_numeric,
+            is_within_spec: values.is_within_spec ?? true,
             remarks: values.remarks || '',
           })
         )
 
         await updateParameters.mutateAsync({
-          inspectionId: inspection.id,
+          inspectionId: currentInspectionId,
           results,
         })
       }
@@ -537,7 +548,7 @@ export default function InspectionDetailPage() {
       </Card>
 
       {/* Parameter Results */}
-      {(inspection?.parameter_results?.length > 0 || qcParameters.length > 0) && (
+      {((inspection?.parameter_results?.length ?? 0) > 0 || qcParameters.length > 0) && (
         <Card>
           <CardHeader>
             <CardTitle>QC Parameters</CardTitle>
@@ -550,16 +561,18 @@ export default function InspectionDetailPage() {
                     <th className="text-left p-3 font-medium">Parameter</th>
                     <th className="text-left p-3 font-medium">Standard Value</th>
                     <th className="text-left p-3 font-medium">Result</th>
+                    <th className="text-center p-3 font-medium">Within Spec</th>
                     <th className="text-left p-3 font-medium">Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(inspection?.parameter_results || qcParameters).map((param) => {
                     const parameterId = 'parameter_master' in param ? param.parameter_master : param.id
-                    const paramName = 'parameter_name' in param ? param.parameter_name : param.parameter_name
+                    const paramName = param.parameter_name
                     const standardValue = param.standard_value
                     const currentValue = parameterResults[parameterId] || {
                       result_value: '',
+                      is_within_spec: true,
                       remarks: '',
                     }
 
@@ -577,6 +590,17 @@ export default function InspectionDetailPage() {
                             }
                             disabled={!canEdit || isSaving}
                             className="w-full"
+                          />
+                        </td>
+                        <td className="p-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={currentValue.is_within_spec ?? true}
+                            onChange={(e) =>
+                              handleParameterChange(parameterId, 'is_within_spec', e.target.checked)
+                            }
+                            disabled={!canEdit || isSaving}
+                            className="h-4 w-4 rounded border-gray-300"
                           />
                         </td>
                         <td className="p-3">

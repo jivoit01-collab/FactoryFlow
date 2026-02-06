@@ -10,6 +10,7 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useMaintenanceTypes, useMaintenanceEntry, useCreateMaintenanceEntry, useUpdateMaintenanceEntry } from '../../api/maintenance/maintenance.queries'
 import { useDepartments } from '../../api/department/department.queries'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
@@ -116,6 +117,9 @@ export default function Step3Page() {
   })
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   // Load maintenance data when in edit mode
   useEffect(() => {

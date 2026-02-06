@@ -1,3 +1,4 @@
+import { Toaster } from 'sonner'
 import { AppProviders } from './providers'
 import { AppRoutes } from './routes'
 import { AuthInitializer } from '@/core/auth/components/AuthInitializer'
@@ -14,6 +15,7 @@ function App() {
         <AuthInitializer>
           <AppRoutes />
         </AuthInitializer>
+        <Toaster richColors position="top-right" />
       </AppProviders>
     </ErrorBoundary>
   )

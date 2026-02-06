@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useOpenPOs } from '../../api/po/po.queries'
 import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
@@ -97,6 +98,9 @@ export default function Step3Page() {
   const [poSearchTerms, setPOSearchTerms] = useState<Record<string, string>>({})
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   // Track which PO forms have fill data mode enabled (for handling API errors)
   const [fillDataModeForPO, setFillDataModeForPO] = useState<Record<string, boolean>>({})

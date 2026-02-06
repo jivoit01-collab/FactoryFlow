@@ -80,6 +80,8 @@ export function useUpdateParameterResults() {
       results: UpdateParameterResultRequest[]
     }) => inspectionApi.updateParameters(inspectionId, results),
     onSuccess: (_, { inspectionId }) => {
+      // Invalidate all inspection queries to ensure data refreshes
+      queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.all })
       queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.detail(inspectionId) })
     },
   })

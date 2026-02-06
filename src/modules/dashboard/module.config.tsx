@@ -14,7 +14,6 @@ export const dashboardModuleConfig: ModuleConfig = {
     {
       path: '/',
       element: <DashboardPage />,
-      permissions: ['gatein.view_dashboard'],
       layout: 'main',
     },
   ],

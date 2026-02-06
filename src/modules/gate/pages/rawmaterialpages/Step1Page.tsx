@@ -169,9 +169,9 @@ export default function Step1Page() {
         entry_type: 'RAW_MATERIAL',
       })
 
-      // Navigate to step 2 with entry ID
+      // Navigate to step 2 in edit mode (prevents duplicate submissions on back/forward navigation)
       setIsNavigating(true)
-      navigate(`/gate/raw-materials/new/step2?entryId=${result.id}`)
+      navigate(`/gate/raw-materials/edit/${result.id}/step2`)
     } catch (error) {
       const apiError = error as ApiError
       if (apiError.errors) {

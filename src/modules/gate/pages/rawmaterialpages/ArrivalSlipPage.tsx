@@ -12,7 +12,9 @@ import {
   Button,
   Checkbox,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
+import { VALIDATION_PATTERNS } from '@/config/constants'
 import { usePOReceipts } from '../../api/po/poReceipt.queries'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useCreateArrivalSlip, useSubmitArrivalSlip } from '../../api/arrivalSlip/arrivalSlip.queries'
@@ -86,6 +88,10 @@ export default function ArrivalSlipPage() {
   // State for all PO item receipt forms
   const [itemForms, setItemForms] = useState<POItemReceiptWithSlip[]>([])
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
+
   const [isNavigating, setIsNavigating] = useState(false)
   const [fillDataMode, setFillDataMode] = useState(false)
 
@@ -239,6 +245,8 @@ export default function ArrivalSlipPage() {
     }
     if (!form.formData.truck_no_as_per_bill.trim()) {
       errors[`${form.id}_truck_no_as_per_bill`] = 'Truck number is required'
+    } else if (!VALIDATION_PATTERNS.vehicleNumber.test(form.formData.truck_no_as_per_bill.trim().toUpperCase())) {
+      errors[`${form.id}_truck_no_as_per_bill`] = 'Please enter a valid vehicle number (e.g., MH12AB1234)'
     }
 
     return errors
@@ -520,11 +528,12 @@ export default function ArrivalSlipPage() {
                   </Label>
                   <Input
                     id={`truck_no_as_per_bill-${form.id}`}
-                    placeholder="Vehicle number"
+                    placeholder="MH12AB1234"
                     value={form.formData.truck_no_as_per_bill}
-                    onChange={(e) =>
-                      handleFormChange(form.id, 'truck_no_as_per_bill', e.target.value)
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase().replace(/\s/g, '')
+                      handleFormChange(form.id, 'truck_no_as_per_bill', value)
+                    }}
                     disabled={form.isSubmitted || isSaving}
                     className={cn(
                       apiErrors[`${form.id}_truck_no_as_per_bill`] && 'border-destructive',

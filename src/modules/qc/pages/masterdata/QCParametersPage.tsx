@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useMaterialTypes } from '../../api/materialType/materialType.queries'
 import {
   useQCParametersByMaterialType,
@@ -47,6 +48,9 @@ export default function QCParametersPage() {
     is_mandatory: true,
   })
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   const createParameter = useCreateQCParameter()
   const updateParameter = useUpdateQCParameter()

@@ -23,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
 import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
@@ -148,6 +149,9 @@ export default function ReviewPage() {
     navigate('/')
   }
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   // Fetch full gate entry data
   const { data: gateEntry, isLoading, error: fetchError } = useGateEntryFullView(entryIdNumber)

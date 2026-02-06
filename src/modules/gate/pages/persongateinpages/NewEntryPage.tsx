@@ -10,9 +10,12 @@ import {
   CardTitle,
   Label,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useCreatePersonEntry } from '../../api/personGateIn/personGateIn.queries'
 import { VisitorSelect, LabourSelect, GateSelect } from '../../components/persongatein'
 import { PERSON_TYPE_IDS, type Visitor, type Labour, type Gate, type CreateEntryRequest } from '../../api/personGateIn/personGateIn.api'
+import { VALIDATION_PATTERNS } from '@/config/constants'
+import { cn } from '@/shared/utils'
 
 type PersonTypeValue = 'visitor' | 'labour'
 
@@ -44,6 +47,9 @@ export default function NewEntryPage() {
   })
   const [selectedPerson, setSelectedPerson] = useState<Visitor | Labour | null>(null)
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   // API hooks
   const createEntryMutation = useCreatePersonEntry()
@@ -118,6 +124,9 @@ export default function NewEntryPage() {
     if (!formData.gate_in) errors.gate_in = 'Gate is required'
     if (personType === 'visitor' && !formData.visitor) errors.visitor = 'Please select a visitor'
     if (personType === 'labour' && !formData.labour) errors.labour = 'Please select a labour'
+    if (formData.vehicle_no.trim() && !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicle_no.trim().toUpperCase())) {
+      errors.vehicle_no = 'Please enter a valid vehicle number (e.g., MH12AB1234)'
+    }
 
     if (Object.keys(errors).length > 0) {
       setApiErrors(errors)
@@ -303,10 +312,23 @@ export default function NewEntryPage() {
                 <Label>Vehicle Number</Label>
                 <Input
                   value={formData.vehicle_no}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, vehicle_no: e.target.value }))}
-                  placeholder="e.g., MH12AB1234"
-                  className="mt-1"
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase().replace(/\s/g, '')
+                    setFormData((prev) => ({ ...prev, vehicle_no: value }))
+                    if (apiErrors.vehicle_no) {
+                      setApiErrors((prev) => {
+                        const newErrors = { ...prev }
+                        delete newErrors.vehicle_no
+                        return newErrors
+                      })
+                    }
+                  }}
+                  placeholder="MH12AB1234"
+                  className={cn('mt-1', apiErrors.vehicle_no && 'border-destructive')}
                 />
+                {apiErrors.vehicle_no && (
+                  <p className="text-xs text-destructive mt-1">{apiErrors.vehicle_no}</p>
+                )}
               </div>
 
               {/* Remarks */}

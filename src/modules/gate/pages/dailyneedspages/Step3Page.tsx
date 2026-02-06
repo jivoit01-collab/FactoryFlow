@@ -11,12 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useEntryId } from '../../hooks'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useDailyNeed, useCreateDailyNeed } from '../../api/dailyNeed/dailyNeed.queries'
 import { FillDataAlert, CategorySelect, DepartmentSelect } from '../../components'
 import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
 import { cn } from '@/shared/utils'
+import { VALIDATION_PATTERNS } from '@/config/constants'
 import type { ApiError } from '@/core/api'
 
 // Units for quantity
@@ -97,6 +99,9 @@ export default function Step3Page() {
   })
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   // Fields are read-only when:
   // 1. In edit mode AND update mode is not active AND there's no not found error, OR
@@ -206,6 +211,8 @@ export default function Step3Page() {
     }
     if (!formData.contactNumber) {
       errors.contactNumber = 'Please enter contact number'
+    } else if (!VALIDATION_PATTERNS.phone.test(formData.contactNumber)) {
+      errors.contactNumber = 'Please enter a valid 10-digit phone number'
     }
 
     if (Object.keys(errors).length > 0) {
@@ -543,9 +550,14 @@ export default function Step3Page() {
                 </Label>
                 <Input
                   id="contactNumber"
-                  placeholder="+91 9876543210"
+                  placeholder="9876543210"
                   value={formData.contactNumber}
-                  onChange={(e) => handleInputChange('contactNumber', e.target.value)}
+                  onChange={(e) => {
+                    // Only allow digits
+                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
+                    handleInputChange('contactNumber', value)
+                  }}
+                  maxLength={10}
                   disabled={isReadOnly || createDailyNeed.isPending}
                   className={cn(
                     'border-2 font-medium',
