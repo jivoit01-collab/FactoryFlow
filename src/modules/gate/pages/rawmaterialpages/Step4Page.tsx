@@ -62,8 +62,12 @@ export default function Step4Page() {
     if (effectiveEditMode && weighmentData) {
       // Use first_weighment_time and second_weighment_time from API if available
       // Otherwise, try to parse from remarks (for backward compatibility)
-      let firstWeighmentTime = weighmentData.first_weighment_time || ''
-      let secondWeighmentTime = weighmentData.second_weighment_time || ''
+      let firstWeighmentTime = weighmentData.first_weighment_time
+        ? weighmentData.first_weighment_time.slice(11, 16)
+        : ''
+      let secondWeighmentTime = weighmentData.second_weighment_time
+        ? weighmentData.second_weighment_time.slice(11, 16)
+        : ''
 
       // If times are not in dedicated fields, try parsing from remarks
       if (!firstWeighmentTime && !secondWeighmentTime && weighmentData.remarks) {
@@ -175,8 +179,8 @@ export default function Step4Page() {
         gross_weight: parseFloat(formData.grossWeight),
         tare_weight: parseFloat(formData.tareWeight),
         weighbridge_slip_no: formData.weighbridgeTicketNo,
-        first_weighment_time: formData.firstWeighmentTime,
-        second_weighment_time: formData.secondWeighmentTime,
+        first_weighment_time: `${new Date().toISOString().slice(0, 10)}T${formData.firstWeighmentTime}:00`,
+        second_weighment_time: `${new Date().toISOString().slice(0, 10)}T${formData.secondWeighmentTime}:00`,
       }
 
       await createWeighment.mutateAsync(requestData)

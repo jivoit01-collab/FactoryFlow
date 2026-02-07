@@ -10,6 +10,7 @@ const SHORT_NAMES: Record<string, string> = {
   'visitor-labour': 'Visitors',
   'quality-check': 'QC',
   qc: 'QC',
+  grpo: 'GRPO',
   gate: 'Gate',
   step1: 'Step 1',
   step2: 'Step 2',
@@ -26,6 +27,8 @@ const SHORT_NAMES: Record<string, string> = {
   pending: 'Pending',
   approvals: 'Approvals',
   inspections: 'Inspections',
+  preview: 'Preview',
+  history: 'History',
 }
 
 // Paths that have actual route components (navigable)
@@ -45,6 +48,9 @@ const NAVIGABLE_PATHS = [
   '/qc/master',
   '/qc/master/material-types',
   '/qc/master/parameters',
+  '/grpo',
+  '/grpo/pending',
+  '/grpo/history',
 ]
 
 /**
@@ -92,6 +98,10 @@ function getRedirectPath(path: string, segments: string[]): string | null {
   // For /inspections paths, redirect to pending
   if (path.includes('/inspections') && !path.includes('/pending')) {
     return '/qc/pending'
+  }
+  // For /grpo/preview paths, redirect to pending list
+  if (path === '/grpo/preview') {
+    return '/grpo/pending'
   }
   return null
 }

@@ -9,7 +9,8 @@ export const loginSchema = z.object({
     .max(
       VALIDATION_LIMITS.email.max,
       VALIDATION_MESSAGES.maxLength('Email', VALIDATION_LIMITS.email.max)
-    ),
+    )
+    .transform((val) => val.toLowerCase()),
   password: z
     .string()
     .min(1, VALIDATION_MESSAGES.required('Password'))

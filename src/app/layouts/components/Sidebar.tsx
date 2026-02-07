@@ -23,18 +23,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   // Get navigation items from module registry
   const allNavItems = useMemo(() => getAllNavigation(), [])
 
-  // DEBUG: Log permission state (remove after debugging)
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('[Sidebar] Permission State:', {
-        permissionsLoaded,
-        permissionsCount: permissions.length,
-        permissions: permissions.slice(0, 10), // First 10 permissions
-        hasQCPermission: hasModulePermission('quality_control'),
-      })
-    }
-  }, [permissionsLoaded, permissions, hasModulePermission])
-
   // Filter navigation items based on permissions
   const navItems = useMemo(() => {
     return allNavItems
@@ -111,7 +99,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen border-r bg-background transition-all duration-300',
+        'fixed left-0 top-0 z-40 h-screen flex flex-col border-r bg-background transition-all duration-300',
         isCollapsed
           ? `w-[${SIDEBAR_CONFIG.collapsedWidth}px]`
           : `w-[${SIDEBAR_CONFIG.expandedWidth}px]`
@@ -133,7 +121,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className={cn('flex flex-col gap-1 py-2', isCollapsed ? 'items-center' : 'px-2')}>
+      <nav className={cn('h-[calc(100vh-4rem)] overflow-y-auto flex flex-col gap-1 py-2', isCollapsed ? 'items-center' : 'px-2')}>
         {navItems.map((item) => {
           // Icon comes directly from module config, fallback to LayoutDashboard
           const Icon = item.icon || LayoutDashboard

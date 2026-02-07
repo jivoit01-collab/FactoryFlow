@@ -9,6 +9,7 @@ import { gateModuleConfig } from '@/modules/gate/module.config'
 import { gateInModuleConfig } from '@/modules/gateIn/module.config'
 import { qualityCheckModuleConfig } from '@/modules/qualityCheck/module.config'
 import { qcModuleConfig } from '@/modules/qc/module.config'
+import { grpoModuleConfig } from '@/modules/grpo/module.config'
 
 /**
  * Central registry of all feature modules
@@ -21,6 +22,7 @@ export const moduleRegistry: ModuleConfig[] = [
   gateInModuleConfig,
   qualityCheckModuleConfig,
   qcModuleConfig,
+  grpoModuleConfig,
 ]
 
 /**

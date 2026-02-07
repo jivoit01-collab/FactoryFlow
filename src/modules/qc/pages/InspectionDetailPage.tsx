@@ -554,7 +554,68 @@ export default function InspectionDetailPage() {
             <CardTitle>QC Parameters</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile: stacked card layout */}
+            <div className="md:hidden space-y-4">
+              {(inspection?.parameter_results || qcParameters).map((param) => {
+                const parameterId = 'parameter_master' in param ? param.parameter_master : param.id
+                const paramName = param.parameter_name
+                const standardValue = param.standard_value
+                const currentValue = parameterResults[parameterId] || {
+                  result_value: '',
+                  is_within_spec: true,
+                  remarks: '',
+                }
+
+                return (
+                  <div key={parameterId} className="border rounded-lg p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{paramName}</span>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={currentValue.is_within_spec ?? true}
+                          onChange={(e) =>
+                            handleParameterChange(parameterId, 'is_within_spec', e.target.checked)
+                          }
+                          disabled={!canEdit || isSaving}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <span className="text-muted-foreground">Within Spec</span>
+                      </label>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Standard: {standardValue}
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Result</Label>
+                      <Input
+                        value={currentValue.result_value}
+                        onChange={(e) =>
+                          handleParameterChange(parameterId, 'result_value', e.target.value)
+                        }
+                        disabled={!canEdit || isSaving}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Remarks</Label>
+                      <Input
+                        value={currentValue.remarks}
+                        onChange={(e) =>
+                          handleParameterChange(parameterId, 'remarks', e.target.value)
+                        }
+                        disabled={!canEdit || isSaving}
+                        className="w-full"
+                        placeholder="Optional"
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Desktop: table layout */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">

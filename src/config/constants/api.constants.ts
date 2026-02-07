@@ -63,6 +63,8 @@ export const API_ENDPOINTS = {
   PO: {
     OPEN_POS: (supplierCode?: string) =>
       supplierCode ? `/po/open-pos/?supplier_code=${supplierCode}` : '/po/open-pos/',
+    WAREHOUSES: '/po/warehouses/',
+    VENDORS: '/po/vendors/',
   },
   // Raw Material Gate In
   RAW_MATERIAL_GATEIN: {
@@ -130,6 +132,14 @@ export const API_ENDPOINTS = {
     APPROVE_CHEMIST: (id: number) => `/quality-control/inspections/${id}/approve/chemist/`,
     APPROVE_QAM: (id: number) => `/quality-control/inspections/${id}/approve/qam/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
+  },
+  // GRPO (Goods Receipt Purchase Order)
+  GRPO: {
+    PENDING: '/grpo/pending/',
+    PREVIEW: (vehicleEntryId: number) => `/grpo/preview/${vehicleEntryId}/`,
+    POST: '/grpo/post/',
+    HISTORY: '/grpo/history/',
+    DETAIL: (postingId: number) => `/grpo/${postingId}/`,
   },
 } as const
 

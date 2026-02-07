@@ -32,7 +32,12 @@ export function LoginForm({ onSubmit, isLoading }: LoginFormProps) {
           id="email"
           type="email"
           placeholder="name@company.com"
-          {...register('email', { required: true })}
+          {...register('email', {
+            required: true,
+            onChange: (e) => {
+              e.target.value = e.target.value.toLowerCase()
+            },
+          })}
           disabled={isLoading}
         />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}

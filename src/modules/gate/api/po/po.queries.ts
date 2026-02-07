@@ -8,3 +8,12 @@ export function useOpenPOs(supplierCode?: string, enabled: boolean = true) {
     enabled: enabled && !!supplierCode, // Only fetch when enabled and supplierCode exists
   })
 }
+
+export function useVendors(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['vendors'],
+    queryFn: () => poApi.getVendors(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  })
+}

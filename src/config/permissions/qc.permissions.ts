@@ -12,28 +12,28 @@ export const QC_PERMISSIONS = {
   // ARRIVAL SLIP PERMISSIONS
   // ============================================
   ARRIVAL_SLIP: {
-    /** Create new material arrival slips */
-    CREATE: 'quality_control.can_create_arrival_slip',
-    /** Edit existing material arrival slips */
-    EDIT: 'quality_control.can_edit_arrival_slip',
-    /** Submit arrival slips to QA for inspection */
+    /** Create new material arrival slips (Django default: add_materialarrivalslip) */
+    CREATE: 'quality_control.add_materialarrivalslip',
+    /** Edit existing material arrival slips (Django default: change_materialarrivalslip) */
+    EDIT: 'quality_control.change_materialarrivalslip',
+    /** Submit arrival slips to QA for inspection (custom permission) */
     SUBMIT: 'quality_control.can_submit_arrival_slip',
-    /** View material arrival slips */
-    VIEW: 'quality_control.can_view_arrival_slip',
+    /** View material arrival slips (Django default: view_materialarrivalslip) */
+    VIEW: 'quality_control.view_materialarrivalslip',
   },
 
   // ============================================
   // INSPECTION PERMISSIONS
   // ============================================
   INSPECTION: {
-    /** Create new raw material inspections */
-    CREATE: 'quality_control.can_create_inspection',
-    /** Edit existing raw material inspections */
-    EDIT: 'quality_control.can_edit_inspection',
-    /** Submit inspections for approval */
+    /** Create new raw material inspections (Django default: add_rawmaterialinspection) */
+    CREATE: 'quality_control.add_rawmaterialinspection',
+    /** Edit existing raw material inspections (Django default: change_rawmaterialinspection) */
+    EDIT: 'quality_control.change_rawmaterialinspection',
+    /** Submit inspections for approval (custom permission) */
     SUBMIT: 'quality_control.can_submit_inspection',
-    /** View raw material inspections */
-    VIEW: 'quality_control.can_view_inspection',
+    /** View raw material inspections (Django default: view_rawmaterialinspection) */
+    VIEW: 'quality_control.view_rawmaterialinspection',
   },
 
   // ============================================
