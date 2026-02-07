@@ -106,7 +106,7 @@ export default function PendingInspectionsPage() {
   }
 
   // Format date/time - consistent with Gate module
-  const formatDateTime = (dateTime?: string) => {
+  const formatDateTime = (dateTime?: string | null) => {
     if (!dateTime) return '-'
     try {
       const date = new Date(dateTime)

@@ -10,7 +10,8 @@
       "Bash(npx eslint:*)",
       "Bash(npm install:*)",
       "Bash(dir:*)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(echo:*)"
     ]
   }
 }

@@ -13,7 +13,7 @@ import type { FieldErrors } from 'react-hook-form'
  * const { formState: { errors } } = useForm()
  * useScrollToError(errors)
  */
-export function useScrollToError<T extends FieldErrors>(
+export function useScrollToError<T extends FieldErrors | Record<string, string>>(
   errors: T,
   options: {
     /** Whether to automatically scroll when errors change. Default: true */

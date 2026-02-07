@@ -16,8 +16,7 @@ src/modules/
 │   ├── Construction   # Construction material entries
 │   ├── Maintenance    # Maintenance and spare parts
 │   └── Visitor/Labour # Person gate-in (visitors and labours)
-├── gateIn/            # Generic gate entry operations
-└── qualityCheck/      # Quality control management
+└── qc/               # Quality control management
 ```
 
 ## Module Structure Pattern
@@ -197,37 +196,6 @@ Main application dashboard providing an overview of factory operations.
 
 See: [Dashboard Module Documentation](./dashboard.md)
 
-### 4. Gate Entry Module (`/modules/gateIn/`)
-
-Generic gate entry operations for tracking entries and exits.
-
-**Key Features:**
-- Gate entry logging
-- Entry/exit tracking
-- Status management
-- Entry history
-
-**Routes:**
-- `/gate-in` - Gate entry list
-- `/gate-in/:id` - Entry details
-
-See: [Gate Entry Module Documentation](./gateIn.md)
-
-### 5. Quality Check Module (`/modules/qualityCheck/`)
-
-Quality control management for incoming materials.
-
-**Key Features:**
-- Quality parameter entry
-- Pass/fail determination
-- Quality reports
-- Integration with gate entries
-
-**Routes:**
-- `/quality-check` - Quality check list
-- `/quality-check/:id` - Quality check details
-
-See: [Quality Check Module Documentation](./qualityCheck.md)
 
 ## Creating a New Module
 
@@ -421,7 +389,5 @@ feature.types.ts
 - [Authentication Module](./auth.md)
 - [Gate Module](./gate.md)
 - [Dashboard Module](./dashboard.md)
-- [Gate Entry Module](./gateIn.md)
-- [Quality Check Module](./qualityCheck.md)
 - [Architecture Overview](../architecture/overview.md)
 - [Folder Structure](../architecture/folder-structure.md)

@@ -110,7 +110,7 @@ export default function QCDashboardPage() {
   const totalPending = counts.pending + counts.draft + counts.awaiting_approval
 
   // Format date/time for display - consistent with Gate module
-  const formatDateTime = (dateTime?: string) => {
+  const formatDateTime = (dateTime?: string | null) => {
     if (!dateTime) return '-'
     try {
       const date = new Date(dateTime)

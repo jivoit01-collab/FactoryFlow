@@ -14,25 +14,6 @@ export const API_ENDPOINTS = {
     ME: '/accounts/me/',
     CHANGE_PASSWORD: '/accounts/change-password/',
   },
-  // Gate In
-  GATE_IN: {
-    BASE: '/gate-in',
-    LIST: '/gate-in',
-    DETAIL: (id: string) => `/gate-in/${id}`,
-    CREATE: '/gate-in',
-    UPDATE: (id: string) => `/gate-in/${id}`,
-    DELETE: (id: string) => `/gate-in/${id}`,
-  },
-  // Quality Check
-  QUALITY_CHECK: {
-    BASE: '/quality-check',
-    LIST: '/quality-check',
-    DETAIL: (id: string) => `/quality-check/${id}`,
-    CREATE: '/quality-check',
-    CREATE_FOR_ENTRY: (entryId: number) => `/quality-check/gate-entries/${entryId}/`,
-    UPDATE: (id: string) => `/quality-check/${id}`,
-    DELETE: (id: string) => `/quality-check/${id}`,
-  },
   // Vehicle Management
   VEHICLE: {
     TRANSPORTERS: '/vehicle-management/transporters/',
