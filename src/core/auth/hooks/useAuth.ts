@@ -10,6 +10,10 @@ import {
   updateUser,
   switchCompany as switchCompanyAction,
 } from '../store/authSlice'
+import {
+  cleanupPushNotifications,
+  resetNotificationState,
+} from '@/core/store/slices/notification.slice'
 import { authService } from '../services/auth.service'
 import { AUTH_ROUTES, AUTH_CONFIG } from '@/config/constants'
 import type { LoginCredentials, UserCompany } from '../types/auth.types'
@@ -49,7 +53,7 @@ export function useAuth() {
   )
 
   /**
-   * Logout - clear all auth data
+   * Logout - clear all auth data and cleanup push notifications
    */
   const logout = useCallback(async () => {
     // Clear permission refresh interval
@@ -59,10 +63,20 @@ export function useAuth() {
     }
 
     try {
+      // Cleanup push notifications (unregister from backend and delete FCM token)
+      await dispatch(cleanupPushNotifications()).unwrap()
+    } catch {
+      // Ignore FCM cleanup errors, still proceed with logout
+    }
+
+    try {
       await authService.logout()
     } catch {
       // Ignore logout API errors, still clear local state
     } finally {
+      // Reset notification state
+      dispatch(resetNotificationState())
+      // Clear auth state
       dispatch(logoutAction())
       navigate(AUTH_ROUTES.login)
     }
