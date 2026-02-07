@@ -6,8 +6,12 @@
       "Bash(npm run type-check:*)",
       "Bash(npx tsc:*)",
       "Bash(npm run build:*)",
+      "Bash(npm run lint)",
+      "Bash(npx eslint:*)",
       "Bash(npm install:*)",
-      "Bash(npx vite build:*)"
+      "Bash(dir:*)",
+      "Bash(npx vite build)",
+      "Bash(echo:*)"
     ]
   }
 }

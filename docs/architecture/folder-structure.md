@@ -157,8 +157,7 @@ src/modules/
 ├── auth/                    # Authentication feature
 ├── dashboard/               # Dashboard feature
 ├── gate/                    # Gate management (main feature)
-├── gateIn/                  # Gate entry operations
-└── qualityCheck/            # Quality check feature
+└── qc/                      # Quality control management
 ```
 
 ### Module Structure Pattern

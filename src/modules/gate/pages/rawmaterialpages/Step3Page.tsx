@@ -20,15 +20,17 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useOpenPOs } from '../../api/po/po.queries'
 import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import { VendorSelect } from '../../components'
 import { useEntryId } from '../../hooks'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
 import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
 import type { ApiError } from '@/core/api/types'
-import type { PurchaseOrder } from '../../api/po/po.api'
+import type { PurchaseOrder, Vendor } from '../../api/po/po.api'
 
 interface POItemFormData {
   po_item_code: string
@@ -98,6 +100,9 @@ export default function Step3Page() {
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
 
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
+
   // Track which PO forms have fill data mode enabled (for handling API errors)
   const [fillDataModeForPO, setFillDataModeForPO] = useState<Record<string, boolean>>({})
 
@@ -129,6 +134,31 @@ export default function Step3Page() {
         return newErrors
       })
     }
+  }
+
+  const handleVendorSelect = (poFormId: string, vendor: Vendor | null) => {
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
+    setPoForms((prev) =>
+      prev.map((form) =>
+        form.id === poFormId
+          ? {
+              ...form,
+              supplierCode: vendor?.vendor_code || '',
+              supplierName: vendor?.vendor_name || '',
+              // Clear PO selection when vendor changes
+              poNumber: '',
+              items: [],
+            }
+          : form
+      )
+    )
+    // Clear errors
+    const errorKeys = [`${poFormId}_supplierCode`, `${poFormId}_supplierName`, `${poFormId}_poNumber`]
+    setApiErrors((prev) => {
+      const newErrors = { ...prev }
+      errorKeys.forEach((key) => delete newErrors[key])
+      return newErrors
+    })
   }
 
   const handlePOFocus = (poFormId: string) => {
@@ -550,6 +580,7 @@ export default function Step3Page() {
             fillDataMode={fillDataModeForPO[poForm.id] || false}
             onSupplierNameChange={(value) => handleSupplierNameChange(poForm.id, value)}
             onSupplierCodeChange={(value) => handleSupplierCodeChange(poForm.id, value)}
+            onVendorSelect={(vendor) => handleVendorSelect(poForm.id, vendor)}
             onPOFocus={() => handlePOFocus(poForm.id)}
             onPOSelect={(po) => handlePOSelect(poForm.id, po)}
             onReceivedQtyChange={(itemCode, value) =>
@@ -631,6 +662,7 @@ interface POCardProps {
   fillDataMode: boolean
   onSupplierNameChange: (value: string) => void
   onSupplierCodeChange: (value: string) => void
+  onVendorSelect: (vendor: Vendor | null) => void
   onPOFocus: () => void
   onPOSelect: (po: PurchaseOrder) => void
   onReceivedQtyChange: (itemCode: string, value: string) => void
@@ -650,6 +682,7 @@ function POCard({
   fillDataMode,
   onSupplierNameChange,
   onSupplierCodeChange,
+  onVendorSelect,
   onPOFocus,
   onPOSelect,
   onReceivedQtyChange,
@@ -760,25 +793,14 @@ function POCard({
 
           {/* Supplier Details */}
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor={`supplier-code-${poForm.id}`}>
-                Supplier Code <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id={`supplier-code-${poForm.id}`}
-                placeholder="Enter supplier code"
-                value={poForm.supplierCode}
-                onChange={(e) => onSupplierCodeChange(e.target.value)}
-                disabled={effectiveReadOnly}
-                className={cn(
-                  apiErrors[`${poForm.id}_supplierCode`] && 'border-destructive',
-                  effectiveReadOnly && 'cursor-not-allowed opacity-50'
-                )}
-              />
-              {apiErrors[`${poForm.id}_supplierCode`] && (
-                <p className="text-sm text-destructive">{apiErrors[`${poForm.id}_supplierCode`]}</p>
-              )}
-            </div>
+            <VendorSelect
+              label="Supplier"
+              required
+              value={poForm.supplierCode}
+              onChange={onVendorSelect}
+              disabled={effectiveReadOnly}
+              error={apiErrors[`${poForm.id}_supplierCode`]}
+            />
 
             {/* PO Number */}
             <div className="space-y-2">
@@ -858,27 +880,24 @@ function POCard({
               )}
               {!poForm.supplierCode && (
                 <p className="text-sm text-muted-foreground">
-                  Please enter supplier code first to select a PO
+                  Please select a supplier first to load POs
                 </p>
               )}
             </div>
           </div>
 
-          {/* Supplier Name */}
+          {/* Supplier Name (auto-filled from vendor selection) */}
           <div className="space-y-2">
             <Label htmlFor={`supplier-name-${poForm.id}`}>
-              Supplier Name <span className="text-destructive">*</span>
+              Supplier Name
             </Label>
             <Input
               id={`supplier-name-${poForm.id}`}
-              placeholder="Enter supplier name"
+              placeholder="Auto-filled from supplier selection"
               value={poForm.supplierName}
-              onChange={(e) => onSupplierNameChange(e.target.value)}
-              disabled={effectiveReadOnly}
-              className={cn(
-                apiErrors[`${poForm.id}_supplierName`] && 'border-destructive',
-                effectiveReadOnly && 'cursor-not-allowed opacity-50'
-              )}
+              readOnly
+              disabled
+              className="bg-muted"
             />
             {apiErrors[`${poForm.id}_supplierName`] && (
               <p className="text-sm text-destructive">{apiErrors[`${poForm.id}_supplierName`]}</p>

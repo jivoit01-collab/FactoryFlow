@@ -15,7 +15,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
-  const { hasModulePermission, hasAnyPermission, isStaff, permissionsLoaded } = usePermission()
+  const { hasModulePermission, hasAnyPermission, permissionsLoaded, permissions } =
+    usePermission()
   const location = useLocation()
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set())
 
@@ -24,29 +25,37 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
   // Filter navigation items based on permissions
   const navItems = useMemo(() => {
-    return allNavItems.filter((item) => {
-      if (!item.showInSidebar) return false
+    return allNavItems
+      .filter((item) => {
+        if (!item.showInSidebar) return false
 
-      // Wait for permissions to load before filtering
-      if (!permissionsLoaded) return false
+        // Wait for permissions to load before filtering
+        if (!permissionsLoaded) return false
 
-      // Staff users see everything
-      if (isStaff) return true
+        // If route has a modulePrefix, check if user has any permission for that module
+        if (item.modulePrefix) {
+          return hasModulePermission(item.modulePrefix)
+        }
 
-      // If route has a modulePrefix, check if user has any permission for that module
-      if (item.modulePrefix) {
-        return hasModulePermission(item.modulePrefix)
-      }
+        // Fallback: if route has explicit permissions, check those
+        if (item.permissions && item.permissions.length > 0) {
+          return hasAnyPermission([...item.permissions])
+        }
 
-      // Fallback: if route has explicit permissions, check those
-      if (item.permissions && item.permissions.length > 0) {
-        return hasAnyPermission([...item.permissions])
-      }
-
-      // Routes without modulePrefix or permissions are shown (like Gate)
-      return true
-    })
-  }, [allNavItems, permissionsLoaded, isStaff, hasModulePermission, hasAnyPermission])
+        // Routes without modulePrefix or permissions are shown (like Gate)
+        return true
+      })
+      .map((item) => ({
+        ...item,
+        // Filter children based on permissions
+        children: item.children?.filter((child) => {
+          // Children without permissions are shown
+          if (!child.permissions || child.permissions.length === 0) return true
+          // Check if user has any of the required permissions
+          return hasAnyPermission([...child.permissions])
+        }),
+      }))
+  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission])
 
   const toggleSubmenu = (routePath: string) => {
     setOpenSubmenus((prev) => {
@@ -90,7 +99,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen border-r bg-background transition-all duration-300',
+        'fixed left-0 top-0 z-40 h-screen flex flex-col border-r bg-background transition-all duration-300',
         isCollapsed
           ? `w-[${SIDEBAR_CONFIG.collapsedWidth}px]`
           : `w-[${SIDEBAR_CONFIG.expandedWidth}px]`
@@ -112,7 +121,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className={cn('flex flex-col gap-1 py-2', isCollapsed ? 'items-center' : 'px-2')}>
+      <nav className={cn('h-[calc(100vh-4rem)] overflow-y-auto flex flex-col gap-1 py-2', isCollapsed ? 'items-center' : 'px-2')}>
         {navItems.map((item) => {
           // Icon comes directly from module config, fallback to LayoutDashboard
           const Icon = item.icon || LayoutDashboard

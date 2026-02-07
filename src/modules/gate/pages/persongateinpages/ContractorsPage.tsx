@@ -10,6 +10,7 @@ import {
   CardTitle,
   Label,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import {
   useContractors,
   useCreateContractor,
@@ -17,6 +18,8 @@ import {
   useDeleteContractor,
 } from '../../api/personGateIn/personGateIn.queries'
 import type { Contractor, CreateContractorRequest } from '../../api/personGateIn/personGateIn.api'
+import { VALIDATION_PATTERNS } from '@/config/constants'
+import { cn } from '@/shared/utils'
 
 export default function ContractorsPage() {
   const navigate = useNavigate()
@@ -32,6 +35,9 @@ export default function ContractorsPage() {
     is_active: true,
   })
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   const { data: contractors = [], isLoading, refetch } = useContractors()
   const createMutation = useCreateContractor()
@@ -76,8 +82,14 @@ export default function ContractorsPage() {
 
   // Handle form submit
   const handleSubmit = async () => {
-    if (!formData.contractor_name.trim()) {
-      setApiErrors({ contractor_name: 'Contractor name is required' })
+    const errors: Record<string, string> = {}
+    if (!formData.contractor_name.trim()) errors.contractor_name = 'Contractor name is required'
+    if (formData.mobile?.trim() && !VALIDATION_PATTERNS.phone.test(formData.mobile.trim())) {
+      errors.mobile = 'Please enter a valid 10-digit phone number'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setApiErrors(errors)
       return
     }
 
@@ -214,10 +226,18 @@ export default function ContractorsPage() {
                 <Label>Mobile</Label>
                 <Input
                   value={formData.mobile || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, mobile: e.target.value }))}
-                  placeholder="Mobile number"
-                  className="mt-1"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
+                    setFormData((prev) => ({ ...prev, mobile: value }))
+                    if (apiErrors.mobile) {
+                      setApiErrors((prev) => { const n = { ...prev }; delete n.mobile; return n })
+                    }
+                  }}
+                  placeholder="9876543210"
+                  maxLength={10}
+                  className={cn('mt-1', apiErrors.mobile && 'border-destructive')}
                 />
+                {apiErrors.mobile && <p className="text-xs text-destructive mt-1">{apiErrors.mobile}</p>}
               </div>
 
               <div>

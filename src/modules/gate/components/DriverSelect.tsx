@@ -173,9 +173,10 @@ export function DriverSelect({
     }
   }
 
-  const handleCreateSuccess = (driverName: string) => {
-    // After creating a new driver, set the search term
+  const handleCreateSuccess = (driverId: number, driverName: string) => {
+    // After creating a new driver, set the selected ID to trigger details fetch
     // The driver list will be refreshed due to query invalidation
+    setSelectedId(driverId)
     setSearchTerm(driverName)
     setIsOpen(false)
   }

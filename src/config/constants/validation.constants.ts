@@ -4,6 +4,11 @@ export const VALIDATION_PATTERNS = {
   vehicleNumber: /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/,
   alphanumeric: /^[a-zA-Z0-9]+$/,
   numeric: /^[0-9]+$/,
+  // Indian ID document patterns
+  aadhar: /^[0-9]{12}$/, // 12 digits only
+  panCard: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, // 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)
+  voterId: /^[A-Z]{3}[0-9]{7}$/, // 3 letters + 7 digits (e.g., ABC1234567)
+  drivingLicense: /^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/, // State code + RTO code + year + number (e.g., MH0220150001234)
 } as const
 
 export const VALIDATION_LIMITS = {

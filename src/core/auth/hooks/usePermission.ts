@@ -18,11 +18,9 @@ export function usePermission() {
    */
   const hasPermission = useCallback(
     (permission: string): boolean => {
-      // Staff users have all permissions
-      if (user?.is_staff) return true
       return permissions.includes(permission)
     },
-    [permissions, user?.is_staff]
+    [permissions]
   )
 
   /**
@@ -30,10 +28,9 @@ export function usePermission() {
    */
   const hasAnyPermission = useCallback(
     (requiredPermissions: string[]): boolean => {
-      if (user?.is_staff) return true
       return requiredPermissions.some((permission) => permissions.includes(permission))
     },
-    [permissions, user?.is_staff]
+    [permissions]
   )
 
   /**
@@ -41,10 +38,9 @@ export function usePermission() {
    */
   const hasAllPermissions = useCallback(
     (requiredPermissions: string[]): boolean => {
-      if (user?.is_staff) return true
       return requiredPermissions.every((permission) => permissions.includes(permission))
     },
-    [permissions, user?.is_staff]
+    [permissions]
   )
 
   /**
@@ -141,11 +137,10 @@ export function usePermission() {
    */
   const hasModulePermission = useCallback(
     (modulePrefix: string): boolean => {
-      if (user?.is_staff) return true
       const prefix = `${modulePrefix}.`
       return permissions.some((permission) => permission.startsWith(prefix))
     },
-    [permissions, user?.is_staff]
+    [permissions]
   )
 
   /**

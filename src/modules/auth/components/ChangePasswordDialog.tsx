@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog'
 import { Button, Input, Label } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import {
   changePasswordSchema,
   type ChangePasswordFormData,
@@ -46,6 +47,8 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     resolver: zodResolver(changePasswordSchema),
     defaultValues: CHANGE_PASSWORD_FORM_DEFAULTS,
   })
+
+  useScrollToError(errors)
 
   const onSubmit = async (data: ChangePasswordFormData) => {
     setIsLoading(true)

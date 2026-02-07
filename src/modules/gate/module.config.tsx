@@ -11,8 +11,8 @@ const RawMaterialsPage = lazy(() => import('./pages/RawMaterialsPage'))
 const RMStep1Page = lazy(() => import('./pages/rawmaterialpages/Step1Page'))
 const RMStep2Page = lazy(() => import('./pages/rawmaterialpages/Step2Page'))
 const RMStep3Page = lazy(() => import('./pages/rawmaterialpages/Step3Page'))
-const RMStep4Page = lazy(() => import('./pages/rawmaterialpages/Step4Page'))
-const RMStep5Page = lazy(() => import('./pages/rawmaterialpages/Step5Page'))
+const RMArrivalSlipPage = lazy(() => import('./pages/rawmaterialpages/ArrivalSlipPage'))
+const RMWeighmentPage = lazy(() => import('./pages/rawmaterialpages/Step4Page'))
 const RMReviewPage = lazy(() => import('./pages/rawmaterialpages/ReviewPage'))
 
 // Daily Needs wizard pages
@@ -93,12 +93,12 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/raw-materials/new/step4',
-      element: <RMStep4Page />,
+      element: <RMArrivalSlipPage />,
       layout: 'main',
     },
     {
       path: '/gate/raw-materials/new/step5',
-      element: <RMStep5Page />,
+      element: <RMWeighmentPage />,
       layout: 'main',
     },
     {
@@ -124,12 +124,12 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/raw-materials/edit/:entryId/step4',
-      element: <RMStep4Page />,
+      element: <RMArrivalSlipPage />,
       layout: 'main',
     },
     {
       path: '/gate/raw-materials/edit/:entryId/step5',
-      element: <RMStep5Page />,
+      element: <RMWeighmentPage />,
       layout: 'main',
     },
     {

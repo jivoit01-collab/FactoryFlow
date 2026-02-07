@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Camera, X } from 'lucide-react'
@@ -13,14 +13,20 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { useCreateDriver } from '../api/driver/driver.queries'
-import { driverSchema, type DriverFormData } from '../schemas/driver.schema'
+import {
+  driverSchema,
+  ID_PROOF_TYPES,
+  ID_PROOF_VALIDATION,
+  type DriverFormData,
+} from '../schemas/driver.schema'
 import type { ApiError } from '@/core/api/types'
 
 interface CreateDriverDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: (driverName: string) => void
+  onSuccess?: (driverId: number, driverName: string) => void
 }
 
 export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriverDialogProps) {
@@ -49,6 +55,11 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
   })
 
   const photoFile = watch('photo')
+  const idProofType = watch('id_proof_type')
+
+  // Combine form errors and API errors for scroll-to-error
+  const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors])
+  useScrollToError(combinedErrors)
 
   // Reset form and errors when dialog opens/closes
   useEffect(() => {
@@ -60,6 +71,11 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
       setPhotoPreview(null)
     }
   }, [open, reset])
+
+  // Clear id_proof_number when id_proof_type changes
+  useEffect(() => {
+    setValue('id_proof_number', '', { shouldValidate: false })
+  }, [idProofType, setValue])
 
   // Handle photo preview
   useEffect(() => {
@@ -97,7 +113,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
       setPhotoPreview(null)
       onOpenChange(false)
       if (onSuccess) {
-        onSuccess(result.name)
+        onSuccess(result.id, result.name)
       }
     } catch (error) {
       // Handle API errors
@@ -193,11 +209,18 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
             </Label>
             <Input
               id="license_no"
-              placeholder="DL0420150001231"
-              {...register('license_no')}
+              placeholder="MH0220150001234"
+              {...register('license_no', {
+                onChange: (e) => {
+                  e.target.value = e.target.value.toUpperCase()
+                },
+              })}
               disabled={createDriver.isPending}
               className={errors.license_no || apiErrors.license_no ? 'border-destructive' : ''}
             />
+            <p className="text-xs text-muted-foreground">
+              Format: State code + RTO + Year + Number (e.g., MH0220150001234)
+            </p>
             {errors.license_no && (
               <p className="text-sm text-destructive">{errors.license_no.message}</p>
             )}
@@ -216,11 +239,11 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
               {...register('id_proof_type')}
               disabled={createDriver.isPending}
             >
-              <option value="Aadhar">Aadhar</option>
-              <option value="PAN Card">PAN Card</option>
-              <option value="Driving License">Driving License</option>
-              <option value="Voter ID">Voter ID</option>
-              <option value="Other">Other</option>
+              {ID_PROOF_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
             {errors.id_proof_type && (
               <p className="text-sm text-destructive">{errors.id_proof_type.message}</p>
@@ -236,13 +259,33 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
             </Label>
             <Input
               id="id_proof_number"
-              placeholder="1234-5678-9012"
-              {...register('id_proof_number')}
+              placeholder={
+                ID_PROOF_VALIDATION[idProofType as keyof typeof ID_PROOF_VALIDATION]?.placeholder ||
+                'Enter ID proof number'
+              }
+              {...register('id_proof_number', {
+                onChange: (e) => {
+                  // For Aadhar, only allow digits
+                  if (idProofType === 'Aadhar') {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 12)
+                  }
+                  // For PAN Card and Voter ID, uppercase the input
+                  else if (idProofType === 'PAN Card' || idProofType === 'Voter ID') {
+                    e.target.value = e.target.value.toUpperCase()
+                  }
+                },
+              })}
+              maxLength={idProofType === 'Aadhar' ? 12 : idProofType === 'PAN Card' ? 10 : idProofType === 'Voter ID' ? 10 : 50}
               disabled={createDriver.isPending}
               className={
                 errors.id_proof_number || apiErrors.id_proof_number ? 'border-destructive' : ''
               }
             />
+            {idProofType && idProofType !== 'Other' && (
+              <p className="text-xs text-muted-foreground">
+                {ID_PROOF_VALIDATION[idProofType as keyof typeof ID_PROOF_VALIDATION]?.message}
+              </p>
+            )}
             {errors.id_proof_number && (
               <p className="text-sm text-destructive">{errors.id_proof_number.message}</p>
             )}

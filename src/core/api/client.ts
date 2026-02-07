@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
+import { toast } from 'sonner'
 import { env } from '@/config/env.config'
 import { API_CONFIG, HTTP_STATUS, AUTH_CONFIG, API_ENDPOINTS } from '@/config/constants'
 import type { ApiError } from './types'
@@ -242,15 +243,38 @@ function createApiClient(): AxiosInstance {
         }
       }
 
+      // Extract error message - check various response formats
+      let errorMessage = 'An error occurred'
+      if (responseData?.detail) {
+        errorMessage = responseData.detail as string
+      } else if (responseData?.message) {
+        errorMessage = responseData.message as string
+      } else if (responseData?.error) {
+        // Handle 'error' field (e.g., "['Person already inside']" or plain string)
+        const errValue = responseData.error
+        if (typeof errValue === 'string') {
+          // Handle Python-style stringified list: "['message']"
+          const match = errValue.match(/^\['(.+)'\]$/)
+          errorMessage = match ? match[1] : errValue
+        } else if (Array.isArray(errValue) && errValue.length > 0) {
+          errorMessage = errValue[0]
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
       const apiError: ApiError = {
-        message:
-          (responseData?.detail as string) ||
-          (responseData?.message as string) ||
-          error.message ||
-          'An error occurred',
+        message: errorMessage,
         code: error.code,
         errors: errors,
         status: error.response?.status || 500,
+      }
+
+      // Show global toast notification for API errors
+      // Skip 401 (handled by token refresh/redirect) and errors with only field-level errors
+      const status = apiError.status
+      if (status !== HTTP_STATUS.UNAUTHORIZED) {
+        toast.error(errorMessage)
       }
 
       return Promise.reject(apiError)

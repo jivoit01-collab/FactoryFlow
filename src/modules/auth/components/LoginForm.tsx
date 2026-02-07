@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff } from 'lucide-react'
 import { Button, Input, Label } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { loginSchema, type LoginFormData, LOGIN_FORM_DEFAULTS } from '../schemas/login.schema'
 
 interface LoginFormProps {
@@ -21,6 +22,8 @@ export function LoginForm({ onSubmit, isLoading }: LoginFormProps) {
     defaultValues: LOGIN_FORM_DEFAULTS,
   })
 
+  useScrollToError(errors)
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
@@ -29,7 +32,12 @@ export function LoginForm({ onSubmit, isLoading }: LoginFormProps) {
           id="email"
           type="email"
           placeholder="name@company.com"
-          {...register('email', { required: true })}
+          {...register('email', {
+            required: true,
+            onChange: (e) => {
+              e.target.value = e.target.value.toLowerCase()
+            },
+          })}
           disabled={isLoading}
         />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}

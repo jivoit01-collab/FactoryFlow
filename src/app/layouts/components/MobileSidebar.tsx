@@ -21,7 +21,7 @@ interface MobileSidebarProps {
 }
 
 function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
-  const { hasModulePermission, hasAnyPermission, isStaff, permissionsLoaded } = usePermission()
+  const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission()
   const location = useLocation()
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set())
 
@@ -36,9 +36,6 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       // Wait for permissions to load before filtering
       if (!permissionsLoaded) return false
 
-      // Staff users see everything
-      if (isStaff) return true
-
       // If route has a modulePrefix, check if user has any permission for that module
       if (item.modulePrefix) {
         return hasModulePermission(item.modulePrefix)
@@ -52,7 +49,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       // Routes without modulePrefix or permissions are shown (like Gate)
       return true
     })
-  }, [allNavItems, permissionsLoaded, isStaff, hasModulePermission, hasAnyPermission])
+  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission])
 
   const toggleSubmenu = (routePath: string) => {
     setOpenSubmenus((prev) => {
@@ -95,14 +92,14 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-64 p-0">
+      <SheetContent side="left" className="w-64 p-0 flex flex-col overflow-hidden">
         <SheetHeader className="border-b p-4">
           <SheetTitle className="flex items-center gap-2">
             <img src="/JivoWellnessLogo.png" alt="Jivo Wellness Logo" className="h-8 dark:invert" />
           </SheetTitle>
         </SheetHeader>
 
-        <nav className="flex flex-col gap-1 p-2">
+        <nav className="flex-1 overflow-y-auto flex flex-col gap-1 p-2">
           {navItems.map((item) => {
             // Icon comes directly from module config, fallback to LayoutDashboard
             const Icon = item.icon || LayoutDashboard

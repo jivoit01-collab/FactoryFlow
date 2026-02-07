@@ -2,8 +2,8 @@ import { apiClient } from '@/core/api'
 
 // ===== Person Type IDs =====
 export const PERSON_TYPE_IDS = {
-  LABOUR: 1,
-  VISITOR: 3,
+  VISITOR: 1,
+  LABOUR: 2,
 } as const
 
 // ===== Master Types =====

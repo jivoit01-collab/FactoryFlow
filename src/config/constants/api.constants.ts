@@ -14,24 +14,6 @@ export const API_ENDPOINTS = {
     ME: '/accounts/me/',
     CHANGE_PASSWORD: '/accounts/change-password/',
   },
-  // Gate In
-  GATE_IN: {
-    BASE: '/gate-in',
-    LIST: '/gate-in',
-    DETAIL: (id: string) => `/gate-in/${id}`,
-    CREATE: '/gate-in',
-    UPDATE: (id: string) => `/gate-in/${id}`,
-    DELETE: (id: string) => `/gate-in/${id}`,
-  },
-  // Quality Check
-  QUALITY_CHECK: {
-    BASE: '/quality-check',
-    LIST: '/quality-check',
-    DETAIL: (id: string) => `/quality-check/${id}`,
-    CREATE: '/quality-check',
-    UPDATE: (id: string) => `/quality-check/${id}`,
-    DELETE: (id: string) => `/quality-check/${id}`,
-  },
   // Vehicle Management
   VEHICLE: {
     TRANSPORTERS: '/vehicle-management/transporters/',
@@ -62,6 +44,8 @@ export const API_ENDPOINTS = {
   PO: {
     OPEN_POS: (supplierCode?: string) =>
       supplierCode ? `/po/open-pos/?supplier_code=${supplierCode}` : '/po/open-pos/',
+    WAREHOUSES: '/po/warehouses/',
+    VENDORS: '/po/vendors/',
   },
   // Raw Material Gate In
   RAW_MATERIAL_GATEIN: {
@@ -96,6 +80,7 @@ export const API_ENDPOINTS = {
   ACCOUNTS: {
     DEPARTMENTS: '/accounts/departments',
   },
+
   // Notifications
   NOTIFICATIONS: {
     LIST: '/notifications/list/',
@@ -105,6 +90,48 @@ export const API_ENDPOINTS = {
     PREFERENCES: '/notifications/preferences/',
     DEVICE_TOKENS: '/notifications/device-tokens/',
     TEST: '/notifications/test/',
+  }
+  // Quality Control V2 (New QC Module)
+  QUALITY_CONTROL_V2: {
+    // Arrival Slips
+    ARRIVAL_SLIP_LIST: '/quality-control/arrival-slips/',
+    ARRIVAL_SLIP_CREATE: (poItemReceiptId: number) =>
+      `/quality-control/po-items/${poItemReceiptId}/arrival-slip/`,
+    ARRIVAL_SLIP_GET: (poItemReceiptId: number) =>
+      `/quality-control/po-items/${poItemReceiptId}/arrival-slip/`,
+    ARRIVAL_SLIP_BY_ID: (slipId: number) => `/quality-control/arrival-slips/${slipId}/`,
+    ARRIVAL_SLIP_SUBMIT: (slipId: number) => `/quality-control/arrival-slips/${slipId}/submit/`,
+
+    // Material Types
+    MATERIAL_TYPES: '/quality-control/material-types/',
+    MATERIAL_TYPE_BY_ID: (id: number) => `/quality-control/material-types/${id}/`,
+    MATERIAL_TYPE_PARAMETERS: (materialTypeId: number) =>
+      `/quality-control/material-types/${materialTypeId}/parameters/`,
+
+    // QC Parameters
+    QC_PARAMETER_BY_ID: (id: number) => `/quality-control/parameters/${id}/`,
+
+    // Inspections
+    PENDING_INSPECTIONS: '/quality-control/inspections/pending/',
+    INSPECTION_BY_ID: (id: number) => `/quality-control/inspections/${id}/`,
+    INSPECTION_FOR_SLIP: (slipId: number) =>
+      `/quality-control/arrival-slips/${slipId}/inspection/`,
+    INSPECTION_PARAMETERS: (inspectionId: number) =>
+      `/quality-control/inspections/${inspectionId}/parameters/`,
+    INSPECTION_SUBMIT: (id: number) => `/quality-control/inspections/${id}/submit/`,
+
+    // Approvals
+    APPROVE_CHEMIST: (id: number) => `/quality-control/inspections/${id}/approve/chemist/`,
+    APPROVE_QAM: (id: number) => `/quality-control/inspections/${id}/approve/qam/`,
+    REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
+  },
+  // GRPO (Goods Receipt Purchase Order)
+  GRPO: {
+    PENDING: '/grpo/pending/',
+    PREVIEW: (vehicleEntryId: number) => `/grpo/preview/${vehicleEntryId}/`,
+    POST: '/grpo/post/',
+    HISTORY: '/grpo/history/',
+    DETAIL: (postingId: number) => `/grpo/${postingId}/`,
   },
 } as const
 

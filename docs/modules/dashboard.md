@@ -154,5 +154,4 @@ The dashboard uses the main layout with:
 
 - [Modules Overview](./overview.md)
 - [Gate Module](./gate.md)
-- [Quality Check Module](./qualityCheck.md)
 - [Layout Components](../components/layout.md)

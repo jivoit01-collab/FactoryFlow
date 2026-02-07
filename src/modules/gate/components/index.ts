@@ -11,6 +11,7 @@ export { DepartmentSelect } from './DepartmentSelect'
 export { DriverSelect } from './DriverSelect'
 export { TransporterSelect } from './TransporterSelect'
 export { VehicleSelect } from './VehicleSelect'
+export { VendorSelect } from './VendorSelect'
 
 // Dialog components
 export { CreateDriverDialog } from './CreateDriverDialog'

@@ -11,8 +11,8 @@ export const WIZARD_CONFIG = {
     VEHICLE_DRIVER: 1,
     SECURITY_CHECK: 2,
     PO_RECEIPT: 3,
-    WEIGHMENT: 4,
-    QUALITY_CONTROL: 5,
+    ARRIVAL_SLIP: 4,
+    WEIGHMENT: 5,
   },
 
   /** Step titles */
@@ -20,8 +20,8 @@ export const WIZARD_CONFIG = {
     1: 'Vehicle & Driver',
     2: 'Security Check',
     3: 'PO Receipt',
-    4: 'Weighment',
-    5: 'Quality Control',
+    4: 'Arrival Slip',
+    5: 'Weighment',
   },
 } as const
 

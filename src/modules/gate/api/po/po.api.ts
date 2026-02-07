@@ -32,9 +32,19 @@ export interface CreatePOReceiptRequest {
   items: POReceiptItem[]
 }
 
+export interface Vendor {
+  vendor_code: string
+  vendor_name: string
+}
+
 export const poApi = {
   async getOpenPOs(supplierCode?: string): Promise<PurchaseOrder[]> {
     const response = await apiClient.get<PurchaseOrder[]>(API_ENDPOINTS.PO.OPEN_POS(supplierCode))
+    return response.data
+  },
+
+  async getVendors(): Promise<Vendor[]> {
+    const response = await apiClient.get<Vendor[]>(API_ENDPOINTS.PO.VENDORS)
     return response.data
   },
 }

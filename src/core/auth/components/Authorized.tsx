@@ -42,13 +42,8 @@ export function Authorized({
   requireAll = false,
   fallback = null,
 }: AuthorizedProps) {
-  const { hasAnyPermission, hasAllPermissions, hasAnyCompanyRole, isStaff, permissionsLoaded } =
+  const { hasAnyPermission, hasAllPermissions, hasAnyCompanyRole, permissionsLoaded } =
     usePermission()
-
-  // Staff users have access to everything
-  if (isStaff) {
-    return <>{children}</>
-  }
 
   // Wait for permissions to load before making access decisions
   if (!permissionsLoaded) {

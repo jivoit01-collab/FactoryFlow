@@ -142,33 +142,6 @@ export const ROUTES = {
     },
   },
 
-  // Quality Check - shown if user has any 'qualitycheck.*' permissions
-  QUALITY_CHECK: {
-    path: '/quality-check',
-    title: 'Quality Check',
-    permissions: ['qualitycheck.view_qualitycheckentry'],
-    icon: 'ClipboardCheck',
-    showInSidebar: true,
-    // Module prefix for dynamic sidebar filtering
-    modulePrefix: 'qualitycheck',
-    children: {
-      LIST: {
-        path: '/quality-check',
-        title: 'Quality Check List',
-        permissions: ['qualitycheck.view_qualitycheckentry'],
-      },
-      DETAIL: {
-        path: '/quality-check/:id',
-        title: 'Quality Check Detail',
-        permissions: ['qualitycheck.view_qualitycheckentry'],
-      },
-      CREATE: {
-        path: '/quality-check/new',
-        title: 'New Quality Check',
-        permissions: ['qualitycheck.add_qualitycheckentry'],
-      },
-    },
-  },
 
   PROFILE: {
     path: '/profile',

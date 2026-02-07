@@ -51,3 +51,5 @@ export { Collapsible, CollapsibleTrigger, CollapsibleContent } from './collapsib
 export { Popover, PopoverTrigger, PopoverContent } from './popover'
 export { Calendar, type CalendarProps } from './calendar'
 export { Switch, type SwitchProps } from './switch'
+export { Checkbox, type CheckboxProps } from './checkbox'
+export { Textarea, type TextareaProps } from './textarea'

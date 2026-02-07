@@ -181,9 +181,10 @@ export function VehicleSelect({
     }
   }
 
-  const handleCreateSuccess = (vehicleNumber: string) => {
-    // After creating a new vehicle, set the search term
+  const handleCreateSuccess = (vehicleId: number, vehicleNumber: string) => {
+    // After creating a new vehicle, set the selected ID to trigger details fetch
     // The vehicle list will be refreshed due to query invalidation
+    setSelectedId(vehicleId)
     setSearchTerm(vehicleNumber)
     setIsOpen(false)
   }

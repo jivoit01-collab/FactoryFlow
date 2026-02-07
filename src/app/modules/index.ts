@@ -6,8 +6,8 @@ import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types'
 import { authModuleConfig } from '@/modules/auth/module.config'
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config'
 import { gateModuleConfig } from '@/modules/gate/module.config'
-import { gateInModuleConfig } from '@/modules/gateIn/module.config'
-import { qualityCheckModuleConfig } from '@/modules/qualityCheck/module.config'
+import { qcModuleConfig } from '@/modules/qc/module.config'
+import { grpoModuleConfig } from '@/modules/grpo/module.config'
 
 /**
  * Central registry of all feature modules
@@ -17,8 +17,8 @@ export const moduleRegistry: ModuleConfig[] = [
   authModuleConfig,
   dashboardModuleConfig,
   gateModuleConfig,
-  gateInModuleConfig,
-  qualityCheckModuleConfig,
+  qcModuleConfig,
+  grpoModuleConfig,
 ]
 
 /**

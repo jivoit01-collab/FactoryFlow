@@ -12,6 +12,8 @@ import {
 } from '@/shared/components/ui'
 import { useCreateLabour, useContractors } from '../../api/personGateIn/personGateIn.queries'
 import type { Labour } from '../../api/personGateIn/personGateIn.api'
+import { VALIDATION_PATTERNS } from '@/config/constants'
+import { cn } from '@/shared/utils'
 
 interface CreateLabourDialogProps {
   open: boolean
@@ -57,13 +59,15 @@ export function CreateLabourDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name.trim()) {
-      setApiErrors({ name: 'Name is required' })
-      return
+    const errors: Record<string, string> = {}
+    if (!formData.name.trim()) errors.name = 'Name is required'
+    if (!formData.contractor) errors.contractor = 'Contractor is required'
+    if (formData.mobile?.trim() && !VALIDATION_PATTERNS.phone.test(formData.mobile.trim())) {
+      errors.mobile = 'Please enter a valid 10-digit phone number'
     }
 
-    if (!formData.contractor) {
-      setApiErrors({ contractor: 'Contractor is required' })
+    if (Object.keys(errors).length > 0) {
+      setApiErrors(errors)
       return
     }
 
@@ -158,11 +162,20 @@ export function CreateLabourDialog({
               <Label htmlFor="mobile">Mobile</Label>
               <Input
                 id="mobile"
-                placeholder="Mobile number"
+                placeholder="9876543210"
                 value={formData.mobile}
-                onChange={(e) => setFormData((prev) => ({ ...prev, mobile: e.target.value }))}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
+                  setFormData((prev) => ({ ...prev, mobile: value }))
+                  if (apiErrors.mobile) {
+                    setApiErrors((prev) => { const n = { ...prev }; delete n.mobile; return n })
+                  }
+                }}
+                maxLength={10}
                 disabled={createLabour.isPending}
+                className={cn(apiErrors.mobile && 'border-destructive')}
               />
+              {apiErrors.mobile && <p className="text-sm text-destructive">{apiErrors.mobile}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="skill_type">Skill Type</Label>

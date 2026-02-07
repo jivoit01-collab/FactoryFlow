@@ -11,9 +11,9 @@ export default defineConfig({
       // Include the assets the generator actually created
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'], 
       manifest: {
-        name: 'Factory Flow',
-        short_name: 'Factory Flow',
-        description: 'An application to manage factory workflows efficiently.',
+        name: 'Sampooran',
+        short_name: 'Sampooran',
+        description: 'Sampooran - Complete management system for Jivo Wellness.',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',

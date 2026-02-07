@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
 
 // Type definitions
@@ -95,6 +96,9 @@ export function SecurityCheckFormShell({
   headerTitle = 'Material Inward',
 }: SecurityCheckFormShellProps) {
   const progressPercentage = (currentStep / totalSteps) * 100
+
+  // Scroll to first error when errors occur
+  useScrollToError(apiErrors)
 
   if (isLoading) {
     return (

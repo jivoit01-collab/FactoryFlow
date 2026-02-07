@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { gateEntryFullViewApi } from './gateEntryFullView.api'
+import { GRPO_QUERY_KEYS } from '@/modules/grpo/api'
 
 export function useGateEntryFullView(entryId: number | null) {
   return useQuery({
@@ -16,6 +17,8 @@ export function useCompleteGateEntry() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+      // Invalidate GRPO pending list so newly completed entries appear
+      queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.pending() })
     },
   })
 }
