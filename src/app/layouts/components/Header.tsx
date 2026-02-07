@@ -18,6 +18,7 @@ import {
 import { useTheme } from '@/shared/contexts'
 import { THEME_OPTIONS, type Theme } from '@/config/constants/app.constants'
 import { ROUTES } from '@/config/routes.config'
+import { NotificationBell } from '@/core/notifications'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -64,6 +65,9 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Notification bell */}
+        <NotificationBell />
+
         {/* Theme selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

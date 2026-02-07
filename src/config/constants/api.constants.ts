@@ -96,6 +96,16 @@ export const API_ENDPOINTS = {
   ACCOUNTS: {
     DEPARTMENTS: '/accounts/departments',
   },
+  // Notifications
+  NOTIFICATIONS: {
+    LIST: '/notifications/list/',
+    DETAIL: (id: number) => `/notifications/${id}/`,
+    UNREAD_COUNT: '/notifications/unread-count/',
+    MARK_READ: '/notifications/mark-read/',
+    PREFERENCES: '/notifications/preferences/',
+    DEVICE_TOKENS: '/notifications/device-tokens/',
+    TEST: '/notifications/test/',
+  },
 } as const
 
 export const HTTP_STATUS = {

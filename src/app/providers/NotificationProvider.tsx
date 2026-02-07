@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { type MessagePayload } from 'firebase/messaging'
+import { toast } from 'sonner'
 import { useAppDispatch, useAppSelector } from '@/core/store'
 import { fcmService } from '@/core/notifications'
 import {
@@ -54,26 +55,32 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Add to Redux state
       dispatch(addNotification(notification))
 
-      // Show browser notification for foreground messages (optional)
-      // The user is in the app, so we might want to show an in-app toast instead
-      if (Notification.permission === 'granted' && payload.notification) {
-        // Only show browser notification if app is not visible
-        if (document.visibilityState !== 'visible') {
-          const browserNotification = new Notification(notification.title, {
-            body: notification.body,
-            icon: '/pwa-192x192.png',
-            tag: payload.data?.tag || 'foreground',
-            data: payload.data,
-          })
+      // Show in-app toast when app is visible, browser notification when not
+      if (document.visibilityState === 'visible') {
+        toast.info(notification.title, {
+          description: notification.body,
+          action: payload.data?.url
+            ? {
+                label: 'View',
+                onClick: () => {
+                  window.location.href = payload.data!.url!
+                },
+              }
+            : undefined,
+        })
+      } else if (globalThis.Notification?.permission === 'granted' && payload.notification) {
+        const browserNotification = new globalThis.Notification(notification.title, {
+          body: notification.body,
+          icon: '/pwa-192x192.png',
+          tag: payload.data?.tag || 'foreground',
+          data: payload.data,
+        })
 
-          browserNotification.onclick = () => {
-            window.focus()
-            browserNotification.close()
-
-            // Navigate to notification URL if provided
-            if (payload.data?.url) {
-              window.location.href = payload.data.url
-            }
+        browserNotification.onclick = () => {
+          window.focus()
+          browserNotification.close()
+          if (payload.data?.url) {
+            window.location.href = payload.data.url
           }
         }
       }

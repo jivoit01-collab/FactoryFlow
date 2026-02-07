@@ -14,18 +14,15 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCUUCRdZt2Yg787ELUf2dq5bDbYkXC1j9o",
-  authDomain: "factory-flow-27c46.firebaseapp.com",
-  projectId: "factory-flow-27c46",
-  storageBucket: "factory-flow-27c46.firebasestorage.app",
-  messagingSenderId: "484044523284",
-  appId: "1:484044523284:web:1e3abe50b7d942f157e401"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+// Firebase configuration (hardcoded - service workers cannot access import.meta.env)
+firebase.initializeApp({
+  apiKey: 'AIzaSyBanxBLJy0h5_D3inPJP9e850kmsoRDTxo',
+  authDomain: 'sampooran-jivo.firebaseapp.com',
+  projectId: 'sampooran-jivo',
+  storageBucket: 'sampooran-jivo.firebasestorage.app',
+  messagingSenderId: '288727872234',
+  appId: '1:288727872234:web:6fc2628ca56d1d440bdd93',
+});
 
 const messaging = firebase.messaging();
 
