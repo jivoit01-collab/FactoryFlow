@@ -10,7 +10,6 @@ import type {
   MarkReadRequest,
   MarkReadResponse,
   UnreadCountResponse,
-  DeviceTokenResponse,
   TestNotificationRequest,
   TestNotificationResponse,
 } from './types'
@@ -103,11 +102,27 @@ class NotificationService {
   }
 
   /**
-   * Get registered device tokens for current user
+   * Register device FCM token with backend
    */
-  async getDeviceTokens(): Promise<DeviceTokenResponse[]> {
-    const response = await apiClient.get<DeviceTokenResponse[]>(
-      API_ENDPOINTS.NOTIFICATIONS.DEVICE_TOKENS
+  async registerDevice(fcmToken: string): Promise<{ message: string; device_id: number }> {
+    const response = await apiClient.post<{ message: string; device_id: number }>(
+      API_ENDPOINTS.NOTIFICATIONS.DEVICES.REGISTER,
+      {
+        fcm_token: fcmToken,
+        device_type: 'WEB',
+        device_info: navigator.userAgent,
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * Unregister device FCM token from backend
+   */
+  async unregisterDevice(fcmToken: string): Promise<{ message: string }> {
+    const response = await apiClient.post<{ message: string }>(
+      API_ENDPOINTS.NOTIFICATIONS.DEVICES.UNREGISTER,
+      { fcm_token: fcmToken }
     )
     return response.data
   }

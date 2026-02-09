@@ -15,6 +15,9 @@ export { QC_PERMISSIONS, QC_MODULE_PREFIX, type QCPermission } from './qc.permis
 // GRPO Module
 export { GRPO_PERMISSIONS, GRPO_MODULE_PREFIX, type GRPOPermission } from './grpo.permissions'
 
-// Future modules can be exported here:
-// export { GATE_PERMISSIONS } from './gate.permissions'
-// export { INVENTORY_PERMISSIONS } from './inventory.permissions'
+// Notifications Module
+export {
+  NOTIFICATION_PERMISSIONS,
+  NOTIFICATION_MODULE_PREFIX,
+  type NotificationPermission,
+} from './notification.permissions'

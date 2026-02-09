@@ -9,7 +9,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       // Include the assets the generator actually created
-      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'], 
+      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'],
       manifest: {
         name: 'Sampooran',
         short_name: 'Sampooran',

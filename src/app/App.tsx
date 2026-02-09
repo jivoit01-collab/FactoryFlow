@@ -3,6 +3,7 @@ import { AppProviders } from './providers'
 import { AppRoutes } from './routes'
 import { AuthInitializer } from '@/core/auth/components/AuthInitializer'
 import { ErrorBoundary } from '@/shared/components'
+import { PWAInstallPrompt } from '@/core/pwa/PWAInstallPrompt'
 
 /**
  * Main App component
@@ -16,6 +17,7 @@ function App() {
           <AppRoutes />
         </AuthInitializer>
         <Toaster richColors position="top-right" />
+        <PWAInstallPrompt />
       </AppProviders>
     </ErrorBoundary>
   )

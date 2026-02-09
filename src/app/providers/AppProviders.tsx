@@ -4,8 +4,13 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { store } from '@/core/store'
 import { queryClient } from '@/core/api'
-import { ThemeProvider } from '@/shared/contexts'
+import { ThemeProvider, useTheme } from '@/shared/contexts'
 import { NotificationProvider } from './NotificationProvider'
+
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme()
+  return <Toaster theme={resolvedTheme} position="top-right" richColors closeButton />
+}
 
 interface AppProvidersProps {
   children: React.ReactNode
@@ -19,7 +24,7 @@ export function AppProviders({ children }: AppProvidersProps) {
           <ThemeProvider>
             <NotificationProvider>
               {children}
-              <Toaster position="top-right" richColors closeButton />
+              <ThemedToaster />
             </NotificationProvider>
           </ThemeProvider>
         </BrowserRouter>

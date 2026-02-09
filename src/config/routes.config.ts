@@ -143,6 +143,12 @@ export const ROUTES = {
   },
 
 
+  NOTIFICATIONS: {
+    path: '/notifications',
+    title: 'Notifications',
+    showInSidebar: false,
+  },
+
   PROFILE: {
     path: '/profile',
     title: 'Profile',

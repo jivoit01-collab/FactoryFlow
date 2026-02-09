@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  baseUrl: 'http://192.168.1.84:3000/api/v1',
+  baseUrl: 'http://192.168.1.183:3000/api/v1',
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
@@ -76,21 +76,26 @@ export const API_ENDPOINTS = {
     FULL_VIEW: (entryId: number) => `/gate-core/daily-need-gate-entry/${entryId}/`,
     COMPLETE: (entryId: number) => `/daily-needs-gatein/gate-entries/${entryId}/complete/`,
   },
-  // Accounts / Departments
+  // Accounts
   ACCOUNTS: {
     DEPARTMENTS: '/accounts/departments',
+    USERS: '/accounts/users/',
   },
 
   // Notifications
   NOTIFICATIONS: {
-    LIST: '/notifications/list/',
+    LIST: '/notifications/',
     DETAIL: (id: number) => `/notifications/${id}/`,
     UNREAD_COUNT: '/notifications/unread-count/',
     MARK_READ: '/notifications/mark-read/',
     PREFERENCES: '/notifications/preferences/',
-    DEVICE_TOKENS: '/notifications/device-tokens/',
     TEST: '/notifications/test/',
-  }
+    SEND: '/notifications/send/',
+    DEVICES: {
+      REGISTER: '/notifications/devices/register/',
+      UNREGISTER: '/notifications/devices/unregister/',
+    },
+  },
   // Quality Control V2 (New QC Module)
   QUALITY_CONTROL_V2: {
     // Arrival Slips

@@ -478,7 +478,8 @@ export default function InspectionDetailPage() {
 
             {/* User input fields */}
             <MaterialTypeSelect
-              label="Material Type *"
+              label="Material Type"
+              required
               value={formData.material_type_id || undefined}
               onChange={(type) => handleInputChange('material_type_id', type?.id || 0)}
               disabled={!canEdit || isSaving || !!inspection}

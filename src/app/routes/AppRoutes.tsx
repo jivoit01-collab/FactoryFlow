@@ -4,6 +4,7 @@ import { MainLayout, AuthLayout } from '@/app/layouts'
 import { ProtectedRoute } from '@/core/auth'
 import { getRoutesByLayout } from '@/app/modules'
 import { PageLoadError } from '@/shared/components/PageLoadError'
+import { NotificationGate } from '@/core/notifications/components/NotificationGate'
 
 // Unauthorized page
 function UnauthorizedPage() {
@@ -30,11 +31,13 @@ export function AppRoutes() {
           ))}
         </Route>
 
-        {/* Protected routes (require authentication) */}
+        {/* Protected routes (require authentication + notification permission) */}
         <Route
           element={
             <ProtectedRoute>
-              <MainLayout />
+              <NotificationGate>
+                <MainLayout />
+              </NotificationGate>
             </ProtectedRoute>
           }
         >

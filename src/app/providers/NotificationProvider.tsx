@@ -2,9 +2,8 @@ import { useEffect, useRef, useCallback } from 'react'
 import { type MessagePayload } from 'firebase/messaging'
 import { toast } from 'sonner'
 import { useAppDispatch, useAppSelector } from '@/core/store'
-import { fcmService } from '@/core/notifications'
+import { fcmService, notificationService } from '@/core/notifications'
 import {
-  initializeFCM,
   setupPushNotifications,
   fetchUnreadCount,
   addNotification,
@@ -19,21 +18,18 @@ interface NotificationProviderProps {
 /**
  * NotificationProvider
  *
- * Handles FCM initialization and foreground message handling.
- * Should be placed inside Redux Provider but can be anywhere in the component tree.
- *
- * Features:
- * - Initializes FCM when user is authenticated
- * - Sets up foreground message listener
- * - Automatically requests permission if not already granted
- * - Handles incoming notifications and updates Redux state
+ * Flow:
+ * Login → FCM setup (permission + token) → Register device with backend → ...
+ * Company select → Fetch unread count
+ * Logout → Unregister device → Delete FCM token
  */
 export function NotificationProvider({ children }: NotificationProviderProps) {
   const dispatch = useAppDispatch()
-  const { isAuthenticated } = useAppSelector((state) => state.auth)
+  const { isAuthenticated, currentCompany } = useAppSelector((state) => state.auth)
   const fcmState = useAppSelector(selectFCMState)
   const messageListenerRef = useRef<(() => void) | null>(null)
-  const initAttemptedRef = useRef(false)
+  const setupAttemptedRef = useRef(false)
+  const deviceRegisteredTokenRef = useRef<string | null>(null)
 
   /**
    * Handle incoming foreground messages
@@ -42,9 +38,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     (payload: MessagePayload) => {
       console.log('[NotificationProvider] Foreground message:', payload)
 
-      // Extract notification data
       const notification: Notification = {
-        id: Date.now(), // Temporary ID until we fetch from server
+        id: Date.now(),
         type_code: payload.data?.type_code || 'UNKNOWN',
         title: payload.notification?.title || payload.data?.title || 'New Notification',
         body: payload.notification?.body || payload.data?.body || '',
@@ -52,10 +47,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         created_at: new Date().toISOString(),
       }
 
-      // Add to Redux state
       dispatch(addNotification(notification))
 
-      // Show in-app toast when app is visible, browser notification when not
       if (document.visibilityState === 'visible') {
         toast.info(notification.title, {
           description: notification.body,
@@ -85,47 +78,40 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         }
       }
 
-      // Refresh unread count from server
       dispatch(fetchUnreadCount())
     },
     [dispatch]
   )
 
   /**
-   * Initialize FCM when authenticated
+   * Setup FCM right after login: request permission, get token.
+   * Does NOT wait for company selection.
    */
   useEffect(() => {
-    // Only initialize once per auth session
-    if (!isAuthenticated || initAttemptedRef.current) {
+    if (
+      !isAuthenticated ||
+      fcmState.token ||
+      fcmState.permission === 'denied' ||
+      setupAttemptedRef.current
+    ) {
       return
     }
 
-    initAttemptedRef.current = true
+    setupAttemptedRef.current = true
 
-    const initFCM = async () => {
-      try {
-        // Initialize FCM service
-        await dispatch(initializeFCM()).unwrap()
-
-        // Fetch initial unread count
-        dispatch(fetchUnreadCount())
-      } catch (error) {
-        console.warn('[NotificationProvider] FCM initialization failed:', error)
-      }
-    }
-
-    initFCM()
-  }, [isAuthenticated, dispatch])
+    dispatch(setupPushNotifications()).catch((error) => {
+      console.warn('[NotificationProvider] Push notification setup failed:', error)
+    })
+  }, [isAuthenticated, fcmState.token, fcmState.permission, dispatch])
 
   /**
-   * Setup message listener when FCM is initialized
+   * Setup message listener when FCM has a token (meaning it's initialized)
    */
   useEffect(() => {
-    if (!fcmState.isInitialized || !isAuthenticated) {
+    if (!fcmState.token || !isAuthenticated) {
       return
     }
 
-    // Setup foreground message listener
     messageListenerRef.current = fcmService.onMessage(handleForegroundMessage)
 
     return () => {
@@ -134,28 +120,47 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         messageListenerRef.current = null
       }
     }
-  }, [fcmState.isInitialized, isAuthenticated, handleForegroundMessage])
+  }, [fcmState.token, isAuthenticated, handleForegroundMessage])
 
   /**
-   * Auto-setup push notifications if permission is already granted
+   * Register device token with backend after obtaining FCM token.
+   * Does NOT wait for company selection — the register endpoint only needs Bearer auth.
    */
   useEffect(() => {
-    if (!fcmState.isInitialized || !isAuthenticated) {
+    if (
+      !fcmState.token ||
+      !isAuthenticated ||
+      deviceRegisteredTokenRef.current === fcmState.token
+    ) {
       return
     }
 
-    // If permission is already granted but we don't have a token, get one
-    if (fcmState.permission === 'granted' && !fcmState.token) {
-      dispatch(setupPushNotifications())
-    }
-  }, [fcmState.isInitialized, fcmState.permission, fcmState.token, isAuthenticated, dispatch])
+    deviceRegisteredTokenRef.current = fcmState.token
+
+    notificationService.registerDevice(fcmState.token).catch((error) => {
+      console.warn('[NotificationProvider] Backend device registration failed:', error)
+      deviceRegisteredTokenRef.current = null
+    })
+  }, [fcmState.token, isAuthenticated])
 
   /**
-   * Reset init flag on logout
+   * Fetch unread count once company is selected
+   */
+  useEffect(() => {
+    if (!isAuthenticated || !currentCompany) {
+      return
+    }
+
+    dispatch(fetchUnreadCount())
+  }, [isAuthenticated, currentCompany, dispatch])
+
+  /**
+   * Reset flags on logout
    */
   useEffect(() => {
     if (!isAuthenticated) {
-      initAttemptedRef.current = false
+      setupAttemptedRef.current = false
+      deviceRegisteredTokenRef.current = null
     }
   }, [isAuthenticated])
 

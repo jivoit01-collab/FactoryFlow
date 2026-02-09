@@ -64,34 +64,7 @@ const initialState: NotificationState = {
 // ============================================
 
 /**
- * Initialize FCM service
- */
-export const initializeFCM = createAsyncThunk(
-  'notification/initializeFCM',
-  async (_, { rejectWithValue }) => {
-    try {
-      const isSupported = fcmService.isSupported()
-      if (!isSupported) {
-        return { isSupported: false, permission: 'denied' as NotificationPermission }
-      }
-
-      const initialized = await fcmService.initialize()
-      if (!initialized) {
-        return rejectWithValue('FCM initialization failed')
-      }
-
-      const permission = fcmService.getPermissionStatus()
-      const token = fcmService.getCurrentToken()
-
-      return { isSupported: true, permission, token }
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'FCM initialization failed')
-    }
-  }
-)
-
-/**
- * Setup push notifications (request permission, get token, register)
+ * Setup push notifications (initialize, request permission, get token)
  */
 export const setupPushNotifications = createAsyncThunk(
   'notification/setupPushNotifications',
@@ -121,6 +94,16 @@ export const setupPushNotifications = createAsyncThunk(
 export const cleanupPushNotifications = createAsyncThunk(
   'notification/cleanupPushNotifications',
   async () => {
+    // Unregister device token from backend before deleting FCM token
+    const currentToken = fcmService.getCurrentToken()
+    if (currentToken) {
+      try {
+        await notificationService.unregisterDevice(currentToken)
+      } catch (error) {
+        console.warn('[Notification] Backend device unregistration failed:', error)
+      }
+    }
+
     await fcmService.cleanupPushNotifications()
     return true
   }
@@ -283,25 +266,6 @@ const notificationSlice = createSlice({
   extraReducers: (builder) => {
     // ========== FCM Thunks ==========
     builder
-      // initializeFCM
-      .addCase(initializeFCM.pending, (state) => {
-        state.fcm.isLoading = true
-        state.fcm.error = null
-      })
-      .addCase(initializeFCM.fulfilled, (state, action) => {
-        state.fcm.isLoading = false
-        state.fcm.isInitialized = true
-        state.fcm.isSupported = action.payload.isSupported
-        state.fcm.permission = action.payload.permission
-        if (action.payload.token) {
-          state.fcm.token = action.payload.token
-        }
-      })
-      .addCase(initializeFCM.rejected, (state, action) => {
-        state.fcm.isLoading = false
-        state.fcm.error = action.payload as string
-      })
-
       // setupPushNotifications
       .addCase(setupPushNotifications.pending, (state) => {
         state.fcm.isLoading = true
@@ -309,6 +273,7 @@ const notificationSlice = createSlice({
       })
       .addCase(setupPushNotifications.fulfilled, (state, action) => {
         state.fcm.isLoading = false
+        state.fcm.isInitialized = true
         state.fcm.permission = action.payload.permission
         state.fcm.token = action.payload.token
       })

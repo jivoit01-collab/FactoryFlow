@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -9,7 +9,8 @@ import {
   Separator,
 } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
-import { useNotificationList } from '../hooks'
+import { useUnreadCount } from '../hooks'
+import { notificationService } from '../notification.service'
 import type { Notification } from '../types'
 
 function formatTimeAgo(dateString: string): string {
@@ -70,15 +71,11 @@ function NotificationItem({
 
 export function NotificationBell() {
   const navigate = useNavigate()
-  const {
-    notifications,
-    unreadCount,
-    isLoading,
-    loadNotifications,
-    refreshUnreadCount,
-    markAsRead,
-    markAllAsRead,
-  } = useNotificationList()
+  const [open, setOpen] = useState(false)
+  // Local state for the bell popover — avoids overwriting the shared Redux items
+  const [bellItems, setBellItems] = useState<Notification[]>([])
+  const [bellLoading, setBellLoading] = useState(false)
+  const { unreadCount, refresh: refreshUnreadCount } = useUnreadCount()
 
   // Poll unread count every 30 seconds
   useEffect(() => {
@@ -88,28 +85,56 @@ export function NotificationBell() {
   }, [refreshUnreadCount])
 
   const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (open) {
-        loadNotifications({ limit: 20 })
+    async (isOpen: boolean) => {
+      setOpen(isOpen)
+      if (isOpen) {
+        setBellLoading(true)
+        try {
+          const response = await notificationService.getNotifications({
+            limit: 4,
+            is_read: false,
+          })
+          setBellItems(response.results)
+        } catch {
+          // Silently fail — popover will show empty state
+        } finally {
+          setBellLoading(false)
+        }
       }
     },
-    [loadNotifications]
+    []
   )
 
+  const handleMarkAllAsRead = useCallback(async () => {
+    try {
+      await notificationService.markAllAsRead()
+      setBellItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
+      refreshUnreadCount()
+    } catch {
+      // handled by apiClient
+    }
+  }, [refreshUnreadCount])
+
   const handleNotificationClick = useCallback(
-    (notification: Notification) => {
+    async (notification: Notification) => {
       if (!notification.is_read) {
-        markAsRead([notification.id])
+        try {
+          await notificationService.markAsRead([notification.id])
+          setBellItems((prev) =>
+            prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
+          )
+          refreshUnreadCount()
+        } catch {
+          // handled by apiClient
+        }
       }
-      // Navigate to notification detail or associated URL
-      // The backend may include a URL in the notification data
       navigate(`/notifications/${notification.id}`)
     },
-    [markAsRead, navigate]
+    [navigate, refreshUnreadCount]
   )
 
   return (
-    <Popover onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
@@ -129,7 +154,7 @@ export function NotificationBell() {
               variant="ghost"
               size="sm"
               className="h-auto px-2 py-1 text-xs text-muted-foreground"
-              onClick={() => markAllAsRead()}
+              onClick={handleMarkAllAsRead}
             >
               <CheckCheck className="mr-1 h-3 w-3" />
               Mark all read
@@ -140,17 +165,17 @@ export function NotificationBell() {
 
         {/* Notification List */}
         <div className="max-h-80 overflow-y-auto">
-          {isLoading && notifications.length === 0 ? (
+          {bellLoading && bellItems.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : notifications.length === 0 ? (
+          ) : bellItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Bell className="mb-2 h-8 w-8 opacity-50" />
-              <p className="text-sm">No notifications</p>
+              <p className="text-sm">No unread notifications</p>
             </div>
           ) : (
-            notifications.map((notification) => (
+            bellItems.map((notification) => (
               <NotificationItem
                 key={notification.id}
                 notification={notification}
@@ -161,21 +186,20 @@ export function NotificationBell() {
         </div>
 
         {/* Footer */}
-        {notifications.length > 0 && (
-          <>
-            <Separator />
-            <div className="px-4 py-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto w-full py-1.5 text-xs text-muted-foreground"
-                onClick={() => navigate('/notifications')}
-              >
-                View all notifications
-              </Button>
-            </div>
-          </>
-        )}
+        <Separator />
+        <div className="px-4 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto w-full py-1.5 text-xs text-muted-foreground"
+            onClick={() => {
+              setOpen(false)
+              navigate('/notifications')
+            }}
+          >
+            View all notifications
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   )

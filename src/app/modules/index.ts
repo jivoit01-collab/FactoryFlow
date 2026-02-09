@@ -8,6 +8,7 @@ import { dashboardModuleConfig } from '@/modules/dashboard/module.config'
 import { gateModuleConfig } from '@/modules/gate/module.config'
 import { qcModuleConfig } from '@/modules/qc/module.config'
 import { grpoModuleConfig } from '@/modules/grpo/module.config'
+import { notificationsModuleConfig } from '@/modules/notifications/module.config'
 
 /**
  * Central registry of all feature modules
@@ -19,6 +20,7 @@ export const moduleRegistry: ModuleConfig[] = [
   gateModuleConfig,
   qcModuleConfig,
   grpoModuleConfig,
+  notificationsModuleConfig,
 ]
 
 /**

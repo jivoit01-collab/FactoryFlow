@@ -11,7 +11,9 @@
       "Bash(npm install:*)",
       "Bash(dir:*)",
       "Bash(npx vite build)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(ls:*)",
+      "Bash(findstr:*)"
     ]
   }
 }
