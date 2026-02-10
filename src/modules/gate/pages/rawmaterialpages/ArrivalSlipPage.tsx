@@ -32,7 +32,7 @@ import {
   getServerErrorMessage,
 } from '@/shared/utils'
 import type { ApiError } from '@/core/api'
-import { ARRIVAL_SLIP_STATUS } from '@/modules/qc/constants'
+import { ARRIVAL_SLIP_STATUS } from '@/config/constants'
 
 interface ArrivalSlipFormData {
   particulars: string

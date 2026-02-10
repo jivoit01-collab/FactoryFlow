@@ -7,7 +7,7 @@ import {
   Clock,
   type LucideIcon,
 } from 'lucide-react'
-import type { InspectionWorkflowStatus, InspectionFinalStatus, ArrivalSlipStatus } from '../types'
+import type { InspectionWorkflowStatus, InspectionFinalStatus } from '../types'
 
 // ============================================================================
 // Workflow Status Constants
@@ -21,26 +21,8 @@ export const WORKFLOW_STATUS = {
   COMPLETED: 'COMPLETED',
 } as const satisfies Record<string, InspectionWorkflowStatus>
 
-// ============================================================================
-// Final Status Constants
-// ============================================================================
-
-export const FINAL_STATUS = {
-  PENDING: 'PENDING',
-  ACCEPTED: 'ACCEPTED',
-  REJECTED: 'REJECTED',
-  HOLD: 'HOLD',
-} as const satisfies Record<string, InspectionFinalStatus>
-
-// ============================================================================
-// Arrival Slip Status Constants
-// ============================================================================
-
-export const ARRIVAL_SLIP_STATUS = {
-  DRAFT: 'DRAFT',
-  SUBMITTED: 'SUBMITTED',
-  REJECTED: 'REJECTED',
-} as const satisfies Record<string, ArrivalSlipStatus>
+// Re-export cross-module constants so existing qc-internal imports still work
+export { FINAL_STATUS, ARRIVAL_SLIP_STATUS } from '@/config/constants'
 
 interface StatusConfig {
   label: string

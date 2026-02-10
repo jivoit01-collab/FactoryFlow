@@ -56,6 +56,31 @@ export const INSPECTION_STATUS = {
 export type InspectionStatus = (typeof INSPECTION_STATUS)[keyof typeof INSPECTION_STATUS]
 
 // ============================================================================
+// QC Final Status Constants (cross-module: used by gate, grpo, qc)
+// ============================================================================
+
+export const FINAL_STATUS = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  HOLD: 'HOLD',
+} as const
+
+export type FinalStatus = (typeof FINAL_STATUS)[keyof typeof FINAL_STATUS]
+
+// ============================================================================
+// Arrival Slip Status Constants (cross-module: used by gate, qc)
+// ============================================================================
+
+export const ARRIVAL_SLIP_STATUS = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  REJECTED: 'REJECTED',
+} as const
+
+export type ArrivalSlipStatus = (typeof ARRIVAL_SLIP_STATUS)[keyof typeof ARRIVAL_SLIP_STATUS]
+
+// ============================================================================
 // Status Color Configurations
 // ============================================================================
 

@@ -33,13 +33,13 @@ type StatusFilterKey = keyof typeof STATUS_FILTERS
 // Status badge styling
 const getStatusBadgeClass = (status: GRPOStatus) => {
   switch (status) {
-    case 'POSTED':
+    case GRPO_STATUS.POSTED:
       return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-    case 'FAILED':
+    case GRPO_STATUS.FAILED:
       return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-    case 'PARTIALLY_POSTED':
+    case GRPO_STATUS.PARTIALLY_POSTED:
       return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
-    case 'PENDING':
+    case GRPO_STATUS.PENDING:
     default:
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
   }

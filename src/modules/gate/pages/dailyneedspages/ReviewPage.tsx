@@ -35,8 +35,7 @@ import {
 } from '../../api/dailyNeed/dailyNeedFullView.queries'
 import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
 import { useEntryId } from '../../hooks'
-import { ENTRY_STATUS } from '@/config/constants'
-import { FINAL_STATUS } from '@/modules/qc/constants'
+import { ENTRY_STATUS, FINAL_STATUS } from '@/config/constants'
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
