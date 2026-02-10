@@ -69,11 +69,20 @@ export function StatusOverviewGrid({
         return (
           <Card
             key={status}
+            role="link"
+            tabIndex={0}
+            aria-label={`${config.label}: ${count}`}
             className={cn(
               'border cursor-pointer hover:shadow-md transition-shadow',
               config.bgColor
             )}
             onClick={() => navigate(config.link)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                navigate(config.link)
+              }
+            }}
           >
             <CardContent className="p-3">
               <div className="flex items-center justify-between">

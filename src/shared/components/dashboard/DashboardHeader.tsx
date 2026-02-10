@@ -46,7 +46,7 @@ export function DashboardHeader({
   className,
 }: DashboardHeaderProps) {
   return (
-    <div
+    <header
       className={cn(
         'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between',
         className
@@ -65,6 +65,6 @@ export function DashboardHeader({
           </Button>
         )}
       </div>
-    </div>
+    </header>
   )
 }

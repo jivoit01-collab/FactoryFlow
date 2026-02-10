@@ -17,7 +17,9 @@
       "Bash(powershell -Command:*)",
       "Bash(find:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(node -e:*)"
     ]
   }
 }

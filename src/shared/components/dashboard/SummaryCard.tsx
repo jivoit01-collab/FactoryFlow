@@ -56,7 +56,15 @@ export function SummaryCard({
         onClick && 'cursor-pointer hover:shadow-md transition-shadow',
         className
       )}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={onClick ? (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      } : undefined}
     >
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
@@ -72,8 +80,8 @@ export function SummaryCard({
 
         {details && details.length > 0 && (
           <div className="mt-3 pt-3 border-t border-primary/20 flex items-center gap-4 text-sm text-muted-foreground">
-            {details.map((detail, index) => (
-              <span key={index}>
+            {details.map((detail) => (
+              <span key={detail.label}>
                 {detail.label}: <span className="font-medium">{detail.value}</span>
               </span>
             ))}

@@ -14,6 +14,7 @@ import type { ApiError } from '@/core/api/types'
  */
 export function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (!error) return fallbackMessage
+  if (typeof error !== 'object') return fallbackMessage
 
   const apiError = error as ApiError
 
@@ -44,6 +45,7 @@ export function getErrorMessage(error: unknown, fallbackMessage: string): string
  */
 export function getErrorDetailLower(error: unknown): string {
   if (!error) return ''
+  if (typeof error !== 'object') return ''
 
   const apiError = error as ApiError
 
@@ -64,6 +66,7 @@ export function getErrorDetailLower(error: unknown): string {
  */
 export function isNotFoundError(error: unknown): boolean {
   if (!error) return false
+  if (typeof error !== 'object') return false
 
   const apiError = error as ApiError
 
@@ -85,6 +88,7 @@ export function isNotFoundError(error: unknown): boolean {
  */
 export function isServerError(error: unknown): boolean {
   if (!error) return false
+  if (typeof error !== 'object') return false
 
   const apiError = error as ApiError
 
@@ -105,6 +109,7 @@ export function isServerError(error: unknown): boolean {
  */
 export function isUnauthorizedError(error: unknown): boolean {
   if (!error) return false
+  if (typeof error !== 'object') return false
 
   const apiError = error as ApiError
 
@@ -119,6 +124,7 @@ export function isUnauthorizedError(error: unknown): boolean {
  */
 export function isForbiddenError(error: unknown): boolean {
   if (!error) return false
+  if (typeof error !== 'object') return false
 
   const apiError = error as ApiError
 
@@ -133,10 +139,12 @@ export function isForbiddenError(error: unknown): boolean {
  */
 export function isValidationError(error: unknown): boolean {
   if (!error) return false
+  if (typeof error !== 'object') return false
 
   const apiError = error as ApiError
+  const status = apiError.status || apiError.response?.status
 
-  return apiError.status === 400 || apiError.response?.status === 400
+  return status === 400 || status === 422
 }
 
 // ============================================================================
@@ -192,6 +200,7 @@ export function getNotFoundErrorMessage(): string {
  */
 export function getFieldErrors(error: unknown): Record<string, string> {
   if (!error) return {}
+  if (typeof error !== 'object') return {}
 
   const apiError = error as ApiError
   const fieldErrors: Record<string, string> = {}

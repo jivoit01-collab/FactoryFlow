@@ -93,13 +93,15 @@ export function useCurrentTime({
         return
       }
     }
-    if (autoCapture && !time) {
+    if (autoCapture) {
       setTimeState(formatTimeHHMM(new Date()))
     }
-  }, [autoCapture, initialTime, time])
+  }, [autoCapture, initialTime])
 
   const setTime = useCallback((newTime: string) => {
-    setTimeState(newTime)
+    if (newTime === '' || /^([01]\d|2[0-3]):([0-5]\d)$/.test(newTime)) {
+      setTimeState(newTime)
+    }
   }, [])
 
   const refreshTime = useCallback(() => {
