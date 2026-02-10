@@ -7,7 +7,40 @@ import {
   Clock,
   type LucideIcon,
 } from 'lucide-react'
-import type { InspectionWorkflowStatus, InspectionFinalStatus } from '../types'
+import type { InspectionWorkflowStatus, InspectionFinalStatus, ArrivalSlipStatus } from '../types'
+
+// ============================================================================
+// Workflow Status Constants
+// ============================================================================
+
+export const WORKFLOW_STATUS = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  QA_CHEMIST_APPROVED: 'QA_CHEMIST_APPROVED',
+  QAM_APPROVED: 'QAM_APPROVED',
+  COMPLETED: 'COMPLETED',
+} as const satisfies Record<string, InspectionWorkflowStatus>
+
+// ============================================================================
+// Final Status Constants
+// ============================================================================
+
+export const FINAL_STATUS = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  HOLD: 'HOLD',
+} as const satisfies Record<string, InspectionFinalStatus>
+
+// ============================================================================
+// Arrival Slip Status Constants
+// ============================================================================
+
+export const ARRIVAL_SLIP_STATUS = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  REJECTED: 'REJECTED',
+} as const satisfies Record<string, ArrivalSlipStatus>
 
 interface StatusConfig {
   label: string

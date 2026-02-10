@@ -36,7 +36,7 @@ import {
 import { useArrivalSlipById } from '../api/arrivalSlip/arrivalSlip.queries'
 import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries'
 import { MaterialTypeSelect } from '../components'
-import { WORKFLOW_STATUS_CONFIG, FINAL_STATUS_CONFIG } from '../constants'
+import { WORKFLOW_STATUS, FINAL_STATUS, WORKFLOW_STATUS_CONFIG, FINAL_STATUS_CONFIG } from '../constants'
 import type {
   CreateInspectionRequest,
   UpdateParameterResultRequest,
@@ -59,7 +59,6 @@ export default function InspectionDetailPage() {
   const {
     data: inspection,
     isLoading: isLoadingInspection,
-    error: inspectionError,
   } = useInspectionForSlip(arrivalSlipId)
 
   // Fetch arrival slip data for prefilling (only needed when creating new inspection)
@@ -90,7 +89,7 @@ export default function InspectionDetailPage() {
 
   // Approval remarks
   const [approvalRemarks, setApprovalRemarks] = useState('')
-  const [finalStatus, setFinalStatus] = useState<InspectionFinalStatus>('ACCEPTED')
+  const [finalStatus, setFinalStatus] = useState<InspectionFinalStatus>(FINAL_STATUS.ACCEPTED)
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
 
@@ -332,7 +331,7 @@ export default function InspectionDetailPage() {
     isLocked,
   } = useInspectionPermissions(inspection)
 
-  const isDraft = !inspection || inspection.workflow_status === 'DRAFT'
+  const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT
 
   // Can edit if: permission allows and either no inspection yet or in edit mode
   const canEdit = canEditFields && (!inspection || isEditing)
@@ -387,7 +386,7 @@ export default function InspectionDetailPage() {
               >
                 {WORKFLOW_STATUS_CONFIG[inspection.workflow_status].label}
               </span>
-              {inspection.final_status !== 'PENDING' && (
+              {inspection.final_status !== FINAL_STATUS.PENDING && (
                 <span
                   className={cn(
                     'px-2 py-1 rounded-full text-xs font-medium',
@@ -714,9 +713,9 @@ export default function InspectionDetailPage() {
                   value={finalStatus}
                   onChange={(e) => setFinalStatus(e.target.value as InspectionFinalStatus)}
                 >
-                  <option value="ACCEPTED">Accepted</option>
-                  <option value="REJECTED">Rejected</option>
-                  <option value="HOLD">Hold</option>
+                  <option value={FINAL_STATUS.ACCEPTED}>Accepted</option>
+                  <option value={FINAL_STATUS.REJECTED}>Rejected</option>
+                  <option value={FINAL_STATUS.HOLD}>Hold</option>
                 </select>
               </div>
             )}

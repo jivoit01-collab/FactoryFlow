@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, RefreshCw, AlertCircle, ShieldX, ChevronRight } from 'lucide-react'
 import { Button } from '@/shared/components/ui'
 import { useGRPOHistory } from '../api'
-import { GRPO_STATUS_CONFIG } from '../constants'
+import { GRPO_STATUS_CONFIG, GRPO_STATUS } from '../constants'
 import type { GRPOStatus, GRPOHistoryEntry } from '../types'
 import type { ApiError } from '@/core/api/types'
 
@@ -15,16 +15,16 @@ const STATUS_FILTERS = {
   },
   pending: {
     label: 'Pending',
-    filter: (entry: GRPOHistoryEntry) => entry.status === 'PENDING',
+    filter: (entry: GRPOHistoryEntry) => entry.status === GRPO_STATUS.PENDING,
   },
   posted: {
     label: 'Posted',
-    filter: (entry: GRPOHistoryEntry) => entry.status === 'POSTED',
+    filter: (entry: GRPOHistoryEntry) => entry.status === GRPO_STATUS.POSTED,
   },
   failed: {
     label: 'Failed',
     filter: (entry: GRPOHistoryEntry) =>
-      entry.status === 'FAILED' || entry.status === 'PARTIALLY_POSTED',
+      entry.status === GRPO_STATUS.FAILED || entry.status === GRPO_STATUS.PARTIALLY_POSTED,
   },
 } as const
 

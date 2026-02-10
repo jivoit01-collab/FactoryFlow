@@ -14,11 +14,3 @@ export const QUERY_CONFIG: QueryClientConfig = {
     },
   },
 }
-
-export const QUERY_KEYS = {
-  // Auth
-  auth: {
-    user: ['auth', 'user'] as const,
-  },
-
-} as const

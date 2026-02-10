@@ -23,7 +23,8 @@ import {
 } from '@/shared/components/ui'
 import { useGRPOPreview, usePostGRPO } from '../api'
 import { WarehouseSelect } from '../components'
-import { DEFAULT_BRANCH_ID } from '../constants'
+import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants'
+import { FINAL_STATUS } from '@/modules/qc/constants'
 import type { PreviewPOReceipt, PostGRPOResponse } from '../types'
 import type { ApiError } from '@/core/api/types'
 
@@ -257,7 +258,7 @@ export default function GRPOPreviewPage() {
       {!isLoading &&
         !error &&
         previewData.map((po) => {
-          const isPosted = po.grpo_status === 'POSTED'
+          const isPosted = po.grpo_status === GRPO_STATUS.POSTED
           const form = getFormState(po)
 
           return (
@@ -313,9 +314,9 @@ export default function GRPOPreviewPage() {
                               </div>
                               <span
                                 className={`text-[10px] rounded-full px-1.5 py-0.5 font-medium ${
-                                  item.qc_status === 'ACCEPTED'
+                                  item.qc_status === FINAL_STATUS.ACCEPTED
                                     ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                    : item.qc_status === 'REJECTED'
+                                    : item.qc_status === FINAL_STATUS.REJECTED
                                       ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                                       : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
                                 }`}

@@ -117,7 +117,7 @@ export function Breadcrumbs() {
 
   const handleClick = (
     e: React.MouseEvent,
-    path: string,
+    _path: string,
     isNavigable: boolean,
     redirectPath: string | null
   ) => {

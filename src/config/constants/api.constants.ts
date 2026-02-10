@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  baseUrl: 'http://192.168.1.183:3000/api/v1',
+  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1',
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
@@ -19,6 +19,7 @@ export const API_ENDPOINTS = {
     TRANSPORTERS: '/vehicle-management/transporters/',
     TRANSPORTER_NAMES: '/vehicle-management/transporters/names/',
     TRANSPORTER_BY_ID: (id: number) => `/vehicle-management/transporters/${id}/`,
+    VEHICLE_TYPES: '/vehicle-management/vehicle-types/',
     VEHICLES: '/vehicle-management/vehicles/',
     VEHICLE_NAMES: '/vehicle-management/vehicles/names/',
     VEHICLE_BY_ID: (id: number) => `/vehicle-management/vehicles/${id}/`,

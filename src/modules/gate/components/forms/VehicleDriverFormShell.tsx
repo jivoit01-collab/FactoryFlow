@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
+import { ID_PROOF_TYPES } from '@/config/constants'
 import { TransporterSelect } from '../TransporterSelect'
 import { VehicleSelect } from '../VehicleSelect'
 import { DriverSelect } from '../DriverSelect'
@@ -219,18 +220,11 @@ export function VehicleDriverFormShell({
                 <Label htmlFor="vehicleType">
                   Vehicle Type <span className="text-destructive">*</span>
                 </Label>
-                <select
+                <Input
                   id="vehicleType"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   value={formData.vehicleType}
-                  onChange={(e) => onFormChange('vehicleType', e.target.value)}
                   disabled
-                >
-                  <option value="TRUCK">Truck</option>
-                  <option value="CONTAINER">Container</option>
-                  <option value="TEMPO">Tempo</option>
-                  <option value="TRACTOR">Tractor</option>
-                </select>
+                />
               </div>
 
               <div className="space-y-2">
@@ -330,11 +324,11 @@ export function VehicleDriverFormShell({
                   disabled
                 >
                   <option value="">Select ID proof type</option>
-                  <option value="Aadhar">Aadhar</option>
-                  <option value="PAN Card">PAN Card</option>
-                  <option value="Driving License">Driving License</option>
-                  <option value="Voter ID">Voter ID</option>
-                  <option value="Other">Other</option>
+                  {ID_PROOF_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 

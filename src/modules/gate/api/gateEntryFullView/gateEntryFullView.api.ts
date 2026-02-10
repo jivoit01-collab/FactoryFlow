@@ -11,7 +11,7 @@ export interface GateEntryFullView {
   }
   vehicle: {
     vehicle_number: string
-    vehicle_type: string
+    vehicle_type: { id: number; name: string }
     capacity_ton: number
   }
   driver: {
@@ -47,9 +47,9 @@ export interface GateEntryFullView {
       received_qty: number
       short_qty: number
       uom: string
-      qc: {
-        status: string
-        remarks: string
+      qc_status: {
+        code: string
+        display: string
       } | null
     }>
   }>

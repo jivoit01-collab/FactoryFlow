@@ -2,6 +2,12 @@ import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
 import type { Transporter } from '../transporter/transporter.api'
 
+// Vehicle type from API
+export interface VehicleType {
+  id: number
+  name: string
+}
+
 // Lightweight type for dropdown list (names endpoint)
 export interface VehicleName {
   id: number
@@ -12,7 +18,7 @@ export interface VehicleName {
 export interface Vehicle {
   id: number
   vehicle_number: string
-  vehicle_type: string
+  vehicle_type: VehicleType
   transporter: Transporter | null
   capacity_ton: string
   created_at: string
@@ -20,12 +26,20 @@ export interface Vehicle {
 
 export interface CreateVehicleRequest {
   vehicle_number: string
-  vehicle_type: string
+  vehicle_type: number
   transporter: number
   capacity_ton: string
 }
 
 export const vehicleApi = {
+  /**
+   * Get vehicle types for dropdown
+   */
+  async getVehicleTypes(): Promise<VehicleType[]> {
+    const response = await apiClient.get<VehicleType[]>(API_ENDPOINTS.VEHICLE.VEHICLE_TYPES)
+    return response.data
+  },
+
   /**
    * Get list of vehicle names for dropdown (lightweight)
    */
@@ -54,7 +68,7 @@ export const vehicleApi = {
     // API expects form-urlencoded format
     const formData = new URLSearchParams()
     formData.append('vehicle_number', data.vehicle_number)
-    formData.append('vehicle_type', data.vehicle_type)
+    formData.append('vehicle_type', data.vehicle_type.toString())
     formData.append('transporter', data.transporter.toString())
     formData.append('capacity_ton', data.capacity_ton)
 

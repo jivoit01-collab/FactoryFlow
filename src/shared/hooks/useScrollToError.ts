@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useRef } from 'react'
-import type { FieldErrors } from 'react-hook-form'
 
 /**
  * Hook that automatically scrolls to the first form error when validation fails.
@@ -13,8 +12,8 @@ import type { FieldErrors } from 'react-hook-form'
  * const { formState: { errors } } = useForm()
  * useScrollToError(errors)
  */
-export function useScrollToError<T extends FieldErrors | Record<string, string>>(
-  errors: T,
+export function useScrollToError(
+  errors: Record<string, unknown>,
   options: {
     /** Whether to automatically scroll when errors change. Default: true */
     enabled?: boolean
@@ -42,7 +41,7 @@ export function useScrollToError<T extends FieldErrors | Record<string, string>>
   /**
    * Get the first error field name from nested errors object
    */
-  const getFirstErrorKey = useCallback((errors: FieldErrors): string | null => {
+  const getFirstErrorKey = useCallback((errors: Record<string, unknown>): string | null => {
     const keys = Object.keys(errors)
     if (keys.length === 0) return null
 
@@ -52,7 +51,7 @@ export function useScrollToError<T extends FieldErrors | Record<string, string>>
 
       // If it's a nested error (like array fields), recurse
       if (typeof error === 'object' && !('message' in error) && !('type' in error)) {
-        const nestedKey = getFirstErrorKey(error as FieldErrors)
+        const nestedKey = getFirstErrorKey(error as Record<string, unknown>)
         if (nestedKey) return `${key}.${nestedKey}`
       }
 

@@ -13,7 +13,7 @@ import {
   Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { useCreateVehicle } from '../api/vehicle/vehicle.queries'
+import { useCreateVehicle, useVehicleTypes } from '../api/vehicle/vehicle.queries'
 import { useTransporters } from '../api/transporter/transporter.queries'
 import { vehicleSchema, type VehicleFormData } from '../schemas/vehicle.schema'
 import type { ApiError } from '@/core/api/types'
@@ -29,6 +29,7 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
   const [selectedTransporterId, setSelectedTransporterId] = useState<number | null>(null)
   const createVehicle = useCreateVehicle()
+  const { data: vehicleTypes = [] } = useVehicleTypes(open)
   // Only fetch transporters when dialog is open
   const { data: transporters = [] } = useTransporters(open)
 
@@ -43,7 +44,7 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
       vehicle_number: '',
-      vehicle_type: 'TRUCK',
+      vehicle_type: 0,
       transporter: 0,
       capacity_ton: '',
     },
@@ -181,13 +182,13 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
             <select
               id="vehicle_type"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              {...register('vehicle_type')}
+              onChange={(e) => setValue('vehicle_type', Number(e.target.value))}
               disabled={createVehicle.isPending}
             >
-              <option value="TRUCK">Truck</option>
-              <option value="CONTAINER">Container</option>
-              <option value="TEMPO">Tempo</option>
-              <option value="TRACTOR">Tractor</option>
+              <option value={0}>Select vehicle type</option>
+              {vehicleTypes.map(vt => (
+                <option key={vt.id} value={vt.id}>{vt.name}</option>
+              ))}
             </select>
             {errors.vehicle_type && (
               <p className="text-sm text-destructive">{errors.vehicle_type.message}</p>

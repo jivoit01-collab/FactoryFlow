@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { Button, Input } from '@/shared/components/ui'
+import { ENTRY_TYPES, getEntryStatusClasses } from '@/config/constants'
 import { useVehicleEntries } from '../api/vehicle/vehicleEntry.queries'
 import { DateRangePicker } from '../components/DateRangePicker'
 import { useGlobalDateRange } from '@/core/store/hooks'
@@ -20,7 +21,7 @@ export default function RawMaterialsPage() {
     return {
       from_date: dateRange.from,
       to_date: dateRange.to,
-      entry_type: 'RAW_MATERIAL',
+      entry_type: ENTRY_TYPES.RAW_MATERIAL,
       status: statusFilter,
     }
   }, [dateRange, statusFilter])
@@ -64,25 +65,6 @@ export default function RawMaterialsPage() {
     }
   }
 
-  // Format status badge
-  const getStatusBadgeClass = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'DRAFT':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-      case 'IN_PROGRESS':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-      case 'QC_COMPLETED':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-      case 'CANCELLED':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-      case 'REJECTED':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -130,7 +112,7 @@ export default function RawMaterialsPage() {
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Filtered by status:</span>
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${getStatusBadgeClass(statusFilter)}`}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${getEntryStatusClasses(statusFilter)}`}
           >
             {STATUS_LABELS[statusFilter] || statusFilter}
             <button
@@ -182,7 +164,7 @@ export default function RawMaterialsPage() {
                     </td>
                     <td className="p-3 text-sm">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getEntryStatusClasses(
                           entry.status || ''
                         )}`}
                       >

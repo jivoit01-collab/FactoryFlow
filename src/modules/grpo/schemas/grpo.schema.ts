@@ -10,7 +10,7 @@ export const grpoPostSchema = z
     vehicle_entry_id: z.number(),
     po_receipt_id: z.number(),
     items: z.array(grpoPostItemSchema).min(1, 'At least one item is required'),
-    branch_id: z.number({ required_error: 'Branch is required' }),
+    branch_id: z.number({ error: 'Branch is required' }),
     warehouse_code: z.string().optional(),
     comments: z.string().optional(),
   })

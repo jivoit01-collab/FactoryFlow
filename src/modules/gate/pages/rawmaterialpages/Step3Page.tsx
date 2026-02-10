@@ -28,9 +28,10 @@ import { VendorSelect } from '../../components'
 import { useEntryId } from '../../hooks'
 import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
-import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
+import { isServerError as checkServerError, getServerErrorMessage } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
 import type { PurchaseOrder, Vendor } from '../../api/po/po.api'
+import { ENTRY_STATUS } from '@/config/constants'
 
 interface POItemFormData {
   po_item_code: string
@@ -500,7 +501,7 @@ export default function Step3Page() {
     (effectiveEditMode && hasPOReceiptsData && !updateMode && !fillDataMode) ||
     (effectiveEditMode && hasNoPOReceiptsData && !fillDataMode)
   const canUpdate =
-    effectiveEditMode && vehicleEntryData?.status !== 'COMPLETED' && hasPOReceiptsData
+    effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED && hasPOReceiptsData
 
   const handleUpdate = () => {
     setUpdateMode(true)
@@ -680,8 +681,8 @@ function POCard({
   poForm,
   isReadOnly,
   fillDataMode,
-  onSupplierNameChange,
-  onSupplierCodeChange,
+  onSupplierNameChange: _onSupplierNameChange,
+  onSupplierCodeChange: _onSupplierCodeChange,
   onVendorSelect,
   onPOFocus,
   onPOSelect,
@@ -712,7 +713,7 @@ function POCard({
     (() => {
       const error = poError as unknown as ApiError
       const errorMessage = error.message?.toLowerCase() || ''
-      const errorDetail = (error as any).response?.data?.detail?.toLowerCase() || ''
+      const errorDetail = (error as unknown as ApiError).response?.data?.detail?.toLowerCase() || ''
       return (
         error.status === 400 ||
         errorMessage.includes('required') ||
@@ -779,7 +780,7 @@ function POCard({
                   <span>
                     {(() => {
                       const error = poError as unknown as ApiError
-                      const detail = (error as any).response?.data?.detail
+                      const detail = (error as unknown as ApiError).response?.data?.detail
                       return detail || error.message || 'Error loading purchase orders'
                     })()}
                   </span>

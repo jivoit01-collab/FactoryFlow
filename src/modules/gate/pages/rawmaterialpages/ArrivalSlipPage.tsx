@@ -9,7 +9,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Button,
   Checkbox,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
@@ -31,8 +30,9 @@ import {
   isServerError as checkServerError,
   getErrorMessage,
   getServerErrorMessage,
-} from '../../utils'
+} from '@/shared/utils'
 import type { ApiError } from '@/core/api'
+import { ARRIVAL_SLIP_STATUS } from '@/modules/qc/constants'
 
 interface ArrivalSlipFormData {
   particulars: string
@@ -125,7 +125,7 @@ export default function ArrivalSlipPage() {
                 party_name: receipt.supplier_name,
                 billing_qty: item.received_qty.toString(),
                 billing_uom: item.uom,
-                truck_no_as_per_bill: vehicleEntryData.vehicle_number || '',
+                truck_no_as_per_bill: vehicleEntryData.vehicle?.vehicle_number || '',
                 commercial_invoice_no: '',
                 eway_bill_no: '',
                 bilty_no: '',
@@ -159,7 +159,7 @@ export default function ArrivalSlipPage() {
               updatedForms[i] = {
                 ...form,
                 existingSlip: slip,
-                isSubmitted: slip.status === 'SUBMITTED',
+                isSubmitted: slip.status === ARRIVAL_SLIP_STATUS.SUBMITTED,
                 slipId: slip.id,
                 formData: {
                   particulars: slip.particulars,

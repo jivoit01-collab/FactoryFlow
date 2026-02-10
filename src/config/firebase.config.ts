@@ -47,7 +47,9 @@ export const registerFCMServiceWorker = async (): Promise<ServiceWorkerRegistrat
       { scope: '/' }
     )
 
-    console.log('[FCM] Service worker registered:', fcmServiceWorkerRegistration.scope)
+    if (import.meta.env.DEV) {
+      console.log('[FCM] Service worker registered:', fcmServiceWorkerRegistration.scope)
+    }
 
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready

@@ -11,7 +11,7 @@ import {
 import { usePermission } from '@/core/auth'
 import { QC_PERMISSIONS } from '@/config/permissions'
 import { usePendingInspections } from '../api/inspection/inspection.queries'
-import { WORKFLOW_STATUS_CONFIG } from '../constants'
+import { WORKFLOW_STATUS, WORKFLOW_STATUS_CONFIG } from '../constants'
 import type { InspectionWorkflowStatus } from '../types'
 import type { ApiError } from '@/core/api/types'
 
@@ -46,17 +46,17 @@ export default function ApprovalQueuePage() {
   const filteredInspections = pendingInspections.filter((item) => {
     if (!item.has_inspection) return false
     if (effectiveTab === 'chemist') {
-      return item.inspection_status === 'SUBMITTED'
+      return item.inspection_status === WORKFLOW_STATUS.SUBMITTED
     }
-    return item.inspection_status === 'QA_CHEMIST_APPROVED'
+    return item.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED
   })
 
   const chemistCount = pendingInspections.filter(
-    (item) => item.has_inspection && item.inspection_status === 'SUBMITTED'
+    (item) => item.has_inspection && item.inspection_status === WORKFLOW_STATUS.SUBMITTED
   ).length
 
   const managerCount = pendingInspections.filter(
-    (item) => item.has_inspection && item.inspection_status === 'QA_CHEMIST_APPROVED'
+    (item) => item.has_inspection && item.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED
   ).length
 
   const formatDateTime = (dateString: string) => {

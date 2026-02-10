@@ -26,25 +26,34 @@ import {
 import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
-import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
+import { isServerError as checkServerError, getServerErrorMessage } from '@/shared/utils'
 import { useGateEntryFullView, useCompleteGateEntry } from '../../api/gateEntryFullView/gateEntryFullView.queries'
 import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
 import { useEntryId } from '../../hooks'
+import { ENTRY_STATUS } from '@/config/constants'
+import { FINAL_STATUS } from '@/modules/qc/constants'
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
   const getStatusColor = () => {
-    switch (status.toUpperCase()) {
-      case 'COMPLETED':
+    const upper = status.toUpperCase()
+    switch (upper) {
+      case ENTRY_STATUS.COMPLETED:
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-      case 'DRAFT':
+      case ENTRY_STATUS.DRAFT:
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
       case 'PASSED':
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
       case 'FAILED':
+      case FINAL_STATUS.REJECTED:
+      case 'QC REJECTED':
         return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-      case 'PENDING':
+      case FINAL_STATUS.PENDING:
+      case FINAL_STATUS.HOLD:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+      case FINAL_STATUS.ACCEPTED:
+      case 'QC ACCEPTED':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
       default:
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
     }
@@ -284,7 +293,7 @@ export default function ReviewPage() {
     return null
   }
 
-  const isAlreadyCompleted = gateEntry.gate_entry.status === 'COMPLETED'
+  const isAlreadyCompleted = gateEntry.gate_entry.status === ENTRY_STATUS.COMPLETED
 
   return (
     <div className="space-y-6 pb-6">
@@ -353,7 +362,7 @@ export default function ReviewPage() {
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">Vehicle Type</Label>
-                <p className="font-medium">{gateEntry.vehicle.vehicle_type}</p>
+                <p className="font-medium">{gateEntry.vehicle.vehicle_type.name}</p>
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">Capacity</Label>
@@ -514,6 +523,7 @@ export default function ReviewPage() {
                           <th className="text-right p-2">Received</th>
                           <th className="text-right p-2">Short</th>
                           <th className="text-center p-2">UOM</th>
+                          <th className="text-center p-2 min-w-[120px]">QC Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -531,6 +541,13 @@ export default function ReviewPage() {
                               {item.short_qty > 0 ? `-${item.short_qty.toLocaleString()}` : '0'}
                             </td>
                             <td className="text-center p-2">{item.uom}</td>
+                            <td className="text-center p-2">
+                              {item.qc_status ? (
+                                <StatusBadge status={item.qc_status.display} />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

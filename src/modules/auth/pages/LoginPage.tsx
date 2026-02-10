@@ -5,6 +5,7 @@ import { loginSuccess } from '@/core/auth'
 import { authService } from '@/core/auth/services/auth.service'
 import { indexedDBService } from '@/core/auth/services/indexedDb.service'
 import { ROUTES } from '@/config/routes.config'
+import { APP_NAME } from '@/config/constants'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui'
 import { LoginForm } from '../components/LoginForm'
 import type { LoginFormData } from '../schemas/login.schema'
@@ -61,7 +62,7 @@ export default function LoginPage() {
             className="h-16 w-auto dark:invert"
           />
         </div>
-        <CardTitle className="text-2xl font-bold">Sampooran</CardTitle>
+        <CardTitle className="text-2xl font-bold">{APP_NAME}</CardTitle>
         <CardDescription>Enter your credentials to access the system</CardDescription>
       </CardHeader>
       <CardContent>

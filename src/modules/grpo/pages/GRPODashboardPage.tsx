@@ -14,6 +14,7 @@ import {
 import { Button, Card, CardContent } from '@/shared/components/ui'
 import { usePendingGRPOEntries } from '../api'
 import { useGRPOHistory } from '../api'
+import { GRPO_STATUS } from '../constants'
 import type { ApiError } from '@/core/api/types'
 
 // Status configuration for overview grid
@@ -72,9 +73,9 @@ export default function GRPODashboardPage() {
   const totalPendingPOs = pendingEntries.reduce((sum, e) => sum + e.pending_po_count, 0)
 
   const historyCounts = {
-    pending: historyEntries.filter((h) => h.status === 'PENDING').length,
-    posted: historyEntries.filter((h) => h.status === 'POSTED').length,
-    failed: historyEntries.filter((h) => h.status === 'FAILED' || h.status === 'PARTIALLY_POSTED')
+    pending: historyEntries.filter((h) => h.status === GRPO_STATUS.PENDING).length,
+    posted: historyEntries.filter((h) => h.status === GRPO_STATUS.POSTED).length,
+    failed: historyEntries.filter((h) => h.status === GRPO_STATUS.FAILED || h.status === GRPO_STATUS.PARTIALLY_POSTED)
       .length,
   }
 

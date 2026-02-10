@@ -69,12 +69,16 @@ class FCMService {
 
       // Listen for foreground messages
       onMessage(messaging, (payload) => {
-        console.log('[FCM] Foreground message received:', payload)
+        if (import.meta.env.DEV) {
+          console.log('[FCM] Foreground message received:', payload)
+        }
         this.notifyListeners(payload)
       })
 
       this.initialized = true
-      console.log('[FCM] Service initialized successfully')
+      if (import.meta.env.DEV) {
+        console.log('[FCM] Service initialized successfully')
+      }
       return true
     } catch (error) {
       console.error('[FCM] Initialization failed:', error)
@@ -92,7 +96,9 @@ class FCMService {
 
     try {
       const permission = await Notification.requestPermission()
-      console.log('[FCM] Permission status:', permission)
+      if (import.meta.env.DEV) {
+        console.log('[FCM] Permission status:', permission)
+      }
       return permission
     } catch (error) {
       console.error('[FCM] Permission request failed:', error)
@@ -125,7 +131,9 @@ class FCMService {
       })
 
       if (token) {
-        console.log('[FCM] Token obtained successfully')
+        if (import.meta.env.DEV) {
+          console.log('[FCM] Token obtained successfully')
+        }
         this.currentToken = token
       }
 
@@ -157,7 +165,9 @@ class FCMService {
     try {
       await deleteToken(messaging)
       this.currentToken = null
-      console.log('[FCM] Token deleted successfully')
+      if (import.meta.env.DEV) {
+        console.log('[FCM] Token deleted successfully')
+      }
       return true
     } catch (error) {
       console.error('[FCM] Failed to delete token:', error)
@@ -197,7 +207,9 @@ class FCMService {
   async cleanupPushNotifications(): Promise<void> {
     try {
       await this.deleteDeviceToken()
-      console.log('[FCM] Push notifications cleaned up')
+      if (import.meta.env.DEV) {
+        console.log('[FCM] Push notifications cleaned up')
+      }
     } catch (error) {
       console.error('[FCM] Cleanup failed:', error)
     }

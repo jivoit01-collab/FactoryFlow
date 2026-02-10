@@ -15,7 +15,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
-  const { hasModulePermission, hasAnyPermission, permissionsLoaded, permissions } =
+  const { hasModulePermission, hasAnyPermission, permissionsLoaded } =
     usePermission()
   const location = useLocation()
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set())

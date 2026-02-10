@@ -4,12 +4,16 @@ import { App } from '@/app'
 import { loadRuntimeConfig } from '@/config/runtime.config'
 import './index.css'
 
-// Load runtime config in background (non-blocking)
-// Config will be available by the time it's needed (after auth initialization)
-loadRuntimeConfig()
+// Bootstrap application after loading runtime config
+async function bootstrap() {
+  // Load runtime config before rendering to ensure config is available
+  await loadRuntimeConfig()
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-)
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  )
+}
+
+bootstrap()

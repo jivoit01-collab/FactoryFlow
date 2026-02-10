@@ -26,6 +26,53 @@ export function formatDateTime(date: Date | string): string {
   return `${formatDate(date)} ${formatTime(date)}`
 }
 
+/**
+ * Formats a date/time for short display (e.g., "Jan 15, 10:30 AM").
+ * Used commonly in dashboard lists and tables.
+ *
+ * @param dateTime - The date/time string or Date object
+ * @returns Formatted string or '-' if input is empty/invalid
+ */
+export function formatDateTimeShort(dateTime?: string | Date | null): string {
+  if (!dateTime) return '-'
+  try {
+    const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
+    if (isNaN(date.getTime())) return '-'
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return typeof dateTime === 'string' ? dateTime : '-'
+  }
+}
+
+/**
+ * Formats a date/time for full display (e.g., "15 Jan 2024, 10:30 AM").
+ * Used in detail views and forms.
+ *
+ * @param dateTime - The date/time string or Date object
+ * @returns Formatted string or '-' if input is empty/invalid
+ */
+export function formatDateTimeFull(dateTime?: string | Date | null): string {
+  if (!dateTime) return '-'
+  try {
+    const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
+    if (isNaN(date.getTime())) return '-'
+    return date.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return typeof dateTime === 'string' ? dateTime : '-'
+  }
+}
+
 export function formatNumber(value: number, decimals = 2): string {
   return value.toLocaleString('en-IN', {
     minimumFractionDigits: decimals,

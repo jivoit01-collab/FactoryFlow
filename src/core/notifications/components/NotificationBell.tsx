@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react'
+import { Bell, CheckCheck, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -77,11 +77,17 @@ export function NotificationBell() {
   const [bellLoading, setBellLoading] = useState(false)
   const { unreadCount, refresh: refreshUnreadCount } = useUnreadCount()
 
-  // Poll unread count every 30 seconds
+  // Refetch unread count when the tab/PWA becomes visible again
+  // (covers background notifications received while the user was away)
   useEffect(() => {
-    refreshUnreadCount()
-    const interval = setInterval(() => refreshUnreadCount(), 30000)
-    return () => clearInterval(interval)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshUnreadCount()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [refreshUnreadCount])
 
   const handleOpenChange = useCallback(

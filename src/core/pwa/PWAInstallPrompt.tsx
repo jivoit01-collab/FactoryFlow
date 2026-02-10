@@ -1,5 +1,6 @@
 import { Download, X } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
+import { APP_NAME } from '@/config/constants'
 import { usePWAInstall } from './usePWAInstall'
 
 export function PWAInstallPrompt() {
@@ -15,7 +16,7 @@ export function PWAInstallPrompt() {
             <Download className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 space-y-1">
-            <p className="text-sm font-semibold leading-none">Install Sampooran</p>
+            <p className="text-sm font-semibold leading-none">Install {APP_NAME}</p>
             <p className="text-sm text-muted-foreground">
               Install the app for a faster, offline-ready experience.
             </p>

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { usePermission } from '@/core/auth'
 import { QC_PERMISSIONS } from '@/config/permissions'
+import { WORKFLOW_STATUS } from '../constants'
 import type { Inspection } from '../types'
 
 /**
@@ -37,13 +38,13 @@ export function useInspectionPermissions(inspection: Inspection | null | undefin
     ])
 
     // Workflow state checks
-    const isDraft = !inspection || inspection.workflow_status === 'DRAFT'
-    const isSubmitted = inspection?.workflow_status === 'SUBMITTED'
-    const isChemistApproved = inspection?.workflow_status === 'QA_CHEMIST_APPROVED'
+    const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT
+    const isSubmitted = inspection?.workflow_status === WORKFLOW_STATUS.SUBMITTED
+    const isChemistApproved = inspection?.workflow_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED
     const isLocked = inspection?.is_locked ?? false
     const isCompleted =
-      inspection?.workflow_status === 'QAM_APPROVED' ||
-      inspection?.workflow_status === 'COMPLETED'
+      inspection?.workflow_status === WORKFLOW_STATUS.QAM_APPROVED ||
+      inspection?.workflow_status === WORKFLOW_STATUS.COMPLETED
 
     // Contextual permissions (combining permission + workflow state)
     return {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BellOff, Bell } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
+import { APP_NAME } from '@/config/constants'
 
 /**
  * Full-screen gate that blocks the app until the user grants notification permission.
@@ -49,7 +50,7 @@ export function NotificationGate({ children }: { children: React.ReactNode }) {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight">Enable Notifications</h1>
           <p className="text-muted-foreground">
-            Sampooran requires notification permissions to keep you updated on gate entries,
+            {APP_NAME} requires notification permissions to keep you updated on gate entries,
             quality checks, and approvals.
           </p>
         </div>

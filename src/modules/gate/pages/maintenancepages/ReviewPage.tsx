@@ -28,28 +28,16 @@ import {
 import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
-import { isServerError as checkServerError, getServerErrorMessage } from '../../utils'
+import { isServerError as checkServerError, getServerErrorMessage } from '@/shared/utils'
 import { useMaintenanceFullView, useCompleteMaintenanceEntry } from '../../api/maintenance/maintenance.queries'
 import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
 import { useEntryId } from '../../hooks'
+import { ENTRY_STATUS, getEntryStatusClasses } from '@/config/constants'
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
-  const getStatusColor = () => {
-    switch (status.toUpperCase()) {
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-      case 'DRAFT':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-      case 'IN_PROGRESS':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-    }
-  }
-
   return (
-    <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getStatusColor())}>
+    <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getEntryStatusClasses(status))}>
       {status}
     </span>
   )
@@ -291,7 +279,7 @@ export default function ReviewPage() {
     return null
   }
 
-  const isAlreadyCompleted = gateEntry.gate_entry.status === 'COMPLETED'
+  const isAlreadyCompleted = gateEntry.gate_entry.status === ENTRY_STATUS.COMPLETED
   const maintenanceDetails = gateEntry.maintenance_details
 
   return (
@@ -367,7 +355,7 @@ export default function ReviewPage() {
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">Vehicle Type</Label>
-                <p className="font-medium">{gateEntry.vehicle.vehicle_type}</p>
+                <p className="font-medium">{gateEntry.vehicle.vehicle_type.name}</p>
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">Capacity</Label>

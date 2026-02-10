@@ -16,9 +16,9 @@ import { useEntryId } from '../../hooks'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useDailyNeed, useCreateDailyNeed } from '../../api/dailyNeed/dailyNeed.queries'
 import { FillDataAlert, CategorySelect, DepartmentSelect } from '../../components'
-import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
+import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
 import { cn } from '@/shared/utils'
-import { VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_PATTERNS, ENTRY_STATUS } from '@/config/constants'
 import type { ApiError } from '@/core/api'
 
 // Units for quantity
@@ -108,7 +108,7 @@ export default function Step3Page() {
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly =
     (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== 'COMPLETED'
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED
 
   // Load existing data in edit mode
   useEffect(() => {

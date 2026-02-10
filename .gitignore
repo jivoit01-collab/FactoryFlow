@@ -11,8 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
-*.env
-.env.*
+
+# Environment files - NEVER commit these!
+.env
+.env.local
+.env.*.local
+# Exception: .env.example should be committed
+!.env.example
 
 # Editor directories and files
 .vscode/*

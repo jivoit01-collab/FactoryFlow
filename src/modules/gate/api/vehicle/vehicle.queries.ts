@@ -2,6 +2,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vehicleApi, type CreateVehicleRequest } from './vehicle.api'
 
 /**
+ * Fetch vehicle types for dropdown
+ */
+export function useVehicleTypes(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['vehicleTypes'],
+    queryFn: () => vehicleApi.getVehicleTypes(),
+    staleTime: 10 * 60 * 1000,
+    enabled,
+  })
+}
+
+/**
  * Fetch lightweight vehicle names for dropdown
  */
 export function useVehicleNames(enabled: boolean = true) {

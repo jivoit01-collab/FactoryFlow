@@ -4,5 +4,7 @@
 export function initI18n() {
   // No-op for now
   // Future: Initialize i18next here
-  console.log('i18n initialized (placeholder)')
+  if (import.meta.env.DEV) {
+    console.log('i18n initialized (placeholder)')
+  }
 }

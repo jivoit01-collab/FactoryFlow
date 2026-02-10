@@ -16,9 +16,9 @@ import { useEntryId } from '../../hooks'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useConstructionEntry, useCreateConstructionEntry, useUpdateConstructionEntry, useConstructionCategories } from '../../api/construction/construction.queries'
 import { FillDataAlert } from '../../components'
-import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
+import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
 import { cn } from '@/shared/utils'
-import { VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_PATTERNS, ENTRY_STATUS, SECURITY_APPROVAL_STATUS } from '@/config/constants'
 import type { ApiError } from '@/core/api'
 
 // Unit options for dropdown
@@ -31,9 +31,9 @@ const UNIT_OPTIONS = [
 
 // Security approval options
 const SECURITY_APPROVAL_OPTIONS = [
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'REJECTED', label: 'Rejected' },
+  { value: SECURITY_APPROVAL_STATUS.APPROVED, label: 'Approved' },
+  { value: SECURITY_APPROVAL_STATUS.PENDING, label: 'Pending' },
+  { value: SECURITY_APPROVAL_STATUS.REJECTED, label: 'Rejected' },
 ]
 
 interface ConstructionFormData {
@@ -121,7 +121,7 @@ export default function Step3Page() {
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly =
     (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== 'COMPLETED'
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED
 
   // Load construction data when in edit mode
   useEffect(() => {

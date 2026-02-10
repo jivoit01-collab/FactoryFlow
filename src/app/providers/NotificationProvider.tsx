@@ -36,7 +36,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
    */
   const handleForegroundMessage = useCallback(
     (payload: MessagePayload) => {
-      console.log('[NotificationProvider] Foreground message:', payload)
+      if (import.meta.env.DEV) {
+        console.log('[NotificationProvider] Foreground message:', payload)
+      }
 
       const notification: Notification = {
         id: Date.now(),
@@ -78,7 +80,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         }
       }
 
-      dispatch(fetchUnreadCount())
+      // Short delay to allow backend to finish storing the notification
+      setTimeout(() => dispatch(fetchUnreadCount()), 200)
     },
     [dispatch]
   )

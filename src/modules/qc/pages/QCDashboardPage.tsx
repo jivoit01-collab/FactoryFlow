@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Button, Card, CardContent } from '@/shared/components/ui'
 import { usePendingInspections } from '../api/inspection/inspection.queries'
+import { WORKFLOW_STATUS } from '../constants'
 import type { ApiError } from '@/core/api/types'
 
 // Status configuration - compact like Gate module
@@ -63,13 +64,13 @@ const getStatusBadgeClass = (status: string | null, hasInspection: boolean) => {
     return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
   }
   switch (status) {
-    case 'DRAFT':
+    case WORKFLOW_STATUS.DRAFT:
       return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-    case 'SUBMITTED':
-    case 'QA_CHEMIST_APPROVED':
+    case WORKFLOW_STATUS.SUBMITTED:
+    case WORKFLOW_STATUS.QA_CHEMIST_APPROVED:
       return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-    case 'QAM_APPROVED':
-    case 'COMPLETED':
+    case WORKFLOW_STATUS.QAM_APPROVED:
+    case WORKFLOW_STATUS.COMPLETED:
       return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
     case 'REJECTED':
       return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
@@ -92,17 +93,17 @@ export default function QCDashboardPage() {
   const counts = {
     pending: pendingInspections.filter((p) => !p.has_inspection).length,
     draft: pendingInspections.filter(
-      (p) => p.has_inspection && p.inspection_status === 'DRAFT'
+      (p) => p.has_inspection && p.inspection_status === WORKFLOW_STATUS.DRAFT
     ).length,
     awaiting_approval: pendingInspections.filter(
       (p) =>
         p.has_inspection &&
-        (p.inspection_status === 'SUBMITTED' || p.inspection_status === 'QA_CHEMIST_APPROVED')
+        (p.inspection_status === WORKFLOW_STATUS.SUBMITTED || p.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED)
     ).length,
     approved: pendingInspections.filter(
       (p) =>
         p.has_inspection &&
-        (p.inspection_status === 'QAM_APPROVED' || p.inspection_status === 'COMPLETED')
+        (p.inspection_status === WORKFLOW_STATUS.QAM_APPROVED || p.inspection_status === WORKFLOW_STATUS.COMPLETED)
     ).length,
     rejected: 0,
   }

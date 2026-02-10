@@ -1,1 +1,2 @@
-export * from './errorUtils'
+// Gate module utilities
+// Error utilities have been migrated to @/shared/utils

@@ -10,8 +10,9 @@ import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
 import { StepHeader, StepFooter, StepLoadingSpinner, FillDataAlert } from '../../components'
 import { WIZARD_CONFIG } from '../../constants'
-import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '../../utils'
+import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
 import type { ApiError } from '@/core/api'
+import { ENTRY_STATUS } from '@/config/constants'
 
 export default function Step4Page() {
   const navigate = useNavigate()
@@ -222,7 +223,7 @@ export default function Step4Page() {
   const isReadOnly =
     (effectiveEditMode && !!weighmentData && !fillDataMode && !updateMode) ||
     (isNotFoundError && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== 'COMPLETED' && !!weighmentData
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED && !!weighmentData
 
   const handleUpdate = () => {
     setUpdateMode(true)
