@@ -24,7 +24,7 @@ import {
 import { useGRPOPreview, usePostGRPO } from '../api'
 import { WarehouseSelect } from '../components'
 import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants'
-import { FINAL_STATUS } from '@/modules/qc/constants'
+import { FINAL_STATUS } from '@/config/constants'
 import type { PreviewPOReceipt, PostGRPOResponse } from '../types'
 import type { ApiError } from '@/core/api/types'
 

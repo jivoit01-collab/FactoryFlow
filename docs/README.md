@@ -34,6 +34,7 @@ The Factory Management System is a modern, enterprise-grade React application de
 
 ### Architecture
 - [Architecture Overview](./architecture/overview.md) - High-level system design
+- [Module Boundaries](./architecture/module-boundaries.md) - Module independence rules and dependency hierarchy
 - [Folder Structure](./architecture/folder-structure.md) - Directory organization and conventions
 - [State Management](./architecture/state-management.md) - Redux and React Query patterns
 
@@ -45,7 +46,13 @@ The Factory Management System is a modern, enterprise-grade React application de
 ### Modules
 - [Modules Overview](./modules/overview.md) - Feature module architecture
 - [Authentication Module](./modules/auth.md) - User authentication and authorization
+- [Dashboard Module](./modules/dashboard.md) - Main dashboard
 - [Gate Module](./modules/gate.md) - Gate entry management
+- [GRPO Module](./modules/grpo.md) - Goods receipt posting
+- [QC Module](./modules/qc.md) - Quality control inspections
+- [Notifications Module](./modules/notifications.md) - Push notifications
+
+Each module also has local documentation at `src/modules/{name}/docs/README.md`.
 
 ### Components
 - [UI Components](./components/ui-components.md) - Reusable component library
@@ -79,4 +86,4 @@ For questions or issues, please contact the development team or refer to the rel
 
 ---
 
-*Last Updated: January 2026*
+*Last Updated: February 2026*

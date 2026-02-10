@@ -10,14 +10,18 @@ The application follows a feature-based module architecture where each business 
 src/modules/
 ├── auth/              # Authentication and user management
 ├── dashboard/         # Main dashboard and overview
-├── gate/              # Gate entry management (primary module)
+├── gate/              # Gate entry management (largest module)
 │   ├── Raw Materials  # Raw material deliveries workflow
 │   ├── Daily Needs    # Food and consumables entries
 │   ├── Construction   # Construction material entries
 │   ├── Maintenance    # Maintenance and spare parts
 │   └── Visitor/Labour # Person gate-in (visitors and labours)
-└── qc/               # Quality control management
+├── grpo/              # Goods receipt posting to ERP
+├── qc/                # Quality control inspections
+└── notifications/     # Push notification management
 ```
+
+> **Module Independence Rule:** Modules must never import from each other. If a module cannot be deleted without breaking another, the boundaries are wrong. See [Module Boundaries](../architecture/module-boundaries.md) for the full dependency rules.
 
 ## Module Structure Pattern
 
@@ -188,7 +192,6 @@ Main application dashboard providing an overview of factory operations.
 **Key Features:**
 - Overview statistics and KPIs
 - Quick access to common actions
-- Recent activity feed
 - Module navigation
 
 **Routes:**
@@ -196,94 +199,151 @@ Main application dashboard providing an overview of factory operations.
 
 See: [Dashboard Module Documentation](./dashboard.md)
 
+### 4. GRPO Module (`/modules/grpo/`)
+
+Handles posting received materials into the ERP system after gate entry completion.
+
+**Key Features:**
+- Pending GRPO entries from completed gate entries
+- Preview and post material receipts
+- Warehouse selection
+- Posting history and detail views
+
+**Routes:**
+- `/grpo` - GRPO dashboard
+- `/grpo/pending` - Pending entries
+- `/grpo/preview/:vehicleEntryId` - Preview and post
+- `/grpo/history` - Posting history
+
+See: [GRPO Module Documentation](./grpo.md)
+
+### 5. QC Module (`/modules/qc/`)
+
+Quality control inspections with multi-role approval workflow.
+
+**Key Features:**
+- Create inspections against arrival slips
+- Parameter-based testing (numeric, text, boolean, range)
+- Three-role approval: Inspector → QA Chemist → QA Manager
+- Material type and QC parameter master data
+
+**Routes:**
+- `/qc` - QC dashboard
+- `/qc/pending` - Pending inspections
+- `/qc/inspections/:slipId/new` - Create inspection
+- `/qc/approvals` - Approval queue
+- `/qc/master/material-types` - Material types
+- `/qc/master/parameters` - QC parameters
+
+See: [QC Module Documentation](./qc.md)
+
+### 6. Notifications Module (`/modules/notifications/`)
+
+Push notification management via Firebase Cloud Messaging.
+
+**Key Features:**
+- View received notifications
+- Send targeted notifications (permission-gated)
+
+**Routes:**
+- `/notifications` - All notifications
+- `/notifications/send` - Send notification
+
+See: [Notifications Module Documentation](./notifications.md)
 
 ## Creating a New Module
 
 ### Step 1: Create Directory Structure
 
 ```bash
-mkdir -p src/modules/new-module/{pages,components,api,hooks,schemas,types}
+mkdir -p src/modules/new-module/{pages,components,api,hooks,schemas,types,docs}
 ```
 
-### Step 2: Create API Layer
+### Step 2: Create module.config.tsx
+
+Every module exports a `ModuleConfig` that declares its routes, navigation, and optional reducers:
+
+```typescript
+// src/modules/new-module/module.config.tsx
+import { lazy } from 'react'
+import { SomeIcon } from 'lucide-react'
+import type { ModuleConfig } from '@/core/types'
+
+const FeaturePage = lazy(() => import('./pages/FeaturePage'))
+
+export const newModuleConfig: ModuleConfig = {
+  name: 'new-module',
+
+  routes: [
+    {
+      path: '/new-module',
+      element: <FeaturePage />,
+      layout: 'main',
+      requiresAuth: true,
+      permissions: ['newmodule.view'],
+    },
+  ],
+
+  navigation: [
+    {
+      path: '/new-module',
+      title: 'New Module',
+      icon: SomeIcon,
+      showInSidebar: true,
+      modulePrefix: 'newmodule.',
+    },
+  ],
+}
+```
+
+### Step 3: Create API Layer
 
 ```typescript
 // src/modules/new-module/api/feature.api.ts
-import { apiClient } from '@/core/api/client';
+import { apiClient } from '@/core/api'
+import { API_ENDPOINTS } from '@/config/constants'
 
 export const featureApi = {
-  getAll: async () => {
-    const { data } = await apiClient.get('/endpoint');
-    return data.data;
+  async getAll() {
+    const response = await apiClient.get(API_ENDPOINTS.NEW_MODULE.LIST)
+    return response.data
   },
-};
+}
 
 // src/modules/new-module/api/feature.queries.ts
-import { useQuery } from '@tanstack/react-query';
-import { featureApi } from './feature.api';
-
-export const featureKeys = {
-  all: ['feature'] as const,
-};
+import { useQuery } from '@tanstack/react-query'
+import { featureApi } from './feature.api'
 
 export function useFeatures() {
   return useQuery({
-    queryKey: featureKeys.all,
+    queryKey: ['features'],
     queryFn: featureApi.getAll,
-  });
+  })
 }
 ```
 
-### Step 3: Create Page Component
+### Step 4: Register in Module Registry
 
 ```typescript
-// src/modules/new-module/pages/FeaturePage.tsx
-import { useFeatures } from '../api/feature.queries';
+// src/app/modules/index.ts
+import { newModuleConfig } from '@/modules/new-module/module.config'
 
-export function FeaturePage() {
-  const { data, isLoading } = useFeatures();
-
-  if (isLoading) return <Loading />;
-
-  return (
-    <div>
-      <h1>Feature</h1>
-      {/* Page content */}
-    </div>
-  );
-}
+const modules: ModuleConfig[] = [
+  // ... existing modules
+  newModuleConfig,
+]
 ```
 
-### Step 4: Add Route Configuration
+### Step 5: Create Module Docs
 
-```typescript
-// src/config/routes.config.ts
-export const ROUTES = {
-  // ... existing routes
-  NEW_MODULE: {
-    path: '/new-module',
-    label: 'New Module',
-    permissions: ['newmodule.view'],
-  },
-};
-```
+Create `src/modules/new-module/docs/README.md` documenting routes, structure, and key types.
 
-### Step 5: Register Route
+### Important: Dependency Rules
 
-```typescript
-// src/app/routes/AppRoutes.tsx
-const NewModulePage = lazy(() => import('@/modules/new-module/pages/FeaturePage'));
-
-// In route configuration
-{
-  path: ROUTES.NEW_MODULE.path,
-  element: (
-    <ProtectedRoute permissions={ROUTES.NEW_MODULE.permissions}>
-      <NewModulePage />
-    </ProtectedRoute>
-  ),
-}
-```
+- Only import from `@/shared/`, `@/config/`, and `@/core/`
+- **Never** import from another module (`@/modules/other/`)
+- If you need a constant that another module also uses, move it to `@/config/constants/`
+- See [Module Boundaries](../architecture/module-boundaries.md)
 
 ## Module Communication
 
@@ -387,7 +447,11 @@ feature.types.ts
 ## Related Documentation
 
 - [Authentication Module](./auth.md)
-- [Gate Module](./gate.md)
 - [Dashboard Module](./dashboard.md)
+- [Gate Module](./gate.md)
+- [GRPO Module](./grpo.md)
+- [QC Module](./qc.md)
+- [Notifications Module](./notifications.md)
+- [Module Boundaries](../architecture/module-boundaries.md)
 - [Architecture Overview](../architecture/overview.md)
 - [Folder Structure](../architecture/folder-structure.md)
