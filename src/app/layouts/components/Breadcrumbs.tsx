@@ -111,10 +111,6 @@ export function Breadcrumbs() {
   const navigate = useNavigate()
   const pathSegments = location.pathname.split('/').filter(Boolean)
 
-  if (pathSegments.length === 0) {
-    return null
-  }
-
   const handleClick = (
     e: React.MouseEvent,
     _path: string,

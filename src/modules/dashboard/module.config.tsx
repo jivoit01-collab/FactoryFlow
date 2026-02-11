@@ -1,9 +1,6 @@
-import { lazy } from 'react'
 import { LayoutDashboard } from 'lucide-react'
 import type { ModuleConfig } from '@/core/types'
-
-// Lazy load pages
-const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+import DashboardPage from './pages/DashboardPage'
 
 /**
  * Dashboard module configuration

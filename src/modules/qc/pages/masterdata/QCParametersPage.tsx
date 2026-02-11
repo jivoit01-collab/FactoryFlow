@@ -17,7 +17,7 @@ import {
   DialogFooter,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { useMaterialTypes } from '../../api/materialType/materialType.queries'
+import { MaterialTypeSelect } from '../../components'
 import {
   useQCParametersByMaterialType,
   useCreateQCParameter,
@@ -30,8 +30,6 @@ import type { ApiError } from '@/core/api/types'
 
 export default function QCParametersPage() {
   const navigate = useNavigate()
-  const { data: materialTypes = [], isLoading: isLoadingTypes } = useMaterialTypes()
-
   const [selectedMaterialType, setSelectedMaterialType] = useState<number | null>(null)
   const { data: parameters = [], isLoading: isLoadingParams } =
     useQCParametersByMaterialType(selectedMaterialType)
@@ -161,21 +159,13 @@ export default function QCParametersPage() {
         <CardContent className="pt-6">
           <div className="flex items-center gap-4">
             <Label className="min-w-fit">Material Type:</Label>
-            <select
-              className="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={selectedMaterialType || ''}
-              onChange={(e) =>
-                setSelectedMaterialType(e.target.value ? parseInt(e.target.value) : null)
-              }
-              disabled={isLoadingTypes}
-            >
-              <option value="">Select Material Type</option>
-              {materialTypes.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name} ({type.code})
-                </option>
-              ))}
-            </select>
+            <div className="w-full max-w-xs">
+              <MaterialTypeSelect
+                value={selectedMaterialType || undefined}
+                onChange={(mt) => setSelectedMaterialType(mt ? mt.id : null)}
+                placeholder="Select Material Type"
+              />
+            </div>
             {selectedMaterialType && (
               <Button onClick={() => handleOpenDialog()}>
                 <Plus className="h-4 w-4 mr-2" />

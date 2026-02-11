@@ -1,5 +1,6 @@
 import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
+import type { UnitChoice } from '../maintenance/maintenance.api'
 
 export interface DailyNeedCategory {
   id: number
@@ -17,7 +18,7 @@ export interface DailyNeed {
   supplier_name: string
   material_name: string
   quantity: number | string
-  unit: string
+  unit: UnitChoice | number
   receiving_department: DailyNeedDepartment
   bill_number?: string
   delivery_challan_number?: string
@@ -35,7 +36,7 @@ export interface CreateDailyNeedRequest {
   supplier_name: string
   material_name: string
   quantity: number
-  unit: string
+  unit: number
   receiving_department: string
   bill_number: string
   delivery_challan_number: string
@@ -65,7 +66,7 @@ export const dailyNeedApi = {
     formData.append('supplier_name', data.supplier_name)
     formData.append('material_name', data.material_name)
     formData.append('quantity', data.quantity.toString())
-    formData.append('unit', data.unit)
+    formData.append('unit', data.unit.toString())
     formData.append('receiving_department', data.receiving_department)
     formData.append('bill_number', data.bill_number)
     formData.append('delivery_challan_number', data.delivery_challan_number)

@@ -18,6 +18,8 @@ export interface SearchableSelectProps<TItem> {
   value?: string
   items: TItem[]
   isLoading: boolean
+  /** Whether the data fetch failed */
+  isError?: boolean
   // Config
   placeholder?: string
   disabled?: boolean
@@ -42,6 +44,8 @@ export interface SearchableSelectProps<TItem> {
   emptyText: string
   notFoundText: string
   addNewLabel?: string
+  /** Text shown when fetch fails */
+  errorText?: string
   // Callbacks
   onItemSelect: (item: TItem) => void
   onClear: () => void
@@ -59,6 +63,7 @@ export function SearchableSelect<TItem>({
   value,
   items,
   isLoading,
+  isError = false,
   placeholder = 'Select...',
   disabled = false,
   error,
@@ -76,6 +81,7 @@ export function SearchableSelect<TItem>({
   emptyText,
   notFoundText,
   addNewLabel,
+  errorText = 'Failed to load. Please try again.',
   onItemSelect,
   onClear,
   onOpenChange,
@@ -244,7 +250,7 @@ export function SearchableSelect<TItem>({
             onFocus={() => updateIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            disabled={disabled || isLoading}
+            disabled={disabled || (isLoading && !isError)}
             className={cn(
               'pr-10 cursor-text',
               inputClassName,
@@ -253,7 +259,7 @@ export function SearchableSelect<TItem>({
             autoComplete="off"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            {isLoading ? (
+            {isLoading && !isError ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             ) : (
               <ChevronDown
@@ -268,7 +274,11 @@ export function SearchableSelect<TItem>({
 
         {isOpen && (
           <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-60 overflow-auto">
-            {isLoading ? (
+            {isError ? (
+              <div className="p-4 text-center text-sm text-destructive">
+                {errorText}
+              </div>
+            ) : isLoading ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
                 {loadingText}

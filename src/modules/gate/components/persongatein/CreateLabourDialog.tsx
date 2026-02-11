@@ -10,10 +10,11 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui'
-import { useCreateLabour, useContractors } from '../../api/personGateIn/personGateIn.queries'
+import { useCreateLabour } from '../../api/personGateIn/personGateIn.queries'
 import type { Labour } from '../../api/personGateIn/personGateIn.api'
 import { VALIDATION_PATTERNS } from '@/config/constants'
 import { cn } from '@/shared/utils'
+import { ContractorSelect } from '../ContractorSelect'
 
 interface CreateLabourDialogProps {
   open: boolean
@@ -39,7 +40,6 @@ export function CreateLabourDialog({
   })
 
   const createLabour = useCreateLabour()
-  const { data: contractors = [], isLoading: contractorsLoading } = useContractors(open)
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -135,26 +135,16 @@ export function CreateLabourDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="contractor">
-              Contractor <span className="text-destructive">*</span>
-            </Label>
-            <select
-              id="contractor"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              value={formData.contractor}
-              onChange={(e) => setFormData((prev) => ({ ...prev, contractor: Number(e.target.value) }))}
-              disabled={createLabour.isPending || contractorsLoading}
-            >
-              <option value={0}>Select contractor</option>
-              {contractors.map((contractor) => (
-                <option key={contractor.id} value={contractor.id}>
-                  {contractor.contractor_name}
-                </option>
-              ))}
-            </select>
-            {apiErrors.contractor && (
-              <p className="text-sm text-destructive">{apiErrors.contractor}</p>
-            )}
+            <ContractorSelect
+              value={formData.contractor ? String(formData.contractor) : undefined}
+              onChange={(contractorId) => {
+                setFormData((prev) => ({ ...prev, contractor: contractorId }))
+              }}
+              disabled={createLabour.isPending}
+              label="Contractor"
+              required
+              error={apiErrors.contractor}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

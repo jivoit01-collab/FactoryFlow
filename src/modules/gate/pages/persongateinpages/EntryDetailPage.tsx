@@ -24,10 +24,10 @@ import {
   usePersonEntry,
   useExitPersonEntry,
   useCancelPersonEntry,
-  useGates,
   useVisitor,
   useLabour,
 } from '../../api/personGateIn/personGateIn.queries'
+import { GateSelect } from '../../components'
 
 export default function EntryDetailPage() {
   const navigate = useNavigate()
@@ -38,7 +38,6 @@ export default function EntryDetailPage() {
   const entryIdNumber = entryId ? parseInt(entryId, 10) : null
 
   const { data: entry, isLoading, refetch } = usePersonEntry(entryIdNumber)
-  const { data: gates = [] } = useGates()
   const { data: visitor } = useVisitor(entry?.visitor || null)
   const { data: labour } = useLabour(entry?.labour || null)
 
@@ -206,21 +205,11 @@ export default function EntryDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Exit Gate</label>
-                <select
-                  value={selectedGate || ''}
-                  onChange={(e) => setSelectedGate(Number(e.target.value) || null)}
-                  className="w-full border rounded-md px-3 py-2 text-sm bg-background mt-1"
-                >
-                  <option value="">Select Gate</option>
-                  {gates
-                    .filter((g) => g.is_active)
-                    .map((gate) => (
-                      <option key={gate.id} value={gate.id}>
-                        {gate.name}
-                      </option>
-                    ))}
-                </select>
+                <GateSelect
+                  value={selectedGate ? String(selectedGate) : undefined}
+                  onChange={(gateId) => setSelectedGate(gateId)}
+                  label="Exit Gate"
+                />
               </div>
               <div className="flex gap-2">
                 <Button

@@ -26,7 +26,7 @@ import {
 import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
-import { isServerError as checkServerError, getServerErrorMessage } from '@/shared/utils'
+import { isServerError as checkServerError, getServerErrorMessage, getErrorMessage } from '@/shared/utils'
 import { useGateEntryFullView, useCompleteGateEntry } from '../../api/gateEntryFullView/gateEntryFullView.queries'
 import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
 import { useEntryId } from '../../hooks'
@@ -228,10 +228,11 @@ export default function ReviewPage() {
       // Show success screen
       setShowSuccess(true)
     } catch (error) {
-      const apiError = error as ApiError & { detail?: string }
-      // Show user-friendly error message
-      setApiErrors({ general: 'Cannot complete the entry at the moment. Please try again later.' })
-      console.error('Complete entry error:', apiError.message || apiError.detail)
+      if (checkServerError(error)) {
+        setApiErrors({ general: 'Cannot complete the entry at the moment. Please try again later.' })
+      } else {
+        setApiErrors({ general: getErrorMessage(error, 'Failed to complete gate entry') })
+      }
     } finally {
       setIsCompleting(false)
     }
