@@ -16,6 +16,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('../../../api/maintenance/maintenance.api', () => ({
   maintenanceApi: {
+    getUnitChoices: vi.fn(),
     getTypes: vi.fn(),
     getByEntryId: vi.fn(),
     create: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('../../../api/maintenance/maintenance.api', () => ({
 }))
 
 import {
+  useUnitChoices,
   useMaintenanceTypes,
   useMaintenanceEntry,
   useCreateMaintenanceEntry,
@@ -39,6 +41,10 @@ import {
 // ═══════════════════════════════════════════════════════════════
 
 describe('maintenance queries', () => {
+  it('exports useUnitChoices as a function', () => {
+    expect(typeof useUnitChoices).toBe('function')
+  })
+
   it('exports useMaintenanceTypes as a function', () => {
     expect(typeof useMaintenanceTypes).toBe('function')
   })

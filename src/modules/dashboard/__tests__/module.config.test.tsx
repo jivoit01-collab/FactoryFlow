@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest'
 //
 // Direct import of module.config.tsx hangs because it triggers
 // Vite's module graph resolution on lucide-react (thousands of
-// icon exports) and the lazy-loaded DashboardPage chain.
+// icon exports).
 // Instead, we verify the config structure via file content
 // analysis — the same proven pattern from shared/__tests__.
 // ═══════════════════════════════════════════════════════════════
@@ -42,7 +42,6 @@ describe('dashboardModuleConfig', () => {
 
   it('first route has path "/"', () => {
     const content = readModuleConfig()
-    // Match path: '/' inside routes array
     expect(content).toMatch(/routes:\s*\[[\s\S]*?path:\s*['"]\/['"]/)
   })
 
@@ -51,9 +50,15 @@ describe('dashboardModuleConfig', () => {
     expect(content).toMatch(/layout:\s*['"]main['"]/)
   })
 
-  it('route element uses lazy-loaded DashboardPage', () => {
+  it('route element uses imported DashboardPage (non-lazy)', () => {
     const content = readModuleConfig()
-    expect(content).toContain("lazy(() => import('./pages/DashboardPage'))")
+
+    // Verify normal import (not lazy)
+    expect(content).toContain(
+      "import DashboardPage from './pages/DashboardPage'",
+    )
+
+    // Verify element usage
     expect(content).toContain('element: <DashboardPage />')
   })
 
@@ -72,13 +77,17 @@ describe('dashboardModuleConfig', () => {
 
   it('navigation item references LayoutDashboard icon', () => {
     const content = readModuleConfig()
-    expect(content).toContain("import { LayoutDashboard } from 'lucide-react'")
+    expect(content).toContain(
+      "import { LayoutDashboard } from 'lucide-react'",
+    )
     expect(content).toContain('icon: LayoutDashboard')
   })
 
   it('navigation item has correct permissions', () => {
     const content = readModuleConfig()
-    expect(content).toMatch(/permissions:\s*\[['"]gatein\.view_dashboard['"]\]/)
+    expect(content).toMatch(
+      /permissions:\s*\[['"]gatein\.view_dashboard['"]\]/,
+    )
   })
 
   it('navigation item has modulePrefix "gatein"', () => {

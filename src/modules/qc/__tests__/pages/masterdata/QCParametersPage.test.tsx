@@ -41,9 +41,9 @@ describe('QCParametersPage — Exports', () => {
     expect(content).toContain('Label')
   })
 
-  it('imports useMaterialTypes for material type filter', () => {
+  it('uses MaterialTypeSelect component for material type filter', () => {
     const content = readSource()
-    expect(content).toContain('useMaterialTypes')
+    expect(content).toContain('MaterialTypeSelect')
   })
 
   it('imports qcParameter query hooks', () => {
@@ -74,7 +74,9 @@ describe('QCParametersPage — Material Type Filter', () => {
 
   it('loads parameters for selected material type', () => {
     const content = readSource()
-    expect(content).toContain('useQCParametersByMaterialType(selectedMaterialType)')
+    expect(content).toContain(
+      'useQCParametersByMaterialType(selectedMaterialType)',
+    )
   })
 })
 

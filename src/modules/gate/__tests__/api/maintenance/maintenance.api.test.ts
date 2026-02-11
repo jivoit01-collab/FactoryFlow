@@ -57,12 +57,16 @@ describe('maintenanceApi', () => {
     expect(typeof maintenanceApi.complete).toBe('function')
   })
 
+  it('has a getUnitChoices method', () => {
+    expect(typeof maintenanceApi.getUnitChoices).toBe('function')
+  })
+
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
     const methodNames = Object.keys(maintenanceApi).sort()
-    expect(methodNames).toEqual(['complete', 'create', 'getByEntryId', 'getFullView', 'getTypes', 'update'])
+    expect(methodNames).toEqual(['complete', 'create', 'getByEntryId', 'getFullView', 'getTypes', 'getUnitChoices', 'update'])
   })
 })

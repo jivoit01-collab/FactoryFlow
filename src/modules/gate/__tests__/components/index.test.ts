@@ -64,6 +64,30 @@ describe('components/index barrel exports', () => {
     expect(content).toContain("export { VendorSelect } from './VendorSelect'")
   })
 
+  it('exports ConstructionCategorySelect', () => {
+    expect(content).toContain("export { ConstructionCategorySelect } from './ConstructionCategorySelect'")
+  })
+
+  it('exports ContractorSelect', () => {
+    expect(content).toContain("export { ContractorSelect } from './ContractorSelect'")
+  })
+
+  it('exports GateSelect', () => {
+    expect(content).toContain("export { GateSelect } from './GateSelect'")
+  })
+
+  it('exports MaintenanceTypeSelect', () => {
+    expect(content).toContain("export { MaintenanceTypeSelect } from './MaintenanceTypeSelect'")
+  })
+
+  it('exports UnitSelect', () => {
+    expect(content).toContain("export { UnitSelect } from './UnitSelect'")
+  })
+
+  it('exports VehicleTypeSelect', () => {
+    expect(content).toContain("export { VehicleTypeSelect } from './VehicleTypeSelect'")
+  })
+
   // ─── Dialog components ──────────────────────────────────────
 
   it('exports CreateDriverDialog', () => {
