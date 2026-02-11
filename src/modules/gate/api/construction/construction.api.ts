@@ -1,4 +1,5 @@
 import { apiClient } from '@/core/api'
+import type { UnitChoice } from '../maintenance/maintenance.api'
 
 // Types
 export interface ConstructionCategory {
@@ -23,7 +24,7 @@ export interface ConstructionEntry {
   material_category: ConstructionEntryCategory | number
   material_description: string
   quantity: number | string
-  unit: string
+  unit: UnitChoice | number
   challan_number?: string
   invoice_number?: string
   site_engineer: string
@@ -41,7 +42,7 @@ export interface CreateConstructionRequest {
   material_category: number
   material_description: string
   quantity: number
-  unit: string
+  unit: number
   challan_number?: string
   invoice_number?: string
   site_engineer: string

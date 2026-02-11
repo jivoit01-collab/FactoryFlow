@@ -5,9 +5,9 @@ import { Button, Input, Card, CardContent, CardHeader, CardTitle } from '@/share
 import {
   useInsideList,
   useExitPersonEntry,
-  useGates,
 } from '../../api/personGateIn/personGateIn.queries'
 import type { EntryLog } from '../../api/personGateIn/personGateIn.api'
+import { GateSelect } from '../../components'
 
 export default function InsideListPage() {
   const navigate = useNavigate()
@@ -16,7 +16,6 @@ export default function InsideListPage() {
   const [selectedGate, setSelectedGate] = useState<number | null>(null)
 
   const { data: insideList = [], isLoading, refetch } = useInsideList()
-  const { data: gates = [] } = useGates()
   const exitMutation = useExitPersonEntry()
 
   // Filter entries based on search query
@@ -135,20 +134,13 @@ export default function InsideListPage() {
 
         {exitingId === entry.id ? (
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <select
-              value={selectedGate || ''}
-              onChange={(e) => setSelectedGate(Number(e.target.value) || null)}
-              className="text-xs border rounded px-2 py-1 bg-background"
-            >
-              <option value="">Select Gate</option>
-              {gates
-                .filter((g) => g.is_active)
-                .map((gate) => (
-                  <option key={gate.id} value={gate.id}>
-                    {gate.name}
-                  </option>
-                ))}
-            </select>
+            <div className="w-40">
+              <GateSelect
+                value={selectedGate ? String(selectedGate) : undefined}
+                onChange={(gateId) => setSelectedGate(gateId)}
+                placeholder="Select Gate"
+              />
+            </div>
             <Button
               size="sm"
               variant="default"

@@ -21,6 +21,7 @@ import {
 import type { Labour, CreateLabourRequest } from '../../api/personGateIn/personGateIn.api'
 import { VALIDATION_PATTERNS } from '@/config/constants'
 import { cn } from '@/shared/utils'
+import { ContractorSelect } from '../../components'
 
 export default function LaboursPage() {
   const navigate = useNavigate()
@@ -176,18 +177,16 @@ export default function LaboursPage() {
             className="pl-10"
           />
         </div>
-        <select
-          value={contractorFilter || ''}
-          onChange={(e) => setContractorFilter(Number(e.target.value) || undefined)}
-          className="border rounded-md px-3 py-2 text-sm bg-background"
-        >
-          <option value="">All Contractors</option>
-          {contractors.map((contractor) => (
-            <option key={contractor.id} value={contractor.id}>
-              {contractor.contractor_name}
-            </option>
-          ))}
-        </select>
+        <div className="w-64">
+          <ContractorSelect
+            value={contractorFilter ? String(contractorFilter) : undefined}
+            onChange={(contractorId) => {
+              setContractorFilter(contractorId || undefined)
+            }}
+            placeholder="All Contractors"
+            activeOnly={false}
+          />
+        </div>
       </div>
 
       {/* Form Modal */}
@@ -210,26 +209,15 @@ export default function LaboursPage() {
               </div>
 
               <div>
-                <Label>Contractor *</Label>
-                <select
-                  value={formData.contractor || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, contractor: Number(e.target.value) }))
-                  }
-                  className="w-full border rounded-md px-3 py-2 text-sm bg-background mt-1"
-                >
-                  <option value="">Select Contractor</option>
-                  {contractors
-                    .filter((c) => c.is_active)
-                    .map((contractor) => (
-                      <option key={contractor.id} value={contractor.id}>
-                        {contractor.contractor_name}
-                      </option>
-                    ))}
-                </select>
-                {apiErrors.contractor && (
-                  <p className="text-xs text-red-500 mt-1">{apiErrors.contractor}</p>
-                )}
+                <ContractorSelect
+                  value={formData.contractor ? String(formData.contractor) : undefined}
+                  onChange={(contractorId) => {
+                    setFormData((prev) => ({ ...prev, contractor: contractorId }))
+                  }}
+                  label="Contractor"
+                  required
+                  error={apiErrors.contractor}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

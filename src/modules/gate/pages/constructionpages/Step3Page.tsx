@@ -14,20 +14,12 @@ import {
 import { useScrollToError } from '@/shared/hooks'
 import { useEntryId } from '../../hooks'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { useConstructionEntry, useCreateConstructionEntry, useUpdateConstructionEntry, useConstructionCategories } from '../../api/construction/construction.queries'
-import { FillDataAlert } from '../../components'
+import { useConstructionEntry, useCreateConstructionEntry, useUpdateConstructionEntry } from '../../api/construction/construction.queries'
+import { FillDataAlert, ConstructionCategorySelect, UnitSelect } from '../../components'
 import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
 import { cn } from '@/shared/utils'
 import { VALIDATION_PATTERNS, ENTRY_STATUS, SECURITY_APPROVAL_STATUS } from '@/config/constants'
 import type { ApiError } from '@/core/api'
-
-// Unit options for dropdown
-const UNIT_OPTIONS = [
-  { value: 'PCS', label: 'Pieces (PCS)' },
-  { value: 'KG', label: 'Kilograms (KG)' },
-  { value: 'LTR', label: 'Liters (LTR)' },
-  { value: 'BOX', label: 'Box' },
-]
 
 // Security approval options
 const SECURITY_APPROVAL_OPTIONS = [
@@ -48,6 +40,7 @@ interface ConstructionFormData {
   materialDescription: string
   quantity: string
   unit: string
+  unitName: string
   challanNumber: string
   invoiceNumber: string
   // Approval & Responsibility
@@ -81,11 +74,6 @@ export default function Step3Page() {
   const [fillDataMode, setFillDataMode] = useState(false)
   const [updateMode, setUpdateMode] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
-  const [categoryDropdownOpened, setCategoryDropdownOpened] = useState(false)
-
-  // Fetch categories only when dropdown is opened (lazy loading)
-  const { data: categories = [], isLoading: isLoadingCategories } = useConstructionCategories(categoryDropdownOpened)
-
   const effectiveEditMode = isEditMode && !fillDataMode
 
   // Check if error is "not found" error
@@ -104,6 +92,7 @@ export default function Step3Page() {
     materialDescription: '',
     quantity: '',
     unit: '',
+    unitName: '',
     challanNumber: '',
     invoiceNumber: '',
     siteEngineer: '',
@@ -140,7 +129,12 @@ export default function Step3Page() {
         materialCategory: categoryId,
         materialDescription: constructionData.material_description || '',
         quantity: constructionData.quantity?.toString() || '',
-        unit: constructionData.unit || '',
+        unit: typeof constructionData.unit === 'object'
+          ? constructionData.unit?.id?.toString() || ''
+          : constructionData.unit?.toString() || '',
+        unitName: typeof constructionData.unit === 'object'
+          ? constructionData.unit?.name || ''
+          : '',
         challanNumber: constructionData.challan_number || '',
         invoiceNumber: constructionData.invoice_number || '',
         siteEngineer: constructionData.site_engineer || '',
@@ -148,10 +142,7 @@ export default function Step3Page() {
         remarks: constructionData.remarks || '',
       })
 
-      // Trigger category loading if we have a category
-      if (categoryId) {
-        setCategoryDropdownOpened(true)
-      }
+      // Category is loaded lazily by ConstructionCategorySelect
     }
   }, [effectiveEditMode, constructionData])
 
@@ -256,7 +247,7 @@ export default function Step3Page() {
         material_category: parseInt(formData.materialCategory, 10),
         material_description: formData.materialDescription.trim(),
         quantity: parseFloat(formData.quantity),
-        unit: formData.unit,
+        unit: parseInt(formData.unit),
         challan_number: formData.challanNumber.trim() || undefined,
         invoice_number: formData.invoiceNumber.trim() || undefined,
         site_engineer: formData.siteEngineer.trim(),
@@ -477,34 +468,17 @@ export default function Step3Page() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Material Category */}
-                <div className="space-y-2">
-                  <Label htmlFor="materialCategory">
-                    Material Category <span className="text-destructive">*</span>
-                  </Label>
-                  <select
-                    id="materialCategory"
-                    className={cn(
-                      selectClassName,
-                      apiErrors.materialCategory && 'border-destructive'
-                    )}
-                    value={formData.materialCategory}
-                    onChange={(e) => handleInputChange('materialCategory', e.target.value)}
-                    onFocus={() => setCategoryDropdownOpened(true)}
-                    disabled={isReadOnly}
-                  >
-                    <option value="">
-                      {isLoadingCategories ? 'Loading categories...' : 'Select material category'}
-                    </option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.category_name}
-                      </option>
-                    ))}
-                  </select>
-                  {apiErrors.materialCategory && (
-                    <p className="text-sm text-destructive">{apiErrors.materialCategory}</p>
-                  )}
-                </div>
+                <ConstructionCategorySelect
+                  value={formData.materialCategory || undefined}
+                  onChange={(categoryId) => {
+                    handleInputChange('materialCategory', categoryId)
+                  }}
+                  placeholder="Select material category"
+                  disabled={isReadOnly}
+                  error={apiErrors.materialCategory}
+                  label="Material Category"
+                  required
+                />
 
                 {/* Quantity and Unit in same row */}
                 <div className="grid grid-cols-2 gap-4">
@@ -533,28 +507,19 @@ export default function Step3Page() {
                   </div>
 
                   {/* Unit */}
-                  <div className="space-y-2">
-                    <Label htmlFor="unit">
-                      Unit <span className="text-destructive">*</span>
-                    </Label>
-                    <select
-                      id="unit"
-                      className={cn(selectClassName, apiErrors.unit && 'border-destructive')}
-                      value={formData.unit}
-                      onChange={(e) => handleInputChange('unit', e.target.value)}
-                      disabled={isReadOnly}
-                    >
-                      <option value="">Select unit</option>
-                      {UNIT_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {apiErrors.unit && (
-                      <p className="text-sm text-destructive">{apiErrors.unit}</p>
-                    )}
-                  </div>
+                  <UnitSelect
+                    value={formData.unit || undefined}
+                    onChange={(unitId, unitName) => {
+                      handleInputChange('unit', unitId)
+                      setFormData(prev => ({ ...prev, unitName }))
+                    }}
+                    placeholder="Select unit"
+                    disabled={isReadOnly}
+                    error={apiErrors.unit}
+                    label="Unit"
+                    required
+                    initialDisplayText={formData.unitName || undefined}
+                  />
                 </div>
 
                 {/* Material Description - Full width */}

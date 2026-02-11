@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard } from 'lucide-react'
 import { cn } from '@/shared/utils'
 import { Button, Collapsible, CollapsibleContent } from '@/shared/components/ui'
@@ -109,7 +109,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       }}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b px-4">
+      <Link to="/" className="flex h-16 items-center justify-center border-b px-4">
         <img
           src="/JivoWellnessLogo.png"
           alt="Jivo Wellness Logo"
@@ -118,7 +118,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             isCollapsed ? 'h-8 w-8' : 'h-10 w-auto'
           )}
         />
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className={cn('h-[calc(100vh-4rem)] overflow-y-auto flex flex-col gap-1 py-2', isCollapsed ? 'items-center' : 'px-2')}>

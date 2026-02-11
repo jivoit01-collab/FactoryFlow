@@ -2,6 +2,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { maintenanceApi, type CreateMaintenanceRequest } from './maintenance.api'
 
 /**
+ * Hook to fetch unit choices for dropdown
+ */
+export function useUnitChoices(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['unitChoices'],
+    queryFn: () => maintenanceApi.getUnitChoices(),
+    staleTime: 5 * 60 * 1000,
+    enabled,
+  })
+}
+
+/**
  * Hook to fetch maintenance types for dropdown
  */
 export function useMaintenanceTypes(enabled: boolean = true) {

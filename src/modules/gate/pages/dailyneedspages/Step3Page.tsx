@@ -15,22 +15,11 @@ import { useScrollToError } from '@/shared/hooks'
 import { useEntryId } from '../../hooks'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useDailyNeed, useCreateDailyNeed } from '../../api/dailyNeed/dailyNeed.queries'
-import { FillDataAlert, CategorySelect, DepartmentSelect } from '../../components'
+import { FillDataAlert, CategorySelect, DepartmentSelect, UnitSelect } from '../../components'
 import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
 import { cn } from '@/shared/utils'
 import { VALIDATION_PATTERNS, ENTRY_STATUS } from '@/config/constants'
 import type { ApiError } from '@/core/api'
-
-// Units for quantity
-const UNITS = [
-  { value: 'PCS', label: 'Pieces (PCS)' },
-  { value: 'KG', label: 'Kilograms (KG)' },
-  { value: 'LTR', label: 'Liters (LTR)' },
-  { value: 'BOX', label: 'Boxes' },
-  { value: 'PKT', label: 'Packets' },
-  { value: 'DOZ', label: 'Dozen' },
-  { value: 'CTN', label: 'Cartons' },
-]
 
 interface DailyNeedsFormData {
   itemCategory: number | ''
@@ -38,6 +27,7 @@ interface DailyNeedsFormData {
   materialName: string
   quantity: string
   unit: string
+  unitName: string
   receivingDepartment: number | ''
   billNumber: string
   deliveryChallanNumber: string
@@ -88,7 +78,8 @@ export default function Step3Page() {
     supplierName: '',
     materialName: '',
     quantity: '0',
-    unit: 'KG',
+    unit: '',
+    unitName: '',
     receivingDepartment: '',
     billNumber: '',
     deliveryChallanNumber: '',
@@ -123,7 +114,12 @@ export default function Step3Page() {
         supplierName: dailyNeedData.supplier_name || '',
         materialName: dailyNeedData.material_name || '',
         quantity: dailyNeedData.quantity?.toString() || '0',
-        unit: dailyNeedData.unit || 'KG',
+        unit: typeof dailyNeedData.unit === 'object'
+          ? dailyNeedData.unit?.id?.toString() || ''
+          : dailyNeedData.unit?.toString() || '',
+        unitName: typeof dailyNeedData.unit === 'object'
+          ? dailyNeedData.unit?.name || ''
+          : '',
         receivingDepartment: departmentId,
         billNumber: dailyNeedData.bill_number || '',
         deliveryChallanNumber: dailyNeedData.delivery_challan_number || '',
@@ -197,6 +193,9 @@ export default function Step3Page() {
     if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
       errors.quantity = 'Please enter a valid quantity'
     }
+    if (!formData.unit) {
+      errors.unit = 'Please select unit'
+    }
     if (!formData.receivingDepartment) {
       errors.receivingDepartment = 'Please select receiving department'
     }
@@ -226,7 +225,7 @@ export default function Step3Page() {
         supplier_name: formData.supplierName,
         material_name: formData.materialName,
         quantity: parseFloat(formData.quantity),
-        unit: formData.unit,
+        unit: parseInt(formData.unit),
         receiving_department: (formData.receivingDepartment as number).toString(),
         bill_number: formData.billNumber,
         delivery_challan_number: formData.deliveryChallanNumber,
@@ -416,24 +415,19 @@ export default function Step3Page() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="unit">
-                  Unit <span className="text-destructive">*</span>
-                </Label>
-                <select
-                  id="unit"
-                  className="flex h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={formData.unit}
-                  onChange={(e) => handleInputChange('unit', e.target.value)}
-                  disabled={isReadOnly || createDailyNeed.isPending}
-                >
-                  {UNITS.map((unit) => (
-                    <option key={unit.value} value={unit.value}>
-                      {unit.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <UnitSelect
+                value={formData.unit || undefined}
+                onChange={(unitId, unitName) => {
+                  handleInputChange('unit', unitId)
+                  setFormData((prev: DailyNeedsFormData) => ({ ...prev, unitName }))
+                }}
+                placeholder="Select unit"
+                disabled={isReadOnly || createDailyNeed.isPending}
+                error={apiErrors.unit}
+                label="Unit"
+                required
+                initialDisplayText={formData.unitName || undefined}
+              />
 
               <DepartmentSelect
                 value={formData.receivingDepartment}

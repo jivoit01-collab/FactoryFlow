@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useDailyNeedCategories } from '../api/dailyNeed/dailyNeed.queries'
+import { useConstructionCategories } from '../api/construction/construction.queries'
 import { SearchableSelect } from '@/shared/components'
-import type { DailyNeedCategory } from '../api/dailyNeed/dailyNeed.api'
+import type { ConstructionCategory } from '../api/construction/construction.api'
 
-interface CategorySelectProps {
-  value?: number | ''
-  onChange: (categoryId: number | '', categoryName: string) => void
+interface ConstructionCategorySelectProps {
+  value?: string
+  onChange: (categoryId: string, categoryName: string) => void
   placeholder?: string
   disabled?: boolean
   error?: string
@@ -15,23 +15,23 @@ interface CategorySelectProps {
   initialDisplayText?: string
 }
 
-export function CategorySelect({
+export function ConstructionCategorySelect({
   value,
   onChange,
-  placeholder = 'Select category',
+  placeholder = 'Select material category',
   disabled = false,
   error,
   label,
   required = false,
   initialDisplayText,
-}: CategorySelectProps) {
+}: ConstructionCategorySelectProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
-  const { data: categories = [], isLoading, isError } = useDailyNeedCategories(isDropdownOpen)
+  const { data: categories = [], isLoading, isError } = useConstructionCategories(isDropdownOpen)
 
   return (
-    <SearchableSelect<DailyNeedCategory>
-      value={value ? String(value) : undefined}
+    <SearchableSelect<ConstructionCategory>
+      value={value || undefined}
       items={categories}
       isLoading={isLoading}
       isError={isError}
@@ -40,7 +40,7 @@ export function CategorySelect({
       error={error}
       label={label}
       required={required}
-      inputId="category-select"
+      inputId="construction-category-select"
       inputClassName="border-2 font-medium"
       defaultDisplayText={initialDisplayText}
       getItemKey={(c) => c.id}
@@ -50,7 +50,7 @@ export function CategorySelect({
       notFoundText="No categories found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(category) => {
-        onChange(category.id, category.category_name)
+        onChange(category.id.toString(), category.category_name)
       }}
       onClear={() => {
         onChange('', '')

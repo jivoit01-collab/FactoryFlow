@@ -11,27 +11,14 @@ import {
   Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { useMaintenanceTypes, useMaintenanceEntry, useCreateMaintenanceEntry, useUpdateMaintenanceEntry } from '../../api/maintenance/maintenance.queries'
-import { useDepartments } from '../../api/department/department.queries'
+import { useMaintenanceEntry, useCreateMaintenanceEntry, useUpdateMaintenanceEntry } from '../../api/maintenance/maintenance.queries'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { useEntryId } from '../../hooks'
-import { StepHeader, StepFooter, FillDataAlert } from '../../components'
+import { StepHeader, StepFooter, FillDataAlert, MaintenanceTypeSelect, UnitSelect, DepartmentSelect } from '../../components'
 import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api'
 import { ENTRY_STATUS } from '@/config/constants'
-
-// Unit options for dropdown
-const UNIT_OPTIONS = [
-  { value: 'PCS', label: 'Pieces (PCS)' },
-  { value: 'KG', label: 'Kilograms (KG)' },
-  { value: 'LTR', label: 'Liters (LTR)' },
-  { value: 'MTR', label: 'Meters (MTR)' },
-  { value: 'SET', label: 'Set' },
-  { value: 'BOX', label: 'Box' },
-  { value: 'ROLL', label: 'Roll' },
-  { value: 'PAIR', label: 'Pair' },
-]
 
 // Urgency level options
 const URGENCY_OPTIONS = [
@@ -48,6 +35,7 @@ interface FormData {
   partNumber: string
   quantity: string
   unit: string
+  unitName: string
   invoiceNumber: string
   equipmentId: string
   receivingDepartment: string
@@ -63,10 +51,6 @@ export default function Step3Page() {
   const currentStep = 3
   const totalSteps = 3
 
-  // Track if dropdowns have been opened (to lazy load data)
-  const [typesDropdownOpened, setTypesDropdownOpened] = useState(false)
-  const [departmentsDropdownOpened, setDepartmentsDropdownOpened] = useState(false)
-
   // API hooks
   const createMaintenanceEntry = useCreateMaintenanceEntry(entryIdNumber || 0)
   const updateMaintenanceEntry = useUpdateMaintenanceEntry(entryIdNumber || 0)
@@ -78,9 +62,6 @@ export default function Step3Page() {
   const { data: vehicleEntryData } = useVehicleEntry(
     isEditMode && entryIdNumber ? entryIdNumber : null
   )
-  // Only fetch when dropdown is opened
-  const { data: maintenanceTypes = [], isLoading: isLoadingTypes } = useMaintenanceTypes(typesDropdownOpened)
-  const { data: departments = [] } = useDepartments(departmentsDropdownOpened)
 
   // State
   const [fillDataMode, setFillDataMode] = useState(false)
@@ -109,6 +90,7 @@ export default function Step3Page() {
     partNumber: '',
     quantity: '',
     unit: '',
+    unitName: '',
     invoiceNumber: '',
     equipmentId: '',
     receivingDepartment: '',
@@ -139,6 +121,13 @@ export default function Step3Page() {
         ? maintenanceData.receiving_department?.name || ''
         : ''
 
+      const unitId = typeof maintenanceData.unit === 'object'
+        ? maintenanceData.unit?.id?.toString() || ''
+        : maintenanceData.unit?.toString() || ''
+      const unitName = typeof maintenanceData.unit === 'object'
+        ? maintenanceData.unit?.name || ''
+        : ''
+
       setFormData({
         maintenanceType: maintenanceTypeId,
         maintenanceTypeName: maintenanceTypeName,
@@ -146,7 +135,8 @@ export default function Step3Page() {
         materialDescription: maintenanceData.material_description || '',
         partNumber: maintenanceData.part_number || '',
         quantity: maintenanceData.quantity?.toString() || '',
-        unit: maintenanceData.unit || '',
+        unit: unitId,
+        unitName: unitName,
         invoiceNumber: maintenanceData.invoice_number || '',
         equipmentId: maintenanceData.equipment_id || '',
         receivingDepartment: receivingDeptId,
@@ -242,7 +232,7 @@ export default function Step3Page() {
         material_description: formData.materialDescription.trim(),
         part_number: formData.partNumber.trim() || undefined,
         quantity: parseFloat(formData.quantity),
-        unit: formData.unit,
+        unit: parseInt(formData.unit),
         invoice_number: formData.invoiceNumber.trim() || undefined,
         equipment_id: formData.equipmentId.trim() || undefined,
         receiving_department: parseInt(formData.receivingDepartment),
@@ -318,45 +308,20 @@ export default function Step3Page() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-w-md">
-                <Label htmlFor="maintenanceType">
-                  Maintenance Type <span className="text-destructive">*</span>
-                </Label>
-                <select
-                  id="maintenanceType"
-                  className={cn(
-                    selectClassName,
-                    apiErrors.maintenanceType && 'border-destructive'
-                  )}
-                  value={formData.maintenanceType}
-                  onChange={(e) => {
-                    const selectedType = maintenanceTypes.find(t => t.id.toString() === e.target.value)
-                    handleInputChange('maintenanceType', e.target.value)
-                    if (selectedType) {
-                      setFormData(prev => ({ ...prev, maintenanceTypeName: selectedType.type_name }))
-                    }
+              <div className="max-w-md">
+                <MaintenanceTypeSelect
+                  value={formData.maintenanceType || undefined}
+                  onChange={(typeId, typeName) => {
+                    handleInputChange('maintenanceType', typeId)
+                    setFormData(prev => ({ ...prev, maintenanceTypeName: typeName }))
                   }}
-                  onFocus={() => setTypesDropdownOpened(true)}
-                  disabled={isReadOnly || (typesDropdownOpened && isLoadingTypes)}
-                >
-                  {/* Show current value from API data if dropdown hasn't been opened yet */}
-                  {!typesDropdownOpened && formData.maintenanceType && formData.maintenanceTypeName ? (
-                    <option value={formData.maintenanceType}>{formData.maintenanceTypeName}</option>
-                  ) : (
-                    <option value="">{typesDropdownOpened && isLoadingTypes ? 'Loading...' : 'Select maintenance type'}</option>
-                  )}
-                  {/* Show all options once loaded */}
-                  {maintenanceTypes
-                    .filter((type) => type.is_active)
-                    .map((type) => (
-                      <option key={type.id} value={type.id.toString()}>
-                        {type.type_name}
-                      </option>
-                    ))}
-                </select>
-                {apiErrors.maintenanceType && (
-                  <p className="text-sm text-destructive">{apiErrors.maintenanceType}</p>
-                )}
+                  placeholder="Select maintenance type"
+                  disabled={isReadOnly}
+                  error={apiErrors.maintenanceType}
+                  label="Maintenance Type"
+                  required
+                  initialDisplayText={formData.maintenanceTypeName || undefined}
+                />
               </div>
             </CardContent>
           </Card>
@@ -452,28 +417,19 @@ export default function Step3Page() {
                 </div>
 
                 {/* Unit */}
-                <div className="space-y-2">
-                  <Label htmlFor="unit">
-                    Unit <span className="text-destructive">*</span>
-                  </Label>
-                  <select
-                    id="unit"
-                    className={cn(selectClassName, apiErrors.unit && 'border-destructive')}
-                    value={formData.unit}
-                    onChange={(e) => handleInputChange('unit', e.target.value)}
-                    disabled={isReadOnly}
-                  >
-                    <option value="">Select unit</option>
-                    {UNIT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {apiErrors.unit && (
-                    <p className="text-sm text-destructive">{apiErrors.unit}</p>
-                  )}
-                </div>
+                <UnitSelect
+                  value={formData.unit || undefined}
+                  onChange={(unitId, unitName) => {
+                    handleInputChange('unit', unitId)
+                    setFormData(prev => ({ ...prev, unitName }))
+                  }}
+                  placeholder="Select unit"
+                  disabled={isReadOnly}
+                  error={apiErrors.unit}
+                  label="Unit"
+                  required
+                  initialDisplayText={formData.unitName || undefined}
+                />
               </div>
             </CardContent>
           </Card>
@@ -515,44 +471,19 @@ export default function Step3Page() {
                 </div>
 
                 {/* Receiving Department */}
-                <div className="space-y-2">
-                  <Label htmlFor="receivingDepartment">
-                    Receiving Department <span className="text-destructive">*</span>
-                  </Label>
-                  <select
-                    id="receivingDepartment"
-                    className={cn(
-                      selectClassName,
-                      apiErrors.receivingDepartment && 'border-destructive'
-                    )}
-                    value={formData.receivingDepartment}
-                    onChange={(e) => {
-                      const selectedDept = departments.find((d: { id: number; name: string }) => d.id.toString() === e.target.value)
-                      handleInputChange('receivingDepartment', e.target.value)
-                      if (selectedDept) {
-                        setFormData(prev => ({ ...prev, receivingDepartmentName: selectedDept.name }))
-                      }
-                    }}
-                    onFocus={() => setDepartmentsDropdownOpened(true)}
-                    disabled={isReadOnly || (departmentsDropdownOpened && departments.length === 0)}
-                  >
-                    {/* Show current value from API data if dropdown hasn't been opened yet */}
-                    {!departmentsDropdownOpened && formData.receivingDepartment && formData.receivingDepartmentName ? (
-                      <option value={formData.receivingDepartment}>{formData.receivingDepartmentName}</option>
-                    ) : (
-                      <option value="">Select department</option>
-                    )}
-                    {/* Show all options once loaded */}
-                    {departments.map((dept: { id: number; name: string }) => (
-                      <option key={dept.id} value={dept.id.toString()}>
-                        {dept.name}
-                      </option>
-                    ))}
-                  </select>
-                  {apiErrors.receivingDepartment && (
-                    <p className="text-sm text-destructive">{apiErrors.receivingDepartment}</p>
-                  )}
-                </div>
+                <DepartmentSelect
+                  value={formData.receivingDepartment ? Number(formData.receivingDepartment) : ''}
+                  onChange={(departmentId) => {
+                    handleInputChange('receivingDepartment', departmentId.toString())
+                    setFormData(prev => ({ ...prev, receivingDepartmentName: '' }))
+                  }}
+                  placeholder="Select department"
+                  disabled={isReadOnly}
+                  error={apiErrors.receivingDepartment}
+                  label="Receiving Department"
+                  required
+                  initialDisplayText={formData.receivingDepartmentName || undefined}
+                />
 
                 {/* Urgency Level */}
                 <div className="space-y-2">

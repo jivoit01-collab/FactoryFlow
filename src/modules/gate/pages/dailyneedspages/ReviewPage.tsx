@@ -23,12 +23,11 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Switch,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
 import type { ApiError } from '@/core/api/types'
-import { isServerError as checkServerError, getServerErrorMessage } from '@/shared/utils'
+import { isServerError as checkServerError, getServerErrorMessage, getErrorMessage } from '@/shared/utils'
 import {
   useDailyNeedFullView,
   useCompleteDailyNeedEntry,
@@ -139,9 +138,10 @@ export default function ReviewPage() {
   const queryClient = useQueryClient()
   const { entryId, entryIdNumber, isEditMode } = useEntryId()
 
-  const [securityInspectionCompleted, setSecurityInspectionCompleted] = useState(false)
+  const [isSubmittingSecurity, setIsSubmittingSecurity] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [securityJustSubmitted, setSecurityJustSubmitted] = useState(false)
 
   const handleNavigateToList = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
@@ -172,17 +172,47 @@ export default function ReviewPage() {
     }
   }
 
-  const handleComplete = async () => {
+  const handleSubmitSecurity = async () => {
     if (!entryId) {
       setApiErrors({ general: 'Entry ID is missing.' })
       return
     }
 
-    const isSecurityAlreadySubmitted = gateEntry?.security_check?.is_submitted
+    setApiErrors({})
+    setIsSubmittingSecurity(true)
 
-    // Only require toggle confirmation if security is not already submitted
-    if (!isSecurityAlreadySubmitted && !securityInspectionCompleted) {
-      setApiErrors({ general: 'Please confirm that security inspection is completed.' })
+    try {
+      // Get security data to retrieve the security ID
+      const securityData = await securityCheckApi.get(entryIdNumber!)
+
+      if (!securityData.id) {
+        setApiErrors({
+          general: 'Security check data not found. Please complete security check first.',
+        })
+        setIsSubmittingSecurity(false)
+        return
+      }
+
+      // Submit security check (this locks Step 2 from updates)
+      await securityCheckApi.submit(securityData.id)
+
+      // Mark that security was just submitted so we can show Complete Entry button
+      setSecurityJustSubmitted(true)
+
+      // Refresh the gate entry data
+      queryClient.invalidateQueries({ queryKey: ['dailyNeedFullView', entryIdNumber] })
+    } catch (error) {
+      const apiError = error as ApiError & { detail?: string }
+      const errorMessage = apiError.message || apiError.detail || 'Failed to submit security check'
+      setApiErrors({ general: errorMessage })
+    } finally {
+      setIsSubmittingSecurity(false)
+    }
+  }
+
+  const handleComplete = async () => {
+    if (!entryId) {
+      setApiErrors({ general: 'Entry ID is missing.' })
       return
     }
 
@@ -190,32 +220,17 @@ export default function ReviewPage() {
     setIsCompleting(true)
 
     try {
-      // Only submit security check if not already submitted and security check exists
-      if (!isSecurityAlreadySubmitted && gateEntry?.security_check) {
-        // Step 1: Get security data to retrieve the security ID
-        const securityData = await securityCheckApi.get(entryIdNumber!)
-
-        if (!securityData.id) {
-          setApiErrors({
-            general: 'Security check data not found. Please complete security check first.',
-          })
-          setIsCompleting(false)
-          return
-        }
-
-        // Step 2: Submit security check (this locks Step 2 from updates)
-        await securityCheckApi.submit(securityData.id)
-      }
-
-      // Step 3: Complete the gate entry
+      // Complete the gate entry
       await completeDailyNeedEntry.mutateAsync(entryIdNumber!)
 
       // Show success screen
       setShowSuccess(true)
     } catch (error) {
-      const apiError = error as ApiError & { detail?: string }
-      const errorMessage = apiError.message || apiError.detail || 'Failed to complete gate entry'
-      setApiErrors({ general: errorMessage })
+      if (checkServerError(error)) {
+        setApiErrors({ general: 'Cannot complete the entry at the moment. Please try again later.' })
+      } else {
+        setApiErrors({ general: getErrorMessage(error, 'Failed to complete gate entry') })
+      }
     } finally {
       setIsCompleting(false)
     }
@@ -518,35 +533,25 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* Security Inspection Confirmation */}
+        {/* Security Inspection Status */}
         {!isAlreadyCompleted && (
           <Card className="border-primary/50">
             <CardContent className="pt-6">
-              {gateEntry.security_check?.is_submitted ? (
+              {gateEntry.security_check?.is_submitted || securityJustSubmitted ? (
                 <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
                   <CheckCircle2 className="h-5 w-5" />
-                  <span className="font-medium">Security check already submitted</span>
+                  <span className="font-medium">Security check submitted. Ready to complete entry.</span>
                 </div>
-              ) : gateEntry.security_check ? (
+              ) : (
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <Label className="text-base font-medium">
-                      Is Security Inspection Completed?
+                      Security Inspection Pending
                     </Label>
                     <p className="text-sm text-muted-foreground">
-                      Confirm that all security checks have been performed and verified
+                      Submit security check to proceed with completing the entry
                     </p>
                   </div>
-                  <Switch
-                    checked={securityInspectionCompleted}
-                    onChange={setSecurityInspectionCompleted}
-                    disabled={completeDailyNeedEntry.isPending}
-                  />
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 text-yellow-600 dark:text-yellow-400">
-                  <AlertCircle className="h-5 w-5" />
-                  <span className="font-medium">No security check data found</span>
                 </div>
               )}
             </CardContent>
@@ -565,24 +570,27 @@ export default function ReviewPage() {
             Cancel
           </Button>
           {!isAlreadyCompleted && (
-            <Button
-              type="button"
-              onClick={handleComplete}
-              disabled={
-                isCompleting ||
-                !!(gateEntry?.security_check &&
-                  !gateEntry?.security_check?.is_submitted &&
-                  !securityInspectionCompleted)
-              }
-              className={cn(
-                gateEntry?.security_check &&
-                  !gateEntry?.security_check?.is_submitted &&
-                  !securityInspectionCompleted &&
-                  'opacity-50 cursor-not-allowed'
+            <>
+              {!gateEntry?.security_check?.is_submitted && !securityJustSubmitted ? (
+                <Button
+                  type="button"
+                  onClick={handleSubmitSecurity}
+                  disabled={isSubmittingSecurity}
+                >
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  {isSubmittingSecurity ? 'Submitting...' : 'Submit Security'}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleComplete}
+                  disabled={isCompleting}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {isCompleting ? 'Completing...' : 'Complete Entry'}
+                </Button>
               )}
-            >
-              {isCompleting ? 'Completing...' : 'Complete Entry'}
-            </Button>
+            </>
           )}
           {isAlreadyCompleted && (
             <Button

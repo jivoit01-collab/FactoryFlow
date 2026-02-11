@@ -43,7 +43,7 @@ export function MaterialTypeSelect({
   ])
 
   // Fetch material types
-  const { data: materialTypes = [], isLoading } = useMaterialTypes()
+  const { data: materialTypes = [], isLoading, isError } = useMaterialTypes()
   const createMaterialType = useCreateMaterialType()
 
   // Dialog form state
@@ -85,6 +85,7 @@ export function MaterialTypeSelect({
       value={value ? String(value) : undefined}
       items={materialTypes}
       isLoading={isLoading}
+      isError={isError}
       placeholder={placeholder}
       disabled={disabled}
       error={error}

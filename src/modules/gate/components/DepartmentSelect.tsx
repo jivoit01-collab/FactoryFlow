@@ -27,13 +27,14 @@ export function DepartmentSelect({
 }: DepartmentSelectProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
-  const { data: departments = [], isLoading } = useDepartments(isDropdownOpen)
+  const { data: departments = [], isLoading, isError } = useDepartments(isDropdownOpen)
 
   return (
     <SearchableSelect<Department>
       value={value ? String(value) : undefined}
       items={departments}
       isLoading={isLoading}
+      isError={isError}
       placeholder={placeholder}
       disabled={disabled}
       error={error}

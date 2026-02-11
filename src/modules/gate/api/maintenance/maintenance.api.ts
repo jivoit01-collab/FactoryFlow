@@ -1,6 +1,11 @@
 import { apiClient } from '@/core/api'
 
 // Types
+export interface UnitChoice {
+  id: number
+  name: string
+}
+
 export interface MaintenanceType {
   id: number
   type_name: string
@@ -26,7 +31,7 @@ export interface MaintenanceEntry {
   material_description: string
   part_number?: string
   quantity: number | string
-  unit: string
+  unit: UnitChoice | number
   invoice_number?: string
   equipment_id?: string
   receiving_department: MaintenanceEntryDepartment | number
@@ -41,7 +46,7 @@ export interface CreateMaintenanceRequest {
   material_description: string
   part_number?: string
   quantity: number
-  unit: string
+  unit: number
   invoice_number?: string
   equipment_id?: string
   receiving_department: number
@@ -114,6 +119,16 @@ export interface MaintenanceFullView {
 
 // API functions
 export const maintenanceApi = {
+  /**
+   * Get unit choices for dropdown
+   */
+  getUnitChoices: async (): Promise<UnitChoice[]> => {
+    const response = await apiClient.get<UnitChoice[]>(
+      '/gate-core/unit-choices/'
+    )
+    return response.data
+  },
+
   /**
    * Get maintenance types for dropdown
    */

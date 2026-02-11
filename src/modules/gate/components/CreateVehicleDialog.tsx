@@ -13,11 +13,12 @@ import {
   Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { useCreateVehicle, useVehicleTypes } from '../api/vehicle/vehicle.queries'
+import { useCreateVehicle } from '../api/vehicle/vehicle.queries'
 import { useTransporters } from '../api/transporter/transporter.queries'
 import { vehicleSchema, type VehicleFormData } from '../schemas/vehicle.schema'
 import type { ApiError } from '@/core/api/types'
 import { TransporterSelect } from './TransporterSelect'
+import { VehicleTypeSelect } from './VehicleTypeSelect'
 
 interface CreateVehicleDialogProps {
   open: boolean
@@ -29,9 +30,9 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
   const [selectedTransporterId, setSelectedTransporterId] = useState<number | null>(null)
   const createVehicle = useCreateVehicle()
-  const { data: vehicleTypes = [] } = useVehicleTypes(open)
   // Only fetch transporters when dialog is open
   const { data: transporters = [] } = useTransporters(open)
+  const [vehicleTypeValue, setVehicleTypeValue] = useState('')
 
   const {
     register,
@@ -66,6 +67,7 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
       setSelectedTransporterId(null)
 
       setTransporterName('')
+      setVehicleTypeValue('')
     }
   }, [open, reset])
 
@@ -176,26 +178,17 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vehicle_type">
-              Vehicle Type <span className="text-destructive">*</span>
-            </Label>
-            <select
-              id="vehicle_type"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              onChange={(e) => setValue('vehicle_type', Number(e.target.value))}
+            <VehicleTypeSelect
+              value={vehicleTypeValue || undefined}
+              onChange={(typeId, _typeName) => {
+                setValue('vehicle_type', typeId)
+                setVehicleTypeValue(String(typeId))
+              }}
               disabled={createVehicle.isPending}
-            >
-              <option value={0}>Select vehicle type</option>
-              {vehicleTypes.map(vt => (
-                <option key={vt.id} value={vt.id}>{vt.name}</option>
-              ))}
-            </select>
-            {errors.vehicle_type && (
-              <p className="text-sm text-destructive">{errors.vehicle_type.message}</p>
-            )}
-            {apiErrors.vehicle_type && !errors.vehicle_type && (
-              <p className="text-sm text-destructive">{apiErrors.vehicle_type}</p>
-            )}
+              label="Vehicle Type"
+              required
+              error={errors.vehicle_type?.message || apiErrors.vehicle_type}
+            />
           </div>
 
           <div className="space-y-2">
