@@ -1,16 +1,32 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCreateSecurityCheck, useSecurityCheck } from '../../api/securityCheck/securityCheck.queries'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { useEntryId } from '../../hooks'
-import { SecurityCheckFormShell, type SecurityCheckFormData } from '../../components'
-import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+import {
+  ENTRY_STATUS,
+  getTyreConditionLabel,
+  getVehicleConditionLabel,
+  TYRE_CONDITIONS,
+  VEHICLE_CONDITIONS,
+} from '@/config/constants'
 import type { ApiError } from '@/core/api'
-import { ENTRY_STATUS, VEHICLE_CONDITIONS, TYRE_CONDITIONS, getVehicleConditionLabel, getTyreConditionLabel } from '@/config/constants'
 import { getCurrentTimeHHMM, getTimeFromDatetime } from '@/shared/hooks'
+import {
+  getErrorMessage,
+  getServerErrorMessage,
+  isNotFoundError as checkNotFoundError,
+  isServerError as checkServerError,
+} from '@/shared/utils'
+
+import {
+  useCreateSecurityCheck,
+  useSecurityCheck,
+} from '../../api/securityCheck/securityCheck.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import { type SecurityCheckFormData, SecurityCheckFormShell } from '../../components'
 import { WIZARD_CONFIG } from '../../constants'
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig'
+import { useEntryId } from '../../hooks'
 
 interface SharedStep2PageProps {
   config: EntryFlowConfig
@@ -190,8 +206,10 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
     try {
       // Convert form values to API format (booleans)
       const vehicleConditionOk =
-        formData.vehicleCondition === VEHICLE_CONDITIONS.EMPTY || formData.vehicleCondition === VEHICLE_CONDITIONS.LOADED
-      const tyreConditionOk = formData.tyreCondition === TYRE_CONDITIONS.GOOD || formData.tyreCondition === 'Fair'
+        formData.vehicleCondition === VEHICLE_CONDITIONS.EMPTY ||
+        formData.vehicleCondition === VEHICLE_CONDITIONS.LOADED
+      const tyreConditionOk =
+        formData.tyreCondition === TYRE_CONDITIONS.GOOD || formData.tyreCondition === 'Fair'
       const fireExtinguisherAvailable = formData.fireExtinguisherAvailable === 'Yes'
 
       // Alcohol test logic

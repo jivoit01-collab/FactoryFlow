@@ -1,5 +1,6 @@
-import * as React from 'react'
 import { Check } from 'lucide-react'
+import * as React from 'react'
+
 import { cn } from '@/shared/utils'
 
 export interface CheckboxProps {

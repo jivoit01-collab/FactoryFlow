@@ -1,20 +1,84 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useAppDispatch, useAppSelector } from '@/core/store'
-import { authService } from '../services/auth.service'
-import { initializeComplete, loginSuccess, updateUser } from '../store/authSlice'
+import { useLocation, useNavigate } from 'react-router-dom'
+
 import { AUTH_CONFIG } from '@/config/constants'
 import { ROUTES } from '@/config/routes.config'
 import {
-  setupTokenRefreshInterval,
-  setInitializationPromise,
   markAuthInitialized,
+  setInitializationPromise,
+  setupTokenRefreshInterval,
 } from '@/core/api/client'
+import { useAppDispatch, useAppSelector } from '@/core/store'
+
+import { authService } from '../services/auth.service'
 import { indexedDBService } from '../services/indexedDb.service'
+import { initializeComplete, loginSuccess, updateUser } from '../store/authSlice'
 import { ensureValidToken, isTokenCompletelyExpired } from '../utils/tokenRefresh.util'
 
 interface AuthInitializerProps {
   children: React.ReactNode
+}
+
+/**
+ * Validate stored tokens and return them if valid, or null if expired/missing.
+ */
+async function validateStoredTokens(): Promise<{
+  access: string
+  refresh: string
+  authData: Awaited<ReturnType<typeof indexedDBService.getAuthData>>
+} | null> {
+  const access = await indexedDBService.getAccessToken()
+  const refresh = await indexedDBService.getRefreshToken()
+  const authData = await indexedDBService.getAuthData()
+
+  if (!access || !refresh || !authData) return null
+
+  const isExpired = await isTokenCompletelyExpired()
+  if (isExpired) {
+    await indexedDBService.clearAuthData()
+    return null
+  }
+
+  const validToken = await ensureValidToken(async () => {
+    await indexedDBService.clearAuthData()
+  })
+  if (!validToken) return null
+
+  // Re-read tokens after potential refresh
+  const currentAccess = await indexedDBService.getAccessToken()
+  const currentRefresh = await indexedDBService.getRefreshToken()
+  if (!currentAccess || !currentRefresh) return null
+
+  return { access: currentAccess, refresh: currentRefresh, authData }
+}
+
+/**
+ * Build the Redux loginSuccess payload from stored auth data.
+ */
+function buildAuthPayload(
+  authData: NonNullable<Awaited<ReturnType<typeof indexedDBService.getAuthData>>>,
+  access: string,
+  refresh: string
+) {
+  if (!authData.user || !('id' in authData.user) || !('email' in authData.user)) return null
+
+  const accessExpiresIn = Math.max(0, Math.floor((authData.accessExpiresAt - Date.now()) / 1000))
+  const refreshExpiresIn = Math.max(0, Math.floor((authData.refreshExpiresAt - Date.now()) / 1000))
+
+  return {
+    user: {
+      id: authData.user.id,
+      email: authData.user.email,
+      full_name: authData.user.full_name || '',
+      companies: authData.user.companies || [],
+    },
+    access,
+    refresh,
+    tokensExpiresIn: {
+      access_expires_in: accessExpiresIn,
+      refresh_expires_in: refreshExpiresIn,
+    },
+  }
 }
 
 /**
@@ -35,120 +99,46 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
 
   // Initialize auth from IndexedDB on mount
   useEffect(() => {
-    // Prevent multiple initializations
     if (initializedRef.current) return
     initializedRef.current = true
 
-    /**
-     * Initialize authentication state from IndexedDB
-     * Handles token validation, refresh, and navigation
-     */
     async function initAuth() {
       const initPromise = (async () => {
         try {
-          // Check if we have tokens in IndexedDB
-          const access = await indexedDBService.getAccessToken()
-          const refresh = await indexedDBService.getRefreshToken()
-          const authData = await indexedDBService.getAuthData()
+          const stored = await validateStoredTokens()
 
-          // If we have tokens, validate and refresh if needed, then redirect to loading-user
-          if (access && refresh && authData) {
-            // Check if token is completely expired
-            const isExpired = await isTokenCompletelyExpired()
-            if (isExpired) {
-              await indexedDBService.clearAuthData()
-              dispatch(initializeComplete())
-              markAuthInitialized()
-              return
-            }
-
-            // Ensure token is valid (refreshes if close to expiry)
-            const validToken = await ensureValidToken(async () => {
-              await indexedDBService.clearAuthData()
-            })
-
-            if (!validToken) {
-              // Token refresh failed or expired
-              dispatch(initializeComplete())
-              markAuthInitialized()
-              return
-            }
-
-            // Get updated tokens after potential refresh
-            const currentAccess = await indexedDBService.getAccessToken()
-            const currentRefresh = await indexedDBService.getRefreshToken()
-
-            if (!currentAccess || !currentRefresh) {
-              dispatch(initializeComplete())
-              markAuthInitialized()
-              return
-            }
-
-            // Check if we have a current company set
-            const currentCompany = await indexedDBService.getCurrentCompany()
-
-            // Always redirect to loading-user page to fetch fresh user data from /auth/me
-            // This ensures IndexedDB is updated with latest permissions and user data
-            if (authData.user && 'id' in authData.user && 'email' in authData.user) {
-              // Reconstruct tokensExpiresIn object from stored expiry timestamps
-              // Calculate access_expires_in from stored expiry (convert milliseconds to seconds)
-              const accessExpiresIn = Math.max(
-                0,
-                Math.floor((authData.accessExpiresAt - Date.now()) / 1000)
-              )
-              // Calculate refresh_expires_in from stored expiry (convert milliseconds to seconds)
-              const refreshExpiresIn = Math.max(
-                0,
-                Math.floor((authData.refreshExpiresAt - Date.now()) / 1000)
-              )
-
-              dispatch(
-                loginSuccess({
-                  user: {
-                    id: authData.user.id,
-                    email: authData.user.email,
-                    full_name: authData.user.full_name || '',
-                    companies: authData.user.companies || [],
-                  },
-                  access: currentAccess,
-                  refresh: currentRefresh,
-                  tokensExpiresIn: {
-                    access_expires_in: accessExpiresIn,
-                    refresh_expires_in: refreshExpiresIn,
-                  },
-                })
-              )
-            }
-
+          if (!stored) {
             dispatch(initializeComplete())
             markAuthInitialized()
-
-            // If no current company, redirect to company selection
-            // Otherwise, redirect to loading-user to fetch fresh data
-            // Pass the intended URL so we can redirect back after loading
-            const intendedUrl = intendedUrlRef.current
-            if (!currentCompany) {
-              navigate(ROUTES.COMPANY_SELECTION.path, {
-                replace: true,
-                state: { from: intendedUrl },
-              })
-            } else {
-              navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from: intendedUrl } })
-            }
             return
           }
 
-          // No tokens found, initialization complete
+          const payload = buildAuthPayload(stored.authData!, stored.access, stored.refresh)
+          if (payload) {
+            dispatch(loginSuccess(payload))
+          }
+
           dispatch(initializeComplete())
+          markAuthInitialized()
+
+          // Navigate based on company state
+          const currentCompany = await indexedDBService.getCurrentCompany()
+          const intendedUrl = intendedUrlRef.current
+          if (!currentCompany) {
+            navigate(ROUTES.COMPANY_SELECTION.path, {
+              replace: true,
+              state: { from: intendedUrl },
+            })
+          } else {
+            navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from: intendedUrl } })
+          }
         } catch {
-          // Critical error during initialization
           dispatch(initializeComplete())
         } finally {
           markAuthInitialized()
         }
       })()
 
-      // Set initialization promise for API client to wait on
       setInitializationPromise(initPromise)
       await initPromise
     }

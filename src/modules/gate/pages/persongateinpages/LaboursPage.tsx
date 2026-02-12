@@ -1,26 +1,28 @@
+import { ArrowLeft, CheckCircle2, Edit2, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search, Plus, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react'
+
+import { VALIDATION_PATTERNS } from '@/config/constants'
 import {
   Button,
-  Input,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Input,
   Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
+import { cn } from '@/shared/utils'
+
+import type { CreateLabourRequest, Labour } from '../../api/personGateIn/personGateIn.api'
 import {
-  useLabours,
   useContractors,
   useCreateLabour,
-  useUpdateLabour,
   useDeleteLabour,
+  useLabours,
+  useUpdateLabour,
 } from '../../api/personGateIn/personGateIn.queries'
-import type { Labour, CreateLabourRequest } from '../../api/personGateIn/personGateIn.api'
-import { VALIDATION_PATTERNS } from '@/config/constants'
-import { cn } from '@/shared/utils'
 import { ContractorSelect } from '../../components'
 
 export default function LaboursPage() {
@@ -229,14 +231,20 @@ export default function LaboursPage() {
                       const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
                       setFormData((prev) => ({ ...prev, mobile: value }))
                       if (apiErrors.mobile) {
-                        setApiErrors((prev) => { const n = { ...prev }; delete n.mobile; return n })
+                        setApiErrors((prev) => {
+                          const n = { ...prev }
+                          delete n.mobile
+                          return n
+                        })
                       }
                     }}
                     placeholder="9876543210"
                     maxLength={10}
                     className={cn('mt-1', apiErrors.mobile && 'border-destructive')}
                   />
-                  {apiErrors.mobile && <p className="text-xs text-destructive mt-1">{apiErrors.mobile}</p>}
+                  {apiErrors.mobile && (
+                    <p className="text-xs text-destructive mt-1">{apiErrors.mobile}</p>
+                  )}
                 </div>
                 <div>
                   <Label>Skill Type</Label>

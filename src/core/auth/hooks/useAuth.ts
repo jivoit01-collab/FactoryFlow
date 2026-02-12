@@ -1,21 +1,23 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+import { AUTH_CONFIG, AUTH_ROUTES } from '@/config/constants'
 import { useAppDispatch, useAppSelector } from '@/core/store'
-import {
-  loginSuccess,
-  logout as logoutAction,
-  setLoading,
-  initializeAuth,
-  initializeComplete,
-  updateUser,
-  switchCompany as switchCompanyAction,
-} from '../store/authSlice'
 import {
   cleanupPushNotifications,
   resetNotificationState,
 } from '@/core/store/slices/notification.slice'
+
 import { authService } from '../services/auth.service'
-import { AUTH_ROUTES, AUTH_CONFIG } from '@/config/constants'
+import {
+  initializeAuth,
+  initializeComplete,
+  loginSuccess,
+  logout as logoutAction,
+  setLoading,
+  switchCompany as switchCompanyAction,
+  updateUser,
+} from '../store/authSlice'
 import type { LoginCredentials, UserCompany } from '../types/auth.types'
 
 /**
@@ -91,8 +93,7 @@ export function useAuth() {
     try {
       const userData = await authService.getCurrentUser()
       dispatch(updateUser(userData))
-    } catch (error) {
-      console.error('Failed to refresh permissions:', error)
+    } catch {
       // If 401, the interceptor will handle logout
     }
   }, [dispatch, isAuthenticated])
@@ -122,14 +123,13 @@ export function useAuth() {
           .then((userData) => {
             dispatch(updateUser(userData))
           })
-          .catch((error) => {
-            console.warn('Failed to refresh permissions on init:', error)
+          .catch(() => {
+            // Refresh failed — will retry on next interval
           })
       } else {
         dispatch(initializeComplete())
       }
-    } catch (error) {
-      console.error('Failed to initialize from cache:', error)
+    } catch {
       dispatch(initializeComplete())
     }
   }, [dispatch])

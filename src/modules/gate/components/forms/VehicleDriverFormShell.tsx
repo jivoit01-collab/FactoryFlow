@@ -1,20 +1,22 @@
-import { Camera, Truck, User, AlertCircle } from 'lucide-react'
+import { AlertCircle, Camera, Truck, User } from 'lucide-react'
+
+import { ID_PROOF_TYPES } from '@/config/constants'
 import { env } from '@/config/env.config'
 import {
   Button,
-  Input,
-  Label,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Input,
+  Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { ID_PROOF_TYPES } from '@/config/constants'
+import { cn } from '@/shared/utils'
+
+import { DriverSelect } from '../DriverSelect'
 import { TransporterSelect } from '../TransporterSelect'
 import { VehicleSelect } from '../VehicleSelect'
-import { DriverSelect } from '../DriverSelect'
-import { cn } from '@/shared/utils'
 
 // Get the server base URL for media files (without /api/v1)
 const getMediaBaseUrl = () => {
@@ -220,11 +222,7 @@ export function VehicleDriverFormShell({
                 <Label htmlFor="vehicleType">
                   Vehicle Type <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="vehicleType"
-                  value={formData.vehicleType}
-                  disabled
-                />
+                <Input id="vehicleType" value={formData.vehicleType} disabled />
               </div>
 
               <div className="space-y-2">

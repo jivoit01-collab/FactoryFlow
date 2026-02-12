@@ -1,13 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { grpoApi } from './grpo.api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import type { PostGRPORequest } from '../types'
+import { grpoApi } from './grpo.api'
 
 // Query keys
 export const GRPO_QUERY_KEYS = {
   all: ['grpo'] as const,
   pending: () => [...GRPO_QUERY_KEYS.all, 'pending'] as const,
-  preview: (vehicleEntryId: number) =>
-    [...GRPO_QUERY_KEYS.all, 'preview', vehicleEntryId] as const,
+  preview: (vehicleEntryId: number) => [...GRPO_QUERY_KEYS.all, 'preview', vehicleEntryId] as const,
   history: (vehicleEntryId?: number) =>
     [...GRPO_QUERY_KEYS.all, 'history', vehicleEntryId] as const,
   detail: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'detail', postingId] as const,

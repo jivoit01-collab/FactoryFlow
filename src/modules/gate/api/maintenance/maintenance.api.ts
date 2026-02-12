@@ -123,9 +123,7 @@ export const maintenanceApi = {
    * Get unit choices for dropdown
    */
   getUnitChoices: async (): Promise<UnitChoice[]> => {
-    const response = await apiClient.get<UnitChoice[]>(
-      '/gate-core/unit-choices/'
-    )
+    const response = await apiClient.get<UnitChoice[]>('/gate-core/unit-choices/')
     return response.data
   },
 
@@ -152,7 +150,10 @@ export const maintenanceApi = {
   /**
    * Create maintenance entry for a vehicle entry
    */
-  create: async (entryId: number, data: CreateMaintenanceRequest): Promise<CreateMaintenanceResponse> => {
+  create: async (
+    entryId: number,
+    data: CreateMaintenanceRequest
+  ): Promise<CreateMaintenanceResponse> => {
     const response = await apiClient.post<CreateMaintenanceResponse>(
       `/maintenance-gatein/gate-entries/${entryId}/maintenance/`,
       data
@@ -163,7 +164,10 @@ export const maintenanceApi = {
   /**
    * Update maintenance entry for a vehicle entry
    */
-  update: async (entryId: number, data: CreateMaintenanceRequest): Promise<CreateMaintenanceResponse> => {
+  update: async (
+    entryId: number,
+    data: CreateMaintenanceRequest
+  ): Promise<CreateMaintenanceResponse> => {
     const response = await apiClient.put<CreateMaintenanceResponse>(
       `/maintenance-gatein/gate-entries/${entryId}/maintenance/update/`,
       data

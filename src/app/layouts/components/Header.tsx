@@ -1,24 +1,25 @@
-import { Menu, Moon, Sun, LogOut, User, Monitor } from 'lucide-react'
+import { LogOut, Menu, Monitor, Moon, Sun, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+
+import { type Theme, THEME_OPTIONS } from '@/config/constants/app.constants'
+import { ROUTES } from '@/config/routes.config'
 import { useAuth } from '@/core/auth'
+import { NotificationBell } from '@/core/notifications'
 import {
-  Button,
   Avatar,
   AvatarFallback,
   AvatarImage,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/shared/components/ui'
 import { useTheme } from '@/shared/contexts'
-import { THEME_OPTIONS, type Theme } from '@/config/constants/app.constants'
-import { ROUTES } from '@/config/routes.config'
-import { NotificationBell } from '@/core/notifications'
 
 interface HeaderProps {
   onMenuClick: () => void

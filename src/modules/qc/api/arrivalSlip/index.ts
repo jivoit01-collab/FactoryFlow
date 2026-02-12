@@ -1,2 +1,2 @@
 export { arrivalSlipApi } from './arrivalSlip.api'
-export { useArrivalSlipById, ARRIVAL_SLIP_QUERY_KEYS } from './arrivalSlip.queries'
+export { ARRIVAL_SLIP_QUERY_KEYS, useArrivalSlipById } from './arrivalSlip.queries'

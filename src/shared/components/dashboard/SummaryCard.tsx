@@ -1,5 +1,6 @@
-import { type ReactNode } from 'react'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
+import { type ReactNode } from 'react'
+
 import { Card, CardContent } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
 

@@ -1,10 +1,12 @@
-import { Provider } from 'react-redux'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { Provider } from 'react-redux'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import { store } from '@/core/store'
+
 import { queryClient } from '@/core/api'
+import { store } from '@/core/store'
 import { ThemeProvider, useTheme } from '@/shared/contexts'
+
 import { NotificationProvider } from './NotificationProvider'
 
 function ThemedToaster() {

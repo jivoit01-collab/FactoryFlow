@@ -1,14 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
 import { Bell, CheckCheck, Loader2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Button,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  Separator,
-} from '@/shared/components/ui'
+
+import { Button, Popover, PopoverContent, PopoverTrigger, Separator } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
+
 import { useUnreadCount } from '../hooks'
 import { notificationService } from '../notification.service'
 import type { Notification } from '../types'
@@ -54,13 +50,9 @@ function NotificationItem({
           >
             {notification.title}
           </p>
-          {!notification.is_read && (
-            <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
-          )}
+          {!notification.is_read && <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />}
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-          {notification.body}
-        </p>
+        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{notification.body}</p>
         <p className="text-xs text-muted-foreground/70 mt-1">
           {formatTimeAgo(notification.created_at)}
         </p>
@@ -90,26 +82,23 @@ export function NotificationBell() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [refreshUnreadCount])
 
-  const handleOpenChange = useCallback(
-    async (isOpen: boolean) => {
-      setOpen(isOpen)
-      if (isOpen) {
-        setBellLoading(true)
-        try {
-          const response = await notificationService.getNotifications({
-            limit: 4,
-            is_read: false,
-          })
-          setBellItems(response.results)
-        } catch {
-          // Silently fail — popover will show empty state
-        } finally {
-          setBellLoading(false)
-        }
+  const handleOpenChange = useCallback(async (isOpen: boolean) => {
+    setOpen(isOpen)
+    if (isOpen) {
+      setBellLoading(true)
+      try {
+        const response = await notificationService.getNotifications({
+          limit: 4,
+          is_read: false,
+        })
+        setBellItems(response.results)
+      } catch {
+        // Silently fail — popover will show empty state
+      } finally {
+        setBellLoading(false)
       }
-    },
-    []
-  )
+    }
+  }, [])
 
   const handleMarkAllAsRead = useCallback(async () => {
     try {

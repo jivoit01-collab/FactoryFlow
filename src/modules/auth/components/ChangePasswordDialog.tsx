@@ -1,8 +1,11 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff } from 'lucide-react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+
+import type { ApiError } from '@/core/api/types'
 import { authService } from '@/core/auth/services/auth.service'
+import { Button, Input, Label } from '@/shared/components/ui'
 import {
   Dialog,
   DialogContent,
@@ -11,14 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog'
-import { Button, Input, Label } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
+
 import {
-  changePasswordSchema,
-  type ChangePasswordFormData,
   CHANGE_PASSWORD_FORM_DEFAULTS,
+  type ChangePasswordFormData,
+  changePasswordSchema,
 } from '../schemas/changePassword.schema'
-import type { ApiError } from '@/core/api/types'
 
 interface ChangePasswordDialogProps {
   open: boolean

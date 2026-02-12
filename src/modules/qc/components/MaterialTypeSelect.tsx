@@ -1,20 +1,22 @@
 import { useState } from 'react'
+
+import type { ApiError } from '@/core/api/types'
+import { usePermission } from '@/core/auth'
+import { SearchableSelect } from '@/shared/components'
 import {
   Button,
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
   Input,
   Label,
   Textarea,
 } from '@/shared/components/ui'
-import { SearchableSelect } from '@/shared/components'
-import { usePermission } from '@/core/auth'
-import { useMaterialTypes, useCreateMaterialType } from '../api/materialType/materialType.queries'
+
+import { useCreateMaterialType, useMaterialTypes } from '../api/materialType/materialType.queries'
 import type { MaterialType } from '../types'
-import type { ApiError } from '@/core/api/types'
 
 interface MaterialTypeSelectProps {
   value?: number
@@ -50,7 +52,9 @@ export function MaterialTypeSelect({
   const [formData, setFormData] = useState({ code: '', name: '', description: '' })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
-  const handleCreateMaterialType = async (updateSelection: (key: string | number, label: string) => void) => {
+  const handleCreateMaterialType = async (
+    updateSelection: (key: string | number, label: string) => void
+  ) => {
     if (!formData.code.trim()) {
       setFormErrors({ code: 'Code is required' })
       return
@@ -114,89 +118,95 @@ export function MaterialTypeSelect({
       onClear={() => {
         onChange(null)
       }}
-      renderCreateDialog={canManageMaterialTypes ? (open, onOpenChange, updateSelection) => (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Material Type</DialogTitle>
-            </DialogHeader>
+      renderCreateDialog={
+        canManageMaterialTypes
+          ? (open, onOpenChange, updateSelection) => (
+              <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Add Material Type</DialogTitle>
+                  </DialogHeader>
 
-            {formErrors.general && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {formErrors.general}
-              </div>
-            )}
+                  {formErrors.general && (
+                    <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                      {formErrors.general}
+                    </div>
+                  )}
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>
-                  Code <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  value={formData.code}
-                  onChange={(e) => {
-                    const val = e.target.value.toUpperCase().replace(/\s/g, '')
-                    setFormData((prev) => ({ ...prev, code: val }))
-                    if (formErrors.code) {
-                      setFormErrors((prev) => ({ ...prev, code: '' }))
-                    }
-                  }}
-                  placeholder="e.g., CAP_BLUE"
-                  disabled={createMaterialType.isPending}
-                />
-                <p className="text-xs text-muted-foreground">
-                  All caps, no spaces. Use underscores to separate words.
-                </p>
-                {formErrors.code && (
-                  <p className="text-sm text-destructive">{formErrors.code}</p>
-                )}
-              </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>
+                        Code <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={formData.code}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase().replace(/\s/g, '')
+                          setFormData((prev) => ({ ...prev, code: val }))
+                          if (formErrors.code) {
+                            setFormErrors((prev) => ({ ...prev, code: '' }))
+                          }
+                        }}
+                        placeholder="e.g., CAP_BLUE"
+                        disabled={createMaterialType.isPending}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        All caps, no spaces. Use underscores to separate words.
+                      </p>
+                      {formErrors.code && (
+                        <p className="text-sm text-destructive">{formErrors.code}</p>
+                      )}
+                    </div>
 
-              <div className="space-y-2">
-                <Label>
-                  Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Cap Blue Plain"
-                  disabled={createMaterialType.isPending}
-                />
-                {formErrors.name && (
-                  <p className="text-sm text-destructive">{formErrors.name}</p>
-                )}
-              </div>
+                    <div className="space-y-2">
+                      <Label>
+                        Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={formData.name}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                        placeholder="e.g., Cap Blue Plain"
+                        disabled={createMaterialType.isPending}
+                      />
+                      {formErrors.name && (
+                        <p className="text-sm text-destructive">{formErrors.name}</p>
+                      )}
+                    </div>
 
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="e.g., Blue plain caps for water bottles"
-                  rows={3}
-                  disabled={createMaterialType.isPending}
-                />
-              </div>
-            </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Textarea
+                        value={formData.description}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, description: e.target.value }))
+                        }
+                        placeholder="e.g., Blue plain caps for water bottles"
+                        rows={3}
+                        disabled={createMaterialType.isPending}
+                      />
+                    </div>
+                  </div>
 
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={createMaterialType.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => handleCreateMaterialType(updateSelection)}
-                disabled={createMaterialType.isPending}
-              >
-                {createMaterialType.isPending ? 'Creating...' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : undefined}
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                      disabled={createMaterialType.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => handleCreateMaterialType(updateSelection)}
+                      disabled={createMaterialType.isPending}
+                    >
+                      {createMaterialType.isPending ? 'Creating...' : 'Create'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )
+          : undefined
+      }
     />
   )
 }

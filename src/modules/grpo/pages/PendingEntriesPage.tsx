@@ -1,8 +1,10 @@
+import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, AlertCircle, ShieldX, ChevronRight } from 'lucide-react'
-import { Button } from '@/shared/components/ui'
-import { usePendingGRPOEntries } from '../api'
+
 import type { ApiError } from '@/core/api/types'
+import { Button } from '@/shared/components/ui'
+
+import { usePendingGRPOEntries } from '../api'
 
 // Format date/time for display
 const formatDateTime = (dateTime?: string) => {
@@ -43,9 +45,7 @@ export default function PendingEntriesPage() {
             </Button>
             <h2 className="text-3xl font-bold tracking-tight">Pending Entries</h2>
           </div>
-          <p className="text-muted-foreground">
-            Gate entries with POs pending GRPO posting to SAP
-          </p>
+          <p className="text-muted-foreground">Gate entries with POs pending GRPO posting to SAP</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
           <RefreshCw className="h-4 w-4 mr-2" />

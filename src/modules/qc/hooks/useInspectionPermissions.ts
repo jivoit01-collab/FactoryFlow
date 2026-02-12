@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
-import { usePermission } from '@/core/auth'
+
 import { QC_PERMISSIONS } from '@/config/permissions'
+import { usePermission } from '@/core/auth'
+
 import { WORKFLOW_STATUS } from '../constants'
 import type { Inspection } from '../types'
 

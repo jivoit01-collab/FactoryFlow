@@ -1,4 +1,5 @@
 import { z } from 'zod'
+
 import { VALIDATION_LIMITS, VALIDATION_MESSAGES } from '@/config/constants'
 
 export const loginSchema = z.object({

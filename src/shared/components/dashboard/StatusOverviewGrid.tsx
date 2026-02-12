@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
 import { Card, CardContent } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
 

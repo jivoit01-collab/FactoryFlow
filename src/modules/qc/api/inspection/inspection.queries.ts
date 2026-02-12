@@ -1,10 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { inspectionApi } from './inspection.api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import type {
+  ApprovalRequest,
   CreateInspectionRequest,
   UpdateParameterResultRequest,
-  ApprovalRequest,
 } from '../../types'
+import { inspectionApi } from './inspection.api'
 
 // Query keys
 export const INSPECTION_QUERY_KEYS = {

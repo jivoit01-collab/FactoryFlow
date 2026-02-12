@@ -1,29 +1,34 @@
 import { z } from 'zod'
-import { VALIDATION_MESSAGES, VALIDATION_LIMITS, VALIDATION_PATTERNS } from '@/config/constants'
+
+import { VALIDATION_LIMITS, VALIDATION_MESSAGES, VALIDATION_PATTERNS } from '@/config/constants'
 
 // ID proof type options
 export const ID_PROOF_TYPES = ['Aadhar', 'PAN Card', 'Voter ID', 'Other'] as const
 export type IdProofType = (typeof ID_PROOF_TYPES)[number]
 
-// Validation messages for ID proofs
+// Validation config for ID proofs (pattern, length, messages)
 export const ID_PROOF_VALIDATION = {
   Aadhar: {
     pattern: VALIDATION_PATTERNS.aadhar,
+    maxLength: 12,
     message: 'Aadhar number must be exactly 12 digits',
     placeholder: '123456789012',
   },
   'PAN Card': {
     pattern: VALIDATION_PATTERNS.panCard,
+    maxLength: 10,
     message: 'PAN must be 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)',
     placeholder: 'ABCDE1234F',
   },
   'Voter ID': {
     pattern: VALIDATION_PATTERNS.voterId,
+    maxLength: 10,
     message: 'Voter ID must be 3 letters + 7 digits (e.g., ABC1234567)',
     placeholder: 'ABC1234567',
   },
   Other: {
     pattern: null,
+    maxLength: 50,
     message: '',
     placeholder: 'Enter ID proof number',
   },

@@ -1,13 +1,8 @@
+import { Building2, HardHat, Package, UtensilsCrossed, Wrench } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Package,
-  UtensilsCrossed,
-  Wrench,
-  Building2,
-  HardHat,
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+
 import { ROUTES } from '@/config/routes.config'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
 
 interface GateModuleCard {
   title: string

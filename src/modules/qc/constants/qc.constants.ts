@@ -1,13 +1,14 @@
 import {
+  CheckCircle2,
+  Clock,
   FileText,
+  type LucideIcon,
   Send,
   UserCheck,
-  CheckCircle2,
   XCircle,
-  Clock,
-  type LucideIcon,
 } from 'lucide-react'
-import type { InspectionWorkflowStatus, InspectionFinalStatus } from '../types'
+
+import type { InspectionFinalStatus, InspectionWorkflowStatus } from '../types'
 
 // ============================================================================
 // Workflow Status Constants
@@ -22,7 +23,7 @@ export const WORKFLOW_STATUS = {
 } as const satisfies Record<string, InspectionWorkflowStatus>
 
 // Re-export cross-module constants so existing qc-internal imports still work
-export { FINAL_STATUS, ARRIVAL_SLIP_STATUS } from '@/config/constants'
+export { ARRIVAL_SLIP_STATUS, FINAL_STATUS } from '@/config/constants'
 
 interface StatusConfig {
   label: string

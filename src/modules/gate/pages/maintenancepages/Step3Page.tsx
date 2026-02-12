@@ -1,24 +1,35 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Wrench, Package, FileText, AlertTriangle } from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Input,
-  Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { useMaintenanceEntry, useCreateMaintenanceEntry, useUpdateMaintenanceEntry } from '../../api/maintenance/maintenance.queries'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { useEntryId } from '../../hooks'
-import { StepHeader, StepFooter, FillDataAlert, MaintenanceTypeSelect, UnitSelect, DepartmentSelect } from '../../components'
-import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
-import { cn } from '@/shared/utils'
-import type { ApiError } from '@/core/api'
+import { AlertTriangle, FileText, Package, Wrench } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
 import { ENTRY_STATUS } from '@/config/constants'
+import type { ApiError } from '@/core/api'
+import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui'
+import { useScrollToError } from '@/shared/hooks'
+import {
+  getErrorMessage,
+  getServerErrorMessage,
+  isNotFoundError as checkNotFoundError,
+  isServerError as checkServerError,
+} from '@/shared/utils'
+import { cn } from '@/shared/utils'
+
+import {
+  useCreateMaintenanceEntry,
+  useMaintenanceEntry,
+  useUpdateMaintenanceEntry,
+} from '../../api/maintenance/maintenance.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import {
+  DepartmentSelect,
+  FillDataAlert,
+  MaintenanceTypeSelect,
+  StepFooter,
+  StepHeader,
+  UnitSelect,
+} from '../../components'
+import { useEntryId } from '../../hooks'
 
 // Urgency level options
 const URGENCY_OPTIONS = [
@@ -108,25 +119,29 @@ export default function Step3Page() {
   useEffect(() => {
     if (effectiveEditMode && maintenanceData) {
       // Extract ID and name from nested objects
-      const maintenanceTypeId = typeof maintenanceData.maintenance_type === 'object'
-        ? maintenanceData.maintenance_type?.id?.toString() || ''
-        : maintenanceData.maintenance_type?.toString() || ''
-      const maintenanceTypeName = typeof maintenanceData.maintenance_type === 'object'
-        ? maintenanceData.maintenance_type?.type_name || ''
-        : ''
-      const receivingDeptId = typeof maintenanceData.receiving_department === 'object'
-        ? maintenanceData.receiving_department?.id?.toString() || ''
-        : maintenanceData.receiving_department?.toString() || ''
-      const receivingDeptName = typeof maintenanceData.receiving_department === 'object'
-        ? maintenanceData.receiving_department?.name || ''
-        : ''
+      const maintenanceTypeId =
+        typeof maintenanceData.maintenance_type === 'object'
+          ? maintenanceData.maintenance_type?.id?.toString() || ''
+          : maintenanceData.maintenance_type?.toString() || ''
+      const maintenanceTypeName =
+        typeof maintenanceData.maintenance_type === 'object'
+          ? maintenanceData.maintenance_type?.type_name || ''
+          : ''
+      const receivingDeptId =
+        typeof maintenanceData.receiving_department === 'object'
+          ? maintenanceData.receiving_department?.id?.toString() || ''
+          : maintenanceData.receiving_department?.toString() || ''
+      const receivingDeptName =
+        typeof maintenanceData.receiving_department === 'object'
+          ? maintenanceData.receiving_department?.name || ''
+          : ''
 
-      const unitId = typeof maintenanceData.unit === 'object'
-        ? maintenanceData.unit?.id?.toString() || ''
-        : maintenanceData.unit?.toString() || ''
-      const unitName = typeof maintenanceData.unit === 'object'
-        ? maintenanceData.unit?.name || ''
-        : ''
+      const unitId =
+        typeof maintenanceData.unit === 'object'
+          ? maintenanceData.unit?.id?.toString() || ''
+          : maintenanceData.unit?.toString() || ''
+      const unitName =
+        typeof maintenanceData.unit === 'object' ? maintenanceData.unit?.name || '' : ''
 
       setFormData({
         maintenanceType: maintenanceTypeId,
@@ -206,6 +221,10 @@ export default function Step3Page() {
     }
     if (!formData.materialDescription.trim()) {
       setApiErrors({ materialDescription: 'Please enter material description' })
+      return
+    }
+    if (formData.materialDescription.trim().length < 5) {
+      setApiErrors({ materialDescription: 'Material description must be atlaest 5 ' })
       return
     }
     if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
@@ -313,7 +332,7 @@ export default function Step3Page() {
                   value={formData.maintenanceType || undefined}
                   onChange={(typeId, typeName) => {
                     handleInputChange('maintenanceType', typeId)
-                    setFormData(prev => ({ ...prev, maintenanceTypeName: typeName }))
+                    setFormData((prev) => ({ ...prev, maintenanceTypeName: typeName }))
                   }}
                   placeholder="Select maintenance type"
                   disabled={isReadOnly}
@@ -421,7 +440,7 @@ export default function Step3Page() {
                   value={formData.unit || undefined}
                   onChange={(unitId, unitName) => {
                     handleInputChange('unit', unitId)
-                    setFormData(prev => ({ ...prev, unitName }))
+                    setFormData((prev) => ({ ...prev, unitName }))
                   }}
                   placeholder="Select unit"
                   disabled={isReadOnly}
@@ -475,7 +494,7 @@ export default function Step3Page() {
                   value={formData.receivingDepartment ? Number(formData.receivingDepartment) : ''}
                   onChange={(departmentId) => {
                     handleInputChange('receivingDepartment', departmentId.toString())
-                    setFormData(prev => ({ ...prev, receivingDepartmentName: '' }))
+                    setFormData((prev) => ({ ...prev, receivingDepartmentName: '' }))
                   }}
                   placeholder="Select department"
                   disabled={isReadOnly}
@@ -492,10 +511,7 @@ export default function Step3Page() {
                   </Label>
                   <select
                     id="urgencyLevel"
-                    className={cn(
-                      selectClassName,
-                      apiErrors.urgencyLevel && 'border-destructive'
-                    )}
+                    className={cn(selectClassName, apiErrors.urgencyLevel && 'border-destructive')}
                     value={formData.urgencyLevel}
                     onChange={(e) => handleInputChange('urgencyLevel', e.target.value)}
                     disabled={isReadOnly}
@@ -538,8 +554,8 @@ export default function Step3Page() {
                   {formData.urgencyLevel === 'CRITICAL' ? 'Critical' : 'High'} Priority Item
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  This maintenance request has been marked as {formData.urgencyLevel.toLowerCase()} priority.
-                  Please ensure proper handling and expedited processing.
+                  This maintenance request has been marked as {formData.urgencyLevel.toLowerCase()}{' '}
+                  priority. Please ensure proper handling and expedited processing.
                 </p>
               </div>
             </div>
@@ -553,7 +569,9 @@ export default function Step3Page() {
         onNext={handleNext}
         showUpdate={effectiveEditMode && canUpdate && !updateMode}
         onUpdate={handleUpdate}
-        isSaving={createMaintenanceEntry.isPending || updateMaintenanceEntry.isPending || isNavigating}
+        isSaving={
+          createMaintenanceEntry.isPending || updateMaintenanceEntry.isPending || isNavigating
+        }
         isEditMode={effectiveEditMode}
         isUpdateMode={updateMode}
         nextLabel={effectiveEditMode && !updateMode ? 'Review' : 'Save & Next'}

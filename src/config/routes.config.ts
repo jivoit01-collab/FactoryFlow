@@ -142,7 +142,6 @@ export const ROUTES = {
     },
   },
 
-
   NOTIFICATIONS: {
     path: '/notifications',
     title: 'Notifications',

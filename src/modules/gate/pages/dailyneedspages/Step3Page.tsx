@@ -1,25 +1,32 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Package, Scale, FileText, AlertCircle } from 'lucide-react'
+import { AlertCircle, FileText, Package, Scale } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+import { ENTRY_STATUS, VALIDATION_PATTERNS } from '@/config/constants'
+import type { ApiError } from '@/core/api'
 import {
   Button,
-  Input,
-  Label,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Input,
+  Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { useEntryId } from '../../hooks'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { useDailyNeed, useCreateDailyNeed } from '../../api/dailyNeed/dailyNeed.queries'
-import { FillDataAlert, CategorySelect, DepartmentSelect, UnitSelect } from '../../components'
-import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
+import {
+  getErrorMessage,
+  getServerErrorMessage,
+  isNotFoundError as checkNotFoundError,
+  isServerError as checkServerError,
+} from '@/shared/utils'
 import { cn } from '@/shared/utils'
-import { VALIDATION_PATTERNS, ENTRY_STATUS } from '@/config/constants'
-import type { ApiError } from '@/core/api'
+
+import { useCreateDailyNeed, useDailyNeed } from '../../api/dailyNeed/dailyNeed.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import { CategorySelect, DepartmentSelect, FillDataAlert, UnitSelect } from '../../components'
+import { useEntryId } from '../../hooks'
 
 interface DailyNeedsFormData {
   itemCategory: number | ''
@@ -114,12 +121,11 @@ export default function Step3Page() {
         supplierName: dailyNeedData.supplier_name || '',
         materialName: dailyNeedData.material_name || '',
         quantity: dailyNeedData.quantity?.toString() || '0',
-        unit: typeof dailyNeedData.unit === 'object'
-          ? dailyNeedData.unit?.id?.toString() || ''
-          : dailyNeedData.unit?.toString() || '',
-        unitName: typeof dailyNeedData.unit === 'object'
-          ? dailyNeedData.unit?.name || ''
-          : '',
+        unit:
+          typeof dailyNeedData.unit === 'object'
+            ? dailyNeedData.unit?.id?.toString() || ''
+            : dailyNeedData.unit?.toString() || '',
+        unitName: typeof dailyNeedData.unit === 'object' ? dailyNeedData.unit?.name || '' : '',
         receivingDepartment: departmentId,
         billNumber: dailyNeedData.bill_number || '',
         deliveryChallanNumber: dailyNeedData.delivery_challan_number || '',

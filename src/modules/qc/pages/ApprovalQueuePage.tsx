@@ -1,19 +1,15 @@
+import { AlertCircle, ArrowLeft, Eye, FlaskConical, RefreshCw, ShieldX } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, ArrowLeft, RefreshCw, AlertCircle, Eye, ShieldX } from 'lucide-react'
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui'
-import { usePermission } from '@/core/auth'
+
 import { QC_PERMISSIONS } from '@/config/permissions'
+import type { ApiError } from '@/core/api/types'
+import { usePermission } from '@/core/auth'
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+
 import { usePendingInspections } from '../api/inspection/inspection.queries'
 import { WORKFLOW_STATUS, WORKFLOW_STATUS_CONFIG } from '../constants'
 import type { InspectionWorkflowStatus } from '../types'
-import type { ApiError } from '@/core/api/types'
 
 type TabType = 'chemist' | 'manager'
 
@@ -84,9 +80,7 @@ export default function ApprovalQueuePage() {
               Approval Queue
             </h2>
           </div>
-          <p className="text-muted-foreground">
-            Review and approve inspections
-          </p>
+          <p className="text-muted-foreground">Review and approve inspections</p>
         </div>
         <Button variant="outline" onClick={() => refetch()}>
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -200,8 +194,10 @@ export default function ApprovalQueuePage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {activeTab === 'chemist' ? 'Awaiting QA Chemist Approval' : 'Awaiting QA Manager Approval'} (
-              {filteredInspections.length})
+              {activeTab === 'chemist'
+                ? 'Awaiting QA Chemist Approval'
+                : 'Awaiting QA Manager Approval'}{' '}
+              ({filteredInspections.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -251,9 +247,7 @@ export default function ApprovalQueuePage() {
                         <td className="p-3 text-center">
                           <Button
                             size="sm"
-                            onClick={() =>
-                              navigate(`/qc/inspections/${item.arrival_slip.id}`)
-                            }
+                            onClick={() => navigate(`/qc/inspections/${item.arrival_slip.id}`)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             Review

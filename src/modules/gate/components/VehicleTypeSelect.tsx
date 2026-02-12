@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useVehicleTypes } from '../api/vehicle/vehicle.queries'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { VehicleType } from '../api/vehicle/vehicle.api'
+import { useVehicleTypes } from '../api/vehicle/vehicle.queries'
 
 interface VehicleTypeSelectProps {
   value?: string

@@ -1,27 +1,29 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Camera, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
+
+import type { ApiError } from '@/core/api/types'
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Button,
   Input,
   Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
+
 import { useCreateDriver } from '../api/driver/driver.queries'
 import {
+  type DriverFormData,
   driverSchema,
   ID_PROOF_TYPES,
   ID_PROOF_VALIDATION,
-  type DriverFormData,
 } from '../schemas/driver.schema'
-import type { ApiError } from '@/core/api/types'
 
 interface CreateDriverDialogProps {
   open: boolean
@@ -209,7 +211,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
             </Label>
             <Input
               id="license_no"
-              placeholder="MH0220150001234"
+              placeholder="e.g., MH0220150001234"
               {...register('license_no', {
                 onChange: (e) => {
                   e.target.value = e.target.value.toUpperCase()
@@ -275,7 +277,10 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
                   }
                 },
               })}
-              maxLength={idProofType === 'Aadhar' ? 12 : idProofType === 'PAN Card' ? 10 : idProofType === 'Voter ID' ? 10 : 50}
+              maxLength={
+                ID_PROOF_VALIDATION[idProofType as keyof typeof ID_PROOF_VALIDATION]?.maxLength ??
+                50
+              }
               disabled={createDriver.isPending}
               className={
                 errors.id_proof_number || apiErrors.id_proof_number ? 'border-destructive' : ''

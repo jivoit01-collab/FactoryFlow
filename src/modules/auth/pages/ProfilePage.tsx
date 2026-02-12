@@ -1,21 +1,23 @@
 import { useState } from 'react'
-import { useAuth } from '@/core/auth'
-import { useAppDispatch } from '@/core/store'
-import { clearCurrentCompany } from '@/core/auth'
 import { useNavigate } from 'react-router-dom'
-import { indexedDBService } from '@/core/auth/services/indexedDb.service'
+
 import { ROUTES } from '@/config/routes.config'
+import { useAuth } from '@/core/auth'
+import { clearCurrentCompany } from '@/core/auth'
+import { indexedDBService } from '@/core/auth/services/indexedDb.service'
+import { useAppDispatch } from '@/core/store'
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Separator } from '@/shared/components/ui/separator'
+
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog'
 import {
-  getInitials,
   formatDate,
-  groupPermissionsByApp,
   formatPermissionName,
+  getInitials,
+  groupPermissionsByApp,
 } from '../utils/profile.utils'
 
 /**

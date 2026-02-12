@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 /**
  * Hook that automatically scrolls to the first form error when validation fails.
@@ -117,9 +117,12 @@ export function useScrollToError(
       // Focus the element after scrolling
       if (shouldFocus && 'focus' in element && typeof element.focus === 'function') {
         // Small delay to ensure scroll completes
-        setTimeout(() => {
-          element.focus({ preventScroll: true })
-        }, behavior === 'smooth' ? 300 : 0)
+        setTimeout(
+          () => {
+            element.focus({ preventScroll: true })
+          },
+          behavior === 'smooth' ? 300 : 0
+        )
       }
     }
   }, [errors, getFirstErrorKey, behavior, block, shouldFocus, offset])

@@ -1,26 +1,28 @@
+import { ArrowLeft, Ban, CheckCircle2, Edit2, Plus, Search, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search, Plus, Edit2, Trash2, Ban, CheckCircle2 } from 'lucide-react'
+
+import { VALIDATION_PATTERNS } from '@/config/constants'
 import {
   Button,
-  Input,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Input,
   Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import {
-  useVisitors,
-  useCreateVisitor,
-  useUpdateVisitor,
-  useDeleteVisitor,
-} from '../../api/personGateIn/personGateIn.queries'
-import type { Visitor, CreateVisitorRequest } from '../../api/personGateIn/personGateIn.api'
-import { VALIDATION_PATTERNS } from '@/config/constants'
-import { ID_PROOF_TYPES, ID_PROOF_VALIDATION } from '../../schemas/driver.schema'
 import { cn } from '@/shared/utils'
+
+import type { CreateVisitorRequest, Visitor } from '../../api/personGateIn/personGateIn.api'
+import {
+  useCreateVisitor,
+  useDeleteVisitor,
+  useUpdateVisitor,
+  useVisitors,
+} from '../../api/personGateIn/personGateIn.queries'
+import { ID_PROOF_TYPES, ID_PROOF_VALIDATION } from '../../schemas/driver.schema'
 
 export default function VisitorsPage() {
   const navigate = useNavigate()
@@ -93,7 +95,10 @@ export default function VisitorsPage() {
     if (formData.id_proof_type && formData.id_proof_no?.trim()) {
       const proofType = formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION
       const validation = ID_PROOF_VALIDATION[proofType]
-      if (validation?.pattern && !validation.pattern.test(formData.id_proof_no.trim().toUpperCase())) {
+      if (
+        validation?.pattern &&
+        !validation.pattern.test(formData.id_proof_no.trim().toUpperCase())
+      ) {
         errors.id_proof_no = validation.message
       }
     }
@@ -201,14 +206,20 @@ export default function VisitorsPage() {
                       const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
                       setFormData((prev) => ({ ...prev, mobile: value }))
                       if (apiErrors.mobile) {
-                        setApiErrors((prev) => { const n = { ...prev }; delete n.mobile; return n })
+                        setApiErrors((prev) => {
+                          const n = { ...prev }
+                          delete n.mobile
+                          return n
+                        })
                       }
                     }}
                     placeholder="9876543210"
                     maxLength={10}
                     className={cn('mt-1', apiErrors.mobile && 'border-destructive')}
                   />
-                  {apiErrors.mobile && <p className="text-xs text-destructive mt-1">{apiErrors.mobile}</p>}
+                  {apiErrors.mobile && (
+                    <p className="text-xs text-destructive mt-1">{apiErrors.mobile}</p>
+                  )}
                 </div>
                 <div>
                   <Label>Company</Label>
@@ -229,16 +240,26 @@ export default function VisitorsPage() {
                   <select
                     value={formData.id_proof_type || ''}
                     onChange={(e) => {
-                      setFormData((prev) => ({ ...prev, id_proof_type: e.target.value, id_proof_no: '' }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        id_proof_type: e.target.value,
+                        id_proof_no: '',
+                      }))
                       if (apiErrors.id_proof_no) {
-                        setApiErrors((prev) => { const n = { ...prev }; delete n.id_proof_no; return n })
+                        setApiErrors((prev) => {
+                          const n = { ...prev }
+                          delete n.id_proof_no
+                          return n
+                        })
                       }
                     }}
                     className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <option value="">Select type</option>
                     {ID_PROOF_TYPES.map((type) => (
-                      <option key={type} value={type}>{type}</option>
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -250,22 +271,40 @@ export default function VisitorsPage() {
                       let value = e.target.value
                       if (formData.id_proof_type === 'Aadhar') {
                         value = value.replace(/[^0-9]/g, '').slice(0, 12)
-                      } else if (formData.id_proof_type === 'PAN Card' || formData.id_proof_type === 'Voter ID') {
+                      } else if (
+                        formData.id_proof_type === 'PAN Card' ||
+                        formData.id_proof_type === 'Voter ID'
+                      ) {
                         value = value.toUpperCase()
                       }
                       setFormData((prev) => ({ ...prev, id_proof_no: value }))
                       if (apiErrors.id_proof_no) {
-                        setApiErrors((prev) => { const n = { ...prev }; delete n.id_proof_no; return n })
+                        setApiErrors((prev) => {
+                          const n = { ...prev }
+                          delete n.id_proof_no
+                          return n
+                        })
                       }
                     }}
                     placeholder={
-                      ID_PROOF_VALIDATION[formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION]?.placeholder || 'ID number'
+                      ID_PROOF_VALIDATION[
+                        formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION
+                      ]?.placeholder || 'ID number'
                     }
-                    maxLength={formData.id_proof_type === 'Aadhar' ? 12 : formData.id_proof_type === 'PAN Card' || formData.id_proof_type === 'Voter ID' ? 10 : 50}
+                    maxLength={
+                      formData.id_proof_type === 'Aadhar'
+                        ? 12
+                        : formData.id_proof_type === 'PAN Card' ||
+                            formData.id_proof_type === 'Voter ID'
+                          ? 10
+                          : 50
+                    }
                     disabled={!formData.id_proof_type}
                     className={cn('mt-1', apiErrors.id_proof_no && 'border-destructive')}
                   />
-                  {apiErrors.id_proof_no && <p className="text-xs text-destructive mt-1">{apiErrors.id_proof_no}</p>}
+                  {apiErrors.id_proof_no && (
+                    <p className="text-xs text-destructive mt-1">{apiErrors.id_proof_no}</p>
+                  )}
                 </div>
               </div>
 

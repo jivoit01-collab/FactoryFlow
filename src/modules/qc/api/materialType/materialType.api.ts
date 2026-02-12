@@ -1,6 +1,7 @@
-import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
-import type { MaterialType, CreateMaterialTypeRequest } from '../../types'
+import { apiClient } from '@/core/api'
+
+import type { CreateMaterialTypeRequest, MaterialType } from '../../types'
 
 export interface ListMaterialTypesParams {
   search?: string

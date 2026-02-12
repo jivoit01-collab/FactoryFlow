@@ -1,18 +1,20 @@
-import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Check, Loader2, Plus, HelpCircle } from 'lucide-react'
+import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+
 import {
+  Button,
   Input,
   Label,
-  Button,
   Popover,
-  PopoverTrigger,
   PopoverContent,
+  PopoverTrigger,
 } from '@/shared/components/ui'
-import { useVisitors } from '../../api/personGateIn/personGateIn.queries'
-import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
-import { CreateVisitorDialog } from './CreateVisitorDialog'
+import { cn } from '@/shared/utils'
+
 import type { Visitor } from '../../api/personGateIn/personGateIn.api'
+import { useVisitors } from '../../api/personGateIn/personGateIn.queries'
+import { CreateVisitorDialog } from './CreateVisitorDialog'
 
 interface VisitorSelectProps {
   value?: number | null
@@ -164,13 +166,17 @@ export function VisitorSelect({
                     {selectedVisitor.company_name && (
                       <div>
                         <span className="font-medium">Company:</span>{' '}
-                        <span className="text-muted-foreground">{selectedVisitor.company_name}</span>
+                        <span className="text-muted-foreground">
+                          {selectedVisitor.company_name}
+                        </span>
                       </div>
                     )}
                     {selectedVisitor.id_proof_type && (
                       <div>
                         <span className="font-medium">ID Proof Type:</span>{' '}
-                        <span className="text-muted-foreground">{selectedVisitor.id_proof_type}</span>
+                        <span className="text-muted-foreground">
+                          {selectedVisitor.id_proof_type}
+                        </span>
                       </div>
                     )}
                     {selectedVisitor.id_proof_no && (

@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAppDispatch } from '@/core/store'
+
+import { APP_NAME } from '@/config/constants'
+import { ROUTES } from '@/config/routes.config'
+import type { ApiError } from '@/core/api/types'
 import { loginSuccess } from '@/core/auth'
 import { authService } from '@/core/auth/services/auth.service'
 import { indexedDBService } from '@/core/auth/services/indexedDb.service'
-import { ROUTES } from '@/config/routes.config'
-import { APP_NAME } from '@/config/constants'
+import { useAppDispatch } from '@/core/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui'
+
 import { LoginForm } from '../components/LoginForm'
 import type { LoginFormData } from '../schemas/login.schema'
-import type { ApiError } from '@/core/api/types'
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)

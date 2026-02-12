@@ -1,11 +1,13 @@
+import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react'
 import { useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, AlertCircle, ShieldX, ChevronRight } from 'lucide-react'
+
+import type { ApiError } from '@/core/api/types'
 import { Button } from '@/shared/components/ui'
+
 import { usePendingInspections } from '../api/inspection/inspection.queries'
 import { WORKFLOW_STATUS, WORKFLOW_STATUS_CONFIG } from '../constants'
 import type { InspectionWorkflowStatus } from '../types'
-import type { ApiError } from '@/core/api/types'
 
 // Status filter configuration
 const STATUS_FILTERS = {
@@ -44,7 +46,8 @@ const STATUS_FILTERS = {
     description: 'Completed and approved inspections',
     filter: (item: { has_inspection: boolean; inspection_status: string | null }) =>
       item.has_inspection &&
-      (item.inspection_status === WORKFLOW_STATUS.QAM_APPROVED || item.inspection_status === WORKFLOW_STATUS.COMPLETED),
+      (item.inspection_status === WORKFLOW_STATUS.QAM_APPROVED ||
+        item.inspection_status === WORKFLOW_STATUS.COMPLETED),
   },
   rejected: {
     label: 'Rejected',
@@ -127,7 +130,12 @@ export default function PendingInspectionsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate('/qc')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => navigate('/qc')}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h2 className="text-3xl font-bold tracking-tight">{currentFilter.title}</h2>

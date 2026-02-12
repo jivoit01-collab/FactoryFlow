@@ -1,21 +1,23 @@
-import { useNavigate } from 'react-router-dom'
 import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  FileText,
   FlaskConical,
   Plus,
-  ChevronRight,
-  FileText,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  UserCheck,
-  AlertCircle,
-  ShieldX,
   RefreshCw,
+  ShieldX,
+  UserCheck,
+  XCircle,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+import type { ApiError } from '@/core/api/types'
 import { Button, Card, CardContent } from '@/shared/components/ui'
+
 import { usePendingInspections } from '../api/inspection/inspection.queries'
 import { WORKFLOW_STATUS } from '../constants'
-import type { ApiError } from '@/core/api/types'
 
 // Status configuration - compact like Gate module
 const STATUS_CONFIG = {
@@ -98,12 +100,14 @@ export default function QCDashboardPage() {
     awaiting_approval: pendingInspections.filter(
       (p) =>
         p.has_inspection &&
-        (p.inspection_status === WORKFLOW_STATUS.SUBMITTED || p.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED)
+        (p.inspection_status === WORKFLOW_STATUS.SUBMITTED ||
+          p.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED)
     ).length,
     approved: pendingInspections.filter(
       (p) =>
         p.has_inspection &&
-        (p.inspection_status === WORKFLOW_STATUS.QAM_APPROVED || p.inspection_status === WORKFLOW_STATUS.COMPLETED)
+        (p.inspection_status === WORKFLOW_STATUS.QAM_APPROVED ||
+          p.inspection_status === WORKFLOW_STATUS.COMPLETED)
     ).length,
     rejected: 0,
   }
@@ -196,13 +200,22 @@ export default function QCDashboardPage() {
               <div className="mt-3 pt-3 border-t border-primary/20 flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <span>
-                    <span className="font-semibold text-yellow-600 dark:text-yellow-400">{counts.pending}</span> Pending
+                    <span className="font-semibold text-yellow-600 dark:text-yellow-400">
+                      {counts.pending}
+                    </span>{' '}
+                    Pending
                   </span>
                   <span>
-                    <span className="font-semibold text-gray-600 dark:text-gray-400">{counts.draft}</span> Draft
+                    <span className="font-semibold text-gray-600 dark:text-gray-400">
+                      {counts.draft}
+                    </span>{' '}
+                    Draft
                   </span>
                   <span>
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">{counts.awaiting_approval}</span> Awaiting
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">
+                      {counts.awaiting_approval}
+                    </span>{' '}
+                    Awaiting
                   </span>
                 </div>
                 <ChevronRight className="h-4 w-4" />

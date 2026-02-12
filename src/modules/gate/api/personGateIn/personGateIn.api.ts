@@ -463,19 +463,25 @@ export const personGateInApi = {
 
   // GET /entries/ - Get entries with date filters (returns paginated response)
   getAllEntries: async (filters?: EntryFilters): Promise<PaginatedEntriesResponse> => {
-    const response = await apiClient.get<PaginatedEntriesResponse>('/person-gatein/entries/', { params: filters })
+    const response = await apiClient.get<PaginatedEntriesResponse>('/person-gatein/entries/', {
+      params: filters,
+    })
     return response.data
   },
 
   // GET /entries/search/ - Search entries (returns paginated response)
   searchEntries: async (filters?: EntryFilters): Promise<SearchEntriesResponse> => {
-    const response = await apiClient.get<SearchEntriesResponse>('/person-gatein/entries/search/', { params: filters })
+    const response = await apiClient.get<SearchEntriesResponse>('/person-gatein/entries/search/', {
+      params: filters,
+    })
     return response.data
   },
 
   // Helper: Get entry counts (if needed)
   getEntryCounts: async (filters?: EntryFilters): Promise<EntryCountResponse> => {
-    const response = await apiClient.get<EntryCountResponse>('/person-gatein/entries/count/', { params: filters })
+    const response = await apiClient.get<EntryCountResponse>('/person-gatein/entries/count/', {
+      params: filters,
+    })
     return response.data
   },
 
@@ -487,19 +493,28 @@ export const personGateInApi = {
 
   // GET /visitor/{id}/history/ - Get visitor entry history
   getVisitorHistory: async (visitorId: number): Promise<VisitorHistoryResponse> => {
-    const response = await apiClient.get<VisitorHistoryResponse>(`/person-gatein/visitor/${visitorId}/history/`)
+    const response = await apiClient.get<VisitorHistoryResponse>(
+      `/person-gatein/visitor/${visitorId}/history/`
+    )
     return response.data
   },
 
   // GET /labour/{id}/history/ - Get labour entry history
   getLabourHistory: async (labourId: number): Promise<LabourHistoryResponse> => {
-    const response = await apiClient.get<LabourHistoryResponse>(`/person-gatein/labour/${labourId}/history/`)
+    const response = await apiClient.get<LabourHistoryResponse>(
+      `/person-gatein/labour/${labourId}/history/`
+    )
     return response.data
   },
 
   // GET /check-status/ - Check if person is inside
-  checkPersonStatus: async (params: { visitor?: number; labour?: number }): Promise<CheckStatusResponse> => {
-    const response = await apiClient.get<CheckStatusResponse>('/person-gatein/check-status/', { params })
+  checkPersonStatus: async (params: {
+    visitor?: number
+    labour?: number
+  }): Promise<CheckStatusResponse> => {
+    const response = await apiClient.get<CheckStatusResponse>('/person-gatein/check-status/', {
+      params,
+    })
     return response.data
   },
 }

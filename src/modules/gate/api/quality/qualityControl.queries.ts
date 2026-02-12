@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
-import { qualityControlApi, type CreateQualityControlRequest } from './qualityControl.api'
+
+import { type CreateQualityControlRequest, qualityControlApi } from './qualityControl.api'
 
 export function useCreateQualityControl(poItemId: number) {
   return useMutation({

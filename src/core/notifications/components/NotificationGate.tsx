@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
-import { BellOff, Bell } from 'lucide-react'
-import { Button } from '@/shared/components/ui/button'
+import { Bell, BellOff } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+
 import { APP_NAME } from '@/config/constants'
+import { Button } from '@/shared/components/ui/button'
 
 /**
  * Full-screen gate that blocks the app until the user grants notification permission.

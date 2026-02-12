@@ -1,12 +1,11 @@
-import { useState, useMemo } from 'react'
+import { ArrowLeft, Clock, LogOut, Search, UserCheck } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search, LogOut, UserCheck, Clock } from 'lucide-react'
-import { Button, Input, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
-import {
-  useInsideList,
-  useExitPersonEntry,
-} from '../../api/personGateIn/personGateIn.queries'
+
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/components/ui'
+
 import type { EntryLog } from '../../api/personGateIn/personGateIn.api'
+import { useExitPersonEntry, useInsideList } from '../../api/personGateIn/personGateIn.queries'
 import { GateSelect } from '../../components'
 
 export default function InsideListPage() {
@@ -182,11 +181,7 @@ export default function InsideListPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/gate/visitor-labour')}
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate('/gate/visitor-labour')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

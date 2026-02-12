@@ -1,55 +1,56 @@
-import { lazy } from 'react'
 import { Truck } from 'lucide-react'
+import { lazy } from 'react'
+
 import type { ModuleConfig } from '@/core/types'
 
 // Lazy load all gate pages
 const GateDashboardPage = lazy(() => import('./pages/GateDashboardPage'))
-const RawMaterialsDashboard = lazy(() => import('./pages/rawmaterialpages/RawMaterialsDashboard'))
+const RawMaterialsDashboard = lazy(() => import('./pages/rawMaterialPages/RawMaterialsDashboard'))
 const RawMaterialsPage = lazy(() => import('./pages/RawMaterialsPage'))
 
 // Raw Materials wizard pages
-const RMStep1Page = lazy(() => import('./pages/rawmaterialpages/Step1Page'))
-const RMStep2Page = lazy(() => import('./pages/rawmaterialpages/Step2Page'))
-const RMStep3Page = lazy(() => import('./pages/rawmaterialpages/Step3Page'))
-const RMArrivalSlipPage = lazy(() => import('./pages/rawmaterialpages/ArrivalSlipPage'))
-const RMWeighmentPage = lazy(() => import('./pages/rawmaterialpages/Step4Page'))
-const RMReviewPage = lazy(() => import('./pages/rawmaterialpages/ReviewPage'))
+const RMStep1Page = lazy(() => import('./pages/rawMaterialPages/Step1Page'))
+const RMStep2Page = lazy(() => import('./pages/rawMaterialPages/Step2Page'))
+const RMStep3Page = lazy(() => import('./pages/rawMaterialPages/Step3Page'))
+const RMArrivalSlipPage = lazy(() => import('./pages/rawMaterialPages/ArrivalSlipPage'))
+const RMWeighmentPage = lazy(() => import('./pages/rawMaterialPages/Step4Page'))
+const RMReviewPage = lazy(() => import('./pages/rawMaterialPages/ReviewPage'))
 
 // Daily Needs wizard pages
-const DNStep1Page = lazy(() => import('./pages/dailyneedspages/Step1Page'))
-const DNStep2Page = lazy(() => import('./pages/dailyneedspages/Step2Page'))
-const DNStep3Page = lazy(() => import('./pages/dailyneedspages/Step3Page'))
-const DNReviewPage = lazy(() => import('./pages/dailyneedspages/ReviewPage'))
+const DNStep1Page = lazy(() => import('./pages/dailyNeedsPages/Step1Page'))
+const DNStep2Page = lazy(() => import('./pages/dailyNeedsPages/Step2Page'))
+const DNStep3Page = lazy(() => import('./pages/dailyNeedsPages/Step3Page'))
+const DNReviewPage = lazy(() => import('./pages/dailyNeedsPages/ReviewPage'))
 
 // Maintenance wizard pages
-const MaintenanceDashboard = lazy(() => import('./pages/maintenancepages/MaintenanceDashboard'))
-const MaintenanceAllPage = lazy(() => import('./pages/maintenancepages/MaintenanceAllPage'))
-const MNStep1Page = lazy(() => import('./pages/maintenancepages/Step1Page'))
-const MNStep2Page = lazy(() => import('./pages/maintenancepages/Step2Page'))
-const MNStep3Page = lazy(() => import('./pages/maintenancepages/Step3Page'))
-const MNReviewPage = lazy(() => import('./pages/maintenancepages/ReviewPage'))
+const MaintenanceDashboard = lazy(() => import('./pages/maintenancePages/MaintenanceDashboard'))
+const MaintenanceAllPage = lazy(() => import('./pages/maintenancePages/MaintenanceAllPage'))
+const MNStep1Page = lazy(() => import('./pages/maintenancePages/Step1Page'))
+const MNStep2Page = lazy(() => import('./pages/maintenancePages/Step2Page'))
+const MNStep3Page = lazy(() => import('./pages/maintenancePages/Step3Page'))
+const MNReviewPage = lazy(() => import('./pages/maintenancePages/ReviewPage'))
 
 // Construction wizard pages
-const ConstructionDashboard = lazy(() => import('./pages/constructionpages/ConstructionDashboard'))
-const ConstructionAllPage = lazy(() => import('./pages/constructionpages/ConstructionAllPage'))
-const COStep1Page = lazy(() => import('./pages/constructionpages/Step1Page'))
-const COStep2Page = lazy(() => import('./pages/constructionpages/Step2Page'))
-const COStep3Page = lazy(() => import('./pages/constructionpages/Step3Page'))
-const COReviewPage = lazy(() => import('./pages/constructionpages/ReviewPage'))
+const ConstructionDashboard = lazy(() => import('./pages/constructionPages/ConstructionDashboard'))
+const ConstructionAllPage = lazy(() => import('./pages/constructionPages/ConstructionAllPage'))
+const COStep1Page = lazy(() => import('./pages/constructionPages/Step1Page'))
+const COStep2Page = lazy(() => import('./pages/constructionPages/Step2Page'))
+const COStep3Page = lazy(() => import('./pages/constructionPages/Step3Page'))
+const COReviewPage = lazy(() => import('./pages/constructionPages/ReviewPage'))
 
 // Person Gate-In pages (Visitor/Labour)
-const PersonGateInDashboard = lazy(() => import('./pages/persongateinpages/PersonGateInDashboard'))
-const PersonGateInAllPage = lazy(() => import('./pages/persongateinpages/PersonGateInAllPage'))
-const InsideListPage = lazy(() => import('./pages/persongateinpages/InsideListPage'))
-const NewEntryPage = lazy(() => import('./pages/persongateinpages/NewEntryPage'))
-const EntryDetailPage = lazy(() => import('./pages/persongateinpages/EntryDetailPage'))
-const VisitorsPage = lazy(() => import('./pages/persongateinpages/VisitorsPage'))
-const LaboursPage = lazy(() => import('./pages/persongateinpages/LaboursPage'))
-const ContractorsPage = lazy(() => import('./pages/persongateinpages/ContractorsPage'))
+const PersonGateInDashboard = lazy(() => import('./pages/personGateInPages/PersonGateInDashboard'))
+const PersonGateInAllPage = lazy(() => import('./pages/personGateInPages/PersonGateInAllPage'))
+const InsideListPage = lazy(() => import('./pages/personGateInPages/InsideListPage'))
+const NewEntryPage = lazy(() => import('./pages/personGateInPages/NewEntryPage'))
+const EntryDetailPage = lazy(() => import('./pages/personGateInPages/EntryDetailPage'))
+const VisitorsPage = lazy(() => import('./pages/personGateInPages/VisitorsPage'))
+const LaboursPage = lazy(() => import('./pages/personGateInPages/LaboursPage'))
+const ContractorsPage = lazy(() => import('./pages/personGateInPages/ContractorsPage'))
 
 // Other gate entry type pages
 const DailyNeedsPage = lazy(() => import('./pages/DailyNeedsPage'))
-const DailyNeedsAllPage = lazy(() => import('./pages/dailyneedspages/DailyNeedsAllPage'))
+const DailyNeedsAllPage = lazy(() => import('./pages/dailyNeedsPages/DailyNeedsAllPage'))
 
 /**
  * Gate module configuration

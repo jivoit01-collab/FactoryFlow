@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo } from 'react'
-import { NavLink, Link, useLocation } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard } from 'lucide-react'
-import { cn } from '@/shared/utils'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LayoutDashboard } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+
+import { getAllNavigation } from '@/app/registry'
+import { SIDEBAR_CONFIG } from '@/config/constants'
+import { usePermission } from '@/core/auth'
+import type { ModuleNavItem } from '@/core/types'
 import { Button, Collapsible, CollapsibleContent } from '@/shared/components/ui'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui'
-import { usePermission } from '@/core/auth'
-import { SIDEBAR_CONFIG } from '@/config/constants'
-import { getAllNavigation } from '@/app/modules'
-import type { ModuleNavItem } from '@/core/types'
+import { cn } from '@/shared/utils'
 
 interface SidebarProps {
   isCollapsed: boolean
@@ -15,8 +16,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
-  const { hasModulePermission, hasAnyPermission, permissionsLoaded } =
-    usePermission()
+  const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission()
   const location = useLocation()
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set())
 
@@ -39,7 +39,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
         // Fallback: if route has explicit permissions, check those
         if (item.permissions && item.permissions.length > 0) {
-          return hasAnyPermission([...item.permissions])
+          return hasAnyPermission(item.permissions)
         }
 
         // Routes without modulePrefix or permissions are shown (like Gate)
@@ -52,7 +52,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           // Children without permissions are shown
           if (!child.permissions || child.permissions.length === 0) return true
           // Check if user has any of the required permissions
-          return hasAnyPermission([...child.permissions])
+          return hasAnyPermission(child.permissions)
         }),
       }))
   }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission])
@@ -100,9 +100,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     <aside
       className={cn(
         'fixed left-0 top-0 z-40 h-screen flex flex-col border-r bg-background transition-all duration-300',
-        isCollapsed
-          ? `w-[${SIDEBAR_CONFIG.collapsedWidth}px]`
-          : `w-[${SIDEBAR_CONFIG.expandedWidth}px]`
+        'transition-all duration-300'
       )}
       style={{
         width: isCollapsed ? SIDEBAR_CONFIG.collapsedWidth : SIDEBAR_CONFIG.expandedWidth,
@@ -121,7 +119,12 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </Link>
 
       {/* Navigation */}
-      <nav className={cn('h-[calc(100vh-4rem)] overflow-y-auto flex flex-col gap-1 py-2', isCollapsed ? 'items-center' : 'px-2')}>
+      <nav
+        className={cn(
+          'h-[calc(100vh-4rem)] overflow-y-auto flex flex-col gap-1 py-2',
+          isCollapsed ? 'items-center' : 'px-2'
+        )}
+      >
         {navItems.map((item) => {
           // Icon comes directly from module config, fallback to LayoutDashboard
           const Icon = item.icon || LayoutDashboard

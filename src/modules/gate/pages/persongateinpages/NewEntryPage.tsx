@@ -1,21 +1,29 @@
+import { AlertCircle, ArrowLeft, User, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, User, Users, AlertCircle } from 'lucide-react'
+
+import { VALIDATION_PATTERNS } from '@/config/constants'
 import {
   Button,
-  Input,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Input,
   Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { useCreatePersonEntry } from '../../api/personGateIn/personGateIn.queries'
-import { VisitorSelect, LabourSelect, GateSelect } from '../../components/persongatein'
-import { PERSON_TYPE_IDS, type Visitor, type Labour, type Gate, type CreateEntryRequest } from '../../api/personGateIn/personGateIn.api'
-import { VALIDATION_PATTERNS } from '@/config/constants'
 import { cn } from '@/shared/utils'
+
+import {
+  type CreateEntryRequest,
+  type Gate,
+  type Labour,
+  PERSON_TYPE_IDS,
+  type Visitor,
+} from '../../api/personGateIn/personGateIn.api'
+import { useCreatePersonEntry } from '../../api/personGateIn/personGateIn.queries'
+import { GateSelect, LabourSelect, VisitorSelect } from '../../components/personGateIn'
 
 type PersonTypeValue = 'visitor' | 'labour'
 
@@ -124,7 +132,10 @@ export default function NewEntryPage() {
     if (!formData.gate_in) errors.gate_in = 'Gate is required'
     if (personType === 'visitor' && !formData.visitor) errors.visitor = 'Please select a visitor'
     if (personType === 'labour' && !formData.labour) errors.labour = 'Please select a labour'
-    if (formData.vehicle_no.trim() && !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicle_no.trim().toUpperCase())) {
+    if (
+      formData.vehicle_no.trim() &&
+      !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicle_no.trim().toUpperCase())
+    ) {
       errors.vehicle_no = 'Please enter a valid vehicle number (e.g., MH12AB1234)'
     }
 
@@ -336,7 +347,9 @@ export default function NewEntryPage() {
                 <Label>Remarks</Label>
                 <textarea
                   value={formData.remarks}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData((prev) => ({ ...prev, remarks: e.target.value }))}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setFormData((prev) => ({ ...prev, remarks: e.target.value }))
+                  }
                   placeholder="Any additional notes..."
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   rows={3}
@@ -347,7 +360,11 @@ export default function NewEntryPage() {
 
           {/* Submit Button */}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => navigate('/gate/visitor-labour')} className="flex-1">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/gate/visitor-labour')}
+              className="flex-1"
+            >
               Cancel
             </Button>
             <Button

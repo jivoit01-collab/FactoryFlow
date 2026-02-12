@@ -1,10 +1,11 @@
 import { Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { MainLayout, AuthLayout } from '@/app/layouts'
+import { Navigate, Route, Routes } from 'react-router-dom'
+
+import { AuthLayout, MainLayout } from '@/app/layouts'
+import { getRoutesByLayout } from '@/app/registry'
 import { ProtectedRoute } from '@/core/auth'
-import { getRoutesByLayout } from '@/app/modules'
-import { PageLoadError } from '@/shared/components/PageLoadError'
 import { NotificationGate } from '@/core/notifications/components/NotificationGate'
+import { PageLoadError } from '@/shared/components/PageLoadError'
 
 // Unauthorized page
 function UnauthorizedPage() {

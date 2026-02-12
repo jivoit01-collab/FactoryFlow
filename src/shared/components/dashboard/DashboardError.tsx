@@ -1,4 +1,5 @@
-import { ShieldX, AlertCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, RefreshCw, ShieldX } from 'lucide-react'
+
 import { Button } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
 

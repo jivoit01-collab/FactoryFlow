@@ -1,4 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
+
 import { Button } from '@/shared/components/ui'
 
 interface StepFooterProps {

@@ -1,4 +1,5 @@
 import { lazy } from 'react'
+
 import type { ModuleConfig } from '@/core/types'
 
 // Eagerly load critical auth pages (always used on reload)

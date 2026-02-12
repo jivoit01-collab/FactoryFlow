@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
 /**
  * Return type for the form errors hook.
@@ -54,9 +54,7 @@ export interface UseFormErrorsReturn {
  * }
  * ```
  */
-export function useFormErrors(
-  initialErrors: Record<string, string> = {}
-): UseFormErrorsReturn {
+export function useFormErrors(initialErrors: Record<string, string> = {}): UseFormErrorsReturn {
   const [errors, setErrorsState] = useState<Record<string, string>>(initialErrors)
 
   const setError = useCallback((field: string, message: string) => {

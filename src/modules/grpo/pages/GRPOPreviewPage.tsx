@@ -1,32 +1,27 @@
-import { useState, useCallback } from 'react'
+import { AlertCircle, ArrowLeft, CheckCircle2, Package, RefreshCw, ShieldX } from 'lucide-react'
+import { useCallback, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  ArrowLeft,
-  AlertCircle,
-  ShieldX,
-  RefreshCw,
-  CheckCircle2,
-  Package,
-} from 'lucide-react'
+
+import { FINAL_STATUS } from '@/config/constants'
+import type { ApiError } from '@/core/api/types'
 import {
   Button,
   Card,
   CardContent,
-  Input,
-  Label,
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
+  Input,
+  Label,
 } from '@/shared/components/ui'
+
 import { useGRPOPreview, usePostGRPO } from '../api'
 import { WarehouseSelect } from '../components'
 import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants'
-import { FINAL_STATUS } from '@/config/constants'
-import type { PreviewPOReceipt, PostGRPOResponse } from '../types'
-import type { ApiError } from '@/core/api/types'
+import type { PostGRPOResponse, PreviewPOReceipt } from '../types'
 
 // Per-PO form state
 interface POFormState {
@@ -189,9 +184,7 @@ export default function GRPOPreviewPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h2 className="text-3xl font-bold tracking-tight">
-              {entryNo || 'GRPO Preview'}
-            </h2>
+            <h2 className="text-3xl font-bold tracking-tight">{entryNo || 'GRPO Preview'}</h2>
           </div>
           <p className="text-muted-foreground">
             Review and post goods receipt for each purchase order
@@ -262,10 +255,7 @@ export default function GRPOPreviewPage() {
           const form = getFormState(po)
 
           return (
-            <Card
-              key={po.po_receipt_id}
-              className={isPosted ? 'opacity-60' : ''}
-            >
+            <Card key={po.po_receipt_id} className={isPosted ? 'opacity-60' : ''}>
               <CardContent className="p-4 space-y-4">
                 {/* PO Header */}
                 <div className="flex items-start justify-between">
@@ -293,8 +283,7 @@ export default function GRPOPreviewPage() {
                     <div className="border-t pt-4 space-y-3">
                       <h4 className="text-sm font-medium">Items</h4>
                       {po.items.map((item) => {
-                        const acceptedQty =
-                          form.items[item.po_item_receipt_id] ?? item.received_qty
+                        const acceptedQty = form.items[item.po_item_receipt_id] ?? item.received_qty
                         const rejectedQty = Math.max(0, item.received_qty - acceptedQty)
                         const errorKey = `item_${item.po_item_receipt_id}`
 
@@ -384,11 +373,7 @@ export default function GRPOPreviewPage() {
 
                     {/* Post Button */}
                     <div className="border-t pt-4 flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate('/grpo/pending')}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => navigate('/grpo/pending')}>
                         Cancel
                       </Button>
                       <Button

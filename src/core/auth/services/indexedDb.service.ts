@@ -1,4 +1,5 @@
 import { AUTH_CONFIG } from '@/config/constants'
+
 import type { User, UserCompany, UserLogin } from '../types/auth.types'
 
 const DB_NAME = 'factoryManagementDB'

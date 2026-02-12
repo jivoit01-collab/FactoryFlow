@@ -1,14 +1,16 @@
+import type { ReactNode } from 'react'
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
-  useState,
-  useCallback,
   useMemo,
+  useState,
   useSyncExternalStore,
 } from 'react'
-import type { ReactNode } from 'react'
-import { THEME_OPTIONS, type Theme } from '@/config/constants/app.constants'
+
+import { type Theme, THEME_OPTIONS } from '@/config/constants/app.constants'
+
 import { storage } from '../utils/storage'
 
 const THEME_STORAGE_KEY = 'FMS_theme'

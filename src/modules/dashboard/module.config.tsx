@@ -1,5 +1,7 @@
 import { LayoutDashboard } from 'lucide-react'
+
 import type { ModuleConfig } from '@/core/types'
+
 import DashboardPage from './pages/DashboardPage'
 
 /**

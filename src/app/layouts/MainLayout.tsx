@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { Sidebar, MobileSidebar, Header, Breadcrumbs } from './components'
-import { TooltipProvider } from '@/shared/components/ui'
+
 import { SIDEBAR_CONFIG } from '@/config/constants'
+import { TooltipProvider } from '@/shared/components/ui'
 import { useLocalStorage } from '@/shared/hooks'
+
+import { Breadcrumbs, Header, MobileSidebar, Sidebar } from './components'
 
 export function MainLayout() {
   const [isMobile, setIsMobile] = useState(false)

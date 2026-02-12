@@ -1,18 +1,20 @@
-import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Check, Loader2, Plus, HelpCircle } from 'lucide-react'
+import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+
 import {
+  Button,
   Input,
   Label,
-  Button,
   Popover,
-  PopoverTrigger,
   PopoverContent,
+  PopoverTrigger,
 } from '@/shared/components/ui'
-import { useLabours } from '../../api/personGateIn/personGateIn.queries'
-import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
-import { CreateLabourDialog } from './CreateLabourDialog'
+import { cn } from '@/shared/utils'
+
 import type { Labour } from '../../api/personGateIn/personGateIn.api'
+import { useLabours } from '../../api/personGateIn/personGateIn.queries'
+import { CreateLabourDialog } from './CreateLabourDialog'
 
 interface LabourSelectProps {
   value?: number | null
@@ -161,7 +163,9 @@ export function LabourSelect({
                     {selectedLabour.contractor_name && (
                       <div>
                         <span className="font-medium">Contractor:</span>{' '}
-                        <span className="text-muted-foreground">{selectedLabour.contractor_name}</span>
+                        <span className="text-muted-foreground">
+                          {selectedLabour.contractor_name}
+                        </span>
                       </div>
                     )}
                     {selectedLabour.mobile && (
@@ -185,7 +189,9 @@ export function LabourSelect({
                     {selectedLabour.permit_valid_till && (
                       <div>
                         <span className="font-medium">Permit Valid Till:</span>{' '}
-                        <span className="text-muted-foreground">{selectedLabour.permit_valid_till}</span>
+                        <span className="text-muted-foreground">
+                          {selectedLabour.permit_valid_till}
+                        </span>
                       </div>
                     )}
                   </div>

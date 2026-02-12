@@ -1,25 +1,27 @@
+import { ArrowLeft, CheckCircle2, Edit2, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search, Plus, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react'
+
+import { VALIDATION_PATTERNS } from '@/config/constants'
 import {
   Button,
-  Input,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Input,
   Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
+import { cn } from '@/shared/utils'
+
+import type { Contractor, CreateContractorRequest } from '../../api/personGateIn/personGateIn.api'
 import {
   useContractors,
   useCreateContractor,
-  useUpdateContractor,
   useDeleteContractor,
+  useUpdateContractor,
 } from '../../api/personGateIn/personGateIn.queries'
-import type { Contractor, CreateContractorRequest } from '../../api/personGateIn/personGateIn.api'
-import { VALIDATION_PATTERNS } from '@/config/constants'
-import { cn } from '@/shared/utils'
 
 export default function ContractorsPage() {
   const navigate = useNavigate()
@@ -230,21 +232,29 @@ export default function ContractorsPage() {
                     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
                     setFormData((prev) => ({ ...prev, mobile: value }))
                     if (apiErrors.mobile) {
-                      setApiErrors((prev) => { const n = { ...prev }; delete n.mobile; return n })
+                      setApiErrors((prev) => {
+                        const n = { ...prev }
+                        delete n.mobile
+                        return n
+                      })
                     }
                   }}
                   placeholder="9876543210"
                   maxLength={10}
                   className={cn('mt-1', apiErrors.mobile && 'border-destructive')}
                 />
-                {apiErrors.mobile && <p className="text-xs text-destructive mt-1">{apiErrors.mobile}</p>}
+                {apiErrors.mobile && (
+                  <p className="text-xs text-destructive mt-1">{apiErrors.mobile}</p>
+                )}
               </div>
 
               <div>
                 <Label>Address</Label>
                 <textarea
                   value={formData.address || ''}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setFormData((prev) => ({ ...prev, address: e.target.value }))
+                  }
                   placeholder="Full address"
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   rows={3}

@@ -1,18 +1,25 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Scale } from 'lucide-react'
-import { Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+import { ENTRY_STATUS } from '@/config/constants'
+import type { ApiError } from '@/core/api'
+import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
-import { useWeighment, useCreateWeighment } from '../../api/weighment/weighment.queries'
+import {
+  getErrorMessage,
+  getServerErrorMessage,
+  isNotFoundError as checkNotFoundError,
+  isServerError as checkServerError,
+} from '@/shared/utils'
+
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { useEntryId } from '../../hooks'
-import { StepHeader, StepFooter, StepLoadingSpinner, FillDataAlert } from '../../components'
+import { useCreateWeighment, useWeighment } from '../../api/weighment/weighment.queries'
+import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components'
 import { WIZARD_CONFIG } from '../../constants'
-import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
-import type { ApiError } from '@/core/api'
-import { ENTRY_STATUS } from '@/config/constants'
+import { useEntryId } from '../../hooks'
 
 export default function Step4Page() {
   const navigate = useNavigate()
@@ -223,7 +230,8 @@ export default function Step4Page() {
   const isReadOnly =
     (effectiveEditMode && !!weighmentData && !fillDataMode && !updateMode) ||
     (isNotFoundError && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED && !!weighmentData
+  const canUpdate =
+    effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED && !!weighmentData
 
   const handleUpdate = () => {
     setUpdateMode(true)

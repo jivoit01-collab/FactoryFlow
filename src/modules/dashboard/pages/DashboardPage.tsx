@@ -1,4 +1,5 @@
 import { APP_NAME } from '@/config/constants'
+
 import { DashboardStats } from '../components/DashboardStats'
 
 export default function DashboardPage() {

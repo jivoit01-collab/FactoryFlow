@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 /**
  * Configuration for the edit form state hook.
@@ -100,8 +100,7 @@ export function useEditFormState({
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly = useMemo(() => {
     return (
-      (effectiveEditMode && !updateMode && !hasNotFoundError) ||
-      (hasNotFoundError && !fillDataMode)
+      (effectiveEditMode && !updateMode && !hasNotFoundError) || (hasNotFoundError && !fillDataMode)
     )
   }, [effectiveEditMode, updateMode, hasNotFoundError, fillDataMode])
 

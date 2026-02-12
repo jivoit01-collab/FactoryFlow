@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useVendors } from '../api/po/po.queries'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { Vendor } from '../api/po/po.api'
+import { useVendors } from '../api/po/po.queries'
 
 interface VendorSelectProps {
   value?: string
@@ -46,9 +48,7 @@ export function VendorSelect({
       renderItem={(vendor) => (
         <div>
           <span className="text-sm font-medium">{vendor.vendor_name}</span>
-          <span className="text-xs text-muted-foreground ml-2">
-            ({vendor.vendor_code})
-          </span>
+          <span className="text-xs text-muted-foreground ml-2">({vendor.vendor_code})</span>
         </div>
       )}
       loadingText="Loading vendors..."

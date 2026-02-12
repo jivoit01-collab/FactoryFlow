@@ -1,5 +1,5 @@
 export {
-  useInspectionPermissions,
   useArrivalSlipPermissions,
+  useInspectionPermissions,
   useMasterDataPermissions,
 } from './useInspectionPermissions'

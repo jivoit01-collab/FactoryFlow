@@ -1,14 +1,16 @@
 import type { Middleware } from '@reduxjs/toolkit'
+
+import { AUTH_CONFIG } from '@/config/constants'
+
 import { indexedDBService } from '../services/indexedDb.service'
 import {
+  clearCurrentCompany,
   loginSuccess,
-  updateTokens,
-  updateUser,
   logout,
   switchCompany,
-  clearCurrentCompany,
+  updateTokens,
+  updateUser,
 } from './authSlice'
-import { AUTH_CONFIG } from '@/config/constants'
 
 /**
  * Middleware to sync Redux auth state changes to IndexedDB

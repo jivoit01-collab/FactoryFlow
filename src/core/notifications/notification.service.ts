@@ -1,17 +1,18 @@
-import { apiClient } from '../api'
 import { API_ENDPOINTS } from '@/config/constants'
+
+import { apiClient } from '../api'
 import type {
-  Notification,
-  NotificationDetail,
-  NotificationListResponse,
-  NotificationListParams,
-  NotificationPreference,
-  NotificationPreferenceUpdate,
   MarkReadRequest,
   MarkReadResponse,
-  UnreadCountResponse,
+  Notification,
+  NotificationDetail,
+  NotificationListParams,
+  NotificationListResponse,
+  NotificationPreference,
+  NotificationPreferenceUpdate,
   TestNotificationRequest,
   TestNotificationResponse,
+  UnreadCountResponse,
 } from './types'
 
 /**
@@ -35,9 +36,7 @@ class NotificationService {
    * Note: This automatically marks the notification as read
    */
   async getNotificationDetail(id: number): Promise<NotificationDetail> {
-    const response = await apiClient.get<NotificationDetail>(
-      API_ENDPOINTS.NOTIFICATIONS.DETAIL(id)
-    )
+    const response = await apiClient.get<NotificationDetail>(API_ENDPOINTS.NOTIFICATIONS.DETAIL(id))
     return response.data
   }
 

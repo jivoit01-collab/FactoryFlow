@@ -1,4 +1,4 @@
-import { Clock, CheckCircle2, XCircle, AlertTriangle, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, type LucideIcon, XCircle } from 'lucide-react'
 
 // ============================================================================
 // Entry Status Constants
@@ -219,4 +219,5 @@ export function getSecurityApprovalClasses(status: string): string {
 /**
  * Default status color classes for unknown statuses
  */
-export const DEFAULT_STATUS_CLASSES = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+export const DEFAULT_STATUS_CLASSES =
+  'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'

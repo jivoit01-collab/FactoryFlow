@@ -1,19 +1,20 @@
-import { useState, useEffect, useMemo } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown, ChevronUp, LayoutDashboard } from 'lucide-react'
-import { cn } from '@/shared/utils'
+import { useEffect, useMemo, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
+
+import { getAllNavigation } from '@/app/registry'
+import { usePermission } from '@/core/auth'
+import type { ModuleNavItem } from '@/core/types'
 import {
   Button,
+  Collapsible,
+  CollapsibleContent,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Collapsible,
-  CollapsibleContent,
 } from '@/shared/components/ui'
-import { usePermission } from '@/core/auth'
-import { getAllNavigation } from '@/app/modules'
-import type { ModuleNavItem } from '@/core/types'
+import { cn } from '@/shared/utils'
 
 interface MobileSidebarProps {
   isOpen: boolean
