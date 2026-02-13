@@ -49,7 +49,7 @@ export default function Step3Page() {
   const queryClient = useQueryClient()
   const { entryId, entryIdNumber, isEditMode } = useEntryId()
   const currentStep = 3
-  const totalSteps = 3
+  const totalSteps = 4
   const progressPercentage = (currentStep / totalSteps) * 100
 
   const { data: vehicleEntryData } = useVehicleEntry(
@@ -176,9 +176,9 @@ export default function Step3Page() {
       return
     }
 
-    // In edit mode (and not fill data mode and not update mode), just navigate to review page
+    // In edit mode (and not fill data mode and not update mode), just navigate to attachments page
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/daily-needs/edit/${entryId}/review`)
+      navigate(`/gate/daily-needs/edit/${entryId}/attachments`)
       return
     }
 
@@ -241,12 +241,12 @@ export default function Step3Page() {
         remarks: formData.remarks || undefined,
       })
 
-      // Navigate to review page
+      // Navigate to attachments page
       setIsNavigating(true)
       if (isEditMode && entryId) {
-        navigate(`/gate/daily-needs/edit/${entryId}/review`)
+        navigate(`/gate/daily-needs/edit/${entryId}/attachments`)
       } else {
-        navigate(`/gate/daily-needs/new/review?entryId=${entryId}`)
+        navigate(`/gate/daily-needs/new/attachments?entryId=${entryId}`)
       }
     } catch (error) {
       const apiError = error as ApiError
@@ -615,7 +615,7 @@ export default function Step3Page() {
                 ? createDailyNeed.isPending || isNavigating
                   ? 'Saving...'
                   : 'Save and Next →'
-                : 'Review →'}
+                : 'Next →'}
             </Button>
           </>
         ) : (

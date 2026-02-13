@@ -1,22 +1,53 @@
 import { AlertCircle, ArrowLeft, Eye, FlaskConical, RefreshCw, ShieldX } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { QC_PERMISSIONS } from '@/config/permissions'
 import type { ApiError } from '@/core/api/types'
 import { usePermission } from '@/core/auth'
+import { useGlobalDateRange } from '@/core/store/hooks'
+import { DateRangePicker } from '@/modules/gate/components'
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
 
-import { usePendingInspections } from '../api/inspection/inspection.queries'
-import { WORKFLOW_STATUS, WORKFLOW_STATUS_CONFIG } from '../constants'
-import type { InspectionWorkflowStatus } from '../types'
+import {
+  useAwaitingChemistInspections,
+  useAwaitingQAMInspections,
+} from '../api/inspection/inspection.queries'
+import { WORKFLOW_STATUS_CONFIG } from '../constants'
+import type { Inspection, InspectionWorkflowStatus } from '../types'
 
 type TabType = 'chemist' | 'manager'
 
 export default function ApprovalQueuePage() {
   const navigate = useNavigate()
-  const { data: pendingInspections = [], isLoading, refetch, error } = usePendingInspections()
   const { hasAnyPermission } = usePermission()
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
+
+  const dateParams = useMemo(
+    () => ({
+      from_date: dateRange.from,
+      to_date: dateRange.to,
+    }),
+    [dateRange]
+  )
+
+  // Fetch from dedicated backend endpoints
+  const {
+    data: chemistQueue = [],
+    isLoading: chemistLoading,
+    error: chemistError,
+    refetch: refetchChemist,
+  } = useAwaitingChemistInspections(dateParams)
+
+  const {
+    data: managerQueue = [],
+    isLoading: managerLoading,
+    error: managerError,
+    refetch: refetchManager,
+  } = useAwaitingQAMInspections(dateParams)
+
+  const isLoading = chemistLoading || managerLoading
+  const error = chemistError || managerError
 
   // Check if error is a permission error (403)
   const apiError = error as ApiError | null
@@ -38,22 +69,14 @@ export default function ApprovalQueuePage() {
         ? 'chemist'
         : activeTab
 
-  // Filter inspections based on effective tab
-  const filteredInspections = pendingInspections.filter((item) => {
-    if (!item.has_inspection) return false
-    if (effectiveTab === 'chemist') {
-      return item.inspection_status === WORKFLOW_STATUS.SUBMITTED
-    }
-    return item.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED
-  })
+  // Select data based on active tab
+  const filteredInspections: Inspection[] =
+    effectiveTab === 'chemist' ? chemistQueue : managerQueue
 
-  const chemistCount = pendingInspections.filter(
-    (item) => item.has_inspection && item.inspection_status === WORKFLOW_STATUS.SUBMITTED
-  ).length
-
-  const managerCount = pendingInspections.filter(
-    (item) => item.has_inspection && item.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED
-  ).length
+  const refetch = () => {
+    refetchChemist()
+    refetchManager()
+  }
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
@@ -82,10 +105,22 @@ export default function ApprovalQueuePage() {
           </div>
           <p className="text-muted-foreground">Review and approve inspections</p>
         </div>
-        <Button variant="outline" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <DateRangePicker
+            date={dateRangeAsDateObjects}
+            onDateChange={(date) => {
+              if (date && 'from' in date) {
+                setDateRange(date)
+              } else {
+                setDateRange(undefined)
+              }
+            }}
+          />
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Tabs - Only show tabs user has permission for */}
@@ -95,7 +130,7 @@ export default function ApprovalQueuePage() {
             variant={effectiveTab === 'chemist' ? 'default' : 'outline'}
             onClick={() => setActiveTab('chemist')}
           >
-            QA Chemist Queue ({chemistCount})
+            QA Chemist Queue ({chemistQueue.length})
           </Button>
         )}
         {canApproveAsQAM && (
@@ -103,7 +138,7 @@ export default function ApprovalQueuePage() {
             variant={effectiveTab === 'manager' ? 'default' : 'outline'}
             onClick={() => setActiveTab('manager')}
           >
-            QA Manager Queue ({managerCount})
+            QA Manager Queue ({managerQueue.length})
           </Button>
         )}
       </div>
@@ -194,7 +229,7 @@ export default function ApprovalQueuePage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {activeTab === 'chemist'
+              {effectiveTab === 'chemist'
                 ? 'Awaiting QA Chemist Approval'
                 : 'Awaiting QA Manager Approval'}{' '}
               ({filteredInspections.length})
@@ -205,10 +240,10 @@ export default function ApprovalQueuePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium">Entry No.</th>
+                    <th className="text-left p-3 font-medium">Report No.</th>
                     <th className="text-left p-3 font-medium">Particulars</th>
-                    <th className="text-left p-3 font-medium">Party Name</th>
-                    <th className="text-left p-3 font-medium">Submitted At</th>
+                    <th className="text-left p-3 font-medium">Supplier</th>
+                    <th className="text-left p-3 font-medium">Inspection Date</th>
                     <th className="text-center p-3 font-medium">Status</th>
                     <th className="text-center p-3 font-medium">Action</th>
                   </tr>
@@ -216,25 +251,25 @@ export default function ApprovalQueuePage() {
                 <tbody>
                   {filteredInspections.map((item) => {
                     const statusConfig =
-                      WORKFLOW_STATUS_CONFIG[item.inspection_status as InspectionWorkflowStatus]
+                      WORKFLOW_STATUS_CONFIG[item.workflow_status as InspectionWorkflowStatus]
 
                     return (
-                      <tr key={item.arrival_slip.id} className="border-b hover:bg-muted/50">
+                      <tr key={item.id} className="border-b hover:bg-muted/50">
                         <td className="p-3">
-                          <span className="font-medium">{item.arrival_slip.entry_no}</span>
+                          <span className="font-medium">{item.report_no || item.entry_no}</span>
                         </td>
                         <td className="p-3">
                           <div>
-                            <p className="font-medium">{item.arrival_slip.item_name}</p>
+                            <p className="font-medium">{item.item_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {item.arrival_slip.particulars}
+                              {item.description_of_material}
                             </p>
                           </div>
                         </td>
-                        <td className="p-3">{item.arrival_slip.party_name}</td>
+                        <td className="p-3">{item.supplier_name}</td>
                         <td className="p-3 text-muted-foreground">
-                          {item.arrival_slip.submitted_at
-                            ? formatDateTime(item.arrival_slip.submitted_at)
+                          {item.inspection_date
+                            ? formatDateTime(item.inspection_date)
                             : '-'}
                         </td>
                         <td className="p-3 text-center">
@@ -247,7 +282,7 @@ export default function ApprovalQueuePage() {
                         <td className="p-3 text-center">
                           <Button
                             size="sm"
-                            onClick={() => navigate(`/qc/inspections/${item.arrival_slip.id}`)}
+                            onClick={() => navigate(`/qc/inspections/${item.arrival_slip}`)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             Review

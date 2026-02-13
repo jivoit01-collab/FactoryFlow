@@ -25,6 +25,7 @@ interface DriverSelectProps {
   required?: boolean
 }
 
+
 export function DriverSelect({
   value,
   onChange,
@@ -142,9 +143,9 @@ export function DriverSelect({
         <CreateDriverDialog
           open={open}
           onOpenChange={onOpenChange}
-          onSuccess={(driverId, driverName) => {
-            updateSelection(driverId, driverName)
-            setSelectedId(driverId)
+          onSuccess={(driver) => {
+            updateSelection(driver.id, driver.name)
+            setSelectedId(driver.id)
           }}
         />
       )}

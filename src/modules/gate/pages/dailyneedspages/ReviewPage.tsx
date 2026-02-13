@@ -165,9 +165,9 @@ export default function ReviewPage() {
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/daily-needs/edit/${entryId}/step3`)
+      navigate(`/gate/daily-needs/edit/${entryId}/attachments`)
     } else {
-      navigate(`/gate/daily-needs/new/step3?entryId=${entryId}`)
+      navigate(`/gate/daily-needs/new/attachments?entryId=${entryId}`)
     }
   }
 

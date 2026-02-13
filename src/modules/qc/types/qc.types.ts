@@ -12,6 +12,14 @@ export type InspectionWorkflowStatus =
 // Inspection final status
 export type InspectionFinalStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'HOLD'
 
+// Query params for inspection list endpoints
+export interface InspectionListParams {
+  from_date?: string
+  to_date?: string
+  workflow_status?: InspectionWorkflowStatus
+  final_status?: InspectionFinalStatus
+}
+
 // QC Parameter type
 export type ParameterType = 'NUMERIC' | 'TEXT' | 'BOOLEAN' | 'RANGE'
 

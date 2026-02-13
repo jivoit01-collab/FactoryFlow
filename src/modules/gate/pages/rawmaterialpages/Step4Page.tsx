@@ -143,7 +143,7 @@ export default function Step4Page() {
 
     // In edit mode (and not fillDataMode and not updateMode), just navigate without API call
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/raw-materials/edit/${entryId}/review`)
+      navigate(`/gate/raw-materials/edit/${entryId}/attachments`)
       return
     }
 
@@ -193,12 +193,12 @@ export default function Step4Page() {
 
       await createWeighment.mutateAsync(requestData)
 
-      // Navigate to review
+      // Navigate to attachments
       setIsNavigating(true)
       if (isEditMode) {
-        navigate(`/gate/raw-materials/edit/${entryId}/review`)
+        navigate(`/gate/raw-materials/edit/${entryId}/attachments`)
       } else {
-        navigate(`/gate/raw-materials/new/review?entryId=${entryId}`)
+        navigate(`/gate/raw-materials/new/attachments?entryId=${entryId}`)
       }
     } catch (error) {
       const apiError = error as ApiError

@@ -17,6 +17,8 @@ import { cn } from '@/shared/utils'
 import { DriverSelect } from '../DriverSelect'
 import { TransporterSelect } from '../TransporterSelect'
 import { VehicleSelect } from '../VehicleSelect'
+import { useState } from 'react'
+import { CreateDriverDialog } from '../CreateDriverDialog'
 
 // Get the server base URL for media files (without /api/v1)
 const getMediaBaseUrl = () => {
@@ -126,6 +128,8 @@ export function VehicleDriverFormShell({
 }: VehicleDriverFormShellProps) {
   const progressPercentage = (currentStep / totalSteps) * 100
 
+  const [isEditDriverOpen, setIsEditDriverOpen] = useState(false)
+
   // Scroll to first error when errors occur
   useScrollToError(apiErrors)
 
@@ -201,7 +205,7 @@ export function VehicleDriverFormShell({
               <div className="space-y-2">
                 <TransporterSelect
                   value={formData.transporterName}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   placeholder="Auto-filled from vehicle"
                   label="Transporter Name"
                   required
@@ -209,10 +213,10 @@ export function VehicleDriverFormShell({
                   externalDetails={
                     formData.transporterName
                       ? {
-                          name: formData.transporterName,
-                          contact_person: formData.transporterContactPerson,
-                          mobile_no: formData.transporterMobile,
-                        }
+                        name: formData.transporterName,
+                        contact_person: formData.transporterContactPerson,
+                        mobile_no: formData.transporterMobile,
+                      }
                       : null
                   }
                 />
@@ -254,10 +258,25 @@ export function VehicleDriverFormShell({
         {/* Driver Information Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Driver Information
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Driver Information
+              </div>
+
+              {formData.driverId != 0 && !isReadOnly && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="px-0 h-auto"
+                  onClick={() => setIsEditDriverOpen(true)}
+                >
+                  Edit Driver
+                </Button>
+              )}
             </CardTitle>
+
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
@@ -415,6 +434,32 @@ export function VehicleDriverFormShell({
           </CardContent>
         </Card>
       </div>
+
+      <CreateDriverDialog
+        open={isEditDriverOpen}
+        onOpenChange={setIsEditDriverOpen}
+        initialData={{
+          id: formData.driverId,
+          name: formData.driverName,
+          mobile_no: formData.mobileNumber,
+          license_no: formData.drivingLicenseNumber,
+          id_proof_type: formData.idProofType,
+          id_proof_number: formData.idProofNumber,
+          photo: formData.driverPhoto,
+        }}
+        onSuccess={(driver) => {
+          onDriverSelect({
+            driverId: driver.id,
+            driverName: driver.name,
+            mobileNumber: driver.mobile_no,
+            drivingLicenseNumber: driver.license_no,
+            idProofType: driver.id_proof_type,
+            idProofNumber: driver.id_proof_number,
+            driverPhoto: driver.photo,
+          })
+        }}
+      />
+
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">
