@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   ArrowLeft,
@@ -8,11 +8,11 @@ import {
   Package,
   Plus,
   Trash2,
-} from 'lucide-react'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+} from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
+import type { ApiError } from '@/core/api/types';
 import {
   Button,
   Card,
@@ -21,67 +21,67 @@ import {
   CardTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { useDebounce } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { useDebounce } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 import {
   getErrorMessage,
   getServerErrorMessage,
   isNotFoundError as checkNotFoundError,
   isServerError as checkServerError,
-} from '@/shared/utils'
+} from '@/shared/utils';
 
-import type { PurchaseOrder, Vendor } from '../../api/po/po.api'
-import { useOpenPOs } from '../../api/po/po.queries'
-import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries'
-import { FillDataAlert, StepHeader, StepLoadingSpinner, VendorSelect } from '../../components'
-import { WIZARD_CONFIG } from '../../constants'
-import { useEntryId } from '../../hooks'
+import type { PurchaseOrder, Vendor } from '../../api/po/po.api';
+import { useOpenPOs } from '../../api/po/po.queries';
+import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries';
+import { FillDataAlert, StepHeader, StepLoadingSpinner, VendorSelect } from '../../components';
+import { WIZARD_CONFIG } from '../../constants';
+import { useEntryId } from '../../hooks';
 
 interface POItemFormData {
-  po_item_code: string
-  item_name: string
-  ordered_qty: number
-  received_qty: number // Previously received from other gate entries
-  received_qty_now: number // What user is entering now
-  remaining_qty_initial: number // Initial remaining from PO (ordered - previously received)
-  remaining_qty: number // Auto-calculated: remaining_qty_initial - received_qty_now
-  uom: string
+  po_item_code: string;
+  item_name: string;
+  ordered_qty: number;
+  received_qty: number; // Previously received from other gate entries
+  received_qty_now: number; // What user is entering now
+  remaining_qty_initial: number; // Initial remaining from PO (ordered - previously received)
+  remaining_qty: number; // Auto-calculated: remaining_qty_initial - received_qty_now
+  uom: string;
 }
 
 interface POFormData {
-  id: string // Unique ID for this PO form
-  supplierName: string
-  supplierCode: string
-  poNumber: string
-  items: POItemFormData[]
+  id: string; // Unique ID for this PO form
+  supplierName: string;
+  supplierCode: string;
+  poNumber: string;
+  items: POItemFormData[];
 }
 
 export default function Step3Page() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { entryId, entryIdNumber, isEditMode } = useEntryId()
-  const currentStep = WIZARD_CONFIG.STEPS.PO_RECEIPT
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  const currentStep = WIZARD_CONFIG.STEPS.PO_RECEIPT;
 
   // Stable ID generation using useId
-  const baseId = useId()
-  const poFormCounterRef = useRef(1)
+  const baseId = useId();
+  const poFormCounterRef = useRef(1);
 
   // Fetch existing PO receipts in edit mode
   const {
     data: existingPOReceipts = [],
     isLoading: isLoadingPOReceipts,
     error: poReceiptsError,
-  } = usePOReceipts(isEditMode && entryIdNumber ? entryIdNumber : null)
+  } = usePOReceipts(isEditMode && entryIdNumber ? entryIdNumber : null);
 
   // State to track if we should behave like create mode (when Fill Data is clicked)
-  const [fillDataMode, setFillDataMode] = useState(false)
+  const [fillDataMode, setFillDataMode] = useState(false);
   // State to track if Update button has been clicked (enables editing)
-  const [updateMode, setUpdateMode] = useState(false)
+  const [updateMode, setUpdateMode] = useState(false);
   // State to keep button disabled after API success until navigation completes
-  const [isNavigating, setIsNavigating] = useState(false)
-  const effectiveEditMode = isEditMode && !fillDataMode
+  const [isNavigating, setIsNavigating] = useState(false);
+  const effectiveEditMode = isEditMode && !fillDataMode;
 
   // State for multiple PO forms - start with one empty form
   // Note: We use baseId with initial counter of 1 for stable initial ID
@@ -93,52 +93,52 @@ export default function Step3Page() {
       poNumber: '',
       items: [],
     },
-  ])
+  ]);
 
   // Track which PO dropdown is open and its search term
-  const [openPODropdown, setOpenPODropdown] = useState<string | null>(null)
-  const [poSearchTerms, setPOSearchTerms] = useState<Record<string, string>>({})
+  const [openPODropdown, setOpenPODropdown] = useState<string | null>(null);
+  const [poSearchTerms, setPOSearchTerms] = useState<Record<string, string>>({});
 
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
   // Track which PO forms have fill data mode enabled (for handling API errors)
-  const [fillDataModeForPO, setFillDataModeForPO] = useState<Record<string, boolean>>({})
+  const [fillDataModeForPO, setFillDataModeForPO] = useState<Record<string, boolean>>({});
 
   const handleSupplierNameChange = (poFormId: string, value: string) => {
-    if (effectiveEditMode && !updateMode) return
+    if (effectiveEditMode && !updateMode) return;
     setPoForms((prev) =>
-      prev.map((form) => (form.id === poFormId ? { ...form, supplierName: value } : form))
-    )
+      prev.map((form) => (form.id === poFormId ? { ...form, supplierName: value } : form)),
+    );
     // Clear errors
     if (apiErrors[`${poFormId}_supplierName`]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[`${poFormId}_supplierName`]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[`${poFormId}_supplierName`];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handleSupplierCodeChange = (poFormId: string, value: string) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return;
     setPoForms((prev) =>
-      prev.map((form) => (form.id === poFormId ? { ...form, supplierCode: value } : form))
-    )
+      prev.map((form) => (form.id === poFormId ? { ...form, supplierCode: value } : form)),
+    );
     // Clear errors
     if (apiErrors[`${poFormId}_supplierCode`]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[`${poFormId}_supplierCode`]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[`${poFormId}_supplierCode`];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handleVendorSelect = (poFormId: string, vendor: Vendor | null) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return;
     setPoForms((prev) =>
       prev.map((form) =>
         form.id === poFormId
@@ -150,32 +150,32 @@ export default function Step3Page() {
               poNumber: '',
               items: [],
             }
-          : form
-      )
-    )
+          : form,
+      ),
+    );
     // Clear errors
     const errorKeys = [
       `${poFormId}_supplierCode`,
       `${poFormId}_supplierName`,
       `${poFormId}_poNumber`,
-    ]
+    ];
     setApiErrors((prev) => {
-      const newErrors = { ...prev }
-      errorKeys.forEach((key) => delete newErrors[key])
-      return newErrors
-    })
-  }
+      const newErrors = { ...prev };
+      errorKeys.forEach((key) => delete newErrors[key]);
+      return newErrors;
+    });
+  };
 
   const handlePOFocus = (poFormId: string) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
-    const form = poForms.find((f) => f.id === poFormId)
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return;
+    const form = poForms.find((f) => f.id === poFormId);
     if (form?.supplierCode) {
-      setOpenPODropdown(poFormId)
+      setOpenPODropdown(poFormId);
     }
-  }
+  };
 
   const handlePOSelect = (poFormId: string, po: PurchaseOrder) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return;
 
     setPoForms((prev) =>
       prev.map((form) => {
@@ -186,9 +186,9 @@ export default function Step3Page() {
             supplierName: po.supplier_name,
             supplierCode: po.supplier_code,
             items: po.items.map((item) => {
-              const orderedQty = parseFloat(item.ordered_qty)
-              const receivedQty = parseFloat(item.received_qty || '0') // Previously received
-              const remainingQtyFromPO = parseFloat(item.remaining_qty) // Remaining from PO
+              const orderedQty = parseFloat(item.ordered_qty);
+              const receivedQty = parseFloat(item.received_qty || '0'); // Previously received
+              const remainingQtyFromPO = parseFloat(item.remaining_qty); // Remaining from PO
               return {
                 po_item_code: item.po_item_code,
                 item_name: item.item_name,
@@ -198,21 +198,21 @@ export default function Step3Page() {
                 remaining_qty_initial: remainingQtyFromPO, // Store initial remaining
                 remaining_qty: remainingQtyFromPO, // Will be recalculated when user enters received_qty_now
                 uom: item.uom,
-              }
+              };
             }),
-          }
+          };
         }
-        return form
-      })
-    )
-    setOpenPODropdown(null)
-    setPOSearchTerms((prev) => ({ ...prev, [poFormId]: '' }))
-  }
+        return form;
+      }),
+    );
+    setOpenPODropdown(null);
+    setPOSearchTerms((prev) => ({ ...prev, [poFormId]: '' }));
+  };
 
   const handleReceivedQtyChange = (poFormId: string, itemCode: string, value: string) => {
-    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return
+    if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return;
 
-    const receivedQtyNow = parseFloat(value) || 0
+    const receivedQtyNow = parseFloat(value) || 0;
     setPoForms((prev) =>
       prev.map((form) => {
         if (form.id === poFormId) {
@@ -221,45 +221,45 @@ export default function Step3Page() {
             items: form.items.map((item) => {
               if (item.po_item_code === itemCode) {
                 // Calculate remaining: remaining_qty_initial - received_qty_now
-                const newRemainingQty = Math.max(0, item.remaining_qty_initial - receivedQtyNow)
+                const newRemainingQty = Math.max(0, item.remaining_qty_initial - receivedQtyNow);
                 return {
                   ...item,
                   received_qty_now: receivedQtyNow,
                   remaining_qty: newRemainingQty,
-                }
+                };
               }
-              return item
+              return item;
             }),
-          }
+          };
         }
-        return form
-      })
-    )
+        return form;
+      }),
+    );
     // Clear error for this field and general error if user starts entering value
     if (receivedQtyNow > 0) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[`${poFormId}_item_${itemCode}`]
-        delete newErrors[`${poFormId}_received`]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[`${poFormId}_item_${itemCode}`];
+        delete newErrors[`${poFormId}_received`];
+        return newErrors;
+      });
     } else if (apiErrors[`${poFormId}_item_${itemCode}`]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[`${poFormId}_item_${itemCode}`]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[`${poFormId}_item_${itemCode}`];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handleAddPO = () => {
     // Don't allow adding in edit mode unless fillDataMode is active or any PO has fill data mode
-    const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true)
-    if (effectiveEditMode && !fillDataMode && !hasAnyFillDataMode) return
+    const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true);
+    if (effectiveEditMode && !fillDataMode && !hasAnyFillDataMode) return;
 
     // Generate unique ID using counter
-    poFormCounterRef.current += 1
-    const newId = `${baseId}-po-${poFormCounterRef.current}`
+    poFormCounterRef.current += 1;
+    const newId = `${baseId}-po-${poFormCounterRef.current}`;
 
     setPoForms((prev) => [
       ...prev,
@@ -270,16 +270,16 @@ export default function Step3Page() {
         poNumber: '',
         items: [],
       },
-    ])
+    ]);
 
     // Clear any errors when adding new PO
-    setApiErrors({})
-  }
+    setApiErrors({});
+  };
 
   const handleRemovePO = (poFormId: string) => {
     // Don't allow removing in edit mode unless fillDataMode is active or this PO has fill data mode
-    const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true)
-    const thisPOFillDataMode = fillDataModeForPO[poFormId] || false
+    const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true);
+    const thisPOFillDataMode = fillDataModeForPO[poFormId] || false;
 
     if (
       effectiveEditMode &&
@@ -288,31 +288,31 @@ export default function Step3Page() {
       !thisPOFillDataMode &&
       !updateMode
     )
-      return
-    if (poForms.length === 1) return // Don't allow removing the last one
+      return;
+    if (poForms.length === 1) return; // Don't allow removing the last one
 
-    setPoForms((prev) => prev.filter((form) => form.id !== poFormId))
+    setPoForms((prev) => prev.filter((form) => form.id !== poFormId));
 
     // Clean up fill data mode for removed PO
     if (fillDataModeForPO[poFormId]) {
       setFillDataModeForPO((prev) => {
-        const newState = { ...prev }
-        delete newState[poFormId]
-        return newState
-      })
+        const newState = { ...prev };
+        delete newState[poFormId];
+        return newState;
+      });
     }
 
     // Clean up PO search terms for removed PO
     setPOSearchTerms((prev) => {
-      const newState = { ...prev }
-      delete newState[poFormId]
-      return newState
-    })
-  }
+      const newState = { ...prev };
+      delete newState[poFormId];
+      return newState;
+    });
+  };
 
   const handleFillData = () => {
-    setFillDataMode(true)
-    poFormCounterRef.current += 1
+    setFillDataMode(true);
+    poFormCounterRef.current += 1;
     setPoForms([
       {
         id: `${baseId}-po-${poFormCounterRef.current}`,
@@ -321,12 +321,12 @@ export default function Step3Page() {
         poNumber: '',
         items: [],
       },
-    ])
-    setApiErrors({})
-  }
+    ]);
+    setApiErrors({});
+  };
 
   const handleFillDataForPO = (poFormId: string) => {
-    setFillDataModeForPO((prev) => ({ ...prev, [poFormId]: true }))
+    setFillDataModeForPO((prev) => ({ ...prev, [poFormId]: true }));
     // Clear the PO form data to allow fresh entry
     setPoForms((prev) =>
       prev.map((form) =>
@@ -338,11 +338,11 @@ export default function Step3Page() {
               poNumber: '',
               items: [],
             }
-          : form
-      )
-    )
-    setApiErrors({})
-  }
+          : form,
+      ),
+    );
+    setApiErrors({});
+  };
 
   // Load existing PO receipts when in edit mode
   useEffect(() => {
@@ -357,8 +357,8 @@ export default function Step3Page() {
           // The received_qty in the receipt is what was received in this entry
           // We'd need to fetch the PO to get the initial remaining_qty
           // For now, we'll use a placeholder
-          const orderedQty = item.ordered_qty
-          const receivedQtyNow = item.received_qty
+          const orderedQty = item.ordered_qty;
+          const receivedQtyNow = item.received_qty;
           return {
             po_item_code: item.po_item_code,
             item_name: item.item_name,
@@ -368,84 +368,84 @@ export default function Step3Page() {
             remaining_qty_initial: orderedQty, // Placeholder - would need PO data
             remaining_qty: orderedQty - receivedQtyNow,
             uom: item.uom,
-          }
+          };
         }),
-      }))
+      }));
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing form state with fetched data is a valid pattern
-      setPoForms(forms)
+      setPoForms(forms);
     }
-  }, [effectiveEditMode, existingPOReceipts])
+  }, [effectiveEditMode, existingPOReceipts]);
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step2`)
+      navigate(`/gate/raw-materials/edit/${entryId}/step2`);
     } else {
-      navigate(`/gate/raw-materials/new/step2?entryId=${entryId}`)
+      navigate(`/gate/raw-materials/new/step2?entryId=${entryId}`);
     }
-  }
+  };
 
-  const createPOReceipt = useCreatePOReceipt(entryIdNumber || 0)
+  const createPOReceipt = useCreatePOReceipt(entryIdNumber || 0);
 
   const handleNext = async () => {
     if (!entryId) {
-      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' })
-      return
+      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' });
+      return;
     }
 
     // In edit mode (and not fill data mode and not update mode), just navigate without API call
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step4`)
-      return
+      navigate(`/gate/raw-materials/edit/${entryId}/step4`);
+      return;
     }
 
     // Validation
     for (const form of poForms) {
       if (!form.supplierName.trim()) {
-        setApiErrors({ [`${form.id}_supplierName`]: 'Please enter supplier name' })
-        return
+        setApiErrors({ [`${form.id}_supplierName`]: 'Please enter supplier name' });
+        return;
       }
       if (!form.supplierCode.trim()) {
-        setApiErrors({ [`${form.id}_supplierCode`]: 'Please enter supplier code' })
-        return
+        setApiErrors({ [`${form.id}_supplierCode`]: 'Please enter supplier code' });
+        return;
       }
       if (!form.poNumber) {
-        setApiErrors({ [`${form.id}_poNumber`]: 'Please select a PO' })
-        return
+        setApiErrors({ [`${form.id}_poNumber`]: 'Please select a PO' });
+        return;
       }
       if (form.items.length === 0) {
-        setApiErrors({ [`${form.id}_items`]: 'Please select a PO to load items' })
-        return
+        setApiErrors({ [`${form.id}_items`]: 'Please select a PO to load items' });
+        return;
       }
       // Check if at least one item has received quantity > 0
-      const hasReceivedQty = form.items.some((item) => item.received_qty_now > 0)
+      const hasReceivedQty = form.items.some((item) => item.received_qty_now > 0);
       if (!hasReceivedQty) {
         const itemErrors: Record<string, string> = {
           [`${form.id}_received`]: 'Please enter received quantities for at least one item',
-        }
+        };
         form.items.forEach((item) => {
           if (!item.received_qty_now || item.received_qty_now <= 0) {
-            itemErrors[`${form.id}_item_${item.po_item_code}`] = 'Please enter received quantity'
+            itemErrors[`${form.id}_item_${item.po_item_code}`] = 'Please enter received quantity';
           }
-        })
-        setApiErrors(itemErrors)
-        return
+        });
+        setApiErrors(itemErrors);
+        return;
       }
       // Check that received quantity does not exceed remaining PO quantity
       const overReceivedItems = form.items.filter(
-        (item) => item.received_qty_now > item.remaining_qty_initial
-      )
+        (item) => item.received_qty_now > item.remaining_qty_initial,
+      );
       if (overReceivedItems.length > 0) {
-        const itemErrors: Record<string, string> = {}
+        const itemErrors: Record<string, string> = {};
         overReceivedItems.forEach((item) => {
           itemErrors[`${form.id}_item_${item.po_item_code}`] =
-            `Cannot exceed remaining quantity (${item.remaining_qty_initial} ${item.uom})`
-        })
-        setApiErrors(itemErrors)
-        return
+            `Cannot exceed remaining quantity (${item.remaining_qty_initial} ${item.uom})`;
+        });
+        setApiErrors(itemErrors);
+        return;
       }
     }
 
-    setApiErrors({})
+    setApiErrors({});
 
     try {
       // Submit all PO receipts
@@ -463,54 +463,54 @@ export default function Step3Page() {
               received_qty: item.received_qty_now, // Send the new received quantity
               uom: item.uom,
             })),
-        })
+        });
       }
 
       // Navigate to step 4
-      setIsNavigating(true)
+      setIsNavigating(true);
       if (isEditMode) {
-        navigate(`/gate/raw-materials/edit/${entryId}/step4`)
+        navigate(`/gate/raw-materials/edit/${entryId}/step4`);
       } else {
-        navigate(`/gate/raw-materials/new/step4?entryId=${entryId}`)
+        navigate(`/gate/raw-materials/new/step4?entryId=${entryId}`);
       }
     } catch (error) {
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
       if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to save PO receipts' })
+        setApiErrors({ general: apiError.message || 'Failed to save PO receipts' });
       }
     }
-  }
+  };
 
   // Check if error is "not found" error
-  const isNotFoundError = checkNotFoundError(poReceiptsError)
+  const isNotFoundError = checkNotFoundError(poReceiptsError);
 
   // Check if error is a server error (5xx)
-  const hasServerError = checkServerError(poReceiptsError)
+  const hasServerError = checkServerError(poReceiptsError);
 
   // Check if PO receipts data exists
-  const hasPOReceiptsData = existingPOReceipts.length > 0
+  const hasPOReceiptsData = existingPOReceipts.length > 0;
   // Check if there's no data (empty array or not found error)
   const hasNoPOReceiptsData =
-    effectiveEditMode && !isLoadingPOReceipts && (!hasPOReceiptsData || isNotFoundError)
+    effectiveEditMode && !isLoadingPOReceipts && (!hasPOReceiptsData || isNotFoundError);
 
   // Fields are read-only when in edit mode and there's an error and fill data mode is not active
   // OR when data exists and updateMode is not active
   const isReadOnly =
     (effectiveEditMode && hasPOReceiptsData && !updateMode && !fillDataMode) ||
-    (effectiveEditMode && hasNoPOReceiptsData && !fillDataMode)
+    (effectiveEditMode && hasNoPOReceiptsData && !fillDataMode);
   // PO receipts are immutable once submitted — no update allowed
-  const canUpdate = false
+  const canUpdate = false;
 
   if (effectiveEditMode && isLoadingPOReceipts) {
-    return <StepLoadingSpinner />
+    return <StepLoadingSpinner />;
   }
 
   return (
@@ -574,8 +574,8 @@ export default function Step3Page() {
           // 1. Not in edit mode (create mode)
           // 2. Page-level fill data mode is active
           // 3. Any PO form has fill data mode enabled
-          const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true)
-          return !effectiveEditMode || fillDataMode || hasAnyFillDataMode
+          const hasAnyFillDataMode = Object.values(fillDataModeForPO).some((mode) => mode === true);
+          return !effectiveEditMode || fillDataMode || hasAnyFillDataMode;
         })() && (
           <div className="flex justify-center">
             <Button type="button" variant="outline" onClick={handleAddPO}>
@@ -597,8 +597,8 @@ export default function Step3Page() {
             type="button"
             variant="outline"
             onClick={() => {
-              queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-              navigate('/gate/raw-materials')
+              queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+              navigate('/gate/raw-materials');
             }}
           >
             Cancel
@@ -618,27 +618,27 @@ export default function Step3Page() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 interface POCardProps {
-  poForm: POFormData
-  isReadOnly: boolean
-  fillDataMode: boolean
-  onSupplierNameChange: (value: string) => void
-  onSupplierCodeChange: (value: string) => void
-  onVendorSelect: (vendor: Vendor | null) => void
-  onPOFocus: () => void
-  onPOSelect: (po: PurchaseOrder) => void
-  onReceivedQtyChange: (itemCode: string, value: string) => void
-  onRemove: () => void
-  canRemove: boolean
-  apiErrors: Record<string, string>
-  openPODropdown: boolean
-  onClosePODropdown: () => void
-  poSearchTerm: string
-  onPOSearchChange: (value: string) => void
-  onFillData: () => void
+  poForm: POFormData;
+  isReadOnly: boolean;
+  fillDataMode: boolean;
+  onSupplierNameChange: (value: string) => void;
+  onSupplierCodeChange: (value: string) => void;
+  onVendorSelect: (vendor: Vendor | null) => void;
+  onPOFocus: () => void;
+  onPOSelect: (po: PurchaseOrder) => void;
+  onReceivedQtyChange: (itemCode: string, value: string) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+  apiErrors: Record<string, string>;
+  openPODropdown: boolean;
+  onClosePODropdown: () => void;
+  poSearchTerm: string;
+  onPOSearchChange: (value: string) => void;
+  onFillData: () => void;
 }
 
 function POCard({
@@ -660,62 +660,63 @@ function POCard({
   onPOSearchChange,
   onFillData,
 }: POCardProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const debouncedPOSearch = useDebounce(poSearchTerm, 100)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debouncedPOSearch = useDebounce(poSearchTerm, 100);
 
   // Fetch POs only when dropdown is opened and supplier code exists
-  const shouldFetchPOs = openPODropdown && !!poForm.supplierCode
+  const shouldFetchPOs = openPODropdown && !!poForm.supplierCode;
   const {
     data: purchaseOrders = [],
     isLoading: isLoadingPOs,
     error: poError,
-  } = useOpenPOs(poForm.supplierCode || undefined, shouldFetchPOs)
+  } = useOpenPOs(poForm.supplierCode || undefined, shouldFetchPOs);
 
   // Check if error is an API error that should show Fill Data button
   const isPOError = Boolean(
     poError &&
     (() => {
-      const error = poError as unknown as ApiError
-      const errorMessage = error.message?.toLowerCase() || ''
-      const errorDetail = (error as unknown as ApiError).response?.data?.detail?.toLowerCase() || ''
+      const error = poError as unknown as ApiError;
+      const errorMessage = error.message?.toLowerCase() || '';
+      const errorDetail =
+        (error as unknown as ApiError).response?.data?.detail?.toLowerCase() || '';
       return (
         error.status === 400 ||
         errorMessage.includes('required') ||
         errorMessage.includes('invalid') ||
         errorDetail.includes('required') ||
         errorDetail.includes('invalid')
-      )
-    })()
-  )
+      );
+    })(),
+  );
 
   // Effective read-only: true if isReadOnly OR (there's a PO error and fillDataMode is false)
   // Also check updateMode from parent
-  const effectiveReadOnly = isReadOnly || (isPOError && !fillDataMode)
+  const effectiveReadOnly = isReadOnly || (isPOError && !fillDataMode);
 
   // Filter POs based on search
   const filteredPOs = useMemo(() => {
-    if (!debouncedPOSearch.trim()) return purchaseOrders
-    const searchLower = debouncedPOSearch.toLowerCase()
+    if (!debouncedPOSearch.trim()) return purchaseOrders;
+    const searchLower = debouncedPOSearch.toLowerCase();
     return purchaseOrders.filter(
       (po) =>
         po.po_number.toLowerCase().includes(searchLower) ||
-        po.supplier_name.toLowerCase().includes(searchLower)
-    )
-  }, [purchaseOrders, debouncedPOSearch])
+        po.supplier_name.toLowerCase().includes(searchLower),
+    );
+  }, [purchaseOrders, debouncedPOSearch]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        onClosePODropdown()
+        onClosePODropdown();
       }
-    }
+    };
 
     if (openPODropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [openPODropdown, onClosePODropdown])
+  }, [openPODropdown, onClosePODropdown]);
 
   return (
     <Card>
@@ -743,9 +744,9 @@ function POCard({
                   <AlertCircle className="h-4 w-4" />
                   <span>
                     {(() => {
-                      const error = poError as unknown as ApiError
-                      const detail = (error as unknown as ApiError).response?.data?.detail
-                      return detail || error.message || 'Error loading purchase orders'
+                      const error = poError as unknown as ApiError;
+                      const detail = (error as unknown as ApiError).response?.data?.detail;
+                      return detail || error.message || 'Error loading purchase orders';
                     })()}
                   </span>
                 </div>
@@ -780,22 +781,23 @@ function POCard({
                     value={poForm.poNumber}
                     onFocus={onPOFocus}
                     onChange={(e) => {
-                      onPOSearchChange(e.target.value)
+                      onPOSearchChange(e.target.value);
                       if (e.target.value) {
-                        onPOFocus()
+                        onPOFocus();
                       }
                     }}
                     disabled={effectiveReadOnly || !poForm.supplierCode}
                     className={cn(
                       'pr-10',
                       apiErrors[`${poForm.id}_poNumber`] && 'border-destructive',
-                      (!poForm.supplierCode || effectiveReadOnly) && 'cursor-not-allowed opacity-50'
+                      (!poForm.supplierCode || effectiveReadOnly) &&
+                        'cursor-not-allowed opacity-50',
                     )}
                   />
                   <ChevronDown
                     className={cn(
                       'absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none transition-transform',
-                      openPODropdown && 'rotate-180'
+                      openPODropdown && 'rotate-180',
                     )}
                   />
                 </div>
@@ -820,7 +822,7 @@ function POCard({
                             type="button"
                             className={cn(
                               'w-full text-left px-4 py-2 hover:bg-accent focus:bg-accent focus:outline-none flex items-center justify-between',
-                              poForm.poNumber === po.po_number && 'bg-accent'
+                              poForm.poNumber === po.po_number && 'bg-accent',
                             )}
                             onClick={() => onPOSelect(po)}
                           >
@@ -918,7 +920,7 @@ function POCard({
                                 'w-24',
                                 apiErrors[`${poForm.id}_item_${item.po_item_code}`] &&
                                   'border-destructive',
-                                effectiveReadOnly && 'cursor-not-allowed opacity-50'
+                                effectiveReadOnly && 'cursor-not-allowed opacity-50',
                               )}
                             />
                             {apiErrors[`${poForm.id}_item_${item.po_item_code}`] && (
@@ -940,5 +942,5 @@ function POCard({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

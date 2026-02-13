@@ -1,20 +1,20 @@
-import { format } from 'date-fns'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { format } from 'date-fns';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   DayPicker,
   type DayPickerProps,
   type MonthCaptionProps,
   useNavigation,
-} from 'react-day-picker'
+} from 'react-day-picker';
 
-import { cn } from '@/shared/utils'
+import { cn } from '@/shared/utils';
 
-import { Button } from './button'
+import { Button } from './button';
 
 export type CalendarProps = DayPickerProps & {
-  onTodayClick?: (date: Date) => void
-  hideTodayButton?: boolean
-}
+  onTodayClick?: (date: Date) => void;
+  hideTodayButton?: boolean;
+};
 
 export function Calendar({
   className,
@@ -25,8 +25,8 @@ export function Calendar({
   ...props
 }: CalendarProps) {
   const CustomMonthCaption = ({ calendarMonth }: MonthCaptionProps) => {
-    const { goToMonth } = useNavigation()
-    const date = (calendarMonth as { date: Date }).date
+    const { goToMonth } = useNavigation();
+    const date = (calendarMonth as { date: Date }).date;
 
     return (
       <div className="flex items-center justify-between px-3 pt-2">
@@ -45,9 +45,9 @@ export function Calendar({
               variant="ghost"
               size="sm"
               onClick={() => {
-                const today = new Date()
-                goToMonth(today)
-                onTodayClick?.(today)
+                const today = new Date();
+                goToMonth(today);
+                onTodayClick?.(today);
               }}
             >
               Today
@@ -63,8 +63,8 @@ export function Calendar({
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <DayPicker
@@ -114,7 +114,7 @@ export function Calendar({
       components={{ MonthCaption: CustomMonthCaption }}
       {...props}
     />
-  )
+  );
 }
 
-Calendar.displayName = 'Calendar'
+Calendar.displayName = 'Calendar';

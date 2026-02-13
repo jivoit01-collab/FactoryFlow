@@ -1,15 +1,15 @@
-import { authService } from '../services/auth.service'
-import { indexedDBService } from '../services/indexedDb.service'
-import type { RefreshTokenResponse } from '../types/auth.types'
+import { authService } from '../services/auth.service';
+import { indexedDBService } from '../services/indexedDb.service';
+import type { RefreshTokenResponse } from '../types/auth.types';
 
 /**
  * Result of a token refresh operation
  */
 export interface TokenRefreshResult {
-  success: boolean
-  access: string
-  refresh: string
-  error?: Error
+  success: boolean;
+  access: string;
+  refresh: string;
+  error?: Error;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface TokenRefreshResult {
  * @returns Promise resolving to true if token is completely expired
  */
 export async function isTokenCompletelyExpired(): Promise<boolean> {
-  return indexedDBService.isTokenExpiredCompletely()
+  return indexedDBService.isTokenExpiredCompletely();
 }
 
 /**
@@ -27,7 +27,7 @@ export async function isTokenCompletelyExpired(): Promise<boolean> {
  * @returns Promise resolving to true if token should be refreshed
  */
 export async function shouldRefreshToken(): Promise<boolean> {
-  return indexedDBService.isTokenExpired()
+  return indexedDBService.isTokenExpired();
 }
 
 /**
@@ -53,7 +53,7 @@ export async function shouldRefreshToken(): Promise<boolean> {
  */
 export async function refreshAccessToken(): Promise<TokenRefreshResult> {
   try {
-    const refresh = await indexedDBService.getRefreshToken()
+    const refresh = await indexedDBService.getRefreshToken();
 
     if (!refresh) {
       return {
@@ -61,23 +61,23 @@ export async function refreshAccessToken(): Promise<TokenRefreshResult> {
         access: '',
         refresh: '',
         error: new Error('No refresh token available'),
-      }
+      };
     }
 
-    const response: RefreshTokenResponse = await authService.refreshToken(refresh)
+    const response: RefreshTokenResponse = await authService.refreshToken(refresh);
 
     return {
       success: true,
       access: response.access,
       refresh: response.refresh,
-    }
+    };
   } catch (error) {
     return {
       success: false,
       access: '',
       refresh: '',
       error: error instanceof Error ? error : new Error('Token refresh failed'),
-    }
+    };
   }
 }
 
@@ -104,38 +104,38 @@ export async function refreshAccessToken(): Promise<TokenRefreshResult> {
  * ```
  */
 export async function ensureValidToken(
-  onExpired?: () => Promise<void> | void
+  onExpired?: () => Promise<void> | void,
 ): Promise<string | null> {
-  const access = await indexedDBService.getAccessToken()
-  const refresh = await indexedDBService.getRefreshToken()
+  const access = await indexedDBService.getAccessToken();
+  const refresh = await indexedDBService.getRefreshToken();
 
   if (!access || !refresh) {
-    return null
+    return null;
   }
 
   // Check if completely expired
-  const isExpired = await isTokenCompletelyExpired()
+  const isExpired = await isTokenCompletelyExpired();
   if (isExpired) {
     if (onExpired) {
-      await onExpired()
+      await onExpired();
     }
-    return null
+    return null;
   }
 
   // Check if close to expiry and refresh if needed
-  const needsRefresh = await shouldRefreshToken()
+  const needsRefresh = await shouldRefreshToken();
   if (needsRefresh) {
-    const result = await refreshAccessToken()
+    const result = await refreshAccessToken();
     if (result.success) {
-      return result.access
+      return result.access;
     } else {
       // Refresh failed, token might be invalid
       if (onExpired) {
-        await onExpired()
+        await onExpired();
       }
-      return null
+      return null;
     }
   }
 
-  return access
+  return access;
 }

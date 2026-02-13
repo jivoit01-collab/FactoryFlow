@@ -1,13 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type CreateDailyNeedRequest, dailyNeedApi } from './dailyNeed.api'
+import { type CreateDailyNeedRequest, dailyNeedApi } from './dailyNeed.api';
 
 export function useDailyNeedCategories(enabled: boolean = true) {
   return useQuery({
     queryKey: ['dailyNeedCategories'],
     queryFn: () => dailyNeedApi.getCategories(),
     enabled,
-  })
+  });
 }
 
 export function useDailyNeed(entryId: number | null) {
@@ -15,16 +15,16 @@ export function useDailyNeed(entryId: number | null) {
     queryKey: ['dailyNeed', entryId],
     queryFn: () => dailyNeedApi.get(entryId!),
     enabled: !!entryId,
-  })
+  });
 }
 
 export function useCreateDailyNeed(entryId: number) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateDailyNeedRequest) => dailyNeedApi.create(entryId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dailyNeed'] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
+      queryClient.invalidateQueries({ queryKey: ['dailyNeed'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
     },
-  })
+  });
 }

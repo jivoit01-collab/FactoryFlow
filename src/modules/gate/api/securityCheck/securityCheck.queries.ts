@@ -1,23 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type CreateSecurityCheckRequest, securityCheckApi } from './securityCheck.api'
+import { type CreateSecurityCheckRequest, securityCheckApi } from './securityCheck.api';
 
 export function useSecurityCheck(entryId: number | null) {
   return useQuery({
     queryKey: ['securityCheck', entryId],
     queryFn: () => securityCheckApi.get(entryId!),
     enabled: !!entryId,
-  })
+  });
 }
 
 export function useCreateSecurityCheck(entryId: number) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateSecurityCheckRequest) => securityCheckApi.create(entryId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['securityCheck'] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
+      queryClient.invalidateQueries({ queryKey: ['securityCheck'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] });
     },
-  })
+  });
 }

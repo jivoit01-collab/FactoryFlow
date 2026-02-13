@@ -1,1 +1,1 @@
-export { type GRPOPostFormData, grpoPostItemSchema, grpoPostSchema } from './grpo.schema'
+export { type GRPOPostFormData, grpoPostItemSchema, grpoPostSchema } from './grpo.schema';

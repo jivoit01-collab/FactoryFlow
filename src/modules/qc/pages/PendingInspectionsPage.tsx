@@ -1,20 +1,20 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react'
-import { useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react';
+import { useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
-import { useGlobalDateRange } from '@/core/store/hooks'
-import { DateRangePicker } from '@/modules/gate/components'
-import { Button } from '@/shared/components/ui'
+import type { ApiError } from '@/core/api/types';
+import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
+import { Button } from '@/shared/components/ui';
 
 import {
   useCompletedInspections,
   useInspections,
   usePendingInspections,
   useRejectedInspections,
-} from '../api/inspection/inspection.queries'
-import { WORKFLOW_STATUS, WORKFLOW_STATUS_CONFIG } from '../constants'
-import type { Inspection, InspectionWorkflowStatus, PendingInspection } from '../types'
+} from '../api/inspection/inspection.queries';
+import { WORKFLOW_STATUS, WORKFLOW_STATUS_CONFIG } from '../constants';
+import type { Inspection, InspectionWorkflowStatus, PendingInspection } from '../types';
 
 // Tab metadata (no filter functions - backend handles filtering)
 const TAB_CONFIG = {
@@ -48,52 +48,50 @@ const TAB_CONFIG = {
     title: 'Rejected Inspections',
     description: 'Rejected inspections',
   },
-} as const
+} as const;
 
-type StatusFilterKey = keyof typeof TAB_CONFIG
-const TAB_KEYS = Object.keys(TAB_CONFIG) as StatusFilterKey[]
+type StatusFilterKey = keyof typeof TAB_CONFIG;
+const TAB_KEYS = Object.keys(TAB_CONFIG) as StatusFilterKey[];
 
 // Normalized item for rendering rows (works for both PendingInspection and Inspection)
 interface NormalizedItem {
-  id: number
-  entryNo: string
-  reportNo?: string
-  itemName: string
-  partyName: string
-  statusLabel: string
-  statusBadgeClass: string
-  submittedAt: string | null
-  navigateTo: string
-  billingQty?: string
-  billingUom?: string
+  id: number;
+  entryNo: string;
+  reportNo?: string;
+  itemName: string;
+  partyName: string;
+  statusLabel: string;
+  statusBadgeClass: string;
+  submittedAt: string | null;
+  navigateTo: string;
+  billingQty?: string;
+  billingUom?: string;
 }
 
 // Status badge styling
 const getStatusBadgeClass = (status: string | null, hasInspection: boolean) => {
   if (!hasInspection) {
-    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
   }
   switch (status) {
     case WORKFLOW_STATUS.DRAFT:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     case WORKFLOW_STATUS.SUBMITTED:
     case WORKFLOW_STATUS.QA_CHEMIST_APPROVED:
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
     case WORKFLOW_STATUS.QAM_APPROVED:
     case WORKFLOW_STATUS.COMPLETED:
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     case 'REJECTED':
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
     default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
   }
-}
+};
 
 function normalizePendingItem(item: PendingInspection): NormalizedItem {
-  const status = item.has_inspection ? item.inspection_status : null
-  const statusConfig = status
-    ? WORKFLOW_STATUS_CONFIG[status as InspectionWorkflowStatus]
-    : null
+  const status = item.has_inspection ? item.inspection_status : null;
+  const statusConfig = status ? WORKFLOW_STATUS_CONFIG[status as InspectionWorkflowStatus] : null;
 
   return {
     id: item.arrival_slip.id,
@@ -108,11 +106,11 @@ function normalizePendingItem(item: PendingInspection): NormalizedItem {
       : `/qc/inspections/${item.arrival_slip.id}/new`,
     billingQty: item.arrival_slip.billing_qty,
     billingUom: item.arrival_slip.billing_uom,
-  }
+  };
 }
 
 function normalizeInspectionItem(item: Inspection): NormalizedItem {
-  const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status]
+  const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
 
   return {
     id: item.id,
@@ -124,25 +122,25 @@ function normalizeInspectionItem(item: Inspection): NormalizedItem {
     statusBadgeClass: getStatusBadgeClass(item.workflow_status, true),
     submittedAt: item.created_at,
     navigateTo: `/qc/inspections/${item.arrival_slip}`,
-  }
+  };
 }
 
 export default function PendingInspectionsPage() {
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   const dateParams = useMemo(
     () => ({
       from_date: dateRange.from,
       to_date: dateRange.to,
     }),
-    [dateRange]
-  )
+    [dateRange],
+  );
 
   // Get status filter from URL
-  const statusFilter = (searchParams.get('status') as StatusFilterKey) || 'all'
-  const currentTab = TAB_CONFIG[statusFilter] || TAB_CONFIG.all
+  const statusFilter = (searchParams.get('status') as StatusFilterKey) || 'all';
+  const currentTab = TAB_CONFIG[statusFilter] || TAB_CONFIG.all;
 
   // Fetch data from appropriate backend endpoints
   const {
@@ -150,65 +148,59 @@ export default function PendingInspectionsPage() {
     isLoading: allLoading,
     error: allError,
     refetch: refetchAll,
-  } = useInspections(dateParams)
+  } = useInspections(dateParams);
 
   const {
     data: pendingItems = [],
     isLoading: pendingLoading,
     error: pendingError,
     refetch: refetchPending,
-  } = usePendingInspections(dateParams)
+  } = usePendingInspections(dateParams);
 
   const {
     data: completedItems = [],
     isLoading: completedLoading,
     error: completedError,
     refetch: refetchCompleted,
-  } = useCompletedInspections(dateParams)
+  } = useCompletedInspections(dateParams);
 
   const {
     data: rejectedItems = [],
     isLoading: rejectedLoading,
     error: rejectedError,
     refetch: refetchRejected,
-  } = useRejectedInspections(dateParams)
+  } = useRejectedInspections(dateParams);
 
   // Select data based on active tab
   const { items, isLoading, error } = useMemo(() => {
     switch (statusFilter) {
       case 'all': {
         // Merge inspections with pending arrival slips that don't have inspections yet
-        const inspectionItems = allInspections.map(normalizeInspectionItem)
-        const slipIdsWithInspections = new Set(
-          allInspections.map((i) => i.arrival_slip)
-        )
+        const inspectionItems = allInspections.map(normalizeInspectionItem);
+        const slipIdsWithInspections = new Set(allInspections.map((i) => i.arrival_slip));
         const pendingWithoutInspection = pendingItems
           .filter((p) => !p.has_inspection && !slipIdsWithInspections.has(p.arrival_slip.id))
-          .map(normalizePendingItem)
+          .map(normalizePendingItem);
         return {
           items: [...inspectionItems, ...pendingWithoutInspection],
           isLoading: allLoading || pendingLoading,
           error: allError || pendingError,
-        }
+        };
       }
       case 'pending':
         return {
-          items: pendingItems
-            .filter((p) => !p.has_inspection)
-            .map(normalizePendingItem),
+          items: pendingItems.filter((p) => !p.has_inspection).map(normalizePendingItem),
           isLoading: pendingLoading,
           error: pendingError,
-        }
+        };
       case 'draft':
         return {
           items: pendingItems
-            .filter(
-              (p) => p.has_inspection && p.inspection_status === WORKFLOW_STATUS.DRAFT
-            )
+            .filter((p) => p.has_inspection && p.inspection_status === WORKFLOW_STATUS.DRAFT)
             .map(normalizePendingItem),
           isLoading: pendingLoading,
           error: pendingError,
-        }
+        };
       case 'actionable':
         return {
           items: pendingItems
@@ -217,35 +209,35 @@ export default function PendingInspectionsPage() {
                 !p.has_inspection ||
                 p.inspection_status === WORKFLOW_STATUS.DRAFT ||
                 p.inspection_status === WORKFLOW_STATUS.SUBMITTED ||
-                p.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED
+                p.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED,
             )
             .map(normalizePendingItem),
           isLoading: pendingLoading,
           error: pendingError,
-        }
+        };
       case 'approved':
         return {
           items: completedItems.map(normalizeInspectionItem),
           isLoading: completedLoading,
           error: completedError,
-        }
+        };
       case 'rejected':
         return {
           items: rejectedItems.map(normalizeInspectionItem),
           isLoading: rejectedLoading,
           error: rejectedError,
-        }
+        };
       default: {
-        const defaultInspectionItems = allInspections.map(normalizeInspectionItem)
-        const defaultSlipIds = new Set(allInspections.map((i) => i.arrival_slip))
+        const defaultInspectionItems = allInspections.map(normalizeInspectionItem);
+        const defaultSlipIds = new Set(allInspections.map((i) => i.arrival_slip));
         const defaultPending = pendingItems
           .filter((p) => !p.has_inspection && !defaultSlipIds.has(p.arrival_slip.id))
-          .map(normalizePendingItem)
+          .map(normalizePendingItem);
         return {
           items: [...defaultInspectionItems, ...defaultPending],
           isLoading: allLoading || pendingLoading,
           error: allError || pendingError,
-        }
+        };
       }
     }
   }, [
@@ -262,43 +254,43 @@ export default function PendingInspectionsPage() {
     pendingError,
     completedError,
     rejectedError,
-  ])
+  ]);
 
   // Check if error is a permission error (403)
-  const apiError = error as ApiError | null
-  const isPermissionError = apiError?.status === 403
+  const apiError = error as ApiError | null;
+  const isPermissionError = apiError?.status === 403;
 
   // Handle filter change
   const handleFilterChange = (filter: StatusFilterKey) => {
     if (filter === 'all') {
-      setSearchParams({})
+      setSearchParams({});
     } else {
-      setSearchParams({ status: filter })
+      setSearchParams({ status: filter });
     }
-  }
+  };
 
   const refetch = () => {
-    refetchAll()
-    refetchPending()
-    refetchCompleted()
-    refetchRejected()
-  }
+    refetchAll();
+    refetchPending();
+    refetchCompleted();
+    refetchRejected();
+  };
 
   // Format date/time - consistent with Gate module
   const formatDateTime = (dateTime?: string | null) => {
-    if (!dateTime) return '-'
+    if (!dateTime) return '-';
     try {
-      const date = new Date(dateTime)
+      const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return dateTime
+      return dateTime;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -323,13 +315,18 @@ export default function PendingInspectionsPage() {
             date={dateRangeAsDateObjects}
             onDateChange={(date) => {
               if (date && 'from' in date) {
-                setDateRange(date)
+                setDateRange(date);
               } else {
-                setDateRange(undefined)
+                setDateRange(undefined);
               }
             }}
           />
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="w-full sm:w-auto"
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -441,5 +438,5 @@ export default function PendingInspectionsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

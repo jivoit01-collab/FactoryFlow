@@ -1,15 +1,15 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react';
 
 /**
  * Configuration for the edit form state hook.
  */
 export interface UseEditFormStateConfig {
   /** Whether we're in edit mode (editing existing data) */
-  isEditMode: boolean
+  isEditMode: boolean;
   /** Status of the entry being edited (e.g., 'COMPLETED', 'DRAFT') */
-  entryStatus?: string
+  entryStatus?: string;
   /** Whether there was a "not found" error when fetching existing data */
-  hasNotFoundError?: boolean
+  hasNotFoundError?: boolean;
 }
 
 /**
@@ -17,36 +17,36 @@ export interface UseEditFormStateConfig {
  */
 export interface UseEditFormStateReturn {
   /** Whether fill data mode is active (user clicked "Fill Data" after not found error) */
-  fillDataMode: boolean
+  fillDataMode: boolean;
   /** Whether update mode is active (user clicked "Update" to enable editing) */
-  updateMode: boolean
+  updateMode: boolean;
   /**
    * Effective edit mode: true when in edit mode AND not in fill data mode.
    * Use this to determine if we're viewing existing data vs creating new.
    */
-  effectiveEditMode: boolean
+  effectiveEditMode: boolean;
   /**
    * Whether the form fields should be read-only.
    * True when: (effectiveEditMode AND not updateMode AND not hasNotFoundError)
    * OR (hasNotFoundError AND not fillDataMode)
    */
-  isReadOnly: boolean
+  isReadOnly: boolean;
   /**
    * Whether the user can click "Update" to edit.
    * True when in effective edit mode AND entry is not completed.
    */
-  canUpdate: boolean
+  canUpdate: boolean;
   /**
    * Whether a "Fill Data" button should be shown.
    * True when there's a not found error and fill data mode is not active.
    */
-  showFillDataButton: boolean
+  showFillDataButton: boolean;
   /** Enables fill data mode */
-  enableFillDataMode: () => void
+  enableFillDataMode: () => void;
   /** Enables update mode */
-  enableUpdateMode: () => void
+  enableUpdateMode: () => void;
   /** Resets both fill data and update modes */
-  resetModes: () => void
+  resetModes: () => void;
 }
 
 /**
@@ -82,18 +82,18 @@ export function useEditFormState({
   hasNotFoundError = false,
 }: UseEditFormStateConfig): UseEditFormStateReturn {
   // State to track if we should behave like create mode (when Fill Data is clicked)
-  const [fillDataMode, setFillDataMode] = useState(false)
+  const [fillDataMode, setFillDataMode] = useState(false);
   // State to track if Update button has been clicked (enables editing)
-  const [updateMode, setUpdateMode] = useState(false)
+  const [updateMode, setUpdateMode] = useState(false);
 
   // Effective edit mode: we're editing existing data (not filling new data)
-  const effectiveEditMode = isEditMode && !fillDataMode
+  const effectiveEditMode = isEditMode && !fillDataMode;
 
   // Whether the user can click "Update" to edit
-  const canUpdate = effectiveEditMode && entryStatus !== 'COMPLETED'
+  const canUpdate = effectiveEditMode && entryStatus?.toUpperCase() !== 'COMPLETED';
 
   // Whether to show the "Fill Data" button
-  const showFillDataButton = hasNotFoundError && !fillDataMode
+  const showFillDataButton = hasNotFoundError && !fillDataMode;
 
   // Fields are read-only when:
   // 1. In effective edit mode AND update mode is not active AND there's no not found error, OR
@@ -101,21 +101,21 @@ export function useEditFormState({
   const isReadOnly = useMemo(() => {
     return (
       (effectiveEditMode && !updateMode && !hasNotFoundError) || (hasNotFoundError && !fillDataMode)
-    )
-  }, [effectiveEditMode, updateMode, hasNotFoundError, fillDataMode])
+    );
+  }, [effectiveEditMode, updateMode, hasNotFoundError, fillDataMode]);
 
   const enableFillDataMode = useCallback(() => {
-    setFillDataMode(true)
-  }, [])
+    setFillDataMode(true);
+  }, []);
 
   const enableUpdateMode = useCallback(() => {
-    setUpdateMode(true)
-  }, [])
+    setUpdateMode(true);
+  }, []);
 
   const resetModes = useCallback(() => {
-    setFillDataMode(false)
-    setUpdateMode(false)
-  }, [])
+    setFillDataMode(false);
+    setUpdateMode(false);
+  }, []);
 
   return {
     fillDataMode,
@@ -127,5 +127,5 @@ export function useEditFormState({
     enableFillDataMode,
     enableUpdateMode,
     resetModes,
-  }
+  };
 }

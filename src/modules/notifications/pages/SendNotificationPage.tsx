@@ -1,8 +1,8 @@
-import { AlertCircle, CheckCircle2, Loader2, Search, Send, Users } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { toast } from 'sonner'
+import { AlertCircle, CheckCircle2, Loader2, Search, Send, Users } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
-import type { ApiError } from '@/core/api'
+import type { ApiError } from '@/core/api';
 import {
   Badge,
   Button,
@@ -15,134 +15,134 @@ import {
   Input,
   Label,
   Textarea,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
-import { useCompanyUsers, useSendNotification } from '../api/sendNotification.queries'
-import type { SendNotificationRequest } from '../types/sendNotification.types'
-import { NOTIFICATION_TYPES } from '../types/sendNotification.types'
+import { useCompanyUsers, useSendNotification } from '../api/sendNotification.queries';
+import type { SendNotificationRequest } from '../types/sendNotification.types';
+import { NOTIFICATION_TYPES } from '../types/sendNotification.types';
 
-type RecipientMode = 'all' | 'specific'
+type RecipientMode = 'all' | 'specific';
 
 export default function SendNotificationPage() {
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [notificationType, setNotificationType] = useState('GENERAL_ANNOUNCEMENT')
-  const [clickActionUrl, setClickActionUrl] = useState('')
-  const [recipientMode, setRecipientMode] = useState<RecipientMode>('all')
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([])
-  const [roleFilter, setRoleFilter] = useState('')
-  const [userSearch, setUserSearch] = useState('')
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [notificationType, setNotificationType] = useState('GENERAL_ANNOUNCEMENT');
+  const [clickActionUrl, setClickActionUrl] = useState('');
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>('all');
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [roleFilter, setRoleFilter] = useState('');
+  const [userSearch, setUserSearch] = useState('');
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
-  const { data: users = [], isLoading: usersLoading } = useCompanyUsers()
-  const sendNotification = useSendNotification()
+  const { data: users = [], isLoading: usersLoading } = useCompanyUsers();
+  const sendNotification = useSendNotification();
 
   const filteredUsers = useMemo(() => {
-    if (!userSearch.trim()) return users
-    const search = userSearch.toLowerCase()
+    if (!userSearch.trim()) return users;
+    const search = userSearch.toLowerCase();
     return users.filter(
-      (u) => u.full_name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search)
-    )
-  }, [users, userSearch])
+      (u) => u.full_name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search),
+    );
+  }, [users, userSearch]);
 
   const toggleUser = (userId: number) => {
     setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    )
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+    );
     if (apiErrors.recipients) {
       setApiErrors((prev) => {
-        const next = { ...prev }
-        delete next.recipients
-        return next
-      })
+        const next = { ...prev };
+        delete next.recipients;
+        return next;
+      });
     }
-  }
+  };
 
   const selectAll = () => {
-    setSelectedUserIds(filteredUsers.map((u) => u.id))
-  }
+    setSelectedUserIds(filteredUsers.map((u) => u.id));
+  };
 
   const deselectAll = () => {
-    setSelectedUserIds([])
-  }
+    setSelectedUserIds([]);
+  };
 
   const handleInputChange = (field: string, value: string) => {
     if (apiErrors[field]) {
       setApiErrors((prev) => {
-        const next = { ...prev }
-        delete next[field]
-        return next
-      })
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
     }
     switch (field) {
       case 'title':
-        setTitle(value)
-        break
+        setTitle(value);
+        break;
       case 'body':
-        setBody(value)
-        break
+        setBody(value);
+        break;
       case 'click_action_url':
-        setClickActionUrl(value)
-        break
+        setClickActionUrl(value);
+        break;
       case 'role_filter':
-        setRoleFilter(value)
-        break
+        setRoleFilter(value);
+        break;
     }
-  }
+  };
 
   const handleSubmit = async () => {
-    const errors: Record<string, string> = {}
+    const errors: Record<string, string> = {};
 
-    if (!title.trim()) errors.title = 'Title is required'
-    if (!body.trim()) errors.body = 'Body is required'
+    if (!title.trim()) errors.title = 'Title is required';
+    if (!body.trim()) errors.body = 'Body is required';
     if (recipientMode === 'specific' && selectedUserIds.length === 0) {
-      errors.recipients = 'Select at least one recipient'
+      errors.recipients = 'Select at least one recipient';
     }
 
     if (Object.keys(errors).length > 0) {
-      setApiErrors(errors)
-      return
+      setApiErrors(errors);
+      return;
     }
 
     const request: SendNotificationRequest = {
       title: title.trim(),
       body: body.trim(),
       notification_type: notificationType,
-    }
+    };
 
     if (clickActionUrl.trim()) {
-      request.click_action_url = clickActionUrl.trim()
+      request.click_action_url = clickActionUrl.trim();
     }
 
     if (recipientMode === 'specific') {
-      request.recipient_user_ids = selectedUserIds
+      request.recipient_user_ids = selectedUserIds;
     } else if (roleFilter.trim()) {
-      request.role_filter = roleFilter.trim()
+      request.role_filter = roleFilter.trim();
     }
 
     try {
-      setApiErrors({})
-      const result = await sendNotification.mutateAsync(request)
-      toast.success(result.message)
+      setApiErrors({});
+      const result = await sendNotification.mutateAsync(request);
+      toast.success(result.message);
       // Reset form
-      setTitle('')
-      setBody('')
-      setNotificationType('GENERAL_ANNOUNCEMENT')
-      setClickActionUrl('')
-      setSelectedUserIds([])
-      setRoleFilter('')
-      setUserSearch('')
-      setRecipientMode('all')
+      setTitle('');
+      setBody('');
+      setNotificationType('GENERAL_ANNOUNCEMENT');
+      setClickActionUrl('');
+      setSelectedUserIds([]);
+      setRoleFilter('');
+      setUserSearch('');
+      setRecipientMode('all');
     } catch (error) {
-      const apiError = error as ApiError
-      setApiErrors({ general: apiError.message || 'Failed to send notification' })
+      const apiError = error as ApiError;
+      setApiErrors({ general: apiError.message || 'Failed to send notification' });
     }
-  }
+  };
 
-  const isSending = sendNotification.isPending
+  const isSending = sendNotification.isPending;
 
   return (
     <div className="space-y-6">
@@ -373,12 +373,12 @@ export default function SendNotificationPage() {
                 {selectedUserIds.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {selectedUserIds.slice(0, 5).map((id) => {
-                      const user = users.find((u) => u.id === id)
+                      const user = users.find((u) => u.id === id);
                       return user ? (
                         <Badge key={id} variant="secondary" className="text-xs">
                           {user.full_name}
                         </Badge>
-                      ) : null
+                      ) : null;
                     })}
                     {selectedUserIds.length > 5 && (
                       <Badge variant="outline" className="text-xs">
@@ -393,5 +393,5 @@ export default function SendNotificationPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

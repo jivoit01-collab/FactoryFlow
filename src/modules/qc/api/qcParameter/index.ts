@@ -1,2 +1,2 @@
-export * from './qcParameter.api'
-export * from './qcParameter.queries'
+export * from './qcParameter.api';
+export * from './qcParameter.queries';

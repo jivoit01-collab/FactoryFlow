@@ -1,8 +1,8 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
-import type { ApiError } from '@/core/api/types'
+import type { ApiError } from '@/core/api/types';
 import {
   Button,
   Dialog,
@@ -13,28 +13,49 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
-import { useTransporters } from '../api/transporter/transporter.queries'
-import { useCreateVehicle } from '../api/vehicle/vehicle.queries'
-import { type VehicleFormData, vehicleSchema } from '../schemas/vehicle.schema'
-import { TransporterSelect } from './TransporterSelect'
-import { VehicleTypeSelect } from './VehicleTypeSelect'
+import type { Vehicle } from '../api/vehicle/vehicle.api';
+import { useTransporters } from '../api/transporter/transporter.queries';
+import { useCreateVehicle, useUpdateVehicle, useVehicleById } from '../api/vehicle/vehicle.queries';
+import { type VehicleFormData, vehicleSchema } from '../schemas/vehicle.schema';
+import { TransporterSelect } from './TransporterSelect';
+import { VehicleTypeSelect } from './VehicleTypeSelect';
 
 interface CreateVehicleDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSuccess?: (vehicleId: number, vehicleNumber: string) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: (vehicle: Vehicle) => void;
+
+  /** Optional — pass to enable edit mode */
+  initialData?: {
+    id: number;
+  };
 }
 
-export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVehicleDialogProps) {
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
-  const [selectedTransporterId, setSelectedTransporterId] = useState<number | null>(null)
-  const createVehicle = useCreateVehicle()
+export function CreateVehicleDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  initialData,
+}: CreateVehicleDialogProps) {
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [selectedTransporterId, setSelectedTransporterId] = useState<number | null>(null);
+  const createVehicle = useCreateVehicle();
+  const updateVehicle = useUpdateVehicle();
   // Only fetch transporters when dialog is open
-  const { data: transporters = [] } = useTransporters(open)
-  const [vehicleTypeValue, setVehicleTypeValue] = useState('')
+  const { data: transporters = [] } = useTransporters(open);
+  const [vehicleTypeValue, setVehicleTypeValue] = useState('');
+
+  const isEditMode = !!initialData;
+  const mutation = isEditMode ? updateVehicle : createVehicle;
+
+  // Fetch full vehicle details when in edit mode
+  const { data: vehicleData } = useVehicleById(
+    open && isEditMode ? initialData.id : null,
+    open && isEditMode,
+  );
 
   const {
     register,
@@ -51,70 +72,90 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
       transporter: 0,
       capacity_ton: '',
     },
-  })
+  });
 
-  const [transporterName, setTransporterName] = useState('')
+  const [transporterName, setTransporterName] = useState('');
 
   // Combine form errors and API errors for scroll-to-error
-  const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors])
-  useScrollToError(combinedErrors)
+  const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors]);
+  useScrollToError(combinedErrors);
 
   // Reset form and errors when dialog opens/closes
   useEffect(() => {
-    if (open) {
-      reset()
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting state on dialog open is a valid pattern
-      setApiErrors({})
+    if (!open) return;
 
-      setSelectedTransporterId(null)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting state on dialog open is a valid pattern
+    setApiErrors({});
 
-      setTransporterName('')
-      setVehicleTypeValue('')
+    if (!isEditMode) {
+      reset();
+      setSelectedTransporterId(null);
+      setTransporterName('');
+      setVehicleTypeValue('');
     }
-  }, [open, reset])
+  }, [open, reset, isEditMode]);
+
+  // Populate form when vehicle data is fetched (edit mode)
+  useEffect(() => {
+    if (!open || !isEditMode || !vehicleData) return;
+
+    reset({
+      vehicle_number: vehicleData.vehicle_number,
+      vehicle_type: vehicleData.vehicle_type?.id ?? 0,
+      transporter: vehicleData.transporter?.id ?? 0,
+      capacity_ton: vehicleData.capacity_ton ?? '',
+    });
+    setVehicleTypeValue(vehicleData.vehicle_type?.id ? String(vehicleData.vehicle_type.id) : '');
+    setTransporterName(vehicleData.transporter?.name ?? '');
+    setSelectedTransporterId(vehicleData.transporter?.id ?? null);
+  }, [open, isEditMode, vehicleData, reset]);
 
   // Update transporter ID when transporter name changes
   useEffect(() => {
     if (transporterName && transporters.length > 0) {
-      const transporter = transporters.find((t) => t.name === transporterName)
+      const transporter = transporters.find((t) => t.name === transporterName);
       if (transporter) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with form value is a valid pattern
-        setSelectedTransporterId(transporter.id)
-        setValue('transporter', transporter.id)
+        setSelectedTransporterId(transporter.id);
+        setValue('transporter', transporter.id);
       } else {
-        setSelectedTransporterId(null)
-        setValue('transporter', 0)
+        setSelectedTransporterId(null);
+        setValue('transporter', 0);
       }
     } else {
-      setSelectedTransporterId(null)
-      setValue('transporter', 0)
+      setSelectedTransporterId(null);
+      setValue('transporter', 0);
     }
-  }, [transporterName, transporters, setValue])
+  }, [transporterName, transporters, setValue]);
 
   const onSubmit = async (data: VehicleFormData) => {
     if (!selectedTransporterId) {
-      setApiErrors({ transporter: 'Please select a transporter' })
-      return
+      setApiErrors({ transporter: 'Please select a transporter' });
+      return;
     }
 
-    setApiErrors({})
+    setApiErrors({});
     try {
-      const result = await createVehicle.mutateAsync({
-        ...data,
-        transporter: selectedTransporterId,
-      })
-      reset()
-      onOpenChange(false)
-      if (onSuccess) {
-        onSuccess(result.id, result.vehicle_number)
-      }
+      const result = isEditMode
+        ? await updateVehicle.mutateAsync({
+            id: initialData.id,
+            ...data,
+            transporter: selectedTransporterId,
+          })
+        : await createVehicle.mutateAsync({
+            ...data,
+            transporter: selectedTransporterId,
+          });
+      reset();
+      onOpenChange(false);
+      onSuccess?.(result);
     } catch (error) {
       // Handle API errors
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
 
       if (apiError.errors) {
         // Map API errors to form fields
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
             // Map API field names to form field names
@@ -125,29 +166,35 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
                   ? 'vehicle_type'
                   : field === 'capacity_ton'
                     ? 'capacity_ton'
-                    : field
-            fieldErrors[formField] = messages[0]
+                    : field;
+            fieldErrors[formField] = messages[0];
             setError(formField as keyof VehicleFormData, {
               type: 'server',
               message: messages[0],
-            })
+            });
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
         // General error message
-        setApiErrors({ general: apiError.message || 'Failed to create vehicle' })
+        setApiErrors({
+          general:
+            apiError.message ||
+            (isEditMode ? 'Failed to update vehicle' : 'Failed to create vehicle'),
+        });
       }
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add New Vehicle</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Update Vehicle' : 'Add New Vehicle'}</DialogTitle>
           <DialogDescription>
-            Fill in the details to create a new vehicle. All fields are required.
+            {isEditMode
+              ? 'Update the vehicle details below.'
+              : 'Fill in the details to create a new vehicle. All fields are required.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -165,16 +212,20 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
             <Input
               id="vehicle_number"
               placeholder="HR55AB1234"
-              {...register('vehicle_number')}
-              disabled={createVehicle.isPending}
+              {...register('vehicle_number', {
+                onChange: (e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                },
+              })}
+              disabled={isEditMode || mutation.isPending}
               className={
                 errors.vehicle_number || apiErrors.vehicle_number ? 'border-destructive' : ''
               }
             />
-            {errors.vehicle_number && (
+            {!isEditMode && errors.vehicle_number && (
               <p className="text-sm text-destructive">{errors.vehicle_number.message}</p>
             )}
-            {apiErrors.vehicle_number && !errors.vehicle_number && (
+            {!isEditMode && apiErrors.vehicle_number && !errors.vehicle_number && (
               <p className="text-sm text-destructive">{apiErrors.vehicle_number}</p>
             )}
           </div>
@@ -183,10 +234,10 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
             <VehicleTypeSelect
               value={vehicleTypeValue || undefined}
               onChange={(typeId, _typeName) => {
-                setValue('vehicle_type', typeId)
-                setVehicleTypeValue(String(typeId))
+                setValue('vehicle_type', typeId);
+                setVehicleTypeValue(String(typeId));
               }}
-              disabled={createVehicle.isPending}
+              disabled={mutation.isPending}
               label="Vehicle Type"
               required
               error={errors.vehicle_type?.message || apiErrors.vehicle_type}
@@ -215,7 +266,7 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
               type="text"
               placeholder="e.g., 18"
               {...register('capacity_ton')}
-              disabled={createVehicle.isPending}
+              disabled={mutation.isPending}
               className={errors.capacity_ton || apiErrors.capacity_ton ? 'border-destructive' : ''}
             />
             {errors.capacity_ton && (
@@ -231,16 +282,22 @@ export function CreateVehicleDialog({ open, onOpenChange, onSuccess }: CreateVeh
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={createVehicle.isPending}
+              disabled={mutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createVehicle.isPending}>
-              {createVehicle.isPending ? 'Creating...' : 'Create Vehicle'}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending
+                ? isEditMode
+                  ? 'Updating...'
+                  : 'Creating...'
+                : isEditMode
+                  ? 'Update Vehicle'
+                  : 'Create Vehicle'}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

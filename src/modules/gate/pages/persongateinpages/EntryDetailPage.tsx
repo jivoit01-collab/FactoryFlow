@@ -10,11 +10,11 @@ import {
   Phone,
   User,
   XCircle,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+} from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import {
   useCancelPersonEntry,
@@ -22,29 +22,29 @@ import {
   useLabour,
   usePersonEntry,
   useVisitor,
-} from '../../api/personGateIn/personGateIn.queries'
-import { GateSelect } from '../../components'
+} from '../../api/personGateIn/personGateIn.queries';
+import { GateSelect } from '../../components';
 
 export default function EntryDetailPage() {
-  const navigate = useNavigate()
-  const { entryId } = useParams<{ entryId: string }>()
-  const [showExitModal, setShowExitModal] = useState(false)
-  const [selectedGate, setSelectedGate] = useState<number | null>(null)
+  const navigate = useNavigate();
+  const { entryId } = useParams<{ entryId: string }>();
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [selectedGate, setSelectedGate] = useState<number | null>(null);
 
-  const entryIdNumber = entryId ? parseInt(entryId, 10) : null
+  const entryIdNumber = entryId ? parseInt(entryId, 10) : null;
 
-  const { data: entry, isLoading, refetch } = usePersonEntry(entryIdNumber)
-  const { data: visitor } = useVisitor(entry?.visitor || null)
-  const { data: labour } = useLabour(entry?.labour || null)
+  const { data: entry, isLoading, refetch } = usePersonEntry(entryIdNumber);
+  const { data: visitor } = useVisitor(entry?.visitor || null);
+  const { data: labour } = useLabour(entry?.labour || null);
 
-  const exitMutation = useExitPersonEntry()
-  const cancelMutation = useCancelPersonEntry()
+  const exitMutation = useExitPersonEntry();
+  const cancelMutation = useCancelPersonEntry();
 
   // Format date/time for display
   const formatDateTime = (dateTime?: string | null) => {
-    if (!dateTime) return '-'
+    if (!dateTime) return '-';
     try {
-      const date = new Date(dateTime)
+      const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
         weekday: 'short',
         year: 'numeric',
@@ -52,30 +52,30 @@ export default function EntryDetailPage() {
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return dateTime
+      return dateTime;
     }
-  }
+  };
 
   // Format duration
   const formatDuration = (entryTime?: string | null, exitTime?: string | null) => {
-    if (!entryTime) return '-'
+    if (!entryTime) return '-';
     try {
-      const entry = new Date(entryTime)
-      const end = exitTime ? new Date(exitTime) : new Date()
-      const diffMs = end.getTime() - entry.getTime()
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+      const entry = new Date(entryTime);
+      const end = exitTime ? new Date(exitTime) : new Date();
+      const diffMs = end.getTime() - entry.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
       if (diffHours > 0) {
-        return `${diffHours}h ${diffMins}m`
+        return `${diffHours}h ${diffMins}m`;
       }
-      return `${diffMins}m`
+      return `${diffMins}m`;
     } catch {
-      return '-'
+      return '-';
     }
-  }
+  };
 
   // Get status badge
   const getStatusBadge = (status: string) => {
@@ -86,62 +86,62 @@ export default function EntryDetailPage() {
             <CheckCircle2 className="h-4 w-4" />
             Inside
           </span>
-        )
+        );
       case 'OUT':
         return (
           <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
             <LogOut className="h-4 w-4" />
             Exited
           </span>
-        )
+        );
       case 'CANCELLED':
         return (
           <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
             <XCircle className="h-4 w-4" />
             Cancelled
           </span>
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   // Handle exit
   const handleExit = async () => {
-    if (!entryIdNumber || !selectedGate) return
+    if (!entryIdNumber || !selectedGate) return;
 
     try {
       await exitMutation.mutateAsync({
         id: entryIdNumber,
         data: { gate_out: selectedGate },
-      })
-      setShowExitModal(false)
-      refetch()
+      });
+      setShowExitModal(false);
+      refetch();
     } catch (error) {
-      console.error('Failed to exit:', error)
+      console.error('Failed to exit:', error);
     }
-  }
+  };
 
   // Handle cancel
   const handleCancel = async () => {
-    if (!entryIdNumber) return
+    if (!entryIdNumber) return;
 
-    if (!window.confirm('Are you sure you want to cancel this entry?')) return
+    if (!window.confirm('Are you sure you want to cancel this entry?')) return;
 
     try {
-      await cancelMutation.mutateAsync(entryIdNumber)
-      refetch()
+      await cancelMutation.mutateAsync(entryIdNumber);
+      refetch();
     } catch (error) {
-      console.error('Failed to cancel:', error)
+      console.error('Failed to cancel:', error);
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
 
   if (!entry) {
@@ -152,11 +152,11 @@ export default function EntryDetailPage() {
           Go back
         </Button>
       </div>
-    )
+    );
   }
 
-  const personDetails = entry.visitor ? visitor : labour
-  const isVisitor = !!entry.visitor
+  const personDetails = entry.visitor ? visitor : labour;
+  const isVisitor = !!entry.visitor;
 
   return (
     <div className="space-y-6">
@@ -438,5 +438,5 @@ export default function EntryDetailPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

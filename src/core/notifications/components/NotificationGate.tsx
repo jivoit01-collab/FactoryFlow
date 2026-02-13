@@ -1,41 +1,41 @@
-import { Bell, BellOff } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { Bell, BellOff } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { APP_NAME } from '@/config/constants'
-import { Button } from '@/shared/components/ui/button'
+import { APP_NAME } from '@/config/constants';
+import { Button } from '@/shared/components/ui/button';
 
 /**
  * Full-screen gate that blocks the app until the user grants notification permission.
  * Shown only when Notification.permission is 'default' (not yet decided) or 'denied'.
  */
 export function NotificationGate({ children }: { children: React.ReactNode }) {
-  const [permission, setPermission] = useState<NotificationPermission | null>(null)
+  const [permission, setPermission] = useState<NotificationPermission | null>(null);
 
   useEffect(() => {
     if (!('Notification' in window)) {
       // Browser doesn't support notifications — let the user through
-      setPermission('granted')
-      return
+      setPermission('granted');
+      return;
     }
-    setPermission(Notification.permission)
-  }, [])
+    setPermission(Notification.permission);
+  }, []);
 
   const requestPermission = useCallback(async () => {
     try {
-      const result = await Notification.requestPermission()
-      setPermission(result)
+      const result = await Notification.requestPermission();
+      setPermission(result);
     } catch {
-      setPermission(Notification.permission)
+      setPermission(Notification.permission);
     }
-  }, [])
+  }, []);
 
   // Still checking
-  if (permission === null) return null
+  if (permission === null) return null;
 
   // Permission granted — render the app
-  if (permission === 'granted') return <>{children}</>
+  if (permission === 'granted') return <>{children}</>;
 
-  const isDenied = permission === 'denied'
+  const isDenied = permission === 'denied';
 
   return (
     <div className="flex h-screen items-center justify-center bg-background px-4">
@@ -77,5 +77,5 @@ export function NotificationGate({ children }: { children: React.ReactNode }) {
         )}
       </div>
     </div>
-  )
+  );
 }

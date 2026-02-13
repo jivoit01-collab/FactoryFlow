@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo } from 'react';
 
-import { QC_PERMISSIONS } from '@/config/permissions'
-import { usePermission } from '@/core/auth'
+import { QC_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth';
 
-import { WORKFLOW_STATUS } from '../constants'
-import type { Inspection } from '../types'
+import { WORKFLOW_STATUS } from '../constants';
+import type { Inspection } from '../types';
 
 /**
  * Hook for checking QC inspection-related permissions
@@ -21,32 +21,32 @@ import type { Inspection } from '../types'
  * {showChemistApproval && <Button>Approve as Chemist</Button>}
  */
 export function useInspectionPermissions(inspection: Inspection | null | undefined) {
-  const { hasAnyPermission } = usePermission()
+  const { hasAnyPermission } = usePermission();
 
   return useMemo(() => {
     // Raw permission checks
-    const canCreateInspection = hasAnyPermission([QC_PERMISSIONS.INSPECTION.CREATE])
+    const canCreateInspection = hasAnyPermission([QC_PERMISSIONS.INSPECTION.CREATE]);
     const canEditInspection = hasAnyPermission([
       QC_PERMISSIONS.INSPECTION.CREATE,
       QC_PERMISSIONS.INSPECTION.EDIT,
-    ])
-    const canSubmitInspection = hasAnyPermission([QC_PERMISSIONS.INSPECTION.SUBMIT])
-    const canApproveAsChemist = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST])
-    const canApproveAsQAM = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM])
+    ]);
+    const canSubmitInspection = hasAnyPermission([QC_PERMISSIONS.INSPECTION.SUBMIT]);
+    const canApproveAsChemist = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST]);
+    const canApproveAsQAM = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM]);
     const canReject = hasAnyPermission([
       QC_PERMISSIONS.APPROVAL.REJECT,
       QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
       QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
-    ])
+    ]);
 
     // Workflow state checks
-    const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT
-    const isSubmitted = inspection?.workflow_status === WORKFLOW_STATUS.SUBMITTED
-    const isChemistApproved = inspection?.workflow_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED
-    const isLocked = inspection?.is_locked ?? false
+    const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT;
+    const isSubmitted = inspection?.workflow_status === WORKFLOW_STATUS.SUBMITTED;
+    const isChemistApproved = inspection?.workflow_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED;
+    const isLocked = inspection?.is_locked ?? false;
     const isCompleted =
       inspection?.workflow_status === WORKFLOW_STATUS.QAM_APPROVED ||
-      inspection?.workflow_status === WORKFLOW_STATUS.COMPLETED
+      inspection?.workflow_status === WORKFLOW_STATUS.COMPLETED;
 
     // Contextual permissions (combining permission + workflow state)
     return {
@@ -80,15 +80,15 @@ export function useInspectionPermissions(inspection: Inspection | null | undefin
       /** Is inspection completed/locked */
       isCompleted,
       isLocked,
-    }
-  }, [inspection, hasAnyPermission])
+    };
+  }, [inspection, hasAnyPermission]);
 }
 
 /**
  * Hook for checking QC arrival slip permissions
  */
 export function useArrivalSlipPermissions() {
-  const { hasAnyPermission } = usePermission()
+  const { hasAnyPermission } = usePermission();
 
   return useMemo(
     () => ({
@@ -100,21 +100,21 @@ export function useArrivalSlipPermissions() {
       canSubmit: hasAnyPermission([QC_PERMISSIONS.ARRIVAL_SLIP.SUBMIT]),
       canView: hasAnyPermission([QC_PERMISSIONS.ARRIVAL_SLIP.VIEW]),
     }),
-    [hasAnyPermission]
-  )
+    [hasAnyPermission],
+  );
 }
 
 /**
  * Hook for checking QC master data permissions
  */
 export function useMasterDataPermissions() {
-  const { hasAnyPermission } = usePermission()
+  const { hasAnyPermission } = usePermission();
 
   return useMemo(
     () => ({
       canManageMaterialTypes: hasAnyPermission([QC_PERMISSIONS.MASTER_DATA.MANAGE_MATERIAL_TYPES]),
       canManageQCParameters: hasAnyPermission([QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS]),
     }),
-    [hasAnyPermission]
-  )
+    [hasAnyPermission],
+  );
 }

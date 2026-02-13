@@ -1,5 +1,5 @@
-import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   Button,
@@ -8,22 +8,22 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/shared/components/ui'
-import { useDebounce } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
-import type { Visitor } from '../../api/personGateIn/personGateIn.api'
-import { useVisitors } from '../../api/personGateIn/personGateIn.queries'
-import { CreateVisitorDialog } from './CreateVisitorDialog'
+import type { Visitor } from '../../api/personGateIn/personGateIn.api';
+import { useVisitors } from '../../api/personGateIn/personGateIn.queries';
+import { CreateVisitorDialog } from './CreateVisitorDialog';
 
 interface VisitorSelectProps {
-  value?: number | null
-  onChange: (visitor: Visitor | null) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: number | null;
+  onChange: (visitor: Visitor | null) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
 }
 
 export function VisitorSelect({
@@ -35,102 +35,102 @@ export function VisitorSelect({
   label,
   required = false,
 }: VisitorSelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [displayValue, setDisplayValue] = useState('')
-  const [selectedVisitor, setSelectedVisitor] = useState<Visitor | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [displayValue, setDisplayValue] = useState('');
+  const [selectedVisitor, setSelectedVisitor] = useState<Visitor | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const debouncedSearch = useDebounce(searchTerm, 150)
+  const debouncedSearch = useDebounce(searchTerm, 150);
 
   // Fetch visitors when dropdown is open (lazy loading)
   const { data: visitors = [], isLoading } = useVisitors(
     debouncedSearch || undefined,
-    isOpen && !disabled
-  )
+    isOpen && !disabled,
+  );
 
   // Filter out blacklisted visitors
-  const filteredVisitors = visitors.filter((v) => !v.blacklisted)
+  const filteredVisitors = visitors.filter((v) => !v.blacklisted);
 
   // Update display value when value changes
   useEffect(() => {
     if (value && visitors.length > 0) {
-      const visitor = visitors.find((v) => v.id === value)
+      const visitor = visitors.find((v) => v.id === value);
       if (visitor) {
-        setDisplayValue(visitor.name)
-        setSelectedVisitor(visitor)
+        setDisplayValue(visitor.name);
+        setSelectedVisitor(visitor);
       }
     } else if (!value) {
-      setDisplayValue('')
-      setSearchTerm('')
-      setSelectedVisitor(null)
+      setDisplayValue('');
+      setSearchTerm('');
+      setSelectedVisitor(null);
     }
-  }, [value, visitors])
+  }, [value, visitors]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+        setIsOpen(false);
         // Reset search term to display value when closing
         if (value) {
-          setSearchTerm('')
+          setSearchTerm('');
         }
       }
-    }
+    };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen, value])
+  }, [isOpen, value]);
 
   const handleSelect = (visitor: Visitor) => {
-    setDisplayValue(visitor.name)
-    setSearchTerm('')
-    setSelectedVisitor(visitor)
-    onChange(visitor)
-    setIsOpen(false)
-  }
+    setDisplayValue(visitor.name);
+    setSearchTerm('');
+    setSelectedVisitor(visitor);
+    onChange(visitor);
+    setIsOpen(false);
+  };
 
   const handleInputFocus = () => {
     if (!disabled) {
-      setIsOpen(true)
+      setIsOpen(true);
     }
-  }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setSearchTerm(val)
-    setDisplayValue(val)
-    setIsOpen(true)
+    const val = e.target.value;
+    setSearchTerm(val);
+    setDisplayValue(val);
+    setIsOpen(true);
     if (!val) {
-      onChange(null)
-      setSelectedVisitor(null)
+      onChange(null);
+      setSelectedVisitor(null);
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
-      setIsOpen(false)
+      setIsOpen(false);
     } else if (e.key === 'Enter' && filteredVisitors.length === 1) {
-      handleSelect(filteredVisitors[0])
+      handleSelect(filteredVisitors[0]);
     }
-  }
+  };
 
   const handleAddNewClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setIsOpen(false)
-    setIsDialogOpen(true)
-  }
+    e.stopPropagation();
+    setIsOpen(false);
+    setIsDialogOpen(true);
+  };
 
   const handleCreateSuccess = (visitor: Visitor) => {
-    setDisplayValue(visitor.name)
-    setSelectedVisitor(visitor)
-    onChange(visitor)
-  }
+    setDisplayValue(visitor.name);
+    setSelectedVisitor(visitor);
+    onChange(visitor);
+  };
 
   return (
     <div className="space-y-2">
@@ -210,7 +210,7 @@ export function VisitorSelect({
             disabled={disabled}
             className={cn(
               'pr-10 cursor-text',
-              error && 'border-destructive focus-visible:ring-destructive'
+              error && 'border-destructive focus-visible:ring-destructive',
             )}
             autoComplete="off"
           />
@@ -221,7 +221,7 @@ export function VisitorSelect({
               <ChevronDown
                 className={cn(
                   'h-4 w-4 text-muted-foreground transition-transform',
-                  isOpen && 'rotate-180'
+                  isOpen && 'rotate-180',
                 )}
               />
             )}
@@ -260,7 +260,7 @@ export function VisitorSelect({
                         key={visitor.id}
                         className={cn(
                           'px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground flex items-center justify-between',
-                          value === visitor.id && 'bg-accent'
+                          value === visitor.id && 'bg-accent',
                         )}
                         onClick={() => handleSelect(visitor)}
                       >
@@ -289,5 +289,5 @@ export function VisitorSelect({
         onSuccess={handleCreateSuccess}
       />
     </div>
-  )
+  );
 }

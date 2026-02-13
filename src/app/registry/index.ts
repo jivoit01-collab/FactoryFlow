@@ -1,14 +1,14 @@
-import type { Reducer } from '@reduxjs/toolkit'
+import type { Reducer } from '@reduxjs/toolkit';
 
-import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types'
+import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types';
 // Module configuration imports
 // Each module exports its own routes, navigation, and reducers
-import { authModuleConfig } from '@/modules/auth/module.config'
-import { dashboardModuleConfig } from '@/modules/dashboard/module.config'
-import { gateModuleConfig } from '@/modules/gate/module.config'
-import { grpoModuleConfig } from '@/modules/grpo/module.config'
-import { notificationsModuleConfig } from '@/modules/notifications/module.config'
-import { qcModuleConfig } from '@/modules/qc/module.config'
+import { authModuleConfig } from '@/modules/auth/module.config';
+import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
+import { gateModuleConfig } from '@/modules/gate/module.config';
+import { grpoModuleConfig } from '@/modules/grpo/module.config';
+import { notificationsModuleConfig } from '@/modules/notifications/module.config';
+import { qcModuleConfig } from '@/modules/qc/module.config';
 
 /**
  * Central registry of all feature modules
@@ -21,13 +21,13 @@ export const moduleRegistry: ModuleConfig[] = [
   qcModuleConfig,
   grpoModuleConfig,
   notificationsModuleConfig,
-]
+];
 
 /**
  * Extract all routes from registered modules
  */
 export function getAllRoutes(): ModuleRoute[] {
-  return moduleRegistry.flatMap((m) => m.routes)
+  return moduleRegistry.flatMap((m) => m.routes);
 }
 
 /**
@@ -36,18 +36,18 @@ export function getAllRoutes(): ModuleRoute[] {
 export function getRoutesByLayout(layout: 'auth' | 'main'): ModuleRoute[] {
   return getAllRoutes().filter((route) => {
     if (layout === 'auth') {
-      return route.layout === 'auth'
+      return route.layout === 'auth';
     }
     // Default to main layout if not specified
-    return route.layout !== 'auth'
-  })
+    return route.layout !== 'auth';
+  });
 }
 
 /**
  * Extract all navigation items from registered modules
  */
 export function getAllNavigation(): ModuleNavItem[] {
-  return moduleRegistry.flatMap((m) => m.navigation ?? [])
+  return moduleRegistry.flatMap((m) => m.navigation ?? []);
 }
 
 /**
@@ -59,6 +59,6 @@ export function getAllReducers(): Record<string, Reducer> {
       ...acc,
       ...m.reducer,
     }),
-    {} as Record<string, Reducer>
-  )
+    {} as Record<string, Reducer>,
+  );
 }

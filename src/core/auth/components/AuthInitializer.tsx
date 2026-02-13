@@ -1,55 +1,55 @@
-import { useEffect, useRef } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-import { AUTH_CONFIG } from '@/config/constants'
-import { ROUTES } from '@/config/routes.config'
+import { AUTH_CONFIG } from '@/config/constants';
+import { ROUTES } from '@/config/routes.config';
 import {
   markAuthInitialized,
   setInitializationPromise,
   setupTokenRefreshInterval,
-} from '@/core/api/client'
-import { useAppDispatch, useAppSelector } from '@/core/store'
+} from '@/core/api/client';
+import { useAppDispatch, useAppSelector } from '@/core/store';
 
-import { authService } from '../services/auth.service'
-import { indexedDBService } from '../services/indexedDb.service'
-import { initializeComplete, loginSuccess, updateUser } from '../store/authSlice'
-import { ensureValidToken, isTokenCompletelyExpired } from '../utils/tokenRefresh.util'
+import { authService } from '../services/auth.service';
+import { indexedDBService } from '../services/indexedDb.service';
+import { initializeComplete, loginSuccess, updateUser } from '../store/authSlice';
+import { ensureValidToken, isTokenCompletelyExpired } from '../utils/tokenRefresh.util';
 
 interface AuthInitializerProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 /**
  * Validate stored tokens and return them if valid, or null if expired/missing.
  */
 async function validateStoredTokens(): Promise<{
-  access: string
-  refresh: string
-  authData: Awaited<ReturnType<typeof indexedDBService.getAuthData>>
+  access: string;
+  refresh: string;
+  authData: Awaited<ReturnType<typeof indexedDBService.getAuthData>>;
 } | null> {
-  const access = await indexedDBService.getAccessToken()
-  const refresh = await indexedDBService.getRefreshToken()
-  const authData = await indexedDBService.getAuthData()
+  const access = await indexedDBService.getAccessToken();
+  const refresh = await indexedDBService.getRefreshToken();
+  const authData = await indexedDBService.getAuthData();
 
-  if (!access || !refresh || !authData) return null
+  if (!access || !refresh || !authData) return null;
 
-  const isExpired = await isTokenCompletelyExpired()
+  const isExpired = await isTokenCompletelyExpired();
   if (isExpired) {
-    await indexedDBService.clearAuthData()
-    return null
+    await indexedDBService.clearAuthData();
+    return null;
   }
 
   const validToken = await ensureValidToken(async () => {
-    await indexedDBService.clearAuthData()
-  })
-  if (!validToken) return null
+    await indexedDBService.clearAuthData();
+  });
+  if (!validToken) return null;
 
   // Re-read tokens after potential refresh
-  const currentAccess = await indexedDBService.getAccessToken()
-  const currentRefresh = await indexedDBService.getRefreshToken()
-  if (!currentAccess || !currentRefresh) return null
+  const currentAccess = await indexedDBService.getAccessToken();
+  const currentRefresh = await indexedDBService.getRefreshToken();
+  if (!currentAccess || !currentRefresh) return null;
 
-  return { access: currentAccess, refresh: currentRefresh, authData }
+  return { access: currentAccess, refresh: currentRefresh, authData };
 }
 
 /**
@@ -58,12 +58,12 @@ async function validateStoredTokens(): Promise<{
 function buildAuthPayload(
   authData: NonNullable<Awaited<ReturnType<typeof indexedDBService.getAuthData>>>,
   access: string,
-  refresh: string
+  refresh: string,
 ) {
-  if (!authData.user || !('id' in authData.user) || !('email' in authData.user)) return null
+  if (!authData.user || !('id' in authData.user) || !('email' in authData.user)) return null;
 
-  const accessExpiresIn = Math.max(0, Math.floor((authData.accessExpiresAt - Date.now()) / 1000))
-  const refreshExpiresIn = Math.max(0, Math.floor((authData.refreshExpiresAt - Date.now()) / 1000))
+  const accessExpiresIn = Math.max(0, Math.floor((authData.accessExpiresAt - Date.now()) / 1000));
+  const refreshExpiresIn = Math.max(0, Math.floor((authData.refreshExpiresAt - Date.now()) / 1000));
 
   return {
     user: {
@@ -78,7 +78,7 @@ function buildAuthPayload(
       access_expires_in: accessExpiresIn,
       refresh_expires_in: refreshExpiresIn,
     },
-  }
+  };
 }
 
 /**
@@ -86,95 +86,95 @@ function buildAuthPayload(
  * and sets up periodic token and permission refresh
  */
 export function AuthInitializer({ children }: AuthInitializerProps) {
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth)
-  const initializedRef = useRef(false)
-  const permissionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const tokenIntervalCleanupRef = useRef<(() => void) | null>(null)
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
+  const initializedRef = useRef(false);
+  const permissionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tokenIntervalCleanupRef = useRef<(() => void) | null>(null);
 
   // Capture the intended URL on initial load (before any redirects)
-  const intendedUrlRef = useRef(location.pathname + location.search)
+  const intendedUrlRef = useRef(location.pathname + location.search);
 
   // Initialize auth from IndexedDB on mount
   useEffect(() => {
-    if (initializedRef.current) return
-    initializedRef.current = true
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
     async function initAuth() {
       const initPromise = (async () => {
         try {
-          const stored = await validateStoredTokens()
+          const stored = await validateStoredTokens();
 
           if (!stored) {
-            dispatch(initializeComplete())
-            markAuthInitialized()
-            return
+            dispatch(initializeComplete());
+            markAuthInitialized();
+            return;
           }
 
-          const payload = buildAuthPayload(stored.authData!, stored.access, stored.refresh)
+          const payload = buildAuthPayload(stored.authData!, stored.access, stored.refresh);
           if (payload) {
-            dispatch(loginSuccess(payload))
+            dispatch(loginSuccess(payload));
           }
 
-          dispatch(initializeComplete())
-          markAuthInitialized()
+          dispatch(initializeComplete());
+          markAuthInitialized();
 
           // Navigate based on company state
-          const currentCompany = await indexedDBService.getCurrentCompany()
-          const intendedUrl = intendedUrlRef.current
+          const currentCompany = await indexedDBService.getCurrentCompany();
+          const intendedUrl = intendedUrlRef.current;
           if (!currentCompany) {
             navigate(ROUTES.COMPANY_SELECTION.path, {
               replace: true,
               state: { from: intendedUrl },
-            })
+            });
           } else {
-            navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from: intendedUrl } })
+            navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from: intendedUrl } });
           }
         } catch {
-          dispatch(initializeComplete())
+          dispatch(initializeComplete());
         } finally {
-          markAuthInitialized()
+          markAuthInitialized();
         }
-      })()
+      })();
 
-      setInitializationPromise(initPromise)
-      await initPromise
+      setInitializationPromise(initPromise);
+      await initPromise;
     }
 
-    initAuth()
-  }, [dispatch, navigate])
+    initAuth();
+  }, [dispatch, navigate]);
 
   // Setup token refresh interval when authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       // Setup token refresh
-      tokenIntervalCleanupRef.current = setupTokenRefreshInterval()
+      tokenIntervalCleanupRef.current = setupTokenRefreshInterval();
 
       // Setup permission refresh
       permissionIntervalRef.current = setInterval(async () => {
         try {
-          const userData = await authService.getCurrentUser()
-          dispatch(updateUser(userData))
+          const userData = await authService.getCurrentUser();
+          dispatch(updateUser(userData));
         } catch {
           // Permission refresh failed - will retry on next interval
           // Error is silently handled to avoid console spam
         }
-      }, AUTH_CONFIG.permissionRefreshInterval)
+      }, AUTH_CONFIG.permissionRefreshInterval);
     }
 
     return () => {
       if (tokenIntervalCleanupRef.current) {
-        tokenIntervalCleanupRef.current()
-        tokenIntervalCleanupRef.current = null
+        tokenIntervalCleanupRef.current();
+        tokenIntervalCleanupRef.current = null;
       }
       if (permissionIntervalRef.current) {
-        clearInterval(permissionIntervalRef.current)
-        permissionIntervalRef.current = null
+        clearInterval(permissionIntervalRef.current);
+        permissionIntervalRef.current = null;
       }
-    }
-  }, [isAuthenticated, isLoading, dispatch])
+    };
+  }, [isAuthenticated, isLoading, dispatch]);
 
   // Show loading screen while initializing
   if (isLoading) {
@@ -185,8 +185,8 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
           <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }

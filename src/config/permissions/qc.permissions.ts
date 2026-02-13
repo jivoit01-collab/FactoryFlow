@@ -57,10 +57,10 @@ export const QC_PERMISSIONS = {
     /** Manage QC parameter definitions */
     MANAGE_QC_PARAMETERS: 'quality_control.can_manage_qc_parameters',
   },
-} as const
+} as const;
 
 /** Module prefix for sidebar filtering */
-export const QC_MODULE_PREFIX = 'quality_control'
+export const QC_MODULE_PREFIX = 'quality_control';
 
 /**
  * Type for QC permission values
@@ -70,4 +70,4 @@ export type QCPermission =
   | (typeof QC_PERMISSIONS.ARRIVAL_SLIP)[keyof typeof QC_PERMISSIONS.ARRIVAL_SLIP]
   | (typeof QC_PERMISSIONS.INSPECTION)[keyof typeof QC_PERMISSIONS.INSPECTION]
   | (typeof QC_PERMISSIONS.APPROVAL)[keyof typeof QC_PERMISSIONS.APPROVAL]
-  | (typeof QC_PERMISSIONS.MASTER_DATA)[keyof typeof QC_PERMISSIONS.MASTER_DATA]
+  | (typeof QC_PERMISSIONS.MASTER_DATA)[keyof typeof QC_PERMISSIONS.MASTER_DATA];

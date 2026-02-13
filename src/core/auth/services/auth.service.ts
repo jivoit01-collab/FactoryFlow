@@ -1,10 +1,10 @@
-import { API_ENDPOINTS, AUTH_CONFIG } from '@/config/constants'
-import { apiClient } from '@/core/api'
+import { API_ENDPOINTS, AUTH_CONFIG } from '@/config/constants';
+import { apiClient } from '@/core/api';
 import {
   validateLoginResponse,
   validateRefreshTokenResponse,
   validateUserResponse,
-} from '@/core/api/utils/validation.util'
+} from '@/core/api/utils/validation.util';
 
 import type {
   LoginCredentials,
@@ -13,12 +13,12 @@ import type {
   RefreshTokenResponse,
   User,
   UserCompany,
-} from '../types/auth.types'
-import { type AuthData, indexedDBService } from './indexedDb.service'
+} from '../types/auth.types';
+import { type AuthData, indexedDBService } from './indexedDb.service';
 
-const SECONDS_TO_MS = 1000
+const SECONDS_TO_MS = 1000;
 function secondsToMs(seconds: number): number {
-  return seconds * SECONDS_TO_MS
+  return seconds * SECONDS_TO_MS;
 }
 
 export const authService = {
@@ -32,14 +32,14 @@ export const authService = {
    * @throws Error if login fails or response is invalid
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await apiClient.post<LoginResponse>(API_ENDPOINTS.AUTH.LOGIN, credentials)
+    const response = await apiClient.post<LoginResponse>(API_ENDPOINTS.AUTH.LOGIN, credentials);
 
     // Validate response structure
-    const data = validateLoginResponse(response.data)
+    const data = validateLoginResponse(response.data);
 
     // Calculate token expiry using tokensExpiresIn from API
-    const accessExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.access_expires_in)
-    const refreshExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.refresh_expires_in)
+    const accessExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.access_expires_in);
+    const refreshExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.refresh_expires_in);
 
     // Store in IndexedDB with expiry timestamps
     await indexedDBService.saveAuthDataLogin({
@@ -49,16 +49,16 @@ export const authService = {
       refresh: data.refresh,
       accessExpiresAt,
       refreshExpiresAt,
-    })
+    });
 
-    return data
+    return data;
   },
 
   /**
    * Logout - clear all stored data
    */
   async logout(): Promise<void> {
-    await indexedDBService.clearAuthData()
+    await indexedDBService.clearAuthData();
   },
 
   /**
@@ -73,24 +73,24 @@ export const authService = {
   async refreshToken(refresh: string): Promise<RefreshTokenResponse> {
     const response = await apiClient.post<RefreshTokenResponse>(API_ENDPOINTS.AUTH.REFRESH, {
       refresh,
-    })
+    });
 
     // Validate response structure
-    const data = validateRefreshTokenResponse(response.data)
+    const data = validateRefreshTokenResponse(response.data);
 
     // Calculate new token expiry using tokensExpiresIn from API
-    const accessExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.access_expires_in)
-    const refreshExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.refresh_expires_in)
+    const accessExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.access_expires_in);
+    const refreshExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.refresh_expires_in);
 
     // Update IndexedDB
     await indexedDBService.updateTokens(
       data.access,
       data.refresh,
       accessExpiresAt,
-      refreshExpiresAt
-    )
+      refreshExpiresAt,
+    );
 
-    return data
+    return data;
   },
 
   /**
@@ -103,76 +103,76 @@ export const authService = {
    * @throws Error if request fails or response is invalid
    */
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get<MeResponse>(API_ENDPOINTS.AUTH.ME)
+    const response = await apiClient.get<MeResponse>(API_ENDPOINTS.AUTH.ME);
 
     // Validate response structure
-    const user = validateUserResponse(response.data)
+    const user = validateUserResponse(response.data);
 
     // Update user and permissions in IndexedDB
-    await indexedDBService.updateUser(user)
+    await indexedDBService.updateUser(user);
 
-    return user
+    return user;
   },
 
   /**
    * Get cached permissions from IndexedDB
    */
   async getCachedPermissions(): Promise<string[]> {
-    return indexedDBService.getPermissions()
+    return indexedDBService.getPermissions();
   },
 
   /**
    * Get cached user from IndexedDB
    */
   async getCachedUser(): Promise<User | null> {
-    return indexedDBService.getUser()
+    return indexedDBService.getUser();
   },
 
   /**
    * Get cached auth data from IndexedDB
    */
   async getCachedAuthData() {
-    return indexedDBService.getAuthData()
+    return indexedDBService.getAuthData();
   },
 
   /**
    * Check if token is about to expire (within refresh threshold)
    */
   async shouldRefreshToken(): Promise<boolean> {
-    return indexedDBService.isTokenExpired()
+    return indexedDBService.isTokenExpired();
   },
 
   /**
    * Check if token is completely expired
    */
   async isTokenExpired(): Promise<boolean> {
-    return indexedDBService.isTokenExpiredCompletely()
+    return indexedDBService.isTokenExpiredCompletely();
   },
 
   /**
    * Initialize auth state from IndexedDB on app load
    */
   async initializeFromCache(): Promise<{
-    user: User | null
-    permissions: string[]
-    currentCompany: UserCompany | null
-    access: string | null
-    refresh: string | null
-    expiresIn: number | null
-    isAuthenticated: boolean
+    user: User | null;
+    permissions: string[];
+    currentCompany: UserCompany | null;
+    access: string | null;
+    refresh: string | null;
+    expiresIn: number | null;
+    isAuthenticated: boolean;
   } | null> {
-    const authData = await indexedDBService.getAuthData()
+    const authData = await indexedDBService.getAuthData();
 
     if (!authData) {
-      return null
+      return null;
     }
 
     // Check if token is completely expired
-    const isExpired = await indexedDBService.isTokenExpiredCompletely()
+    const isExpired = await indexedDBService.isTokenExpiredCompletely();
     if (isExpired) {
       // Clear expired data
-      await indexedDBService.clearAuthData()
-      return null
+      await indexedDBService.clearAuthData();
+      return null;
     }
 
     return {
@@ -183,14 +183,14 @@ export const authService = {
       refresh: authData.refresh,
       expiresIn: authData.accessExpiresAt,
       isAuthenticated: true,
-    }
+    };
   },
 
   /**
    * Switch the current company
    */
   async switchCompany(company: UserCompany): Promise<void> {
-    await indexedDBService.updateCurrentCompany(company)
+    await indexedDBService.updateCurrentCompany(company);
   },
 
   /**
@@ -203,9 +203,9 @@ export const authService = {
    */
   async changePassword(oldPassword: string, newPassword: string): Promise<{ message: string }> {
     // Create URLSearchParams for x-www-form-urlencoded format
-    const params = new URLSearchParams()
-    params.append('old_password', oldPassword)
-    params.append('new_password', newPassword)
+    const params = new URLSearchParams();
+    params.append('old_password', oldPassword);
+    params.append('new_password', newPassword);
 
     const response = await apiClient.post<{ message: string }>(
       API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
@@ -214,9 +214,9 @@ export const authService = {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-      }
-    )
+      },
+    );
 
-    return response.data
+    return response.data;
   },
-}
+};

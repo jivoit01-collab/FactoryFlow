@@ -3,19 +3,19 @@
 // ============================================================================
 
 // Module configuration
-export * from './module.config'
+export * from './module.config';
 
 // Types
-export * from './types'
+export * from './types';
 
 // Constants
-export * from './constants'
+export * from './constants';
 
 // Schemas
-export * from './schemas'
+export * from './schemas';
 
 // API (services and queries)
-export * from './api'
+export * from './api';
 
 // Components
-export * from './components'
+export * from './components';

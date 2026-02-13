@@ -1,14 +1,14 @@
 export interface RuntimeConfig {
-  apiBaseUrl: string
+  apiBaseUrl: string;
   features: {
-    enableGateIn: boolean
-    enableQualityCheck: boolean
-    enableReports: boolean
-  }
+    enableGateIn: boolean;
+    enableQualityCheck: boolean;
+    enableReports: boolean;
+  };
   limits: {
-    maxUploadSize: number // in bytes
-    maxBatchSize: number
-  }
+    maxUploadSize: number; // in bytes
+    maxBatchSize: number;
+  };
 }
 
 const DEFAULT_CONFIG: RuntimeConfig = {
@@ -22,10 +22,10 @@ const DEFAULT_CONFIG: RuntimeConfig = {
     maxUploadSize: 10 * 1024 * 1024, // 10MB
     maxBatchSize: 100,
   },
-}
+};
 
-let runtimeConfig: RuntimeConfig = DEFAULT_CONFIG
-let configLoaded = false
+let runtimeConfig: RuntimeConfig = DEFAULT_CONFIG;
+let configLoaded = false;
 
 /**
  * Validates that a config object has the expected structure.
@@ -33,10 +33,10 @@ let configLoaded = false
  */
 function validateConfig(config: unknown): RuntimeConfig {
   if (!config || typeof config !== 'object') {
-    return DEFAULT_CONFIG
+    return DEFAULT_CONFIG;
   }
 
-  const c = config as Partial<RuntimeConfig>
+  const c = config as Partial<RuntimeConfig>;
 
   return {
     apiBaseUrl: typeof c.apiBaseUrl === 'string' ? c.apiBaseUrl : DEFAULT_CONFIG.apiBaseUrl,
@@ -64,7 +64,7 @@ function validateConfig(config: unknown): RuntimeConfig {
           ? c.limits.maxBatchSize
           : DEFAULT_CONFIG.limits.maxBatchSize,
     },
-  }
+  };
 }
 
 /**
@@ -74,22 +74,22 @@ function validateConfig(config: unknown): RuntimeConfig {
  */
 export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
   if (configLoaded) {
-    return runtimeConfig
+    return runtimeConfig;
   }
 
   try {
-    const response = await fetch('/config.json')
+    const response = await fetch('/config.json');
     if (response.ok) {
-      const config = await response.json()
-      runtimeConfig = validateConfig(config)
+      const config = await response.json();
+      runtimeConfig = validateConfig(config);
     }
   } catch {
     // Config file doesn't exist or failed to load - use defaults
     // This is expected in development environments
   }
 
-  configLoaded = true
-  return runtimeConfig
+  configLoaded = true;
+  return runtimeConfig;
 }
 
 /**
@@ -98,14 +98,14 @@ export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
  */
 export function getRuntimeConfig(): RuntimeConfig {
   if (!configLoaded) {
-    console.warn('Runtime config accessed before loading. Using defaults.')
+    console.warn('Runtime config accessed before loading. Using defaults.');
   }
-  return runtimeConfig
+  return runtimeConfig;
 }
 
 /**
  * Checks if the runtime config has been loaded.
  */
 export function isConfigLoaded(): boolean {
-  return configLoaded
+  return configLoaded;
 }

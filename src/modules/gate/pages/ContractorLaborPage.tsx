@@ -6,5 +6,5 @@ export default function ContractorLaborPage() {
         <p className="text-muted-foreground">Manage visitor and labour gate entries</p>
       </div>
     </div>
-  )
+  );
 }

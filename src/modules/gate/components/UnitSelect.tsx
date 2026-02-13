@@ -1,20 +1,20 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { UnitChoice } from '../api/maintenance/maintenance.api'
-import { useUnitChoices } from '../api/maintenance/maintenance.queries'
+import type { UnitChoice } from '../api/maintenance/maintenance.api';
+import { useUnitChoices } from '../api/maintenance/maintenance.queries';
 
 interface UnitSelectProps {
-  value?: string
-  onChange: (unitId: string, unitName: string) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: string;
+  onChange: (unitId: string, unitName: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
   /** Initial display text to show without fetching units (for edit mode) */
-  initialDisplayText?: string
+  initialDisplayText?: string;
 }
 
 export function UnitSelect({
@@ -27,9 +27,9 @@ export function UnitSelect({
   required = false,
   initialDisplayText,
 }: UnitSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data: units = [], isLoading, isError } = useUnitChoices(isDropdownOpen)
+  const { data: units = [], isLoading, isError } = useUnitChoices(isDropdownOpen);
 
   return (
     <SearchableSelect<UnitChoice>
@@ -52,11 +52,11 @@ export function UnitSelect({
       notFoundText="No units found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(unit) => {
-        onChange(unit.id.toString(), unit.name)
+        onChange(unit.id.toString(), unit.name);
       }}
       onClear={() => {
-        onChange('', '')
+        onChange('', '');
       }}
     />
-  )
+  );
 }

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
-import type { ApiError } from '@/core/api/types'
-import { usePermission } from '@/core/auth'
-import { SearchableSelect } from '@/shared/components'
+import type { ApiError } from '@/core/api/types';
+import { usePermission } from '@/core/auth';
+import { SearchableSelect } from '@/shared/components';
 import {
   Button,
   Dialog,
@@ -13,19 +13,19 @@ import {
   Input,
   Label,
   Textarea,
-} from '@/shared/components/ui'
+} from '@/shared/components/ui';
 
-import { useCreateMaterialType, useMaterialTypes } from '../api/materialType/materialType.queries'
-import type { MaterialType } from '../types'
+import { useCreateMaterialType, useMaterialTypes } from '../api/materialType/materialType.queries';
+import type { MaterialType } from '../types';
 
 interface MaterialTypeSelectProps {
-  value?: number
-  onChange: (materialType: MaterialType | null) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: number;
+  onChange: (materialType: MaterialType | null) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
 }
 
 export function MaterialTypeSelect({
@@ -38,51 +38,51 @@ export function MaterialTypeSelect({
   required = false,
 }: MaterialTypeSelectProps) {
   // Permission check
-  const { hasAnyPermission } = usePermission()
+  const { hasAnyPermission } = usePermission();
   const canManageMaterialTypes = hasAnyPermission([
     'quality_control.can_manage_material_types',
     'quality_control.add_materialtype',
-  ])
+  ]);
 
   // Fetch material types
-  const { data: materialTypes = [], isLoading, isError } = useMaterialTypes()
-  const createMaterialType = useCreateMaterialType()
+  const { data: materialTypes = [], isLoading, isError } = useMaterialTypes();
+  const createMaterialType = useCreateMaterialType();
 
   // Dialog form state
-  const [formData, setFormData] = useState({ code: '', name: '', description: '' })
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [formData, setFormData] = useState({ code: '', name: '', description: '' });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const handleCreateMaterialType = async (
-    updateSelection: (key: string | number, label: string) => void
+    updateSelection: (key: string | number, label: string) => void,
   ) => {
     if (!formData.code.trim()) {
-      setFormErrors({ code: 'Code is required' })
-      return
+      setFormErrors({ code: 'Code is required' });
+      return;
     }
     if (!/^[A-Z0-9_]+$/.test(formData.code)) {
-      setFormErrors({ code: 'Code must be uppercase letters, numbers, and underscores only' })
-      return
+      setFormErrors({ code: 'Code must be uppercase letters, numbers, and underscores only' });
+      return;
     }
     if (!formData.name.trim()) {
-      setFormErrors({ name: 'Name is required' })
-      return
+      setFormErrors({ name: 'Name is required' });
+      return;
     }
 
     try {
-      setFormErrors({})
+      setFormErrors({});
       const newType = await createMaterialType.mutateAsync({
         code: formData.code,
         name: formData.name,
         description: formData.description,
-      })
+      });
 
-      updateSelection(newType.id, newType.name)
-      onChange(newType)
+      updateSelection(newType.id, newType.name);
+      onChange(newType);
     } catch (err) {
-      const apiError = err as ApiError
-      setFormErrors({ general: apiError.message || 'Failed to create material type' })
+      const apiError = err as ApiError;
+      setFormErrors({ general: apiError.message || 'Failed to create material type' });
     }
-  }
+  };
 
   return (
     <SearchableSelect<MaterialType>
@@ -113,10 +113,10 @@ export function MaterialTypeSelect({
       notFoundText="No material types found"
       addNewLabel={canManageMaterialTypes ? 'Add New Material Type' : undefined}
       onItemSelect={(type) => {
-        onChange(type)
+        onChange(type);
       }}
       onClear={() => {
-        onChange(null)
+        onChange(null);
       }}
       renderCreateDialog={
         canManageMaterialTypes
@@ -141,10 +141,10 @@ export function MaterialTypeSelect({
                       <Input
                         value={formData.code}
                         onChange={(e) => {
-                          const val = e.target.value.toUpperCase().replace(/\s/g, '')
-                          setFormData((prev) => ({ ...prev, code: val }))
+                          const val = e.target.value.toUpperCase().replace(/\s/g, '');
+                          setFormData((prev) => ({ ...prev, code: val }));
                           if (formErrors.code) {
-                            setFormErrors((prev) => ({ ...prev, code: '' }))
+                            setFormErrors((prev) => ({ ...prev, code: '' }));
                           }
                         }}
                         placeholder="e.g., CAP_BLUE"
@@ -208,5 +208,5 @@ export function MaterialTypeSelect({
           : undefined
       }
     />
-  )
+  );
 }

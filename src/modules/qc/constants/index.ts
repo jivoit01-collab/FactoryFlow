@@ -1,1 +1,1 @@
-export * from './qc.constants'
+export * from './qc.constants';

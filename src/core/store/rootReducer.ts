@@ -1,11 +1,11 @@
-import { combineReducers } from '@reduxjs/toolkit'
+import { combineReducers } from '@reduxjs/toolkit';
 
-import { getAllReducers } from '@/app/registry'
+import { getAllReducers } from '@/app/registry';
 // Core reducers that are always included
-import authReducer from '@/core/auth/store/authSlice'
+import authReducer from '@/core/auth/store/authSlice';
 
-import filtersReducer from './filtersSlice'
-import notificationReducer from './slices/notification.slice'
+import filtersReducer from './filtersSlice';
+import notificationReducer from './slices/notification.slice';
 
 /**
  * Root reducer that combines:
@@ -19,4 +19,4 @@ export const rootReducer = combineReducers({
   notification: notificationReducer,
   // Module reducers - dynamically combined from module configs
   ...getAllReducers(),
-})
+});

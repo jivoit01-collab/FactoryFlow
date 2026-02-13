@@ -1,22 +1,22 @@
-import { Plus, Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { ENTRY_TYPES, getEntryStatusClasses } from '@/config/constants'
-import { useGlobalDateRange } from '@/core/store/hooks'
-import { Button, Input } from '@/shared/components/ui'
+import { ENTRY_TYPES, getEntryStatusClasses } from '@/config/constants';
+import { useGlobalDateRange } from '@/core/store/hooks';
+import { Button, Input } from '@/shared/components/ui';
 
-import { useVehicleEntries } from '../api/vehicle/vehicleEntry.queries'
-import { DateRangePicker } from '../components/DateRangePicker'
+import { useVehicleEntries } from '../api/vehicle/vehicleEntry.queries';
+import { DateRangePicker } from '../components/DateRangePicker';
 
 export default function RawMaterialsPage() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [search, setSearch] = useState('')
-  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState('');
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   // Get status filter from URL
-  const statusFilter = searchParams.get('status') || undefined
+  const statusFilter = searchParams.get('status') || undefined;
 
   // Convert date range to API params
   const apiParams = useMemo(() => {
@@ -25,47 +25,47 @@ export default function RawMaterialsPage() {
       to_date: dateRange.to,
       entry_type: ENTRY_TYPES.RAW_MATERIAL,
       status: statusFilter,
-    }
-  }, [dateRange, statusFilter])
+    };
+  }, [dateRange, statusFilter]);
 
-  const { data: entries = [], isLoading } = useVehicleEntries(apiParams)
+  const { data: entries = [], isLoading } = useVehicleEntries(apiParams);
 
   // Filter entries based on search query only (date filtering is done by API)
   const filteredData = useMemo(() => {
-    let filtered = entries
+    let filtered = entries;
 
     // Apply search filter
     if (search.trim()) {
-      const searchLower = search.toLowerCase()
+      const searchLower = search.toLowerCase();
       filtered = filtered.filter(
         (entry) =>
           entry.entry_no?.toLowerCase().includes(searchLower) ||
           entry.status?.toLowerCase().includes(searchLower) ||
           entry.remarks?.toLowerCase().includes(searchLower) ||
           entry.vehicle?.vehicle_number?.toLowerCase().includes(searchLower) ||
-          entry.driver?.name?.toLowerCase().includes(searchLower)
-      )
+          entry.driver?.name?.toLowerCase().includes(searchLower),
+      );
     }
 
-    return filtered
-  }, [entries, search])
+    return filtered;
+  }, [entries, search]);
 
   // Format date/time for display
   const formatDateTime = (dateTime?: string) => {
-    if (!dateTime) return '-'
+    if (!dateTime) return '-';
     try {
-      const date = new Date(dateTime)
+      const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return dateTime
+      return dateTime;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -98,9 +98,9 @@ export default function RawMaterialsPage() {
             onDateChange={(date) => {
               // Handle the DateRange type (not single Date)
               if (date && 'from' in date) {
-                setDateRange(date)
+                setDateRange(date);
               } else {
-                setDateRange(undefined)
+                setDateRange(undefined);
               }
             }}
             mode="range"
@@ -154,7 +154,7 @@ export default function RawMaterialsPage() {
                     key={entry.id}
                     className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
                     onClick={() => {
-                      navigate(`/gate/raw-materials/edit/${entry.id}/step1`)
+                      navigate(`/gate/raw-materials/edit/${entry.id}/step1`);
                     }}
                   >
                     <td className="p-3 text-sm font-medium">{entry.entry_no || '-'}</td>
@@ -166,7 +166,7 @@ export default function RawMaterialsPage() {
                     <td className="p-3 text-sm">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getEntryStatusClasses(
-                          entry.status || ''
+                          entry.status || '',
                         )}`}
                       >
                         {entry.status || '-'}
@@ -181,5 +181,5 @@ export default function RawMaterialsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

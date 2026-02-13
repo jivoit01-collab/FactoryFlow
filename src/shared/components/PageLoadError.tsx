@@ -34,5 +34,5 @@ export function PageLoadError() {
         Reload Page
       </button>
     </div>
-  )
+  );
 }

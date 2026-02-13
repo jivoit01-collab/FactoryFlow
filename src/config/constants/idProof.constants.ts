@@ -4,4 +4,4 @@ export const ID_PROOF_TYPES = [
   { value: 'Driving License', label: 'Driving License' },
   { value: 'Voter ID', label: 'Voter ID' },
   { value: 'Other', label: 'Other' },
-] as const
+] as const;

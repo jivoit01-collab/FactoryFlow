@@ -1,20 +1,20 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { Department } from '../api/department/department.api'
-import { useDepartments } from '../api/department/department.queries'
+import type { Department } from '../api/department/department.api';
+import { useDepartments } from '../api/department/department.queries';
 
 interface DepartmentSelectProps {
-  value?: number | ''
-  onChange: (departmentId: number | '', departmentName: string) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: number | '';
+  onChange: (departmentId: number | '', departmentName: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
   /** Initial display text to show without fetching departments (for edit mode) */
-  initialDisplayText?: string
+  initialDisplayText?: string;
 }
 
 export function DepartmentSelect({
@@ -27,9 +27,9 @@ export function DepartmentSelect({
   required = false,
   initialDisplayText,
 }: DepartmentSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data: departments = [], isLoading, isError } = useDepartments(isDropdownOpen)
+  const { data: departments = [], isLoading, isError } = useDepartments(isDropdownOpen);
 
   return (
     <SearchableSelect<Department>
@@ -60,11 +60,11 @@ export function DepartmentSelect({
       notFoundText="No departments found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(department) => {
-        onChange(department.id, department.name)
+        onChange(department.id, department.name);
       }}
       onClear={() => {
-        onChange('', '')
+        onChange('', '');
       }}
     />
-  )
+  );
 }

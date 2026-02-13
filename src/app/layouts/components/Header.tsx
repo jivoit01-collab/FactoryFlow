@@ -1,10 +1,10 @@
-import { LogOut, Menu, Monitor, Moon, Sun, User } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { LogOut, Menu, Monitor, Moon, Sun, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import { type Theme, THEME_OPTIONS } from '@/config/constants/app.constants'
-import { ROUTES } from '@/config/routes.config'
-import { useAuth } from '@/core/auth'
-import { NotificationBell } from '@/core/notifications'
+import { type Theme, THEME_OPTIONS } from '@/config/constants/app.constants';
+import { ROUTES } from '@/config/routes.config';
+import { useAuth } from '@/core/auth';
+import { NotificationBell } from '@/core/notifications';
 import {
   Avatar,
   AvatarFallback,
@@ -18,25 +18,25 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/components/ui'
-import { useTheme } from '@/shared/contexts'
+} from '@/shared/components/ui';
+import { useTheme } from '@/shared/contexts';
 
 interface HeaderProps {
-  onMenuClick: () => void
-  sidebarWidth: number
+  onMenuClick: () => void;
+  sidebarWidth: number;
 }
 
 export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
-  const { user, currentCompany, logout } = useAuth()
-  const { theme, resolvedTheme, setTheme } = useTheme()
-  const navigate = useNavigate()
+  const { user, currentCompany, logout } = useAuth();
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const navigate = useNavigate();
 
   const getThemeIcon = () => {
     if (theme === THEME_OPTIONS.SYSTEM) {
-      return <Monitor className="h-5 w-5" />
+      return <Monitor className="h-5 w-5" />;
     }
-    return resolvedTheme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />
-  }
+    return resolvedTheme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />;
+  };
 
   const getInitials = (name?: string, email?: string) => {
     if (name) {
@@ -45,13 +45,13 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
         .map((n) => n[0])
         .join('')
         .toUpperCase()
-        .slice(0, 2)
+        .slice(0, 2);
     }
     if (email) {
-      return email[0].toUpperCase()
+      return email[0].toUpperCase();
     }
-    return 'U'
-  }
+    return 'U';
+  };
 
   return (
     <header
@@ -141,5 +141,5 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
         </DropdownMenu>
       </div>
     </header>
-  )
+  );
 }

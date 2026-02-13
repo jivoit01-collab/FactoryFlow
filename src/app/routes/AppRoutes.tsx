@@ -1,11 +1,11 @@
-import { Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Suspense } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { AuthLayout, MainLayout } from '@/app/layouts'
-import { getRoutesByLayout } from '@/app/registry'
-import { ProtectedRoute } from '@/core/auth'
-import { NotificationGate } from '@/core/notifications/components/NotificationGate'
-import { PageLoadError } from '@/shared/components/PageLoadError'
+import { AuthLayout, MainLayout } from '@/app/layouts';
+import { getRoutesByLayout } from '@/app/registry';
+import { ProtectedRoute } from '@/core/auth';
+import { NotificationGate } from '@/core/notifications/components/NotificationGate';
+import { PageLoadError } from '@/shared/components/PageLoadError';
 
 // Unauthorized page
 function UnauthorizedPage() {
@@ -14,13 +14,13 @@ function UnauthorizedPage() {
       <h1 className="text-2xl font-bold">Unauthorized</h1>
       <p className="text-muted-foreground">You don't have permission to access this page.</p>
     </div>
-  )
+  );
 }
 
 export function AppRoutes() {
   // Get routes organized by layout type from module registry
-  const authRoutes = getRoutesByLayout('auth')
-  const mainRoutes = getRoutesByLayout('main')
+  const authRoutes = getRoutesByLayout('auth');
+  const mainRoutes = getRoutesByLayout('main');
 
   return (
     <Suspense fallback={<PageLoadError />}>
@@ -64,5 +64,5 @@ export function AppRoutes() {
         </Route>
       </Routes>
     </Suspense>
-  )
+  );
 }

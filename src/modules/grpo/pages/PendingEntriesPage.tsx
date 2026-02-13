@@ -1,33 +1,33 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
-import { Button } from '@/shared/components/ui'
+import type { ApiError } from '@/core/api/types';
+import { Button } from '@/shared/components/ui';
 
-import { usePendingGRPOEntries } from '../api'
+import { usePendingGRPOEntries } from '../api';
 
 // Format date/time for display
 const formatDateTime = (dateTime?: string) => {
-  if (!dateTime) return '-'
+  if (!dateTime) return '-';
   try {
-    const date = new Date(dateTime)
+    const date = new Date(dateTime);
     return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    })
+    });
   } catch {
-    return dateTime
+    return dateTime;
   }
-}
+};
 
 export default function PendingEntriesPage() {
-  const navigate = useNavigate()
-  const { data: pendingEntries = [], isLoading, refetch, error } = usePendingGRPOEntries()
+  const navigate = useNavigate();
+  const { data: pendingEntries = [], isLoading, refetch, error } = usePendingGRPOEntries();
 
-  const apiError = error as ApiError | null
-  const isPermissionError = apiError?.status === 403
+  const apiError = error as ApiError | null;
+  const isPermissionError = apiError?.status === 403;
 
   return (
     <div className="space-y-6">
@@ -136,5 +136,5 @@ export default function PendingEntriesPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,15 +1,15 @@
-import { PackageCheck } from 'lucide-react'
-import { lazy } from 'react'
+import { PackageCheck } from 'lucide-react';
+import { lazy } from 'react';
 
-import { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS } from '@/config/permissions'
-import type { ModuleConfig } from '@/core/types'
+import { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS } from '@/config/permissions';
+import type { ModuleConfig } from '@/core/types';
 
 // Lazy load GRPO pages
-const GRPODashboardPage = lazy(() => import('./pages/GRPODashboardPage'))
-const PendingEntriesPage = lazy(() => import('./pages/PendingEntriesPage'))
-const GRPOPreviewPage = lazy(() => import('./pages/GRPOPreviewPage'))
-const GRPOHistoryPage = lazy(() => import('./pages/GRPOHistoryPage'))
-const GRPOHistoryDetailPage = lazy(() => import('./pages/GRPOHistoryDetailPage'))
+const GRPODashboardPage = lazy(() => import('./pages/GRPODashboardPage'));
+const PendingEntriesPage = lazy(() => import('./pages/PendingEntriesPage'));
+const GRPOPreviewPage = lazy(() => import('./pages/GRPOPreviewPage'));
+const GRPOHistoryPage = lazy(() => import('./pages/GRPOHistoryPage'));
+const GRPOHistoryDetailPage = lazy(() => import('./pages/GRPOHistoryDetailPage'));
 
 /**
  * GRPO module configuration
@@ -83,4 +83,4 @@ export const grpoModuleConfig: ModuleConfig = {
       ],
     },
   ],
-}
+};

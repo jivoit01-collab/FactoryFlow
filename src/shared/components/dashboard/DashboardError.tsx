@@ -1,20 +1,20 @@
-import { AlertCircle, RefreshCw, ShieldX } from 'lucide-react'
+import { AlertCircle, RefreshCw, ShieldX } from 'lucide-react';
 
-import { Button } from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+import { Button } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 /**
  * Props for the DashboardError component.
  */
 export interface DashboardErrorProps {
   /** Error message to display */
-  message?: string
+  message?: string;
   /** Whether this is a permission (403) error */
-  isPermissionError?: boolean
+  isPermissionError?: boolean;
   /** Callback when retry button is clicked */
-  onRetry?: () => void
+  onRetry?: () => void;
   /** Optional CSS class */
-  className?: string
+  className?: string;
 }
 
 /**
@@ -43,7 +43,7 @@ export function DashboardError({
       <div
         className={cn(
           'flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5',
-          className
+          className,
         )}
       >
         <ShieldX className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
@@ -59,14 +59,14 @@ export function DashboardError({
           </Button>
         )}
       </div>
-    )
+    );
   }
 
   return (
     <div
       className={cn(
         'flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10',
-        className
+        className,
       )}
     >
       <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -82,5 +82,5 @@ export function DashboardError({
         </Button>
       )}
     </div>
-  )
+  );
 }

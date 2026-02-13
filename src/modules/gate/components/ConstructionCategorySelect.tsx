@@ -1,20 +1,20 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { ConstructionCategory } from '../api/construction/construction.api'
-import { useConstructionCategories } from '../api/construction/construction.queries'
+import type { ConstructionCategory } from '../api/construction/construction.api';
+import { useConstructionCategories } from '../api/construction/construction.queries';
 
 interface ConstructionCategorySelectProps {
-  value?: string
-  onChange: (categoryId: string, categoryName: string) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: string;
+  onChange: (categoryId: string, categoryName: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
   /** Initial display text to show without fetching categories (for edit mode) */
-  initialDisplayText?: string
+  initialDisplayText?: string;
 }
 
 export function ConstructionCategorySelect({
@@ -27,9 +27,9 @@ export function ConstructionCategorySelect({
   required = false,
   initialDisplayText,
 }: ConstructionCategorySelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data: categories = [], isLoading, isError } = useConstructionCategories(isDropdownOpen)
+  const { data: categories = [], isLoading, isError } = useConstructionCategories(isDropdownOpen);
 
   return (
     <SearchableSelect<ConstructionCategory>
@@ -52,11 +52,11 @@ export function ConstructionCategorySelect({
       notFoundText="No categories found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(category) => {
-        onChange(category.id.toString(), category.category_name)
+        onChange(category.id.toString(), category.category_name);
       }}
       onClear={() => {
-        onChange('', '')
+        onChange('', '');
       }}
     />
-  )
+  );
 }

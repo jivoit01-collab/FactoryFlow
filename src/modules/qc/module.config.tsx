@@ -1,16 +1,16 @@
-import { FlaskConical } from 'lucide-react'
-import { lazy } from 'react'
+import { FlaskConical } from 'lucide-react';
+import { lazy } from 'react';
 
-import { QC_MODULE_PREFIX, QC_PERMISSIONS } from '@/config/permissions'
-import type { ModuleConfig } from '@/core/types'
+import { QC_MODULE_PREFIX, QC_PERMISSIONS } from '@/config/permissions';
+import type { ModuleConfig } from '@/core/types';
 
 // Lazy load QC pages
-const QCDashboardPage = lazy(() => import('./pages/QCDashboardPage'))
-const PendingInspectionsPage = lazy(() => import('./pages/PendingInspectionsPage'))
-const InspectionDetailPage = lazy(() => import('./pages/InspectionDetailPage'))
-const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'))
-const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'))
-const QCParametersPage = lazy(() => import('./pages/masterdata/QCParametersPage'))
+const QCDashboardPage = lazy(() => import('./pages/QCDashboardPage'));
+const PendingInspectionsPage = lazy(() => import('./pages/PendingInspectionsPage'));
+const InspectionDetailPage = lazy(() => import('./pages/InspectionDetailPage'));
+const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'));
+const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'));
+const QCParametersPage = lazy(() => import('./pages/masterdata/QCParametersPage'));
 
 /**
  * Quality Control module configuration
@@ -115,4 +115,4 @@ export const qcModuleConfig: ModuleConfig = {
       ],
     },
   ],
-}
+};

@@ -1,8 +1,8 @@
-import { ArrowLeft, CheckCircle2, Edit2, Plus, Search, Trash2, XCircle } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, CheckCircle2, Edit2, Plus, Search, Trash2, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_PATTERNS } from '@/config/constants';
 import {
   Button,
   Card,
@@ -11,26 +11,26 @@ import {
   CardTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
-import type { CreateLabourRequest, Labour } from '../../api/personGateIn/personGateIn.api'
+import type { CreateLabourRequest, Labour } from '../../api/personGateIn/personGateIn.api';
 import {
   useContractors,
   useCreateLabour,
   useDeleteLabour,
   useLabours,
   useUpdateLabour,
-} from '../../api/personGateIn/personGateIn.queries'
-import { ContractorSelect } from '../../components'
+} from '../../api/personGateIn/personGateIn.queries';
+import { ContractorSelect } from '../../components';
 
 export default function LaboursPage() {
-  const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [contractorFilter, setContractorFilter] = useState<number | undefined>(undefined)
-  const [showForm, setShowForm] = useState(false)
-  const [editingLabour, setEditingLabour] = useState<Labour | null>(null)
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [contractorFilter, setContractorFilter] = useState<number | undefined>(undefined);
+  const [showForm, setShowForm] = useState(false);
+  const [editingLabour, setEditingLabour] = useState<Labour | null>(null);
   const [formData, setFormData] = useState<CreateLabourRequest>({
     name: '',
     contractor: 0,
@@ -39,25 +39,25 @@ export default function LaboursPage() {
     skill_type: '',
     permit_valid_till: '',
     is_active: true,
-  })
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  });
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
-  const { data: labours = [], isLoading, refetch } = useLabours(search, contractorFilter)
-  const { data: contractors = [] } = useContractors()
-  const createMutation = useCreateLabour()
-  const updateMutation = useUpdateLabour()
-  const deleteMutation = useDeleteLabour()
+  const { data: labours = [], isLoading, refetch } = useLabours(search, contractorFilter);
+  const { data: contractors = [] } = useContractors();
+  const createMutation = useCreateLabour();
+  const updateMutation = useUpdateLabour();
+  const deleteMutation = useDeleteLabour();
 
   // Filter labours based on search
   const filteredLabours = labours.filter(
     (l) =>
       l.name.toLowerCase().includes(search.toLowerCase()) ||
       l.mobile?.toLowerCase().includes(search.toLowerCase()) ||
-      l.skill_type?.toLowerCase().includes(search.toLowerCase())
-  )
+      l.skill_type?.toLowerCase().includes(search.toLowerCase()),
+  );
 
   // Reset form
   const resetForm = () => {
@@ -69,14 +69,14 @@ export default function LaboursPage() {
       skill_type: '',
       permit_valid_till: '',
       is_active: true,
-    })
-    setEditingLabour(null)
-    setApiErrors({})
-  }
+    });
+    setEditingLabour(null);
+    setApiErrors({});
+  };
 
   // Open edit form
   const handleEdit = (labour: Labour) => {
-    setEditingLabour(labour)
+    setEditingLabour(labour);
     setFormData({
       name: labour.name,
       contractor: labour.contractor,
@@ -85,64 +85,64 @@ export default function LaboursPage() {
       skill_type: labour.skill_type || '',
       permit_valid_till: labour.permit_valid_till || '',
       is_active: labour.is_active,
-    })
-    setShowForm(true)
-  }
+    });
+    setShowForm(true);
+  };
 
   // Handle form submit
   const handleSubmit = async () => {
-    const errors: Record<string, string> = {}
-    if (!formData.name.trim()) errors.name = 'Name is required'
-    if (!formData.contractor) errors.contractor = 'Contractor is required'
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = 'Name is required';
+    if (!formData.contractor) errors.contractor = 'Contractor is required';
     if (formData.mobile?.trim() && !VALIDATION_PATTERNS.phone.test(formData.mobile.trim())) {
-      errors.mobile = 'Please enter a valid 10-digit phone number'
+      errors.mobile = 'Please enter a valid 10-digit phone number';
     }
 
     if (Object.keys(errors).length > 0) {
-      setApiErrors(errors)
-      return
+      setApiErrors(errors);
+      return;
     }
 
     try {
       if (editingLabour) {
-        await updateMutation.mutateAsync({ id: editingLabour.id, data: formData })
+        await updateMutation.mutateAsync({ id: editingLabour.id, data: formData });
       } else {
-        await createMutation.mutateAsync(formData)
+        await createMutation.mutateAsync(formData);
       }
-      setShowForm(false)
-      resetForm()
-      refetch()
+      setShowForm(false);
+      resetForm();
+      refetch();
     } catch (error: unknown) {
-      const err = error as { errors?: Record<string, string[]> }
+      const err = error as { errors?: Record<string, string[]> };
       if (err.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(err.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       }
     }
-  }
+  };
 
   // Handle delete
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this labour?')) return
+    if (!window.confirm('Are you sure you want to delete this labour?')) return;
 
     try {
-      await deleteMutation.mutateAsync(id)
-      refetch()
+      await deleteMutation.mutateAsync(id);
+      refetch();
     } catch (error) {
-      console.error('Failed to delete:', error)
+      console.error('Failed to delete:', error);
     }
-  }
+  };
 
   // Get contractor name by ID
   const getContractorName = (contractorId: number) => {
-    const contractor = contractors.find((c) => c.id === contractorId)
-    return contractor?.contractor_name || '-'
-  }
+    const contractor = contractors.find((c) => c.id === contractorId);
+    return contractor?.contractor_name || '-';
+  };
 
   return (
     <div className="space-y-6">
@@ -159,8 +159,8 @@ export default function LaboursPage() {
         </div>
         <Button
           onClick={() => {
-            resetForm()
-            setShowForm(true)
+            resetForm();
+            setShowForm(true);
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -183,7 +183,7 @@ export default function LaboursPage() {
           <ContractorSelect
             value={contractorFilter ? String(contractorFilter) : undefined}
             onChange={(contractorId) => {
-              setContractorFilter(contractorId || undefined)
+              setContractorFilter(contractorId || undefined);
             }}
             placeholder="All Contractors"
             activeOnly={false}
@@ -214,7 +214,7 @@ export default function LaboursPage() {
                 <ContractorSelect
                   value={formData.contractor ? String(formData.contractor) : undefined}
                   onChange={(contractorId) => {
-                    setFormData((prev) => ({ ...prev, contractor: contractorId }))
+                    setFormData((prev) => ({ ...prev, contractor: contractorId }));
                   }}
                   label="Contractor"
                   required
@@ -228,14 +228,14 @@ export default function LaboursPage() {
                   <Input
                     value={formData.mobile || ''}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
-                      setFormData((prev) => ({ ...prev, mobile: value }))
+                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                      setFormData((prev) => ({ ...prev, mobile: value }));
                       if (apiErrors.mobile) {
                         setApiErrors((prev) => {
-                          const n = { ...prev }
-                          delete n.mobile
-                          return n
-                        })
+                          const n = { ...prev };
+                          delete n.mobile;
+                          return n;
+                        });
                       }
                     }}
                     placeholder="9876543210"
@@ -303,8 +303,8 @@ export default function LaboursPage() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setShowForm(false)
-                    resetForm()
+                    setShowForm(false);
+                    resetForm();
                   }}
                   className="flex-1"
                 >
@@ -397,5 +397,5 @@ export default function LaboursPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

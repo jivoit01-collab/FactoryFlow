@@ -1,23 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { CreatePOReceiptRequest } from './po.api'
-import { poReceiptApi } from './poReceipt.api'
+import type { CreatePOReceiptRequest } from './po.api';
+import { poReceiptApi } from './poReceipt.api';
 
 export function usePOReceipts(entryId: number | null) {
   return useQuery({
     queryKey: ['poReceipts', entryId],
     queryFn: () => poReceiptApi.get(entryId!),
     enabled: !!entryId,
-  })
+  });
 }
 
 export function useCreatePOReceipt(entryId: number) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreatePOReceiptRequest) => poReceiptApi.create(entryId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['poReceipts'] })
-      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
+      queryClient.invalidateQueries({ queryKey: ['poReceipts'] });
+      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] });
     },
-  })
+  });
 }

@@ -1,8 +1,8 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
-import type { ApiError } from '@/core/api/types'
+import type { ApiError } from '@/core/api/types';
 import {
   Button,
   Dialog,
@@ -13,16 +13,16 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
-import { useCreateTransporter } from '../api/transporter/transporter.queries'
-import { type TransporterFormData, transporterSchema } from '../schemas/transporter.schema'
+import { useCreateTransporter } from '../api/transporter/transporter.queries';
+import { type TransporterFormData, transporterSchema } from '../schemas/transporter.schema';
 
 interface CreateTransporterDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSuccess?: (transporterName: string) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: (transporterName: string) => void;
 }
 
 export function CreateTransporterDialog({
@@ -30,8 +30,8 @@ export function CreateTransporterDialog({
   onOpenChange,
   onSuccess,
 }: CreateTransporterDialogProps) {
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
-  const createTransporter = useCreateTransporter()
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const createTransporter = useCreateTransporter();
 
   const {
     register,
@@ -46,54 +46,54 @@ export function CreateTransporterDialog({
       contact_person: '',
       mobile_no: '',
     },
-  })
+  });
 
   // Combine form errors and API errors for scroll-to-error
-  const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors])
-  useScrollToError(combinedErrors)
+  const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors]);
+  useScrollToError(combinedErrors);
 
   // Reset form and errors when dialog opens/closes
   useEffect(() => {
     if (open) {
-      reset()
+      reset();
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting state on dialog open is a valid pattern
-      setApiErrors({})
+      setApiErrors({});
     }
-  }, [open, reset])
+  }, [open, reset]);
 
   const onSubmit = async (data: TransporterFormData) => {
-    setApiErrors({})
+    setApiErrors({});
     try {
-      const result = await createTransporter.mutateAsync(data)
-      reset()
-      onOpenChange(false)
+      const result = await createTransporter.mutateAsync(data);
+      reset();
+      onOpenChange(false);
       if (onSuccess) {
-        onSuccess(result.name)
+        onSuccess(result.name);
       }
     } catch (error) {
       // Handle API errors
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
 
       if (apiError.errors) {
         // Map API errors to form fields
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
             // Also set react-hook-form error
             setError(field as keyof TransporterFormData, {
               type: 'server',
               message: messages[0],
-            })
+            });
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
         // General error message - use the message from ApiError which is already extracted
-        setApiErrors({ general: apiError.message || 'Failed to create transporter' })
+        setApiErrors({ general: apiError.message || 'Failed to create transporter' });
       }
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,5 +185,5 @@ export function CreateTransporterDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

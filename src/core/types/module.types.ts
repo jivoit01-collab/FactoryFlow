@@ -1,26 +1,26 @@
-import type { Reducer } from '@reduxjs/toolkit'
-import type { LucideIcon } from 'lucide-react'
+import type { Reducer } from '@reduxjs/toolkit';
+import type { LucideIcon } from 'lucide-react';
 
 /**
  * Navigation item configuration for sidebar menu
  */
 export interface ModuleNavItem {
   /** Route path */
-  path: string
+  path: string;
   /** Display title */
-  title: string
+  title: string;
   /** Lucide icon component */
-  icon?: LucideIcon
+  icon?: LucideIcon;
   /** Required permissions (Django format: 'app_label.permission_codename') */
-  permissions?: readonly string[]
+  permissions?: readonly string[];
   /** Module prefix for dynamic sidebar filtering (e.g., 'gatein' to show if user has any 'gatein.*' permission) */
-  modulePrefix?: string
+  modulePrefix?: string;
   /** Whether to show in sidebar */
-  showInSidebar?: boolean
+  showInSidebar?: boolean;
   /** Whether this route has a submenu in the sidebar */
-  hasSubmenu?: boolean
+  hasSubmenu?: boolean;
   /** Child navigation items for submenus */
-  children?: ModuleNavItem[]
+  children?: ModuleNavItem[];
 }
 
 /**
@@ -28,15 +28,15 @@ export interface ModuleNavItem {
  */
 export interface ModuleRoute {
   /** Route path */
-  path: string
+  path: string;
   /** React element to render */
-  element: React.ReactNode
+  element: React.ReactNode;
   /** Required permissions for this route */
-  permissions?: readonly string[]
+  permissions?: readonly string[];
   /** Whether this route requires authentication (default: true for protected modules) */
-  requiresAuth?: boolean
+  requiresAuth?: boolean;
   /** Layout type: 'auth' for AuthLayout, 'main' for MainLayout (default) */
-  layout?: 'auth' | 'main'
+  layout?: 'auth' | 'main';
 }
 
 /**
@@ -44,11 +44,11 @@ export interface ModuleRoute {
  */
 export interface ModuleConfig {
   /** Unique module name */
-  name: string
+  name: string;
   /** Route configurations for this module */
-  routes: ModuleRoute[]
+  routes: ModuleRoute[];
   /** Navigation items for sidebar */
-  navigation?: ModuleNavItem[]
+  navigation?: ModuleNavItem[];
   /** Redux reducers exported by this module (key = slice name) */
-  reducer?: Record<string, Reducer>
+  reducer?: Record<string, Reducer>;
 }

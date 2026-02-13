@@ -1,9 +1,9 @@
-import { AlertCircle, ArrowLeft, CheckCircle2, Package, RefreshCw, ShieldX } from 'lucide-react'
-import { useCallback, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, CheckCircle2, Package, RefreshCw, ShieldX } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
-import { FINAL_STATUS } from '@/config/constants'
-import type { ApiError } from '@/core/api/types'
+import { FINAL_STATUS } from '@/config/constants';
+import type { ApiError } from '@/core/api/types';
 import {
   Button,
   Card,
@@ -16,140 +16,140 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
+} from '@/shared/components/ui';
 
-import { useGRPOPreview, usePostGRPO } from '../api'
-import { WarehouseSelect } from '../components'
-import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants'
-import type { PostGRPOResponse, PreviewPOReceipt } from '../types'
+import { useGRPOPreview, usePostGRPO } from '../api';
+import { WarehouseSelect } from '../components';
+import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants';
+import type { PostGRPOResponse, PreviewPOReceipt } from '../types';
 
 // Per-PO form state
 interface POFormState {
-  items: Record<number, number> // po_item_receipt_id -> accepted_qty
-  warehouseCode: string
-  comments: string
+  items: Record<number, number>; // po_item_receipt_id -> accepted_qty
+  warehouseCode: string;
+  comments: string;
 }
 
 export default function GRPOPreviewPage() {
-  const navigate = useNavigate()
-  const { vehicleEntryId } = useParams<{ vehicleEntryId: string }>()
-  const entryId = vehicleEntryId ? parseInt(vehicleEntryId, 10) : null
+  const navigate = useNavigate();
+  const { vehicleEntryId } = useParams<{ vehicleEntryId: string }>();
+  const entryId = vehicleEntryId ? parseInt(vehicleEntryId, 10) : null;
 
-  const { data: previewData = [], isLoading, error, refetch } = useGRPOPreview(entryId)
-  const postGRPO = usePostGRPO()
+  const { data: previewData = [], isLoading, error, refetch } = useGRPOPreview(entryId);
+  const postGRPO = usePostGRPO();
 
   // Form state per PO (keyed by po_receipt_id)
-  const [formStates, setFormStates] = useState<Record<number, POFormState>>({})
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
-  const [confirmPO, setConfirmPO] = useState<PreviewPOReceipt | null>(null)
-  const [successResult, setSuccessResult] = useState<PostGRPOResponse | null>(null)
+  const [formStates, setFormStates] = useState<Record<number, POFormState>>({});
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [confirmPO, setConfirmPO] = useState<PreviewPOReceipt | null>(null);
+  const [successResult, setSuccessResult] = useState<PostGRPOResponse | null>(null);
 
-  const apiError = error as ApiError | null
-  const isPermissionError = apiError?.status === 403
+  const apiError = error as ApiError | null;
+  const isPermissionError = apiError?.status === 403;
 
   // Get or initialize form state for a PO
   const getFormState = useCallback(
     (po: PreviewPOReceipt): POFormState => {
       if (formStates[po.po_receipt_id]) {
-        return formStates[po.po_receipt_id]
+        return formStates[po.po_receipt_id];
       }
       // Initialize with received_qty as default
-      const items: Record<number, number> = {}
+      const items: Record<number, number> = {};
       po.items.forEach((item) => {
-        items[item.po_item_receipt_id] = item.received_qty
-      })
-      return { items, warehouseCode: '', comments: '' }
+        items[item.po_item_receipt_id] = item.received_qty;
+      });
+      return { items, warehouseCode: '', comments: '' };
     },
-    [formStates]
-  )
+    [formStates],
+  );
 
   // Update item quantity
   const updateItemQty = (poReceiptId: number, poItemReceiptId: number, value: string) => {
-    const qty = value === '' ? 0 : parseFloat(value)
+    const qty = value === '' ? 0 : parseFloat(value);
     setFormStates((prev) => {
-      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' }
+      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' };
       return {
         ...prev,
         [poReceiptId]: {
           ...current,
           items: { ...current.items, [poItemReceiptId]: isNaN(qty) ? 0 : qty },
         },
-      }
-    })
+      };
+    });
     // Clear error for this item
-    const errorKey = `item_${poItemReceiptId}`
+    const errorKey = `item_${poItemReceiptId}`;
     if (apiErrors[errorKey]) {
       setApiErrors((prev) => {
-        const next = { ...prev }
-        delete next[errorKey]
-        return next
-      })
+        const next = { ...prev };
+        delete next[errorKey];
+        return next;
+      });
     }
-  }
+  };
 
   // Update warehouse code
   const updateWarehouseCode = (poReceiptId: number, value: string) => {
     setFormStates((prev) => {
-      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' }
-      return { ...prev, [poReceiptId]: { ...current, warehouseCode: value } }
-    })
-  }
+      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' };
+      return { ...prev, [poReceiptId]: { ...current, warehouseCode: value } };
+    });
+  };
 
   // Update comments
   const updateComments = (poReceiptId: number, value: string) => {
     setFormStates((prev) => {
-      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' }
-      return { ...prev, [poReceiptId]: { ...current, comments: value } }
-    })
-  }
+      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' };
+      return { ...prev, [poReceiptId]: { ...current, comments: value } };
+    });
+  };
 
   // Validate before posting
   const validatePO = (po: PreviewPOReceipt): boolean => {
-    const form = getFormState(po)
-    const errors: Record<string, string> = {}
+    const form = getFormState(po);
+    const errors: Record<string, string> = {};
 
     po.items.forEach((item) => {
-      const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty
+      const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty;
       if (accepted < 0) {
-        errors[`item_${item.po_item_receipt_id}`] = 'Cannot be negative'
+        errors[`item_${item.po_item_receipt_id}`] = 'Cannot be negative';
       }
       if (accepted > item.received_qty) {
         errors[`item_${item.po_item_receipt_id}`] =
-          `Cannot exceed received qty (${item.received_qty})`
+          `Cannot exceed received qty (${item.received_qty})`;
       }
-    })
+    });
 
     const hasValidQty = po.items.some((item) => {
-      const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty
-      return accepted > 0
-    })
+      const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty;
+      return accepted > 0;
+    });
     if (!hasValidQty) {
-      errors.general = 'At least one item must have accepted quantity greater than 0'
+      errors.general = 'At least one item must have accepted quantity greater than 0';
     }
 
-    setApiErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+    setApiErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // Handle post click (show confirmation)
   const handlePostClick = (po: PreviewPOReceipt) => {
     if (validatePO(po)) {
-      setConfirmPO(po)
+      setConfirmPO(po);
     }
-  }
+  };
 
   // Confirm and submit
   const handleConfirmPost = async () => {
-    if (!confirmPO || !entryId) return
+    if (!confirmPO || !entryId) return;
 
-    const form = getFormState(confirmPO)
+    const form = getFormState(confirmPO);
     const items = confirmPO.items.map((item) => ({
       po_item_receipt_id: item.po_item_receipt_id,
       accepted_qty: form.items[item.po_item_receipt_id] ?? item.received_qty,
-    }))
+    }));
 
     try {
-      setApiErrors({})
+      setApiErrors({});
       const result = await postGRPO.mutateAsync({
         vehicle_entry_id: entryId,
         po_receipt_id: confirmPO.po_receipt_id,
@@ -157,18 +157,18 @@ export default function GRPOPreviewPage() {
         branch_id: DEFAULT_BRANCH_ID,
         warehouse_code: form.warehouseCode || undefined,
         comments: form.comments || undefined,
-      })
-      setConfirmPO(null)
-      setSuccessResult(result)
+      });
+      setConfirmPO(null);
+      setSuccessResult(result);
     } catch (err) {
-      setConfirmPO(null)
-      const postError = err as ApiError
-      setApiErrors({ general: postError.message || 'Failed to post GRPO' })
+      setConfirmPO(null);
+      const postError = err as ApiError;
+      setApiErrors({ general: postError.message || 'Failed to post GRPO' });
     }
-  }
+  };
 
   // Get entry number from first PO receipt
-  const entryNo = previewData.length > 0 ? previewData[0].entry_no : ''
+  const entryNo = previewData.length > 0 ? previewData[0].entry_no : '';
 
   return (
     <div className="space-y-6">
@@ -251,8 +251,8 @@ export default function GRPOPreviewPage() {
       {!isLoading &&
         !error &&
         previewData.map((po) => {
-          const isPosted = po.grpo_status === GRPO_STATUS.POSTED
-          const form = getFormState(po)
+          const isPosted = po.grpo_status === GRPO_STATUS.POSTED;
+          const form = getFormState(po);
 
           return (
             <Card key={po.po_receipt_id} className={isPosted ? 'opacity-60' : ''}>
@@ -283,9 +283,10 @@ export default function GRPOPreviewPage() {
                     <div className="border-t pt-4 space-y-3">
                       <h4 className="text-sm font-medium">Items</h4>
                       {po.items.map((item) => {
-                        const acceptedQty = form.items[item.po_item_receipt_id] ?? item.received_qty
-                        const rejectedQty = Math.max(0, item.received_qty - acceptedQty)
-                        const errorKey = `item_${item.po_item_receipt_id}`
+                        const acceptedQty =
+                          form.items[item.po_item_receipt_id] ?? item.received_qty;
+                        const rejectedQty = Math.max(0, item.received_qty - acceptedQty);
+                        const errorKey = `item_${item.po_item_receipt_id}`;
 
                         return (
                           <div
@@ -327,7 +328,7 @@ export default function GRPOPreviewPage() {
                                     updateItemQty(
                                       po.po_receipt_id,
                                       item.po_item_receipt_id,
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   className="h-8 text-sm"
@@ -348,7 +349,7 @@ export default function GRPOPreviewPage() {
                               </div>
                             </div>
                           </div>
-                        )
+                        );
                       })}
                     </div>
 
@@ -388,7 +389,7 @@ export default function GRPOPreviewPage() {
                 )}
               </CardContent>
             </Card>
-          )
+          );
         })}
 
       {/* Confirmation Dialog */}
@@ -412,8 +413,8 @@ export default function GRPOPreviewPage() {
               </div>
               <div className="border-t pt-3 space-y-2">
                 {confirmPO.items.map((item) => {
-                  const form = getFormState(confirmPO)
-                  const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty
+                  const form = getFormState(confirmPO);
+                  const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty;
                   return (
                     <div
                       key={item.po_item_receipt_id}
@@ -424,7 +425,7 @@ export default function GRPOPreviewPage() {
                         {accepted} {item.uom}
                       </span>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -472,8 +473,8 @@ export default function GRPOPreviewPage() {
               variant="outline"
               className="w-full"
               onClick={() => {
-                setSuccessResult(null)
-                navigate('/grpo/history')
+                setSuccessResult(null);
+                navigate('/grpo/history');
               }}
             >
               View History
@@ -481,8 +482,8 @@ export default function GRPOPreviewPage() {
             <Button
               className="w-full"
               onClick={() => {
-                setSuccessResult(null)
-                refetch()
+                setSuccessResult(null);
+                refetch();
               }}
             >
               Done
@@ -491,5 +492,5 @@ export default function GRPOPreviewPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

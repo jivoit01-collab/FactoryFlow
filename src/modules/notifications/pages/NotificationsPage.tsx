@@ -1,37 +1,37 @@
-import { Bell, CheckCheck, ChevronLeft, ChevronRight, Loader2, Send } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Bell, CheckCheck, ChevronLeft, ChevronRight, Loader2, Send } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { NOTIFICATION_PERMISSIONS } from '@/config/permissions'
-import { Authorized } from '@/core/auth'
-import type { Notification } from '@/core/notifications'
-import { useNotificationList } from '@/core/notifications/hooks'
-import { Button } from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+import { NOTIFICATION_PERMISSIONS } from '@/config/permissions';
+import { Authorized } from '@/core/auth';
+import type { Notification } from '@/core/notifications';
+import { useNotificationList } from '@/core/notifications/hooks';
+import { Button } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 20;
 
 function formatTimeAgo(dateString: string): string {
-  const now = new Date()
-  const date = new Date(dateString)
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  const diffHour = Math.floor(diffMin / 60)
-  const diffDay = Math.floor(diffHour / 24)
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
 
-  if (diffMin < 1) return 'Just now'
-  if (diffMin < 60) return `${diffMin}m ago`
-  if (diffHour < 24) return `${diffHour}h ago`
-  if (diffDay < 7) return `${diffDay}d ago`
-  return date.toLocaleDateString()
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return date.toLocaleDateString();
 }
 
-type FilterType = 'all' | 'unread' | 'read'
+type FilterType = 'all' | 'unread' | 'read';
 
 export default function NotificationsPage() {
-  const navigate = useNavigate()
-  const [filter, setFilter] = useState<FilterType>('all')
-  const [page, setPage] = useState(0)
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [page, setPage] = useState(0);
 
   const {
     notifications,
@@ -41,37 +41,37 @@ export default function NotificationsPage() {
     loadNotifications,
     markAsRead,
     markAllAsRead,
-  } = useNotificationList()
+  } = useNotificationList();
 
   const fetchPage = useCallback(
     (pageNum: number, filterType: FilterType) => {
       const params: { limit: number; offset: number; is_read?: boolean } = {
         limit: PAGE_SIZE,
         offset: pageNum * PAGE_SIZE,
-      }
-      if (filterType === 'unread') params.is_read = false
-      if (filterType === 'read') params.is_read = true
-      loadNotifications(params)
+      };
+      if (filterType === 'unread') params.is_read = false;
+      if (filterType === 'read') params.is_read = true;
+      loadNotifications(params);
     },
-    [loadNotifications]
-  )
+    [loadNotifications],
+  );
 
   useEffect(() => {
-    fetchPage(page, filter)
-  }, [page, filter, fetchPage])
+    fetchPage(page, filter);
+  }, [page, filter, fetchPage]);
 
   const handleFilterChange = (newFilter: FilterType) => {
-    setFilter(newFilter)
-    setPage(0)
-  }
+    setFilter(newFilter);
+    setPage(0);
+  };
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.is_read) {
-      markAsRead([notification.id])
+      markAsRead([notification.id]);
     }
-  }
+  };
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -118,7 +118,7 @@ export default function NotificationsPage() {
               'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
               filter === key
                 ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             {label}
@@ -152,7 +152,7 @@ export default function NotificationsPage() {
                 onClick={() => handleNotificationClick(notification)}
                 className={cn(
                   'flex w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-accent sm:px-6',
-                  !notification.is_read && 'bg-accent/50'
+                  !notification.is_read && 'bg-accent/50',
                 )}
               >
                 <div className="flex-1 min-w-0">
@@ -160,7 +160,7 @@ export default function NotificationsPage() {
                     <p
                       className={cn(
                         'text-sm',
-                        !notification.is_read ? 'font-semibold' : 'font-medium'
+                        !notification.is_read ? 'font-semibold' : 'font-medium',
                       )}
                     >
                       {notification.title}
@@ -211,5 +211,5 @@ export default function NotificationsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

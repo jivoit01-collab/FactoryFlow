@@ -1,11 +1,11 @@
-import { Toaster } from 'sonner'
+import { Toaster } from 'sonner';
 
-import { AuthInitializer } from '@/core/auth/components/AuthInitializer'
-import { PWAInstallPrompt } from '@/core/pwa/PWAInstallPrompt'
-import { ErrorBoundary } from '@/shared/components'
+import { AuthInitializer } from '@/core/auth/components/AuthInitializer';
+import { PWAInstallPrompt } from '@/core/pwa/PWAInstallPrompt';
+import { ErrorBoundary } from '@/shared/components';
 
-import { AppProviders } from './providers'
-import { AppRoutes } from './routes'
+import { AppProviders } from './providers';
+import { AppRoutes } from './routes';
 
 /**
  * Main App component
@@ -22,7 +22,7 @@ function App() {
         <PWAInstallPrompt />
       </AppProviders>
     </ErrorBoundary>
-  )
+  );
 }
 
-export default App
+export default App;

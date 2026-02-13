@@ -10,14 +10,14 @@ import {
   ShieldX,
   UserCheck,
   XCircle,
-} from 'lucide-react'
-import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+} from 'lucide-react';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
-import { useGlobalDateRange } from '@/core/store/hooks'
-import { DateRangePicker } from '@/modules/gate/components'
-import { Button, Card, CardContent } from '@/shared/components/ui'
+import type { ApiError } from '@/core/api/types';
+import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
+import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import {
   useAwaitingChemistInspections,
@@ -25,8 +25,8 @@ import {
   useCompletedInspections,
   usePendingInspections,
   useRejectedInspections,
-} from '../api/inspection/inspection.queries'
-import { WORKFLOW_STATUS } from '../constants'
+} from '../api/inspection/inspection.queries';
+import { WORKFLOW_STATUS } from '../constants';
 
 // Status configuration - compact like Gate module
 const STATUS_CONFIG = {
@@ -65,42 +65,42 @@ const STATUS_CONFIG = {
     icon: XCircle,
     link: '/qc/pending?status=rejected',
   },
-}
+};
 
-const STATUS_ORDER = ['pending', 'draft', 'awaiting_approval', 'approved', 'rejected'] as const
+const STATUS_ORDER = ['pending', 'draft', 'awaiting_approval', 'approved', 'rejected'] as const;
 
 // Status badge styling - consistent with Gate module
 const getStatusBadgeClass = (status: string | null, hasInspection: boolean) => {
   if (!hasInspection) {
-    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
   }
   switch (status) {
     case WORKFLOW_STATUS.DRAFT:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     case WORKFLOW_STATUS.SUBMITTED:
     case WORKFLOW_STATUS.QA_CHEMIST_APPROVED:
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
     case WORKFLOW_STATUS.QAM_APPROVED:
     case WORKFLOW_STATUS.COMPLETED:
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     case 'REJECTED':
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
     default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
   }
-}
+};
 
 export default function QCDashboardPage() {
-  const navigate = useNavigate()
-  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
+  const navigate = useNavigate();
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   const dateParams = useMemo(
     () => ({
       from_date: dateRange.from,
       to_date: dateRange.to,
     }),
-    [dateRange]
-  )
+    [dateRange],
+  );
 
   // Fetch data from backend status-based endpoints
   const {
@@ -108,72 +108,72 @@ export default function QCDashboardPage() {
     isLoading: pendingLoading,
     error: pendingError,
     refetch: refetchPending,
-  } = usePendingInspections(dateParams)
+  } = usePendingInspections(dateParams);
 
   const {
     data: awaitingChemistList = [],
     isLoading: chemistLoading,
     error: chemistError,
-  } = useAwaitingChemistInspections(dateParams)
+  } = useAwaitingChemistInspections(dateParams);
 
   const {
     data: awaitingQAMList = [],
     isLoading: qamLoading,
     error: qamError,
-  } = useAwaitingQAMInspections(dateParams)
+  } = useAwaitingQAMInspections(dateParams);
 
   const {
     data: completedList = [],
     isLoading: completedLoading,
     error: completedError,
-  } = useCompletedInspections(dateParams)
+  } = useCompletedInspections(dateParams);
 
   const {
     data: rejectedList = [],
     isLoading: rejectedLoading,
     error: rejectedError,
-  } = useRejectedInspections(dateParams)
+  } = useRejectedInspections(dateParams);
 
   const isLoading =
-    pendingLoading || chemistLoading || qamLoading || completedLoading || rejectedLoading
-  const error = pendingError || chemistError || qamError || completedError || rejectedError
+    pendingLoading || chemistLoading || qamLoading || completedLoading || rejectedLoading;
+  const error = pendingError || chemistError || qamError || completedError || rejectedError;
 
   // Check if error is a permission error (403)
-  const apiError = error as ApiError | null
-  const isPermissionError = apiError?.status === 403
+  const apiError = error as ApiError | null;
+  const isPermissionError = apiError?.status === 403;
 
   // Calculate counts from backend data
   const counts = {
     pending: pendingList.filter((p) => !p.has_inspection).length,
     draft: pendingList.filter(
-      (p) => p.has_inspection && p.inspection_status === WORKFLOW_STATUS.DRAFT
+      (p) => p.has_inspection && p.inspection_status === WORKFLOW_STATUS.DRAFT,
     ).length,
     awaiting_approval: awaitingChemistList.length + awaitingQAMList.length,
     approved: completedList.length,
     rejected: rejectedList.length,
-  }
+  };
 
-  const totalPending = counts.pending + counts.draft + counts.awaiting_approval
+  const totalPending = counts.pending + counts.draft + counts.awaiting_approval;
 
   const refetch = () => {
-    refetchPending()
-  }
+    refetchPending();
+  };
 
   // Format date/time for display - consistent with Gate module
   const formatDateTime = (dateTime?: string | null) => {
-    if (!dateTime) return '-'
+    if (!dateTime) return '-';
     try {
-      const date = new Date(dateTime)
+      const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return dateTime
+      return dateTime;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -190,9 +190,9 @@ export default function QCDashboardPage() {
             date={dateRangeAsDateObjects}
             onDateChange={(date) => {
               if (date && 'from' in date) {
-                setDateRange(date)
+                setDateRange(date);
               } else {
-                setDateRange(undefined)
+                setDateRange(undefined);
               }
             }}
           />
@@ -337,9 +337,9 @@ export default function QCDashboardPage() {
             <h3 className="text-sm font-medium text-muted-foreground mb-3">Status Overview</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {STATUS_ORDER.map((statusKey) => {
-                const config = STATUS_CONFIG[statusKey]
-                const Icon = config.icon
-                const count = counts[statusKey] || 0
+                const config = STATUS_CONFIG[statusKey];
+                const Icon = config.icon;
+                const count = counts[statusKey] || 0;
 
                 return (
                   <Card
@@ -355,7 +355,7 @@ export default function QCDashboardPage() {
                       <p className={`mt-1 text-xs font-medium ${config.color}`}>{config.label}</p>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
           </div>
@@ -385,5 +385,5 @@ export default function QCDashboardPage() {
         </>
       )}
     </div>
-  )
+  );
 }

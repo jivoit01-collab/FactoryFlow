@@ -1,10 +1,10 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Building2, FileCheck, FileText, Package } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, Building2, FileCheck, FileText, Package } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { ENTRY_STATUS, SECURITY_APPROVAL_STATUS, VALIDATION_PATTERNS } from '@/config/constants'
-import type { ApiError } from '@/core/api'
+import { ENTRY_STATUS, SECURITY_APPROVAL_STATUS, VALIDATION_PATTERNS } from '@/config/constants';
+import type { ApiError } from '@/core/api';
 import {
   Button,
   Card,
@@ -13,84 +13,84 @@ import {
   CardTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 import {
   getErrorMessage,
   getServerErrorMessage,
   isNotFoundError as checkNotFoundError,
   isServerError as checkServerError,
-} from '@/shared/utils'
-import { cn } from '@/shared/utils'
+} from '@/shared/utils';
+import { cn } from '@/shared/utils';
 
 import {
   useConstructionEntry,
   useCreateConstructionEntry,
   useUpdateConstructionEntry,
-} from '../../api/construction/construction.queries'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { ConstructionCategorySelect, FillDataAlert, UnitSelect } from '../../components'
-import { useEntryId } from '../../hooks'
+} from '../../api/construction/construction.queries';
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
+import { ConstructionCategorySelect, FillDataAlert, UnitSelect } from '../../components';
+import { useEntryId } from '../../hooks';
 
 // Security approval options
 const SECURITY_APPROVAL_OPTIONS = [
   { value: SECURITY_APPROVAL_STATUS.APPROVED, label: 'Approved' },
   { value: SECURITY_APPROVAL_STATUS.PENDING, label: 'Pending' },
   { value: SECURITY_APPROVAL_STATUS.REJECTED, label: 'Rejected' },
-]
+];
 
 interface ConstructionFormData {
   // Project & Contractor Details
-  projectName: string
-  workOrderNumber: string
-  contractorName: string
-  contractorContact: string
-  vehicleNumber: string
+  projectName: string;
+  workOrderNumber: string;
+  contractorName: string;
+  contractorContact: string;
+  vehicleNumber: string;
   // Material Details
-  materialCategory: string
-  materialDescription: string
-  quantity: string
-  unit: string
-  unitName: string
-  challanNumber: string
-  invoiceNumber: string
+  materialCategory: string;
+  materialDescription: string;
+  quantity: string;
+  unit: string;
+  unitName: string;
+  challanNumber: string;
+  invoiceNumber: string;
   // Approval & Responsibility
-  siteEngineer: string
-  securityApproval: string
+  siteEngineer: string;
+  securityApproval: string;
   // Additional Information
-  remarks: string
+  remarks: string;
 }
 
 export default function Step3Page() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { entryId, entryIdNumber, isEditMode } = useEntryId()
-  const currentStep = 3
-  const totalSteps = 4
-  const progressPercentage = (currentStep / totalSteps) * 100
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  const currentStep = 3;
+  const totalSteps = 4;
+  const progressPercentage = (currentStep / totalSteps) * 100;
 
   // API hooks
-  const createConstructionEntry = useCreateConstructionEntry(entryIdNumber || 0)
-  const updateConstructionEntry = useUpdateConstructionEntry(entryIdNumber || 0)
+  const createConstructionEntry = useCreateConstructionEntry(entryIdNumber || 0);
+  const updateConstructionEntry = useUpdateConstructionEntry(entryIdNumber || 0);
   const {
     data: constructionData,
     isLoading: isLoadingConstruction,
     error: constructionError,
-  } = useConstructionEntry(isEditMode && entryIdNumber ? entryIdNumber : null)
+  } = useConstructionEntry(isEditMode && entryIdNumber ? entryIdNumber : null);
   const { data: vehicleEntryData } = useVehicleEntry(
-    isEditMode && entryIdNumber ? entryIdNumber : null
-  )
+    isEditMode && entryIdNumber ? entryIdNumber : null,
+  );
 
   // State
-  const [fillDataMode, setFillDataMode] = useState(false)
-  const [updateMode, setUpdateMode] = useState(false)
-  const [isNavigating, setIsNavigating] = useState(false)
-  const effectiveEditMode = isEditMode && !fillDataMode
+  const [fillDataMode, setFillDataMode] = useState(false);
+  const [updateMode, setUpdateMode] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const effectiveEditMode = isEditMode && !fillDataMode;
 
   // Check if error is "not found" error
-  const isNotFoundError = checkNotFoundError(constructionError)
+  const isNotFoundError = checkNotFoundError(constructionError);
   // Check if error is a server error (5xx)
-  const hasServerError = checkServerError(constructionError)
+  const hasServerError = checkServerError(constructionError);
 
   // Form state
   const [formData, setFormData] = useState<ConstructionFormData>({
@@ -109,19 +109,19 @@ export default function Step3Page() {
     siteEngineer: '',
     securityApproval: '',
     remarks: '',
-  })
+  });
 
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
   // Fields are read-only when:
   // 1. In edit mode AND update mode is not active AND there's no not found error, OR
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly =
-    (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED
+    (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode);
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED;
 
   // Load construction data when in edit mode
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function Step3Page() {
       const categoryId =
         typeof constructionData.material_category === 'object'
           ? constructionData.material_category.id.toString()
-          : constructionData.material_category?.toString() || ''
+          : constructionData.material_category?.toString() || '';
 
       setFormData({
         projectName: constructionData.project_name || '',
@@ -152,107 +152,107 @@ export default function Step3Page() {
         siteEngineer: constructionData.site_engineer || '',
         securityApproval: constructionData.security_approval || '',
         remarks: constructionData.remarks || '',
-      })
+      });
 
       // Category is loaded lazily by ConstructionCategorySelect
     }
-  }, [effectiveEditMode, constructionData])
+  }, [effectiveEditMode, constructionData]);
 
   const handleInputChange = (field: keyof ConstructionFormData, value: string) => {
-    if (isReadOnly) return
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    if (isReadOnly) return;
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (apiErrors[field]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[field]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/construction/edit/${entryId}/step2`)
+      navigate(`/gate/construction/edit/${entryId}/step2`);
     } else {
-      navigate(`/gate/construction/new/step2?entryId=${entryId}`)
+      navigate(`/gate/construction/new/step2?entryId=${entryId}`);
     }
-  }
+  };
 
   const handleCancel = () => {
-    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    navigate('/gate/construction')
-  }
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+    navigate('/gate/construction');
+  };
 
   const handleFillData = () => {
-    setFillDataMode(true)
-  }
+    setFillDataMode(true);
+  };
 
   const handleUpdate = () => {
-    setUpdateMode(true)
-  }
+    setUpdateMode(true);
+  };
 
   const handleNext = async () => {
     if (!entryId || !entryIdNumber) {
-      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' })
-      return
+      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' });
+      return;
     }
 
     // In edit mode (and not fill data mode and not update mode), navigate to attachments page
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/construction/edit/${entryId}/attachments`)
-      return
+      navigate(`/gate/construction/edit/${entryId}/attachments`);
+      return;
     }
 
-    setApiErrors({})
+    setApiErrors({});
 
     // Validation
     if (!formData.projectName.trim()) {
-      setApiErrors({ projectName: 'Please enter project/work order name' })
-      return
+      setApiErrors({ projectName: 'Please enter project/work order name' });
+      return;
     }
     if (!formData.contractorName.trim()) {
-      setApiErrors({ contractorName: 'Please enter contractor name' })
-      return
+      setApiErrors({ contractorName: 'Please enter contractor name' });
+      return;
     }
     // Validate contractor contact (optional, but if provided must be valid phone)
     if (
       formData.contractorContact.trim() &&
       !VALIDATION_PATTERNS.phone.test(formData.contractorContact.trim())
     ) {
-      setApiErrors({ contractorContact: 'Please enter a valid 10-digit phone number' })
-      return
+      setApiErrors({ contractorContact: 'Please enter a valid 10-digit phone number' });
+      return;
     }
     // Validate vehicle number (optional, but if provided must be valid format)
     if (
       formData.vehicleNumber.trim() &&
       !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicleNumber.trim().toUpperCase())
     ) {
-      setApiErrors({ vehicleNumber: 'Please enter a valid vehicle number (e.g., MH12AB1234)' })
-      return
+      setApiErrors({ vehicleNumber: 'Please enter a valid vehicle number (e.g., MH12AB1234)' });
+      return;
     }
     if (!formData.materialCategory) {
-      setApiErrors({ materialCategory: 'Please select material category' })
-      return
+      setApiErrors({ materialCategory: 'Please select material category' });
+      return;
     }
     if (!formData.materialDescription.trim()) {
-      setApiErrors({ materialDescription: 'Please enter material description' })
-      return
+      setApiErrors({ materialDescription: 'Please enter material description' });
+      return;
     }
     if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
-      setApiErrors({ quantity: 'Please enter a valid quantity' })
-      return
+      setApiErrors({ quantity: 'Please enter a valid quantity' });
+      return;
     }
     if (!formData.unit) {
-      setApiErrors({ unit: 'Please select unit' })
-      return
+      setApiErrors({ unit: 'Please select unit' });
+      return;
     }
     if (!formData.siteEngineer.trim()) {
-      setApiErrors({ siteEngineer: 'Please enter site engineer name' })
-      return
+      setApiErrors({ siteEngineer: 'Please enter site engineer name' });
+      return;
     }
     if (!formData.securityApproval) {
-      setApiErrors({ securityApproval: 'Please select security approval status' })
-      return
+      setApiErrors({ securityApproval: 'Please select security approval status' });
+      return;
     }
 
     try {
@@ -271,45 +271,45 @@ export default function Step3Page() {
         site_engineer: formData.siteEngineer.trim(),
         security_approval: formData.securityApproval,
         remarks: formData.remarks.trim() || undefined,
-      }
+      };
 
       // Use update API when in edit mode with update mode active
       if (isEditMode && updateMode) {
-        await updateConstructionEntry.mutateAsync(requestData)
+        await updateConstructionEntry.mutateAsync(requestData);
       } else {
-        await createConstructionEntry.mutateAsync(requestData)
+        await createConstructionEntry.mutateAsync(requestData);
       }
 
       // Navigate to attachments page
-      setIsNavigating(true)
+      setIsNavigating(true);
       if (isEditMode) {
-        navigate(`/gate/construction/edit/${entryId}/attachments`)
+        navigate(`/gate/construction/edit/${entryId}/attachments`);
       } else {
-        navigate(`/gate/construction/new/attachments?entryId=${entryId}`)
+        navigate(`/gate/construction/new/attachments?entryId=${entryId}`);
       }
     } catch (error) {
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
       if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to save construction entry' })
+        setApiErrors({ general: apiError.message || 'Failed to save construction entry' });
       }
     }
-  }
+  };
 
-  const isLoading = effectiveEditMode && isLoadingConstruction
+  const isLoading = effectiveEditMode && isLoadingConstruction;
   const isSaving =
-    createConstructionEntry.isPending || updateConstructionEntry.isPending || isNavigating
+    createConstructionEntry.isPending || updateConstructionEntry.isPending || isNavigating;
 
   // Select styling classes
   const selectClassName =
-    'flex h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+    'flex h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <div className="space-y-6 pb-6">
@@ -384,7 +384,7 @@ export default function Step3Page() {
                     disabled={isReadOnly}
                     className={cn(
                       'border-2 font-medium',
-                      apiErrors.projectName && 'border-destructive'
+                      apiErrors.projectName && 'border-destructive',
                     )}
                   />
                   {apiErrors.projectName && (
@@ -418,7 +418,7 @@ export default function Step3Page() {
                     disabled={isReadOnly}
                     className={cn(
                       'border-2 font-medium',
-                      apiErrors.contractorName && 'border-destructive'
+                      apiErrors.contractorName && 'border-destructive',
                     )}
                   />
                   {apiErrors.contractorName && (
@@ -434,15 +434,15 @@ export default function Step3Page() {
                     value={formData.contractorContact}
                     onChange={(e) => {
                       // Only allow digits
-                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
-                      handleInputChange('contractorContact', value)
+                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                      handleInputChange('contractorContact', value);
                     }}
                     placeholder="9876543210"
                     maxLength={10}
                     disabled={isReadOnly}
                     className={cn(
                       'border-2 font-medium',
-                      apiErrors.contractorContact && 'border-destructive'
+                      apiErrors.contractorContact && 'border-destructive',
                     )}
                   />
                   {apiErrors.contractorContact && (
@@ -458,14 +458,14 @@ export default function Step3Page() {
                     value={formData.vehicleNumber}
                     onChange={(e) => {
                       // Uppercase and remove spaces
-                      const value = e.target.value.toUpperCase().replace(/\s/g, '')
-                      handleInputChange('vehicleNumber', value)
+                      const value = e.target.value.toUpperCase().replace(/\s/g, '');
+                      handleInputChange('vehicleNumber', value);
                     }}
                     placeholder="MH12AB1234"
                     disabled={isReadOnly}
                     className={cn(
                       'border-2 font-medium',
-                      apiErrors.vehicleNumber && 'border-destructive'
+                      apiErrors.vehicleNumber && 'border-destructive',
                     )}
                   />
                   {apiErrors.vehicleNumber && (
@@ -490,7 +490,7 @@ export default function Step3Page() {
                 <ConstructionCategorySelect
                   value={formData.materialCategory || undefined}
                   onChange={(categoryId) => {
-                    handleInputChange('materialCategory', categoryId)
+                    handleInputChange('materialCategory', categoryId);
                   }}
                   placeholder="Select material category"
                   disabled={isReadOnly}
@@ -517,7 +517,7 @@ export default function Step3Page() {
                       disabled={isReadOnly}
                       className={cn(
                         'border-2 font-medium',
-                        apiErrors.quantity && 'border-destructive'
+                        apiErrors.quantity && 'border-destructive',
                       )}
                     />
                     {apiErrors.quantity && (
@@ -529,8 +529,8 @@ export default function Step3Page() {
                   <UnitSelect
                     value={formData.unit || undefined}
                     onChange={(unitId, unitName) => {
-                      handleInputChange('unit', unitId)
-                      setFormData((prev) => ({ ...prev, unitName }))
+                      handleInputChange('unit', unitId);
+                      setFormData((prev) => ({ ...prev, unitName }));
                     }}
                     placeholder="Select unit"
                     disabled={isReadOnly}
@@ -555,7 +555,7 @@ export default function Step3Page() {
                     rows={3}
                     className={cn(
                       'flex w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                      apiErrors.materialDescription && 'border-destructive'
+                      apiErrors.materialDescription && 'border-destructive',
                     )}
                   />
                   {apiErrors.materialDescription && (
@@ -615,7 +615,7 @@ export default function Step3Page() {
                     disabled={isReadOnly}
                     className={cn(
                       'border-2 font-medium',
-                      apiErrors.siteEngineer && 'border-destructive'
+                      apiErrors.siteEngineer && 'border-destructive',
                     )}
                   />
                   {apiErrors.siteEngineer && (
@@ -632,7 +632,7 @@ export default function Step3Page() {
                     id="securityApproval"
                     className={cn(
                       selectClassName,
-                      apiErrors.securityApproval && 'border-destructive'
+                      apiErrors.securityApproval && 'border-destructive',
                     )}
                     value={formData.securityApproval}
                     onChange={(e) => handleInputChange('securityApproval', e.target.value)}
@@ -708,5 +708,5 @@ export default function Step3Page() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,8 +1,8 @@
-import { AlertCircle, ArrowLeft, User, Users } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, User, Users } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_PATTERNS } from '@/config/constants';
 import {
   Button,
   Card,
@@ -11,9 +11,9 @@ import {
   CardTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
 import {
   type CreateEntryRequest,
@@ -21,29 +21,29 @@ import {
   type Labour,
   PERSON_TYPE_IDS,
   type Visitor,
-} from '../../api/personGateIn/personGateIn.api'
-import { useCreatePersonEntry } from '../../api/personGateIn/personGateIn.queries'
-import { GateSelect, LabourSelect, VisitorSelect } from '../../components/personGateIn'
+} from '../../api/personGateIn/personGateIn.api';
+import { useCreatePersonEntry } from '../../api/personGateIn/personGateIn.queries';
+import { GateSelect, LabourSelect, VisitorSelect } from '../../components/personGateIn';
 
-type PersonTypeValue = 'visitor' | 'labour'
+type PersonTypeValue = 'visitor' | 'labour';
 
 interface FormData {
-  person_type: number | null
-  visitor: number | null
-  labour: number | null
-  gate_in: number | null
-  purpose: string
-  vehicle_no: string
-  remarks: string
+  person_type: number | null;
+  visitor: number | null;
+  labour: number | null;
+  gate_in: number | null;
+  purpose: string;
+  vehicle_no: string;
+  remarks: string;
 }
 
 export default function NewEntryPage() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const initialType = searchParams.get('type') as PersonTypeValue | null
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialType = searchParams.get('type') as PersonTypeValue | null;
 
   // Form state
-  const [personType, setPersonType] = useState<PersonTypeValue>(initialType || 'visitor')
+  const [personType, setPersonType] = useState<PersonTypeValue>(initialType || 'visitor');
   const [formData, setFormData] = useState<FormData>({
     person_type: initialType === 'labour' ? PERSON_TYPE_IDS.LABOUR : PERSON_TYPE_IDS.VISITOR,
     visitor: null,
@@ -52,96 +52,96 @@ export default function NewEntryPage() {
     purpose: '',
     vehicle_no: '',
     remarks: '',
-  })
-  const [selectedPerson, setSelectedPerson] = useState<Visitor | Labour | null>(null)
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  });
+  const [selectedPerson, setSelectedPerson] = useState<Visitor | Labour | null>(null);
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
   // API hooks
-  const createEntryMutation = useCreatePersonEntry()
+  const createEntryMutation = useCreatePersonEntry();
 
   // Handle person type change
   const handlePersonTypeChange = (type: PersonTypeValue) => {
-    setPersonType(type)
-    setSelectedPerson(null)
+    setPersonType(type);
+    setSelectedPerson(null);
     setFormData((prev) => ({
       ...prev,
       person_type: type === 'labour' ? PERSON_TYPE_IDS.LABOUR : PERSON_TYPE_IDS.VISITOR,
       visitor: null,
       labour: null,
-    }))
-    setApiErrors({})
-  }
+    }));
+    setApiErrors({});
+  };
 
   // Handle visitor selection
   const handleVisitorChange = (visitor: Visitor | null) => {
-    setSelectedPerson(visitor)
+    setSelectedPerson(visitor);
     setFormData((prev) => ({
       ...prev,
       visitor: visitor?.id || null,
       labour: null,
-    }))
+    }));
     if (apiErrors.visitor) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors.visitor
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors.visitor;
+        return newErrors;
+      });
     }
-  }
+  };
 
   // Handle labour selection
   const handleLabourChange = (labour: Labour | null) => {
-    setSelectedPerson(labour)
+    setSelectedPerson(labour);
     setFormData((prev) => ({
       ...prev,
       labour: labour?.id || null,
       visitor: null,
-    }))
+    }));
     if (apiErrors.labour) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors.labour
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors.labour;
+        return newErrors;
+      });
     }
-  }
+  };
 
   // Handle gate selection
   const handleGateChange = (gate: Gate | null) => {
     setFormData((prev) => ({
       ...prev,
       gate_in: gate?.id || null,
-    }))
+    }));
     if (apiErrors.gate_in) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors.gate_in
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors.gate_in;
+        return newErrors;
+      });
     }
-  }
+  };
 
   // Handle form submission
   const handleSubmit = async () => {
     // Validation
-    const errors: Record<string, string> = {}
-    if (!formData.person_type) errors.person_type = 'Person type is required'
-    if (!formData.gate_in) errors.gate_in = 'Gate is required'
-    if (personType === 'visitor' && !formData.visitor) errors.visitor = 'Please select a visitor'
-    if (personType === 'labour' && !formData.labour) errors.labour = 'Please select a labour'
+    const errors: Record<string, string> = {};
+    if (!formData.person_type) errors.person_type = 'Person type is required';
+    if (!formData.gate_in) errors.gate_in = 'Gate is required';
+    if (personType === 'visitor' && !formData.visitor) errors.visitor = 'Please select a visitor';
+    if (personType === 'labour' && !formData.labour) errors.labour = 'Please select a labour';
     if (
       formData.vehicle_no.trim() &&
       !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicle_no.trim().toUpperCase())
     ) {
-      errors.vehicle_no = 'Please enter a valid vehicle number (e.g., MH12AB1234)'
+      errors.vehicle_no = 'Please enter a valid vehicle number (e.g., MH12AB1234)';
     }
 
     if (Object.keys(errors).length > 0) {
-      setApiErrors(errors)
-      return
+      setApiErrors(errors);
+      return;
     }
 
     try {
@@ -151,41 +151,41 @@ export default function NewEntryPage() {
         purpose: formData.purpose || undefined,
         vehicle_no: formData.vehicle_no || undefined,
         remarks: formData.remarks || undefined,
-      }
+      };
 
       if (personType === 'visitor') {
-        requestData.visitor = formData.visitor!
+        requestData.visitor = formData.visitor!;
       } else {
-        requestData.labour = formData.labour!
+        requestData.labour = formData.labour!;
       }
 
-      const entry = await createEntryMutation.mutateAsync(requestData)
-      navigate(`/gate/visitor-labour/entry/${entry.id}`)
+      const entry = await createEntryMutation.mutateAsync(requestData);
+      navigate(`/gate/visitor-labour/entry/${entry.id}`);
     } catch (error: unknown) {
       const err = error as {
-        errors?: Record<string, string[]>
-        message?: string
-      }
+        errors?: Record<string, string[]>;
+        message?: string;
+      };
 
-      const fieldErrors: Record<string, string> = {}
+      const fieldErrors: Record<string, string> = {};
 
       // Handle field-level errors
       if (err.errors) {
         Object.entries(err.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
+        });
       }
 
       // Handle general error message (API client now properly extracts from 'error', 'detail', 'message')
       if (err.message) {
-        fieldErrors.general = err.message
+        fieldErrors.general = err.message;
       }
 
-      setApiErrors(fieldErrors)
+      setApiErrors(fieldErrors);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -324,14 +324,14 @@ export default function NewEntryPage() {
                 <Input
                   value={formData.vehicle_no}
                   onChange={(e) => {
-                    const value = e.target.value.toUpperCase().replace(/\s/g, '')
-                    setFormData((prev) => ({ ...prev, vehicle_no: value }))
+                    const value = e.target.value.toUpperCase().replace(/\s/g, '');
+                    setFormData((prev) => ({ ...prev, vehicle_no: value }));
                     if (apiErrors.vehicle_no) {
                       setApiErrors((prev) => {
-                        const newErrors = { ...prev }
-                        delete newErrors.vehicle_no
-                        return newErrors
-                      })
+                        const newErrors = { ...prev };
+                        delete newErrors.vehicle_no;
+                        return newErrors;
+                      });
                     }
                   }}
                   placeholder="MH12AB1234"
@@ -378,5 +378,5 @@ export default function NewEntryPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,14 +1,14 @@
-import { ENTRY_TYPES } from '@/config/constants'
+import { ENTRY_TYPES } from '@/config/constants';
 
 export interface EntryFlowConfig {
-  entryType: string
-  routePrefix: string
-  headerTitle: string
-  totalSteps: number
-  dashboardTitle: string
-  dashboardDescription: string
-  allPageTitle: string
-  allPageDescription: string
+  entryType: string;
+  routePrefix: string;
+  headerTitle: string;
+  totalSteps: number;
+  dashboardTitle: string;
+  dashboardDescription: string;
+  allPageTitle: string;
+  allPageDescription: string;
 }
 
 export const RAW_MATERIAL_FLOW: EntryFlowConfig = {
@@ -20,7 +20,7 @@ export const RAW_MATERIAL_FLOW: EntryFlowConfig = {
   dashboardDescription: 'Manage raw materials, packing materials, and assets gate entries',
   allPageTitle: 'Raw Materials (RM/PM/Assets)',
   allPageDescription: 'Manage raw materials, packing materials, and assets gate entries',
-}
+};
 
 export const CONSTRUCTION_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.CONSTRUCTION,
@@ -31,7 +31,7 @@ export const CONSTRUCTION_FLOW: EntryFlowConfig = {
   dashboardDescription: 'Manage construction materials and building work gate entries',
   allPageTitle: 'Construction (Civil/Building Work)',
   allPageDescription: 'Manage construction materials and building work gate entries',
-}
+};
 
 export const DAILY_NEED_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.DAILY_NEED,
@@ -42,7 +42,7 @@ export const DAILY_NEED_FLOW: EntryFlowConfig = {
   dashboardDescription: 'Manage daily needs, food, and consumables gate entries',
   allPageTitle: 'Daily Needs (Food/Consumables)',
   allPageDescription: 'Manage daily needs, food, and consumables gate entries',
-}
+};
 
 export const MAINTENANCE_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.MAINTENANCE,
@@ -53,4 +53,4 @@ export const MAINTENANCE_FLOW: EntryFlowConfig = {
   dashboardDescription: 'Manage maintenance items, spare parts, and tools gate entries',
   allPageTitle: 'Maintenance (Spare parts/Tools)',
   allPageDescription: 'Manage maintenance items, spare parts, and tools gate entries',
-}
+};

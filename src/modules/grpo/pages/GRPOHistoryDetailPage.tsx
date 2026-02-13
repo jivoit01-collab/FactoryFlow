@@ -1,40 +1,40 @@
-import { AlertCircle, ArrowLeft, RefreshCw, ShieldX } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, RefreshCw, ShieldX } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
-import { Button, Card, CardContent } from '@/shared/components/ui'
+import type { ApiError } from '@/core/api/types';
+import { Button, Card, CardContent } from '@/shared/components/ui';
 
-import { useGRPODetail } from '../api'
-import { GRPO_STATUS_CONFIG } from '../constants'
+import { useGRPODetail } from '../api';
+import { GRPO_STATUS_CONFIG } from '../constants';
 
 // Format date/time for display
 const formatDateTime = (dateTime?: string | null) => {
-  if (!dateTime) return '-'
+  if (!dateTime) return '-';
   try {
-    const date = new Date(dateTime)
+    const date = new Date(dateTime);
     return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    })
+    });
   } catch {
-    return dateTime
+    return dateTime;
   }
-}
+};
 
 export default function GRPOHistoryDetailPage() {
-  const navigate = useNavigate()
-  const { postingId } = useParams<{ postingId: string }>()
-  const id = postingId ? parseInt(postingId, 10) : null
+  const navigate = useNavigate();
+  const { postingId } = useParams<{ postingId: string }>();
+  const id = postingId ? parseInt(postingId, 10) : null;
 
-  const { data: posting, isLoading, error, refetch } = useGRPODetail(id)
+  const { data: posting, isLoading, error, refetch } = useGRPODetail(id);
 
-  const apiError = error as ApiError | null
-  const isPermissionError = apiError?.status === 403
+  const apiError = error as ApiError | null;
+  const isPermissionError = apiError?.status === 403;
 
-  const statusConfig = posting ? GRPO_STATUS_CONFIG[posting.status] : null
+  const statusConfig = posting ? GRPO_STATUS_CONFIG[posting.status] : null;
 
   return (
     <div className="space-y-6">
@@ -183,5 +183,5 @@ export default function GRPOHistoryDetailPage() {
         </>
       )}
     </div>
-  )
+  );
 }

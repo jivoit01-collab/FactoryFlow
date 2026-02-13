@@ -1,6 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import {
   ENTRY_STATUS,
@@ -8,64 +8,64 @@ import {
   getVehicleConditionLabel,
   TYRE_CONDITIONS,
   VEHICLE_CONDITIONS,
-} from '@/config/constants'
-import type { ApiError } from '@/core/api'
-import { getCurrentTimeHHMM, getTimeFromDatetime } from '@/shared/hooks'
+} from '@/config/constants';
+import type { ApiError } from '@/core/api';
+import { getCurrentTimeHHMM, getTimeFromDatetime } from '@/shared/hooks';
 import {
   getErrorMessage,
   getServerErrorMessage,
   isNotFoundError as checkNotFoundError,
   isServerError as checkServerError,
-} from '@/shared/utils'
+} from '@/shared/utils';
 
 import {
   useCreateSecurityCheck,
   useSecurityCheck,
-} from '../../api/securityCheck/securityCheck.queries'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { type SecurityCheckFormData, SecurityCheckFormShell } from '../../components'
-import { WIZARD_CONFIG } from '../../constants'
-import type { EntryFlowConfig } from '../../constants/entryFlowConfig'
-import { useEntryId } from '../../hooks'
+} from '../../api/securityCheck/securityCheck.queries';
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
+import { type SecurityCheckFormData, SecurityCheckFormShell } from '../../components';
+import { WIZARD_CONFIG } from '../../constants';
+import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
+import { useEntryId } from '../../hooks';
 
 interface SharedStep2PageProps {
-  config: EntryFlowConfig
+  config: EntryFlowConfig;
 }
 
 export default function SharedStep2Page({ config }: SharedStep2PageProps) {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { entryId, entryIdNumber, isEditMode } = useEntryId()
-  const currentStep = config.totalSteps === 5 ? WIZARD_CONFIG.STEPS.SECURITY_CHECK : 2
-  const createSecurityCheck = useCreateSecurityCheck(entryIdNumber || 0)
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  const currentStep = config.totalSteps === 5 ? WIZARD_CONFIG.STEPS.SECURITY_CHECK : 2;
+  const createSecurityCheck = useCreateSecurityCheck(entryIdNumber || 0);
   const {
     data: securityCheckData,
     isLoading: isLoadingSecurityCheck,
     error: securityCheckError,
-  } = useSecurityCheck(isEditMode && entryIdNumber ? entryIdNumber : null)
+  } = useSecurityCheck(isEditMode && entryIdNumber ? entryIdNumber : null);
   const { data: vehicleEntryData } = useVehicleEntry(
-    isEditMode && entryIdNumber ? entryIdNumber : null
-  )
+    isEditMode && entryIdNumber ? entryIdNumber : null,
+  );
 
   // State to track if we should behave like create mode (when Fill Data is clicked)
-  const [fillDataMode, setFillDataMode] = useState(false)
+  const [fillDataMode, setFillDataMode] = useState(false);
   // State to track if Update button has been clicked (enables editing)
-  const [updateMode, setUpdateMode] = useState(false)
+  const [updateMode, setUpdateMode] = useState(false);
   // State to keep button disabled after API success until navigation completes
-  const [isNavigating, setIsNavigating] = useState(false)
-  const effectiveEditMode = isEditMode && !fillDataMode
+  const [isNavigating, setIsNavigating] = useState(false);
+  const effectiveEditMode = isEditMode && !fillDataMode;
 
   // Check if error is "not found" error
-  const isNotFoundError = checkNotFoundError(securityCheckError)
+  const isNotFoundError = checkNotFoundError(securityCheckError);
   // Check if error is a server error (5xx)
-  const hasServerError = checkServerError(securityCheckError)
+  const hasServerError = checkServerError(securityCheckError);
 
   // Fields are read-only when:
   // 1. In edit mode AND update mode is not active AND there's no not found error, OR
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly =
-    (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED
+    (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode);
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED;
 
   // Form state
   const [formData, setFormData] = useState<SecurityCheckFormData>({
@@ -78,9 +78,9 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
     entryTime: '',
     inspectedByName: '',
     remarks: '',
-  })
+  });
 
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Auto-capture entry time (only in create mode or fill data mode)
   useEffect(() => {
@@ -89,29 +89,29 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
       setFormData((prev: SecurityCheckFormData) => ({
         ...prev,
         entryTime: getCurrentTimeHHMM(),
-      }))
+      }));
     }
-  }, [effectiveEditMode])
+  }, [effectiveEditMode]);
 
   // Load security check data when in edit mode
   useEffect(() => {
     if (effectiveEditMode && securityCheckData) {
       // Convert API boolean values to form dropdown values
-      const vehicleCondition = getVehicleConditionLabel(securityCheckData.vehicle_condition_ok)
-      const tyreCondition = getTyreConditionLabel(securityCheckData.tyre_condition_ok)
+      const vehicleCondition = getVehicleConditionLabel(securityCheckData.vehicle_condition_ok);
+      const tyreCondition = getTyreConditionLabel(securityCheckData.tyre_condition_ok);
 
-      const fireExtinguisher = securityCheckData.fire_extinguisher_available ? 'Yes' : 'No'
+      const fireExtinguisher = securityCheckData.fire_extinguisher_available ? 'Yes' : 'No';
 
       // Convert alcohol test data
-      let alcoholTest = 'Not Required'
+      let alcoholTest = 'Not Required';
       if (securityCheckData.alcohol_test_done) {
-        alcoholTest = securityCheckData.alcohol_test_passed ? 'Passed' : 'Failed'
+        alcoholTest = securityCheckData.alcohol_test_passed ? 'Passed' : 'Failed';
       }
 
       // Parse inspection_time to get time component
-      let entryTime = ''
+      let entryTime = '';
       if (securityCheckData.inspection_time) {
-        entryTime = getTimeFromDatetime(securityCheckData.inspection_time) || getCurrentTimeHHMM()
+        entryTime = getTimeFromDatetime(securityCheckData.inspection_time) || getCurrentTimeHHMM();
       }
 
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing form state with fetched data is a valid pattern
@@ -125,96 +125,96 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
         entryTime,
         inspectedByName: securityCheckData.inspected_by_name || '',
         remarks: securityCheckData.remarks || '',
-      })
+      });
     }
-  }, [effectiveEditMode, securityCheckData])
+  }, [effectiveEditMode, securityCheckData]);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev: SecurityCheckFormData) => ({ ...prev, [field]: value }))
+    setFormData((prev: SecurityCheckFormData) => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (apiErrors[field]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[field]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`${config.routePrefix}/edit/${entryId}/step1`)
+      navigate(`${config.routePrefix}/edit/${entryId}/step1`);
     } else {
-      navigate(`${config.routePrefix}/new`)
+      navigate(`${config.routePrefix}/new`);
     }
-  }
+  };
 
   const handleCancel = () => {
-    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    navigate(config.routePrefix)
-  }
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+    navigate(config.routePrefix);
+  };
 
   const handleFillData = () => {
-    setFillDataMode(true)
+    setFillDataMode(true);
     // Auto-capture entry time when switching to fill data mode
     setFormData((prev: SecurityCheckFormData) => ({
       ...prev,
       entryTime: getCurrentTimeHHMM(),
-    }))
-  }
+    }));
+  };
 
   const handleUpdate = () => {
-    setUpdateMode(true)
-  }
+    setUpdateMode(true);
+  };
 
   const handleNext = async () => {
     if (!entryId) {
-      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' })
-      return
+      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' });
+      return;
     }
 
     // In edit mode (and not fill data mode and not update mode), just navigate without API call
     if (effectiveEditMode && !updateMode) {
-      navigate(`${config.routePrefix}/edit/${entryId}/step3`)
-      return
+      navigate(`${config.routePrefix}/edit/${entryId}/step3`);
+      return;
     }
 
-    setApiErrors({})
+    setApiErrors({});
 
     // Validation
     if (!formData.vehicleCondition) {
-      setApiErrors({ vehicleCondition: 'Please select vehicle condition' })
-      return
+      setApiErrors({ vehicleCondition: 'Please select vehicle condition' });
+      return;
     }
     if (!formData.fireExtinguisherAvailable) {
-      setApiErrors({ fireExtinguisherAvailable: 'Please select fire extinguisher availability' })
-      return
+      setApiErrors({ fireExtinguisherAvailable: 'Please select fire extinguisher availability' });
+      return;
     }
     if (!formData.tyreCondition) {
-      setApiErrors({ tyreCondition: 'Please select tyre condition' })
-      return
+      setApiErrors({ tyreCondition: 'Please select tyre condition' });
+      return;
     }
     if (!formData.sealNumberBefore) {
-      setApiErrors({ sealNumberBefore: 'Please enter seal number (before)' })
-      return
+      setApiErrors({ sealNumberBefore: 'Please enter seal number (before)' });
+      return;
     }
     if (!formData.inspectedByName) {
-      setApiErrors({ inspectedByName: 'Please enter inspector name' })
-      return
+      setApiErrors({ inspectedByName: 'Please enter inspector name' });
+      return;
     }
 
     try {
       // Convert form values to API format (booleans)
       const vehicleConditionOk =
         formData.vehicleCondition === VEHICLE_CONDITIONS.EMPTY ||
-        formData.vehicleCondition === VEHICLE_CONDITIONS.LOADED
+        formData.vehicleCondition === VEHICLE_CONDITIONS.LOADED;
       const tyreConditionOk =
-        formData.tyreCondition === TYRE_CONDITIONS.GOOD || formData.tyreCondition === 'Fair'
-      const fireExtinguisherAvailable = formData.fireExtinguisherAvailable === 'Yes'
+        formData.tyreCondition === TYRE_CONDITIONS.GOOD || formData.tyreCondition === 'Fair';
+      const fireExtinguisherAvailable = formData.fireExtinguisherAvailable === 'Yes';
 
       // Alcohol test logic
-      const alcoholTestDone = formData.alcoholTestRequired !== 'Not Required'
-      const alcoholTestPassed = formData.alcoholTestRequired === 'Passed'
+      const alcoholTestDone = formData.alcoholTestRequired !== 'Not Required';
+      const alcoholTestPassed = formData.alcoholTestRequired === 'Passed';
 
       await createSecurityCheck.mutateAsync({
         vehicle_condition_ok: vehicleConditionOk,
@@ -226,30 +226,30 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
         alcohol_test_passed: alcoholTestDone ? alcoholTestPassed : undefined,
         inspected_by_name: formData.inspectedByName,
         remarks: formData.remarks || undefined,
-      })
+      });
 
       // Navigate to step 3
-      setIsNavigating(true)
+      setIsNavigating(true);
       if (isEditMode) {
-        navigate(`${config.routePrefix}/edit/${entryId}/step3`)
+        navigate(`${config.routePrefix}/edit/${entryId}/step3`);
       } else {
-        navigate(`${config.routePrefix}/new/step3?entryId=${entryId}`)
+        navigate(`${config.routePrefix}/new/step3?entryId=${entryId}`);
       }
     } catch (error) {
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
       if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to save security checks' })
+        setApiErrors({ general: apiError.message || 'Failed to save security checks' });
       }
     }
-  }
+  };
 
   return (
     <SecurityCheckFormShell
@@ -274,5 +274,5 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
       serverError={hasServerError ? getServerErrorMessage() : null}
       headerTitle={config.headerTitle}
     />
-  )
+  );
 }

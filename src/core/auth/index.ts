@@ -1,15 +1,15 @@
 // Components
-export { AuthInitializer } from './components/AuthInitializer'
-export { Authorized, withAuthorization } from './components/Authorized'
-export { ProtectedRoute } from './components/ProtectedRoute'
+export { AuthInitializer } from './components/AuthInitializer';
+export { Authorized, withAuthorization } from './components/Authorized';
+export { ProtectedRoute } from './components/ProtectedRoute';
 
 // Hooks
-export { useAuth, useAuthInitializer } from './hooks/useAuth'
-export { useCanPerformAction, useHasPermission, usePermission } from './hooks/usePermission'
+export { useAuth, useAuthInitializer } from './hooks/useAuth';
+export { useCanPerformAction, useHasPermission, usePermission } from './hooks/usePermission';
 
 // Services
-export { authService } from './services/auth.service'
-export { indexedDBService } from './services/indexedDb.service'
+export { authService } from './services/auth.service';
+export { indexedDBService } from './services/indexedDb.service';
 
 // Types
 export type {
@@ -20,17 +20,17 @@ export type {
   RefreshTokenResponse,
   User,
   UserCompany,
-} from './types/auth.types'
+} from './types/auth.types';
 export {
   getActiveCompanies,
   getDefaultCompany,
   getPermissions,
   hasRoleInAnyCompany,
   hasRoleInCompany,
-} from './types/auth.types'
+} from './types/auth.types';
 
 // Store
-export { default as authReducer } from './store/authSlice'
+export { default as authReducer } from './store/authSlice';
 export {
   clearCurrentCompany,
   initializeAuth,
@@ -43,4 +43,4 @@ export {
   updatePermissions,
   updateTokens,
   updateUser,
-} from './store/authSlice'
+} from './store/authSlice';

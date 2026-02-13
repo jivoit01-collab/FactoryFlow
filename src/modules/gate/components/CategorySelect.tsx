@@ -1,20 +1,20 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { DailyNeedCategory } from '../api/dailyNeed/dailyNeed.api'
-import { useDailyNeedCategories } from '../api/dailyNeed/dailyNeed.queries'
+import type { DailyNeedCategory } from '../api/dailyNeed/dailyNeed.api';
+import { useDailyNeedCategories } from '../api/dailyNeed/dailyNeed.queries';
 
 interface CategorySelectProps {
-  value?: number | ''
-  onChange: (categoryId: number | '', categoryName: string) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: number | '';
+  onChange: (categoryId: number | '', categoryName: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
   /** Initial display text to show without fetching categories (for edit mode) */
-  initialDisplayText?: string
+  initialDisplayText?: string;
 }
 
 export function CategorySelect({
@@ -27,9 +27,9 @@ export function CategorySelect({
   required = false,
   initialDisplayText,
 }: CategorySelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data: categories = [], isLoading, isError } = useDailyNeedCategories(isDropdownOpen)
+  const { data: categories = [], isLoading, isError } = useDailyNeedCategories(isDropdownOpen);
 
   return (
     <SearchableSelect<DailyNeedCategory>
@@ -52,11 +52,11 @@ export function CategorySelect({
       notFoundText="No categories found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(category) => {
-        onChange(category.id, category.category_name)
+        onChange(category.id, category.category_name);
       }}
       onClear={() => {
-        onChange('', '')
+        onChange('', '');
       }}
     />
-  )
+  );
 }

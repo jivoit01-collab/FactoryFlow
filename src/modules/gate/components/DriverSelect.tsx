@@ -1,30 +1,29 @@
-import { Loader2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { DriverName } from '../api/driver/driver.api'
-import { useDriverById, useDriverNames } from '../api/driver/driver.queries'
-import { CreateDriverDialog } from './CreateDriverDialog'
+import type { DriverName } from '../api/driver/driver.api';
+import { useDriverById, useDriverNames } from '../api/driver/driver.queries';
+import { CreateDriverDialog } from './CreateDriverDialog';
 
 interface DriverSelectProps {
-  value?: string
+  value?: string;
   onChange: (driver: {
-    driverId: number
-    driverName: string
-    mobileNumber: string
-    drivingLicenseNumber: string
-    idProofType: string
-    idProofNumber: string
-    driverPhoto: string | null
-  }) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+    driverId: number;
+    driverName: string;
+    mobileNumber: string;
+    drivingLicenseNumber: string;
+    idProofType: string;
+    idProofNumber: string;
+    driverPhoto: string | null;
+  }) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
 }
-
 
 export function DriverSelect({
   value,
@@ -35,23 +34,23 @@ export function DriverSelect({
   label,
   required = false,
 }: DriverSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const { data: driverNames = [], isLoading } = useDriverNames(isDropdownOpen && !disabled)
-  const { data: driverDetails } = useDriverById(selectedId, selectedId !== null)
+  const { data: driverNames = [], isLoading } = useDriverNames(isDropdownOpen && !disabled);
+  const { data: driverDetails } = useDriverById(selectedId, selectedId !== null);
 
-  const prevDriverDetailsRef = useRef(driverDetails)
-  const onChangeRef = useRef(onChange)
+  const prevDriverDetailsRef = useRef(driverDetails);
+  const onChangeRef = useRef(onChange);
 
   useEffect(() => {
-    onChangeRef.current = onChange
-  }, [onChange])
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Push driver details to parent when fetched
   useEffect(() => {
     if (driverDetails && driverDetails !== prevDriverDetailsRef.current) {
-      prevDriverDetailsRef.current = driverDetails
+      prevDriverDetailsRef.current = driverDetails;
       onChangeRef.current({
         driverId: driverDetails.id,
         driverName: driverDetails.name,
@@ -60,9 +59,9 @@ export function DriverSelect({
         idProofType: driverDetails.id_proof_type,
         idProofNumber: driverDetails.id_proof_number,
         driverPhoto: driverDetails.photo,
-      })
+      });
     }
-  }, [driverDetails])
+  }, [driverDetails]);
 
   return (
     <SearchableSelect<DriverName>
@@ -83,15 +82,15 @@ export function DriverSelect({
       addNewLabel="Add New Driver"
       onOpenChange={setIsDropdownOpen}
       onSelectedKeyChange={(key) => {
-        setSelectedId(key as number | null)
-        if (!key) prevDriverDetailsRef.current = undefined
+        setSelectedId(key as number | null);
+        if (!key) prevDriverDetailsRef.current = undefined;
       }}
       onItemSelect={(driver) => {
-        setSelectedId(driver.id)
+        setSelectedId(driver.id);
       }}
       onClear={() => {
-        setSelectedId(null)
-        prevDriverDetailsRef.current = undefined
+        setSelectedId(null);
+        prevDriverDetailsRef.current = undefined;
         onChange({
           driverId: 0,
           driverName: '',
@@ -100,7 +99,7 @@ export function DriverSelect({
           idProofType: '',
           idProofNumber: '',
           driverPhoto: null,
-        })
+        });
       }}
       renderPopoverContent={(selKey) =>
         driverDetails ? (
@@ -144,11 +143,11 @@ export function DriverSelect({
           open={open}
           onOpenChange={onOpenChange}
           onSuccess={(driver) => {
-            updateSelection(driver.id, driver.name)
-            setSelectedId(driver.id)
+            updateSelection(driver.id, driver.name);
+            setSelectedId(driver.id);
           }}
         />
       )}
     />
-  )
+  );
 }

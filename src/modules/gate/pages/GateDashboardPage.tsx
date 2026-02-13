@@ -1,14 +1,14 @@
-import { Building2, HardHat, Package, UtensilsCrossed, Wrench } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Building2, HardHat, Package, UtensilsCrossed, Wrench } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import { ROUTES } from '@/config/routes.config'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+import { ROUTES } from '@/config/routes.config';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 interface GateModuleCard {
-  title: string
-  icon: React.ReactNode
-  route: string
-  color: string
+  title: string;
+  icon: React.ReactNode;
+  route: string;
+  color: string;
 }
 
 const gateModules: GateModuleCard[] = [
@@ -42,10 +42,10 @@ const gateModules: GateModuleCard[] = [
     route: ROUTES.GATE.children?.CONTRACTOR_LABOR.path || '/gate/visitor-labour',
     color: 'text-red-600',
   },
-]
+];
 
 export default function GateDashboardPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-6">
@@ -77,5 +77,5 @@ export default function GateDashboardPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

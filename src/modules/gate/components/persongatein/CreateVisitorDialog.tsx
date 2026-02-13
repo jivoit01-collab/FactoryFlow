@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
 
-import { VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_PATTERNS } from '@/config/constants';
 import {
   Button,
   Dialog,
@@ -11,30 +11,30 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
-import type { Visitor } from '../../api/personGateIn/personGateIn.api'
-import { useCreateVisitor } from '../../api/personGateIn/personGateIn.queries'
-import { ID_PROOF_TYPES, ID_PROOF_VALIDATION } from '../../schemas/driver.schema'
+import type { Visitor } from '../../api/personGateIn/personGateIn.api';
+import { useCreateVisitor } from '../../api/personGateIn/personGateIn.queries';
+import { ID_PROOF_TYPES, ID_PROOF_VALIDATION } from '../../schemas/driver.schema';
 
 interface CreateVisitorDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSuccess?: (visitor: Visitor) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: (visitor: Visitor) => void;
 }
 
 export function CreateVisitorDialog({ open, onOpenChange, onSuccess }: CreateVisitorDialogProps) {
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
     company_name: '',
     id_proof_type: '',
     id_proof_no: '',
-  })
+  });
 
-  const createVisitor = useCreateVisitor()
+  const createVisitor = useCreateVisitor();
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -45,36 +45,36 @@ export function CreateVisitorDialog({ open, onOpenChange, onSuccess }: CreateVis
         company_name: '',
         id_proof_type: '',
         id_proof_no: '',
-      })
-      setApiErrors({})
+      });
+      setApiErrors({});
     }
-  }, [open])
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const errors: Record<string, string> = {}
-    if (!formData.name.trim()) errors.name = 'Name is required'
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = 'Name is required';
     if (formData.mobile?.trim() && !VALIDATION_PATTERNS.phone.test(formData.mobile.trim())) {
-      errors.mobile = 'Please enter a valid 10-digit phone number'
+      errors.mobile = 'Please enter a valid 10-digit phone number';
     }
     if (formData.id_proof_type && formData.id_proof_no?.trim()) {
-      const proofType = formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION
-      const validation = ID_PROOF_VALIDATION[proofType]
+      const proofType = formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION;
+      const validation = ID_PROOF_VALIDATION[proofType];
       if (
         validation?.pattern &&
         !validation.pattern.test(formData.id_proof_no.trim().toUpperCase())
       ) {
-        errors.id_proof_no = validation.message
+        errors.id_proof_no = validation.message;
       }
     }
 
     if (Object.keys(errors).length > 0) {
-      setApiErrors(errors)
-      return
+      setApiErrors(errors);
+      return;
     }
 
-    setApiErrors({})
+    setApiErrors({});
     try {
       const result = await createVisitor.mutateAsync({
         name: formData.name,
@@ -82,24 +82,24 @@ export function CreateVisitorDialog({ open, onOpenChange, onSuccess }: CreateVis
         company_name: formData.company_name || undefined,
         id_proof_type: formData.id_proof_type || undefined,
         id_proof_no: formData.id_proof_no || undefined,
-      })
-      onOpenChange(false)
-      onSuccess?.(result)
+      });
+      onOpenChange(false);
+      onSuccess?.(result);
     } catch (error: unknown) {
-      const err = error as { errors?: Record<string, string[]>; message?: string }
+      const err = error as { errors?: Record<string, string[]>; message?: string };
       if (err.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(err.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: err.message || 'Failed to create visitor' })
+        setApiErrors({ general: err.message || 'Failed to create visitor' });
       }
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,14 +139,14 @@ export function CreateVisitorDialog({ open, onOpenChange, onSuccess }: CreateVis
                 placeholder="9876543210"
                 value={formData.mobile}
                 onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
-                  setFormData((prev) => ({ ...prev, mobile: value }))
+                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                  setFormData((prev) => ({ ...prev, mobile: value }));
                   if (apiErrors.mobile) {
                     setApiErrors((prev) => {
-                      const n = { ...prev }
-                      delete n.mobile
-                      return n
-                    })
+                      const n = { ...prev };
+                      delete n.mobile;
+                      return n;
+                    });
                   }
                 }}
                 maxLength={10}
@@ -179,13 +179,13 @@ export function CreateVisitorDialog({ open, onOpenChange, onSuccess }: CreateVis
                     ...prev,
                     id_proof_type: e.target.value,
                     id_proof_no: '',
-                  }))
+                  }));
                   if (apiErrors.id_proof_no) {
                     setApiErrors((prev) => {
-                      const n = { ...prev }
-                      delete n.id_proof_no
-                      return n
-                    })
+                      const n = { ...prev };
+                      delete n.id_proof_no;
+                      return n;
+                    });
                   }
                 }}
                 disabled={createVisitor.isPending}
@@ -208,22 +208,22 @@ export function CreateVisitorDialog({ open, onOpenChange, onSuccess }: CreateVis
                 }
                 value={formData.id_proof_no}
                 onChange={(e) => {
-                  let value = e.target.value
+                  let value = e.target.value;
                   if (formData.id_proof_type === 'Aadhar') {
-                    value = value.replace(/[^0-9]/g, '').slice(0, 12)
+                    value = value.replace(/[^0-9]/g, '').slice(0, 12);
                   } else if (
                     formData.id_proof_type === 'PAN Card' ||
                     formData.id_proof_type === 'Voter ID'
                   ) {
-                    value = value.toUpperCase()
+                    value = value.toUpperCase();
                   }
-                  setFormData((prev) => ({ ...prev, id_proof_no: value }))
+                  setFormData((prev) => ({ ...prev, id_proof_no: value }));
                   if (apiErrors.id_proof_no) {
                     setApiErrors((prev) => {
-                      const n = { ...prev }
-                      delete n.id_proof_no
-                      return n
-                    })
+                      const n = { ...prev };
+                      delete n.id_proof_no;
+                      return n;
+                    });
                   }
                 }}
                 maxLength={
@@ -258,5 +258,5 @@ export function CreateVisitorDialog({ open, onOpenChange, onSuccess }: CreateVis
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

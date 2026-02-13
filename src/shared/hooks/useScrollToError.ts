@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react';
 
 /**
  * Hook that automatically scrolls to the first form error when validation fails.
@@ -16,16 +16,16 @@ export function useScrollToError(
   errors: Record<string, unknown>,
   options: {
     /** Whether to automatically scroll when errors change. Default: true */
-    enabled?: boolean
+    enabled?: boolean;
     /** Scroll behavior. Default: 'smooth' */
-    behavior?: ScrollBehavior
+    behavior?: ScrollBehavior;
     /** Block alignment. Default: 'center' */
-    block?: ScrollLogicalPosition
+    block?: ScrollLogicalPosition;
     /** Whether to focus the element after scrolling. Default: true */
-    shouldFocus?: boolean
+    shouldFocus?: boolean;
     /** Offset from top in pixels (useful for fixed headers). Default: 0 */
-    offset?: number
-  } = {}
+    offset?: number;
+  } = {},
 ) {
   const {
     enabled = true,
@@ -33,41 +33,41 @@ export function useScrollToError(
     block = 'center',
     shouldFocus = true,
     offset = 0,
-  } = options
+  } = options;
 
   // Track the previous error count to detect when new errors appear
-  const prevErrorCount = useRef(0)
+  const prevErrorCount = useRef(0);
 
   /**
    * Get the first error field name from nested errors object
    */
   const getFirstErrorKey = useCallback((errors: Record<string, unknown>): string | null => {
-    const keys = Object.keys(errors)
-    if (keys.length === 0) return null
+    const keys = Object.keys(errors);
+    if (keys.length === 0) return null;
 
     for (const key of keys) {
-      const error = errors[key]
-      if (!error) continue
+      const error = errors[key];
+      if (!error) continue;
 
       // If it's a nested error (like array fields), recurse
       if (typeof error === 'object' && !('message' in error) && !('type' in error)) {
-        const nestedKey = getFirstErrorKey(error as Record<string, unknown>)
-        if (nestedKey) return `${key}.${nestedKey}`
+        const nestedKey = getFirstErrorKey(error as Record<string, unknown>);
+        if (nestedKey) return `${key}.${nestedKey}`;
       }
 
       // Found a direct error
-      return key
+      return key;
     }
 
-    return keys[0]
-  }, [])
+    return keys[0];
+  }, []);
 
   /**
    * Scroll to the first error field in the form
    */
   const scrollToFirstError = useCallback(() => {
-    const firstErrorKey = getFirstErrorKey(errors)
-    if (!firstErrorKey) return
+    const firstErrorKey = getFirstErrorKey(errors);
+    if (!firstErrorKey) return;
 
     // Try multiple selectors to find the error element
     const selectors = [
@@ -76,14 +76,14 @@ export function useScrollToError(
       `[data-field="${firstErrorKey}"]`,
       // For nested fields like "items.0.name"
       `[name="${firstErrorKey.replace(/\./g, '\\.')}"]`,
-    ]
+    ];
 
-    let element: HTMLElement | null = null
+    let element: HTMLElement | null = null;
 
     for (const selector of selectors) {
       try {
-        element = document.querySelector(selector)
-        if (element) break
+        element = document.querySelector(selector);
+        if (element) break;
       } catch {
         // Invalid selector, continue to next
       }
@@ -91,27 +91,27 @@ export function useScrollToError(
 
     if (!element) {
       // Fallback: try to find the first visible error message
-      const errorMessage = document.querySelector('.text-destructive')
+      const errorMessage = document.querySelector('.text-destructive');
       if (errorMessage) {
-        element = errorMessage as HTMLElement
+        element = errorMessage as HTMLElement;
       }
     }
 
     if (element) {
       // If there's an offset, we need to calculate the position manually
       if (offset > 0) {
-        const elementPosition = element.getBoundingClientRect().top
-        const offsetPosition = elementPosition + window.scrollY - offset
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.scrollY - offset;
 
         window.scrollTo({
           top: offsetPosition,
           behavior,
-        })
+        });
       } else {
         element.scrollIntoView({
           behavior,
           block,
-        })
+        });
       }
 
       // Focus the element after scrolling
@@ -119,31 +119,31 @@ export function useScrollToError(
         // Small delay to ensure scroll completes
         setTimeout(
           () => {
-            element.focus({ preventScroll: true })
+            element.focus({ preventScroll: true });
           },
-          behavior === 'smooth' ? 300 : 0
-        )
+          behavior === 'smooth' ? 300 : 0,
+        );
       }
     }
-  }, [errors, getFirstErrorKey, behavior, block, shouldFocus, offset])
+  }, [errors, getFirstErrorKey, behavior, block, shouldFocus, offset]);
 
   // Auto-scroll when errors appear
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return;
 
-    const errorKeys = Object.keys(errors)
-    const currentErrorCount = errorKeys.length
+    const errorKeys = Object.keys(errors);
+    const currentErrorCount = errorKeys.length;
 
     // Only scroll when new errors appear (count increased)
     if (currentErrorCount > 0 && currentErrorCount > prevErrorCount.current) {
       // Small delay to ensure the DOM has updated with error messages
       requestAnimationFrame(() => {
-        scrollToFirstError()
-      })
+        scrollToFirstError();
+      });
     }
 
-    prevErrorCount.current = currentErrorCount
-  }, [errors, enabled, scrollToFirstError])
+    prevErrorCount.current = currentErrorCount;
+  }, [errors, enabled, scrollToFirstError]);
 
-  return { scrollToFirstError }
+  return { scrollToFirstError };
 }

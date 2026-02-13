@@ -1,26 +1,26 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, FileText, Package, Wrench } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, FileText, Package, Wrench } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { ENTRY_STATUS } from '@/config/constants'
-import type { ApiError } from '@/core/api'
-import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+import { ENTRY_STATUS } from '@/config/constants';
+import type { ApiError } from '@/core/api';
+import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 import {
   getErrorMessage,
   getServerErrorMessage,
   isNotFoundError as checkNotFoundError,
   isServerError as checkServerError,
-} from '@/shared/utils'
-import { cn } from '@/shared/utils'
+} from '@/shared/utils';
+import { cn } from '@/shared/utils';
 
 import {
   useCreateMaintenanceEntry,
   useMaintenanceEntry,
   useUpdateMaintenanceEntry,
-} from '../../api/maintenance/maintenance.queries'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+} from '../../api/maintenance/maintenance.queries';
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import {
   DepartmentSelect,
   FillDataAlert,
@@ -28,69 +28,69 @@ import {
   StepFooter,
   StepHeader,
   UnitSelect,
-} from '../../components'
-import { useEntryId } from '../../hooks'
+} from '../../components';
+import { useEntryId } from '../../hooks';
 
 // Urgency level options
 const URGENCY_OPTIONS = [
   { value: 'NORMAL', label: 'Normal' },
   { value: 'HIGH', label: 'High' },
   { value: 'CRITICAL', label: 'Critical' },
-]
+];
 
 interface FormData {
-  maintenanceType: string
-  maintenanceTypeName: string // Display name from API
-  supplierName: string
-  materialDescription: string
-  partNumber: string
-  quantity: string
-  unit: string
-  unitName: string
-  invoiceNumber: string
-  equipmentId: string
-  receivingDepartment: string
-  receivingDepartmentName: string // Display name from API
-  urgencyLevel: string
-  remarks: string
+  maintenanceType: string;
+  maintenanceTypeName: string; // Display name from API
+  supplierName: string;
+  materialDescription: string;
+  partNumber: string;
+  quantity: string;
+  unit: string;
+  unitName: string;
+  invoiceNumber: string;
+  equipmentId: string;
+  receivingDepartment: string;
+  receivingDepartmentName: string; // Display name from API
+  urgencyLevel: string;
+  remarks: string;
 }
 
 export default function Step3Page() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { entryId, entryIdNumber, isEditMode } = useEntryId()
-  const currentStep = 3
-  const totalSteps = 4
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  const currentStep = 3;
+  const totalSteps = 4;
 
   // API hooks
-  const createMaintenanceEntry = useCreateMaintenanceEntry(entryIdNumber || 0)
-  const updateMaintenanceEntry = useUpdateMaintenanceEntry(entryIdNumber || 0)
+  const createMaintenanceEntry = useCreateMaintenanceEntry(entryIdNumber || 0);
+  const updateMaintenanceEntry = useUpdateMaintenanceEntry(entryIdNumber || 0);
   const {
     data: maintenanceData,
     isLoading: isLoadingMaintenance,
     error: maintenanceError,
-  } = useMaintenanceEntry(isEditMode && entryIdNumber ? entryIdNumber : null)
+  } = useMaintenanceEntry(isEditMode && entryIdNumber ? entryIdNumber : null);
   const { data: vehicleEntryData } = useVehicleEntry(
-    isEditMode && entryIdNumber ? entryIdNumber : null
-  )
+    isEditMode && entryIdNumber ? entryIdNumber : null,
+  );
 
   // State
-  const [fillDataMode, setFillDataMode] = useState(false)
-  const [updateMode, setUpdateMode] = useState(false)
-  const [isNavigating, setIsNavigating] = useState(false)
-  const effectiveEditMode = isEditMode && !fillDataMode
+  const [fillDataMode, setFillDataMode] = useState(false);
+  const [updateMode, setUpdateMode] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const effectiveEditMode = isEditMode && !fillDataMode;
 
   // Check if error is "not found" error
-  const isNotFoundError = checkNotFoundError(maintenanceError)
+  const isNotFoundError = checkNotFoundError(maintenanceError);
   // Check if error is a server error (5xx)
-  const hasServerError = checkServerError(maintenanceError)
+  const hasServerError = checkServerError(maintenanceError);
 
   // Fields are read-only when:
   // 1. In edit mode AND update mode is not active AND there's no not found error, OR
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly =
-    (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode)
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED
+    (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode);
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED;
 
   // Form state
   const [formData, setFormData] = useState<FormData>({
@@ -108,12 +108,12 @@ export default function Step3Page() {
     receivingDepartmentName: '',
     urgencyLevel: '',
     remarks: '',
-  })
+  });
 
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
   // Load maintenance data when in edit mode
   useEffect(() => {
@@ -122,26 +122,26 @@ export default function Step3Page() {
       const maintenanceTypeId =
         typeof maintenanceData.maintenance_type === 'object'
           ? maintenanceData.maintenance_type?.id?.toString() || ''
-          : maintenanceData.maintenance_type?.toString() || ''
+          : maintenanceData.maintenance_type?.toString() || '';
       const maintenanceTypeName =
         typeof maintenanceData.maintenance_type === 'object'
           ? maintenanceData.maintenance_type?.type_name || ''
-          : ''
+          : '';
       const receivingDeptId =
         typeof maintenanceData.receiving_department === 'object'
           ? maintenanceData.receiving_department?.id?.toString() || ''
-          : maintenanceData.receiving_department?.toString() || ''
+          : maintenanceData.receiving_department?.toString() || '';
       const receivingDeptName =
         typeof maintenanceData.receiving_department === 'object'
           ? maintenanceData.receiving_department?.name || ''
-          : ''
+          : '';
 
       const unitId =
         typeof maintenanceData.unit === 'object'
           ? maintenanceData.unit?.id?.toString() || ''
-          : maintenanceData.unit?.toString() || ''
+          : maintenanceData.unit?.toString() || '';
       const unitName =
-        typeof maintenanceData.unit === 'object' ? maintenanceData.unit?.name || '' : ''
+        typeof maintenanceData.unit === 'object' ? maintenanceData.unit?.name || '' : '';
 
       setFormData({
         maintenanceType: maintenanceTypeId,
@@ -158,90 +158,90 @@ export default function Step3Page() {
         receivingDepartmentName: receivingDeptName,
         urgencyLevel: maintenanceData.urgency_level || '',
         remarks: maintenanceData.remarks || '',
-      })
+      });
     }
-  }, [effectiveEditMode, maintenanceData])
+  }, [effectiveEditMode, maintenanceData]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    if (isReadOnly) return
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    if (isReadOnly) return;
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (apiErrors[field]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[field]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/maintenance/edit/${entryId}/step2`)
+      navigate(`/gate/maintenance/edit/${entryId}/step2`);
     } else {
-      navigate(`/gate/maintenance/new/step2?entryId=${entryId}`)
+      navigate(`/gate/maintenance/new/step2?entryId=${entryId}`);
     }
-  }
+  };
 
   const handleCancel = () => {
-    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    navigate('/gate/maintenance')
-  }
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+    navigate('/gate/maintenance');
+  };
 
   const handleFillData = () => {
-    setFillDataMode(true)
-  }
+    setFillDataMode(true);
+  };
 
   const handleUpdate = () => {
-    setUpdateMode(true)
-  }
+    setUpdateMode(true);
+  };
 
   const handleNext = async () => {
     if (!entryId || !entryIdNumber) {
-      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' })
-      return
+      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' });
+      return;
     }
 
     // In edit mode (and not fill data mode and not update mode), navigate to attachments page
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/maintenance/edit/${entryId}/attachments`)
-      return
+      navigate(`/gate/maintenance/edit/${entryId}/attachments`);
+      return;
     }
 
-    setApiErrors({})
+    setApiErrors({});
 
     // Validation
     if (!formData.maintenanceType) {
-      setApiErrors({ maintenanceType: 'Please select maintenance type' })
-      return
+      setApiErrors({ maintenanceType: 'Please select maintenance type' });
+      return;
     }
     if (!formData.supplierName.trim()) {
-      setApiErrors({ supplierName: 'Please enter supplier name' })
-      return
+      setApiErrors({ supplierName: 'Please enter supplier name' });
+      return;
     }
     if (!formData.materialDescription.trim()) {
-      setApiErrors({ materialDescription: 'Please enter material description' })
-      return
+      setApiErrors({ materialDescription: 'Please enter material description' });
+      return;
     }
     if (formData.materialDescription.trim().length < 5) {
-      setApiErrors({ materialDescription: 'Material description must be atlaest 5 ' })
-      return
+      setApiErrors({ materialDescription: 'Material description must be atlaest 5 ' });
+      return;
     }
     if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
-      setApiErrors({ quantity: 'Please enter a valid quantity' })
-      return
+      setApiErrors({ quantity: 'Please enter a valid quantity' });
+      return;
     }
     if (!formData.unit) {
-      setApiErrors({ unit: 'Please select unit' })
-      return
+      setApiErrors({ unit: 'Please select unit' });
+      return;
     }
     if (!formData.receivingDepartment) {
-      setApiErrors({ receivingDepartment: 'Please select receiving department' })
-      return
+      setApiErrors({ receivingDepartment: 'Please select receiving department' });
+      return;
     }
     if (!formData.urgencyLevel) {
-      setApiErrors({ urgencyLevel: 'Please select urgency level' })
-      return
+      setApiErrors({ urgencyLevel: 'Please select urgency level' });
+      return;
     }
 
     try {
@@ -257,43 +257,43 @@ export default function Step3Page() {
         receiving_department: parseInt(formData.receivingDepartment),
         urgency_level: formData.urgencyLevel,
         remarks: formData.remarks.trim() || undefined,
-      }
+      };
 
       // Use update API when in edit mode with update mode active
       if (isEditMode && updateMode) {
-        await updateMaintenanceEntry.mutateAsync(requestData)
+        await updateMaintenanceEntry.mutateAsync(requestData);
       } else {
-        await createMaintenanceEntry.mutateAsync(requestData)
+        await createMaintenanceEntry.mutateAsync(requestData);
       }
 
       // Navigate to attachments page
-      setIsNavigating(true)
+      setIsNavigating(true);
       if (isEditMode) {
-        navigate(`/gate/maintenance/edit/${entryId}/attachments`)
+        navigate(`/gate/maintenance/edit/${entryId}/attachments`);
       } else {
-        navigate(`/gate/maintenance/new/attachments?entryId=${entryId}`)
+        navigate(`/gate/maintenance/new/attachments?entryId=${entryId}`);
       }
     } catch (error) {
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
       if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to save maintenance entry' })
+        setApiErrors({ general: apiError.message || 'Failed to save maintenance entry' });
       }
     }
-  }
+  };
 
-  const isLoading = effectiveEditMode && isLoadingMaintenance
+  const isLoading = effectiveEditMode && isLoadingMaintenance;
 
   // Select styling classes
   const selectClassName =
-    'flex h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+    'flex h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <div className="space-y-6 pb-6">
@@ -331,8 +331,8 @@ export default function Step3Page() {
                 <MaintenanceTypeSelect
                   value={formData.maintenanceType || undefined}
                   onChange={(typeId, typeName) => {
-                    handleInputChange('maintenanceType', typeId)
-                    setFormData((prev) => ({ ...prev, maintenanceTypeName: typeName }))
+                    handleInputChange('maintenanceType', typeId);
+                    setFormData((prev) => ({ ...prev, maintenanceTypeName: typeName }));
                   }}
                   placeholder="Select maintenance type"
                   disabled={isReadOnly}
@@ -368,7 +368,7 @@ export default function Step3Page() {
                     disabled={isReadOnly}
                     className={cn(
                       'border-2 font-medium',
-                      apiErrors.supplierName && 'border-destructive'
+                      apiErrors.supplierName && 'border-destructive',
                     )}
                   />
                   {apiErrors.supplierName && (
@@ -403,7 +403,7 @@ export default function Step3Page() {
                     rows={3}
                     className={cn(
                       'flex w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                      apiErrors.materialDescription && 'border-destructive'
+                      apiErrors.materialDescription && 'border-destructive',
                     )}
                   />
                   {apiErrors.materialDescription && (
@@ -427,7 +427,7 @@ export default function Step3Page() {
                     disabled={isReadOnly}
                     className={cn(
                       'border-2 font-medium',
-                      apiErrors.quantity && 'border-destructive'
+                      apiErrors.quantity && 'border-destructive',
                     )}
                   />
                   {apiErrors.quantity && (
@@ -439,8 +439,8 @@ export default function Step3Page() {
                 <UnitSelect
                   value={formData.unit || undefined}
                   onChange={(unitId, unitName) => {
-                    handleInputChange('unit', unitId)
-                    setFormData((prev) => ({ ...prev, unitName }))
+                    handleInputChange('unit', unitId);
+                    setFormData((prev) => ({ ...prev, unitName }));
                   }}
                   placeholder="Select unit"
                   disabled={isReadOnly}
@@ -493,8 +493,8 @@ export default function Step3Page() {
                 <DepartmentSelect
                   value={formData.receivingDepartment ? Number(formData.receivingDepartment) : ''}
                   onChange={(departmentId) => {
-                    handleInputChange('receivingDepartment', departmentId.toString())
-                    setFormData((prev) => ({ ...prev, receivingDepartmentName: '' }))
+                    handleInputChange('receivingDepartment', departmentId.toString());
+                    setFormData((prev) => ({ ...prev, receivingDepartmentName: '' }));
                   }}
                   placeholder="Select department"
                   disabled={isReadOnly}
@@ -577,5 +577,5 @@ export default function Step3Page() {
         nextLabel={effectiveEditMode && !updateMode ? 'Next' : 'Save & Next'}
       />
     </div>
-  )
+  );
 }

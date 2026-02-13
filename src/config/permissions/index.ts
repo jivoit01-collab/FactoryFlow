@@ -10,14 +10,14 @@
  */
 
 // Quality Control Module
-export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permissions'
+export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permissions';
 
 // GRPO Module
-export { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS, type GRPOPermission } from './grpo.permissions'
+export { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS, type GRPOPermission } from './grpo.permissions';
 
 // Notifications Module
 export {
   NOTIFICATION_MODULE_PREFIX,
   NOTIFICATION_PERMISSIONS,
   type NotificationPermission,
-} from './notification.permissions'
+} from './notification.permissions';

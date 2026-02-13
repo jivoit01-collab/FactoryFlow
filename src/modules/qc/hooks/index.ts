@@ -2,4 +2,4 @@ export {
   useArrivalSlipPermissions,
   useInspectionPermissions,
   useMasterDataPermissions,
-} from './useInspectionPermissions'
+} from './useInspectionPermissions';

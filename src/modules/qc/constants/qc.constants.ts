@@ -6,9 +6,9 @@ import {
   Send,
   UserCheck,
   XCircle,
-} from 'lucide-react'
+} from 'lucide-react';
 
-import type { InspectionFinalStatus, InspectionWorkflowStatus } from '../types'
+import type { InspectionFinalStatus, InspectionWorkflowStatus } from '../types';
 
 // ============================================================================
 // Workflow Status Constants
@@ -20,16 +20,16 @@ export const WORKFLOW_STATUS = {
   QA_CHEMIST_APPROVED: 'QA_CHEMIST_APPROVED',
   QAM_APPROVED: 'QAM_APPROVED',
   COMPLETED: 'COMPLETED',
-} as const satisfies Record<string, InspectionWorkflowStatus>
+} as const satisfies Record<string, InspectionWorkflowStatus>;
 
 // Re-export cross-module constants so existing qc-internal imports still work
-export { ARRIVAL_SLIP_STATUS, FINAL_STATUS } from '@/config/constants'
+export { ARRIVAL_SLIP_STATUS, FINAL_STATUS } from '@/config/constants';
 
 interface StatusConfig {
-  label: string
-  color: string
-  bgColor: string
-  icon: LucideIcon
+  label: string;
+  color: string;
+  bgColor: string;
+  icon: LucideIcon;
 }
 
 export const WORKFLOW_STATUS_CONFIG: Record<InspectionWorkflowStatus, StatusConfig> = {
@@ -63,7 +63,7 @@ export const WORKFLOW_STATUS_CONFIG: Record<InspectionWorkflowStatus, StatusConf
     bgColor: 'bg-green-50',
     icon: CheckCircle2,
   },
-}
+};
 
 export const FINAL_STATUS_CONFIG: Record<InspectionFinalStatus, StatusConfig> = {
   PENDING: {
@@ -90,11 +90,11 @@ export const FINAL_STATUS_CONFIG: Record<InspectionFinalStatus, StatusConfig> = 
     bgColor: 'bg-orange-50',
     icon: Clock,
   },
-}
+};
 
 export const PARAMETER_TYPE_LABELS = {
   NUMERIC: 'Numeric Value',
   TEXT: 'Text Value',
   BOOLEAN: 'Pass/Fail',
   RANGE: 'Numeric Range',
-} as const
+} as const;

@@ -3,4 +3,4 @@ export {
   useNotificationPreferences,
   usePushNotifications,
   useUnreadCount,
-} from './useNotifications'
+} from './useNotifications';

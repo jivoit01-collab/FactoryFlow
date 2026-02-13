@@ -1,34 +1,34 @@
-import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react';
+import { Outlet } from 'react-router-dom';
 
-import { SIDEBAR_CONFIG } from '@/config/constants'
-import { TooltipProvider } from '@/shared/components/ui'
-import { useLocalStorage } from '@/shared/hooks'
+import { SIDEBAR_CONFIG } from '@/config/constants';
+import { TooltipProvider } from '@/shared/components/ui';
+import { useLocalStorage } from '@/shared/hooks';
 
-import { Breadcrumbs, Header, MobileSidebar, Sidebar } from './components'
+import { Breadcrumbs, Header, MobileSidebar, Sidebar } from './components';
 
 export function MainLayout() {
-  const [isMobile, setIsMobile] = useState(false)
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useLocalStorage('sidebar-collapsed', false)
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useLocalStorage('sidebar-collapsed', false);
 
   // TODO: create a config variable for the sidebar-collapsed key and use it across the project
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < SIDEBAR_CONFIG.mobileBreakpoint)
-    }
+      setIsMobile(window.innerWidth < SIDEBAR_CONFIG.mobileBreakpoint);
+    };
 
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const sidebarWidth = isMobile
     ? 0
     : isCollapsed
       ? SIDEBAR_CONFIG.collapsedWidth
-      : SIDEBAR_CONFIG.expandedWidth
+      : SIDEBAR_CONFIG.expandedWidth;
 
   return (
     <TooltipProvider>
@@ -53,5 +53,5 @@ export function MainLayout() {
         </main>
       </div>
     </TooltipProvider>
-  )
+  );
 }

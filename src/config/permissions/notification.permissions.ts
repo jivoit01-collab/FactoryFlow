@@ -10,13 +10,13 @@ export const NOTIFICATION_PERMISSIONS = {
   SEND: 'notifications.can_send_notification',
   /** Send bulk notifications by permission or group */
   SEND_BULK: 'notifications.can_send_bulk_notification',
-} as const
+} as const;
 
 /** Module prefix for sidebar filtering */
-export const NOTIFICATION_MODULE_PREFIX = 'notifications'
+export const NOTIFICATION_MODULE_PREFIX = 'notifications';
 
 /**
  * Type for notification permission values
  */
 export type NotificationPermission =
-  (typeof NOTIFICATION_PERMISSIONS)[keyof typeof NOTIFICATION_PERMISSIONS]
+  (typeof NOTIFICATION_PERMISSIONS)[keyof typeof NOTIFICATION_PERMISSIONS];

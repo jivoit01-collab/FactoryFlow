@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type CreateMaintenanceRequest, maintenanceApi } from './maintenance.api'
+import { type CreateMaintenanceRequest, maintenanceApi } from './maintenance.api';
 
 /**
  * Hook to fetch unit choices for dropdown
@@ -11,7 +11,7 @@ export function useUnitChoices(enabled: boolean = true) {
     queryFn: () => maintenanceApi.getUnitChoices(),
     staleTime: 5 * 60 * 1000,
     enabled,
-  })
+  });
 }
 
 /**
@@ -23,7 +23,7 @@ export function useMaintenanceTypes(enabled: boolean = true) {
     queryFn: () => maintenanceApi.getTypes(),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     enabled,
-  })
+  });
 }
 
 /**
@@ -34,40 +34,40 @@ export function useMaintenanceEntry(entryId: number | null) {
     queryKey: ['maintenanceEntry', entryId],
     queryFn: () => maintenanceApi.getByEntryId(entryId!),
     enabled: !!entryId,
-  })
+  });
 }
 
 /**
  * Hook to create maintenance entry
  */
 export function useCreateMaintenanceEntry(entryId: number) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateMaintenanceRequest) => maintenanceApi.create(entryId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['maintenanceEntry', entryId] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] })
+      queryClient.invalidateQueries({ queryKey: ['maintenanceEntry', entryId] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
     },
-  })
+  });
 }
 
 /**
  * Hook to update maintenance entry
  */
 export function useUpdateMaintenanceEntry(entryId: number) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateMaintenanceRequest) => maintenanceApi.update(entryId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['maintenanceEntry', entryId] })
-      queryClient.invalidateQueries({ queryKey: ['maintenanceFullView', entryId] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] })
+      queryClient.invalidateQueries({ queryKey: ['maintenanceEntry', entryId] });
+      queryClient.invalidateQueries({ queryKey: ['maintenanceFullView', entryId] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
     },
-  })
+  });
 }
 
 /**
@@ -78,21 +78,21 @@ export function useMaintenanceFullView(entryId: number | null) {
     queryKey: ['maintenanceFullView', entryId],
     queryFn: () => maintenanceApi.getFullView(entryId!),
     enabled: !!entryId,
-  })
+  });
 }
 
 /**
  * Hook to complete a maintenance gate entry
  */
 export function useCompleteMaintenanceEntry() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (entryId: number) => maintenanceApi.complete(entryId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['maintenanceFullView'] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] })
+      queryClient.invalidateQueries({ queryKey: ['maintenanceFullView'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
     },
-  })
+  });
 }

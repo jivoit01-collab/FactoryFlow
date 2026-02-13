@@ -1,10 +1,10 @@
-import { ChevronDown, ChevronUp, LayoutDashboard } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { ChevronDown, ChevronUp, LayoutDashboard } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 
-import { getAllNavigation } from '@/app/registry'
-import { usePermission } from '@/core/auth'
-import type { ModuleNavItem } from '@/core/types'
+import { getAllNavigation } from '@/app/registry';
+import { usePermission } from '@/core/auth';
+import type { ModuleNavItem } from '@/core/types';
 import {
   Button,
   Collapsible,
@@ -13,67 +13,67 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 interface MobileSidebarProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
-  const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission()
-  const location = useLocation()
-  const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set())
+  const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission();
+  const location = useLocation();
+  const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
 
   // Get navigation items from module registry
-  const allNavItems = useMemo(() => getAllNavigation(), [])
+  const allNavItems = useMemo(() => getAllNavigation(), []);
 
   // Filter navigation items based on permissions
   const navItems = useMemo(() => {
     return allNavItems.filter((item) => {
-      if (!item.showInSidebar) return false
+      if (!item.showInSidebar) return false;
 
       // Wait for permissions to load before filtering
-      if (!permissionsLoaded) return false
+      if (!permissionsLoaded) return false;
 
       // If route has a modulePrefix, check if user has any permission for that module
       if (item.modulePrefix) {
-        return hasModulePermission(item.modulePrefix)
+        return hasModulePermission(item.modulePrefix);
       }
 
       // Fallback: if route has explicit permissions, check those
       if (item.permissions && item.permissions.length > 0) {
-        return hasAnyPermission([...item.permissions])
+        return hasAnyPermission([...item.permissions]);
       }
 
       // Routes without modulePrefix or permissions are shown (like Gate)
-      return true
-    })
-  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission])
+      return true;
+    });
+  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission]);
 
   const toggleSubmenu = (routePath: string) => {
     setOpenSubmenus((prev) => {
-      const newSet = new Set(prev)
+      const newSet = new Set(prev);
       if (newSet.has(routePath)) {
-        newSet.delete(routePath)
+        newSet.delete(routePath);
       } else {
-        newSet.add(routePath)
+        newSet.add(routePath);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
-  const isSubmenuOpen = (routePath: string) => openSubmenus.has(routePath)
+  const isSubmenuOpen = (routePath: string) => openSubmenus.has(routePath);
 
   const isRouteActive = (item: ModuleNavItem) => {
-    if (location.pathname === item.path) return true
+    if (location.pathname === item.path) return true;
     // Check if any child route is active
     if (item.children) {
-      return item.children.some((child) => location.pathname === child.path)
+      return item.children.some((child) => location.pathname === child.path);
     }
-    return false
-  }
+    return false;
+  };
 
   // Auto-open submenu if current route is a child
   useEffect(() => {
@@ -85,11 +85,11 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         isRouteActive(item) &&
         !isSubmenuOpen(item.path)
       ) {
-        setOpenSubmenus((prev) => new Set([...prev, item.path]))
+        setOpenSubmenus((prev) => new Set([...prev, item.path]));
       }
-    })
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, navItems])
+  }, [location.pathname, navItems]);
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -103,10 +103,10 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         <nav className="flex-1 overflow-y-auto flex flex-col gap-1 p-2">
           {navItems.map((item) => {
             // Icon comes directly from module config, fallback to LayoutDashboard
-            const Icon = item.icon || LayoutDashboard
-            const hasSubmenu = item.hasSubmenu && item.children && item.children.length > 0
-            const isOpen = hasSubmenu ? isSubmenuOpen(item.path) : false
-            const isActive = isRouteActive(item)
+            const Icon = item.icon || LayoutDashboard;
+            const hasSubmenu = item.hasSubmenu && item.children && item.children.length > 0;
+            const isOpen = hasSubmenu ? isSubmenuOpen(item.path) : false;
+            const isActive = isRouteActive(item);
 
             if (hasSubmenu) {
               return (
@@ -124,7 +124,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                         'flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                         isActive
                           ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
-                          : 'hover:bg-accent hover:text-accent-foreground'
+                          : 'hover:bg-accent hover:text-accent-foreground',
                       )}
                     >
                       <Icon className="h-5 w-5" />
@@ -135,9 +135,9 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                       size="icon"
                       className="h-8 w-8 border-l border-border"
                       onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        toggleSubmenu(item.path)
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleSubmenu(item.path);
                       }}
                     >
                       {isOpen ? (
@@ -149,7 +149,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                   </div>
                   <CollapsibleContent className="ml-4 space-y-1 border-l pl-3">
                     {item.children!.map((child) => {
-                      const childIsActive = location.pathname === child.path
+                      const childIsActive = location.pathname === child.path;
                       return (
                         <NavLink
                           key={child.path}
@@ -160,17 +160,17 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                               'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
                               isActive || childIsActive
                                 ? 'bg-accent text-accent-foreground font-medium'
-                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                             )
                           }
                         >
                           <span>{child.title}</span>
                         </NavLink>
-                      )
+                      );
                     })}
                   </CollapsibleContent>
                 </Collapsible>
-              )
+              );
             }
 
             return (
@@ -183,19 +183,19 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                     'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     isActive
                       ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent hover:text-accent-foreground'
+                      : 'hover:bg-accent hover:text-accent-foreground',
                   )
                 }
               >
                 <Icon className="h-5 w-5" />
                 <span>{item.title}</span>
               </NavLink>
-            )
+            );
           })}
         </nav>
       </SheetContent>
     </Sheet>
-  )
+  );
 }
 
-export { MobileSidebar }
+export { MobileSidebar };

@@ -1,14 +1,14 @@
-import { Download, X } from 'lucide-react'
+import { Download, X } from 'lucide-react';
 
-import { APP_NAME } from '@/config/constants'
-import { Button } from '@/shared/components/ui/button'
+import { APP_NAME } from '@/config/constants';
+import { Button } from '@/shared/components/ui/button';
 
-import { usePWAInstall } from './usePWAInstall'
+import { usePWAInstall } from './usePWAInstall';
 
 export function PWAInstallPrompt() {
-  const { showPrompt, install, dismiss } = usePWAInstall()
+  const { showPrompt, install, dismiss } = usePWAInstall();
 
-  if (!showPrompt) return null
+  if (!showPrompt) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md animate-in slide-in-from-bottom-4 fade-in duration-300">
@@ -42,5 +42,5 @@ export function PWAInstallPrompt() {
         </div>
       </div>
     </div>
-  )
+  );
 }

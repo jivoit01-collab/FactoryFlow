@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Formats a Date object to HH:mm format.
  */
 function formatTimeHHMM(date: Date): string {
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  return `${hours}:${minutes}`
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
 /**
@@ -15,11 +15,11 @@ function formatTimeHHMM(date: Date): string {
  */
 function parseTimeFromDatetime(datetime: string): string | null {
   try {
-    const date = new Date(datetime)
-    if (isNaN(date.getTime())) return null
-    return formatTimeHHMM(date)
+    const date = new Date(datetime);
+    if (isNaN(date.getTime())) return null;
+    return formatTimeHHMM(date);
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -31,12 +31,12 @@ export interface UseCurrentTimeConfig {
    * Whether to auto-capture the current time.
    * Typically set to true in create mode, false in edit mode.
    */
-  autoCapture: boolean
+  autoCapture: boolean;
   /**
    * Initial time value (e.g., from existing data in edit mode).
    * If provided and valid, this will be used instead of current time.
    */
-  initialTime?: string
+  initialTime?: string;
 }
 
 /**
@@ -44,11 +44,11 @@ export interface UseCurrentTimeConfig {
  */
 export interface UseCurrentTimeReturn {
   /** The current time value in HH:mm format */
-  time: string
+  time: string;
   /** Updates the time value */
-  setTime: (time: string) => void
+  setTime: (time: string) => void;
   /** Refreshes the time to current time */
-  refreshTime: () => void
+  refreshTime: () => void;
 }
 
 /**
@@ -74,43 +74,45 @@ export function useCurrentTime({
   const [time, setTimeState] = useState<string>(() => {
     // If we have an initial time from existing data, parse and use it
     if (initialTime) {
-      const parsed = parseTimeFromDatetime(initialTime)
-      if (parsed) return parsed
+      const parsed = parseTimeFromDatetime(initialTime);
+      if (parsed) return parsed;
     }
     // If auto-capture is enabled, use current time
     if (autoCapture) {
-      return formatTimeHHMM(new Date())
+      return formatTimeHHMM(new Date());
     }
-    return ''
-  })
+    return '';
+  });
 
   // Update time when autoCapture or initialTime changes
   useEffect(() => {
     if (initialTime) {
-      const parsed = parseTimeFromDatetime(initialTime)
+      const parsed = parseTimeFromDatetime(initialTime);
       if (parsed) {
-        setTimeState(parsed)
-        return
+        setTimeState(parsed);
+        return;
       }
     }
-    if (autoCapture && !time) {
-      setTimeState(formatTimeHHMM(new Date()))
+    if (autoCapture) {
+      setTimeState(formatTimeHHMM(new Date()));
     }
-  }, [autoCapture, initialTime, time])
+  }, [autoCapture, initialTime]);
 
   const setTime = useCallback((newTime: string) => {
-    setTimeState(newTime)
-  }, [])
+    if (newTime === '' || /^([01]\d|2[0-3]):([0-5]\d)$/.test(newTime)) {
+      setTimeState(newTime);
+    }
+  }, []);
 
   const refreshTime = useCallback(() => {
-    setTimeState(formatTimeHHMM(new Date()))
-  }, [])
+    setTimeState(formatTimeHHMM(new Date()));
+  }, []);
 
   return {
     time,
     setTime,
     refreshTime,
-  }
+  };
 }
 
 /**
@@ -118,7 +120,7 @@ export function useCurrentTime({
  * Useful for one-time time capture without the hook.
  */
 export function getCurrentTimeHHMM(): string {
-  return formatTimeHHMM(new Date())
+  return formatTimeHHMM(new Date());
 }
 
 /**
@@ -126,5 +128,5 @@ export function getCurrentTimeHHMM(): string {
  * Returns empty string if parsing fails.
  */
 export function getTimeFromDatetime(datetime: string): string {
-  return parseTimeFromDatetime(datetime) || ''
+  return parseTimeFromDatetime(datetime) || '';
 }

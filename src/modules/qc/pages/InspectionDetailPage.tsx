@@ -8,11 +8,11 @@ import {
   Save,
   Send,
   XCircle,
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
+import type { ApiError } from '@/core/api/types';
 import {
   Button,
   Card,
@@ -22,11 +22,11 @@ import {
   Input,
   Label,
   Textarea,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
-import { useArrivalSlipById } from '../api/arrivalSlip/arrivalSlip.queries'
+import { useArrivalSlipById } from '../api/arrivalSlip/arrivalSlip.queries';
 import {
   useApproveAsChemist,
   useApproveAsQAM,
@@ -35,40 +35,40 @@ import {
   useRejectInspection,
   useSubmitInspection,
   useUpdateParameterResults,
-} from '../api/inspection/inspection.queries'
-import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries'
-import { MaterialTypeSelect } from '../components'
+} from '../api/inspection/inspection.queries';
+import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries';
+import { MaterialTypeSelect } from '../components';
 import {
   FINAL_STATUS,
   FINAL_STATUS_CONFIG,
   WORKFLOW_STATUS,
   WORKFLOW_STATUS_CONFIG,
-} from '../constants'
-import { useInspectionPermissions } from '../hooks'
+} from '../constants';
+import { useInspectionPermissions } from '../hooks';
 import type {
   CreateInspectionRequest,
   InspectionFinalStatus,
   ParameterResult,
   UpdateParameterResultRequest,
-} from '../types'
+} from '../types';
 
 export default function InspectionDetailPage() {
-  const navigate = useNavigate()
-  const { slipId, inspectionId } = useParams<{ slipId?: string; inspectionId?: string }>()
-  const isNewInspection = window.location.pathname.includes('/new')
+  const navigate = useNavigate();
+  const { slipId, inspectionId } = useParams<{ slipId?: string; inspectionId?: string }>();
+  const isNewInspection = window.location.pathname.includes('/new');
 
-  const arrivalSlipId = slipId ? parseInt(slipId) : inspectionId ? parseInt(inspectionId) : null
+  const arrivalSlipId = slipId ? parseInt(slipId) : inspectionId ? parseInt(inspectionId) : null;
 
   // Edit mode state - controls whether form fields are editable
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(false);
 
   // Fetch existing inspection
-  const { data: inspection, isLoading: isLoadingInspection } = useInspectionForSlip(arrivalSlipId)
+  const { data: inspection, isLoading: isLoadingInspection } = useInspectionForSlip(arrivalSlipId);
 
   // Fetch arrival slip data for prefilling (only needed when creating new inspection)
   const { data: arrivalSlip, isLoading: isLoadingArrivalSlip } = useArrivalSlipById(
-    isNewInspection && !inspection ? arrivalSlipId : null
-  )
+    isNewInspection && !inspection ? arrivalSlipId : null,
+  );
 
   // Form state
   const [formData, setFormData] = useState<Partial<CreateInspectionRequest>>({
@@ -84,7 +84,7 @@ export default function InspectionDetailPage() {
     vehicle_no: '',
     material_type_id: 0,
     remarks: '',
-  })
+  });
 
   // Parameter results state
   const [parameterResults, setParameterResults] = useState<
@@ -92,29 +92,29 @@ export default function InspectionDetailPage() {
       number,
       { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
     >
-  >({})
+  >({});
 
   // Approval remarks
-  const [approvalRemarks, setApprovalRemarks] = useState('')
-  const [finalStatus, setFinalStatus] = useState<InspectionFinalStatus>(FINAL_STATUS.ACCEPTED)
+  const [approvalRemarks, setApprovalRemarks] = useState('');
+  const [finalStatus, setFinalStatus] = useState<InspectionFinalStatus>(FINAL_STATUS.ACCEPTED);
 
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
   // Fetch parameters when material type changes
   const { data: qcParameters = [] } = useQCParametersByMaterialType(
-    formData.material_type_id || null
-  )
+    formData.material_type_id || null,
+  );
 
   // Mutations
-  const createInspection = useCreateInspection()
-  const updateParameters = useUpdateParameterResults()
-  const submitInspection = useSubmitInspection()
-  const approveAsChemist = useApproveAsChemist()
-  const approveAsQAM = useApproveAsQAM()
-  const rejectInspection = useRejectInspection()
+  const createInspection = useCreateInspection();
+  const updateParameters = useUpdateParameterResults();
+  const submitInspection = useSubmitInspection();
+  const approveAsChemist = useApproveAsChemist();
+  const approveAsQAM = useApproveAsQAM();
+  const rejectInspection = useRejectInspection();
 
   // Load existing inspection data
   useEffect(() => {
@@ -132,24 +132,24 @@ export default function InspectionDetailPage() {
         vehicle_no: inspection.vehicle_no,
         material_type_id: inspection.material_type,
         remarks: inspection.remarks,
-      })
+      });
 
       // Load parameter results
       const resultsMap: Record<
         number,
         { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
-      > = {}
+      > = {};
       inspection.parameter_results?.forEach((result: ParameterResult) => {
         resultsMap[result.parameter_master] = {
           result_value: result.result_value,
           result_numeric: result.result_numeric || undefined,
           is_within_spec: result.is_within_spec ?? undefined,
           remarks: result.remarks,
-        }
-      })
-      setParameterResults(resultsMap)
+        };
+      });
+      setParameterResults(resultsMap);
     }
-  }, [inspection])
+  }, [inspection]);
 
   // Prefill form from arrival slip data when creating new inspection
   useEffect(() => {
@@ -172,25 +172,25 @@ export default function InspectionDetailPage() {
         invoice_bill_no: arrivalSlip.commercial_invoice_no || prev.invoice_bill_no,
         // Remarks from arrival slip
         remarks: arrivalSlip.remarks || prev.remarks,
-      }))
+      }));
     }
-  }, [arrivalSlip, inspection, isNewInspection])
+  }, [arrivalSlip, inspection, isNewInspection]);
 
   const handleInputChange = (field: keyof CreateInspectionRequest, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (apiErrors[field]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[field]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handleParameterChange = (
     parameterId: number,
     field: 'result_value' | 'result_numeric' | 'is_within_spec' | 'remarks',
-    value: string | number | boolean
+    value: string | number | boolean,
   ) => {
     setParameterResults((prev) => ({
       ...prev,
@@ -200,59 +200,59 @@ export default function InspectionDetailPage() {
         remarks: prev[parameterId]?.remarks || '',
         [field]: value,
       },
-    }))
+    }));
     // Clear parameter error when user fills in a value
-    const errorKey = `param_${parameterId}`
+    const errorKey = `param_${parameterId}`;
     if (apiErrors[errorKey]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[errorKey]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handleSave = async () => {
-    if (!arrivalSlipId) return
+    if (!arrivalSlipId) return;
 
     try {
-      setApiErrors({})
+      setApiErrors({});
 
       // Validate required fields
-      const errors: Record<string, string> = {}
+      const errors: Record<string, string> = {};
       if (!formData.material_type_id) {
-        errors.material_type_id = 'Please select a material type'
+        errors.material_type_id = 'Please select a material type';
       }
       if (!formData.supplier_batch_lot_no?.trim()) {
-        errors.supplier_batch_lot_no = 'Supplier Batch/Lot No. is required'
+        errors.supplier_batch_lot_no = 'Supplier Batch/Lot No. is required';
       }
       if (!formData.purchase_order_no?.trim()) {
-        errors.purchase_order_no = 'Purchase Order No. is required'
+        errors.purchase_order_no = 'Purchase Order No. is required';
       }
 
       // Validate mandatory parameters have result values
-      const mandatoryParams = qcParameters.filter((p) => p.is_mandatory)
+      const mandatoryParams = qcParameters.filter((p) => p.is_mandatory);
       for (const param of mandatoryParams) {
-        const result = parameterResults[param.id]
+        const result = parameterResults[param.id];
         if (!result?.result_value?.trim()) {
-          errors[`param_${param.id}`] = `${param.parameter_name} result is required`
+          errors[`param_${param.id}`] = `${param.parameter_name} result is required`;
         }
       }
 
       if (Object.keys(errors).length > 0) {
-        setApiErrors(errors)
-        return
+        setApiErrors(errors);
+        return;
       }
 
-      let currentInspectionId = inspection?.id
+      let currentInspectionId = inspection?.id;
 
       // If no inspection exists, create one
       if (!inspection) {
         const newInspection = await createInspection.mutateAsync({
           slipId: arrivalSlipId,
           data: formData as CreateInspectionRequest,
-        })
-        currentInspectionId = newInspection.id
+        });
+        currentInspectionId = newInspection.id;
       }
 
       // Update parameter results if we have an inspection and parameter results
@@ -264,86 +264,86 @@ export default function InspectionDetailPage() {
             result_numeric: values.result_numeric,
             is_within_spec: values.is_within_spec ?? true,
             remarks: values.remarks || '',
-          })
-        )
+          }),
+        );
 
         await updateParameters.mutateAsync({
           inspectionId: currentInspectionId,
           results,
-        })
+        });
       }
 
       // Exit edit mode after successful save
-      setIsEditing(false)
+      setIsEditing(false);
     } catch (error) {
-      const apiError = error as ApiError
-      setApiErrors({ general: apiError.message || 'Failed to save inspection' })
+      const apiError = error as ApiError;
+      setApiErrors({ general: apiError.message || 'Failed to save inspection' });
     }
-  }
+  };
 
   const handleSubmit = async () => {
     if (!inspection) {
-      setApiErrors({ general: 'Please save the inspection first' })
-      return
+      setApiErrors({ general: 'Please save the inspection first' });
+      return;
     }
 
     try {
-      setApiErrors({})
-      await submitInspection.mutateAsync(inspection.id)
+      setApiErrors({});
+      await submitInspection.mutateAsync(inspection.id);
     } catch (error) {
-      const apiError = error as ApiError
-      setApiErrors({ general: apiError.message || 'Failed to submit inspection' })
+      const apiError = error as ApiError;
+      setApiErrors({ general: apiError.message || 'Failed to submit inspection' });
     }
-  }
+  };
 
   const handleApproveChemist = async () => {
-    if (!inspection) return
+    if (!inspection) return;
 
     try {
-      setApiErrors({})
+      setApiErrors({});
       await approveAsChemist.mutateAsync({
         id: inspection.id,
         data: { remarks: approvalRemarks },
-      })
+      });
     } catch (error) {
-      const apiError = error as ApiError
-      setApiErrors({ general: apiError.message || 'Failed to approve' })
+      const apiError = error as ApiError;
+      setApiErrors({ general: apiError.message || 'Failed to approve' });
     }
-  }
+  };
 
   const handleApproveQAM = async () => {
-    if (!inspection) return
+    if (!inspection) return;
 
     try {
-      setApiErrors({})
+      setApiErrors({});
       await approveAsQAM.mutateAsync({
         id: inspection.id,
         data: { remarks: approvalRemarks, final_status: finalStatus },
-      })
+      });
     } catch (error) {
-      const apiError = error as ApiError
-      setApiErrors({ general: apiError.message || 'Failed to approve' })
+      const apiError = error as ApiError;
+      setApiErrors({ general: apiError.message || 'Failed to approve' });
     }
-  }
+  };
 
   const handleReject = async () => {
-    if (!inspection) return
+    if (!inspection) return;
     if (!approvalRemarks.trim()) {
-      setApiErrors({ approval_remarks: 'Please provide a reason for rejection' })
-      return
+      setApiErrors({ approval_remarks: 'Please provide a reason for rejection' });
+      return;
     }
 
     try {
-      setApiErrors({})
+      setApiErrors({});
       await rejectInspection.mutateAsync({
         id: inspection.id,
         data: { remarks: approvalRemarks },
-      })
+      });
     } catch (error) {
-      const apiError = error as ApiError
-      setApiErrors({ general: apiError.message || 'Failed to reject' })
+      const apiError = error as ApiError;
+      setApiErrors({ general: apiError.message || 'Failed to reject' });
     }
-  }
+  };
 
   // Permission checks using the centralized permission hook
   const {
@@ -354,20 +354,20 @@ export default function InspectionDetailPage() {
     showRejectButton,
     canEditFields,
     isLocked,
-  } = useInspectionPermissions(inspection)
+  } = useInspectionPermissions(inspection);
 
-  const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT
+  const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT;
 
   // Can edit if: permission allows and either no inspection yet or in edit mode
-  const canEdit = canEditFields && (!inspection || isEditing)
+  const canEdit = canEditFields && (!inspection || isEditing);
 
   // Can update (show Update button) if: has inspection, is draft, has permission, not currently editing
-  const canUpdate = inspection && isDraft && canEditInspection && !isEditing && !isLocked
+  const canUpdate = inspection && isDraft && canEditInspection && !isEditing && !isLocked;
 
-  const canSubmit = showSubmitButton && !isEditing
-  const canApproveChemist = showChemistApproval
-  const canApproveQAM = showQAMApproval
-  const canReject = showRejectButton
+  const canSubmit = showSubmitButton && !isEditing;
+  const canApproveChemist = showChemistApproval;
+  const canApproveQAM = showQAMApproval;
+  const canReject = showRejectButton;
 
   const isSaving =
     createInspection.isPending ||
@@ -375,14 +375,14 @@ export default function InspectionDetailPage() {
     submitInspection.isPending ||
     approveAsChemist.isPending ||
     approveAsQAM.isPending ||
-    rejectInspection.isPending
+    rejectInspection.isPending;
 
   if (isLoadingInspection || isLoadingArrivalSlip) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
 
   return (
@@ -406,7 +406,7 @@ export default function InspectionDetailPage() {
                 className={cn(
                   'px-2 py-1 rounded-full text-xs font-medium',
                   WORKFLOW_STATUS_CONFIG[inspection.workflow_status].bgColor,
-                  WORKFLOW_STATUS_CONFIG[inspection.workflow_status].color
+                  WORKFLOW_STATUS_CONFIG[inspection.workflow_status].color,
                 )}
               >
                 {WORKFLOW_STATUS_CONFIG[inspection.workflow_status].label}
@@ -416,7 +416,7 @@ export default function InspectionDetailPage() {
                   className={cn(
                     'px-2 py-1 rounded-full text-xs font-medium',
                     FINAL_STATUS_CONFIG[inspection.final_status].bgColor,
-                    FINAL_STATUS_CONFIG[inspection.final_status].color
+                    FINAL_STATUS_CONFIG[inspection.final_status].color,
                   )}
                 >
                   {FINAL_STATUS_CONFIG[inspection.final_status].label}
@@ -582,26 +582,26 @@ export default function InspectionDetailPage() {
             {/* Mobile: stacked card layout */}
             <div className="md:hidden space-y-4">
               {(inspection?.parameter_results || qcParameters).map((param) => {
-                const parameterId = 'parameter_master' in param ? param.parameter_master : param.id
-                const paramName = param.parameter_name
-                const standardValue = param.standard_value
+                const parameterId = 'parameter_master' in param ? param.parameter_master : param.id;
+                const paramName = param.parameter_name;
+                const standardValue = param.standard_value;
                 const isMandatory =
                   'is_mandatory' in param
                     ? param.is_mandatory
-                    : qcParameters.find((p) => p.id === parameterId)?.is_mandatory ?? false
-                const paramError = apiErrors[`param_${parameterId}`]
+                    : (qcParameters.find((p) => p.id === parameterId)?.is_mandatory ?? false);
+                const paramError = apiErrors[`param_${parameterId}`];
                 const currentValue = parameterResults[parameterId] || {
                   result_value: '',
                   is_within_spec: true,
                   remarks: '',
-                }
+                };
 
                 return (
                   <div
                     key={parameterId}
                     className={cn(
                       'border rounded-lg p-3 space-y-3',
-                      paramError && 'border-destructive'
+                      paramError && 'border-destructive',
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -635,9 +635,7 @@ export default function InspectionDetailPage() {
                         disabled={!canEdit || isSaving}
                         className={cn('w-full', paramError && 'border-destructive')}
                       />
-                      {paramError && (
-                        <p className="text-xs text-destructive">{paramError}</p>
-                      )}
+                      {paramError && <p className="text-xs text-destructive">{paramError}</p>}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Remarks</Label>
@@ -652,7 +650,7 @@ export default function InspectionDetailPage() {
                       />
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
 
@@ -671,19 +669,19 @@ export default function InspectionDetailPage() {
                 <tbody>
                   {(inspection?.parameter_results || qcParameters).map((param) => {
                     const parameterId =
-                      'parameter_master' in param ? param.parameter_master : param.id
-                    const paramName = param.parameter_name
-                    const standardValue = param.standard_value
+                      'parameter_master' in param ? param.parameter_master : param.id;
+                    const paramName = param.parameter_name;
+                    const standardValue = param.standard_value;
                     const isMandatory =
                       'is_mandatory' in param
                         ? param.is_mandatory
-                        : qcParameters.find((p) => p.id === parameterId)?.is_mandatory ?? false
-                    const paramError = apiErrors[`param_${parameterId}`]
+                        : (qcParameters.find((p) => p.id === parameterId)?.is_mandatory ?? false);
+                    const paramError = apiErrors[`param_${parameterId}`];
                     const currentValue = parameterResults[parameterId] || {
                       result_value: '',
                       is_within_spec: true,
                       remarks: '',
-                    }
+                    };
 
                     return (
                       <tr key={parameterId} className="border-b">
@@ -730,7 +728,7 @@ export default function InspectionDetailPage() {
                           />
                         </td>
                       </tr>
-                    )
+                    );
                   })}
                 </tbody>
               </table>
@@ -826,5 +824,5 @@ export default function InspectionDetailPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

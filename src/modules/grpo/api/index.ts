@@ -1,4 +1,4 @@
-export { grpoApi } from './grpo.api'
+export { grpoApi } from './grpo.api';
 export {
   GRPO_QUERY_KEYS,
   useGRPODetail,
@@ -7,4 +7,4 @@ export {
   usePendingGRPOEntries,
   usePostGRPO,
   useWarehouses,
-} from './grpo.queries'
+} from './grpo.queries';

@@ -1,8 +1,8 @@
-import { AlertCircle, ArrowLeft, Edit, FlaskConical, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, Edit, FlaskConical, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
+import type { ApiError } from '@/core/api/types';
 import {
   Button,
   Card,
@@ -16,96 +16,96 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
 import {
   useCreateMaterialType,
   useDeleteMaterialType,
   useMaterialTypes,
   useUpdateMaterialType,
-} from '../../api/materialType/materialType.queries'
-import type { CreateMaterialTypeRequest, MaterialType } from '../../types'
+} from '../../api/materialType/materialType.queries';
+import type { CreateMaterialTypeRequest, MaterialType } from '../../types';
 
 export default function MaterialTypesPage() {
-  const navigate = useNavigate()
-  const { data: materialTypes = [], isLoading, error } = useMaterialTypes()
+  const navigate = useNavigate();
+  const { data: materialTypes = [], isLoading, error } = useMaterialTypes();
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingType, setEditingType] = useState<MaterialType | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingType, setEditingType] = useState<MaterialType | null>(null);
   const [formData, setFormData] = useState<CreateMaterialTypeRequest>({
     code: '',
     name: '',
     description: '',
-  })
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  });
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
-  const createMaterialType = useCreateMaterialType()
-  const updateMaterialType = useUpdateMaterialType()
-  const deleteMaterialType = useDeleteMaterialType()
+  const createMaterialType = useCreateMaterialType();
+  const updateMaterialType = useUpdateMaterialType();
+  const deleteMaterialType = useDeleteMaterialType();
 
   const handleOpenDialog = (type?: MaterialType) => {
     if (type) {
-      setEditingType(type)
+      setEditingType(type);
       setFormData({
         code: type.code,
         name: type.name,
         description: type.description || '',
-      })
+      });
     } else {
-      setEditingType(null)
-      setFormData({ code: '', name: '', description: '' })
+      setEditingType(null);
+      setFormData({ code: '', name: '', description: '' });
     }
-    setApiErrors({})
-    setIsDialogOpen(true)
-  }
+    setApiErrors({});
+    setIsDialogOpen(true);
+  };
 
   const handleCloseDialog = () => {
-    setIsDialogOpen(false)
-    setEditingType(null)
-    setFormData({ code: '', name: '', description: '' })
-    setApiErrors({})
-  }
+    setIsDialogOpen(false);
+    setEditingType(null);
+    setFormData({ code: '', name: '', description: '' });
+    setApiErrors({});
+  };
 
   const handleSave = async () => {
     if (!formData.code.trim()) {
-      setApiErrors({ code: 'Code is required' })
-      return
+      setApiErrors({ code: 'Code is required' });
+      return;
     }
     if (!formData.name.trim()) {
-      setApiErrors({ name: 'Name is required' })
-      return
+      setApiErrors({ name: 'Name is required' });
+      return;
     }
 
     try {
-      setApiErrors({})
+      setApiErrors({});
       if (editingType) {
-        await updateMaterialType.mutateAsync({ id: editingType.id, data: formData })
+        await updateMaterialType.mutateAsync({ id: editingType.id, data: formData });
       } else {
-        await createMaterialType.mutateAsync(formData)
+        await createMaterialType.mutateAsync(formData);
       }
-      handleCloseDialog()
+      handleCloseDialog();
     } catch (error) {
-      const apiError = error as ApiError
-      setApiErrors({ general: apiError.message || 'Failed to save material type' })
+      const apiError = error as ApiError;
+      setApiErrors({ general: apiError.message || 'Failed to save material type' });
     }
-  }
+  };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this material type?')) return
+    if (!confirm('Are you sure you want to delete this material type?')) return;
 
     try {
-      await deleteMaterialType.mutateAsync(id)
+      await deleteMaterialType.mutateAsync(id);
     } catch (error) {
-      const apiError = error as ApiError
-      alert(apiError.message || 'Failed to delete material type')
+      const apiError = error as ApiError;
+      alert(apiError.message || 'Failed to delete material type');
     }
-  }
+  };
 
-  const isSaving = createMaterialType.isPending || updateMaterialType.isPending
+  const isSaving = createMaterialType.isPending || updateMaterialType.isPending;
 
   return (
     <div className="space-y-6 pb-6">
@@ -266,5 +266,5 @@ export default function MaterialTypesPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

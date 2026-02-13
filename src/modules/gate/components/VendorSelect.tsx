@@ -1,18 +1,18 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { Vendor } from '../api/po/po.api'
-import { useVendors } from '../api/po/po.queries'
+import type { Vendor } from '../api/po/po.api';
+import { useVendors } from '../api/po/po.queries';
 
 interface VendorSelectProps {
-  value?: string
-  onChange: (vendor: Vendor | null) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: string;
+  onChange: (vendor: Vendor | null) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
 }
 
 export function VendorSelect({
@@ -24,9 +24,9 @@ export function VendorSelect({
   label,
   required = false,
 }: VendorSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data: vendors = [], isLoading } = useVendors(isDropdownOpen)
+  const { data: vendors = [], isLoading } = useVendors(isDropdownOpen);
 
   return (
     <SearchableSelect<Vendor>
@@ -56,11 +56,11 @@ export function VendorSelect({
       notFoundText="No vendors found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(vendor) => {
-        onChange(vendor)
+        onChange(vendor);
       }}
       onClear={() => {
-        onChange(null)
+        onChange(null);
       }}
     />
-  )
+  );
 }

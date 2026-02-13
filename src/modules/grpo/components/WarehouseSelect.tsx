@@ -1,18 +1,18 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import { useWarehouses } from '../api'
-import type { Warehouse } from '../types'
+import { useWarehouses } from '../api';
+import type { Warehouse } from '../types';
 
 interface WarehouseSelectProps {
-  value?: string
-  onChange: (warehouseCode: string) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: string;
+  onChange: (warehouseCode: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
 }
 
 export function WarehouseSelect({
@@ -24,9 +24,9 @@ export function WarehouseSelect({
   label,
   required = false,
 }: WarehouseSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data: warehouses = [], isLoading } = useWarehouses(isDropdownOpen)
+  const { data: warehouses = [], isLoading } = useWarehouses(isDropdownOpen);
 
   return (
     <SearchableSelect<Warehouse>
@@ -57,11 +57,11 @@ export function WarehouseSelect({
       notFoundText="No warehouses found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(warehouse) => {
-        onChange(warehouse.warehouse_code)
+        onChange(warehouse.warehouse_code);
       }}
       onClear={() => {
-        onChange('')
+        onChange('');
       }}
     />
-  )
+  );
 }

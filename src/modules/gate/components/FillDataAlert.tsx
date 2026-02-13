@@ -1,12 +1,12 @@
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react';
 
-import { Button } from '@/shared/components/ui'
+import { Button } from '@/shared/components/ui';
 
 interface FillDataAlertProps {
   /** Error message to display */
-  message: string
+  message: string;
   /** Handler for Fill Data button click */
-  onFillData: () => void
+  onFillData: () => void;
 }
 
 /**
@@ -26,5 +26,5 @@ export function FillDataAlert({ message, onFillData }: FillDataAlertProps) {
         </Button>
       </div>
     </div>
-  )
+  );
 }

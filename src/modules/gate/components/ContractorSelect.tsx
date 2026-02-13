@@ -1,22 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { Contractor } from '../api/personGateIn/personGateIn.api'
-import { useContractors } from '../api/personGateIn/personGateIn.queries'
+import type { Contractor } from '../api/personGateIn/personGateIn.api';
+import { useContractors } from '../api/personGateIn/personGateIn.queries';
 
 interface ContractorSelectProps {
-  value?: string
-  onChange: (contractorId: number, contractorName: string) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: string;
+  onChange: (contractorId: number, contractorName: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
   /** Only show active contractors */
-  activeOnly?: boolean
+  activeOnly?: boolean;
   /** Initial display text to show without fetching contractors (for edit mode) */
-  initialDisplayText?: string
+  initialDisplayText?: string;
 }
 
 export function ContractorSelect({
@@ -30,14 +30,14 @@ export function ContractorSelect({
   activeOnly = true,
   initialDisplayText,
 }: ContractorSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data: contractors = [], isLoading, isError } = useContractors(isDropdownOpen)
+  const { data: contractors = [], isLoading, isError } = useContractors(isDropdownOpen);
 
   const filteredContractors = useMemo(
     () => (activeOnly ? contractors.filter((c) => c.is_active) : contractors),
-    [contractors, activeOnly]
-  )
+    [contractors, activeOnly],
+  );
 
   return (
     <SearchableSelect<Contractor>
@@ -60,11 +60,11 @@ export function ContractorSelect({
       notFoundText="No contractors found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(contractor) => {
-        onChange(contractor.id, contractor.contractor_name)
+        onChange(contractor.id, contractor.contractor_name);
       }}
       onClear={() => {
-        onChange(0, '')
+        onChange(0, '');
       }}
     />
-  )
+  );
 }

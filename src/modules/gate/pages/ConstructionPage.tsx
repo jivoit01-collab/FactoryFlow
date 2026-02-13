@@ -8,5 +8,5 @@ export default function ConstructionPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

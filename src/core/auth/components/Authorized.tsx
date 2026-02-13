@@ -1,17 +1,17 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from 'react';
 
-import { usePermission } from '../hooks/usePermission'
+import { usePermission } from '../hooks/usePermission';
 
 interface AuthorizedProps {
-  children: ReactNode
+  children: ReactNode;
   /** Required permissions (Django format: 'app_label.permission_codename') */
-  permissions?: string[]
+  permissions?: string[];
   /** Required company roles */
-  companyRoles?: string[]
+  companyRoles?: string[];
   /** If true, user must have ALL permissions/roles. If false, ANY grants access */
-  requireAll?: boolean
+  requireAll?: boolean;
   /** Content to render if user doesn't have access */
-  fallback?: ReactNode
+  fallback?: ReactNode;
 }
 
 /**
@@ -44,17 +44,17 @@ export function Authorized({
   fallback = null,
 }: AuthorizedProps) {
   const { hasAnyPermission, hasAllPermissions, hasAnyCompanyRole, permissionsLoaded } =
-    usePermission()
+    usePermission();
 
   // Wait for permissions to load before making access decisions
   if (!permissionsLoaded) {
-    return <>{fallback}</>
+    return <>{fallback}</>;
   }
 
   // Check company roles
   if (companyRoles && companyRoles.length > 0) {
     if (!hasAnyCompanyRole(companyRoles)) {
-      return <>{fallback}</>
+      return <>{fallback}</>;
     }
   }
 
@@ -62,14 +62,14 @@ export function Authorized({
   if (permissions && permissions.length > 0) {
     const hasPermissionAccess = requireAll
       ? hasAllPermissions(permissions)
-      : hasAnyPermission(permissions)
+      : hasAnyPermission(permissions);
 
     if (!hasPermissionAccess) {
-      return <>{fallback}</>
+      return <>{fallback}</>;
     }
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
 
 /**
@@ -77,13 +77,13 @@ export function Authorized({
  */
 export function withAuthorization<P extends object>(
   WrappedComponent: React.ComponentType<P>,
-  options: Omit<AuthorizedProps, 'children'>
+  options: Omit<AuthorizedProps, 'children'>,
 ) {
   return function AuthorizedComponent(props: P) {
     return (
       <Authorized {...options}>
         <WrappedComponent {...props} />
       </Authorized>
-    )
-  }
+    );
+  };
 }

@@ -15,10 +15,10 @@ export const AUTH_CONFIG = {
 
   // Permission refresh
   permissionRefreshInterval: 5 * 60 * 1000, // Refresh permissions every 5 minutes
-} as const
+} as const;
 
 export const AUTH_ROUTES = {
   login: '/login',
   logout: '/logout',
   unauthorized: '/unauthorized',
-} as const
+} as const;

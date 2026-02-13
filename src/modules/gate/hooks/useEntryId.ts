@@ -1,9 +1,9 @@
-import { useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 
 interface UseEntryIdResult {
-  entryId: string | null
-  entryIdNumber: number | null
-  isEditMode: boolean
+  entryId: string | null;
+  entryIdNumber: number | null;
+  isEditMode: boolean;
 }
 
 /**
@@ -16,21 +16,21 @@ interface UseEntryIdResult {
  *   - isEditMode: Whether the current route is an edit route
  */
 export function useEntryId(): UseEntryIdResult {
-  const { entryId: routeEntryId } = useParams<{ entryId?: string }>()
-  const [searchParams] = useSearchParams()
-  const location = useLocation()
+  const { entryId: routeEntryId } = useParams<{ entryId?: string }>();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
 
-  const isEditMode = location.pathname.includes('/edit/')
+  const isEditMode = location.pathname.includes('/edit/');
 
   // In edit mode, use route params; in create mode, use query params
-  const entryId = isEditMode ? routeEntryId || null : searchParams.get('entryId')
+  const entryId = isEditMode ? routeEntryId || null : searchParams.get('entryId');
 
-  const entryIdNumber = entryId ? parseInt(entryId, 10) : null
-  const validEntryIdNumber = entryIdNumber && !isNaN(entryIdNumber) ? entryIdNumber : null
+  const entryIdNumber = entryId ? parseInt(entryId, 10) : null;
+  const validEntryIdNumber = entryIdNumber && !isNaN(entryIdNumber) ? entryIdNumber : null;
 
   return {
     entryId,
     entryIdNumber: validEntryIdNumber,
     isEditMode,
-  }
+  };
 }

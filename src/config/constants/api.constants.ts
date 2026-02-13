@@ -3,7 +3,7 @@ export const API_CONFIG = {
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
-} as const
+} as const;
 
 export const API_ENDPOINTS = {
   // Auth
@@ -147,7 +147,7 @@ export const API_ENDPOINTS = {
     HISTORY: '/grpo/history/',
     DETAIL: (postingId: number) => `/grpo/${postingId}/`,
   },
-} as const
+} as const;
 
 export const HTTP_STATUS = {
   OK: 200,
@@ -158,4 +158,4 @@ export const HTTP_STATUS = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   INTERNAL_SERVER_ERROR: 500,
-} as const
+} as const;

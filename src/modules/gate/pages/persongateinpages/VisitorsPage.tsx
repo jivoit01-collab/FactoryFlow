@@ -1,8 +1,8 @@
-import { ArrowLeft, Ban, CheckCircle2, Edit2, Plus, Search, Trash2 } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Ban, CheckCircle2, Edit2, Plus, Search, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_PATTERNS } from '@/config/constants';
 import {
   Button,
   Card,
@@ -11,24 +11,24 @@ import {
   CardTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
-import type { CreateVisitorRequest, Visitor } from '../../api/personGateIn/personGateIn.api'
+import type { CreateVisitorRequest, Visitor } from '../../api/personGateIn/personGateIn.api';
 import {
   useCreateVisitor,
   useDeleteVisitor,
   useUpdateVisitor,
   useVisitors,
-} from '../../api/personGateIn/personGateIn.queries'
-import { ID_PROOF_TYPES, ID_PROOF_VALIDATION } from '../../schemas/driver.schema'
+} from '../../api/personGateIn/personGateIn.queries';
+import { ID_PROOF_TYPES, ID_PROOF_VALIDATION } from '../../schemas/driver.schema';
 
 export default function VisitorsPage() {
-  const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingVisitor, setEditingVisitor] = useState<Visitor | null>(null)
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [editingVisitor, setEditingVisitor] = useState<Visitor | null>(null);
   const [formData, setFormData] = useState<CreateVisitorRequest>({
     name: '',
     mobile: '',
@@ -36,24 +36,24 @@ export default function VisitorsPage() {
     id_proof_type: '',
     id_proof_no: '',
     blacklisted: false,
-  })
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  });
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
-  const { data: visitors = [], isLoading, refetch } = useVisitors(search)
-  const createMutation = useCreateVisitor()
-  const updateMutation = useUpdateVisitor()
-  const deleteMutation = useDeleteVisitor()
+  const { data: visitors = [], isLoading, refetch } = useVisitors(search);
+  const createMutation = useCreateVisitor();
+  const updateMutation = useUpdateVisitor();
+  const deleteMutation = useDeleteVisitor();
 
   // Filter visitors based on search
   const filteredVisitors = visitors.filter(
     (v) =>
       v.name.toLowerCase().includes(search.toLowerCase()) ||
       v.mobile?.toLowerCase().includes(search.toLowerCase()) ||
-      v.company_name?.toLowerCase().includes(search.toLowerCase())
-  )
+      v.company_name?.toLowerCase().includes(search.toLowerCase()),
+  );
 
   // Reset form
   const resetForm = () => {
@@ -64,14 +64,14 @@ export default function VisitorsPage() {
       id_proof_type: '',
       id_proof_no: '',
       blacklisted: false,
-    })
-    setEditingVisitor(null)
-    setApiErrors({})
-  }
+    });
+    setEditingVisitor(null);
+    setApiErrors({});
+  };
 
   // Open edit form
   const handleEdit = (visitor: Visitor) => {
-    setEditingVisitor(visitor)
+    setEditingVisitor(visitor);
     setFormData({
       name: visitor.name,
       mobile: visitor.mobile || '',
@@ -79,69 +79,69 @@ export default function VisitorsPage() {
       id_proof_type: visitor.id_proof_type || '',
       id_proof_no: visitor.id_proof_no || '',
       blacklisted: visitor.blacklisted,
-    })
-    setShowForm(true)
-  }
+    });
+    setShowForm(true);
+  };
 
   // Handle form submit
   const handleSubmit = async () => {
-    const errors: Record<string, string> = {}
-    if (!formData.name.trim()) errors.name = 'Name is required'
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = 'Name is required';
     // Validate mobile (optional, but if provided must be valid)
     if (formData.mobile?.trim() && !VALIDATION_PATTERNS.phone.test(formData.mobile.trim())) {
-      errors.mobile = 'Please enter a valid 10-digit phone number'
+      errors.mobile = 'Please enter a valid 10-digit phone number';
     }
     // Validate id_proof_no based on id_proof_type (optional, but if type is selected, validate number)
     if (formData.id_proof_type && formData.id_proof_no?.trim()) {
-      const proofType = formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION
-      const validation = ID_PROOF_VALIDATION[proofType]
+      const proofType = formData.id_proof_type as keyof typeof ID_PROOF_VALIDATION;
+      const validation = ID_PROOF_VALIDATION[proofType];
       if (
         validation?.pattern &&
         !validation.pattern.test(formData.id_proof_no.trim().toUpperCase())
       ) {
-        errors.id_proof_no = validation.message
+        errors.id_proof_no = validation.message;
       }
     }
 
     if (Object.keys(errors).length > 0) {
-      setApiErrors(errors)
-      return
+      setApiErrors(errors);
+      return;
     }
 
     try {
       if (editingVisitor) {
-        await updateMutation.mutateAsync({ id: editingVisitor.id, data: formData })
+        await updateMutation.mutateAsync({ id: editingVisitor.id, data: formData });
       } else {
-        await createMutation.mutateAsync(formData)
+        await createMutation.mutateAsync(formData);
       }
-      setShowForm(false)
-      resetForm()
-      refetch()
+      setShowForm(false);
+      resetForm();
+      refetch();
     } catch (error: unknown) {
-      const err = error as { errors?: Record<string, string[]> }
+      const err = error as { errors?: Record<string, string[]> };
       if (err.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(err.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       }
     }
-  }
+  };
 
   // Handle delete
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this visitor?')) return
+    if (!window.confirm('Are you sure you want to delete this visitor?')) return;
 
     try {
-      await deleteMutation.mutateAsync(id)
-      refetch()
+      await deleteMutation.mutateAsync(id);
+      refetch();
     } catch (error) {
-      console.error('Failed to delete:', error)
+      console.error('Failed to delete:', error);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -158,8 +158,8 @@ export default function VisitorsPage() {
         </div>
         <Button
           onClick={() => {
-            resetForm()
-            setShowForm(true)
+            resetForm();
+            setShowForm(true);
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -203,14 +203,14 @@ export default function VisitorsPage() {
                   <Input
                     value={formData.mobile || ''}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
-                      setFormData((prev) => ({ ...prev, mobile: value }))
+                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                      setFormData((prev) => ({ ...prev, mobile: value }));
                       if (apiErrors.mobile) {
                         setApiErrors((prev) => {
-                          const n = { ...prev }
-                          delete n.mobile
-                          return n
-                        })
+                          const n = { ...prev };
+                          delete n.mobile;
+                          return n;
+                        });
                       }
                     }}
                     placeholder="9876543210"
@@ -244,13 +244,13 @@ export default function VisitorsPage() {
                         ...prev,
                         id_proof_type: e.target.value,
                         id_proof_no: '',
-                      }))
+                      }));
                       if (apiErrors.id_proof_no) {
                         setApiErrors((prev) => {
-                          const n = { ...prev }
-                          delete n.id_proof_no
-                          return n
-                        })
+                          const n = { ...prev };
+                          delete n.id_proof_no;
+                          return n;
+                        });
                       }
                     }}
                     className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -268,22 +268,22 @@ export default function VisitorsPage() {
                   <Input
                     value={formData.id_proof_no || ''}
                     onChange={(e) => {
-                      let value = e.target.value
+                      let value = e.target.value;
                       if (formData.id_proof_type === 'Aadhar') {
-                        value = value.replace(/[^0-9]/g, '').slice(0, 12)
+                        value = value.replace(/[^0-9]/g, '').slice(0, 12);
                       } else if (
                         formData.id_proof_type === 'PAN Card' ||
                         formData.id_proof_type === 'Voter ID'
                       ) {
-                        value = value.toUpperCase()
+                        value = value.toUpperCase();
                       }
-                      setFormData((prev) => ({ ...prev, id_proof_no: value }))
+                      setFormData((prev) => ({ ...prev, id_proof_no: value }));
                       if (apiErrors.id_proof_no) {
                         setApiErrors((prev) => {
-                          const n = { ...prev }
-                          delete n.id_proof_no
-                          return n
-                        })
+                          const n = { ...prev };
+                          delete n.id_proof_no;
+                          return n;
+                        });
                       }
                     }}
                     placeholder={
@@ -327,8 +327,8 @@ export default function VisitorsPage() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setShowForm(false)
-                    resetForm()
+                    setShowForm(false);
+                    resetForm();
                   }}
                   className="flex-1"
                 >
@@ -421,5 +421,5 @@ export default function VisitorsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

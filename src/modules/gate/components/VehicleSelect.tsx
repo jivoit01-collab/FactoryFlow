@@ -1,28 +1,28 @@
-import { Loader2 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { Vehicle, VehicleName } from '../api/vehicle/vehicle.api'
-import { useVehicleById, useVehicleNames } from '../api/vehicle/vehicle.queries'
-import { CreateVehicleDialog } from './CreateVehicleDialog'
+import type { Vehicle, VehicleName } from '../api/vehicle/vehicle.api';
+import { useVehicleById, useVehicleNames } from '../api/vehicle/vehicle.queries';
+import { CreateVehicleDialog } from './CreateVehicleDialog';
 
 interface VehicleSelectProps {
-  value?: string
+  value?: string;
   onChange: (vehicle: {
-    vehicleId: number
-    vehicleNumber: string
-    vehicleType: string
-    vehicleCapacity: string
-    transporterName: string
-    transporterContactPerson: string
-    transporterMobile: string
-  }) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+    vehicleId: number;
+    vehicleNumber: string;
+    vehicleType: string;
+    vehicleCapacity: string;
+    transporterName: string;
+    transporterContactPerson: string;
+    transporterMobile: string;
+  }) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
 }
 
 export function VehicleSelect({
@@ -34,26 +34,26 @@ export function VehicleSelect({
   label,
   required = false,
 }: VehicleSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [selectedVehicleDetails, setSelectedVehicleDetails] = useState<Vehicle | null>(null)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedVehicleDetails, setSelectedVehicleDetails] = useState<Vehicle | null>(null);
 
-  const { data: vehicleNames = [], isLoading } = useVehicleNames(isDropdownOpen && !disabled)
-  const { data: vehicleDetails } = useVehicleById(selectedId, selectedId !== null)
+  const { data: vehicleNames = [], isLoading } = useVehicleNames(isDropdownOpen && !disabled);
+  const { data: vehicleDetails } = useVehicleById(selectedId, selectedId !== null);
 
-  const prevVehicleDetailsRef = useRef(vehicleDetails)
-  const onChangeRef = useRef(onChange)
+  const prevVehicleDetailsRef = useRef(vehicleDetails);
+  const onChangeRef = useRef(onChange);
 
   useEffect(() => {
-    onChangeRef.current = onChange
-  }, [onChange])
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Sync vehicle details when fetched and call onChange with mapped data
   const syncVehicleDetails = useCallback(() => {
     if (vehicleDetails && vehicleDetails !== prevVehicleDetailsRef.current) {
-      prevVehicleDetailsRef.current = vehicleDetails
-      setSelectedVehicleDetails(vehicleDetails)
-      const vehicleType = vehicleDetails.vehicle_type.name
+      prevVehicleDetailsRef.current = vehicleDetails;
+      setSelectedVehicleDetails(vehicleDetails);
+      const vehicleType = vehicleDetails.vehicle_type.name;
       onChangeRef.current({
         vehicleId: vehicleDetails.id,
         vehicleNumber: vehicleDetails.vehicle_number,
@@ -62,14 +62,14 @@ export function VehicleSelect({
         transporterName: vehicleDetails.transporter?.name || '',
         transporterContactPerson: vehicleDetails.transporter?.contact_person || '',
         transporterMobile: vehicleDetails.transporter?.mobile_no || '',
-      })
+      });
     }
-  }, [vehicleDetails])
+  }, [vehicleDetails]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with fetched data is a valid pattern
-    syncVehicleDetails()
-  }, [syncVehicleDetails])
+    syncVehicleDetails();
+  }, [syncVehicleDetails]);
 
   return (
     <SearchableSelect<VehicleName>
@@ -90,15 +90,15 @@ export function VehicleSelect({
       addNewLabel="Add New Vehicle"
       onOpenChange={setIsDropdownOpen}
       onSelectedKeyChange={(key) => {
-        setSelectedId(key as number | null)
-        if (!key) setSelectedVehicleDetails(null)
+        setSelectedId(key as number | null);
+        if (!key) setSelectedVehicleDetails(null);
       }}
       onItemSelect={(vehicle) => {
-        setSelectedId(vehicle.id)
+        setSelectedId(vehicle.id);
       }}
       onClear={() => {
-        setSelectedId(null)
-        setSelectedVehicleDetails(null)
+        setSelectedId(null);
+        setSelectedVehicleDetails(null);
         onChange({
           vehicleId: 0,
           vehicleNumber: '',
@@ -107,7 +107,7 @@ export function VehicleSelect({
           transporterName: '',
           transporterContactPerson: '',
           transporterMobile: '',
-        })
+        });
       }}
       renderPopoverContent={(selKey) =>
         selectedVehicleDetails ? (
@@ -156,12 +156,12 @@ export function VehicleSelect({
         <CreateVehicleDialog
           open={open}
           onOpenChange={onOpenChange}
-          onSuccess={(vehicleId, vehicleNumber) => {
-            updateSelection(vehicleId, vehicleNumber)
-            setSelectedId(vehicleId)
+          onSuccess={(vehicle) => {
+            updateSelection(vehicle.id, vehicle.vehicle_number);
+            setSelectedId(vehicle.id);
           }}
         />
       )}
     />
-  )
+  );
 }

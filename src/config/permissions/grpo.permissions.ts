@@ -16,12 +16,12 @@ export const GRPO_PERMISSIONS = {
   VIEW_HISTORY: 'grpo.can_view_grpo_history',
   /** View individual GRPO posting detail */
   VIEW_POSTING: 'grpo.view_grpoposting',
-} as const
+} as const;
 
 /** Module prefix for sidebar filtering */
-export const GRPO_MODULE_PREFIX = 'grpo'
+export const GRPO_MODULE_PREFIX = 'grpo';
 
 /**
  * Type for GRPO permission values
  */
-export type GRPOPermission = (typeof GRPO_PERMISSIONS)[keyof typeof GRPO_PERMISSIONS]
+export type GRPOPermission = (typeof GRPO_PERMISSIONS)[keyof typeof GRPO_PERMISSIONS];

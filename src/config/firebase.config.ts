@@ -1,5 +1,5 @@
-import { type FirebaseApp, initializeApp } from 'firebase/app'
-import { getMessaging, isSupported, type Messaging } from 'firebase/messaging'
+import { type FirebaseApp, initializeApp } from 'firebase/app';
+import { getMessaging, isSupported, type Messaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -8,11 +8,11 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-}
+};
 
-let app: FirebaseApp | null = null
-let messaging: Messaging | null = null
-let fcmServiceWorkerRegistration: ServiceWorkerRegistration | null = null
+let app: FirebaseApp | null = null;
+let messaging: Messaging | null = null;
+let fcmServiceWorkerRegistration: ServiceWorkerRegistration | null = null;
 
 /**
  * Check if Firebase is properly configured
@@ -22,9 +22,9 @@ export const isFirebaseConfigured = (): boolean => {
     firebaseConfig.apiKey &&
     firebaseConfig.projectId &&
     firebaseConfig.messagingSenderId &&
-    firebaseConfig.appId
-  )
-}
+    firebaseConfig.appId,
+  );
+};
 
 /**
  * Register the Firebase messaging service worker
@@ -32,84 +32,84 @@ export const isFirebaseConfigured = (): boolean => {
  */
 export const registerFCMServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if (fcmServiceWorkerRegistration) {
-    return fcmServiceWorkerRegistration
+    return fcmServiceWorkerRegistration;
   }
 
   if (!('serviceWorker' in navigator)) {
-    console.warn('Service workers are not supported in this browser')
-    return null
+    console.warn('Service workers are not supported in this browser');
+    return null;
   }
 
   try {
     // Register the Firebase messaging service worker
     fcmServiceWorkerRegistration = await navigator.serviceWorker.register(
       '/firebase-messaging-sw.js',
-      { scope: '/' }
-    )
+      { scope: '/' },
+    );
 
     if (import.meta.env.DEV) {
-      console.log('[FCM] Service worker registered:', fcmServiceWorkerRegistration.scope)
+      console.log('[FCM] Service worker registered:', fcmServiceWorkerRegistration.scope);
     }
 
     // Wait for the service worker to be ready
-    await navigator.serviceWorker.ready
+    await navigator.serviceWorker.ready;
 
-    return fcmServiceWorkerRegistration
+    return fcmServiceWorkerRegistration;
   } catch (error) {
-    console.error('[FCM] Service worker registration failed:', error)
-    return null
+    console.error('[FCM] Service worker registration failed:', error);
+    return null;
   }
-}
+};
 
 /**
  * Get the FCM service worker registration
  */
 export const getFCMServiceWorkerRegistration = (): ServiceWorkerRegistration | null => {
-  return fcmServiceWorkerRegistration
-}
+  return fcmServiceWorkerRegistration;
+};
 
 /**
  * Initialize Firebase app and messaging
  */
 export const initializeFirebase = async (): Promise<{
-  app: FirebaseApp | null
-  messaging: Messaging | null
+  app: FirebaseApp | null;
+  messaging: Messaging | null;
 }> => {
   // Check if Firebase is configured
   if (!isFirebaseConfigured()) {
-    console.warn('[FCM] Firebase is not configured. Check your environment variables.')
-    return { app: null, messaging: null }
+    console.warn('[FCM] Firebase is not configured. Check your environment variables.');
+    return { app: null, messaging: null };
   }
 
   // Initialize Firebase app
   if (!app) {
-    app = initializeApp(firebaseConfig)
+    app = initializeApp(firebaseConfig);
   }
 
   // Check if messaging is supported (not in all browsers)
-  const supported = await isSupported()
+  const supported = await isSupported();
   if (!supported) {
-    console.warn('[FCM] Firebase messaging is not supported in this browser')
-    return { app, messaging: null }
+    console.warn('[FCM] Firebase messaging is not supported in this browser');
+    return { app, messaging: null };
   }
 
   // Register FCM service worker first
-  await registerFCMServiceWorker()
+  await registerFCMServiceWorker();
 
   // Initialize messaging
   if (!messaging) {
-    messaging = getMessaging(app)
+    messaging = getMessaging(app);
   }
 
-  return { app, messaging }
-}
+  return { app, messaging };
+};
 
 /**
  * Get the Firebase messaging instance
  */
-export const getFirebaseMessaging = (): Messaging | null => messaging
+export const getFirebaseMessaging = (): Messaging | null => messaging;
 
 /**
  * Get the Firebase app instance
  */
-export const getFirebaseApp = (): FirebaseApp | null => app
+export const getFirebaseApp = (): FirebaseApp | null => app;

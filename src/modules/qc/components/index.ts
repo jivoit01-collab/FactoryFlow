@@ -1,1 +1,1 @@
-export { MaterialTypeSelect } from './MaterialTypeSelect'
+export { MaterialTypeSelect } from './MaterialTypeSelect';

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
 
-import { VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_PATTERNS } from '@/config/constants';
 import {
   Button,
   Dialog,
@@ -11,18 +11,18 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
-import type { Labour } from '../../api/personGateIn/personGateIn.api'
-import { useCreateLabour } from '../../api/personGateIn/personGateIn.queries'
-import { ContractorSelect } from '../ContractorSelect'
+import type { Labour } from '../../api/personGateIn/personGateIn.api';
+import { useCreateLabour } from '../../api/personGateIn/personGateIn.queries';
+import { ContractorSelect } from '../ContractorSelect';
 
 interface CreateLabourDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSuccess?: (labour: Labour) => void
-  defaultContractorId?: number
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: (labour: Labour) => void;
+  defaultContractorId?: number;
 }
 
 export function CreateLabourDialog({
@@ -31,7 +31,7 @@ export function CreateLabourDialog({
   onSuccess,
   defaultContractorId,
 }: CreateLabourDialogProps) {
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: '',
     contractor: defaultContractorId || 0,
@@ -39,9 +39,9 @@ export function CreateLabourDialog({
     id_proof_no: '',
     skill_type: '',
     permit_valid_till: '',
-  })
+  });
 
-  const createLabour = useCreateLabour()
+  const createLabour = useCreateLabour();
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -53,27 +53,27 @@ export function CreateLabourDialog({
         id_proof_no: '',
         skill_type: '',
         permit_valid_till: '',
-      })
-      setApiErrors({})
+      });
+      setApiErrors({});
     }
-  }, [open, defaultContractorId])
+  }, [open, defaultContractorId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const errors: Record<string, string> = {}
-    if (!formData.name.trim()) errors.name = 'Name is required'
-    if (!formData.contractor) errors.contractor = 'Contractor is required'
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = 'Name is required';
+    if (!formData.contractor) errors.contractor = 'Contractor is required';
     if (formData.mobile?.trim() && !VALIDATION_PATTERNS.phone.test(formData.mobile.trim())) {
-      errors.mobile = 'Please enter a valid 10-digit phone number'
+      errors.mobile = 'Please enter a valid 10-digit phone number';
     }
 
     if (Object.keys(errors).length > 0) {
-      setApiErrors(errors)
-      return
+      setApiErrors(errors);
+      return;
     }
 
-    setApiErrors({})
+    setApiErrors({});
     try {
       const result = await createLabour.mutateAsync({
         name: formData.name,
@@ -83,24 +83,24 @@ export function CreateLabourDialog({
         skill_type: formData.skill_type || undefined,
         permit_valid_till: formData.permit_valid_till || undefined,
         is_active: true,
-      })
-      onOpenChange(false)
-      onSuccess?.(result)
+      });
+      onOpenChange(false);
+      onSuccess?.(result);
     } catch (error: unknown) {
-      const err = error as { errors?: Record<string, string[]>; message?: string }
+      const err = error as { errors?: Record<string, string[]>; message?: string };
       if (err.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(err.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: err.message || 'Failed to create labour' })
+        setApiErrors({ general: err.message || 'Failed to create labour' });
       }
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -136,7 +136,7 @@ export function CreateLabourDialog({
             <ContractorSelect
               value={formData.contractor ? String(formData.contractor) : undefined}
               onChange={(contractorId) => {
-                setFormData((prev) => ({ ...prev, contractor: contractorId }))
+                setFormData((prev) => ({ ...prev, contractor: contractorId }));
               }}
               disabled={createLabour.isPending}
               label="Contractor"
@@ -153,14 +153,14 @@ export function CreateLabourDialog({
                 placeholder="9876543210"
                 value={formData.mobile}
                 onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
-                  setFormData((prev) => ({ ...prev, mobile: value }))
+                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                  setFormData((prev) => ({ ...prev, mobile: value }));
                   if (apiErrors.mobile) {
                     setApiErrors((prev) => {
-                      const n = { ...prev }
-                      delete n.mobile
-                      return n
-                    })
+                      const n = { ...prev };
+                      delete n.mobile;
+                      return n;
+                    });
                   }
                 }}
                 maxLength={10}
@@ -222,5 +222,5 @@ export function CreateLabourDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
