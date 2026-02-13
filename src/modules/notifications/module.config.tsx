@@ -1,11 +1,11 @@
-import { Bell } from 'lucide-react'
-import { lazy } from 'react'
+import { Bell } from 'lucide-react';
+import { lazy } from 'react';
 
-import { NOTIFICATION_MODULE_PREFIX, NOTIFICATION_PERMISSIONS } from '@/config/permissions'
-import type { ModuleConfig } from '@/core/types'
+import { NOTIFICATION_MODULE_PREFIX, NOTIFICATION_PERMISSIONS } from '@/config/permissions';
+import type { ModuleConfig } from '@/core/types';
 
-const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
-const SendNotificationPage = lazy(() => import('./pages/SendNotificationPage'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const SendNotificationPage = lazy(() => import('./pages/SendNotificationPage'));
 
 export const notificationsModuleConfig: ModuleConfig = {
   name: 'notifications',
@@ -43,4 +43,4 @@ export const notificationsModuleConfig: ModuleConfig = {
       ],
     },
   ],
-}
+};

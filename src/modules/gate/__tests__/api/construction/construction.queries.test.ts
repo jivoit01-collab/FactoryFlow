@@ -5,14 +5,14 @@
 // are exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
   queryOptions: vi.fn((opts: any) => opts),
-}))
+}));
 
 vi.mock('../../../api/construction/construction.api', () => ({
   constructionApi: {
@@ -23,7 +23,7 @@ vi.mock('../../../api/construction/construction.api', () => ({
     getFullView: vi.fn(),
     complete: vi.fn(),
   },
-}))
+}));
 
 import {
   useConstructionCategories,
@@ -32,7 +32,7 @@ import {
   useUpdateConstructionEntry,
   useConstructionFullView,
   useCompleteConstructionEntry,
-} from '../../../api/construction/construction.queries'
+} from '../../../api/construction/construction.queries';
 
 // ═══════════════════════════════════════════════════════════════
 // Hook existence
@@ -40,26 +40,26 @@ import {
 
 describe('construction queries', () => {
   it('exports useConstructionCategories as a function', () => {
-    expect(typeof useConstructionCategories).toBe('function')
-  })
+    expect(typeof useConstructionCategories).toBe('function');
+  });
 
   it('exports useConstructionEntry as a function', () => {
-    expect(typeof useConstructionEntry).toBe('function')
-  })
+    expect(typeof useConstructionEntry).toBe('function');
+  });
 
   it('exports useCreateConstructionEntry as a function', () => {
-    expect(typeof useCreateConstructionEntry).toBe('function')
-  })
+    expect(typeof useCreateConstructionEntry).toBe('function');
+  });
 
   it('exports useUpdateConstructionEntry as a function', () => {
-    expect(typeof useUpdateConstructionEntry).toBe('function')
-  })
+    expect(typeof useUpdateConstructionEntry).toBe('function');
+  });
 
   it('exports useConstructionFullView as a function', () => {
-    expect(typeof useConstructionFullView).toBe('function')
-  })
+    expect(typeof useConstructionFullView).toBe('function');
+  });
 
   it('exports useCompleteConstructionEntry as a function', () => {
-    expect(typeof useCompleteConstructionEntry).toBe('function')
-  })
-})
+    expect(typeof useCompleteConstructionEntry).toBe('function');
+  });
+});

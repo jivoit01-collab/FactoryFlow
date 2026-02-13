@@ -5,7 +5,7 @@
 // the expected method names for the PO gate entry full view.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -24,9 +24,9 @@ vi.mock('@/config/constants', () => ({
       COMPLETE: vi.fn(),
     },
   },
-}))
+}));
 
-import { gateEntryFullViewApi } from '../../../api/gateEntryFullView/gateEntryFullView.api'
+import { gateEntryFullViewApi } from '../../../api/gateEntryFullView/gateEntryFullView.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -34,28 +34,28 @@ import { gateEntryFullViewApi } from '../../../api/gateEntryFullView/gateEntryFu
 
 describe('gateEntryFullViewApi', () => {
   it('is defined as an object', () => {
-    expect(gateEntryFullViewApi).toBeDefined()
-    expect(typeof gateEntryFullViewApi).toBe('object')
-  })
+    expect(gateEntryFullViewApi).toBeDefined();
+    expect(typeof gateEntryFullViewApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a get method', () => {
-    expect(typeof gateEntryFullViewApi.get).toBe('function')
-  })
+    expect(typeof gateEntryFullViewApi.get).toBe('function');
+  });
 
   it('has a complete method', () => {
-    expect(typeof gateEntryFullViewApi.complete).toBe('function')
-  })
+    expect(typeof gateEntryFullViewApi.complete).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(gateEntryFullViewApi).sort()
-    expect(methodNames).toEqual(['complete', 'get'])
-  })
-})
+    const methodNames = Object.keys(gateEntryFullViewApi).sort();
+    expect(methodNames).toEqual(['complete', 'get']);
+  });
+});

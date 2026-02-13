@@ -25,16 +25,16 @@ export const WIZARD_CONFIG = {
     5: 'Weighment',
     6: 'Attachments',
   },
-} as const
+} as const;
 
 export const TABLE_CONFIG = {
   /** Minimum width for data tables */
   MIN_WIDTH: '800px',
-} as const
+} as const;
 
 export const DEBOUNCE_CONFIG = {
   /** Default debounce delay in milliseconds for search inputs */
   SEARCH_DELAY: 100,
-} as const
+} as const;
 
-export type StepNumber = 1 | 2 | 3 | 4 | 5 | 6
+export type StepNumber = 1 | 2 | 3 | 4 | 5 | 6;

@@ -1,11 +1,11 @@
-import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import type {
   Notification,
   NotificationListParams,
   NotificationPreference,
-} from '@/core/notifications'
-import { fcmService, notificationService } from '@/core/notifications'
+} from '@/core/notifications';
+import { fcmService, notificationService } from '@/core/notifications';
 
 // ============================================
 // State Interface
@@ -14,27 +14,27 @@ import { fcmService, notificationService } from '@/core/notifications'
 interface NotificationState {
   // FCM State
   fcm: {
-    isSupported: boolean
-    isInitialized: boolean
-    permission: NotificationPermission
-    token: string | null
-    isLoading: boolean
-    error: string | null
-  }
+    isSupported: boolean;
+    isInitialized: boolean;
+    permission: NotificationPermission;
+    token: string | null;
+    isLoading: boolean;
+    error: string | null;
+  };
   // Notifications List State
   notifications: {
-    items: Notification[]
-    unreadCount: number
-    totalCount: number
-    isLoading: boolean
-    error: string | null
-  }
+    items: Notification[];
+    unreadCount: number;
+    totalCount: number;
+    isLoading: boolean;
+    error: string | null;
+  };
   // Preferences State
   preferences: {
-    items: NotificationPreference[]
-    isLoading: boolean
-    error: string | null
-  }
+    items: NotificationPreference[];
+    isLoading: boolean;
+    error: string | null;
+  };
 }
 
 const initialState: NotificationState = {
@@ -58,7 +58,7 @@ const initialState: NotificationState = {
     isLoading: false,
     error: null,
   },
-}
+};
 
 // ============================================
 // FCM Async Thunks
@@ -71,23 +71,23 @@ export const setupPushNotifications = createAsyncThunk(
   'notification/setupPushNotifications',
   async (_, { rejectWithValue }) => {
     try {
-      const result = await fcmService.setupPushNotifications()
+      const result = await fcmService.setupPushNotifications();
 
       if (!result.success) {
         if (result.permission === 'denied') {
-          return rejectWithValue('Notification permission denied')
+          return rejectWithValue('Notification permission denied');
         }
-        return rejectWithValue('Failed to setup push notifications')
+        return rejectWithValue('Failed to setup push notifications');
       }
 
-      return { permission: result.permission, token: result.token }
+      return { permission: result.permission, token: result.token };
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : 'Failed to setup push notifications'
-      )
+        error instanceof Error ? error.message : 'Failed to setup push notifications',
+      );
     }
-  }
-)
+  },
+);
 
 /**
  * Cleanup push notifications (unregister and delete token)
@@ -96,19 +96,19 @@ export const cleanupPushNotifications = createAsyncThunk(
   'notification/cleanupPushNotifications',
   async () => {
     // Unregister device token from backend before deleting FCM token
-    const currentToken = fcmService.getCurrentToken()
+    const currentToken = fcmService.getCurrentToken();
     if (currentToken) {
       try {
-        await notificationService.unregisterDevice(currentToken)
+        await notificationService.unregisterDevice(currentToken);
       } catch (error) {
-        console.warn('[Notification] Backend device unregistration failed:', error)
+        console.warn('[Notification] Backend device unregistration failed:', error);
       }
     }
 
-    await fcmService.cleanupPushNotifications()
-    return true
-  }
-)
+    await fcmService.cleanupPushNotifications();
+    return true;
+  },
+);
 
 // ============================================
 // Notification List Async Thunks
@@ -121,15 +121,15 @@ export const fetchNotifications = createAsyncThunk(
   'notification/fetchNotifications',
   async (params: NotificationListParams | undefined, { rejectWithValue }) => {
     try {
-      const response = await notificationService.getNotifications(params)
-      return response
+      const response = await notificationService.getNotifications(params);
+      return response;
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : 'Failed to fetch notifications'
-      )
+        error instanceof Error ? error.message : 'Failed to fetch notifications',
+      );
     }
-  }
-)
+  },
+);
 
 /**
  * Fetch unread count
@@ -138,15 +138,15 @@ export const fetchUnreadCount = createAsyncThunk(
   'notification/fetchUnreadCount',
   async (_, { rejectWithValue }) => {
     try {
-      const count = await notificationService.getUnreadCount()
-      return count
+      const count = await notificationService.getUnreadCount();
+      return count;
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : 'Failed to fetch unread count'
-      )
+        error instanceof Error ? error.message : 'Failed to fetch unread count',
+      );
     }
-  }
-)
+  },
+);
 
 /**
  * Mark notifications as read
@@ -155,17 +155,17 @@ export const markNotificationsAsRead = createAsyncThunk(
   'notification/markAsRead',
   async (notificationIds: number[], { rejectWithValue, dispatch }) => {
     try {
-      await notificationService.markAsRead(notificationIds)
+      await notificationService.markAsRead(notificationIds);
       // Refresh unread count after marking as read
-      dispatch(fetchUnreadCount())
-      return notificationIds
+      dispatch(fetchUnreadCount());
+      return notificationIds;
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : 'Failed to mark notifications as read'
-      )
+        error instanceof Error ? error.message : 'Failed to mark notifications as read',
+      );
     }
-  }
-)
+  },
+);
 
 /**
  * Mark all notifications as read
@@ -174,16 +174,16 @@ export const markAllNotificationsAsRead = createAsyncThunk(
   'notification/markAllAsRead',
   async (_, { rejectWithValue, dispatch }) => {
     try {
-      await notificationService.markAllAsRead()
+      await notificationService.markAllAsRead();
       // Refresh unread count and notifications
-      dispatch(fetchUnreadCount())
-      dispatch(fetchNotifications(undefined))
-      return true
+      dispatch(fetchUnreadCount());
+      dispatch(fetchNotifications(undefined));
+      return true;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to mark all as read')
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to mark all as read');
     }
-  }
-)
+  },
+);
 
 // ============================================
 // Preferences Async Thunks
@@ -196,13 +196,15 @@ export const fetchPreferences = createAsyncThunk(
   'notification/fetchPreferences',
   async (_, { rejectWithValue }) => {
     try {
-      const preferences = await notificationService.getPreferences()
-      return preferences
+      const preferences = await notificationService.getPreferences();
+      return preferences;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch preferences')
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Failed to fetch preferences',
+      );
     }
-  }
-)
+  },
+);
 
 /**
  * Update notification preference
@@ -211,16 +213,18 @@ export const updatePreference = createAsyncThunk(
   'notification/updatePreference',
   async (
     { notificationTypeId, isEnabled }: { notificationTypeId: number; isEnabled: boolean },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
-      const updated = await notificationService.updatePreference(notificationTypeId, isEnabled)
-      return updated
+      const updated = await notificationService.updatePreference(notificationTypeId, isEnabled);
+      return updated;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update preference')
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Failed to update preference',
+      );
     }
-  }
-)
+  },
+);
 
 // ============================================
 // Slice
@@ -232,29 +236,29 @@ const notificationSlice = createSlice({
   reducers: {
     // FCM reducers
     setFCMToken: (state, action: PayloadAction<string | null>) => {
-      state.fcm.token = action.payload
+      state.fcm.token = action.payload;
     },
     setFCMPermission: (state, action: PayloadAction<NotificationPermission>) => {
-      state.fcm.permission = action.payload
+      state.fcm.permission = action.payload;
     },
     clearFCMError: (state) => {
-      state.fcm.error = null
+      state.fcm.error = null;
     },
 
     // Notification reducers
     addNotification: (state, action: PayloadAction<Notification>) => {
       // Add to beginning of list (newest first)
-      state.notifications.items.unshift(action.payload)
-      state.notifications.unreadCount += 1
-      state.notifications.totalCount += 1
+      state.notifications.items.unshift(action.payload);
+      state.notifications.unreadCount += 1;
+      state.notifications.totalCount += 1;
     },
     updateUnreadCount: (state, action: PayloadAction<number>) => {
-      state.notifications.unreadCount = action.payload
+      state.notifications.unreadCount = action.payload;
     },
     clearNotifications: (state) => {
-      state.notifications.items = []
-      state.notifications.unreadCount = 0
-      state.notifications.totalCount = 0
+      state.notifications.items = [];
+      state.notifications.unreadCount = 0;
+      state.notifications.totalCount = 0;
     },
 
     // Reset state (e.g., on logout)
@@ -265,83 +269,83 @@ const notificationSlice = createSlice({
     builder
       // setupPushNotifications
       .addCase(setupPushNotifications.pending, (state) => {
-        state.fcm.isLoading = true
-        state.fcm.error = null
+        state.fcm.isLoading = true;
+        state.fcm.error = null;
       })
       .addCase(setupPushNotifications.fulfilled, (state, action) => {
-        state.fcm.isLoading = false
-        state.fcm.isInitialized = true
-        state.fcm.permission = action.payload.permission
-        state.fcm.token = action.payload.token
+        state.fcm.isLoading = false;
+        state.fcm.isInitialized = true;
+        state.fcm.permission = action.payload.permission;
+        state.fcm.token = action.payload.token;
       })
       .addCase(setupPushNotifications.rejected, (state, action) => {
-        state.fcm.isLoading = false
-        state.fcm.error = action.payload as string
+        state.fcm.isLoading = false;
+        state.fcm.error = action.payload as string;
       })
 
       // cleanupPushNotifications
       .addCase(cleanupPushNotifications.fulfilled, (state) => {
-        state.fcm.token = null
-        state.fcm.isInitialized = false
-      })
+        state.fcm.token = null;
+        state.fcm.isInitialized = false;
+      });
 
     // ========== Notification List Thunks ==========
     builder
       // fetchNotifications
       .addCase(fetchNotifications.pending, (state) => {
-        state.notifications.isLoading = true
-        state.notifications.error = null
+        state.notifications.isLoading = true;
+        state.notifications.error = null;
       })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
-        state.notifications.isLoading = false
-        state.notifications.items = action.payload.results
-        state.notifications.unreadCount = action.payload.unread_count
-        state.notifications.totalCount = action.payload.count
+        state.notifications.isLoading = false;
+        state.notifications.items = action.payload.results;
+        state.notifications.unreadCount = action.payload.unread_count;
+        state.notifications.totalCount = action.payload.count;
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
-        state.notifications.isLoading = false
-        state.notifications.error = action.payload as string
+        state.notifications.isLoading = false;
+        state.notifications.error = action.payload as string;
       })
 
       // fetchUnreadCount
       .addCase(fetchUnreadCount.fulfilled, (state, action) => {
-        state.notifications.unreadCount = action.payload
+        state.notifications.unreadCount = action.payload;
       })
 
       // markNotificationsAsRead
       .addCase(markNotificationsAsRead.fulfilled, (state, action) => {
-        const readIds = action.payload
+        const readIds = action.payload;
         state.notifications.items = state.notifications.items.map((notification) =>
-          readIds.includes(notification.id) ? { ...notification, is_read: true } : notification
-        )
-      })
+          readIds.includes(notification.id) ? { ...notification, is_read: true } : notification,
+        );
+      });
 
     // ========== Preferences Thunks ==========
     builder
       // fetchPreferences
       .addCase(fetchPreferences.pending, (state) => {
-        state.preferences.isLoading = true
-        state.preferences.error = null
+        state.preferences.isLoading = true;
+        state.preferences.error = null;
       })
       .addCase(fetchPreferences.fulfilled, (state, action) => {
-        state.preferences.isLoading = false
-        state.preferences.items = action.payload
+        state.preferences.isLoading = false;
+        state.preferences.items = action.payload;
       })
       .addCase(fetchPreferences.rejected, (state, action) => {
-        state.preferences.isLoading = false
-        state.preferences.error = action.payload as string
+        state.preferences.isLoading = false;
+        state.preferences.error = action.payload as string;
       })
 
       // updatePreference
       .addCase(updatePreference.fulfilled, (state, action) => {
-        const updated = action.payload
-        const index = state.preferences.items.findIndex((p) => p.id === updated.id)
+        const updated = action.payload;
+        const index = state.preferences.items.findIndex((p) => p.id === updated.id);
         if (index !== -1) {
-          state.preferences.items[index] = updated
+          state.preferences.items[index] = updated;
         }
-      })
+      });
   },
-})
+});
 
 // Export actions
 export const {
@@ -352,23 +356,24 @@ export const {
   updateUnreadCount,
   clearNotifications,
   resetNotificationState,
-} = notificationSlice.actions
+} = notificationSlice.actions;
 
 // Export reducer
-export default notificationSlice.reducer
+export default notificationSlice.reducer;
 
 // ============================================
 // Selectors
 // ============================================
 
-export const selectFCMState = (state: { notification: NotificationState }) => state.notification.fcm
+export const selectFCMState = (state: { notification: NotificationState }) =>
+  state.notification.fcm;
 export const selectNotificationsState = (state: { notification: NotificationState }) =>
-  state.notification.notifications
+  state.notification.notifications;
 export const selectPreferencesState = (state: { notification: NotificationState }) =>
-  state.notification.preferences
+  state.notification.preferences;
 export const selectUnreadCount = (state: { notification: NotificationState }) =>
-  state.notification.notifications.unreadCount
+  state.notification.notifications.unreadCount;
 export const selectIsFCMSupported = (state: { notification: NotificationState }) =>
-  state.notification.fcm.isSupported
+  state.notification.fcm.isSupported;
 export const selectFCMPermission = (state: { notification: NotificationState }) =>
-  state.notification.fcm.permission
+  state.notification.fcm.permission;

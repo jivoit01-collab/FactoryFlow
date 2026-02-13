@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest';
 import type {
   Warehouse,
   GRPOStatus,
@@ -10,7 +10,7 @@ import type {
   PostGRPOResponse,
   GRPOHistoryLine,
   GRPOHistoryEntry,
-} from '../../types/grpo.types'
+} from '../../types/grpo.types';
 
 // ═══════════════════════════════════════════════════════════════
 // Type Assertion Tests
@@ -26,17 +26,17 @@ describe('GRPO Types', () => {
     const warehouse: Warehouse = {
       warehouse_code: 'WH-001',
       warehouse_name: 'Main Warehouse',
-    }
-    expect(warehouse.warehouse_code).toBe('WH-001')
-    expect(warehouse.warehouse_name).toBe('Main Warehouse')
-  })
+    };
+    expect(warehouse.warehouse_code).toBe('WH-001');
+    expect(warehouse.warehouse_name).toBe('Main Warehouse');
+  });
 
   // ─── GRPOStatus ─────────────────────────────────────────────
 
   it('GRPOStatus accepts valid union members', () => {
-    const statuses: GRPOStatus[] = ['PENDING', 'POSTED', 'FAILED', 'PARTIALLY_POSTED']
-    expect(statuses).toHaveLength(4)
-  })
+    const statuses: GRPOStatus[] = ['PENDING', 'POSTED', 'FAILED', 'PARTIALLY_POSTED'];
+    expect(statuses).toHaveLength(4);
+  });
 
   // ─── QCStatus ───────────────────────────────────────────────
 
@@ -48,9 +48,9 @@ describe('GRPO Types', () => {
       'NO_ARRIVAL_SLIP',
       'ARRIVAL_SLIP_PENDING',
       'INSPECTION_PENDING',
-    ]
-    expect(statuses).toHaveLength(6)
-  })
+    ];
+    expect(statuses).toHaveLength(6);
+  });
 
   // ─── PendingGRPOEntry ──────────────────────────────────────
 
@@ -64,10 +64,10 @@ describe('GRPO Types', () => {
       posted_po_count: 1,
       pending_po_count: 2,
       is_fully_posted: false,
-    }
-    expect(entry.vehicle_entry_id).toBe(1)
-    expect(entry.is_fully_posted).toBe(false)
-  })
+    };
+    expect(entry.vehicle_entry_id).toBe(1);
+    expect(entry.is_fully_posted).toBe(false);
+  });
 
   // ─── PreviewItem ───────────────────────────────────────────
 
@@ -82,10 +82,10 @@ describe('GRPO Types', () => {
       rejected_qty: 5,
       uom: 'KG',
       qc_status: 'ACCEPTED',
-    }
-    expect(item.po_item_receipt_id).toBe(1)
-    expect(item.qc_status).toBe('ACCEPTED')
-  })
+    };
+    expect(item.po_item_receipt_id).toBe(1);
+    expect(item.qc_status).toBe('ACCEPTED');
+  });
 
   // ─── PreviewPOReceipt ──────────────────────────────────────
 
@@ -105,10 +105,10 @@ describe('GRPO Types', () => {
       items: [],
       grpo_status: null,
       sap_doc_num: null,
-    }
-    expect(receipt.is_ready_for_grpo).toBe(true)
-    expect(receipt.grpo_status).toBeNull()
-  })
+    };
+    expect(receipt.is_ready_for_grpo).toBe(true);
+    expect(receipt.grpo_status).toBeNull();
+  });
 
   // ─── PostGRPORequest ───────────────────────────────────────
 
@@ -118,9 +118,9 @@ describe('GRPO Types', () => {
       po_receipt_id: 10,
       items: [{ po_item_receipt_id: 1, accepted_qty: 50 }],
       branch_id: 2,
-    }
-    expect(request.items).toHaveLength(1)
-  })
+    };
+    expect(request.items).toHaveLength(1);
+  });
 
   it('PostGRPORequest accepts optional fields', () => {
     const request: PostGRPORequest = {
@@ -130,10 +130,10 @@ describe('GRPO Types', () => {
       branch_id: 2,
       warehouse_code: 'WH-001',
       comments: 'Test comment',
-    }
-    expect(request.warehouse_code).toBe('WH-001')
-    expect(request.comments).toBe('Test comment')
-  })
+    };
+    expect(request.warehouse_code).toBe('WH-001');
+    expect(request.comments).toBe('Test comment');
+  });
 
   // ─── PostGRPOResponse ──────────────────────────────────────
 
@@ -145,10 +145,10 @@ describe('GRPO Types', () => {
       sap_doc_num: 200,
       sap_doc_total: 50000,
       message: 'Posted successfully',
-    }
-    expect(response.success).toBe(true)
-    expect(response.sap_doc_num).toBe(200)
-  })
+    };
+    expect(response.success).toBe(true);
+    expect(response.sap_doc_num).toBe(200);
+  });
 
   // ─── GRPOHistoryLine ──────────────────────────────────────
 
@@ -160,10 +160,10 @@ describe('GRPO Types', () => {
       quantity_posted: '50.00',
       base_entry: 100,
       base_line: 0,
-    }
-    expect(line.id).toBe(1)
-    expect(line.quantity_posted).toBe('50.00')
-  })
+    };
+    expect(line.id).toBe(1);
+    expect(line.quantity_posted).toBe('50.00');
+  });
 
   it('GRPOHistoryLine accepts null for optional fields', () => {
     const line: GRPOHistoryLine = {
@@ -173,10 +173,10 @@ describe('GRPO Types', () => {
       quantity_posted: '50.00',
       base_entry: null,
       base_line: null,
-    }
-    expect(line.base_entry).toBeNull()
-    expect(line.base_line).toBeNull()
-  })
+    };
+    expect(line.base_entry).toBeNull();
+    expect(line.base_line).toBeNull();
+  });
 
   // ─── GRPOHistoryEntry ─────────────────────────────────────
 
@@ -196,10 +196,10 @@ describe('GRPO Types', () => {
       posted_by: 1,
       created_at: '2025-01-01T10:00:00Z',
       lines: [],
-    }
-    expect(entry.status).toBe('POSTED')
-    expect(entry.error_message).toBeNull()
-  })
+    };
+    expect(entry.status).toBe('POSTED');
+    expect(entry.error_message).toBeNull();
+  });
 
   it('GRPOHistoryEntry accepts null for nullable fields', () => {
     const entry: GRPOHistoryEntry = {
@@ -217,8 +217,8 @@ describe('GRPO Types', () => {
       posted_by: null,
       created_at: '2025-01-01T10:00:00Z',
       lines: [],
-    }
-    expect(entry.sap_doc_entry).toBeNull()
-    expect(entry.error_message).toBe('SAP connection failed')
-  })
-})
+    };
+    expect(entry.sap_doc_entry).toBeNull();
+    expect(entry.error_message).toBe('SAP connection failed');
+  });
+});

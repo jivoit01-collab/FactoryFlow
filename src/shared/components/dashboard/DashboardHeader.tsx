@@ -1,26 +1,26 @@
-import { type ReactNode } from 'react'
+import { type ReactNode } from 'react';
 
-import { Button } from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+import { Button } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 /**
  * Props for the DashboardHeader component.
  */
 export interface DashboardHeaderProps {
   /** Main title of the dashboard */
-  title: string
+  title: string;
   /** Description text below the title */
-  description?: string
+  description?: string;
   /** Primary action button configuration */
   primaryAction?: {
-    label: string
-    icon?: ReactNode
-    onClick: () => void
-  }
+    label: string;
+    icon?: ReactNode;
+    onClick: () => void;
+  };
   /** Additional actions to show in the header */
-  children?: ReactNode
+  children?: ReactNode;
   /** Optional CSS class for the header container */
-  className?: string
+  className?: string;
 }
 
 /**
@@ -50,7 +50,7 @@ export function DashboardHeader({
     <header
       className={cn(
         'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between',
-        className
+        className,
       )}
     >
       <div>
@@ -67,5 +67,5 @@ export function DashboardHeader({
         )}
       </div>
     </header>
-  )
+  );
 }

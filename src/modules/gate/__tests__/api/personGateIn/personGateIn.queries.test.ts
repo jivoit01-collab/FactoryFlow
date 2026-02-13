@@ -5,14 +5,14 @@
 // operations are exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
   queryOptions: vi.fn((opts: any) => opts),
-}))
+}));
 
 vi.mock('../../../api/personGateIn/personGateIn.api', () => ({
   personGateInApi: {
@@ -52,7 +52,7 @@ vi.mock('../../../api/personGateIn/personGateIn.api', () => ({
     getLabourHistory: vi.fn(),
     checkPersonStatus: vi.fn(),
   },
-}))
+}));
 
 import {
   usePersonTypes,
@@ -90,7 +90,7 @@ import {
   useVisitorHistory,
   useLabourHistory,
   useCheckPersonStatus,
-} from '../../../api/personGateIn/personGateIn.queries'
+} from '../../../api/personGateIn/personGateIn.queries';
 
 // ═══════════════════════════════════════════════════════════════
 // Person Types hooks
@@ -98,166 +98,166 @@ import {
 
 describe('personGateIn queries', () => {
   it('exports usePersonTypes as a function', () => {
-    expect(typeof usePersonTypes).toBe('function')
-  })
+    expect(typeof usePersonTypes).toBe('function');
+  });
 
   it('exports useCreatePersonType as a function', () => {
-    expect(typeof useCreatePersonType).toBe('function')
-  })
+    expect(typeof useCreatePersonType).toBe('function');
+  });
 
   it('exports useUpdatePersonType as a function', () => {
-    expect(typeof useUpdatePersonType).toBe('function')
-  })
+    expect(typeof useUpdatePersonType).toBe('function');
+  });
 
   it('exports useDeletePersonType as a function', () => {
-    expect(typeof useDeletePersonType).toBe('function')
-  })
+    expect(typeof useDeletePersonType).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Gates hooks
   // ═══════════════════════════════════════════════════════════════
 
   it('exports useGates as a function', () => {
-    expect(typeof useGates).toBe('function')
-  })
+    expect(typeof useGates).toBe('function');
+  });
 
   it('exports useCreateGate as a function', () => {
-    expect(typeof useCreateGate).toBe('function')
-  })
+    expect(typeof useCreateGate).toBe('function');
+  });
 
   it('exports useUpdateGate as a function', () => {
-    expect(typeof useUpdateGate).toBe('function')
-  })
+    expect(typeof useUpdateGate).toBe('function');
+  });
 
   it('exports useDeleteGate as a function', () => {
-    expect(typeof useDeleteGate).toBe('function')
-  })
+    expect(typeof useDeleteGate).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Contractors hooks
   // ═══════════════════════════════════════════════════════════════
 
   it('exports useContractors as a function', () => {
-    expect(typeof useContractors).toBe('function')
-  })
+    expect(typeof useContractors).toBe('function');
+  });
 
   it('exports useCreateContractor as a function', () => {
-    expect(typeof useCreateContractor).toBe('function')
-  })
+    expect(typeof useCreateContractor).toBe('function');
+  });
 
   it('exports useUpdateContractor as a function', () => {
-    expect(typeof useUpdateContractor).toBe('function')
-  })
+    expect(typeof useUpdateContractor).toBe('function');
+  });
 
   it('exports useDeleteContractor as a function', () => {
-    expect(typeof useDeleteContractor).toBe('function')
-  })
+    expect(typeof useDeleteContractor).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Visitors hooks
   // ═══════════════════════════════════════════════════════════════
 
   it('exports useVisitors as a function', () => {
-    expect(typeof useVisitors).toBe('function')
-  })
+    expect(typeof useVisitors).toBe('function');
+  });
 
   it('exports useVisitor as a function', () => {
-    expect(typeof useVisitor).toBe('function')
-  })
+    expect(typeof useVisitor).toBe('function');
+  });
 
   it('exports useCreateVisitor as a function', () => {
-    expect(typeof useCreateVisitor).toBe('function')
-  })
+    expect(typeof useCreateVisitor).toBe('function');
+  });
 
   it('exports useUpdateVisitor as a function', () => {
-    expect(typeof useUpdateVisitor).toBe('function')
-  })
+    expect(typeof useUpdateVisitor).toBe('function');
+  });
 
   it('exports useDeleteVisitor as a function', () => {
-    expect(typeof useDeleteVisitor).toBe('function')
-  })
+    expect(typeof useDeleteVisitor).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Labours hooks
   // ═══════════════════════════════════════════════════════════════
 
   it('exports useLabours as a function', () => {
-    expect(typeof useLabours).toBe('function')
-  })
+    expect(typeof useLabours).toBe('function');
+  });
 
   it('exports useLabour as a function', () => {
-    expect(typeof useLabour).toBe('function')
-  })
+    expect(typeof useLabour).toBe('function');
+  });
 
   it('exports useCreateLabour as a function', () => {
-    expect(typeof useCreateLabour).toBe('function')
-  })
+    expect(typeof useCreateLabour).toBe('function');
+  });
 
   it('exports useUpdateLabour as a function', () => {
-    expect(typeof useUpdateLabour).toBe('function')
-  })
+    expect(typeof useUpdateLabour).toBe('function');
+  });
 
   it('exports useDeleteLabour as a function', () => {
-    expect(typeof useDeleteLabour).toBe('function')
-  })
+    expect(typeof useDeleteLabour).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Entry Logs hooks
   // ═══════════════════════════════════════════════════════════════
 
   it('exports usePersonEntries as a function', () => {
-    expect(typeof usePersonEntries).toBe('function')
-  })
+    expect(typeof usePersonEntries).toBe('function');
+  });
 
   it('exports usePersonEntryCounts as a function', () => {
-    expect(typeof usePersonEntryCounts).toBe('function')
-  })
+    expect(typeof usePersonEntryCounts).toBe('function');
+  });
 
   it('exports useInsideList as a function', () => {
-    expect(typeof useInsideList).toBe('function')
-  })
+    expect(typeof useInsideList).toBe('function');
+  });
 
   it('exports usePersonEntry as a function', () => {
-    expect(typeof usePersonEntry).toBe('function')
-  })
+    expect(typeof usePersonEntry).toBe('function');
+  });
 
   it('exports useCreatePersonEntry as a function', () => {
-    expect(typeof useCreatePersonEntry).toBe('function')
-  })
+    expect(typeof useCreatePersonEntry).toBe('function');
+  });
 
   it('exports useExitPersonEntry as a function', () => {
-    expect(typeof useExitPersonEntry).toBe('function')
-  })
+    expect(typeof useExitPersonEntry).toBe('function');
+  });
 
   it('exports useCancelPersonEntry as a function', () => {
-    expect(typeof useCancelPersonEntry).toBe('function')
-  })
+    expect(typeof useCancelPersonEntry).toBe('function');
+  });
 
   it('exports useUpdatePersonEntry as a function', () => {
-    expect(typeof useUpdatePersonEntry).toBe('function')
-  })
+    expect(typeof useUpdatePersonEntry).toBe('function');
+  });
 
   it('exports useSearchPersonEntries as a function', () => {
-    expect(typeof useSearchPersonEntries).toBe('function')
-  })
+    expect(typeof useSearchPersonEntries).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Dashboard & History hooks
   // ═══════════════════════════════════════════════════════════════
 
   it('exports usePersonGateInDashboard as a function', () => {
-    expect(typeof usePersonGateInDashboard).toBe('function')
-  })
+    expect(typeof usePersonGateInDashboard).toBe('function');
+  });
 
   it('exports useVisitorHistory as a function', () => {
-    expect(typeof useVisitorHistory).toBe('function')
-  })
+    expect(typeof useVisitorHistory).toBe('function');
+  });
 
   it('exports useLabourHistory as a function', () => {
-    expect(typeof useLabourHistory).toBe('function')
-  })
+    expect(typeof useLabourHistory).toBe('function');
+  });
 
   it('exports useCheckPersonStatus as a function', () => {
-    expect(typeof useCheckPersonStatus).toBe('function')
-  })
-})
+    expect(typeof useCheckPersonStatus).toBe('function');
+  });
+});

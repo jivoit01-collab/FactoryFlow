@@ -1,23 +1,23 @@
-import { ArrowLeft, Plus, Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Plus, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { useGlobalDateRange } from '@/core/store/hooks'
-import { Button, Input } from '@/shared/components/ui'
+import { useGlobalDateRange } from '@/core/store/hooks';
+import { Button, Input } from '@/shared/components/ui';
 
-import { usePersonEntries } from '../../api/personGateIn/personGateIn.queries'
-import { DateRangePicker } from '../../components/DateRangePicker'
+import { usePersonEntries } from '../../api/personGateIn/personGateIn.queries';
+import { DateRangePicker } from '../../components/DateRangePicker';
 
 export default function PersonGateInAllPage() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [search, setSearch] = useState('')
-  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState('');
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   // Get filters from URL
-  const statusFilter = searchParams.get('status') || undefined
-  const personTypeFilter = searchParams.get('person_type') || undefined
-  const gateInFilter = searchParams.get('gate_in') || undefined
+  const statusFilter = searchParams.get('status') || undefined;
+  const personTypeFilter = searchParams.get('person_type') || undefined;
+  const gateInFilter = searchParams.get('gate_in') || undefined;
 
   // Convert date range to API params
   const apiParams = useMemo(() => {
@@ -27,18 +27,18 @@ export default function PersonGateInAllPage() {
       status: statusFilter,
       person_type: personTypeFilter ? Number(personTypeFilter) : undefined,
       gate_in: gateInFilter ? Number(gateInFilter) : undefined,
-    }
-  }, [dateRange, statusFilter, personTypeFilter, gateInFilter])
+    };
+  }, [dateRange, statusFilter, personTypeFilter, gateInFilter]);
 
-  const { data: entries = [], isLoading } = usePersonEntries(apiParams)
+  const { data: entries = [], isLoading } = usePersonEntries(apiParams);
 
   // Filter entries based on search query only (date filtering is done by API)
   const filteredData = useMemo(() => {
-    let filtered = entries
+    let filtered = entries;
 
     // Apply search filter
     if (search.trim()) {
-      const searchLower = search.toLowerCase()
+      const searchLower = search.toLowerCase();
       filtered = filtered.filter(
         (entry) =>
           entry.name_snapshot?.toLowerCase().includes(searchLower) ||
@@ -46,55 +46,55 @@ export default function PersonGateInAllPage() {
           entry.remarks?.toLowerCase().includes(searchLower) ||
           entry.purpose?.toLowerCase().includes(searchLower) ||
           entry.gate_in?.name?.toLowerCase().includes(searchLower) ||
-          entry.vehicle_no?.toLowerCase().includes(searchLower)
-      )
+          entry.vehicle_no?.toLowerCase().includes(searchLower),
+      );
     }
 
-    return filtered
-  }, [entries, search])
+    return filtered;
+  }, [entries, search]);
 
   // Format date/time for display
   const formatDateTime = (dateTime?: string | null) => {
-    if (!dateTime) return '-'
+    if (!dateTime) return '-';
     try {
-      const date = new Date(dateTime)
+      const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return dateTime
+      return dateTime;
     }
-  }
+  };
 
   // Format status badge
   const getStatusBadgeClass = (status: string) => {
     switch (status?.toUpperCase()) {
       case 'IN':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
       case 'OUT':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
       case 'CANCELLED':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
-  }
+  };
 
   // Get person type badge class
   const getPersonTypeBadgeClass = (personType?: string) => {
     switch (personType?.toUpperCase()) {
       case 'VISITOR':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
       case 'LABOUR':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -136,9 +136,9 @@ export default function PersonGateInAllPage() {
             date={dateRangeAsDateObjects}
             onDateChange={(date) => {
               if (date && 'from' in date) {
-                setDateRange(date)
+                setDateRange(date);
               } else {
-                setDateRange(undefined)
+                setDateRange(undefined);
               }
             }}
             mode="range"
@@ -175,14 +175,14 @@ export default function PersonGateInAllPage() {
                     key={entry.id}
                     className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
                     onClick={() => {
-                      navigate(`/gate/visitor-labour/entry/${entry.id}`)
+                      navigate(`/gate/visitor-labour/entry/${entry.id}`);
                     }}
                   >
                     <td className="p-3 text-sm font-medium">{entry.name_snapshot || '-'}</td>
                     <td className="p-3 text-sm">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getPersonTypeBadgeClass(
-                          entry.person_type?.name || (entry.visitor ? 'Visitor' : 'Labour')
+                          entry.person_type?.name || (entry.visitor ? 'Visitor' : 'Labour'),
                         )}`}
                       >
                         {entry.person_type?.name || (entry.visitor ? 'Visitor' : 'Labour')}
@@ -198,7 +198,7 @@ export default function PersonGateInAllPage() {
                     <td className="p-3 text-sm">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(
-                          entry.status || ''
+                          entry.status || '',
                         )}`}
                       >
                         {entry.status || '-'}
@@ -215,5 +215,5 @@ export default function PersonGateInAllPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

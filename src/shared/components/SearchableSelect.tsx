@@ -1,5 +1,5 @@
-import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   Button,
@@ -8,56 +8,56 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/shared/components/ui'
-import { useDebounce } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
-type ItemKey = string | number
+type ItemKey = string | number;
 
 export interface SearchableSelectProps<TItem> {
   // Value & data
-  value?: string
-  items: TItem[]
-  isLoading: boolean
+  value?: string;
+  items: TItem[];
+  isLoading: boolean;
   /** Whether the data fetch failed */
-  isError?: boolean
+  isError?: boolean;
   // Config
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
-  inputId: string
-  inputClassName?: string
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
+  inputId: string;
+  inputClassName?: string;
   /** Text to display when value exists but items haven't loaded yet (edit mode) */
-  defaultDisplayText?: string
+  defaultDisplayText?: string;
   // Item identity & display
-  getItemKey: (item: TItem) => ItemKey
-  getItemLabel: (item: TItem) => string
+  getItemKey: (item: TItem) => ItemKey;
+  getItemLabel: (item: TItem) => string;
   /** Custom item rendering in dropdown list */
-  renderItem?: (item: TItem, isSelected: boolean) => ReactNode
+  renderItem?: (item: TItem, isSelected: boolean) => ReactNode;
   /** Custom filter function. Default: match by getItemLabel */
-  filterFn?: (item: TItem, search: string) => boolean
+  filterFn?: (item: TItem, search: string) => boolean;
   // Popover content (optional render prop — if omitted, no help icon shown)
-  renderPopoverContent?: (selectedKey: ItemKey | null) => ReactNode
+  renderPopoverContent?: (selectedKey: ItemKey | null) => ReactNode;
   // Text config
-  loadingText: string
-  emptyText: string
-  notFoundText: string
-  addNewLabel?: string
+  loadingText: string;
+  emptyText: string;
+  notFoundText: string;
+  addNewLabel?: string;
   /** Text shown when fetch fails */
-  errorText?: string
+  errorText?: string;
   // Callbacks
-  onItemSelect: (item: TItem) => void
-  onClear: () => void
-  onOpenChange?: (isOpen: boolean) => void
-  onSelectedKeyChange?: (key: ItemKey | null) => void
+  onItemSelect: (item: TItem) => void;
+  onClear: () => void;
+  onOpenChange?: (isOpen: boolean) => void;
+  onSelectedKeyChange?: (key: ItemKey | null) => void;
   // Create dialog (optional render prop)
   renderCreateDialog?: (
     open: boolean,
     onOpenChange: (open: boolean) => void,
-    updateSelection: (key: ItemKey, label: string) => void
-  ) => ReactNode
+    updateSelection: (key: ItemKey, label: string) => void,
+  ) => ReactNode;
 }
 
 export function SearchableSelect<TItem>({
@@ -89,134 +89,134 @@ export function SearchableSelect<TItem>({
   onSelectedKeyChange,
   renderCreateDialog,
 }: SearchableSelectProps<TItem>) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState(defaultDisplayText || '')
-  const [selectedKey, setSelectedKey] = useState<ItemKey | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const prevValueRef = useRef(value)
-  const prevDefaultDisplayTextRef = useRef(defaultDisplayText)
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(defaultDisplayText || '');
+  const [selectedKey, setSelectedKey] = useState<ItemKey | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const prevValueRef = useRef(value);
+  const prevDefaultDisplayTextRef = useRef(defaultDisplayText);
 
-  const debouncedSearch = useDebounce(searchTerm, 100)
+  const debouncedSearch = useDebounce(searchTerm, 100);
 
   const defaultFilter = useCallback(
     (item: TItem, search: string) =>
       getItemLabel(item).toLowerCase().includes(search.toLowerCase()),
-    [getItemLabel]
-  )
-  const activeFilter = filterFn || defaultFilter
+    [getItemLabel],
+  );
+  const activeFilter = filterFn || defaultFilter;
 
-  const filteredItems = items.filter((item) => activeFilter(item, debouncedSearch))
+  const filteredItems = items.filter((item) => activeFilter(item, debouncedSearch));
 
   // Wrappers to notify parent of state changes
   const updateIsOpen = useCallback(
     (open: boolean) => {
-      setIsOpen(open)
-      onOpenChange?.(open)
+      setIsOpen(open);
+      onOpenChange?.(open);
     },
-    [onOpenChange]
-  )
+    [onOpenChange],
+  );
 
   const updateSelectedKey = useCallback(
     (key: ItemKey | null) => {
-      setSelectedKey(key)
-      onSelectedKeyChange?.(key)
+      setSelectedKey(key);
+      onSelectedKeyChange?.(key);
     },
-    [onSelectedKeyChange]
-  )
+    [onSelectedKeyChange],
+  );
 
   // Sync defaultDisplayText when it changes from parent (edit mode)
   useEffect(() => {
     if (defaultDisplayText !== prevDefaultDisplayTextRef.current) {
-      prevDefaultDisplayTextRef.current = defaultDisplayText
+      prevDefaultDisplayTextRef.current = defaultDisplayText;
       if (defaultDisplayText) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props
-        setSearchTerm(defaultDisplayText)
+        setSearchTerm(defaultDisplayText);
       }
     }
-  }, [defaultDisplayText])
+  }, [defaultDisplayText]);
 
   // Sync search term with value prop
   const syncWithValue = useCallback(() => {
     if (disabled && value) {
-      setSearchTerm(value)
-      return
+      setSearchTerm(value);
+      return;
     }
 
     if (value && items.length > 0) {
-      const item = items.find((i) => getItemLabel(i) === value || String(getItemKey(i)) === value)
+      const item = items.find((i) => getItemLabel(i) === value || String(getItemKey(i)) === value);
       if (item) {
-        updateSelectedKey(getItemKey(item))
-        setSearchTerm(getItemLabel(item))
+        updateSelectedKey(getItemKey(item));
+        setSearchTerm(getItemLabel(item));
       }
     } else if (value !== prevValueRef.current && !value) {
-      prevValueRef.current = value
-      updateSelectedKey(null)
-      setSearchTerm('')
+      prevValueRef.current = value;
+      updateSelectedKey(null);
+      setSearchTerm('');
     }
-  }, [value, items, disabled, getItemLabel, getItemKey, updateSelectedKey])
+  }, [value, items, disabled, getItemLabel, getItemKey, updateSelectedKey]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props is a valid pattern
-    syncWithValue()
-    prevValueRef.current = value
-  }, [syncWithValue, value])
+    syncWithValue();
+    prevValueRef.current = value;
+  }, [syncWithValue, value]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        updateIsOpen(false)
+        updateIsOpen(false);
       }
-    }
+    };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen, updateIsOpen])
+  }, [isOpen, updateIsOpen]);
 
   const handleSelect = (item: TItem) => {
-    updateSelectedKey(getItemKey(item))
-    setSearchTerm(getItemLabel(item))
-    onItemSelect(item)
-    updateIsOpen(false)
-  }
+    updateSelectedKey(getItemKey(item));
+    setSearchTerm(getItemLabel(item));
+    onItemSelect(item);
+    updateIsOpen(false);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value)
-    updateIsOpen(true)
+    setSearchTerm(e.target.value);
+    updateIsOpen(true);
     if (!e.target.value) {
-      onClear()
-      updateSelectedKey(null)
+      onClear();
+      updateSelectedKey(null);
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
-      updateIsOpen(false)
+      updateIsOpen(false);
     } else if (e.key === 'Enter' && filteredItems.length === 1) {
-      handleSelect(filteredItems[0])
+      handleSelect(filteredItems[0]);
     }
-  }
+  };
 
   const handleAddNewClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    updateIsOpen(false)
-    setIsDialogOpen(true)
-  }
+    e.stopPropagation();
+    updateIsOpen(false);
+    setIsDialogOpen(true);
+  };
 
   const updateSelection = useCallback(
     (key: ItemKey, newLabel: string) => {
-      updateSelectedKey(key)
-      setSearchTerm(newLabel)
-      updateIsOpen(false)
+      updateSelectedKey(key);
+      setSearchTerm(newLabel);
+      updateIsOpen(false);
     },
-    [updateSelectedKey, updateIsOpen]
-  )
+    [updateSelectedKey, updateIsOpen],
+  );
 
-  const hasCreateDialog = addNewLabel && renderCreateDialog
+  const hasCreateDialog = addNewLabel && renderCreateDialog;
 
   return (
     <div className="space-y-2">
@@ -261,7 +261,7 @@ export function SearchableSelect<TItem>({
             className={cn(
               'pr-10 cursor-text',
               inputClassName,
-              error && 'border-destructive focus-visible:ring-destructive'
+              error && 'border-destructive focus-visible:ring-destructive',
             )}
             autoComplete="off"
           />
@@ -272,7 +272,7 @@ export function SearchableSelect<TItem>({
               <ChevronDown
                 className={cn(
                   'h-4 w-4 text-muted-foreground transition-transform',
-                  isOpen && 'rotate-180'
+                  isOpen && 'rotate-180',
                 )}
               />
             )}
@@ -311,14 +311,14 @@ export function SearchableSelect<TItem>({
                 ) : (
                   <ul className="py-1">
                     {filteredItems.map((item) => {
-                      const key = getItemKey(item)
-                      const isSelected = selectedKey === key
+                      const key = getItemKey(item);
+                      const isSelected = selectedKey === key;
                       return (
                         <li
                           key={key}
                           className={cn(
                             'px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground flex items-center justify-between',
-                            isSelected && 'bg-accent'
+                            isSelected && 'bg-accent',
                           )}
                           onClick={() => handleSelect(item)}
                         >
@@ -329,7 +329,7 @@ export function SearchableSelect<TItem>({
                           )}
                           {isSelected && <Check className="h-4 w-4 text-primary" />}
                         </li>
-                      )
+                      );
                     })}
                   </ul>
                 )}
@@ -341,5 +341,5 @@ export function SearchableSelect<TItem>({
       {error && <p className="text-sm text-destructive">{error}</p>}
       {hasCreateDialog && renderCreateDialog(isDialogOpen, setIsDialogOpen, updateSelection)}
     </div>
-  )
+  );
 }

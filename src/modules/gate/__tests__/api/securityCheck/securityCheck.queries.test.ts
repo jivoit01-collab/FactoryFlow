@@ -5,14 +5,14 @@
 // exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
   queryOptions: vi.fn((opts: any) => opts),
-}))
+}));
 
 vi.mock('../../../api/securityCheck/securityCheck.api', () => ({
   securityCheckApi: {
@@ -20,12 +20,12 @@ vi.mock('../../../api/securityCheck/securityCheck.api', () => ({
     submit: vi.fn(),
     create: vi.fn(),
   },
-}))
+}));
 
 import {
   useSecurityCheck,
   useCreateSecurityCheck,
-} from '../../../api/securityCheck/securityCheck.queries'
+} from '../../../api/securityCheck/securityCheck.queries';
 
 // ═══════════════════════════════════════════════════════════════
 // Hook existence
@@ -33,10 +33,10 @@ import {
 
 describe('securityCheck queries', () => {
   it('exports useSecurityCheck as a function', () => {
-    expect(typeof useSecurityCheck).toBe('function')
-  })
+    expect(typeof useSecurityCheck).toBe('function');
+  });
 
   it('exports useCreateSecurityCheck as a function', () => {
-    expect(typeof useCreateSecurityCheck).toBe('function')
-  })
-})
+    expect(typeof useCreateSecurityCheck).toBe('function');
+  });
+});

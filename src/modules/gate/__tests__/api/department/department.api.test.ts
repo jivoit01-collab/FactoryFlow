@@ -5,7 +5,7 @@
 // expected method names for fetching departments.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -23,9 +23,9 @@ vi.mock('@/config/constants', () => ({
       DEPARTMENTS: '/accounts/departments/',
     },
   },
-}))
+}));
 
-import { departmentApi } from '../../../api/department/department.api'
+import { departmentApi } from '../../../api/department/department.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -33,24 +33,24 @@ import { departmentApi } from '../../../api/department/department.api'
 
 describe('departmentApi', () => {
   it('is defined as an object', () => {
-    expect(departmentApi).toBeDefined()
-    expect(typeof departmentApi).toBe('object')
-  })
+    expect(departmentApi).toBeDefined();
+    expect(typeof departmentApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a getDepartments method', () => {
-    expect(typeof departmentApi.getDepartments).toBe('function')
-  })
+    expect(typeof departmentApi.getDepartments).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(departmentApi).sort()
-    expect(methodNames).toEqual(['getDepartments'])
-  })
-})
+    const methodNames = Object.keys(departmentApi).sort();
+    expect(methodNames).toEqual(['getDepartments']);
+  });
+});

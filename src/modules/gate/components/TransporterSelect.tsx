@@ -1,28 +1,28 @@
-import { Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { TransporterName } from '../api/transporter/transporter.api'
-import { useTransporterById, useTransporterNames } from '../api/transporter/transporter.queries'
-import { CreateTransporterDialog } from './CreateTransporterDialog'
+import type { TransporterName } from '../api/transporter/transporter.api';
+import { useTransporterById, useTransporterNames } from '../api/transporter/transporter.queries';
+import { CreateTransporterDialog } from './CreateTransporterDialog';
 
 export interface TransporterDetails {
-  name: string
-  contact_person: string
-  mobile_no: string
+  name: string;
+  contact_person: string;
+  mobile_no: string;
 }
 
 interface TransporterSelectProps {
-  value?: string
-  onChange: (value: string) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
   /** Externally provided transporter details (e.g., from vehicle data) */
-  externalDetails?: TransporterDetails | null
+  externalDetails?: TransporterDetails | null;
 }
 
 export function TransporterSelect({
@@ -35,15 +35,15 @@ export function TransporterSelect({
   required = false,
   externalDetails,
 }: TransporterSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const { data: transporterNames = [], isLoading } = useTransporterNames(
-    isDropdownOpen && !disabled
-  )
-  const { data: transporterDetails } = useTransporterById(selectedId, selectedId !== null)
+    isDropdownOpen && !disabled,
+  );
+  const { data: transporterDetails } = useTransporterById(selectedId, selectedId !== null);
 
-  const details = externalDetails || transporterDetails
+  const details = externalDetails || transporterDetails;
 
   return (
     <SearchableSelect<TransporterName>
@@ -64,15 +64,15 @@ export function TransporterSelect({
       addNewLabel="Add New Transporter"
       onOpenChange={setIsDropdownOpen}
       onSelectedKeyChange={(key) => {
-        setSelectedId(key as number | null)
+        setSelectedId(key as number | null);
       }}
       onItemSelect={(transporter) => {
-        setSelectedId(transporter.id)
-        onChange(transporter.name)
+        setSelectedId(transporter.id);
+        onChange(transporter.name);
       }}
       onClear={() => {
-        setSelectedId(null)
-        onChange('')
+        setSelectedId(null);
+        onChange('');
       }}
       renderPopoverContent={(selKey) =>
         details ? (
@@ -108,11 +108,11 @@ export function TransporterSelect({
           open={open}
           onOpenChange={onOpenChange}
           onSuccess={(transporterName) => {
-            updateSelection(0, transporterName)
-            onChange(transporterName)
+            updateSelection(0, transporterName);
+            onChange(transporterName);
           }}
         />
       )}
     />
-  )
+  );
 }

@@ -1,2 +1,2 @@
-export * from './arrivalSlip.api'
-export * from './arrivalSlip.queries'
+export * from './arrivalSlip.api';
+export * from './arrivalSlip.queries';

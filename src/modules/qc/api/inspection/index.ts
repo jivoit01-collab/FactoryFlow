@@ -1,2 +1,2 @@
-export * from './inspection.api'
-export * from './inspection.queries'
+export * from './inspection.api';
+export * from './inspection.queries';

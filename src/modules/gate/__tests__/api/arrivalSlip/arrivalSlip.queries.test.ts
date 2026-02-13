@@ -5,14 +5,14 @@
 // exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
   queryOptions: vi.fn((opts: any) => opts),
-}))
+}));
 
 vi.mock('../../../api/arrivalSlip/arrivalSlip.api', () => ({
   arrivalSlipApi: {
@@ -23,7 +23,7 @@ vi.mock('../../../api/arrivalSlip/arrivalSlip.api', () => ({
     submit: vi.fn(),
     list: vi.fn(),
   },
-}))
+}));
 
 import {
   useArrivalSlip,
@@ -32,7 +32,7 @@ import {
   useCreateArrivalSlip,
   useUpdateArrivalSlip,
   useSubmitArrivalSlip,
-} from '../../../api/arrivalSlip/arrivalSlip.queries'
+} from '../../../api/arrivalSlip/arrivalSlip.queries';
 
 // ═══════════════════════════════════════════════════════════════
 // Hook existence
@@ -40,26 +40,26 @@ import {
 
 describe('arrivalSlip queries', () => {
   it('exports useArrivalSlip as a function', () => {
-    expect(typeof useArrivalSlip).toBe('function')
-  })
+    expect(typeof useArrivalSlip).toBe('function');
+  });
 
   it('exports useArrivalSlipById as a function', () => {
-    expect(typeof useArrivalSlipById).toBe('function')
-  })
+    expect(typeof useArrivalSlipById).toBe('function');
+  });
 
   it('exports useArrivalSlips as a function', () => {
-    expect(typeof useArrivalSlips).toBe('function')
-  })
+    expect(typeof useArrivalSlips).toBe('function');
+  });
 
   it('exports useCreateArrivalSlip as a function', () => {
-    expect(typeof useCreateArrivalSlip).toBe('function')
-  })
+    expect(typeof useCreateArrivalSlip).toBe('function');
+  });
 
   it('exports useUpdateArrivalSlip as a function', () => {
-    expect(typeof useUpdateArrivalSlip).toBe('function')
-  })
+    expect(typeof useUpdateArrivalSlip).toBe('function');
+  });
 
   it('exports useSubmitArrivalSlip as a function', () => {
-    expect(typeof useSubmitArrivalSlip).toBe('function')
-  })
-})
+    expect(typeof useSubmitArrivalSlip).toBe('function');
+  });
+});

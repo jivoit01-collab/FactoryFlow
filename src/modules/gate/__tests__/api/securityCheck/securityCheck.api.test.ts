@@ -5,7 +5,7 @@
 // expected method names for managing security checks.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -25,9 +25,9 @@ vi.mock('@/config/constants', () => ({
       SUBMIT: vi.fn(),
     },
   },
-}))
+}));
 
-import { securityCheckApi } from '../../../api/securityCheck/securityCheck.api'
+import { securityCheckApi } from '../../../api/securityCheck/securityCheck.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -35,32 +35,32 @@ import { securityCheckApi } from '../../../api/securityCheck/securityCheck.api'
 
 describe('securityCheckApi', () => {
   it('is defined as an object', () => {
-    expect(securityCheckApi).toBeDefined()
-    expect(typeof securityCheckApi).toBe('object')
-  })
+    expect(securityCheckApi).toBeDefined();
+    expect(typeof securityCheckApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a get method', () => {
-    expect(typeof securityCheckApi.get).toBe('function')
-  })
+    expect(typeof securityCheckApi.get).toBe('function');
+  });
 
   it('has a submit method', () => {
-    expect(typeof securityCheckApi.submit).toBe('function')
-  })
+    expect(typeof securityCheckApi.submit).toBe('function');
+  });
 
   it('has a create method', () => {
-    expect(typeof securityCheckApi.create).toBe('function')
-  })
+    expect(typeof securityCheckApi.create).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(securityCheckApi).sort()
-    expect(methodNames).toEqual(['create', 'get', 'submit'])
-  })
-})
+    const methodNames = Object.keys(securityCheckApi).sort();
+    expect(methodNames).toEqual(['create', 'get', 'submit']);
+  });
+});

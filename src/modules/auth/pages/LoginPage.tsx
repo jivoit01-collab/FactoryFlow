@@ -1,58 +1,58 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { APP_NAME } from '@/config/constants'
-import { ROUTES } from '@/config/routes.config'
-import type { ApiError } from '@/core/api/types'
-import { loginSuccess } from '@/core/auth'
-import { authService } from '@/core/auth/services/auth.service'
-import { indexedDBService } from '@/core/auth/services/indexedDb.service'
-import { useAppDispatch } from '@/core/store'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui'
+import { APP_NAME } from '@/config/constants';
+import { ROUTES } from '@/config/routes.config';
+import type { ApiError } from '@/core/api/types';
+import { loginSuccess } from '@/core/auth';
+import { authService } from '@/core/auth/services/auth.service';
+import { indexedDBService } from '@/core/auth/services/indexedDb.service';
+import { useAppDispatch } from '@/core/store';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
 
-import { LoginForm } from '../components/LoginForm'
-import type { LoginFormData } from '../schemas/login.schema'
+import { LoginForm } from '../components/LoginForm';
+import type { LoginFormData } from '../schemas/login.schema';
 
 export default function LoginPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   const handleSubmit = async (data: LoginFormData) => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
 
     try {
       // Clear any existing auth data from IndexedDB before login
-      await indexedDBService.clearAuthData()
+      await indexedDBService.clearAuthData();
 
       // Login
       const response = await authService.login({
         email: data.email,
         password: data.password,
-      })
+      });
 
       // Dispatch login success (this sets permissionsLoaded to false)
-      dispatch(loginSuccess(response))
+      dispatch(loginSuccess(response));
 
       // Navigate to company selection page
-      navigate(ROUTES.COMPANY_SELECTION.path, { replace: true })
+      navigate(ROUTES.COMPANY_SELECTION.path, { replace: true });
     } catch (err) {
       // Handle ApiError type (from API interceptor) or generic Error
       if (err && typeof err === 'object' && 'message' in err && 'status' in err) {
         // ApiError type from interceptor
-        const apiError = err as ApiError
-        setError(apiError.message)
+        const apiError = err as ApiError;
+        setError(apiError.message);
       } else if (err instanceof Error) {
-        setError(err.message)
+        setError(err.message);
       } else {
-        setError('Login failed')
+        setError('Login failed');
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Card className="w-full max-w-md">
@@ -76,5 +76,5 @@ export default function LoginPage() {
         <LoginForm onSubmit={handleSubmit} isLoading={isLoading} />
       </CardContent>
     </Card>
-  )
+  );
 }

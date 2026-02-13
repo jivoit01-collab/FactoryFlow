@@ -1,32 +1,32 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react';
 
-import { Button } from '@/shared/components/ui'
+import { Button } from '@/shared/components/ui';
 
 interface StepFooterProps {
   /** Handler for previous button click */
-  onPrevious?: () => void
+  onPrevious?: () => void;
   /** Handler for cancel button click */
-  onCancel: () => void
+  onCancel: () => void;
   /** Handler for next/save button click */
-  onNext: () => void
+  onNext: () => void;
   /** Whether to show the previous button */
-  showPrevious?: boolean
+  showPrevious?: boolean;
   /** Whether to show the update button (edit mode) */
-  showUpdate?: boolean
+  showUpdate?: boolean;
   /** Handler for update button click */
-  onUpdate?: () => void
+  onUpdate?: () => void;
   /** Whether the form is currently saving */
-  isSaving?: boolean
+  isSaving?: boolean;
   /** Whether the next button should be disabled */
-  isNextDisabled?: boolean
+  isNextDisabled?: boolean;
   /** Label for the next button */
-  nextLabel?: string
+  nextLabel?: string;
   /** Label when saving */
-  savingLabel?: string
+  savingLabel?: string;
   /** Whether in edit mode (affects button labels) */
-  isEditMode?: boolean
+  isEditMode?: boolean;
   /** Whether in update mode (user clicked Update button) */
-  isUpdateMode?: boolean
+  isUpdateMode?: boolean;
 }
 
 /**
@@ -49,11 +49,11 @@ export function StepFooter({
 }: StepFooterProps) {
   // Determine next button label
   const getNextLabel = () => {
-    if (nextLabel) return nextLabel
-    if (isSaving) return savingLabel
-    if (isEditMode && !isUpdateMode) return 'Next →'
-    return 'Save and Next →'
-  }
+    if (nextLabel) return nextLabel;
+    if (isSaving) return savingLabel;
+    if (isEditMode && !isUpdateMode) return 'Next →';
+    return 'Save and Next →';
+  };
 
   return (
     <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
@@ -79,5 +79,5 @@ export function StepFooter({
         </Button>
       </div>
     </div>
-  )
+  );
 }

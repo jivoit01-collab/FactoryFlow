@@ -1,35 +1,35 @@
-import { AlertCircle, ArrowLeft, Eye, FlaskConical, RefreshCw, ShieldX } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, Eye, FlaskConical, RefreshCw, ShieldX } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { QC_PERMISSIONS } from '@/config/permissions'
-import type { ApiError } from '@/core/api/types'
-import { usePermission } from '@/core/auth'
-import { useGlobalDateRange } from '@/core/store/hooks'
-import { DateRangePicker } from '@/modules/gate/components'
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+import { QC_PERMISSIONS } from '@/config/permissions';
+import type { ApiError } from '@/core/api/types';
+import { usePermission } from '@/core/auth';
+import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import {
   useAwaitingChemistInspections,
   useAwaitingQAMInspections,
-} from '../api/inspection/inspection.queries'
-import { WORKFLOW_STATUS_CONFIG } from '../constants'
-import type { Inspection, InspectionWorkflowStatus } from '../types'
+} from '../api/inspection/inspection.queries';
+import { WORKFLOW_STATUS_CONFIG } from '../constants';
+import type { Inspection, InspectionWorkflowStatus } from '../types';
 
-type TabType = 'chemist' | 'manager'
+type TabType = 'chemist' | 'manager';
 
 export default function ApprovalQueuePage() {
-  const navigate = useNavigate()
-  const { hasAnyPermission } = usePermission()
-  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
+  const navigate = useNavigate();
+  const { hasAnyPermission } = usePermission();
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   const dateParams = useMemo(
     () => ({
       from_date: dateRange.from,
       to_date: dateRange.to,
     }),
-    [dateRange]
-  )
+    [dateRange],
+  );
 
   // Fetch from dedicated backend endpoints
   const {
@@ -37,29 +37,29 @@ export default function ApprovalQueuePage() {
     isLoading: chemistLoading,
     error: chemistError,
     refetch: refetchChemist,
-  } = useAwaitingChemistInspections(dateParams)
+  } = useAwaitingChemistInspections(dateParams);
 
   const {
     data: managerQueue = [],
     isLoading: managerLoading,
     error: managerError,
     refetch: refetchManager,
-  } = useAwaitingQAMInspections(dateParams)
+  } = useAwaitingQAMInspections(dateParams);
 
-  const isLoading = chemistLoading || managerLoading
-  const error = chemistError || managerError
+  const isLoading = chemistLoading || managerLoading;
+  const error = chemistError || managerError;
 
   // Check if error is a permission error (403)
-  const apiError = error as ApiError | null
-  const isPermissionError = apiError?.status === 403
+  const apiError = error as ApiError | null;
+  const isPermissionError = apiError?.status === 403;
 
   // Permission checks for approval tabs
-  const canApproveAsChemist = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST])
-  const canApproveAsQAM = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM])
+  const canApproveAsChemist = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST]);
+  const canApproveAsQAM = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM]);
 
   // Determine default tab based on permissions
-  const defaultTab: TabType = canApproveAsChemist ? 'chemist' : 'manager'
-  const [activeTab, setActiveTab] = useState<TabType>(defaultTab)
+  const defaultTab: TabType = canApproveAsChemist ? 'chemist' : 'manager';
+  const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
 
   // Compute effective tab - ensure user can't view a tab they don't have permission for
   const effectiveTab =
@@ -67,27 +67,27 @@ export default function ApprovalQueuePage() {
       ? 'manager'
       : activeTab === 'manager' && !canApproveAsQAM && canApproveAsChemist
         ? 'chemist'
-        : activeTab
+        : activeTab;
 
   // Select data based on active tab
   const filteredInspections: Inspection[] =
-    effectiveTab === 'chemist' ? chemistQueue : managerQueue
+    effectiveTab === 'chemist' ? chemistQueue : managerQueue;
 
   const refetch = () => {
-    refetchChemist()
-    refetchManager()
-  }
+    refetchChemist();
+    refetchManager();
+  };
 
   const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return date.toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    })
-  }
+    });
+  };
 
   return (
     <div className="space-y-6 pb-6">
@@ -110,9 +110,9 @@ export default function ApprovalQueuePage() {
             date={dateRangeAsDateObjects}
             onDateChange={(date) => {
               if (date && 'from' in date) {
-                setDateRange(date)
+                setDateRange(date);
               } else {
-                setDateRange(undefined)
+                setDateRange(undefined);
               }
             }}
           />
@@ -251,7 +251,7 @@ export default function ApprovalQueuePage() {
                 <tbody>
                   {filteredInspections.map((item) => {
                     const statusConfig =
-                      WORKFLOW_STATUS_CONFIG[item.workflow_status as InspectionWorkflowStatus]
+                      WORKFLOW_STATUS_CONFIG[item.workflow_status as InspectionWorkflowStatus];
 
                     return (
                       <tr key={item.id} className="border-b hover:bg-muted/50">
@@ -268,9 +268,7 @@ export default function ApprovalQueuePage() {
                         </td>
                         <td className="p-3">{item.supplier_name}</td>
                         <td className="p-3 text-muted-foreground">
-                          {item.inspection_date
-                            ? formatDateTime(item.inspection_date)
-                            : '-'}
+                          {item.inspection_date ? formatDateTime(item.inspection_date) : '-'}
                         </td>
                         <td className="p-3 text-center">
                           <span
@@ -289,7 +287,7 @@ export default function ApprovalQueuePage() {
                           </Button>
                         </td>
                       </tr>
-                    )
+                    );
                   })}
                 </tbody>
               </table>
@@ -298,5 +296,5 @@ export default function ApprovalQueuePage() {
         </Card>
       )}
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest';
 import type {
   ArrivalSlipStatus,
   InspectionWorkflowStatus,
@@ -16,7 +16,7 @@ import type {
   CreateInspectionRequest,
   ApprovalRequest,
   QCDashboardCounts,
-} from '../../types'
+} from '../../types';
 
 // ═══════════════════════════════════════════════════════════════
 // Union Types
@@ -24,20 +24,20 @@ import type {
 
 describe('ArrivalSlipStatus', () => {
   it('accepts DRAFT', () => {
-    const status: ArrivalSlipStatus = 'DRAFT'
-    expect(status).toBe('DRAFT')
-  })
+    const status: ArrivalSlipStatus = 'DRAFT';
+    expect(status).toBe('DRAFT');
+  });
 
   it('accepts SUBMITTED', () => {
-    const status: ArrivalSlipStatus = 'SUBMITTED'
-    expect(status).toBe('SUBMITTED')
-  })
+    const status: ArrivalSlipStatus = 'SUBMITTED';
+    expect(status).toBe('SUBMITTED');
+  });
 
   it('accepts REJECTED', () => {
-    const status: ArrivalSlipStatus = 'REJECTED'
-    expect(status).toBe('REJECTED')
-  })
-})
+    const status: ArrivalSlipStatus = 'REJECTED';
+    expect(status).toBe('REJECTED');
+  });
+});
 
 describe('InspectionWorkflowStatus', () => {
   it('accepts all 5 workflow statuses', () => {
@@ -47,32 +47,27 @@ describe('InspectionWorkflowStatus', () => {
       'QA_CHEMIST_APPROVED',
       'QAM_APPROVED',
       'COMPLETED',
-    ]
-    expect(statuses).toHaveLength(5)
-    statuses.forEach((s) => expect(typeof s).toBe('string'))
-  })
-})
+    ];
+    expect(statuses).toHaveLength(5);
+    statuses.forEach((s) => expect(typeof s).toBe('string'));
+  });
+});
 
 describe('InspectionFinalStatus', () => {
   it('accepts all 4 final statuses', () => {
-    const statuses: InspectionFinalStatus[] = [
-      'PENDING',
-      'ACCEPTED',
-      'REJECTED',
-      'HOLD',
-    ]
-    expect(statuses).toHaveLength(4)
-    statuses.forEach((s) => expect(typeof s).toBe('string'))
-  })
-})
+    const statuses: InspectionFinalStatus[] = ['PENDING', 'ACCEPTED', 'REJECTED', 'HOLD'];
+    expect(statuses).toHaveLength(4);
+    statuses.forEach((s) => expect(typeof s).toBe('string'));
+  });
+});
 
 describe('ParameterType', () => {
   it('accepts all 4 parameter types', () => {
-    const types: ParameterType[] = ['NUMERIC', 'TEXT', 'BOOLEAN', 'RANGE']
-    expect(types).toHaveLength(4)
-    types.forEach((t) => expect(typeof t).toBe('string'))
-  })
-})
+    const types: ParameterType[] = ['NUMERIC', 'TEXT', 'BOOLEAN', 'RANGE'];
+    expect(types).toHaveLength(4);
+    types.forEach((t) => expect(typeof t).toBe('string'));
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════
 // Interfaces
@@ -80,26 +75,26 @@ describe('ParameterType', () => {
 
 describe('MaterialType', () => {
   it('is usable with required fields', () => {
-    const mt: MaterialType = { id: 1, code: 'CAP', name: 'Cap', description: 'Blue cap' }
-    expect(mt.id).toBe(1)
-    expect(mt.code).toBe('CAP')
-    expect(mt.name).toBe('Cap')
-    expect(mt.description).toBe('Blue cap')
-  })
-})
+    const mt: MaterialType = { id: 1, code: 'CAP', name: 'Cap', description: 'Blue cap' };
+    expect(mt.id).toBe(1);
+    expect(mt.code).toBe('CAP');
+    expect(mt.name).toBe('Cap');
+    expect(mt.description).toBe('Blue cap');
+  });
+});
 
 describe('CreateMaterialTypeRequest', () => {
   it('works with required fields only', () => {
-    const req: CreateMaterialTypeRequest = { code: 'CAP', name: 'Cap' }
-    expect(req.code).toBe('CAP')
-    expect(req.description).toBeUndefined()
-  })
+    const req: CreateMaterialTypeRequest = { code: 'CAP', name: 'Cap' };
+    expect(req.code).toBe('CAP');
+    expect(req.description).toBeUndefined();
+  });
 
   it('works with optional description', () => {
-    const req: CreateMaterialTypeRequest = { code: 'CAP', name: 'Cap', description: 'A cap' }
-    expect(req.description).toBe('A cap')
-  })
-})
+    const req: CreateMaterialTypeRequest = { code: 'CAP', name: 'Cap', description: 'A cap' };
+    expect(req.description).toBe('A cap');
+  });
+});
 
 describe('QCParameter', () => {
   it('is usable with required fields', () => {
@@ -114,13 +109,13 @@ describe('QCParameter', () => {
       uom: 'cP',
       sequence: 1,
       is_mandatory: true,
-    }
-    expect(param.parameter_code).toBe('VISC')
-    expect(param.parameter_type).toBe('NUMERIC')
-    expect(param.min_value).toBe(90)
-    expect(param.max_value).toBe(110)
-  })
-})
+    };
+    expect(param.parameter_code).toBe('VISC');
+    expect(param.parameter_type).toBe('NUMERIC');
+    expect(param.min_value).toBe(90);
+    expect(param.max_value).toBe(110);
+  });
+});
 
 describe('CreateQCParameterRequest', () => {
   it('works with required fields only', () => {
@@ -132,11 +127,11 @@ describe('CreateQCParameterRequest', () => {
       uom: 'pH',
       sequence: 1,
       is_mandatory: true,
-    }
-    expect(req.parameter_code).toBe('PH')
-    expect(req.min_value).toBeUndefined()
-  })
-})
+    };
+    expect(req.parameter_code).toBe('PH');
+    expect(req.min_value).toBeUndefined();
+  });
+});
 
 describe('ParameterResult', () => {
   it('is usable with all fields', () => {
@@ -154,22 +149,22 @@ describe('ParameterResult', () => {
       result_numeric: 7.2,
       is_within_spec: true,
       remarks: 'OK',
-    }
-    expect(result.result_numeric).toBe(7.2)
-    expect(result.is_within_spec).toBe(true)
-  })
-})
+    };
+    expect(result.result_numeric).toBe(7.2);
+    expect(result.is_within_spec).toBe(true);
+  });
+});
 
 describe('UpdateParameterResultRequest', () => {
   it('works with required fields only', () => {
     const req: UpdateParameterResultRequest = {
       parameter_master_id: 10,
       result_value: '7.2',
-    }
-    expect(req.parameter_master_id).toBe(10)
-    expect(req.result_numeric).toBeUndefined()
-  })
-})
+    };
+    expect(req.parameter_master_id).toBe(10);
+    expect(req.result_numeric).toBeUndefined();
+  });
+});
 
 describe('ArrivalSlipForQC', () => {
   it('is usable with all fields', () => {
@@ -202,11 +197,11 @@ describe('ArrivalSlipForQC', () => {
       remarks: '',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
-    }
-    expect(slip.id).toBe(1)
-    expect(slip.status).toBe('DRAFT')
-  })
-})
+    };
+    expect(slip.id).toBe(1);
+    expect(slip.status).toBe('DRAFT');
+  });
+});
 
 describe('PendingInspection', () => {
   it('is usable with required fields', () => {
@@ -243,11 +238,11 @@ describe('PendingInspection', () => {
       },
       has_inspection: false,
       inspection_status: null,
-    }
-    expect(pending.has_inspection).toBe(false)
-    expect(pending.inspection_status).toBeNull()
-  })
-})
+    };
+    expect(pending.has_inspection).toBe(false);
+    expect(pending.inspection_status).toBeNull();
+  });
+});
 
 describe('Inspection', () => {
   it('is usable with all fields including nested parameter_results', () => {
@@ -290,11 +285,11 @@ describe('Inspection', () => {
       parameter_results: [],
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
-    }
-    expect(inspection.workflow_status).toBe('DRAFT')
-    expect(inspection.parameter_results).toEqual([])
-  })
-})
+    };
+    expect(inspection.workflow_status).toBe('DRAFT');
+    expect(inspection.parameter_results).toEqual([]);
+  });
+});
 
 describe('CreateInspectionRequest', () => {
   it('works with required fields only', () => {
@@ -310,25 +305,25 @@ describe('CreateInspectionRequest', () => {
       invoice_bill_no: 'INV001',
       vehicle_no: 'MH01',
       material_type_id: 1,
-    }
-    expect(req.material_type_id).toBe(1)
-    expect(req.remarks).toBeUndefined()
-  })
-})
+    };
+    expect(req.material_type_id).toBe(1);
+    expect(req.remarks).toBeUndefined();
+  });
+});
 
 describe('ApprovalRequest', () => {
   it('works with no fields (all optional)', () => {
-    const req: ApprovalRequest = {}
-    expect(req.remarks).toBeUndefined()
-    expect(req.final_status).toBeUndefined()
-  })
+    const req: ApprovalRequest = {};
+    expect(req.remarks).toBeUndefined();
+    expect(req.final_status).toBeUndefined();
+  });
 
   it('works with all optional fields', () => {
-    const req: ApprovalRequest = { remarks: 'Approved', final_status: 'ACCEPTED' }
-    expect(req.remarks).toBe('Approved')
-    expect(req.final_status).toBe('ACCEPTED')
-  })
-})
+    const req: ApprovalRequest = { remarks: 'Approved', final_status: 'ACCEPTED' };
+    expect(req.remarks).toBe('Approved');
+    expect(req.final_status).toBe('ACCEPTED');
+  });
+});
 
 describe('QCDashboardCounts', () => {
   it('is usable with all fields', () => {
@@ -339,9 +334,9 @@ describe('QCDashboardCounts', () => {
       awaiting_manager: 1,
       approved_today: 4,
       rejected: 0,
-    }
-    expect(counts.pending_inspection).toBe(5)
-    expect(counts.draft).toBe(3)
-    expect(counts.rejected).toBe(0)
-  })
-})
+    };
+    expect(counts.pending_inspection).toBe(5);
+    expect(counts.draft).toBe(3);
+    expect(counts.rejected).toBe(0);
+  });
+});

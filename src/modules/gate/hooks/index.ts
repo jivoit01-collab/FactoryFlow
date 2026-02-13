@@ -1,1 +1,1 @@
-export { useEntryId } from './useEntryId'
+export { useEntryId } from './useEntryId';

@@ -1,15 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook } from '@testing-library/react';
 
 // ═══════════════════════════════════════════════════════════════
 // Mocks
 // ═══════════════════════════════════════════════════════════════
 
-const mockHasAnyPermission = vi.fn(() => false)
+const mockHasAnyPermission = vi.fn(() => false);
 
 vi.mock('@/core/auth', () => ({
   usePermission: () => ({ hasAnyPermission: mockHasAnyPermission }),
-}))
+}));
 
 vi.mock('@/config/permissions', () => ({
   QC_PERMISSIONS: {
@@ -35,7 +35,7 @@ vi.mock('@/config/permissions', () => ({
       MANAGE_QC_PARAMETERS: 'quality_control.can_manage_qc_parameters',
     },
   },
-}))
+}));
 
 vi.mock('../../constants', () => ({
   WORKFLOW_STATUS: {
@@ -45,14 +45,14 @@ vi.mock('../../constants', () => ({
     QAM_APPROVED: 'QAM_APPROVED',
     COMPLETED: 'COMPLETED',
   },
-}))
+}));
 
 import {
   useInspectionPermissions,
   useArrivalSlipPermissions,
   useMasterDataPermissions,
-} from '../../hooks/useInspectionPermissions'
-import type { Inspection } from '../../types'
+} from '../../hooks/useInspectionPermissions';
+import type { Inspection } from '../../types';
 
 // ═══════════════════════════════════════════════════════════════
 // Helpers
@@ -99,7 +99,7 @@ function makeInspection(overrides: Partial<Inspection> = {}): Inspection {
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
-  }
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -108,117 +108,117 @@ function makeInspection(overrides: Partial<Inspection> = {}): Inspection {
 
 describe('useInspectionPermissions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockHasAnyPermission.mockReturnValue(false)
-  })
+    vi.clearAllMocks();
+    mockHasAnyPermission.mockReturnValue(false);
+  });
 
   // ─── All flags false when no permissions ─────────────────────
 
   it('returns all action flags false when no permissions', () => {
-    const { result } = renderHook(() => useInspectionPermissions(makeInspection()))
-    expect(result.current.canCreateInspection).toBe(false)
-    expect(result.current.canEditInspection).toBe(false)
-    expect(result.current.canSubmitInspection).toBe(false)
-    expect(result.current.canApproveAsChemist).toBe(false)
-    expect(result.current.canApproveAsQAM).toBe(false)
-    expect(result.current.canReject).toBe(false)
-  })
+    const { result } = renderHook(() => useInspectionPermissions(makeInspection()));
+    expect(result.current.canCreateInspection).toBe(false);
+    expect(result.current.canEditInspection).toBe(false);
+    expect(result.current.canSubmitInspection).toBe(false);
+    expect(result.current.canApproveAsChemist).toBe(false);
+    expect(result.current.canApproveAsQAM).toBe(false);
+    expect(result.current.canReject).toBe(false);
+  });
 
   it('returns all UI flags false when no permissions', () => {
-    const { result } = renderHook(() => useInspectionPermissions(makeInspection()))
-    expect(result.current.showSaveButton).toBe(false)
-    expect(result.current.showSubmitButton).toBeFalsy()
-    expect(result.current.showChemistApproval).toBe(false)
-    expect(result.current.showQAMApproval).toBe(false)
-    expect(result.current.showRejectButton).toBe(false)
-  })
+    const { result } = renderHook(() => useInspectionPermissions(makeInspection()));
+    expect(result.current.showSaveButton).toBe(false);
+    expect(result.current.showSubmitButton).toBeFalsy();
+    expect(result.current.showChemistApproval).toBe(false);
+    expect(result.current.showQAMApproval).toBe(false);
+    expect(result.current.showRejectButton).toBe(false);
+  });
 
   // ─── DRAFT state + permissions ───────────────────────────────
 
   it('showSaveButton true when has edit permission and inspection is DRAFT', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const inspection = makeInspection({ workflow_status: 'DRAFT', is_locked: false })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.showSaveButton).toBe(true)
-  })
+    mockHasAnyPermission.mockReturnValue(true);
+    const inspection = makeInspection({ workflow_status: 'DRAFT', is_locked: false });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.showSaveButton).toBe(true);
+  });
 
   it('showSaveButton false when inspection is locked', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const inspection = makeInspection({ workflow_status: 'DRAFT', is_locked: true })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.showSaveButton).toBe(false)
-  })
+    mockHasAnyPermission.mockReturnValue(true);
+    const inspection = makeInspection({ workflow_status: 'DRAFT', is_locked: true });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.showSaveButton).toBe(false);
+  });
 
   it('showSubmitButton true when has permission, inspection is DRAFT and not locked', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const inspection = makeInspection({ workflow_status: 'DRAFT', is_locked: false })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.showSubmitButton).toBeTruthy()
-  })
+    mockHasAnyPermission.mockReturnValue(true);
+    const inspection = makeInspection({ workflow_status: 'DRAFT', is_locked: false });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.showSubmitButton).toBeTruthy();
+  });
 
   // ─── SUBMITTED state ─────────────────────────────────────────
 
   it('showChemistApproval true when SUBMITTED and has chemist permission', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const inspection = makeInspection({ workflow_status: 'SUBMITTED' })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.showChemistApproval).toBe(true)
-  })
+    mockHasAnyPermission.mockReturnValue(true);
+    const inspection = makeInspection({ workflow_status: 'SUBMITTED' });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.showChemistApproval).toBe(true);
+  });
 
   it('showRejectButton true when SUBMITTED and has reject permission', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const inspection = makeInspection({ workflow_status: 'SUBMITTED' })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.showRejectButton).toBe(true)
-  })
+    mockHasAnyPermission.mockReturnValue(true);
+    const inspection = makeInspection({ workflow_status: 'SUBMITTED' });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.showRejectButton).toBe(true);
+  });
 
   // ─── QA_CHEMIST_APPROVED state ───────────────────────────────
 
   it('showQAMApproval true when QA_CHEMIST_APPROVED and has QAM permission', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const inspection = makeInspection({ workflow_status: 'QA_CHEMIST_APPROVED' })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.showQAMApproval).toBe(true)
-  })
+    mockHasAnyPermission.mockReturnValue(true);
+    const inspection = makeInspection({ workflow_status: 'QA_CHEMIST_APPROVED' });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.showQAMApproval).toBe(true);
+  });
 
   it('showRejectButton true when QA_CHEMIST_APPROVED and has reject permission', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const inspection = makeInspection({ workflow_status: 'QA_CHEMIST_APPROVED' })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.showRejectButton).toBe(true)
-  })
+    mockHasAnyPermission.mockReturnValue(true);
+    const inspection = makeInspection({ workflow_status: 'QA_CHEMIST_APPROVED' });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.showRejectButton).toBe(true);
+  });
 
   // ─── Completed / QAM_APPROVED state ──────────────────────────
 
   it('isCompleted true when QAM_APPROVED', () => {
-    const inspection = makeInspection({ workflow_status: 'QAM_APPROVED' })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.isCompleted).toBe(true)
-  })
+    const inspection = makeInspection({ workflow_status: 'QAM_APPROVED' });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.isCompleted).toBe(true);
+  });
 
   it('isCompleted true when COMPLETED', () => {
-    const inspection = makeInspection({ workflow_status: 'COMPLETED' })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.isCompleted).toBe(true)
-  })
+    const inspection = makeInspection({ workflow_status: 'COMPLETED' });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.isCompleted).toBe(true);
+  });
 
   // ─── Null inspection ─────────────────────────────────────────
 
   it('handles null inspection (creation mode)', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const { result } = renderHook(() => useInspectionPermissions(null))
+    mockHasAnyPermission.mockReturnValue(true);
+    const { result } = renderHook(() => useInspectionPermissions(null));
     // isDraft is true when inspection is null
-    expect(result.current.showSaveButton).toBe(true)
-    expect(result.current.canEditFields).toBe(true)
-  })
+    expect(result.current.showSaveButton).toBe(true);
+    expect(result.current.canEditFields).toBe(true);
+  });
 
   it('canEditFields matches showSaveButton', () => {
-    mockHasAnyPermission.mockReturnValue(true)
-    const inspection = makeInspection({ workflow_status: 'DRAFT' })
-    const { result } = renderHook(() => useInspectionPermissions(inspection))
-    expect(result.current.canEditFields).toBe(result.current.showSaveButton)
-  })
-})
+    mockHasAnyPermission.mockReturnValue(true);
+    const inspection = makeInspection({ workflow_status: 'DRAFT' });
+    const { result } = renderHook(() => useInspectionPermissions(inspection));
+    expect(result.current.canEditFields).toBe(result.current.showSaveButton);
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════
 // useArrivalSlipPermissions
@@ -226,23 +226,23 @@ describe('useInspectionPermissions', () => {
 
 describe('useArrivalSlipPermissions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockHasAnyPermission.mockReturnValue(false)
-  })
+    vi.clearAllMocks();
+    mockHasAnyPermission.mockReturnValue(false);
+  });
 
   it('returns all flags false when no permissions', () => {
-    const { result } = renderHook(() => useArrivalSlipPermissions())
-    expect(result.current.canCreate).toBe(false)
-    expect(result.current.canEdit).toBe(false)
-    expect(result.current.canSubmit).toBe(false)
-    expect(result.current.canView).toBe(false)
-  })
+    const { result } = renderHook(() => useArrivalSlipPermissions());
+    expect(result.current.canCreate).toBe(false);
+    expect(result.current.canEdit).toBe(false);
+    expect(result.current.canSubmit).toBe(false);
+    expect(result.current.canView).toBe(false);
+  });
 
   it('returns object with exactly 4 permission flags', () => {
-    const { result } = renderHook(() => useArrivalSlipPermissions())
-    expect(Object.keys(result.current)).toEqual(['canCreate', 'canEdit', 'canSubmit', 'canView'])
-  })
-})
+    const { result } = renderHook(() => useArrivalSlipPermissions());
+    expect(Object.keys(result.current)).toEqual(['canCreate', 'canEdit', 'canSubmit', 'canView']);
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════
 // useMasterDataPermissions
@@ -250,18 +250,21 @@ describe('useArrivalSlipPermissions', () => {
 
 describe('useMasterDataPermissions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockHasAnyPermission.mockReturnValue(false)
-  })
+    vi.clearAllMocks();
+    mockHasAnyPermission.mockReturnValue(false);
+  });
 
   it('returns all flags false when no permissions', () => {
-    const { result } = renderHook(() => useMasterDataPermissions())
-    expect(result.current.canManageMaterialTypes).toBe(false)
-    expect(result.current.canManageQCParameters).toBe(false)
-  })
+    const { result } = renderHook(() => useMasterDataPermissions());
+    expect(result.current.canManageMaterialTypes).toBe(false);
+    expect(result.current.canManageQCParameters).toBe(false);
+  });
 
   it('returns object with exactly 2 permission flags', () => {
-    const { result } = renderHook(() => useMasterDataPermissions())
-    expect(Object.keys(result.current)).toEqual(['canManageMaterialTypes', 'canManageQCParameters'])
-  })
-})
+    const { result } = renderHook(() => useMasterDataPermissions());
+    expect(Object.keys(result.current)).toEqual([
+      'canManageMaterialTypes',
+      'canManageQCParameters',
+    ]);
+  });
+});

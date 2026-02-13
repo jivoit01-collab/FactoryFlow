@@ -5,7 +5,7 @@
 // expected method names for managing GRPO operations.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -30,9 +30,9 @@ vi.mock('@/config/constants', () => ({
       WAREHOUSES: '/po/warehouses/',
     },
   },
-}))
+}));
 
-import { grpoApi } from '../../api/grpo.api'
+import { grpoApi } from '../../api/grpo.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -40,44 +40,44 @@ import { grpoApi } from '../../api/grpo.api'
 
 describe('grpoApi', () => {
   it('is defined as an object', () => {
-    expect(grpoApi).toBeDefined()
-    expect(typeof grpoApi).toBe('object')
-  })
+    expect(grpoApi).toBeDefined();
+    expect(typeof grpoApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a getPendingEntries method', () => {
-    expect(typeof grpoApi.getPendingEntries).toBe('function')
-  })
+    expect(typeof grpoApi.getPendingEntries).toBe('function');
+  });
 
   it('has a getPreview method', () => {
-    expect(typeof grpoApi.getPreview).toBe('function')
-  })
+    expect(typeof grpoApi.getPreview).toBe('function');
+  });
 
   it('has a post method', () => {
-    expect(typeof grpoApi.post).toBe('function')
-  })
+    expect(typeof grpoApi.post).toBe('function');
+  });
 
   it('has a getHistory method', () => {
-    expect(typeof grpoApi.getHistory).toBe('function')
-  })
+    expect(typeof grpoApi.getHistory).toBe('function');
+  });
 
   it('has a getDetail method', () => {
-    expect(typeof grpoApi.getDetail).toBe('function')
-  })
+    expect(typeof grpoApi.getDetail).toBe('function');
+  });
 
   it('has a getWarehouses method', () => {
-    expect(typeof grpoApi.getWarehouses).toBe('function')
-  })
+    expect(typeof grpoApi.getWarehouses).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(grpoApi).sort()
+    const methodNames = Object.keys(grpoApi).sort();
     expect(methodNames).toEqual([
       'getDetail',
       'getHistory',
@@ -85,6 +85,6 @@ describe('grpoApi', () => {
       'getPreview',
       'getWarehouses',
       'post',
-    ])
-  })
-})
+    ]);
+  });
+});

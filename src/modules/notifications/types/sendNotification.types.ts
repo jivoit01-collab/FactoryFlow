@@ -5,9 +5,9 @@
 
 /** Minimal user type for the recipient selector */
 export interface CompanyUser {
-  id: number
-  email: string
-  full_name: string
+  id: number;
+  email: string;
+  full_name: string;
 }
 
 /** Notification type codes available for manual sending */
@@ -25,22 +25,22 @@ export const NOTIFICATION_TYPES = [
   { value: 'QC_COMPLETED', label: 'QC Completed' },
   { value: 'GRPO_POSTED', label: 'GRPO Posted' },
   { value: 'GRPO_FAILED', label: 'GRPO Failed' },
-] as const
+] as const;
 
-export type NotificationTypeValue = (typeof NOTIFICATION_TYPES)[number]['value']
+export type NotificationTypeValue = (typeof NOTIFICATION_TYPES)[number]['value'];
 
 /** Request body for POST /api/v1/notifications/send/ */
 export interface SendNotificationRequest {
-  title: string
-  body: string
-  notification_type?: string
-  click_action_url?: string
-  recipient_user_ids?: number[]
-  role_filter?: string
+  title: string;
+  body: string;
+  notification_type?: string;
+  click_action_url?: string;
+  recipient_user_ids?: number[];
+  role_filter?: string;
 }
 
 /** Response from POST /api/v1/notifications/send/ */
 export interface SendNotificationResponse {
-  message: string
-  recipients_count: number
+  message: string;
+  recipients_count: number;
 }

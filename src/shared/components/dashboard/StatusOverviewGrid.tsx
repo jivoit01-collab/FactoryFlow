@@ -1,23 +1,23 @@
-import { ChevronRight, type LucideIcon } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ChevronRight, type LucideIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import { Card, CardContent } from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+import { Card, CardContent } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 /**
  * Configuration for a single status item in the overview grid.
  */
 export interface StatusItemConfig {
   /** Display label for the status */
-  label: string
+  label: string;
   /** Text color class (e.g., 'text-yellow-600 dark:text-yellow-400') */
-  color: string
+  color: string;
   /** Background color class with border */
-  bgColor: string
+  bgColor: string;
   /** Icon component to display */
-  icon: LucideIcon
+  icon: LucideIcon;
   /** Navigation link when clicked */
-  link: string
+  link: string;
 }
 
 /**
@@ -25,13 +25,13 @@ export interface StatusItemConfig {
  */
 export interface StatusOverviewGridProps {
   /** Configuration for each status, keyed by status ID */
-  statusConfig: Record<string, StatusItemConfig>
+  statusConfig: Record<string, StatusItemConfig>;
   /** Order of statuses to display */
-  statusOrder: readonly string[]
+  statusOrder: readonly string[];
   /** Count for each status, keyed by status ID */
-  counts: Record<string, number>
+  counts: Record<string, number>;
   /** Optional CSS class for the grid container */
-  className?: string
+  className?: string;
 }
 
 /**
@@ -56,16 +56,16 @@ export function StatusOverviewGrid({
   counts,
   className,
 }: StatusOverviewGridProps) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
     <div className={cn('grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5', className)}>
       {statusOrder.map((status) => {
-        const config = statusConfig[status]
-        if (!config) return null
+        const config = statusConfig[status];
+        if (!config) return null;
 
-        const Icon = config.icon
-        const count = counts[status] ?? 0
+        const Icon = config.icon;
+        const count = counts[status] ?? 0;
 
         return (
           <Card
@@ -75,13 +75,13 @@ export function StatusOverviewGrid({
             aria-label={`${config.label}: ${count}`}
             className={cn(
               'border cursor-pointer hover:shadow-md transition-shadow',
-              config.bgColor
+              config.bgColor,
             )}
             onClick={() => navigate(config.link)}
             onKeyDown={(e: React.KeyboardEvent) => {
               if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                navigate(config.link)
+                e.preventDefault();
+                navigate(config.link);
               }
             }}
           >
@@ -96,8 +96,8 @@ export function StatusOverviewGrid({
               <div className={cn('text-2xl font-bold mt-1', config.color)}>{count}</div>
             </CardContent>
           </Card>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

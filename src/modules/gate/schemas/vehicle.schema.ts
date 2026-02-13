@@ -1,6 +1,6 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
-import { VALIDATION_MESSAGES, VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_MESSAGES, VALIDATION_PATTERNS } from '@/config/constants';
 
 export const vehicleSchema = z.object({
   vehicle_number: z
@@ -19,8 +19,8 @@ export const vehicleSchema = z.object({
     .min(1, VALIDATION_MESSAGES.required('Vehicle capacity'))
     .refine(
       (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
-      'Capacity must be a positive number'
+      'Capacity must be a positive number',
     ),
-})
+});
 
-export type VehicleFormData = z.infer<typeof vehicleSchema>
+export type VehicleFormData = z.infer<typeof vehicleSchema>;

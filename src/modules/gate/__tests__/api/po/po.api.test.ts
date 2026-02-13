@@ -5,7 +5,7 @@
 // method names for fetching purchase orders and vendors.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -24,9 +24,9 @@ vi.mock('@/config/constants', () => ({
       VENDORS: '/po/vendors/',
     },
   },
-}))
+}));
 
-import { poApi } from '../../../api/po/po.api'
+import { poApi } from '../../../api/po/po.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -34,28 +34,28 @@ import { poApi } from '../../../api/po/po.api'
 
 describe('poApi', () => {
   it('is defined as an object', () => {
-    expect(poApi).toBeDefined()
-    expect(typeof poApi).toBe('object')
-  })
+    expect(poApi).toBeDefined();
+    expect(typeof poApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a getOpenPOs method', () => {
-    expect(typeof poApi.getOpenPOs).toBe('function')
-  })
+    expect(typeof poApi.getOpenPOs).toBe('function');
+  });
 
   it('has a getVendors method', () => {
-    expect(typeof poApi.getVendors).toBe('function')
-  })
+    expect(typeof poApi.getVendors).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(poApi).sort()
-    expect(methodNames).toEqual(['getOpenPOs', 'getVendors'])
-  })
-})
+    const methodNames = Object.keys(poApi).sort();
+    expect(methodNames).toEqual(['getOpenPOs', 'getVendors']);
+  });
+});

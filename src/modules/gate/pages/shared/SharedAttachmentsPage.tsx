@@ -1,98 +1,89 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, FileText, Paperclip, Upload, X } from 'lucide-react'
-import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, FileText, Paperclip, Upload, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api'
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui'
+import type { ApiError } from '@/core/api';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
-import { useGateAttachments, useUploadAttachment } from '../../api/attachment/attachment.queries'
-import { StepFooter, StepHeader } from '../../components'
-import type { EntryFlowConfig } from '../../constants/entryFlowConfig'
-import { useEntryId } from '../../hooks'
+import { useGateAttachments, useUploadAttachment } from '../../api/attachment/attachment.queries';
+import { StepFooter, StepHeader } from '../../components';
+import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
+import { useEntryId } from '../../hooks';
 
-const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
 
 function isImageUrl(url: string): boolean {
-  const lower = url.toLowerCase()
-  return IMAGE_EXTENSIONS.some((ext) => lower.includes(ext))
+  const lower = url.toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => lower.includes(ext));
 }
 
 interface SharedAttachmentsPageProps {
-  config: EntryFlowConfig
+  config: EntryFlowConfig;
 }
 
 export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageProps) {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { entryId, entryIdNumber, isEditMode } = useEntryId()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const currentStep = config.totalSteps
-  const previousStep = `step${config.totalSteps - 1}`
+  const currentStep = config.totalSteps;
+  const previousStep = `step${config.totalSteps - 1}`;
 
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch existing attachments
-  const {
-    data: attachments,
-    isLoading,
-  } = useGateAttachments(entryIdNumber)
+  const { data: attachments, isLoading } = useGateAttachments(entryIdNumber);
 
   // Upload mutation
-  const uploadAttachment = useUploadAttachment(entryIdNumber || 0)
+  const uploadAttachment = useUploadAttachment(entryIdNumber || 0);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0 || !entryIdNumber) return
+    const files = e.target.files;
+    if (!files || files.length === 0 || !entryIdNumber) return;
 
-    setError(null)
+    setError(null);
 
     for (const file of Array.from(files)) {
       try {
-        await uploadAttachment.mutateAsync(file)
+        await uploadAttachment.mutateAsync(file);
       } catch (err) {
-        const apiError = err as ApiError
-        setError(apiError.message || `Failed to upload ${file.name}`)
+        const apiError = err as ApiError;
+        setError(apiError.message || `Failed to upload ${file.name}`);
       }
     }
 
     // Reset file input so the same file can be selected again
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = '';
     }
-  }
+  };
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click()
-  }
+    fileInputRef.current?.click();
+  };
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`${config.routePrefix}/edit/${entryId}/${previousStep}`)
+      navigate(`${config.routePrefix}/edit/${entryId}/${previousStep}`);
     } else {
-      navigate(`${config.routePrefix}/new/${previousStep}?entryId=${entryId}`)
+      navigate(`${config.routePrefix}/new/${previousStep}?entryId=${entryId}`);
     }
-  }
+  };
 
   const handleCancel = () => {
-    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    navigate(config.routePrefix)
-  }
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+    navigate(config.routePrefix);
+  };
 
   const handleNext = () => {
     if (isEditMode && entryId) {
-      navigate(`${config.routePrefix}/edit/${entryId}/review`)
+      navigate(`${config.routePrefix}/edit/${entryId}/review`);
     } else {
-      navigate(`${config.routePrefix}/new/review?entryId=${entryId}`)
+      navigate(`${config.routePrefix}/new/review?entryId=${entryId}`);
     }
-  }
+  };
 
   return (
     <div className="space-y-6 pb-6">
@@ -155,9 +146,9 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
                     </p>
                     <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                       {attachments.map((attachment) => {
-                        const url = attachment.file
-                        const fileName = attachment.file_name || url.split('/').pop() || 'File'
-                        const isImage = isImageUrl(url)
+                        const url = attachment.file;
+                        const fileName = attachment.file_name || url.split('/').pop() || 'File';
+                        const isImage = isImageUrl(url);
 
                         return (
                           <div
@@ -172,20 +163,20 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
                                   className="h-full w-full object-cover"
                                   onError={(e) => {
                                     // Fallback to file icon on image load error
-                                    const target = e.currentTarget
-                                    target.style.display = 'none'
-                                    const parent = target.parentElement
+                                    const target = e.currentTarget;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
                                     if (parent) {
                                       parent.classList.add(
                                         'flex',
                                         'items-center',
                                         'justify-center',
-                                        'bg-muted'
-                                      )
-                                      const icon = document.createElement('div')
-                                      icon.innerHTML = '📄'
-                                      icon.className = 'text-4xl'
-                                      parent.appendChild(icon)
+                                        'bg-muted',
+                                      );
+                                      const icon = document.createElement('div');
+                                      icon.innerHTML = '📄';
+                                      icon.className = 'text-4xl';
+                                      parent.appendChild(icon);
                                     }
                                   }}
                                 />
@@ -201,7 +192,7 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
                               </p>
                             </div>
                           </div>
-                        )
+                        );
                       })}
                     </div>
                   </div>
@@ -227,5 +218,5 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
         nextLabel="Review"
       />
     </div>
-  )
+  );
 }

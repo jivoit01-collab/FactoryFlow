@@ -1,1 +1,1 @@
-export * from './qc.types'
+export * from './qc.types';

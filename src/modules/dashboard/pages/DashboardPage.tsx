@@ -1,6 +1,6 @@
-import { APP_NAME } from '@/config/constants'
+import { APP_NAME } from '@/config/constants';
 
-import { DashboardStats } from '../components/DashboardStats'
+import { DashboardStats } from '../components/DashboardStats';
 
 export default function DashboardPage() {
   return (
@@ -12,5 +12,5 @@ export default function DashboardPage() {
 
       <DashboardStats />
     </div>
-  )
+  );
 }

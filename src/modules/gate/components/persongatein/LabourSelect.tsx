@@ -1,5 +1,5 @@
-import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   Button,
@@ -8,23 +8,23 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/shared/components/ui'
-import { useDebounce } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
-import type { Labour } from '../../api/personGateIn/personGateIn.api'
-import { useLabours } from '../../api/personGateIn/personGateIn.queries'
-import { CreateLabourDialog } from './CreateLabourDialog'
+import type { Labour } from '../../api/personGateIn/personGateIn.api';
+import { useLabours } from '../../api/personGateIn/personGateIn.queries';
+import { CreateLabourDialog } from './CreateLabourDialog';
 
 interface LabourSelectProps {
-  value?: number | null
-  onChange: (labour: Labour | null) => void
-  contractorId?: number
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: number | null;
+  onChange: (labour: Labour | null) => void;
+  contractorId?: number;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
 }
 
 export function LabourSelect({
@@ -37,103 +37,103 @@ export function LabourSelect({
   label,
   required = false,
 }: LabourSelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [displayValue, setDisplayValue] = useState('')
-  const [selectedLabour, setSelectedLabour] = useState<Labour | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [displayValue, setDisplayValue] = useState('');
+  const [selectedLabour, setSelectedLabour] = useState<Labour | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const debouncedSearch = useDebounce(searchTerm, 150)
+  const debouncedSearch = useDebounce(searchTerm, 150);
 
   // Fetch labours when dropdown is open (lazy loading)
   const { data: labours = [], isLoading } = useLabours(
     debouncedSearch || undefined,
     contractorId,
-    isOpen && !disabled
-  )
+    isOpen && !disabled,
+  );
 
   // Filter only active labours
-  const filteredLabours = labours.filter((l) => l.is_active)
+  const filteredLabours = labours.filter((l) => l.is_active);
 
   // Update display value when value changes
   useEffect(() => {
     if (value && labours.length > 0) {
-      const labour = labours.find((l) => l.id === value)
+      const labour = labours.find((l) => l.id === value);
       if (labour) {
-        setDisplayValue(labour.name)
-        setSelectedLabour(labour)
+        setDisplayValue(labour.name);
+        setSelectedLabour(labour);
       }
     } else if (!value) {
-      setDisplayValue('')
-      setSearchTerm('')
-      setSelectedLabour(null)
+      setDisplayValue('');
+      setSearchTerm('');
+      setSelectedLabour(null);
     }
-  }, [value, labours])
+  }, [value, labours]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+        setIsOpen(false);
         // Reset search term to display value when closing
         if (value) {
-          setSearchTerm('')
+          setSearchTerm('');
         }
       }
-    }
+    };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen, value])
+  }, [isOpen, value]);
 
   const handleSelect = (labour: Labour) => {
-    setDisplayValue(labour.name)
-    setSearchTerm('')
-    setSelectedLabour(labour)
-    onChange(labour)
-    setIsOpen(false)
-  }
+    setDisplayValue(labour.name);
+    setSearchTerm('');
+    setSelectedLabour(labour);
+    onChange(labour);
+    setIsOpen(false);
+  };
 
   const handleInputFocus = () => {
     if (!disabled) {
-      setIsOpen(true)
+      setIsOpen(true);
     }
-  }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setSearchTerm(val)
-    setDisplayValue(val)
-    setIsOpen(true)
+    const val = e.target.value;
+    setSearchTerm(val);
+    setDisplayValue(val);
+    setIsOpen(true);
     if (!val) {
-      onChange(null)
-      setSelectedLabour(null)
+      onChange(null);
+      setSelectedLabour(null);
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
-      setIsOpen(false)
+      setIsOpen(false);
     } else if (e.key === 'Enter' && filteredLabours.length === 1) {
-      handleSelect(filteredLabours[0])
+      handleSelect(filteredLabours[0]);
     }
-  }
+  };
 
   const handleAddNewClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setIsOpen(false)
-    setIsDialogOpen(true)
-  }
+    e.stopPropagation();
+    setIsOpen(false);
+    setIsDialogOpen(true);
+  };
 
   const handleCreateSuccess = (labour: Labour) => {
-    setDisplayValue(labour.name)
-    setSelectedLabour(labour)
-    onChange(labour)
-  }
+    setDisplayValue(labour.name);
+    setSelectedLabour(labour);
+    onChange(labour);
+  };
 
   return (
     <div className="space-y-2">
@@ -219,7 +219,7 @@ export function LabourSelect({
             disabled={disabled}
             className={cn(
               'pr-10 cursor-text',
-              error && 'border-destructive focus-visible:ring-destructive'
+              error && 'border-destructive focus-visible:ring-destructive',
             )}
             autoComplete="off"
           />
@@ -230,7 +230,7 @@ export function LabourSelect({
               <ChevronDown
                 className={cn(
                   'h-4 w-4 text-muted-foreground transition-transform',
-                  isOpen && 'rotate-180'
+                  isOpen && 'rotate-180',
                 )}
               />
             )}
@@ -269,7 +269,7 @@ export function LabourSelect({
                         key={labour.id}
                         className={cn(
                           'px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground flex items-center justify-between',
-                          value === labour.id && 'bg-accent'
+                          value === labour.id && 'bg-accent',
                         )}
                         onClick={() => handleSelect(labour)}
                       >
@@ -299,5 +299,5 @@ export function LabourSelect({
         defaultContractorId={contractorId}
       />
     </div>
-  )
+  );
 }

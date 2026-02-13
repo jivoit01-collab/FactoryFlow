@@ -7,8 +7,8 @@ export function useTranslation() {
   const t = (key: string, _options?: Record<string, unknown>): string => {
     // For now, just return the key
     // Future: return i18next.t(key, options)
-    return key
-  }
+    return key;
+  };
 
-  return { t }
+  return { t };
 }

@@ -1,19 +1,19 @@
-import { type MessagePayload } from 'firebase/messaging'
-import { useCallback, useEffect, useRef } from 'react'
-import { toast } from 'sonner'
+import { type MessagePayload } from 'firebase/messaging';
+import { useCallback, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 
-import type { Notification } from '@/core/notifications'
-import { fcmService, notificationService } from '@/core/notifications'
-import { useAppDispatch, useAppSelector } from '@/core/store'
+import type { Notification } from '@/core/notifications';
+import { fcmService, notificationService } from '@/core/notifications';
+import { useAppDispatch, useAppSelector } from '@/core/store';
 import {
   addNotification,
   fetchUnreadCount,
   selectFCMState,
   setupPushNotifications,
-} from '@/core/store/slices/notification.slice'
+} from '@/core/store/slices/notification.slice';
 
 interface NotificationProviderProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 /**
@@ -25,12 +25,12 @@ interface NotificationProviderProps {
  * Logout → Unregister device → Delete FCM token
  */
 export function NotificationProvider({ children }: NotificationProviderProps) {
-  const dispatch = useAppDispatch()
-  const { isAuthenticated, currentCompany } = useAppSelector((state) => state.auth)
-  const fcmState = useAppSelector(selectFCMState)
-  const messageListenerRef = useRef<(() => void) | null>(null)
-  const setupAttemptedRef = useRef(false)
-  const deviceRegisteredTokenRef = useRef<string | null>(null)
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, currentCompany } = useAppSelector((state) => state.auth);
+  const fcmState = useAppSelector(selectFCMState);
+  const messageListenerRef = useRef<(() => void) | null>(null);
+  const setupAttemptedRef = useRef(false);
+  const deviceRegisteredTokenRef = useRef<string | null>(null);
 
   /**
    * Handle incoming foreground messages
@@ -38,7 +38,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const handleForegroundMessage = useCallback(
     (payload: MessagePayload) => {
       if (import.meta.env.DEV) {
-        console.log('[NotificationProvider] Foreground message:', payload)
+        console.log('[NotificationProvider] Foreground message:', payload);
       }
 
       const notification: Notification = {
@@ -48,9 +48,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         body: payload.notification?.body || payload.data?.body || '',
         is_read: false,
         created_at: new Date().toISOString(),
-      }
+      };
 
-      dispatch(addNotification(notification))
+      dispatch(addNotification(notification));
 
       if (document.visibilityState === 'visible') {
         toast.info(notification.title, {
@@ -59,33 +59,33 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             ? {
                 label: 'View',
                 onClick: () => {
-                  window.location.href = payload.data!.url!
+                  window.location.href = payload.data!.url!;
                 },
               }
             : undefined,
-        })
+        });
       } else if (globalThis.Notification?.permission === 'granted' && payload.notification) {
         const browserNotification = new globalThis.Notification(notification.title, {
           body: notification.body,
           icon: '/pwa-192x192.png',
           tag: payload.data?.tag || 'foreground',
           data: payload.data,
-        })
+        });
 
         browserNotification.onclick = () => {
-          window.focus()
-          browserNotification.close()
+          window.focus();
+          browserNotification.close();
           if (payload.data?.url) {
-            window.location.href = payload.data.url
+            window.location.href = payload.data.url;
           }
-        }
+        };
       }
 
       // Short delay to allow backend to finish storing the notification
-      setTimeout(() => dispatch(fetchUnreadCount()), 200)
+      setTimeout(() => dispatch(fetchUnreadCount()), 200);
     },
-    [dispatch]
-  )
+    [dispatch],
+  );
 
   /**
    * Setup FCM right after login: request permission, get token.
@@ -98,33 +98,33 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       fcmState.permission === 'denied' ||
       setupAttemptedRef.current
     ) {
-      return
+      return;
     }
 
-    setupAttemptedRef.current = true
+    setupAttemptedRef.current = true;
 
     dispatch(setupPushNotifications()).catch((error) => {
-      console.warn('[NotificationProvider] Push notification setup failed:', error)
-    })
-  }, [isAuthenticated, fcmState.token, fcmState.permission, dispatch])
+      console.warn('[NotificationProvider] Push notification setup failed:', error);
+    });
+  }, [isAuthenticated, fcmState.token, fcmState.permission, dispatch]);
 
   /**
    * Setup message listener when FCM has a token (meaning it's initialized)
    */
   useEffect(() => {
     if (!fcmState.token || !isAuthenticated) {
-      return
+      return;
     }
 
-    messageListenerRef.current = fcmService.onMessage(handleForegroundMessage)
+    messageListenerRef.current = fcmService.onMessage(handleForegroundMessage);
 
     return () => {
       if (messageListenerRef.current) {
-        messageListenerRef.current()
-        messageListenerRef.current = null
+        messageListenerRef.current();
+        messageListenerRef.current = null;
       }
-    }
-  }, [fcmState.token, isAuthenticated, handleForegroundMessage])
+    };
+  }, [fcmState.token, isAuthenticated, handleForegroundMessage]);
 
   /**
    * Register device token with backend after obtaining FCM token.
@@ -136,37 +136,37 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       !isAuthenticated ||
       deviceRegisteredTokenRef.current === fcmState.token
     ) {
-      return
+      return;
     }
 
-    deviceRegisteredTokenRef.current = fcmState.token
+    deviceRegisteredTokenRef.current = fcmState.token;
 
     notificationService.registerDevice(fcmState.token).catch((error) => {
-      console.warn('[NotificationProvider] Backend device registration failed:', error)
-      deviceRegisteredTokenRef.current = null
-    })
-  }, [fcmState.token, isAuthenticated])
+      console.warn('[NotificationProvider] Backend device registration failed:', error);
+      deviceRegisteredTokenRef.current = null;
+    });
+  }, [fcmState.token, isAuthenticated]);
 
   /**
    * Fetch unread count once company is selected
    */
   useEffect(() => {
     if (!isAuthenticated || !currentCompany) {
-      return
+      return;
     }
 
-    dispatch(fetchUnreadCount())
-  }, [isAuthenticated, currentCompany, dispatch])
+    dispatch(fetchUnreadCount());
+  }, [isAuthenticated, currentCompany, dispatch]);
 
   /**
    * Reset flags on logout
    */
   useEffect(() => {
     if (!isAuthenticated) {
-      setupAttemptedRef.current = false
-      deviceRegisteredTokenRef.current = null
+      setupAttemptedRef.current = false;
+      deviceRegisteredTokenRef.current = null;
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated]);
 
-  return <>{children}</>
+  return <>{children}</>;
 }

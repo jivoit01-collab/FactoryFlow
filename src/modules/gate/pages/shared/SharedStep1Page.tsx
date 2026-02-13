@@ -1,49 +1,49 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
-import { ENTRY_STATUS } from '@/config/constants'
-import type { ApiError } from '@/core/api/types'
-import { getServerErrorMessage, isServerError as checkServerError } from '@/shared/utils'
+import { ENTRY_STATUS } from '@/config/constants';
+import type { ApiError } from '@/core/api/types';
+import { getServerErrorMessage, isServerError as checkServerError } from '@/shared/utils';
 
 import {
   useCreateVehicleEntry,
   useUpdateVehicleEntry,
   useVehicleEntry,
-} from '../../api/vehicle/vehicleEntry.queries'
+} from '../../api/vehicle/vehicleEntry.queries';
 import {
   type DriverSelection,
   type VehicleDriverFormData,
   VehicleDriverFormShell,
   type VehicleSelection,
-} from '../../components'
-import type { EntryFlowConfig } from '../../constants/entryFlowConfig'
+} from '../../components';
+import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
 
 interface SharedStep1PageProps {
-  config: EntryFlowConfig
+  config: EntryFlowConfig;
 }
 
 export default function SharedStep1Page({ config }: SharedStep1PageProps) {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { entryId } = useParams<{ entryId?: string }>()
-  const isEditMode = !!entryId
-  const createVehicleEntry = useCreateVehicleEntry()
-  const updateVehicleEntry = useUpdateVehicleEntry()
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { entryId } = useParams<{ entryId?: string }>();
+  const isEditMode = !!entryId;
+  const createVehicleEntry = useCreateVehicleEntry();
+  const updateVehicleEntry = useUpdateVehicleEntry();
   const {
     data: entryData,
     isLoading: isLoadingEntry,
     error: entryError,
-  } = useVehicleEntry(entryId ? parseInt(entryId) : null)
+  } = useVehicleEntry(entryId ? parseInt(entryId) : null);
 
   // Check if error is a server error (5xx)
-  const hasServerError = checkServerError(entryError)
+  const hasServerError = checkServerError(entryError);
 
   // State to track if Update button has been clicked (enables editing)
-  const [updateMode, _setUpdateMode] = useState(false)
+  const [updateMode, _setUpdateMode] = useState(false);
 
   // State to keep button disabled after API success until navigation completes
-  const [isNavigating, setIsNavigating] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<VehicleDriverFormData>({
@@ -63,9 +63,9 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
     idProofNumber: '',
     driverPhoto: null,
     remarks: '',
-  })
+  });
 
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Load entry data when in edit mode
   useEffect(() => {
@@ -90,23 +90,23 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
         idProofNumber: entryData.driver?.id_proof_number || '',
         driverPhoto: entryData.driver?.photo || null,
         remarks: entryData.remarks || '',
-      })
+      });
     }
-  }, [isEditMode, entryData])
+  }, [isEditMode, entryData]);
 
   const handleInputChange = (field: string, value: string) => {
     // In edit mode, Step 1 is read-only unless updateMode is active
-    if (isEditMode && !updateMode) return
-    setFormData((prev: VehicleDriverFormData) => ({ ...prev, [field]: value }))
+    if (isEditMode && !updateMode) return;
+    setFormData((prev: VehicleDriverFormData) => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (apiErrors[field]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[field]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handleVehicleSelect = (vehicle: VehicleSelection) => {
     setFormData((prev: VehicleDriverFormData) => ({
@@ -118,8 +118,8 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
       transporterName: vehicle.transporterName,
       transporterContactPerson: vehicle.transporterContactPerson,
       transporterMobile: vehicle.transporterMobile,
-    }))
-  }
+    }));
+  };
 
   const handleDriverSelect = (driver: DriverSelection) => {
     setFormData((prev: VehicleDriverFormData) => ({
@@ -131,43 +131,43 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
       idProofType: driver.idProofType,
       idProofNumber: driver.idProofNumber,
       driverPhoto: driver.driverPhoto,
-    }))
-  }
+    }));
+  };
 
   const handleCancel = () => {
-    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    navigate(config.routePrefix)
-  }
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+    navigate(config.routePrefix);
+  };
 
   const handleNext = async () => {
     // In edit mode, navigate to next step without API call (unless in updateMode)
     if (isEditMode && !updateMode && entryId) {
-      navigate(`${config.routePrefix}/edit/${entryId}/step2`)
-      return
+      navigate(`${config.routePrefix}/edit/${entryId}/step2`);
+      return;
     }
 
     // Create mode or update mode - validate and create/update entry
-    setApiErrors({})
+    setApiErrors({});
 
     // Validation
     if (!formData.vehicleId) {
-      setApiErrors({ vehicle: 'Please select a vehicle' })
-      return
+      setApiErrors({ vehicle: 'Please select a vehicle' });
+      return;
     }
     if (!formData.driverId) {
-      setApiErrors({ driver: 'Please select a driver' })
-      return
+      setApiErrors({ driver: 'Please select a driver' });
+      return;
     }
 
-    handleCreate()
-  }
+    handleCreate();
+  };
 
   const handleCreate = async () => {
     try {
       // Generate entry number (format: GE-YYYY-NNNN)
-      const year = new Date().getFullYear()
-      const timestamp = Date.now().toString().slice(-4)
-      const entryNo = `GE-${year}-${timestamp}`
+      const year = new Date().getFullYear();
+      const timestamp = Date.now().toString().slice(-4);
+      const entryNo = `GE-${year}-${timestamp}`;
 
       const result = await createVehicleEntry.mutateAsync({
         entry_no: entryNo,
@@ -175,40 +175,40 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
         driver: formData.driverId,
         remarks: formData.remarks || undefined,
         entry_type: config.entryType,
-      })
+      });
 
       // Navigate to step 2 in edit mode (prevents duplicate submissions on back/forward navigation)
-      setIsNavigating(true)
-      navigate(`${config.routePrefix}/edit/${result.id}/step2`)
+      setIsNavigating(true);
+      navigate(`${config.routePrefix}/edit/${result.id}/step2`);
     } catch (error) {
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
       if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to create vehicle entry' })
+        setApiErrors({ general: apiError.message || 'Failed to create vehicle entry' });
       }
     }
-  }
+  };
 
   const handleUpdate = async () => {
-    if (!entryId) return
+    if (!entryId) return;
 
-    setApiErrors({})
+    setApiErrors({});
 
     // Validation
     if (!formData.vehicleId) {
-      setApiErrors({ vehicle: 'Please select a vehicle' })
-      return
+      setApiErrors({ vehicle: 'Please select a vehicle' });
+      return;
     }
     if (!formData.driverId) {
-      setApiErrors({ driver: 'Please select a driver' })
-      return
+      setApiErrors({ driver: 'Please select a driver' });
+      return;
     }
 
     try {
@@ -219,29 +219,29 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
           driver: formData.driverId,
           remarks: formData.remarks || undefined,
         },
-      })
+      });
 
       // Navigate to step 2
-      setIsNavigating(true)
-      navigate(`${config.routePrefix}/edit/${entryId}/step2`)
+      setIsNavigating(true);
+      navigate(`${config.routePrefix}/edit/${entryId}/step2`);
     } catch (error) {
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
       if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to update vehicle entry' })
+        setApiErrors({ general: apiError.message || 'Failed to update vehicle entry' });
       }
     }
-  }
+  };
 
-  const canUpdate = isEditMode && entryData?.status === ENTRY_STATUS.DRAFT
-  const isReadOnly = isEditMode
+  const canUpdate = isEditMode && entryData?.status === ENTRY_STATUS.DRAFT;
+  const isReadOnly = isEditMode;
 
   return (
     <VehicleDriverFormShell
@@ -264,5 +264,5 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
       serverError={hasServerError ? getServerErrorMessage() : null}
       headerTitle={config.headerTitle}
     />
-  )
+  );
 }

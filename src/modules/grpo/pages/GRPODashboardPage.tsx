@@ -9,15 +9,15 @@ import {
   RefreshCw,
   ShieldX,
   XCircle,
-} from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
-import { Button, Card, CardContent } from '@/shared/components/ui'
+import type { ApiError } from '@/core/api/types';
+import { Button, Card, CardContent } from '@/shared/components/ui';
 
-import { usePendingGRPOEntries } from '../api'
-import { useGRPOHistory } from '../api'
-import { GRPO_STATUS } from '../constants'
+import { usePendingGRPOEntries } from '../api';
+import { useGRPOHistory } from '../api';
+import { GRPO_STATUS } from '../constants';
 
 // Status configuration for overview grid
 const STATUS_CONFIG = {
@@ -42,45 +42,45 @@ const STATUS_CONFIG = {
     icon: XCircle,
     link: '/grpo/history?status=failed',
   },
-}
+};
 
-const STATUS_ORDER = ['pending', 'posted', 'failed'] as const
+const STATUS_ORDER = ['pending', 'posted', 'failed'] as const;
 
 // Format date/time for display
 const formatDateTime = (dateTime?: string) => {
-  if (!dateTime) return '-'
+  if (!dateTime) return '-';
   try {
-    const date = new Date(dateTime)
+    const date = new Date(dateTime);
     return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    })
+    });
   } catch {
-    return dateTime
+    return dateTime;
   }
-}
+};
 
 export default function GRPODashboardPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const { data: pendingEntries = [], isLoading, error, refetch } = usePendingGRPOEntries()
-  const { data: historyEntries = [] } = useGRPOHistory()
+  const { data: pendingEntries = [], isLoading, error, refetch } = usePendingGRPOEntries();
+  const { data: historyEntries = [] } = useGRPOHistory();
 
-  const apiError = error as ApiError | null
-  const isPermissionError = apiError?.status === 403
+  const apiError = error as ApiError | null;
+  const isPermissionError = apiError?.status === 403;
 
   // Calculate counts
-  const totalPendingPOs = pendingEntries.reduce((sum, e) => sum + e.pending_po_count, 0)
+  const totalPendingPOs = pendingEntries.reduce((sum, e) => sum + e.pending_po_count, 0);
 
   const historyCounts = {
     pending: historyEntries.filter((h) => h.status === GRPO_STATUS.PENDING).length,
     posted: historyEntries.filter((h) => h.status === GRPO_STATUS.POSTED).length,
     failed: historyEntries.filter(
-      (h) => h.status === GRPO_STATUS.FAILED || h.status === GRPO_STATUS.PARTIALLY_POSTED
+      (h) => h.status === GRPO_STATUS.FAILED || h.status === GRPO_STATUS.PARTIALLY_POSTED,
     ).length,
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -215,9 +215,9 @@ export default function GRPODashboardPage() {
             <h3 className="text-sm font-medium text-muted-foreground mb-3">Posting History</h3>
             <div className="grid grid-cols-3 gap-3">
               {STATUS_ORDER.map((statusKey) => {
-                const config = STATUS_CONFIG[statusKey]
-                const Icon = config.icon
-                const count = historyCounts[statusKey] || 0
+                const config = STATUS_CONFIG[statusKey];
+                const Icon = config.icon;
+                const count = historyCounts[statusKey] || 0;
 
                 return (
                   <Card
@@ -233,7 +233,7 @@ export default function GRPODashboardPage() {
                       <p className={`mt-1 text-xs font-medium ${config.color}`}>{config.label}</p>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
           </div>
@@ -263,5 +263,5 @@ export default function GRPODashboardPage() {
         </>
       )}
     </div>
-  )
+  );
 }

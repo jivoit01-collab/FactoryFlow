@@ -10,13 +10,13 @@
  */
 export interface ReadOnlyConfig {
   /** Whether we're in effective edit mode (editing existing data) */
-  effectiveEditMode: boolean
+  effectiveEditMode: boolean;
   /** Whether update mode is active (user clicked Update) */
-  updateMode: boolean
+  updateMode: boolean;
   /** Whether there's a not found error */
-  hasNotFoundError: boolean
+  hasNotFoundError: boolean;
   /** Whether fill data mode is active */
-  fillDataMode: boolean
+  fillDataMode: boolean;
 }
 
 /**
@@ -45,9 +45,9 @@ export function isReadOnly({
   hasNotFoundError,
   fillDataMode,
 }: ReadOnlyConfig): boolean {
-  const isEditModeAndNotUpdating = effectiveEditMode && !updateMode && !hasNotFoundError
-  const isNotFoundAndNotFilling = hasNotFoundError && !fillDataMode
-  return isEditModeAndNotUpdating || isNotFoundAndNotFilling
+  const isEditModeAndNotUpdating = effectiveEditMode && !updateMode && !hasNotFoundError;
+  const isNotFoundAndNotFilling = hasNotFoundError && !fillDataMode;
+  return isEditModeAndNotUpdating || isNotFoundAndNotFilling;
 }
 
 /**
@@ -55,15 +55,15 @@ export function isReadOnly({
  */
 export interface CanPerformActionConfig {
   /** Whether we're in effective edit mode */
-  effectiveEditMode: boolean
+  effectiveEditMode: boolean;
   /** Whether global fill data mode is active */
-  fillDataMode: boolean
+  fillDataMode: boolean;
   /** Whether any item has fill data mode active */
-  hasAnyFillDataMode: boolean
+  hasAnyFillDataMode: boolean;
   /** Whether this specific item has fill data mode active */
-  thisItemFillDataMode: boolean
+  thisItemFillDataMode: boolean;
   /** Whether update mode is active */
-  updateMode: boolean
+  updateMode: boolean;
 }
 
 /**
@@ -87,14 +87,14 @@ export function canPerformAction({
   updateMode,
 }: CanPerformActionConfig): boolean {
   // If not in effective edit mode, action is always allowed
-  if (!effectiveEditMode) return true
+  if (!effectiveEditMode) return true;
 
   // In edit mode, action is allowed if any of these are true:
   // - Fill data mode is active
   // - Any item has fill data mode
   // - This specific item has fill data mode
   // - Update mode is active
-  return fillDataMode || hasAnyFillDataMode || thisItemFillDataMode || updateMode
+  return fillDataMode || hasAnyFillDataMode || thisItemFillDataMode || updateMode;
 }
 
 /**
@@ -102,9 +102,9 @@ export function canPerformAction({
  */
 export interface BasicEditModeConfig {
   /** Whether we're in effective edit mode */
-  effectiveEditMode: boolean
+  effectiveEditMode: boolean;
   /** Whether update mode is active */
-  updateMode: boolean
+  updateMode: boolean;
 }
 
 /**
@@ -117,7 +117,7 @@ export function isEditingAllowed({ effectiveEditMode, updateMode }: BasicEditMod
   // Editing is allowed when:
   // - Not in effective edit mode (create mode), OR
   // - Update mode is active
-  return !effectiveEditMode || updateMode
+  return !effectiveEditMode || updateMode;
 }
 
 /**
@@ -131,10 +131,10 @@ export function isEditingAllowed({ effectiveEditMode, updateMode }: BasicEditMod
 export function canModifyItem(
   effectiveEditMode: boolean,
   itemFillDataMode: boolean,
-  updateMode: boolean
+  updateMode: boolean,
 ): boolean {
-  if (!effectiveEditMode) return true
-  return itemFillDataMode || updateMode
+  if (!effectiveEditMode) return true;
+  return itemFillDataMode || updateMode;
 }
 
 // ============================================================================
@@ -148,7 +148,7 @@ export function canModifyItem(
  * @returns True if the entry is completed
  */
 export function isEntryCompleted(status?: string): boolean {
-  return status?.toUpperCase() === 'COMPLETED'
+  return status?.toUpperCase() === 'COMPLETED';
 }
 
 /**
@@ -158,7 +158,7 @@ export function isEntryCompleted(status?: string): boolean {
  * @returns True if the entry is in draft
  */
 export function isEntryDraft(status?: string): boolean {
-  return status?.toUpperCase() === 'DRAFT'
+  return status?.toUpperCase() === 'DRAFT';
 }
 
 /**
@@ -168,7 +168,7 @@ export function isEntryDraft(status?: string): boolean {
  * @returns True if the entry is in progress
  */
 export function isEntryInProgress(status?: string): boolean {
-  return status?.toUpperCase() === 'IN_PROGRESS'
+  return status?.toUpperCase() === 'IN_PROGRESS';
 }
 
 /**
@@ -178,7 +178,7 @@ export function isEntryInProgress(status?: string): boolean {
  * @returns True if the entry can be edited
  */
 export function canEditEntry(status?: string): boolean {
-  return !isEntryCompleted(status)
+  return !isEntryCompleted(status);
 }
 
 // ============================================================================
@@ -190,13 +190,13 @@ export function canEditEntry(status?: string): boolean {
  */
 export interface DataStateConfig {
   /** Whether we're in effective edit mode */
-  effectiveEditMode: boolean
+  effectiveEditMode: boolean;
   /** Whether data is currently loading */
-  isLoading: boolean
+  isLoading: boolean;
   /** Whether data exists */
-  hasData: boolean
+  hasData: boolean;
   /** Whether there's a not found error */
-  hasNotFoundError: boolean
+  hasNotFoundError: boolean;
 }
 
 /**
@@ -211,7 +211,7 @@ export function hasNoData({
   hasData,
   hasNotFoundError,
 }: DataStateConfig): boolean {
-  return effectiveEditMode && !isLoading && (!hasData || hasNotFoundError)
+  return effectiveEditMode && !isLoading && (!hasData || hasNotFoundError);
 }
 
 /**
@@ -226,5 +226,5 @@ export function hasDataAvailable({
   hasData,
   hasNotFoundError,
 }: DataStateConfig): boolean {
-  return effectiveEditMode && !isLoading && hasData && !hasNotFoundError
+  return effectiveEditMode && !isLoading && hasData && !hasNotFoundError;
 }

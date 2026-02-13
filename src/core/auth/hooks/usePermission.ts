@@ -1,6 +1,6 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo } from 'react';
 
-import { useAppSelector } from '@/core/store'
+import { useAppSelector } from '@/core/store';
 
 /**
  * Hook for checking user permissions
@@ -9,8 +9,8 @@ import { useAppSelector } from '@/core/store'
  */
 export function usePermission() {
   const { permissions, user, currentCompany, permissionsLoaded } = useAppSelector(
-    (state) => state.auth
-  )
+    (state) => state.auth,
+  );
 
   /**
    * Check if user has a specific permission
@@ -19,60 +19,60 @@ export function usePermission() {
    */
   const hasPermission = useCallback(
     (permission: string): boolean => {
-      return permissions.includes(permission)
+      return permissions.includes(permission);
     },
-    [permissions]
-  )
+    [permissions],
+  );
 
   /**
    * Check if user has any of the specified permissions
    */
   const hasAnyPermission = useCallback(
     (requiredPermissions: readonly string[]): boolean => {
-      return requiredPermissions.some((permission) => permissions.includes(permission))
+      return requiredPermissions.some((permission) => permissions.includes(permission));
     },
-    [permissions]
-  )
+    [permissions],
+  );
 
   /**
    * Check if user has all of the specified permissions
    */
   const hasAllPermissions = useCallback(
     (requiredPermissions: readonly string[]): boolean => {
-      return requiredPermissions.every((permission) => permissions.includes(permission))
+      return requiredPermissions.every((permission) => permissions.includes(permission));
     },
-    [permissions]
-  )
+    [permissions],
+  );
 
   /**
    * Check if user has a specific role in the current company
    */
   const hasCompanyRole = useCallback(
     (role: string): boolean => {
-      return currentCompany?.role === role
+      return currentCompany?.role === role;
     },
-    [currentCompany?.role]
-  )
+    [currentCompany?.role],
+  );
 
   /**
    * Check if user has any of the specified roles in the current company
    */
   const hasAnyCompanyRole = useCallback(
     (roles: string[]): boolean => {
-      return currentCompany ? roles.includes(currentCompany.role) : false
+      return currentCompany ? roles.includes(currentCompany.role) : false;
     },
-    [currentCompany]
-  )
+    [currentCompany],
+  );
 
   /**
    * Check if user has a specific role in any of their companies
    */
   const hasRoleInAnyCompany = useCallback(
     (role: string): boolean => {
-      return user?.companies.some((c) => c.role === role && c.is_active) ?? false
+      return user?.companies.some((c) => c.role === role && c.is_active) ?? false;
     },
-    [user?.companies]
-  )
+    [user?.companies],
+  );
 
   /**
    * Check permission for a specific action on a model
@@ -82,51 +82,51 @@ export function usePermission() {
    */
   const canPerformAction = useCallback(
     (appLabel: string, action: string, model: string): boolean => {
-      const permission = `${appLabel}.${action}_${model}`
-      return hasPermission(permission)
+      const permission = `${appLabel}.${action}_${model}`;
+      return hasPermission(permission);
     },
-    [hasPermission]
-  )
+    [hasPermission],
+  );
 
   /**
    * Check if user can view a specific model
    */
   const canView = useCallback(
     (appLabel: string, model: string): boolean => {
-      return canPerformAction(appLabel, 'view', model)
+      return canPerformAction(appLabel, 'view', model);
     },
-    [canPerformAction]
-  )
+    [canPerformAction],
+  );
 
   /**
    * Check if user can add a specific model
    */
   const canAdd = useCallback(
     (appLabel: string, model: string): boolean => {
-      return canPerformAction(appLabel, 'add', model)
+      return canPerformAction(appLabel, 'add', model);
     },
-    [canPerformAction]
-  )
+    [canPerformAction],
+  );
 
   /**
    * Check if user can change a specific model
    */
   const canChange = useCallback(
     (appLabel: string, model: string): boolean => {
-      return canPerformAction(appLabel, 'change', model)
+      return canPerformAction(appLabel, 'change', model);
     },
-    [canPerformAction]
-  )
+    [canPerformAction],
+  );
 
   /**
    * Check if user can delete a specific model
    */
   const canDelete = useCallback(
     (appLabel: string, model: string): boolean => {
-      return canPerformAction(appLabel, 'delete', model)
+      return canPerformAction(appLabel, 'delete', model);
     },
-    [canPerformAction]
-  )
+    [canPerformAction],
+  );
 
   /**
    * Check if user has any permission for a module prefix
@@ -138,16 +138,16 @@ export function usePermission() {
    */
   const hasModulePermission = useCallback(
     (modulePrefix: string): boolean => {
-      const prefix = `${modulePrefix}.`
-      return permissions.some((permission) => permission.startsWith(prefix))
+      const prefix = `${modulePrefix}.`;
+      return permissions.some((permission) => permission.startsWith(prefix));
     },
-    [permissions]
-  )
+    [permissions],
+  );
 
   /**
    * Get permissions as a set for faster lookups
    */
-  const permissionSet = useMemo(() => new Set(permissions), [permissions])
+  const permissionSet = useMemo(() => new Set(permissions), [permissions]);
 
   return {
     // State
@@ -177,7 +177,7 @@ export function usePermission() {
 
     // Set for custom checks
     permissionSet,
-  }
+  };
 }
 
 /**
@@ -185,17 +185,17 @@ export function usePermission() {
  * Optimized for conditional rendering
  */
 export function useHasPermission(permission: string): boolean {
-  const { hasPermission } = usePermission()
-  return useMemo(() => hasPermission(permission), [hasPermission, permission])
+  const { hasPermission } = usePermission();
+  return useMemo(() => hasPermission(permission), [hasPermission, permission]);
 }
 
 /**
  * Hook for checking if user can perform an action on a model
  */
 export function useCanPerformAction(appLabel: string, action: string, model: string): boolean {
-  const { canPerformAction } = usePermission()
+  const { canPerformAction } = usePermission();
   return useMemo(
     () => canPerformAction(appLabel, action, model),
-    [canPerformAction, appLabel, action, model]
-  )
+    [canPerformAction, appLabel, action, model],
+  );
 }

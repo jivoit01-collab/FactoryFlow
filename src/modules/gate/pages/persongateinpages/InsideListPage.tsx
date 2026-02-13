@@ -1,103 +1,103 @@
-import { ArrowLeft, Clock, LogOut, Search, UserCheck } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Clock, LogOut, Search, UserCheck } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/components/ui'
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/components/ui';
 
-import type { EntryLog } from '../../api/personGateIn/personGateIn.api'
-import { useExitPersonEntry, useInsideList } from '../../api/personGateIn/personGateIn.queries'
-import { GateSelect } from '../../components'
+import type { EntryLog } from '../../api/personGateIn/personGateIn.api';
+import { useExitPersonEntry, useInsideList } from '../../api/personGateIn/personGateIn.queries';
+import { GateSelect } from '../../components';
 
 export default function InsideListPage() {
-  const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [exitingId, setExitingId] = useState<number | null>(null)
-  const [selectedGate, setSelectedGate] = useState<number | null>(null)
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [exitingId, setExitingId] = useState<number | null>(null);
+  const [selectedGate, setSelectedGate] = useState<number | null>(null);
 
-  const { data: insideList = [], isLoading, refetch } = useInsideList()
-  const exitMutation = useExitPersonEntry()
+  const { data: insideList = [], isLoading, refetch } = useInsideList();
+  const exitMutation = useExitPersonEntry();
 
   // Filter entries based on search query
   const filteredData = useMemo(() => {
-    if (!search.trim()) return insideList
+    if (!search.trim()) return insideList;
 
-    const searchLower = search.toLowerCase()
+    const searchLower = search.toLowerCase();
     return insideList.filter(
       (entry) =>
         entry.name_snapshot?.toLowerCase().includes(searchLower) ||
         entry.purpose?.toLowerCase().includes(searchLower) ||
         entry.gate_in?.name?.toLowerCase().includes(searchLower) ||
-        entry.vehicle_no?.toLowerCase().includes(searchLower)
-    )
-  }, [insideList, search])
+        entry.vehicle_no?.toLowerCase().includes(searchLower),
+    );
+  }, [insideList, search]);
 
   // Group by person type
   const groupedData = useMemo(() => {
-    const visitors: EntryLog[] = []
-    const labours: EntryLog[] = []
+    const visitors: EntryLog[] = [];
+    const labours: EntryLog[] = [];
 
     filteredData.forEach((entry) => {
       if (entry.visitor) {
-        visitors.push(entry)
+        visitors.push(entry);
       } else if (entry.labour) {
-        labours.push(entry)
+        labours.push(entry);
       }
-    })
+    });
 
-    return { visitors, labours }
-  }, [filteredData])
+    return { visitors, labours };
+  }, [filteredData]);
 
   // Format date/time for display
   const formatDateTime = (dateTime?: string) => {
-    if (!dateTime) return '-'
+    if (!dateTime) return '-';
     try {
-      const date = new Date(dateTime)
+      const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return dateTime
+      return dateTime;
     }
-  }
+  };
 
   // Format time duration
   const formatDuration = (entryTime?: string) => {
-    if (!entryTime) return '-'
+    if (!entryTime) return '-';
     try {
-      const entry = new Date(entryTime)
-      const now = new Date()
-      const diffMs = now.getTime() - entry.getTime()
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+      const entry = new Date(entryTime);
+      const now = new Date();
+      const diffMs = now.getTime() - entry.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
       if (diffHours > 0) {
-        return `${diffHours}h ${diffMins}m`
+        return `${diffHours}h ${diffMins}m`;
       }
-      return `${diffMins}m`
+      return `${diffMins}m`;
     } catch {
-      return '-'
+      return '-';
     }
-  }
+  };
 
   // Handle exit
   const handleExit = async (entryId: number) => {
-    if (!selectedGate) return
+    if (!selectedGate) return;
 
     try {
       await exitMutation.mutateAsync({
         id: entryId,
         data: { gate_out: selectedGate },
-      })
-      setExitingId(null)
-      setSelectedGate(null)
-      refetch()
+      });
+      setExitingId(null);
+      setSelectedGate(null);
+      refetch();
     } catch (error) {
-      console.error('Failed to exit:', error)
+      console.error('Failed to exit:', error);
     }
-  }
+  };
 
   // Entry card component
   const EntryCard = ({ entry }: { entry: EntryLog }) => (
@@ -152,8 +152,8 @@ export default function InsideListPage() {
               size="sm"
               variant="ghost"
               onClick={() => {
-                setExitingId(null)
-                setSelectedGate(null)
+                setExitingId(null);
+                setSelectedGate(null);
               }}
             >
               Cancel
@@ -164,8 +164,8 @@ export default function InsideListPage() {
             size="sm"
             variant="outline"
             onClick={(e) => {
-              e.stopPropagation()
-              setExitingId(entry.id)
+              e.stopPropagation();
+              setExitingId(entry.id);
             }}
           >
             <LogOut className="h-3 w-3 mr-1" />
@@ -174,7 +174,7 @@ export default function InsideListPage() {
         )}
       </div>
     </div>
-  )
+  );
 
   return (
     <div className="space-y-6">
@@ -258,5 +258,5 @@ export default function InsideListPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

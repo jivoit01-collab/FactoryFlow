@@ -1,6 +1,6 @@
-import { useCallback } from 'react'
+import { useCallback } from 'react';
 
-import { useAppDispatch, useAppSelector } from '@/core/store'
+import { useAppDispatch, useAppSelector } from '@/core/store';
 import {
   fetchNotifications,
   fetchPreferences,
@@ -13,20 +13,20 @@ import {
   selectUnreadCount,
   setupPushNotifications,
   updatePreference,
-} from '@/core/store/slices/notification.slice'
+} from '@/core/store/slices/notification.slice';
 
-import type { NotificationListParams } from '../types'
+import type { NotificationListParams } from '../types';
 
 /**
  * Hook for managing push notification permissions and setup
  */
 export function usePushNotifications() {
-  const dispatch = useAppDispatch()
-  const fcmState = useAppSelector(selectFCMState)
+  const dispatch = useAppDispatch();
+  const fcmState = useAppSelector(selectFCMState);
 
   const requestPermission = useCallback(async () => {
-    return dispatch(setupPushNotifications()).unwrap()
-  }, [dispatch])
+    return dispatch(setupPushNotifications()).unwrap();
+  }, [dispatch]);
 
   return {
     isSupported: fcmState.isSupported,
@@ -36,37 +36,37 @@ export function usePushNotifications() {
     isLoading: fcmState.isLoading,
     error: fcmState.error,
     requestPermission,
-  }
+  };
 }
 
 /**
  * Hook for managing notification list
  */
 export function useNotificationList() {
-  const dispatch = useAppDispatch()
-  const notificationsState = useAppSelector(selectNotificationsState)
+  const dispatch = useAppDispatch();
+  const notificationsState = useAppSelector(selectNotificationsState);
 
   const loadNotifications = useCallback(
     (params?: NotificationListParams) => {
-      return dispatch(fetchNotifications(params))
+      return dispatch(fetchNotifications(params));
     },
-    [dispatch]
-  )
+    [dispatch],
+  );
 
   const refreshUnreadCount = useCallback(() => {
-    return dispatch(fetchUnreadCount())
-  }, [dispatch])
+    return dispatch(fetchUnreadCount());
+  }, [dispatch]);
 
   const markAsRead = useCallback(
     (notificationIds: number[]) => {
-      return dispatch(markNotificationsAsRead(notificationIds))
+      return dispatch(markNotificationsAsRead(notificationIds));
     },
-    [dispatch]
-  )
+    [dispatch],
+  );
 
   const markAllAsRead = useCallback(() => {
-    return dispatch(markAllNotificationsAsRead())
-  }, [dispatch])
+    return dispatch(markAllNotificationsAsRead());
+  }, [dispatch]);
 
   return {
     notifications: notificationsState.items,
@@ -78,40 +78,40 @@ export function useNotificationList() {
     refreshUnreadCount,
     markAsRead,
     markAllAsRead,
-  }
+  };
 }
 
 /**
  * Hook for getting just the unread count
  */
 export function useUnreadCount() {
-  const dispatch = useAppDispatch()
-  const unreadCount = useAppSelector(selectUnreadCount)
+  const dispatch = useAppDispatch();
+  const unreadCount = useAppSelector(selectUnreadCount);
 
   const refresh = useCallback(() => {
-    return dispatch(fetchUnreadCount())
-  }, [dispatch])
+    return dispatch(fetchUnreadCount());
+  }, [dispatch]);
 
-  return { unreadCount, refresh }
+  return { unreadCount, refresh };
 }
 
 /**
  * Hook for managing notification preferences
  */
 export function useNotificationPreferences() {
-  const dispatch = useAppDispatch()
-  const preferencesState = useAppSelector(selectPreferencesState)
+  const dispatch = useAppDispatch();
+  const preferencesState = useAppSelector(selectPreferencesState);
 
   const loadPreferences = useCallback(() => {
-    return dispatch(fetchPreferences())
-  }, [dispatch])
+    return dispatch(fetchPreferences());
+  }, [dispatch]);
 
   const togglePreference = useCallback(
     (notificationTypeId: number, isEnabled: boolean) => {
-      return dispatch(updatePreference({ notificationTypeId, isEnabled }))
+      return dispatch(updatePreference({ notificationTypeId, isEnabled }));
     },
-    [dispatch]
-  )
+    [dispatch],
+  );
 
   return {
     preferences: preferencesState.items,
@@ -119,5 +119,5 @@ export function useNotificationPreferences() {
     error: preferencesState.error,
     loadPreferences,
     togglePreference,
-  }
+  };
 }

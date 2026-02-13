@@ -1,10 +1,10 @@
-export { Avatar, AvatarFallback, AvatarImage } from './avatar'
-export { Badge, type BadgeProps, badgeVariants } from './badge'
-export { Button, type ButtonProps, buttonVariants } from './button'
-export { Calendar, type CalendarProps } from './calendar'
-export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card'
-export { Checkbox, type CheckboxProps } from './checkbox'
-export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './collapsible'
+export { Avatar, AvatarFallback, AvatarImage } from './avatar';
+export { Badge, type BadgeProps, badgeVariants } from './badge';
+export { Button, type ButtonProps, buttonVariants } from './button';
+export { Calendar, type CalendarProps } from './calendar';
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
+export { Checkbox, type CheckboxProps } from './checkbox';
+export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './collapsible';
 export {
   Dialog,
   DialogClose,
@@ -16,7 +16,7 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
-} from './dialog'
+} from './dialog';
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -33,11 +33,11 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from './dropdown-menu'
-export { Input, type InputProps } from './input'
-export { Label } from './label'
-export { Popover, PopoverContent, PopoverTrigger } from './popover'
-export { Separator } from './separator'
+} from './dropdown-menu';
+export { Input, type InputProps } from './input';
+export { Label } from './label';
+export { Popover, PopoverContent, PopoverTrigger } from './popover';
+export { Separator } from './separator';
 export {
   Sheet,
   SheetClose,
@@ -49,7 +49,7 @@ export {
   SheetPortal,
   SheetTitle,
   SheetTrigger,
-} from './sheet'
-export { Switch, type SwitchProps } from './switch'
-export { Textarea, type TextareaProps } from './textarea'
-export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
+} from './sheet';
+export { Switch, type SwitchProps } from './switch';
+export { Textarea, type TextareaProps } from './textarea';
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';

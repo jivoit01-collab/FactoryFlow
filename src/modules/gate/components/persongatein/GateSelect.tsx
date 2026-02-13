@@ -1,20 +1,20 @@
-import { Check, ChevronDown, Loader2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-import { Input, Label } from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+import { Input, Label } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
-import type { Gate } from '../../api/personGateIn/personGateIn.api'
-import { useGates } from '../../api/personGateIn/personGateIn.queries'
+import type { Gate } from '../../api/personGateIn/personGateIn.api';
+import { useGates } from '../../api/personGateIn/personGateIn.queries';
 
 interface GateSelectProps {
-  value?: number | null
-  onChange: (gate: Gate | null) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: number | null;
+  onChange: (gate: Gate | null) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
 }
 
 export function GateSelect({
@@ -26,63 +26,63 @@ export function GateSelect({
   label,
   required = false,
 }: GateSelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [displayValue, setDisplayValue] = useState('')
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const [displayValue, setDisplayValue] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Fetch gates when dropdown is open (lazy loading)
-  const { data: gates = [], isLoading } = useGates(isOpen && !disabled)
+  const { data: gates = [], isLoading } = useGates(isOpen && !disabled);
 
   // Filter only active gates
-  const activeGates = gates.filter((g) => g.is_active)
+  const activeGates = gates.filter((g) => g.is_active);
 
   // Update display value when value changes or gates are loaded
   useEffect(() => {
     if (value && gates.length > 0) {
-      const gate = gates.find((g) => g.id === value)
+      const gate = gates.find((g) => g.id === value);
       if (gate) {
-        setDisplayValue(gate.location ? `${gate.name} (${gate.location})` : gate.name)
+        setDisplayValue(gate.location ? `${gate.name} (${gate.location})` : gate.name);
       }
     } else if (!value) {
-      setDisplayValue('')
+      setDisplayValue('');
     }
-  }, [value, gates])
+  }, [value, gates]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+        setIsOpen(false);
       }
-    }
+    };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   const handleSelect = (gate: Gate) => {
-    setDisplayValue(gate.location ? `${gate.name} (${gate.location})` : gate.name)
-    onChange(gate)
-    setIsOpen(false)
-  }
+    setDisplayValue(gate.location ? `${gate.name} (${gate.location})` : gate.name);
+    onChange(gate);
+    setIsOpen(false);
+  };
 
   const handleInputClick = () => {
     if (!disabled) {
-      setIsOpen(!isOpen)
+      setIsOpen(!isOpen);
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
-      setIsOpen(false)
+      setIsOpen(false);
     } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      setIsOpen(!isOpen)
+      e.preventDefault();
+      setIsOpen(!isOpen);
     }
-  }
+  };
 
   return (
     <div className="space-y-2">
@@ -105,7 +105,7 @@ export function GateSelect({
             readOnly
             className={cn(
               'pr-10 cursor-pointer',
-              error && 'border-destructive focus-visible:ring-destructive'
+              error && 'border-destructive focus-visible:ring-destructive',
             )}
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -115,7 +115,7 @@ export function GateSelect({
               <ChevronDown
                 className={cn(
                   'h-4 w-4 text-muted-foreground transition-transform',
-                  isOpen && 'rotate-180'
+                  isOpen && 'rotate-180',
                 )}
               />
             )}
@@ -140,7 +140,7 @@ export function GateSelect({
                     key={gate.id}
                     className={cn(
                       'px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground flex items-center justify-between',
-                      value === gate.id && 'bg-accent'
+                      value === gate.id && 'bg-accent',
                     )}
                     onClick={() => handleSelect(gate)}
                   >
@@ -162,5 +162,5 @@ export function GateSelect({
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
-  )
+  );
 }

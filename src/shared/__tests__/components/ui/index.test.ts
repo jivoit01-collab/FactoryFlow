@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // UI Barrel Index — File Content Verification
@@ -10,28 +10,25 @@ import { describe, it, expect } from 'vitest'
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const readSource = () => {
-  const fs = require('node:fs')
-  const path = require('node:path')
-  return fs.readFileSync(
-    path.resolve(process.cwd(), 'src/shared/components/ui/index.ts'),
-    'utf-8',
-  )
-}
+  const fs = require('node:fs');
+  const path = require('node:path');
+  return fs.readFileSync(path.resolve(process.cwd(), 'src/shared/components/ui/index.ts'), 'utf-8');
+};
 
 describe('shared/components/ui/index.ts — barrel re-exports', () => {
-  const source = readSource()
+  const source = readSource();
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Button
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Button exports', () => {
     it('re-exports Button, buttonVariants, and ButtonProps from ./button', () => {
-      expect(source).toContain('Button')
-      expect(source).toContain('buttonVariants')
-      expect(source).toContain('type ButtonProps')
-      expect(source).toMatch(/export\s*\{[^}]*Button[^}]*\}\s*from\s*['"]\.\/button['"]/)
-    })
-  })
+      expect(source).toContain('Button');
+      expect(source).toContain('buttonVariants');
+      expect(source).toContain('type ButtonProps');
+      expect(source).toMatch(/export\s*\{[^}]*Button[^}]*\}\s*from\s*['"]\.\/button['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Card
@@ -45,33 +42,33 @@ describe('shared/components/ui/index.ts — barrel re-exports', () => {
         'CardTitle',
         'CardDescription',
         'CardContent',
-      ]
+      ];
       for (const name of cardExports) {
-        expect(source).toContain(name)
+        expect(source).toContain(name);
       }
-      expect(source).toMatch(/export\s*\{[^}]*Card[^}]*\}\s*from\s*['"]\.\/card['"]/)
-    })
-  })
+      expect(source).toMatch(/export\s*\{[^}]*Card[^}]*\}\s*from\s*['"]\.\/card['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Input
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Input exports', () => {
     it('re-exports Input and InputProps from ./input', () => {
-      expect(source).toContain('Input')
-      expect(source).toContain('type InputProps')
-      expect(source).toMatch(/export\s*\{[^}]*Input[^}]*\}\s*from\s*['"]\.\/input['"]/)
-    })
-  })
+      expect(source).toContain('Input');
+      expect(source).toContain('type InputProps');
+      expect(source).toMatch(/export\s*\{[^}]*Input[^}]*\}\s*from\s*['"]\.\/input['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Label
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Label exports', () => {
     it('re-exports Label from ./label', () => {
-      expect(source).toMatch(/export\s*\{\s*Label\s*\}\s*from\s*['"]\.\/label['"]/)
-    })
-  })
+      expect(source).toMatch(/export\s*\{\s*Label\s*\}\s*from\s*['"]\.\/label['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Sheet
@@ -89,35 +86,35 @@ describe('shared/components/ui/index.ts — barrel re-exports', () => {
         'SheetFooter',
         'SheetTitle',
         'SheetDescription',
-      ]
+      ];
       for (const name of sheetExports) {
-        expect(source).toContain(name)
+        expect(source).toContain(name);
       }
-      expect(source).toMatch(/from\s*['"]\.\/sheet['"]/)
-    })
-  })
+      expect(source).toMatch(/from\s*['"]\.\/sheet['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Separator
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Separator exports', () => {
     it('re-exports Separator from ./separator', () => {
-      expect(source).toMatch(/export\s*\{\s*Separator\s*\}\s*from\s*['"]\.\/separator['"]/)
-    })
-  })
+      expect(source).toMatch(/export\s*\{\s*Separator\s*\}\s*from\s*['"]\.\/separator['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Avatar
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Avatar exports', () => {
     it('re-exports Avatar, AvatarImage, AvatarFallback from ./avatar', () => {
-      const avatarExports = ['Avatar', 'AvatarImage', 'AvatarFallback']
+      const avatarExports = ['Avatar', 'AvatarImage', 'AvatarFallback'];
       for (const name of avatarExports) {
-        expect(source).toContain(name)
+        expect(source).toContain(name);
       }
-      expect(source).toMatch(/export\s*\{[^}]*Avatar[^}]*\}\s*from\s*['"]\.\/avatar['"]/)
-    })
-  })
+      expect(source).toMatch(/export\s*\{[^}]*Avatar[^}]*\}\s*from\s*['"]\.\/avatar['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Dialog
@@ -135,13 +132,13 @@ describe('shared/components/ui/index.ts — barrel re-exports', () => {
         'DialogFooter',
         'DialogTitle',
         'DialogDescription',
-      ]
+      ];
       for (const name of dialogExports) {
-        expect(source).toContain(name)
+        expect(source).toContain(name);
       }
-      expect(source).toMatch(/from\s*['"]\.\/dialog['"]/)
-    })
-  })
+      expect(source).toMatch(/from\s*['"]\.\/dialog['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // DropdownMenu
@@ -164,110 +161,108 @@ describe('shared/components/ui/index.ts — barrel re-exports', () => {
         'DropdownMenuSubContent',
         'DropdownMenuSubTrigger',
         'DropdownMenuRadioGroup',
-      ]
+      ];
       for (const name of dropdownExports) {
-        expect(source).toContain(name)
+        expect(source).toContain(name);
       }
-      expect(source).toMatch(/from\s*['"]\.\/dropdown-menu['"]/)
-    })
-  })
+      expect(source).toMatch(/from\s*['"]\.\/dropdown-menu['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Tooltip
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Tooltip exports', () => {
     it('re-exports Tooltip, TooltipTrigger, TooltipContent, TooltipProvider from ./tooltip', () => {
-      const tooltipExports = ['Tooltip', 'TooltipTrigger', 'TooltipContent', 'TooltipProvider']
+      const tooltipExports = ['Tooltip', 'TooltipTrigger', 'TooltipContent', 'TooltipProvider'];
       for (const name of tooltipExports) {
-        expect(source).toContain(name)
+        expect(source).toContain(name);
       }
-      expect(source).toMatch(/export\s*\{[^}]*Tooltip[^}]*\}\s*from\s*['"]\.\/tooltip['"]/)
-    })
-  })
+      expect(source).toMatch(/export\s*\{[^}]*Tooltip[^}]*\}\s*from\s*['"]\.\/tooltip['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Badge
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Badge exports', () => {
     it('re-exports Badge, badgeVariants, and BadgeProps from ./badge', () => {
-      expect(source).toContain('Badge')
-      expect(source).toContain('badgeVariants')
-      expect(source).toContain('type BadgeProps')
-      expect(source).toMatch(/export\s*\{[^}]*Badge[^}]*\}\s*from\s*['"]\.\/badge['"]/)
-    })
-  })
+      expect(source).toContain('Badge');
+      expect(source).toContain('badgeVariants');
+      expect(source).toContain('type BadgeProps');
+      expect(source).toMatch(/export\s*\{[^}]*Badge[^}]*\}\s*from\s*['"]\.\/badge['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Collapsible
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Collapsible exports', () => {
     it('re-exports Collapsible, CollapsibleTrigger, CollapsibleContent from ./collapsible', () => {
-      const collapsibleExports = ['Collapsible', 'CollapsibleTrigger', 'CollapsibleContent']
+      const collapsibleExports = ['Collapsible', 'CollapsibleTrigger', 'CollapsibleContent'];
       for (const name of collapsibleExports) {
-        expect(source).toContain(name)
+        expect(source).toContain(name);
       }
-      expect(source).toMatch(
-        /export\s*\{[^}]*Collapsible[^}]*\}\s*from\s*['"]\.\/collapsible['"]/,
-      )
-    })
-  })
+      expect(source).toMatch(/export\s*\{[^}]*Collapsible[^}]*\}\s*from\s*['"]\.\/collapsible['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Popover
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Popover exports', () => {
     it('re-exports Popover, PopoverTrigger, PopoverContent from ./popover', () => {
-      const popoverExports = ['Popover', 'PopoverTrigger', 'PopoverContent']
+      const popoverExports = ['Popover', 'PopoverTrigger', 'PopoverContent'];
       for (const name of popoverExports) {
-        expect(source).toContain(name)
+        expect(source).toContain(name);
       }
-      expect(source).toMatch(/export\s*\{[^}]*Popover[^}]*\}\s*from\s*['"]\.\/popover['"]/)
-    })
-  })
+      expect(source).toMatch(/export\s*\{[^}]*Popover[^}]*\}\s*from\s*['"]\.\/popover['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Calendar
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Calendar exports', () => {
     it('re-exports Calendar and CalendarProps from ./calendar', () => {
-      expect(source).toContain('Calendar')
-      expect(source).toContain('type CalendarProps')
-      expect(source).toMatch(/export\s*\{[^}]*Calendar[^}]*\}\s*from\s*['"]\.\/calendar['"]/)
-    })
-  })
+      expect(source).toContain('Calendar');
+      expect(source).toContain('type CalendarProps');
+      expect(source).toMatch(/export\s*\{[^}]*Calendar[^}]*\}\s*from\s*['"]\.\/calendar['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Switch
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Switch exports', () => {
     it('re-exports Switch and SwitchProps from ./switch', () => {
-      expect(source).toContain('Switch')
-      expect(source).toContain('type SwitchProps')
-      expect(source).toMatch(/export\s*\{[^}]*Switch[^}]*\}\s*from\s*['"]\.\/switch['"]/)
-    })
-  })
+      expect(source).toContain('Switch');
+      expect(source).toContain('type SwitchProps');
+      expect(source).toMatch(/export\s*\{[^}]*Switch[^}]*\}\s*from\s*['"]\.\/switch['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Checkbox
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Checkbox exports', () => {
     it('re-exports Checkbox and CheckboxProps from ./checkbox', () => {
-      expect(source).toContain('Checkbox')
-      expect(source).toContain('type CheckboxProps')
-      expect(source).toMatch(/export\s*\{[^}]*Checkbox[^}]*\}\s*from\s*['"]\.\/checkbox['"]/)
-    })
-  })
+      expect(source).toContain('Checkbox');
+      expect(source).toContain('type CheckboxProps');
+      expect(source).toMatch(/export\s*\{[^}]*Checkbox[^}]*\}\s*from\s*['"]\.\/checkbox['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Textarea
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Textarea exports', () => {
     it('re-exports Textarea and TextareaProps from ./textarea', () => {
-      expect(source).toContain('Textarea')
-      expect(source).toContain('type TextareaProps')
-      expect(source).toMatch(/export\s*\{[^}]*Textarea[^}]*\}\s*from\s*['"]\.\/textarea['"]/)
-    })
-  })
+      expect(source).toContain('Textarea');
+      expect(source).toContain('type TextareaProps');
+      expect(source).toMatch(/export\s*\{[^}]*Textarea[^}]*\}\s*from\s*['"]\.\/textarea['"]/);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Structural integrity
@@ -277,15 +272,15 @@ describe('shared/components/ui/index.ts — barrel re-exports', () => {
       const nonEmptyLines = source
         .split('\n')
         .map((l: string) => l.trim())
-        .filter((l: string) => l.length > 0)
+        .filter((l: string) => l.length > 0);
       for (const line of nonEmptyLines) {
-        expect(line).toMatch(/^export\s*\{|^\s*\w|^\}\s*from/)
+        expect(line).toMatch(/^export\s*\{|^\s*\w|^\}\s*from/);
       }
-    })
+    });
 
     it('re-exports from exactly 17 sub-modules', () => {
-      const fromClauses = source.match(/from\s*['"]\.\/[^'"]+['"]/g) ?? []
-      expect(fromClauses).toHaveLength(17)
-    })
-  })
-})
+      const fromClauses = source.match(/from\s*['"]\.\/[^'"]+['"]/g) ?? [];
+      expect(fromClauses).toHaveLength(17);
+    });
+  });
+});

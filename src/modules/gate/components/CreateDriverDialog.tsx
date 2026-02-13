@@ -1,9 +1,9 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Camera, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Camera, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
-import type { ApiError } from '@/core/api/types'
+import type { ApiError } from '@/core/api/types';
 import {
   Button,
   Dialog,
@@ -14,52 +14,57 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
-import { useCreateDriver, useUpdateDriver } from '../api/driver/driver.queries'
+import { useCreateDriver, useUpdateDriver } from '../api/driver/driver.queries';
 import {
   type DriverFormData,
   driverSchema,
   ID_PROOF_TYPES,
   ID_PROOF_VALIDATION,
-} from '../schemas/driver.schema'
+} from '../schemas/driver.schema';
 
 interface CreateDriverDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onSuccess?: (driver: {
-    id: number
-    name: string
-    mobile_no: string
-    license_no: string
-    id_proof_type: string
-    id_proof_number: string
-    photo: string | null
-  }) => void
+    id: number;
+    name: string;
+    mobile_no: string;
+    license_no: string;
+    id_proof_type: string;
+    id_proof_number: string;
+    photo: string | null;
+  }) => void;
 
   /** Optional — pass to enable edit mode */
   initialData?: {
-    id: number
-    name: string
-    mobile_no: string
-    license_no: string
-    id_proof_type: string
-    id_proof_number: string
-    photo?: string | null
-  }
+    id: number;
+    name: string;
+    mobile_no: string;
+    license_no: string;
+    id_proof_type: string;
+    id_proof_number: string;
+    photo?: string | null;
+  };
 }
 
-export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData }: CreateDriverDialogProps) {
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const isResettingRef = useRef(false)
-  const createDriver = useCreateDriver()
-  const updateDriver = useUpdateDriver()
+export function CreateDriverDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  initialData,
+}: CreateDriverDialogProps) {
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isResettingRef = useRef(false);
+  const createDriver = useCreateDriver();
+  const updateDriver = useUpdateDriver();
 
-  const isEditMode = !!initialData
-  const mutation = isEditMode ? updateDriver : createDriver
+  const isEditMode = !!initialData;
+  const mutation = isEditMode ? updateDriver : createDriver;
 
   const {
     register,
@@ -78,21 +83,21 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData 
       id_proof_type: 'Aadhar',
       id_proof_number: '',
     },
-  })
+  });
 
-  const photoFile = watch('photo')
-  const idProofType = watch('id_proof_type')
+  const photoFile = watch('photo');
+  const idProofType = watch('id_proof_type');
 
   // Combine form errors and API errors for scroll-to-error
-  const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors])
-  useScrollToError(combinedErrors)
+  const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors]);
+  useScrollToError(combinedErrors);
 
   // Reset form and errors when dialog opens/closes
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
 
-    setApiErrors({})
-    isResettingRef.current = true
+    setApiErrors({});
+    isResettingRef.current = true;
 
     if (initialData) {
       reset({
@@ -101,65 +106,65 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData 
         license_no: initialData.license_no,
         id_proof_type: initialData.id_proof_type as any,
         id_proof_number: initialData.id_proof_number,
-      })
+      });
 
-      setPhotoPreview(initialData.photo ?? null)
+      setPhotoPreview(initialData.photo ?? null);
     } else {
-      reset()
-      setPhotoPreview(null)
+      reset();
+      setPhotoPreview(null);
     }
-  }, [open, initialData, reset])
+  }, [open, initialData, reset]);
 
   // Clear id_proof_number when id_proof_type changes (skip during reset)
   useEffect(() => {
     if (isResettingRef.current) {
-      isResettingRef.current = false
-      return
+      isResettingRef.current = false;
+      return;
     }
-    setValue('id_proof_number', '', { shouldValidate: false })
-  }, [idProofType, setValue])
+    setValue('id_proof_number', '', { shouldValidate: false });
+  }, [idProofType, setValue]);
 
   // Handle photo preview for new file uploads only
   useEffect(() => {
     if (photoFile && photoFile instanceof File) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setPhotoPreview(reader.result as string)
-      }
-      reader.readAsDataURL(photoFile)
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(photoFile);
     }
-  }, [photoFile])
+  }, [photoFile]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      setValue('photo', file, { shouldValidate: true })
+      setValue('photo', file, { shouldValidate: true });
     }
-  }
+  };
 
   const handleRemovePhoto = () => {
-    setValue('photo', undefined, { shouldValidate: false })
-    setPhotoPreview(null)
+    setValue('photo', undefined, { shouldValidate: false });
+    setPhotoPreview(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = '';
     }
-  }
+  };
 
   const onSubmit = async (data: DriverFormData) => {
-    setApiErrors({})
+    setApiErrors({});
     try {
       const result = isEditMode
         ? await updateDriver.mutateAsync({ ...data, id: initialData.id })
-        : await createDriver.mutateAsync(data)
-      reset()
-      setPhotoPreview(null)
-      onOpenChange(false)
-      onSuccess?.(result)
+        : await createDriver.mutateAsync(data);
+      reset();
+      setPhotoPreview(null);
+      onOpenChange(false);
+      onSuccess?.(result);
     } catch (error) {
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
 
       if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
             const formField =
@@ -171,37 +176,36 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData 
                     ? 'id_proof_type'
                     : field === 'id_proof_number'
                       ? 'id_proof_number'
-                      : field
-            fieldErrors[formField] = messages[0]
+                      : field;
+            fieldErrors[formField] = messages[0];
             setError(formField as keyof DriverFormData, {
               type: 'server',
               message: messages[0],
-            })
+            });
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
         setApiErrors({
-          general: apiError.message || (isEditMode ? 'Failed to update driver' : 'Failed to create driver'),
-        })
+          general:
+            apiError.message ||
+            (isEditMode ? 'Failed to update driver' : 'Failed to create driver'),
+        });
       }
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? 'Update Driver' : 'Add New Driver'}
-          </DialogTitle>
+          <DialogTitle>{isEditMode ? 'Update Driver' : 'Add New Driver'}</DialogTitle>
 
           <DialogDescription>
             {isEditMode
               ? 'Update the driver details below.'
               : 'Fill in the details to create a new driver. All fields are required.'}
           </DialogDescription>
-
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -256,7 +260,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData 
               placeholder="e.g., MH0220150001234"
               {...register('license_no', {
                 onChange: (e) => {
-                  e.target.value = e.target.value.toUpperCase()
+                  e.target.value = e.target.value.toUpperCase();
                 },
               })}
               disabled={mutation.isPending}
@@ -311,11 +315,11 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData 
                 onChange: (e) => {
                   // For Aadhar, only allow digits
                   if (idProofType === 'Aadhar') {
-                    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 12)
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 12);
                   }
                   // For PAN Card and Voter ID, uppercase the input
                   else if (idProofType === 'PAN Card' || idProofType === 'Voter ID') {
-                    e.target.value = e.target.value.toUpperCase()
+                    e.target.value = e.target.value.toUpperCase();
                   }
                 },
               })}
@@ -383,10 +387,10 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData 
                     alt="Driver photo preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                      const placeholder = e.currentTarget.nextElementSibling as HTMLElement
+                      e.currentTarget.style.display = 'none';
+                      const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
                       if (placeholder) {
-                        placeholder.style.display = 'flex'
+                        placeholder.style.display = 'flex';
                       }
                     }}
                   />
@@ -426,5 +430,5 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData 
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

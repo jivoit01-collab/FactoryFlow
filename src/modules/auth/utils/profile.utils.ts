@@ -7,16 +7,16 @@
  */
 export function getInitials(name?: string, email?: string): string {
   if (name) {
-    const parts = name.trim().split(/\s+/)
+    const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
-    return name.substring(0, 2).toUpperCase()
+    return name.substring(0, 2).toUpperCase();
   }
   if (email) {
-    return email.substring(0, 2).toUpperCase()
+    return email.substring(0, 2).toUpperCase();
   }
-  return 'U'
+  return 'U';
 }
 
 /**
@@ -27,14 +27,14 @@ export function getInitials(name?: string, email?: string): string {
  */
 export function formatDate(dateString: string): string {
   try {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-    })
+    });
   } catch {
-    return dateString
+    return dateString;
   }
 }
 
@@ -46,17 +46,17 @@ export function formatDate(dateString: string): string {
  * @returns Object with app labels as keys and arrays of permissions as values
  */
 export function groupPermissionsByApp(permissions: string[]): Record<string, string[]> {
-  const grouped: Record<string, string[]> = {}
+  const grouped: Record<string, string[]> = {};
 
   permissions.forEach((permission) => {
-    const [appLabel] = permission.split('.')
+    const [appLabel] = permission.split('.');
     if (!grouped[appLabel]) {
-      grouped[appLabel] = []
+      grouped[appLabel] = [];
     }
-    grouped[appLabel].push(permission)
-  })
+    grouped[appLabel].push(permission);
+  });
 
-  return grouped
+  return grouped;
 }
 
 /**
@@ -68,11 +68,11 @@ export function groupPermissionsByApp(permissions: string[]): Record<string, str
  */
 export function formatPermissionName(permission: string): string {
   // Extract codename (part after the dot)
-  const codename = permission.split('.').slice(1).join('.')
+  const codename = permission.split('.').slice(1).join('.');
 
   // Split by underscore and capitalize each word
   return codename
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+    .join(' ');
 }

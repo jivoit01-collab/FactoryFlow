@@ -5,7 +5,7 @@
 // expected method names for managing daily need entries.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -25,9 +25,9 @@ vi.mock('@/config/constants', () => ({
       CREATE: vi.fn(),
     },
   },
-}))
+}));
 
-import { dailyNeedApi } from '../../../api/dailyNeed/dailyNeed.api'
+import { dailyNeedApi } from '../../../api/dailyNeed/dailyNeed.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -35,32 +35,32 @@ import { dailyNeedApi } from '../../../api/dailyNeed/dailyNeed.api'
 
 describe('dailyNeedApi', () => {
   it('is defined as an object', () => {
-    expect(dailyNeedApi).toBeDefined()
-    expect(typeof dailyNeedApi).toBe('object')
-  })
+    expect(dailyNeedApi).toBeDefined();
+    expect(typeof dailyNeedApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a getCategories method', () => {
-    expect(typeof dailyNeedApi.getCategories).toBe('function')
-  })
+    expect(typeof dailyNeedApi.getCategories).toBe('function');
+  });
 
   it('has a get method', () => {
-    expect(typeof dailyNeedApi.get).toBe('function')
-  })
+    expect(typeof dailyNeedApi.get).toBe('function');
+  });
 
   it('has a create method', () => {
-    expect(typeof dailyNeedApi.create).toBe('function')
-  })
+    expect(typeof dailyNeedApi.create).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(dailyNeedApi).sort()
-    expect(methodNames).toEqual(['create', 'get', 'getCategories'])
-  })
-})
+    const methodNames = Object.keys(dailyNeedApi).sort();
+    expect(methodNames).toEqual(['create', 'get', 'getCategories']);
+  });
+});

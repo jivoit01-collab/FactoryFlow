@@ -1,65 +1,65 @@
-import { AlertTriangle, ChevronRight, Clock, LogIn, Plus, UserCheck, Users } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, ChevronRight, Clock, LogIn, Plus, UserCheck, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
-import { PERSON_TYPE_IDS } from '../../api/personGateIn/personGateIn.api'
-import { usePersonGateInDashboard } from '../../api/personGateIn/personGateIn.queries'
+import { PERSON_TYPE_IDS } from '../../api/personGateIn/personGateIn.api';
+import { usePersonGateInDashboard } from '../../api/personGateIn/personGateIn.queries';
 
 // Status badge styling
 const getStatusBadgeClass = (status: string) => {
   switch (status) {
     case 'IN':
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     case 'OUT':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
     case 'CANCELLED':
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
     default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
   }
-}
+};
 
 export default function PersonGateInDashboard() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   // Fetch dashboard data from single API
-  const { data: dashboard, isLoading } = usePersonGateInDashboard()
+  const { data: dashboard, isLoading } = usePersonGateInDashboard();
 
   // Format date/time for display
   const formatDateTime = (dateTime?: string) => {
-    if (!dateTime) return '-'
+    if (!dateTime) return '-';
     try {
-      const date = new Date(dateTime)
+      const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return dateTime
+      return dateTime;
     }
-  }
+  };
 
   // Format time duration (how long inside)
   const formatDuration = (entryTime?: string) => {
-    if (!entryTime) return '-'
+    if (!entryTime) return '-';
     try {
-      const entry = new Date(entryTime)
-      const now = new Date()
-      const diffMs = now.getTime() - entry.getTime()
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+      const entry = new Date(entryTime);
+      const now = new Date();
+      const diffMs = now.getTime() - entry.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
       if (diffHours > 0) {
-        return `${diffHours}h ${diffMins}m`
+        return `${diffHours}h ${diffMins}m`;
       }
-      return `${diffMins}m`
+      return `${diffMins}m`;
     } catch {
-      return '-'
+      return '-';
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -347,5 +347,5 @@ export default function PersonGateInDashboard() {
         </>
       )}
     </div>
-  )
+  );
 }

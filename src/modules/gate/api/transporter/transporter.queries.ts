@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type CreateTransporterRequest, transporterApi } from './transporter.api'
+import { type CreateTransporterRequest, transporterApi } from './transporter.api';
 
 /**
  * Fetch lightweight transporter names for dropdown
@@ -11,7 +11,7 @@ export function useTransporterNames(enabled: boolean = true) {
     queryFn: () => transporterApi.getNames(),
     staleTime: 10 * 60 * 1000, // 10 minutes - transporters don't change often
     enabled,
-  })
+  });
 }
 
 /**
@@ -23,7 +23,7 @@ export function useTransporterById(id: number | null, enabled: boolean = true) {
     queryFn: () => transporterApi.getById(id!),
     staleTime: 10 * 60 * 1000,
     enabled: enabled && id !== null,
-  })
+  });
 }
 
 /**
@@ -35,17 +35,17 @@ export function useTransporters(enabled: boolean = true) {
     queryFn: () => transporterApi.getList(),
     staleTime: 10 * 60 * 1000, // 10 minutes - transporters don't change often
     enabled,
-  })
+  });
 }
 
 export function useCreateTransporter() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateTransporterRequest) => transporterApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transporters'] })
-      queryClient.invalidateQueries({ queryKey: ['transporterNames'] })
+      queryClient.invalidateQueries({ queryKey: ['transporters'] });
+      queryClient.invalidateQueries({ queryKey: ['transporterNames'] });
     },
-  })
+  });
 }

@@ -1,10 +1,10 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
-import { VALIDATION_LIMITS, VALIDATION_MESSAGES, VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_LIMITS, VALIDATION_MESSAGES, VALIDATION_PATTERNS } from '@/config/constants';
 
 // ID proof type options
-export const ID_PROOF_TYPES = ['Aadhar', 'PAN Card', 'Voter ID', 'Other'] as const
-export type IdProofType = (typeof ID_PROOF_TYPES)[number]
+export const ID_PROOF_TYPES = ['Aadhar', 'PAN Card', 'Voter ID', 'Other'] as const;
+export type IdProofType = (typeof ID_PROOF_TYPES)[number];
 
 // Validation config for ID proofs (pattern, length, messages)
 export const ID_PROOF_VALIDATION = {
@@ -32,7 +32,7 @@ export const ID_PROOF_VALIDATION = {
     message: '',
     placeholder: 'Enter ID proof number',
   },
-} as const
+} as const;
 
 export const driverSchema = z
   .object({
@@ -41,11 +41,11 @@ export const driverSchema = z
       .min(1, VALIDATION_MESSAGES.required('Driver name'))
       .min(
         VALIDATION_LIMITS.name.min,
-        VALIDATION_MESSAGES.minLength('Driver name', VALIDATION_LIMITS.name.min)
+        VALIDATION_MESSAGES.minLength('Driver name', VALIDATION_LIMITS.name.min),
       )
       .max(
         VALIDATION_LIMITS.name.max,
-        VALIDATION_MESSAGES.maxLength('Driver name', VALIDATION_LIMITS.name.max)
+        VALIDATION_MESSAGES.maxLength('Driver name', VALIDATION_LIMITS.name.max),
       ),
     mobile_no: z
       .string()
@@ -56,14 +56,14 @@ export const driverSchema = z
       .min(1, VALIDATION_MESSAGES.required('Driving license number'))
       .regex(
         VALIDATION_PATTERNS.drivingLicense,
-        'License must be in format: State code + RTO + Year + Number (e.g., MH0220150001234)'
+        'License must be in format: State code + RTO + Year + Number (e.g., MH0220150001234)',
       ),
     id_proof_type: z.string().min(1, VALIDATION_MESSAGES.required('ID proof type')),
     id_proof_number: z.string().min(1, VALIDATION_MESSAGES.required('ID proof number')),
     photo: z.instanceof(File).optional(),
   })
   .superRefine((data, ctx) => {
-    const { id_proof_type, id_proof_number } = data
+    const { id_proof_type, id_proof_number } = data;
 
     // Validate ID proof number based on type
     if (id_proof_type === 'Aadhar') {
@@ -72,7 +72,7 @@ export const driverSchema = z
           code: z.ZodIssueCode.custom,
           message: ID_PROOF_VALIDATION.Aadhar.message,
           path: ['id_proof_number'],
-        })
+        });
       }
     } else if (id_proof_type === 'PAN Card') {
       if (!VALIDATION_PATTERNS.panCard.test(id_proof_number.toUpperCase())) {
@@ -80,7 +80,7 @@ export const driverSchema = z
           code: z.ZodIssueCode.custom,
           message: ID_PROOF_VALIDATION['PAN Card'].message,
           path: ['id_proof_number'],
-        })
+        });
       }
     } else if (id_proof_type === 'Voter ID') {
       if (!VALIDATION_PATTERNS.voterId.test(id_proof_number.toUpperCase())) {
@@ -88,7 +88,7 @@ export const driverSchema = z
           code: z.ZodIssueCode.custom,
           message: ID_PROOF_VALIDATION['Voter ID'].message,
           path: ['id_proof_number'],
-        })
+        });
       }
     } else if (id_proof_type === 'Other') {
       // For "Other", just ensure minimum length
@@ -97,9 +97,9 @@ export const driverSchema = z
           code: z.ZodIssueCode.custom,
           message: 'ID proof number must be at least 5 characters',
           path: ['id_proof_number'],
-        })
+        });
       }
     }
-  })
+  });
 
-export type DriverFormData = z.infer<typeof driverSchema>
+export type DriverFormData = z.infer<typeof driverSchema>;

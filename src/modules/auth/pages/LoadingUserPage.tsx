@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-import { AUTH_ROUTES } from '@/config/constants'
-import { ROUTES } from '@/config/routes.config'
-import { updateUser } from '@/core/auth'
-import { authService } from '@/core/auth/services/auth.service'
-import { indexedDBService } from '@/core/auth/services/indexedDb.service'
-import { ensureValidToken } from '@/core/auth/utils/tokenRefresh.util'
-import { useAppDispatch } from '@/core/store'
-import { PageLoadError } from '@/shared/components/PageLoadError'
+import { AUTH_ROUTES } from '@/config/constants';
+import { ROUTES } from '@/config/routes.config';
+import { updateUser } from '@/core/auth';
+import { authService } from '@/core/auth/services/auth.service';
+import { indexedDBService } from '@/core/auth/services/indexedDb.service';
+import { ensureValidToken } from '@/core/auth/utils/tokenRefresh.util';
+import { useAppDispatch } from '@/core/store';
+import { PageLoadError } from '@/shared/components/PageLoadError';
 
 /**
  * LoadingUserPage component
@@ -20,27 +20,27 @@ import { PageLoadError } from '@/shared/components/PageLoadError'
  * are loaded before navigating to the dashboard.
  */
 export default function LoadingUserPage() {
-  const [error, setError] = useState<string | null>(null)
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const loadingRef = useRef(false)
+  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const loadingRef = useRef(false);
 
   // Get the intended URL from navigation state (passed from AuthInitializer)
-  const from = (location.state as { from?: string })?.from || ROUTES.DASHBOARD.path
+  const from = (location.state as { from?: string })?.from || ROUTES.DASHBOARD.path;
 
   // Prefetch likely next pages while loading user data
   useEffect(() => {
     // Prefetch common pages in the background
     // These will be ready by the time the user navigates
-    import('@/modules/gate/pages/rawMaterialPages/RawMaterialsDashboard')
-    import('@/modules/gate/pages/GateDashboardPage')
-  }, [])
+    import('@/modules/gate/pages/rawMaterialPages/RawMaterialsDashboard');
+    import('@/modules/gate/pages/GateDashboardPage');
+  }, []);
 
   useEffect(() => {
     // Prevent multiple simultaneous loads
-    if (loadingRef.current) return
-    loadingRef.current = true
+    if (loadingRef.current) return;
+    loadingRef.current = true;
 
     /**
      * Validates token, refreshes if needed, and fetches user data
@@ -49,49 +49,49 @@ export default function LoadingUserPage() {
       try {
         // Ensure token is valid (checks expiry and refreshes if needed)
         const validToken = await ensureValidToken(async () => {
-          await indexedDBService.clearAuthData()
-          navigate(AUTH_ROUTES.login, { replace: true })
-        })
+          await indexedDBService.clearAuthData();
+          navigate(AUTH_ROUTES.login, { replace: true });
+        });
 
         if (!validToken) {
           // Token expired or refresh failed, already redirected
-          return
+          return;
         }
 
         // Fetch full user data from /auth/me
-        const userData = await authService.getCurrentUser()
+        const userData = await authService.getCurrentUser();
 
         // Update Redux with full user data (this sets permissionsLoaded to true)
-        dispatch(updateUser(userData))
+        dispatch(updateUser(userData));
 
         // Navigate to the intended URL (or dashboard if none)
-        navigate(from, { replace: true })
+        navigate(from, { replace: true });
       } catch (err) {
         // If token is invalid (401), redirect to login
         if (
           err instanceof Error &&
           (err.message.includes('401') || err.message.includes('Unauthorized'))
         ) {
-          await indexedDBService.clearAuthData()
-          navigate(AUTH_ROUTES.login, { replace: true })
+          await indexedDBService.clearAuthData();
+          navigate(AUTH_ROUTES.login, { replace: true });
         } else {
           // Other errors (timeout, network issues) - show error page
-          setError(err instanceof Error ? err.message : 'Failed to load user data')
+          setError(err instanceof Error ? err.message : 'Failed to load user data');
         }
       } finally {
-        loadingRef.current = false
+        loadingRef.current = false;
       }
     }
 
-    checkAndLoadUser()
-  }, [dispatch, navigate])
+    checkAndLoadUser();
+  }, [dispatch, navigate]);
 
   if (error) {
     return (
       <div className="flex h-screen items-center justify-center">
         <PageLoadError />
       </div>
-    )
+    );
   }
 
   return (
@@ -106,5 +106,5 @@ export default function LoadingUserPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

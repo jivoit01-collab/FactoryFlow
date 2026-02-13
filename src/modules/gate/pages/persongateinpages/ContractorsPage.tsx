@@ -1,8 +1,8 @@
-import { ArrowLeft, CheckCircle2, Edit2, Plus, Search, Trash2, XCircle } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, CheckCircle2, Edit2, Plus, Search, Trash2, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { VALIDATION_PATTERNS } from '@/config/constants'
+import { VALIDATION_PATTERNS } from '@/config/constants';
 import {
   Button,
   Card,
@@ -11,23 +11,23 @@ import {
   CardTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
-import type { Contractor, CreateContractorRequest } from '../../api/personGateIn/personGateIn.api'
+import type { Contractor, CreateContractorRequest } from '../../api/personGateIn/personGateIn.api';
 import {
   useContractors,
   useCreateContractor,
   useDeleteContractor,
   useUpdateContractor,
-} from '../../api/personGateIn/personGateIn.queries'
+} from '../../api/personGateIn/personGateIn.queries';
 
 export default function ContractorsPage() {
-  const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingContractor, setEditingContractor] = useState<Contractor | null>(null)
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [editingContractor, setEditingContractor] = useState<Contractor | null>(null);
   const [formData, setFormData] = useState<CreateContractorRequest>({
     contractor_name: '',
     contact_person: '',
@@ -35,24 +35,24 @@ export default function ContractorsPage() {
     address: '',
     contract_valid_till: '',
     is_active: true,
-  })
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  });
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
-  const { data: contractors = [], isLoading, refetch } = useContractors()
-  const createMutation = useCreateContractor()
-  const updateMutation = useUpdateContractor()
-  const deleteMutation = useDeleteContractor()
+  const { data: contractors = [], isLoading, refetch } = useContractors();
+  const createMutation = useCreateContractor();
+  const updateMutation = useUpdateContractor();
+  const deleteMutation = useDeleteContractor();
 
   // Filter contractors based on search
   const filteredContractors = contractors.filter(
     (c) =>
       c.contractor_name.toLowerCase().includes(search.toLowerCase()) ||
       c.contact_person?.toLowerCase().includes(search.toLowerCase()) ||
-      c.mobile?.toLowerCase().includes(search.toLowerCase())
-  )
+      c.mobile?.toLowerCase().includes(search.toLowerCase()),
+  );
 
   // Reset form
   const resetForm = () => {
@@ -63,14 +63,14 @@ export default function ContractorsPage() {
       address: '',
       contract_valid_till: '',
       is_active: true,
-    })
-    setEditingContractor(null)
-    setApiErrors({})
-  }
+    });
+    setEditingContractor(null);
+    setApiErrors({});
+  };
 
   // Open edit form
   const handleEdit = (contractor: Contractor) => {
-    setEditingContractor(contractor)
+    setEditingContractor(contractor);
     setFormData({
       contractor_name: contractor.contractor_name,
       contact_person: contractor.contact_person || '',
@@ -78,81 +78,81 @@ export default function ContractorsPage() {
       address: contractor.address || '',
       contract_valid_till: contractor.contract_valid_till || '',
       is_active: contractor.is_active,
-    })
-    setShowForm(true)
-  }
+    });
+    setShowForm(true);
+  };
 
   // Handle form submit
   const handleSubmit = async () => {
-    const errors: Record<string, string> = {}
-    if (!formData.contractor_name.trim()) errors.contractor_name = 'Contractor name is required'
+    const errors: Record<string, string> = {};
+    if (!formData.contractor_name.trim()) errors.contractor_name = 'Contractor name is required';
     if (formData.mobile?.trim() && !VALIDATION_PATTERNS.phone.test(formData.mobile.trim())) {
-      errors.mobile = 'Please enter a valid 10-digit phone number'
+      errors.mobile = 'Please enter a valid 10-digit phone number';
     }
 
     if (Object.keys(errors).length > 0) {
-      setApiErrors(errors)
-      return
+      setApiErrors(errors);
+      return;
     }
 
     try {
       if (editingContractor) {
-        await updateMutation.mutateAsync({ id: editingContractor.id, data: formData })
+        await updateMutation.mutateAsync({ id: editingContractor.id, data: formData });
       } else {
-        await createMutation.mutateAsync(formData)
+        await createMutation.mutateAsync(formData);
       }
-      setShowForm(false)
-      resetForm()
-      refetch()
+      setShowForm(false);
+      resetForm();
+      refetch();
     } catch (error: unknown) {
-      const err = error as { errors?: Record<string, string[]> }
+      const err = error as { errors?: Record<string, string[]> };
       if (err.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(err.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       }
     }
-  }
+  };
 
   // Handle delete
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this contractor?')) return
+    if (!window.confirm('Are you sure you want to delete this contractor?')) return;
 
     try {
-      await deleteMutation.mutateAsync(id)
-      refetch()
+      await deleteMutation.mutateAsync(id);
+      refetch();
     } catch (error) {
-      console.error('Failed to delete:', error)
+      console.error('Failed to delete:', error);
     }
-  }
+  };
 
   // Format date for display
   const formatDate = (date?: string) => {
-    if (!date) return '-'
+    if (!date) return '-';
     try {
       return new Date(date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-      })
+      });
     } catch {
-      return date
+      return date;
     }
-  }
+  };
 
   // Check if contract is expired
   const isExpired = (date?: string) => {
-    if (!date) return false
+    if (!date) return false;
     try {
-      return new Date(date) < new Date()
+      return new Date(date) < new Date();
     } catch {
-      return false
+      return false;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -169,8 +169,8 @@ export default function ContractorsPage() {
         </div>
         <Button
           onClick={() => {
-            resetForm()
-            setShowForm(true)
+            resetForm();
+            setShowForm(true);
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -229,14 +229,14 @@ export default function ContractorsPage() {
                 <Input
                   value={formData.mobile || ''}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
-                    setFormData((prev) => ({ ...prev, mobile: value }))
+                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                    setFormData((prev) => ({ ...prev, mobile: value }));
                     if (apiErrors.mobile) {
                       setApiErrors((prev) => {
-                        const n = { ...prev }
-                        delete n.mobile
-                        return n
-                      })
+                        const n = { ...prev };
+                        delete n.mobile;
+                        return n;
+                      });
                     }
                   }}
                   placeholder="9876543210"
@@ -292,8 +292,8 @@ export default function ContractorsPage() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setShowForm(false)
-                    resetForm()
+                    setShowForm(false);
+                    resetForm();
                   }}
                   className="flex-1"
                 >
@@ -393,5 +393,5 @@ export default function ContractorsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,13 +1,13 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react'
-import { useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react';
+import { useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
-import { Button } from '@/shared/components/ui'
+import type { ApiError } from '@/core/api/types';
+import { Button } from '@/shared/components/ui';
 
-import { useGRPOHistory } from '../api'
-import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants'
-import type { GRPOHistoryEntry, GRPOStatus } from '../types'
+import { useGRPOHistory } from '../api';
+import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants';
+import type { GRPOHistoryEntry, GRPOStatus } from '../types';
 
 // Status filter configuration
 const STATUS_FILTERS = {
@@ -28,65 +28,65 @@ const STATUS_FILTERS = {
     filter: (entry: GRPOHistoryEntry) =>
       entry.status === GRPO_STATUS.FAILED || entry.status === GRPO_STATUS.PARTIALLY_POSTED,
   },
-} as const
+} as const;
 
-type StatusFilterKey = keyof typeof STATUS_FILTERS
+type StatusFilterKey = keyof typeof STATUS_FILTERS;
 
 // Status badge styling
 const getStatusBadgeClass = (status: GRPOStatus) => {
   switch (status) {
     case GRPO_STATUS.POSTED:
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     case GRPO_STATUS.FAILED:
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
     case GRPO_STATUS.PARTIALLY_POSTED:
-      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
     case GRPO_STATUS.PENDING:
     default:
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
   }
-}
+};
 
 // Format date/time for display
 const formatDateTime = (dateTime?: string | null) => {
-  if (!dateTime) return '-'
+  if (!dateTime) return '-';
   try {
-    const date = new Date(dateTime)
+    const date = new Date(dateTime);
     return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    })
+    });
   } catch {
-    return dateTime
+    return dateTime;
   }
-}
+};
 
 export default function GRPOHistoryPage() {
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const { data: historyEntries = [], isLoading, refetch, error } = useGRPOHistory()
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { data: historyEntries = [], isLoading, refetch, error } = useGRPOHistory();
 
   // Get status filter from URL
-  const statusFilter = (searchParams.get('status') as StatusFilterKey) || 'all'
-  const currentFilter = STATUS_FILTERS[statusFilter] || STATUS_FILTERS.all
+  const statusFilter = (searchParams.get('status') as StatusFilterKey) || 'all';
+  const currentFilter = STATUS_FILTERS[statusFilter] || STATUS_FILTERS.all;
 
   // Filter entries based on status
   const filteredEntries = useMemo(() => {
-    return historyEntries.filter(currentFilter.filter)
-  }, [historyEntries, currentFilter])
+    return historyEntries.filter(currentFilter.filter);
+  }, [historyEntries, currentFilter]);
 
   const handleFilterChange = (filter: StatusFilterKey) => {
     if (filter === 'all') {
-      setSearchParams({})
+      setSearchParams({});
     } else {
-      setSearchParams({ status: filter })
+      setSearchParams({ status: filter });
     }
-  }
+  };
 
-  const apiError = error as ApiError | null
-  const isPermissionError = apiError?.status === 403
+  const apiError = error as ApiError | null;
+  const isPermissionError = apiError?.status === 403;
 
   return (
     <div className="space-y-6">
@@ -184,7 +184,7 @@ export default function GRPOHistoryPage() {
 
           <div className="space-y-2">
             {filteredEntries.map((entry) => {
-              const statusConfig = GRPO_STATUS_CONFIG[entry.status]
+              const statusConfig = GRPO_STATUS_CONFIG[entry.status];
 
               return (
                 <div
@@ -213,11 +213,11 @@ export default function GRPOHistoryPage() {
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

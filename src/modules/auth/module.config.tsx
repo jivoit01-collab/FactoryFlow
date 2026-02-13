@@ -1,14 +1,14 @@
-import { lazy } from 'react'
+import { lazy } from 'react';
 
-import type { ModuleConfig } from '@/core/types'
+import type { ModuleConfig } from '@/core/types';
 
 // Eagerly load critical auth pages (always used on reload)
-import LoadingUserPage from './pages/LoadingUserPage'
+import LoadingUserPage from './pages/LoadingUserPage';
 
 // Lazy load other auth pages
-const LoginPage = lazy(() => import('./pages/LoginPage'))
-const CompanySelectionPage = lazy(() => import('./pages/CompanySelectionPage'))
-const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const CompanySelectionPage = lazy(() => import('./pages/CompanySelectionPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 /**
  * Auth module configuration
@@ -45,4 +45,4 @@ export const authModuleConfig: ModuleConfig = {
   ],
   // Auth module doesn't have sidebar navigation items
   navigation: [],
-}
+};

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // ═══════════════════════════════════════════════════════════════
 // ArrivalSlipPage — File Content Verification
@@ -14,22 +14,21 @@ describe('ArrivalSlipPage', () => {
   const content = readFileSync(
     resolve(process.cwd(), 'src/modules/gate/pages/rawmaterialpages/ArrivalSlipPage.tsx'),
     'utf-8',
-  )
+  );
 
   it('exports ArrivalSlipPage as default function', () => {
-    expect(content).toContain('export default function')
-  })
+    expect(content).toContain('export default function');
+  });
 
   it('imports icons from lucide-react', () => {
-    expect(content).toContain('from \'lucide-react\'')
-  })
+    expect(content).toContain("from 'lucide-react'");
+  });
 
   it('imports from react', () => {
-    expect(content).toContain('from \'react\'')
-  })
+    expect(content).toContain("from 'react'");
+  });
 
   it('has a return statement with JSX', () => {
-    expect(content).toContain('return (')
-  })
-
-})
+    expect(content).toContain('return (');
+  });
+});

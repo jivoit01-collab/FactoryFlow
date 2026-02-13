@@ -1,13 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { ErrorBoundary } from '../../components/ErrorBoundary'
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 // Mock UI components
 vi.mock('@/shared/components/ui/button', () => ({
   Button: ({ children, onClick, ...props }: any) => (
-    <button onClick={onClick} {...props}>{children}</button>
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
   ),
-}))
+}));
 
 vi.mock('@/shared/components/ui/card', () => ({
   Card: ({ children, className }: any) => <div className={className}>{children}</div>,
@@ -15,21 +17,21 @@ vi.mock('@/shared/components/ui/card', () => ({
   CardDescription: ({ children }: any) => <p>{children}</p>,
   CardHeader: ({ children }: any) => <div>{children}</div>,
   CardTitle: ({ children, className }: any) => <h3 className={className}>{children}</h3>,
-}))
+}));
 
 // Component that throws an error
 function ThrowError({ shouldThrow }: { shouldThrow: boolean }) {
   if (shouldThrow) {
-    throw new Error('Test error')
+    throw new Error('Test error');
   }
-  return <div>No error</div>
+  return <div>No error</div>;
 }
 
 describe('ErrorBoundary', () => {
   beforeEach(() => {
     // Suppress console.error from React error boundary
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-  })
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
 
   // ─── Normal Rendering ──────────────────────────────────────────
 
@@ -37,10 +39,10 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <div>Child content</div>
-      </ErrorBoundary>
-    )
-    expect(screen.getByText('Child content')).toBeInTheDocument()
-  })
+      </ErrorBoundary>,
+    );
+    expect(screen.getByText('Child content')).toBeInTheDocument();
+  });
 
   // ─── Error Catching ────────────────────────────────────────────
 
@@ -48,19 +50,21 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
-    )
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
-  })
+      </ErrorBoundary>,
+    );
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+  });
 
   it('renders description text in error state', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
-    )
-    expect(screen.getByText('An unexpected error occurred. Please try refreshing the page.')).toBeInTheDocument()
-  })
+      </ErrorBoundary>,
+    );
+    expect(
+      screen.getByText('An unexpected error occurred. Please try refreshing the page.'),
+    ).toBeInTheDocument();
+  });
 
   // ─── Custom Fallback ───────────────────────────────────────────
 
@@ -68,25 +72,25 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary fallback={<div>Custom fallback</div>}>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
-    )
-    expect(screen.getByText('Custom fallback')).toBeInTheDocument()
-    expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
-  })
+      </ErrorBoundary>,
+    );
+    expect(screen.getByText('Custom fallback')).toBeInTheDocument();
+    expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
+  });
 
   // ─── onError Callback ─────────────────────────────────────────
 
   it('calls onError callback when error is caught', () => {
-    const onError = vi.fn()
+    const onError = vi.fn();
     render(
       <ErrorBoundary onError={onError}>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
-    )
-    expect(onError).toHaveBeenCalledTimes(1)
-    expect(onError.mock.calls[0][0]).toBeInstanceOf(Error)
-    expect(onError.mock.calls[0][0].message).toBe('Test error')
-  })
+      </ErrorBoundary>,
+    );
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(onError.mock.calls[0][0].message).toBe('Test error');
+  });
 
   // ─── Try Again ─────────────────────────────────────────────────
 
@@ -94,17 +98,17 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
-    )
-    expect(screen.getByText('Try Again')).toBeInTheDocument()
-  })
+      </ErrorBoundary>,
+    );
+    expect(screen.getByText('Try Again')).toBeInTheDocument();
+  });
 
   it('renders Refresh Page button', () => {
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </ErrorBoundary>
-    )
-    expect(screen.getByText('Refresh Page')).toBeInTheDocument()
-  })
-})
+      </ErrorBoundary>,
+    );
+    expect(screen.getByText('Refresh Page')).toBeInTheDocument();
+  });
+});

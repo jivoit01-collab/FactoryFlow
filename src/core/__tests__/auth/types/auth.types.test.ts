@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest';
 import {
   getPermissions,
   getDefaultCompany,
   getActiveCompanies,
   hasRoleInAnyCompany,
   hasRoleInCompany,
-} from '@/core/auth/types/auth.types'
+} from '@/core/auth/types/auth.types';
 import type {
   UserCompany,
   User,
@@ -16,7 +16,7 @@ import type {
   LoginResponse,
   RefreshTokenResponse,
   MeResponse,
-} from '@/core/auth/types/auth.types'
+} from '@/core/auth/types/auth.types';
 
 // ═══════════════════════════════════════════════════════════════
 // Auth Types (src/core/auth/types/auth.types.ts) — Direct Import
@@ -35,7 +35,7 @@ function makeCompany(overrides: Partial<UserCompany> = {}): UserCompany {
     is_default: false,
     is_active: true,
     ...overrides,
-  }
+  };
 }
 
 function makeUser(overrides: Partial<User> = {}): User {
@@ -50,7 +50,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     companies: [makeCompany()],
     permissions: ['view_gate', 'add_gate'],
     ...overrides,
-  }
+  };
 }
 
 function makeUserLogin(overrides: Partial<UserLogin> = {}): UserLogin {
@@ -60,34 +60,34 @@ function makeUserLogin(overrides: Partial<UserLogin> = {}): UserLogin {
     full_name: 'Test User',
     companies: [makeCompany()],
     ...overrides,
-  }
+  };
 }
 
 describe('Auth Types', () => {
   // ─── Interface Shape Checks ───────────────────────────────
 
   it('UserCompany has all required fields', () => {
-    const company = makeCompany()
-    expect(company).toHaveProperty('company_id')
-    expect(company).toHaveProperty('company_name')
-    expect(company).toHaveProperty('company_code')
-    expect(company).toHaveProperty('role')
-    expect(company).toHaveProperty('is_default')
-    expect(company).toHaveProperty('is_active')
-  })
+    const company = makeCompany();
+    expect(company).toHaveProperty('company_id');
+    expect(company).toHaveProperty('company_name');
+    expect(company).toHaveProperty('company_code');
+    expect(company).toHaveProperty('role');
+    expect(company).toHaveProperty('is_default');
+    expect(company).toHaveProperty('is_active');
+  });
 
   it('User has all required fields', () => {
-    const user = makeUser()
-    expect(user).toHaveProperty('id')
-    expect(user).toHaveProperty('email')
-    expect(user).toHaveProperty('full_name')
-    expect(user).toHaveProperty('employee_code')
-    expect(user).toHaveProperty('is_active')
-    expect(user).toHaveProperty('is_staff')
-    expect(user).toHaveProperty('date_joined')
-    expect(user).toHaveProperty('companies')
-    expect(user).toHaveProperty('permissions')
-  })
+    const user = makeUser();
+    expect(user).toHaveProperty('id');
+    expect(user).toHaveProperty('email');
+    expect(user).toHaveProperty('full_name');
+    expect(user).toHaveProperty('employee_code');
+    expect(user).toHaveProperty('is_active');
+    expect(user).toHaveProperty('is_staff');
+    expect(user).toHaveProperty('date_joined');
+    expect(user).toHaveProperty('companies');
+    expect(user).toHaveProperty('permissions');
+  });
 
   it('AuthState has all required fields', () => {
     const state: AuthState = {
@@ -100,21 +100,21 @@ describe('Auth Types', () => {
       isAuthenticated: false,
       isLoading: false,
       permissionsLoaded: false,
-    }
-    expect(Object.keys(state)).toHaveLength(9)
-  })
+    };
+    expect(Object.keys(state)).toHaveLength(9);
+  });
 
   it('LoginCredentials has email and password', () => {
-    const creds: LoginCredentials = { email: 'a@b.com', password: 'pass' }
-    expect(creds.email).toBe('a@b.com')
-    expect(creds.password).toBe('pass')
-  })
+    const creds: LoginCredentials = { email: 'a@b.com', password: 'pass' };
+    expect(creds.email).toBe('a@b.com');
+    expect(creds.password).toBe('pass');
+  });
 
   it('TokensExpiresIn has access_expires_in and refresh_expires_in', () => {
-    const tokens: TokensExpiresIn = { access_expires_in: 300, refresh_expires_in: 86400 }
-    expect(tokens.access_expires_in).toBe(300)
-    expect(tokens.refresh_expires_in).toBe(86400)
-  })
+    const tokens: TokensExpiresIn = { access_expires_in: 300, refresh_expires_in: 86400 };
+    expect(tokens.access_expires_in).toBe(300);
+    expect(tokens.refresh_expires_in).toBe(86400);
+  });
 
   it('LoginResponse has user, access, refresh, tokensExpiresIn', () => {
     const resp: LoginResponse = {
@@ -122,37 +122,37 @@ describe('Auth Types', () => {
       access: 'abc',
       refresh: 'def',
       tokensExpiresIn: { access_expires_in: 300, refresh_expires_in: 86400 },
-    }
-    expect(resp.access).toBe('abc')
-    expect(resp.user.email).toBe('test@example.com')
-  })
+    };
+    expect(resp.access).toBe('abc');
+    expect(resp.user.email).toBe('test@example.com');
+  });
 
   it('RefreshTokenResponse has access, refresh, tokensExpiresIn', () => {
     const resp: RefreshTokenResponse = {
       access: 'new-access',
       refresh: 'new-refresh',
       tokensExpiresIn: { access_expires_in: 300, refresh_expires_in: 86400 },
-    }
-    expect(resp.access).toBe('new-access')
-  })
+    };
+    expect(resp.access).toBe('new-access');
+  });
 
   it('MeResponse is User alias', () => {
-    const resp: MeResponse = makeUser()
-    expect(resp.id).toBe(1)
-    expect(resp.permissions).toEqual(['view_gate', 'add_gate'])
-  })
+    const resp: MeResponse = makeUser();
+    expect(resp.id).toBe(1);
+    expect(resp.permissions).toEqual(['view_gate', 'add_gate']);
+  });
 
   // ─── getPermissions ───────────────────────────────────────
 
   it('getPermissions returns user.permissions array', () => {
-    const user = makeUser({ permissions: ['perm_a', 'perm_b'] })
-    expect(getPermissions(user)).toEqual(['perm_a', 'perm_b'])
-  })
+    const user = makeUser({ permissions: ['perm_a', 'perm_b'] });
+    expect(getPermissions(user)).toEqual(['perm_a', 'perm_b']);
+  });
 
   it('getPermissions returns empty array when permissions is undefined-like', () => {
-    const user = makeUser({ permissions: [] })
-    expect(getPermissions(user)).toEqual([])
-  })
+    const user = makeUser({ permissions: [] });
+    expect(getPermissions(user)).toEqual([]);
+  });
 
   // ─── getDefaultCompany ────────────────────────────────────
 
@@ -162,9 +162,9 @@ describe('Auth Types', () => {
         makeCompany({ company_id: 1, is_default: false }),
         makeCompany({ company_id: 2, is_default: true }),
       ],
-    })
-    expect(getDefaultCompany(user)?.company_id).toBe(2)
-  })
+    });
+    expect(getDefaultCompany(user)?.company_id).toBe(2);
+  });
 
   it('getDefaultCompany falls back to first company when no default', () => {
     const user = makeUserLogin({
@@ -172,14 +172,14 @@ describe('Auth Types', () => {
         makeCompany({ company_id: 5, is_default: false }),
         makeCompany({ company_id: 6, is_default: false }),
       ],
-    })
-    expect(getDefaultCompany(user)?.company_id).toBe(5)
-  })
+    });
+    expect(getDefaultCompany(user)?.company_id).toBe(5);
+  });
 
   it('getDefaultCompany returns null for user with no companies', () => {
-    const user = makeUserLogin({ companies: [] })
-    expect(getDefaultCompany(user)).toBeNull()
-  })
+    const user = makeUserLogin({ companies: [] });
+    expect(getDefaultCompany(user)).toBeNull();
+  });
 
   // ─── getActiveCompanies ───────────────────────────────────
 
@@ -190,69 +190,69 @@ describe('Auth Types', () => {
         makeCompany({ company_id: 2, is_active: false }),
         makeCompany({ company_id: 3, is_active: true }),
       ],
-    })
-    const active = getActiveCompanies(user)
-    expect(active).toHaveLength(2)
-    expect(active.map((c) => c.company_id)).toEqual([1, 3])
-  })
+    });
+    const active = getActiveCompanies(user);
+    expect(active).toHaveLength(2);
+    expect(active.map((c) => c.company_id)).toEqual([1, 3]);
+  });
 
   it('getActiveCompanies returns empty array when none active', () => {
     const user = makeUser({
       companies: [makeCompany({ is_active: false })],
-    })
-    expect(getActiveCompanies(user)).toHaveLength(0)
-  })
+    });
+    expect(getActiveCompanies(user)).toHaveLength(0);
+  });
 
   // ─── hasRoleInAnyCompany ──────────────────────────────────
 
   it('hasRoleInAnyCompany returns true when user has role in an active company', () => {
     const user = makeUser({
       companies: [makeCompany({ role: 'admin', is_active: true })],
-    })
-    expect(hasRoleInAnyCompany(user, 'admin')).toBe(true)
-  })
+    });
+    expect(hasRoleInAnyCompany(user, 'admin')).toBe(true);
+  });
 
   it('hasRoleInAnyCompany returns false when company is inactive', () => {
     const user = makeUser({
       companies: [makeCompany({ role: 'admin', is_active: false })],
-    })
-    expect(hasRoleInAnyCompany(user, 'admin')).toBe(false)
-  })
+    });
+    expect(hasRoleInAnyCompany(user, 'admin')).toBe(false);
+  });
 
   it('hasRoleInAnyCompany returns false when role does not match', () => {
     const user = makeUser({
       companies: [makeCompany({ role: 'operator', is_active: true })],
-    })
-    expect(hasRoleInAnyCompany(user, 'admin')).toBe(false)
-  })
+    });
+    expect(hasRoleInAnyCompany(user, 'admin')).toBe(false);
+  });
 
   // ─── hasRoleInCompany ─────────────────────────────────────
 
   it('hasRoleInCompany returns true for matching company + role + active', () => {
     const user = makeUser({
       companies: [makeCompany({ company_id: 10, role: 'supervisor', is_active: true })],
-    })
-    expect(hasRoleInCompany(user, 10, 'supervisor')).toBe(true)
-  })
+    });
+    expect(hasRoleInCompany(user, 10, 'supervisor')).toBe(true);
+  });
 
   it('hasRoleInCompany returns false for inactive company', () => {
     const user = makeUser({
       companies: [makeCompany({ company_id: 10, role: 'supervisor', is_active: false })],
-    })
-    expect(hasRoleInCompany(user, 10, 'supervisor')).toBe(false)
-  })
+    });
+    expect(hasRoleInCompany(user, 10, 'supervisor')).toBe(false);
+  });
 
   it('hasRoleInCompany returns false for non-existent company', () => {
     const user = makeUser({
       companies: [makeCompany({ company_id: 10 })],
-    })
-    expect(hasRoleInCompany(user, 999, 'admin')).toBe(false)
-  })
+    });
+    expect(hasRoleInCompany(user, 999, 'admin')).toBe(false);
+  });
 
   it('hasRoleInCompany returns false when role mismatches', () => {
     const user = makeUser({
       companies: [makeCompany({ company_id: 10, role: 'operator', is_active: true })],
-    })
-    expect(hasRoleInCompany(user, 10, 'admin')).toBe(false)
-  })
-})
+    });
+    expect(hasRoleInCompany(user, 10, 'admin')).toBe(false);
+  });
+});

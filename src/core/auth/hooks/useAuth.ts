@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { AUTH_CONFIG, AUTH_ROUTES } from '@/config/constants'
-import { useAppDispatch, useAppSelector } from '@/core/store'
+import { AUTH_CONFIG, AUTH_ROUTES } from '@/config/constants';
+import { useAppDispatch, useAppSelector } from '@/core/store';
 import {
   cleanupPushNotifications,
   resetNotificationState,
-} from '@/core/store/slices/notification.slice'
+} from '@/core/store/slices/notification.slice';
 
-import { authService } from '../services/auth.service'
+import { authService } from '../services/auth.service';
 import {
   initializeAuth,
   initializeComplete,
@@ -17,20 +17,20 @@ import {
   setLoading,
   switchCompany as switchCompanyAction,
   updateUser,
-} from '../store/authSlice'
-import type { LoginCredentials, UserCompany } from '../types/auth.types'
+} from '../store/authSlice';
+import type { LoginCredentials, UserCompany } from '../types/auth.types';
 
 /**
  * Main authentication hook
  * Handles login, logout, session initialization, and permission syncing
  */
 export function useAuth() {
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { user, isAuthenticated, isLoading, permissions, currentCompany, permissionsLoaded } =
-    useAppSelector((state) => state.auth)
+    useAppSelector((state) => state.auth);
 
-  const permissionRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const permissionRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /**
    * Login with credentials
@@ -38,21 +38,21 @@ export function useAuth() {
   const login = useCallback(
     async (credentials: LoginCredentials) => {
       try {
-        dispatch(setLoading(true))
-        const response = await authService.login(credentials)
-        dispatch(loginSuccess(response))
-        navigate('/')
-        return { success: true }
+        dispatch(setLoading(true));
+        const response = await authService.login(credentials);
+        dispatch(loginSuccess(response));
+        navigate('/');
+        return { success: true };
       } catch (error) {
-        dispatch(setLoading(false))
+        dispatch(setLoading(false));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Login failed',
-        }
+        };
       }
     },
-    [dispatch, navigate]
-  )
+    [dispatch, navigate],
+  );
 
   /**
    * Logout - clear all auth data and cleanup push notifications
@@ -60,50 +60,50 @@ export function useAuth() {
   const logout = useCallback(async () => {
     // Clear permission refresh interval
     if (permissionRefreshIntervalRef.current) {
-      clearInterval(permissionRefreshIntervalRef.current)
-      permissionRefreshIntervalRef.current = null
+      clearInterval(permissionRefreshIntervalRef.current);
+      permissionRefreshIntervalRef.current = null;
     }
 
     try {
       // Cleanup push notifications (unregister from backend and delete FCM token)
-      await dispatch(cleanupPushNotifications()).unwrap()
+      await dispatch(cleanupPushNotifications()).unwrap();
     } catch {
       // Ignore FCM cleanup errors, still proceed with logout
     }
 
     try {
-      await authService.logout()
+      await authService.logout();
     } catch {
       // Ignore logout API errors, still clear local state
     } finally {
       // Reset notification state
-      dispatch(resetNotificationState())
+      dispatch(resetNotificationState());
       // Clear auth state
-      dispatch(logoutAction())
-      navigate(AUTH_ROUTES.login)
+      dispatch(logoutAction());
+      navigate(AUTH_ROUTES.login);
     }
-  }, [dispatch, navigate])
+  }, [dispatch, navigate]);
 
   /**
    * Refresh permissions from /auth/me endpoint
    */
   const refreshPermissions = useCallback(async () => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated) return;
 
     try {
-      const userData = await authService.getCurrentUser()
-      dispatch(updateUser(userData))
+      const userData = await authService.getCurrentUser();
+      dispatch(updateUser(userData));
     } catch {
       // If 401, the interceptor will handle logout
     }
-  }, [dispatch, isAuthenticated])
+  }, [dispatch, isAuthenticated]);
 
   /**
    * Initialize auth state from IndexedDB cache
    */
   const initializeFromCache = useCallback(async () => {
     try {
-      const cachedAuth = await authService.initializeFromCache()
+      const cachedAuth = await authService.initializeFromCache();
 
       if (cachedAuth && cachedAuth.isAuthenticated && cachedAuth.user) {
         dispatch(
@@ -114,36 +114,36 @@ export function useAuth() {
             access: cachedAuth.access ?? '',
             refresh: cachedAuth.refresh ?? '',
             expiresIn: cachedAuth.expiresIn ?? 0,
-          })
-        )
+          }),
+        );
 
         // Refresh permissions in background to get latest from server
         authService
           .getCurrentUser()
           .then((userData) => {
-            dispatch(updateUser(userData))
+            dispatch(updateUser(userData));
           })
           .catch(() => {
             // Refresh failed — will retry on next interval
-          })
+          });
       } else {
-        dispatch(initializeComplete())
+        dispatch(initializeComplete());
       }
     } catch {
-      dispatch(initializeComplete())
+      dispatch(initializeComplete());
     }
-  }, [dispatch])
+  }, [dispatch]);
 
   /**
    * Switch current company
    */
   const switchCompany = useCallback(
     async (company: UserCompany) => {
-      await authService.switchCompany(company)
-      dispatch(switchCompanyAction(company))
+      await authService.switchCompany(company);
+      dispatch(switchCompanyAction(company));
     },
-    [dispatch]
-  )
+    [dispatch],
+  );
 
   /**
    * Start periodic permission refresh
@@ -151,33 +151,33 @@ export function useAuth() {
   const startPermissionRefresh = useCallback(() => {
     // Clear any existing interval
     if (permissionRefreshIntervalRef.current) {
-      clearInterval(permissionRefreshIntervalRef.current)
+      clearInterval(permissionRefreshIntervalRef.current);
     }
 
     // Start new interval
     permissionRefreshIntervalRef.current = setInterval(() => {
-      refreshPermissions()
-    }, AUTH_CONFIG.permissionRefreshInterval)
-  }, [refreshPermissions])
+      refreshPermissions();
+    }, AUTH_CONFIG.permissionRefreshInterval);
+  }, [refreshPermissions]);
 
   /**
    * Stop periodic permission refresh
    */
   const stopPermissionRefresh = useCallback(() => {
     if (permissionRefreshIntervalRef.current) {
-      clearInterval(permissionRefreshIntervalRef.current)
-      permissionRefreshIntervalRef.current = null
+      clearInterval(permissionRefreshIntervalRef.current);
+      permissionRefreshIntervalRef.current = null;
     }
-  }, [])
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (permissionRefreshIntervalRef.current) {
-        clearInterval(permissionRefreshIntervalRef.current)
+        clearInterval(permissionRefreshIntervalRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   return {
     // State
@@ -197,7 +197,7 @@ export function useAuth() {
     switchCompany,
     startPermissionRefresh,
     stopPermissionRefresh,
-  }
+  };
 }
 
 /**
@@ -205,29 +205,29 @@ export function useAuth() {
  * Should be used in the root App component or a provider
  */
 export function useAuthInitializer() {
-  const { isAuthenticated } = useAppSelector((state) => state.auth)
-  const { initializeFromCache, startPermissionRefresh, stopPermissionRefresh } = useAuth()
-  const initializedRef = useRef(false)
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { initializeFromCache, startPermissionRefresh, stopPermissionRefresh } = useAuth();
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     if (!initializedRef.current) {
-      initializedRef.current = true
-      initializeFromCache()
+      initializedRef.current = true;
+      initializeFromCache();
     }
-  }, [initializeFromCache])
+  }, [initializeFromCache]);
 
   // Start/stop permission refresh based on auth state
   useEffect(() => {
     if (isAuthenticated) {
-      startPermissionRefresh()
+      startPermissionRefresh();
     } else {
-      stopPermissionRefresh()
+      stopPermissionRefresh();
     }
 
     return () => {
-      stopPermissionRefresh()
-    }
-  }, [isAuthenticated, startPermissionRefresh, stopPermissionRefresh])
+      stopPermissionRefresh();
+    };
+  }, [isAuthenticated, startPermissionRefresh, stopPermissionRefresh]);
 
-  return null
+  return null;
 }

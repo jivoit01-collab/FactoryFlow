@@ -1,46 +1,46 @@
-import { LayoutDashboard } from 'lucide-react'
-import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { LayoutDashboard } from 'lucide-react';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { getAllNavigation } from '@/app/registry'
-import { usePermission } from '@/core/auth'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui'
+import { getAllNavigation } from '@/app/registry';
+import { usePermission } from '@/core/auth';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
 
 const descriptions: Record<string, string> = {
   '/gate':
     'Manage gate entries for raw materials, daily needs, maintenance, construction, and visitors',
   '/qc': 'Inspections, approvals, and master data management',
   '/grpo': 'Goods receipt and purchase order posting',
-}
+};
 
 export function DashboardStats() {
-  const navigate = useNavigate()
-  const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission()
+  const navigate = useNavigate();
+  const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission();
 
   const visibleModules = useMemo(() => {
-    if (!permissionsLoaded) return []
+    if (!permissionsLoaded) return [];
 
     return getAllNavigation().filter((item) => {
-      if (!item.showInSidebar) return false
+      if (!item.showInSidebar) return false;
 
       if (item.modulePrefix) {
-        return hasModulePermission(item.modulePrefix)
+        return hasModulePermission(item.modulePrefix);
       }
 
       if (item.permissions && item.permissions.length > 0) {
-        return hasAnyPermission([...item.permissions])
+        return hasAnyPermission([...item.permissions]);
       }
 
-      return true
-    })
-  }, [permissionsLoaded, hasModulePermission, hasAnyPermission])
+      return true;
+    });
+  }, [permissionsLoaded, hasModulePermission, hasAnyPermission]);
 
-  if (!permissionsLoaded || visibleModules.length === 0) return null
+  if (!permissionsLoaded || visibleModules.length === 0) return null;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {visibleModules.map((mod) => {
-        const Icon = mod.icon || LayoutDashboard
+        const Icon = mod.icon || LayoutDashboard;
         return (
           <Card
             key={mod.path}
@@ -57,8 +57,8 @@ export function DashboardStats() {
               </div>
             </CardHeader>
           </Card>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

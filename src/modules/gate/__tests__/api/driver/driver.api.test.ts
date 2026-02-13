@@ -5,7 +5,7 @@
 // method names for managing drivers.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -25,9 +25,9 @@ vi.mock('@/config/constants', () => ({
       DRIVERS: '/drivers/',
     },
   },
-}))
+}));
 
-import { driverApi } from '../../../api/driver/driver.api'
+import { driverApi } from '../../../api/driver/driver.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -35,36 +35,36 @@ import { driverApi } from '../../../api/driver/driver.api'
 
 describe('driverApi', () => {
   it('is defined as an object', () => {
-    expect(driverApi).toBeDefined()
-    expect(typeof driverApi).toBe('object')
-  })
+    expect(driverApi).toBeDefined();
+    expect(typeof driverApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a getNames method', () => {
-    expect(typeof driverApi.getNames).toBe('function')
-  })
+    expect(typeof driverApi.getNames).toBe('function');
+  });
 
   it('has a getById method', () => {
-    expect(typeof driverApi.getById).toBe('function')
-  })
+    expect(typeof driverApi.getById).toBe('function');
+  });
 
   it('has a getList method', () => {
-    expect(typeof driverApi.getList).toBe('function')
-  })
+    expect(typeof driverApi.getList).toBe('function');
+  });
 
   it('has a create method', () => {
-    expect(typeof driverApi.create).toBe('function')
-  })
+    expect(typeof driverApi.create).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(driverApi).sort()
-    expect(methodNames).toEqual(['create', 'getById', 'getList', 'getNames'])
-  })
-})
+    const methodNames = Object.keys(driverApi).sort();
+    expect(methodNames).toEqual(['create', 'getById', 'getList', 'getNames']);
+  });
+});

@@ -1,7 +1,7 @@
-import { AlertCircle, Camera, Truck, User } from 'lucide-react'
+import { AlertCircle, Camera, Truck, User } from 'lucide-react';
 
-import { ID_PROOF_TYPES } from '@/config/constants'
-import { env } from '@/config/env.config'
+import { ID_PROOF_TYPES } from '@/config/constants';
+import { env } from '@/config/env.config';
 import {
   Button,
   Card,
@@ -10,100 +10,101 @@ import {
   CardTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
-import { DriverSelect } from '../DriverSelect'
-import { TransporterSelect } from '../TransporterSelect'
-import { VehicleSelect } from '../VehicleSelect'
-import { useState } from 'react'
-import { CreateDriverDialog } from '../CreateDriverDialog'
+import { DriverSelect } from '../DriverSelect';
+import { TransporterSelect } from '../TransporterSelect';
+import { VehicleSelect } from '../VehicleSelect';
+import { useState } from 'react';
+import { CreateDriverDialog } from '../CreateDriverDialog';
+import { CreateVehicleDialog } from '../CreateVehicleDialog';
 
 // Get the server base URL for media files (without /api/v1)
 const getMediaBaseUrl = () => {
   try {
-    const url = new URL(env.apiBaseUrl)
-    return url.origin
+    const url = new URL(env.apiBaseUrl);
+    return url.origin;
   } catch {
-    return env.apiBaseUrl.replace(/\/api\/v1\/?$/, '')
+    return env.apiBaseUrl.replace(/\/api\/v1\/?$/, '');
   }
-}
+};
 
 // Type definitions
 export interface VehicleDriverFormData {
-  vehicleId: number
-  vehicleNumber: string
-  vehicleType: string
-  transporterName: string
-  transporterContactPerson: string
-  transporterMobile: string
-  vehicleCapacity: string
-  gpsId: string
-  driverId: number
-  driverName: string
-  mobileNumber: string
-  drivingLicenseNumber: string
-  idProofType: string
-  idProofNumber: string
-  driverPhoto: string | null
-  remarks: string
+  vehicleId: number;
+  vehicleNumber: string;
+  vehicleType: string;
+  transporterName: string;
+  transporterContactPerson: string;
+  transporterMobile: string;
+  vehicleCapacity: string;
+  gpsId: string;
+  driverId: number;
+  driverName: string;
+  mobileNumber: string;
+  drivingLicenseNumber: string;
+  idProofType: string;
+  idProofNumber: string;
+  driverPhoto: string | null;
+  remarks: string;
 }
 
 export interface VehicleSelection {
-  vehicleId: number
-  vehicleNumber: string
-  vehicleType: string
-  vehicleCapacity: string
-  transporterName: string
-  transporterContactPerson: string
-  transporterMobile: string
+  vehicleId: number;
+  vehicleNumber: string;
+  vehicleType: string;
+  vehicleCapacity: string;
+  transporterName: string;
+  transporterContactPerson: string;
+  transporterMobile: string;
 }
 
 export interface DriverSelection {
-  driverId: number
-  driverName: string
-  mobileNumber: string
-  drivingLicenseNumber: string
-  idProofType: string
-  idProofNumber: string
-  driverPhoto: string | null
+  driverId: number;
+  driverName: string;
+  mobileNumber: string;
+  drivingLicenseNumber: string;
+  idProofType: string;
+  idProofNumber: string;
+  driverPhoto: string | null;
 }
 
 export interface VehicleDriverFormShellProps {
   // Form data (controlled component)
-  formData: VehicleDriverFormData
-  onFormChange: (field: string, value: string) => void
+  formData: VehicleDriverFormData;
+  onFormChange: (field: string, value: string) => void;
 
   // State flags
-  isReadOnly: boolean
-  isLoading: boolean
-  isSaving: boolean
+  isReadOnly: boolean;
+  isLoading: boolean;
+  isSaving: boolean;
 
   // Errors
-  apiErrors: Record<string, string>
+  apiErrors: Record<string, string>;
 
   // Step configuration
-  currentStep: number
-  totalSteps: number
+  currentStep: number;
+  totalSteps: number;
 
   // Callbacks
-  onVehicleSelect: (vehicle: VehicleSelection) => void
-  onDriverSelect: (driver: DriverSelection) => void
-  onCancel: () => void
-  onNext: () => void
-  onUpdate?: () => void
+  onVehicleSelect: (vehicle: VehicleSelection) => void;
+  onDriverSelect: (driver: DriverSelection) => void;
+  onCancel: () => void;
+  onNext: () => void;
+  onUpdate?: () => void;
 
   // Edit mode configuration
-  isEditMode: boolean
-  canUpdate: boolean
-  updateMode: boolean
+  isEditMode: boolean;
+  canUpdate: boolean;
+  updateMode: boolean;
 
   // Server error message (5xx errors)
-  serverError?: string | null
+  serverError?: string | null;
 
   // Custom content (optional)
-  headerTitle?: string
+  headerTitle?: string;
 }
 
 export function VehicleDriverFormShell({
@@ -126,19 +127,20 @@ export function VehicleDriverFormShell({
   serverError,
   headerTitle = 'Material Inward',
 }: VehicleDriverFormShellProps) {
-  const progressPercentage = (currentStep / totalSteps) * 100
+  const progressPercentage = (currentStep / totalSteps) * 100;
 
-  const [isEditDriverOpen, setIsEditDriverOpen] = useState(false)
+  const [isEditDriverOpen, setIsEditDriverOpen] = useState(false);
+  const [isEditVehicleOpen, setIsEditVehicleOpen] = useState(false);
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
 
   return (
@@ -172,9 +174,23 @@ export function VehicleDriverFormShell({
         {/* Vehicle Details Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5" />
-              Vehicle Details
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Truck className="h-5 w-5" />
+                Vehicle Details
+              </div>
+
+              {formData.vehicleId != 0 && !isReadOnly && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="px-0 h-auto"
+                  onClick={() => setIsEditVehicleOpen(true)}
+                >
+                  Edit Vehicle
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -183,7 +199,7 @@ export function VehicleDriverFormShell({
                 <VehicleSelect
                   value={formData.vehicleNumber}
                   onChange={(vehicle) => {
-                    if (isReadOnly) return
+                    if (isReadOnly) return;
                     onVehicleSelect({
                       vehicleId: vehicle.vehicleId,
                       vehicleNumber: vehicle.vehicleNumber,
@@ -192,7 +208,7 @@ export function VehicleDriverFormShell({
                       transporterName: vehicle.transporterName,
                       transporterContactPerson: vehicle.transporterContactPerson,
                       transporterMobile: vehicle.transporterMobile,
-                    })
+                    });
                   }}
                   placeholder="Enter vehicle number"
                   label="Vehicle Number"
@@ -205,7 +221,7 @@ export function VehicleDriverFormShell({
               <div className="space-y-2">
                 <TransporterSelect
                   value={formData.transporterName}
-                  onChange={() => { }}
+                  onChange={() => {}}
                   placeholder="Auto-filled from vehicle"
                   label="Transporter Name"
                   required
@@ -213,10 +229,10 @@ export function VehicleDriverFormShell({
                   externalDetails={
                     formData.transporterName
                       ? {
-                        name: formData.transporterName,
-                        contact_person: formData.transporterContactPerson,
-                        mobile_no: formData.transporterMobile,
-                      }
+                          name: formData.transporterName,
+                          contact_person: formData.transporterContactPerson,
+                          mobile_no: formData.transporterMobile,
+                        }
                       : null
                   }
                 />
@@ -276,7 +292,6 @@ export function VehicleDriverFormShell({
                 </Button>
               )}
             </CardTitle>
-
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
@@ -284,7 +299,7 @@ export function VehicleDriverFormShell({
                 <DriverSelect
                   value={formData.driverName}
                   onChange={(driver) => {
-                    if (isReadOnly) return
+                    if (isReadOnly) return;
                     onDriverSelect({
                       driverId: driver.driverId,
                       driverName: driver.driverName,
@@ -293,7 +308,7 @@ export function VehicleDriverFormShell({
                       idProofType: driver.idProofType,
                       idProofNumber: driver.idProofNumber,
                       driverPhoto: driver.driverPhoto,
-                    })
+                    });
                   }}
                   placeholder="Enter driver name or license number"
                   label="Driver Name"
@@ -375,10 +390,10 @@ export function VehicleDriverFormShell({
                       alt="Driver photo"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                        const placeholder = e.currentTarget.nextElementSibling as HTMLElement
+                        e.currentTarget.style.display = 'none';
+                        const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
                         if (placeholder) {
-                          placeholder.style.display = 'flex'
+                          placeholder.style.display = 'flex';
                         }
                       }}
                     />
@@ -419,7 +434,7 @@ export function VehicleDriverFormShell({
                 className={cn(
                   'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
                   apiErrors.entry_no && 'border-destructive',
-                  isReadOnly && 'cursor-not-allowed opacity-50'
+                  isReadOnly && 'cursor-not-allowed opacity-50',
                 )}
                 placeholder="Enter any additional remarks or notes..."
                 value={formData.remarks}
@@ -456,10 +471,28 @@ export function VehicleDriverFormShell({
             idProofType: driver.id_proof_type,
             idProofNumber: driver.id_proof_number,
             driverPhoto: driver.photo,
-          })
+          });
         }}
       />
 
+      <CreateVehicleDialog
+        open={isEditVehicleOpen}
+        onOpenChange={setIsEditVehicleOpen}
+        initialData={{
+          id: formData.vehicleId,
+        }}
+        onSuccess={(vehicle) => {
+          onVehicleSelect({
+            vehicleId: vehicle.id,
+            vehicleNumber: vehicle.vehicle_number,
+            vehicleType: vehicle.vehicle_type?.name ?? '',
+            vehicleCapacity: vehicle.capacity_ton ? `${vehicle.capacity_ton} Tons` : '',
+            transporterName: vehicle.transporter?.name ?? '',
+            transporterContactPerson: vehicle.transporter?.contact_person ?? '',
+            transporterMobile: vehicle.transporter?.mobile_no ?? '',
+          });
+        }}
+      />
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">
@@ -484,5 +517,5 @@ export function VehicleDriverFormShell({
         )}
       </div>
     </div>
-  )
+  );
 }

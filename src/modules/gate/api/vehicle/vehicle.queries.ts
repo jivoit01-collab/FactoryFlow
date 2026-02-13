@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type CreateVehicleRequest, vehicleApi } from './vehicle.api'
+import { type CreateVehicleRequest, type UpdateVehicleRequest, vehicleApi } from './vehicle.api';
 
 /**
  * Fetch vehicle types for dropdown
@@ -11,7 +11,7 @@ export function useVehicleTypes(enabled: boolean = true) {
     queryFn: () => vehicleApi.getVehicleTypes(),
     staleTime: 10 * 60 * 1000,
     enabled,
-  })
+  });
 }
 
 /**
@@ -23,7 +23,7 @@ export function useVehicleNames(enabled: boolean = true) {
     queryFn: () => vehicleApi.getNames(),
     staleTime: 10 * 60 * 1000, // 10 minutes - vehicles don't change often
     enabled,
-  })
+  });
 }
 
 /**
@@ -35,7 +35,7 @@ export function useVehicleById(id: number | null, enabled: boolean = true) {
     queryFn: () => vehicleApi.getById(id!),
     staleTime: 10 * 60 * 1000,
     enabled: enabled && id !== null,
-  })
+  });
 }
 
 /**
@@ -47,17 +47,30 @@ export function useVehicles(enabled: boolean = true) {
     queryFn: () => vehicleApi.getList(),
     staleTime: 10 * 60 * 1000, // 10 minutes - vehicles don't change often
     enabled,
-  })
+  });
 }
 
 export function useCreateVehicle() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateVehicleRequest) => vehicleApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
-      queryClient.invalidateQueries({ queryKey: ['vehicleNames'] })
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleNames'] });
     },
-  })
+  });
+}
+
+export function useUpdateVehicle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateVehicleRequest) => vehicleApi.update(data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleNames'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicle', data.id] });
+    },
+  });
 }

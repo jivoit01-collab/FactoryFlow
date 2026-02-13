@@ -1,60 +1,60 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { ROUTES } from '@/config/routes.config'
-import { useAuth } from '@/core/auth'
-import { clearCurrentCompany } from '@/core/auth'
-import { indexedDBService } from '@/core/auth/services/indexedDb.service'
-import { useAppDispatch } from '@/core/store'
-import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar'
-import { Badge } from '@/shared/components/ui/badge'
-import { Button } from '@/shared/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Separator } from '@/shared/components/ui/separator'
+import { ROUTES } from '@/config/routes.config';
+import { useAuth } from '@/core/auth';
+import { clearCurrentCompany } from '@/core/auth';
+import { indexedDBService } from '@/core/auth/services/indexedDb.service';
+import { useAppDispatch } from '@/core/store';
+import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Separator } from '@/shared/components/ui/separator';
 
-import { ChangePasswordDialog } from '../components/ChangePasswordDialog'
+import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
 import {
   formatDate,
   formatPermissionName,
   getInitials,
   groupPermissionsByApp,
-} from '../utils/profile.utils'
+} from '../utils/profile.utils';
 
 /**
  * ProfilePage component
  * Displays user information, roles (companies), and permissions
  */
 export default function ProfilePage() {
-  const { user, permissions, logout, currentCompany } = useAuth()
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
+  const { user, permissions, logout, currentCompany } = useAuth();
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   if (!user) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-muted-foreground">Loading user data...</p>
       </div>
-    )
+    );
   }
 
-  const groupedPermissions = groupPermissionsByApp(permissions)
-  const initials = getInitials(user.full_name, user.email)
+  const groupedPermissions = groupPermissionsByApp(permissions);
+  const initials = getInitials(user.full_name, user.email);
 
   const handleChangeCompany = async () => {
     try {
       // Clear current company from IndexedDB
-      await indexedDBService.updateCurrentCompany(null)
+      await indexedDBService.updateCurrentCompany(null);
 
       // Clear from Redux
-      dispatch(clearCurrentCompany())
+      dispatch(clearCurrentCompany());
 
       // Navigate to company selection page
-      navigate(ROUTES.COMPANY_SELECTION.path, { replace: true })
+      navigate(ROUTES.COMPANY_SELECTION.path, { replace: true });
     } catch (error) {
-      console.error('Failed to change company:', error)
+      console.error('Failed to change company:', error);
     }
-  }
+  };
 
   return (
     <div className="container mx-auto max-w-4xl p-4 sm:p-6">
@@ -145,7 +145,7 @@ export default function ProfilePage() {
             <CardTitle className="mb-4 text-lg sm:text-xl">Roles</CardTitle>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {user.companies.map((company) => {
-                const isCurrentCompany = currentCompany?.company_id === company.company_id
+                const isCurrentCompany = currentCompany?.company_id === company.company_id;
                 return (
                   <Card
                     key={company.company_id}
@@ -167,7 +167,7 @@ export default function ProfilePage() {
                       </p>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
           </div>
@@ -204,5 +204,5 @@ export default function ProfilePage() {
       {/* Change Password Dialog */}
       <ChangePasswordDialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
     </div>
-  )
+  );
 }

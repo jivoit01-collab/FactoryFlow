@@ -1,46 +1,46 @@
 export interface ApiResponse<T> {
-  data: T
-  message?: string
-  success: boolean
+  data: T;
+  message?: string;
+  success: boolean;
 }
 
 export interface ApiError {
-  message: string
-  code?: string
-  errors?: Record<string, string[]>
-  status: number
+  message: string;
+  code?: string;
+  errors?: Record<string, string[]>;
+  status: number;
   /** Optional detail message from server response */
-  detail?: string
+  detail?: string;
   /** Raw response object for accessing nested error data */
   response?: {
     data?: {
-      detail?: string
-      message?: string
-      errors?: Record<string, string[]>
-    }
-    status?: number
-  }
+      detail?: string;
+      message?: string;
+      errors?: Record<string, string[]>;
+    };
+    status?: number;
+  };
 }
 
 export interface PaginatedResponse<T> {
-  data: T[]
+  data: T[];
   pagination: {
-    page: number
-    pageSize: number
-    total: number
-    totalPages: number
-  }
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export interface PaginationParams {
-  page?: number
-  pageSize?: number
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface ListParams extends PaginationParams {
-  search?: string
-  filters?: Record<string, unknown>
-  [key: string]: unknown
+  search?: string;
+  filters?: Record<string, unknown>;
+  [key: string]: unknown;
 }

@@ -1,12 +1,12 @@
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react';
 
-import { WIZARD_CONFIG } from '../constants'
+import { WIZARD_CONFIG } from '../constants';
 
 interface StepHeaderProps {
-  currentStep: number
-  totalSteps?: number
-  title?: string
-  error?: string | null
+  currentStep: number;
+  totalSteps?: number;
+  title?: string;
+  error?: string | null;
 }
 
 /**
@@ -19,7 +19,7 @@ export function StepHeader({
   title = 'Material Inward',
   error,
 }: StepHeaderProps) {
-  const progressPercentage = (currentStep / totalSteps) * 100
+  const progressPercentage = (currentStep / totalSteps) * 100;
 
   return (
     <>
@@ -49,5 +49,5 @@ export function StepHeader({
         </div>
       )}
     </>
-  )
+  );
 }

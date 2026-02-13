@@ -1,20 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react';
 
-import { SearchableSelect } from '@/shared/components'
+import { SearchableSelect } from '@/shared/components';
 
-import type { MaintenanceType } from '../api/maintenance/maintenance.api'
-import { useMaintenanceTypes } from '../api/maintenance/maintenance.queries'
+import type { MaintenanceType } from '../api/maintenance/maintenance.api';
+import { useMaintenanceTypes } from '../api/maintenance/maintenance.queries';
 
 interface MaintenanceTypeSelectProps {
-  value?: string
-  onChange: (typeId: string, typeName: string) => void
-  placeholder?: string
-  disabled?: boolean
-  error?: string
-  label?: string
-  required?: boolean
+  value?: string;
+  onChange: (typeId: string, typeName: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  error?: string;
+  label?: string;
+  required?: boolean;
   /** Initial display text to show without fetching types (for edit mode) */
-  initialDisplayText?: string
+  initialDisplayText?: string;
 }
 
 export function MaintenanceTypeSelect({
@@ -27,11 +27,11 @@ export function MaintenanceTypeSelect({
   required = false,
   initialDisplayText,
 }: MaintenanceTypeSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data: types = [], isLoading, isError } = useMaintenanceTypes(isDropdownOpen)
+  const { data: types = [], isLoading, isError } = useMaintenanceTypes(isDropdownOpen);
 
-  const activeTypes = useMemo(() => types.filter((t) => t.is_active), [types])
+  const activeTypes = useMemo(() => types.filter((t) => t.is_active), [types]);
 
   return (
     <SearchableSelect<MaintenanceType>
@@ -54,11 +54,11 @@ export function MaintenanceTypeSelect({
       notFoundText="No maintenance types found"
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(type) => {
-        onChange(type.id.toString(), type.type_name)
+        onChange(type.id.toString(), type.type_name);
       }}
       onClear={() => {
-        onChange('', '')
+        onChange('', '');
       }}
     />
-  )
+  );
 }

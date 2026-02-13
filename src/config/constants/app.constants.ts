@@ -1,6 +1,6 @@
-export const APP_NAME = 'Sampooran'
-export const APP_VERSION = '1.0.0'
-export const APP_DESCRIPTION = 'Sampooran - Management System for Jivo Wellness'
+export const APP_NAME = 'Sampooran';
+export const APP_VERSION = '1.0.0';
+export const APP_DESCRIPTION = 'Sampooran - Management System for Jivo Wellness';
 
 export const APP_DEFAULTS = {
   language: 'en',
@@ -8,12 +8,12 @@ export const APP_DEFAULTS = {
   dateFormat: 'DD/MM/YYYY',
   timeFormat: 'HH:mm',
   timezone: 'Asia/Kolkata',
-} as const
+} as const;
 
 export const THEME_OPTIONS = {
   LIGHT: 'light',
   DARK: 'dark',
   SYSTEM: 'system',
-} as const
+} as const;
 
-export type Theme = (typeof THEME_OPTIONS)[keyof typeof THEME_OPTIONS]
+export type Theme = (typeof THEME_OPTIONS)[keyof typeof THEME_OPTIONS];

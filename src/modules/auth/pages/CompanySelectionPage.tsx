@@ -1,11 +1,11 @@
-import { Check } from 'lucide-react'
-import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Check } from 'lucide-react';
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-import { ROUTES } from '@/config/routes.config'
-import { switchCompany } from '@/core/auth'
-import { indexedDBService } from '@/core/auth/services/indexedDb.service'
-import { useAppDispatch, useAppSelector } from '@/core/store'
+import { ROUTES } from '@/config/routes.config';
+import { switchCompany } from '@/core/auth';
+import { indexedDBService } from '@/core/auth/services/indexedDb.service';
+import { useAppDispatch, useAppSelector } from '@/core/store';
 import {
   Button,
   Card,
@@ -13,7 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/shared/components/ui'
+} from '@/shared/components/ui';
 
 /**
  * CompanySelectionPage component
@@ -22,47 +22,47 @@ import {
  * After selection, saves the company to IndexedDB and Redux, then navigates to LoadingUserPage.
  */
 export default function CompanySelectionPage() {
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('')
-  const [isLoading, setIsLoading] = useState(false)
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { user } = useAppSelector((state) => state.auth)
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAppSelector((state) => state.auth);
 
   // Get the intended URL from navigation state (passed from AuthInitializer)
-  const from = (location.state as { from?: string })?.from
+  const from = (location.state as { from?: string })?.from;
 
   // Get active companies from user
-  const companies = user?.companies || []
+  const companies = user?.companies || [];
 
   const handleContinue = async () => {
-    if (!selectedCompanyId) return
+    if (!selectedCompanyId) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
       // Find the selected company
-      const selectedCompany = companies.find((c) => c.company_id.toString() === selectedCompanyId)
+      const selectedCompany = companies.find((c) => c.company_id.toString() === selectedCompanyId);
 
       if (!selectedCompany) {
-        console.error('Selected company not found')
-        return
+        console.error('Selected company not found');
+        return;
       }
 
       // Save company to IndexedDB
-      await indexedDBService.updateCurrentCompany(selectedCompany)
+      await indexedDBService.updateCurrentCompany(selectedCompany);
 
       // Update Redux state
-      dispatch(switchCompany(selectedCompany))
+      dispatch(switchCompany(selectedCompany));
 
       // Navigate to loading user page, passing through the intended URL
-      navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from } })
+      navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from } });
     } catch (error) {
-      console.error('Failed to select company:', error)
+      console.error('Failed to select company:', error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (!user || companies.length === 0) {
     return (
@@ -74,7 +74,7 @@ export default function CompanySelectionPage() {
           </CardDescription>
         </CardHeader>
       </Card>
-    )
+    );
   }
 
   return (
@@ -95,7 +95,7 @@ export default function CompanySelectionPage() {
           <label className="text-sm font-medium">Select a company</label>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {companies.map((company) => {
-              const isSelected = selectedCompanyId === company.company_id.toString()
+              const isSelected = selectedCompanyId === company.company_id.toString();
               return (
                 <Card
                   key={company.company_id}
@@ -118,7 +118,7 @@ export default function CompanySelectionPage() {
                     </div>
                   </CardContent>
                 </Card>
-              )
+              );
             })}
           </div>
         </div>
@@ -132,5 +132,5 @@ export default function CompanySelectionPage() {
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1,11 +1,11 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Check, FileText } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, Check, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { VALIDATION_PATTERNS } from '@/config/constants'
-import { ARRIVAL_SLIP_STATUS } from '@/config/constants'
-import type { ApiError } from '@/core/api'
+import { VALIDATION_PATTERNS } from '@/config/constants';
+import { ARRIVAL_SLIP_STATUS } from '@/config/constants';
+import type { ApiError } from '@/core/api';
 import {
   Card,
   CardContent,
@@ -14,100 +14,100 @@ import {
   Checkbox,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 import {
   getErrorMessage,
   getServerErrorMessage,
   isNotFoundError as checkNotFoundError,
   isServerError as checkServerError,
-} from '@/shared/utils'
+} from '@/shared/utils';
 
 import {
   type ArrivalSlip,
   arrivalSlipApi,
   type CreateArrivalSlipRequest,
-} from '../../api/arrivalSlip/arrivalSlip.api'
+} from '../../api/arrivalSlip/arrivalSlip.api';
 import {
   useCreateArrivalSlip,
   useSubmitArrivalSlip,
-} from '../../api/arrivalSlip/arrivalSlip.queries'
-import { usePOReceipts } from '../../api/po/poReceipt.queries'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components'
-import { WIZARD_CONFIG } from '../../constants'
-import { useEntryId } from '../../hooks'
+} from '../../api/arrivalSlip/arrivalSlip.queries';
+import { usePOReceipts } from '../../api/po/poReceipt.queries';
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
+import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components';
+import { WIZARD_CONFIG } from '../../constants';
+import { useEntryId } from '../../hooks';
 
 interface ArrivalSlipFormData {
-  particulars: string
-  arrival_datetime: string
-  party_name: string
-  billing_qty: string
-  billing_uom: string
-  truck_no_as_per_bill: string
-  commercial_invoice_no: string
-  eway_bill_no: string
-  bilty_no: string
-  has_certificate_of_analysis: boolean
-  has_certificate_of_quantity: boolean
-  remarks: string
+  particulars: string;
+  arrival_datetime: string;
+  party_name: string;
+  billing_qty: string;
+  billing_uom: string;
+  truck_no_as_per_bill: string;
+  commercial_invoice_no: string;
+  eway_bill_no: string;
+  bilty_no: string;
+  has_certificate_of_analysis: boolean;
+  has_certificate_of_quantity: boolean;
+  remarks: string;
 }
 
 interface POItemReceiptWithSlip {
-  id: number
-  po_item_code: string
-  item_name: string
-  ordered_qty: number
-  received_qty: number
-  uom: string
-  supplier_name: string
-  po_number: string
-  formData: ArrivalSlipFormData
-  existingSlip: ArrivalSlip | null
-  isSubmitted: boolean
-  slipId: number | null
+  id: number;
+  po_item_code: string;
+  item_name: string;
+  ordered_qty: number;
+  received_qty: number;
+  uom: string;
+  supplier_name: string;
+  po_number: string;
+  formData: ArrivalSlipFormData;
+  existingSlip: ArrivalSlip | null;
+  isSubmitted: boolean;
+  slipId: number | null;
 }
 
 export default function ArrivalSlipPage() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { entryId, entryIdNumber, isEditMode } = useEntryId()
-  const currentStep = WIZARD_CONFIG.STEPS.ARRIVAL_SLIP
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  const currentStep = WIZARD_CONFIG.STEPS.ARRIVAL_SLIP;
 
   // Fetch PO receipts
   const {
     data: poReceipts = [],
     isLoading: isLoadingPOReceipts,
     error: poReceiptsError,
-  } = usePOReceipts(entryIdNumber || null)
+  } = usePOReceipts(entryIdNumber || null);
 
   // Fetch vehicle entry for auto-filling truck number
   const { data: vehicleEntryData, isLoading: isLoadingVehicleEntry } = useVehicleEntry(
-    entryIdNumber || null
-  )
+    entryIdNumber || null,
+  );
 
-  const createArrivalSlip = useCreateArrivalSlip()
-  const submitArrivalSlip = useSubmitArrivalSlip()
+  const createArrivalSlip = useCreateArrivalSlip();
+  const submitArrivalSlip = useSubmitArrivalSlip();
 
   // State for all PO item receipt forms
-  const [itemForms, setItemForms] = useState<POItemReceiptWithSlip[]>([])
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  const [itemForms, setItemForms] = useState<POItemReceiptWithSlip[]>([]);
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
-  const [isNavigating, setIsNavigating] = useState(false)
-  const [fillDataMode, setFillDataMode] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [fillDataMode, setFillDataMode] = useState(false);
 
-  const effectiveEditMode = isEditMode && !fillDataMode
+  const effectiveEditMode = isEditMode && !fillDataMode;
 
   // Initialize forms when PO receipts are loaded
   useEffect(() => {
     if (poReceipts.length > 0 && vehicleEntryData) {
-      const currentDateTime = new Date().toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
+      const currentDateTime = new Date().toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
 
-      const forms: POItemReceiptWithSlip[] = []
+      const forms: POItemReceiptWithSlip[] = [];
 
       for (const receipt of poReceipts) {
         for (const item of receipt.items) {
@@ -138,28 +138,28 @@ export default function ArrivalSlipPage() {
                 has_certificate_of_quantity: false,
                 remarks: '',
               },
-            })
+            });
           }
         }
       }
 
-      setItemForms(forms)
+      setItemForms(forms);
     }
-  }, [poReceipts, vehicleEntryData])
+  }, [poReceipts, vehicleEntryData]);
 
   // Fetch existing arrival slips for each PO item receipt
   useEffect(() => {
     const fetchExistingSlips = async () => {
-      if (itemForms.length === 0 || !effectiveEditMode) return
+      if (itemForms.length === 0 || !effectiveEditMode) return;
 
-      const updatedForms = [...itemForms]
-      let hasChanges = false
+      const updatedForms = [...itemForms];
+      let hasChanges = false;
 
       for (let i = 0; i < updatedForms.length; i++) {
-        const form = updatedForms[i]
+        const form = updatedForms[i];
         if (!form.existingSlip) {
           try {
-            const slip = await arrivalSlipApi.get(form.id)
+            const slip = await arrivalSlipApi.get(form.id);
             if (slip) {
               updatedForms[i] = {
                 ...form,
@@ -180,8 +180,8 @@ export default function ArrivalSlipPage() {
                   has_certificate_of_quantity: slip.has_certificate_of_quantity,
                   remarks: slip.remarks || '',
                 },
-              }
-              hasChanges = true
+              };
+              hasChanges = true;
             }
           } catch {
             // Slip doesn't exist yet, continue with default form
@@ -190,105 +190,105 @@ export default function ArrivalSlipPage() {
       }
 
       if (hasChanges) {
-        setItemForms(updatedForms)
+        setItemForms(updatedForms);
       }
-    }
+    };
 
-    fetchExistingSlips()
-  }, [itemForms.length, effectiveEditMode])
+    fetchExistingSlips();
+  }, [itemForms.length, effectiveEditMode]);
 
   const handleFormChange = (
     itemId: number,
     field: keyof ArrivalSlipFormData,
-    value: string | boolean
+    value: string | boolean,
   ) => {
     setItemForms((prev) =>
       prev.map((form) =>
-        form.id === itemId ? { ...form, formData: { ...form.formData, [field]: value } } : form
-      )
-    )
+        form.id === itemId ? { ...form, formData: { ...form.formData, [field]: value } } : form,
+      ),
+    );
     // Clear error for this field
     if (apiErrors[`${itemId}_${field}`]) {
       setApiErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[`${itemId}_${field}`]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[`${itemId}_${field}`];
+        return newErrors;
+      });
     }
-  }
+  };
 
   const handleFillData = () => {
-    setFillDataMode(true)
-    setApiErrors({})
-  }
+    setFillDataMode(true);
+    setApiErrors({});
+  };
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step3`)
+      navigate(`/gate/raw-materials/edit/${entryId}/step3`);
     } else {
-      navigate(`/gate/raw-materials/new/step3?entryId=${entryId}`)
+      navigate(`/gate/raw-materials/new/step3?entryId=${entryId}`);
     }
-  }
+  };
 
   const validateForm = (form: POItemReceiptWithSlip): Record<string, string> => {
-    const errors: Record<string, string> = {}
+    const errors: Record<string, string> = {};
 
     if (!form.formData.particulars.trim()) {
-      errors[`${form.id}_particulars`] = 'Particulars is required'
+      errors[`${form.id}_particulars`] = 'Particulars is required';
     }
     if (!form.formData.arrival_datetime) {
-      errors[`${form.id}_arrival_datetime`] = 'Arrival date/time is required'
+      errors[`${form.id}_arrival_datetime`] = 'Arrival date/time is required';
     }
     if (!form.formData.party_name.trim()) {
-      errors[`${form.id}_party_name`] = 'Party name is required'
+      errors[`${form.id}_party_name`] = 'Party name is required';
     }
     if (!form.formData.billing_qty || parseFloat(form.formData.billing_qty) <= 0) {
-      errors[`${form.id}_billing_qty`] = 'Billing quantity is required'
+      errors[`${form.id}_billing_qty`] = 'Billing quantity is required';
     }
     if (!form.formData.billing_uom.trim()) {
-      errors[`${form.id}_billing_uom`] = 'Billing UOM is required'
+      errors[`${form.id}_billing_uom`] = 'Billing UOM is required';
     }
     if (!form.formData.truck_no_as_per_bill.trim()) {
-      errors[`${form.id}_truck_no_as_per_bill`] = 'Truck number is required'
+      errors[`${form.id}_truck_no_as_per_bill`] = 'Truck number is required';
     } else if (
       !VALIDATION_PATTERNS.vehicleNumber.test(
-        form.formData.truck_no_as_per_bill.trim().toUpperCase()
+        form.formData.truck_no_as_per_bill.trim().toUpperCase(),
       )
     ) {
       errors[`${form.id}_truck_no_as_per_bill`] =
-        'Please enter a valid vehicle number (e.g., MH12AB1234)'
+        'Please enter a valid vehicle number (e.g., MH12AB1234)';
     }
 
-    return errors
-  }
+    return errors;
+  };
 
   const handleNext = async () => {
     if (!entryId) {
-      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' })
-      return
+      setApiErrors({ general: 'Entry ID is missing. Please go back to step 1.' });
+      return;
     }
 
     // In edit mode with all items already submitted, just navigate
     if (effectiveEditMode && itemForms.every((form) => form.isSubmitted)) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step5`)
-      return
+      navigate(`/gate/raw-materials/edit/${entryId}/step5`);
+      return;
     }
 
     // Validate all forms
-    let allErrors: Record<string, string> = {}
+    let allErrors: Record<string, string> = {};
     for (const form of itemForms) {
       if (!form.isSubmitted) {
-        const errors = validateForm(form)
-        allErrors = { ...allErrors, ...errors }
+        const errors = validateForm(form);
+        allErrors = { ...allErrors, ...errors };
       }
     }
 
     if (Object.keys(allErrors).length > 0) {
-      setApiErrors(allErrors)
-      return
+      setApiErrors(allErrors);
+      return;
     }
 
-    setApiErrors({})
+    setApiErrors({});
 
     try {
       // Create/update and submit all arrival slips
@@ -308,56 +308,56 @@ export default function ArrivalSlipPage() {
             has_certificate_of_analysis: form.formData.has_certificate_of_analysis,
             has_certificate_of_quantity: form.formData.has_certificate_of_quantity,
             remarks: form.formData.remarks,
-          }
+          };
 
           // Create or update the arrival slip
           const slip = await createArrivalSlip.mutateAsync({
             poItemReceiptId: form.id,
             data: requestData,
-          })
+          });
 
           // Submit the arrival slip to QA
-          await submitArrivalSlip.mutateAsync(slip.id)
+          await submitArrivalSlip.mutateAsync(slip.id);
         }
       }
 
       // Navigate to next step (Weighment)
-      setIsNavigating(true)
+      setIsNavigating(true);
       if (isEditMode) {
-        navigate(`/gate/raw-materials/edit/${entryId}/step5`)
+        navigate(`/gate/raw-materials/edit/${entryId}/step5`);
       } else {
-        navigate(`/gate/raw-materials/new/step5?entryId=${entryId}`)
+        navigate(`/gate/raw-materials/new/step5?entryId=${entryId}`);
       }
     } catch (error) {
-      const apiError = error as ApiError
+      const apiError = error as ApiError;
       if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {}
+        const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = messages[0];
           }
-        })
-        setApiErrors(fieldErrors)
+        });
+        setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to save arrival slips' })
+        setApiErrors({ general: apiError.message || 'Failed to save arrival slips' });
       }
     }
-  }
+  };
 
   // Check for errors
-  const isNotFoundError = checkNotFoundError(poReceiptsError)
-  const hasServerError = checkServerError(poReceiptsError)
+  const isNotFoundError = checkNotFoundError(poReceiptsError);
+  const hasServerError = checkServerError(poReceiptsError);
 
   // Check if PO receipts don't exist
   const hasNoPOReceipts =
-    effectiveEditMode && !isLoadingPOReceipts && (poReceipts.length === 0 || isNotFoundError)
+    effectiveEditMode && !isLoadingPOReceipts && (poReceipts.length === 0 || isNotFoundError);
 
   // Show loading state
   if (isLoadingPOReceipts || isLoadingVehicleEntry) {
-    return <StepLoadingSpinner />
+    return <StepLoadingSpinner />;
   }
 
-  const isSaving = createArrivalSlip.isPending || submitArrivalSlip.isPending
+  const isSaving = createArrivalSlip.isPending || submitArrivalSlip.isPending;
 
   return (
     <div className="space-y-6 pb-6">
@@ -432,7 +432,7 @@ export default function ArrivalSlipPage() {
                     disabled={form.isSubmitted || isSaving}
                     className={cn(
                       apiErrors[`${form.id}_particulars`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50'
+                      form.isSubmitted && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_particulars`] && (
@@ -455,7 +455,7 @@ export default function ArrivalSlipPage() {
                     disabled={form.isSubmitted || isSaving}
                     className={cn(
                       apiErrors[`${form.id}_arrival_datetime`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50'
+                      form.isSubmitted && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_arrival_datetime`] && (
@@ -478,7 +478,7 @@ export default function ArrivalSlipPage() {
                     disabled={form.isSubmitted || isSaving}
                     className={cn(
                       apiErrors[`${form.id}_party_name`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50'
+                      form.isSubmitted && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_party_name`] && (
@@ -502,7 +502,7 @@ export default function ArrivalSlipPage() {
                     disabled={form.isSubmitted || isSaving}
                     className={cn(
                       apiErrors[`${form.id}_billing_qty`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50'
+                      form.isSubmitted && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_billing_qty`] && (
@@ -525,7 +525,7 @@ export default function ArrivalSlipPage() {
                     disabled={form.isSubmitted || isSaving}
                     className={cn(
                       apiErrors[`${form.id}_billing_uom`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50'
+                      form.isSubmitted && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_billing_uom`] && (
@@ -545,13 +545,13 @@ export default function ArrivalSlipPage() {
                     placeholder="MH12AB1234"
                     value={form.formData.truck_no_as_per_bill}
                     onChange={(e) => {
-                      const value = e.target.value.toUpperCase().replace(/\s/g, '')
-                      handleFormChange(form.id, 'truck_no_as_per_bill', value)
+                      const value = e.target.value.toUpperCase().replace(/\s/g, '');
+                      handleFormChange(form.id, 'truck_no_as_per_bill', value);
                     }}
                     disabled={form.isSubmitted || isSaving}
                     className={cn(
                       apiErrors[`${form.id}_truck_no_as_per_bill`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50'
+                      form.isSubmitted && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_truck_no_as_per_bill`] && (
@@ -676,8 +676,8 @@ export default function ArrivalSlipPage() {
       <StepFooter
         onPrevious={handlePrevious}
         onCancel={() => {
-          queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-          navigate('/gate/raw-materials')
+          queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+          navigate('/gate/raw-materials');
         }}
         onNext={handleNext}
         showUpdate={false}
@@ -689,5 +689,5 @@ export default function ArrivalSlipPage() {
         }
       />
     </div>
-  )
+  );
 }

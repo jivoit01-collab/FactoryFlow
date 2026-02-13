@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
 
 // ═══════════════════════════════════════════════════════════════
 // Mock all heavy dependencies
@@ -7,7 +7,7 @@ import { render, screen } from '@testing-library/react'
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   APP_NAME: 'Jivo Wellness',
@@ -18,35 +18,35 @@ vi.mock('@/config/constants', () => ({
     maxLength: (f: string, n: number) => `${f} max ${n}`,
     invalidEmail: 'Invalid email',
   },
-}))
+}));
 
 vi.mock('@/config/routes.config', () => ({
   ROUTES: {
     COMPANY_SELECTION: { path: '/select-company' },
   },
-}))
+}));
 
 vi.mock('@/core/store', () => ({
   useAppDispatch: () => vi.fn(),
-}))
+}));
 
 vi.mock('@/core/auth', () => ({
   loginSuccess: vi.fn(),
-}))
+}));
 
 vi.mock('@/core/auth/services/auth.service', () => ({
   authService: { login: vi.fn() },
-}))
+}));
 
 vi.mock('@/core/auth/services/indexedDb.service', () => ({
   indexedDBService: { clearAuthData: vi.fn() },
-}))
+}));
 
-vi.mock('@/core/api/types', () => ({}))
+vi.mock('@/core/api/types', () => ({}));
 
 vi.mock('@/shared/hooks', () => ({
   useScrollToError: vi.fn(),
-}))
+}));
 
 // Mock UI components as simple HTML elements
 vi.mock('@/shared/components/ui', () => ({
@@ -58,14 +58,14 @@ vi.mock('@/shared/components/ui', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
   Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
-}))
+}));
 
 vi.mock('lucide-react', () => ({
   Eye: () => <span data-testid="eye-icon" />,
   EyeOff: () => <span data-testid="eye-off-icon" />,
-}))
+}));
 
-import LoginPage from '../../pages/LoginPage'
+import LoginPage from '../../pages/LoginPage';
 
 describe('LoginPage', () => {
   // ═══════════════════════════════════════════════════════════════
@@ -73,33 +73,33 @@ describe('LoginPage', () => {
   // ═══════════════════════════════════════════════════════════════
 
   it('renders the app name', () => {
-    render(<LoginPage />)
-    expect(screen.getByText('Jivo Wellness')).toBeInTheDocument()
-  })
+    render(<LoginPage />);
+    expect(screen.getByText('Jivo Wellness')).toBeInTheDocument();
+  });
 
   it('renders the description text', () => {
-    render(<LoginPage />)
-    expect(screen.getByText('Enter your credentials to access the system')).toBeInTheDocument()
-  })
+    render(<LoginPage />);
+    expect(screen.getByText('Enter your credentials to access the system')).toBeInTheDocument();
+  });
 
   it('renders the brand logo', () => {
-    render(<LoginPage />)
-    const logo = screen.getByAltText('Jivo Wellness Logo')
-    expect(logo).toBeInTheDocument()
-    expect(logo).toHaveAttribute('src', '/JivoWellnessLogo.png')
-  })
+    render(<LoginPage />);
+    const logo = screen.getByAltText('Jivo Wellness Logo');
+    expect(logo).toBeInTheDocument();
+    expect(logo).toHaveAttribute('src', '/JivoWellnessLogo.png');
+  });
 
   it('renders the LoginForm component', () => {
-    render(<LoginPage />)
+    render(<LoginPage />);
     // LoginForm renders email and password inputs
-    expect(screen.getByLabelText('Email')).toBeInTheDocument()
-    expect(screen.getByLabelText('Password')).toBeInTheDocument()
-  })
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+  });
 
   it('does not show error message initially', () => {
-    render(<LoginPage />)
+    render(<LoginPage />);
     // Error div has specific className, but no error text should be visible
-    const errorElements = document.querySelectorAll('.text-destructive.bg-destructive\\/10')
-    expect(errorElements).toHaveLength(0)
-  })
-})
+    const errorElements = document.querySelectorAll('.text-destructive.bg-destructive\\/10');
+    expect(errorElements).toHaveLength(0);
+  });
+});

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Module Config — Structure Verification
@@ -11,92 +11,83 @@ import { describe, it, expect } from 'vitest'
 // ═══════════════════════════════════════════════════════════════
 
 function readModuleConfig(): string {
-  const { readFileSync } = require('node:fs')
-  const { resolve } = require('node:path')
-  return readFileSync(
-    resolve(process.cwd(), 'src/modules/dashboard/module.config.tsx'),
-    'utf-8',
-  )
+  const { readFileSync } = require('node:fs');
+  const { resolve } = require('node:path');
+  return readFileSync(resolve(process.cwd(), 'src/modules/dashboard/module.config.tsx'), 'utf-8');
 }
 
 describe('dashboardModuleConfig', () => {
   // ─── Top-level Shape ──────────────────────────────────────────
 
   it('exports dashboardModuleConfig with ModuleConfig type', () => {
-    const content = readModuleConfig()
-    expect(content).toContain('export const dashboardModuleConfig')
-    expect(content).toContain('ModuleConfig')
-  })
+    const content = readModuleConfig();
+    expect(content).toContain('export const dashboardModuleConfig');
+    expect(content).toContain('ModuleConfig');
+  });
 
   it('has name set to "dashboard"', () => {
-    const content = readModuleConfig()
-    expect(content).toMatch(/name:\s*['"]dashboard['"]/)
-  })
+    const content = readModuleConfig();
+    expect(content).toMatch(/name:\s*['"]dashboard['"]/);
+  });
 
   // ─── Routes ───────────────────────────────────────────────────
 
   it('defines a routes array', () => {
-    const content = readModuleConfig()
-    expect(content).toContain('routes:')
-  })
+    const content = readModuleConfig();
+    expect(content).toContain('routes:');
+  });
 
   it('first route has path "/"', () => {
-    const content = readModuleConfig()
-    expect(content).toMatch(/routes:\s*\[[\s\S]*?path:\s*['"]\/['"]/)
-  })
+    const content = readModuleConfig();
+    expect(content).toMatch(/routes:\s*\[[\s\S]*?path:\s*['"]\/['"]/);
+  });
 
   it('first route uses "main" layout', () => {
-    const content = readModuleConfig()
-    expect(content).toMatch(/layout:\s*['"]main['"]/)
-  })
+    const content = readModuleConfig();
+    expect(content).toMatch(/layout:\s*['"]main['"]/);
+  });
 
   it('route element uses imported DashboardPage (non-lazy)', () => {
-    const content = readModuleConfig()
+    const content = readModuleConfig();
 
     // Verify normal import (not lazy)
-    expect(content).toContain(
-      "import DashboardPage from './pages/DashboardPage'",
-    )
+    expect(content).toContain("import DashboardPage from './pages/DashboardPage'");
 
     // Verify element usage
-    expect(content).toContain('element: <DashboardPage />')
-  })
+    expect(content).toContain('element: <DashboardPage />');
+  });
 
   // ─── Navigation ───────────────────────────────────────────────
 
   it('defines a navigation array', () => {
-    const content = readModuleConfig()
-    expect(content).toContain('navigation:')
-  })
+    const content = readModuleConfig();
+    expect(content).toContain('navigation:');
+  });
 
   it('navigation item has path "/" and title "Dashboard"', () => {
-    const content = readModuleConfig()
-    expect(content).toMatch(/navigation:\s*\[[\s\S]*?path:\s*['"]\/['"]/)
-    expect(content).toMatch(/title:\s*['"]Dashboard['"]/)
-  })
+    const content = readModuleConfig();
+    expect(content).toMatch(/navigation:\s*\[[\s\S]*?path:\s*['"]\/['"]/);
+    expect(content).toMatch(/title:\s*['"]Dashboard['"]/);
+  });
 
   it('navigation item references LayoutDashboard icon', () => {
-    const content = readModuleConfig()
-    expect(content).toContain(
-      "import { LayoutDashboard } from 'lucide-react'",
-    )
-    expect(content).toContain('icon: LayoutDashboard')
-  })
+    const content = readModuleConfig();
+    expect(content).toContain("import { LayoutDashboard } from 'lucide-react'");
+    expect(content).toContain('icon: LayoutDashboard');
+  });
 
   it('navigation item has correct permissions', () => {
-    const content = readModuleConfig()
-    expect(content).toMatch(
-      /permissions:\s*\[['"]gatein\.view_dashboard['"]\]/,
-    )
-  })
+    const content = readModuleConfig();
+    expect(content).toMatch(/permissions:\s*\[['"]gatein\.view_dashboard['"]\]/);
+  });
 
   it('navigation item has modulePrefix "gatein"', () => {
-    const content = readModuleConfig()
-    expect(content).toMatch(/modulePrefix:\s*['"]gatein['"]/)
-  })
+    const content = readModuleConfig();
+    expect(content).toMatch(/modulePrefix:\s*['"]gatein['"]/);
+  });
 
   it('navigation item has showInSidebar set to true', () => {
-    const content = readModuleConfig()
-    expect(content).toMatch(/showInSidebar:\s*true/)
-  })
-})
+    const content = readModuleConfig();
+    expect(content).toMatch(/showInSidebar:\s*true/);
+  });
+});

@@ -1,4 +1,4 @@
-import { AlertCircle, Clock, Shield } from 'lucide-react'
+import { AlertCircle, Clock, Shield } from 'lucide-react';
 
 import {
   Button,
@@ -8,71 +8,71 @@ import {
   CardTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
 // Type definitions
 export interface SecurityCheckFormData {
-  vehicleCondition: string
-  fireExtinguisherAvailable: string
-  tyreCondition: string
-  sealNumberBefore: string
-  sealNumberAfter: string
-  alcoholTestRequired: string
-  entryTime: string
-  inspectedByName: string
-  remarks: string
+  vehicleCondition: string;
+  fireExtinguisherAvailable: string;
+  tyreCondition: string;
+  sealNumberBefore: string;
+  sealNumberAfter: string;
+  alcoholTestRequired: string;
+  entryTime: string;
+  inspectedByName: string;
+  remarks: string;
 }
 
 export interface SecurityCheckFormShellProps {
   // Form data (controlled component)
-  formData: SecurityCheckFormData
-  onFormChange: (field: string, value: string) => void
+  formData: SecurityCheckFormData;
+  onFormChange: (field: string, value: string) => void;
 
   // State flags
-  isReadOnly: boolean
-  isLoading: boolean
-  isSaving: boolean
+  isReadOnly: boolean;
+  isLoading: boolean;
+  isSaving: boolean;
 
   // Errors
-  apiErrors: Record<string, string>
+  apiErrors: Record<string, string>;
 
   // Step configuration
-  currentStep: number
-  totalSteps: number
+  currentStep: number;
+  totalSteps: number;
 
   // Navigation callbacks
-  onPrevious: () => void
-  onCancel: () => void
-  onNext: () => void
-  onUpdate?: () => void
+  onPrevious: () => void;
+  onCancel: () => void;
+  onNext: () => void;
+  onUpdate?: () => void;
 
   // Edit mode configuration
-  isEditMode: boolean
-  canUpdate: boolean
-  updateMode: boolean
+  isEditMode: boolean;
+  canUpdate: boolean;
+  updateMode: boolean;
 
   // Optional: not found state for edit mode
-  showFillDataAlert?: boolean
-  onFillData?: () => void
-  fillDataMessage?: string
+  showFillDataAlert?: boolean;
+  onFillData?: () => void;
+  fillDataMessage?: string;
 
   // Server error message (5xx errors)
-  serverError?: string | null
+  serverError?: string | null;
 
   // Custom content (optional)
-  headerTitle?: string
+  headerTitle?: string;
 }
 
 // Format time for display
 const formatTime = (time: string) => {
-  if (!time) return ''
-  const [hours, minutes] = time.split(':')
-  const hour12 = parseInt(hours) % 12 || 12
-  const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM'
-  return `${hour12}:${minutes} ${ampm}`
-}
+  if (!time) return '';
+  const [hours, minutes] = time.split(':');
+  const hour12 = parseInt(hours) % 12 || 12;
+  const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
+  return `${hour12}:${minutes} ${ampm}`;
+};
 
 export function SecurityCheckFormShell({
   formData,
@@ -96,17 +96,17 @@ export function SecurityCheckFormShell({
   serverError,
   headerTitle = 'Material Inward',
 }: SecurityCheckFormShellProps) {
-  const progressPercentage = (currentStep / totalSteps) * 100
+  const progressPercentage = (currentStep / totalSteps) * 100;
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
 
   return (
@@ -172,7 +172,7 @@ export function SecurityCheckFormShell({
                   id="vehicleCondition"
                   className={cn(
                     'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                    apiErrors.vehicleCondition && 'border-destructive'
+                    apiErrors.vehicleCondition && 'border-destructive',
                   )}
                   value={formData.vehicleCondition}
                   onChange={(e) => onFormChange('vehicleCondition', e.target.value)}
@@ -199,7 +199,7 @@ export function SecurityCheckFormShell({
                   id="fireExtinguisherAvailable"
                   className={cn(
                     'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                    apiErrors.fireExtinguisherAvailable && 'border-destructive'
+                    apiErrors.fireExtinguisherAvailable && 'border-destructive',
                   )}
                   value={formData.fireExtinguisherAvailable}
                   onChange={(e) => onFormChange('fireExtinguisherAvailable', e.target.value)}
@@ -227,7 +227,7 @@ export function SecurityCheckFormShell({
                   id="tyreCondition"
                   className={cn(
                     'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                    apiErrors.tyreCondition && 'border-destructive'
+                    apiErrors.tyreCondition && 'border-destructive',
                   )}
                   value={formData.tyreCondition}
                   onChange={(e) => onFormChange('tyreCondition', e.target.value)}
@@ -260,7 +260,7 @@ export function SecurityCheckFormShell({
                   className={cn(
                     apiErrors.sealNumberBefore || apiErrors.seal_no_before
                       ? 'border-destructive'
-                      : ''
+                      : '',
                   )}
                 />
                 {apiErrors.sealNumberBefore && (
@@ -328,7 +328,7 @@ export function SecurityCheckFormShell({
                   className={cn(
                     apiErrors.inspectedByName || apiErrors.inspected_by_name
                       ? 'border-destructive'
-                      : ''
+                      : '',
                   )}
                 />
                 {apiErrors.inspectedByName && (
@@ -346,7 +346,7 @@ export function SecurityCheckFormShell({
                   rows={3}
                   className={cn(
                     'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                    apiErrors.remarks && 'border-destructive'
+                    apiErrors.remarks && 'border-destructive',
                   )}
                   placeholder="Enter any additional remarks..."
                   value={formData.remarks}
@@ -403,5 +403,5 @@ export function SecurityCheckFormShell({
         )}
       </div>
     </div>
-  )
+  );
 }

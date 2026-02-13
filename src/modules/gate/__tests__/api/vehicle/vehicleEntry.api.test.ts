@@ -5,7 +5,7 @@
 // expected method names for managing vehicle entries.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -26,9 +26,9 @@ vi.mock('@/config/constants', () => ({
       VEHICLE_ENTRIES_COUNT: '/vehicles/entries/count/',
     },
   },
-}))
+}));
 
-import { vehicleEntryApi } from '../../../api/vehicle/vehicleEntry.api'
+import { vehicleEntryApi } from '../../../api/vehicle/vehicleEntry.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -36,40 +36,40 @@ import { vehicleEntryApi } from '../../../api/vehicle/vehicleEntry.api'
 
 describe('vehicleEntryApi', () => {
   it('is defined as an object', () => {
-    expect(vehicleEntryApi).toBeDefined()
-    expect(typeof vehicleEntryApi).toBe('object')
-  })
+    expect(vehicleEntryApi).toBeDefined();
+    expect(typeof vehicleEntryApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a getList method', () => {
-    expect(typeof vehicleEntryApi.getList).toBe('function')
-  })
+    expect(typeof vehicleEntryApi.getList).toBe('function');
+  });
 
   it('has a getById method', () => {
-    expect(typeof vehicleEntryApi.getById).toBe('function')
-  })
+    expect(typeof vehicleEntryApi.getById).toBe('function');
+  });
 
   it('has a create method', () => {
-    expect(typeof vehicleEntryApi.create).toBe('function')
-  })
+    expect(typeof vehicleEntryApi.create).toBe('function');
+  });
 
   it('has an update method', () => {
-    expect(typeof vehicleEntryApi.update).toBe('function')
-  })
+    expect(typeof vehicleEntryApi.update).toBe('function');
+  });
 
   it('has a getCount method', () => {
-    expect(typeof vehicleEntryApi.getCount).toBe('function')
-  })
+    expect(typeof vehicleEntryApi.getCount).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(vehicleEntryApi).sort()
-    expect(methodNames).toEqual(['create', 'getById', 'getCount', 'getList', 'update'])
-  })
-})
+    const methodNames = Object.keys(vehicleEntryApi).sort();
+    expect(methodNames).toEqual(['create', 'getById', 'getCount', 'getList', 'update']);
+  });
+});

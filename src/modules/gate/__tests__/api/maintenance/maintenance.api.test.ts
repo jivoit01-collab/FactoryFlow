@@ -5,7 +5,7 @@
 // expected method names for managing maintenance entries.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,9 +15,9 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
-import { maintenanceApi } from '../../../api/maintenance/maintenance.api'
+import { maintenanceApi } from '../../../api/maintenance/maintenance.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -25,48 +25,56 @@ import { maintenanceApi } from '../../../api/maintenance/maintenance.api'
 
 describe('maintenanceApi', () => {
   it('is defined as an object', () => {
-    expect(maintenanceApi).toBeDefined()
-    expect(typeof maintenanceApi).toBe('object')
-  })
+    expect(maintenanceApi).toBeDefined();
+    expect(typeof maintenanceApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a getTypes method', () => {
-    expect(typeof maintenanceApi.getTypes).toBe('function')
-  })
+    expect(typeof maintenanceApi.getTypes).toBe('function');
+  });
 
   it('has a getByEntryId method', () => {
-    expect(typeof maintenanceApi.getByEntryId).toBe('function')
-  })
+    expect(typeof maintenanceApi.getByEntryId).toBe('function');
+  });
 
   it('has a create method', () => {
-    expect(typeof maintenanceApi.create).toBe('function')
-  })
+    expect(typeof maintenanceApi.create).toBe('function');
+  });
 
   it('has an update method', () => {
-    expect(typeof maintenanceApi.update).toBe('function')
-  })
+    expect(typeof maintenanceApi.update).toBe('function');
+  });
 
   it('has a getFullView method', () => {
-    expect(typeof maintenanceApi.getFullView).toBe('function')
-  })
+    expect(typeof maintenanceApi.getFullView).toBe('function');
+  });
 
   it('has a complete method', () => {
-    expect(typeof maintenanceApi.complete).toBe('function')
-  })
+    expect(typeof maintenanceApi.complete).toBe('function');
+  });
 
   it('has a getUnitChoices method', () => {
-    expect(typeof maintenanceApi.getUnitChoices).toBe('function')
-  })
+    expect(typeof maintenanceApi.getUnitChoices).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(maintenanceApi).sort()
-    expect(methodNames).toEqual(['complete', 'create', 'getByEntryId', 'getFullView', 'getTypes', 'getUnitChoices', 'update'])
-  })
-})
+    const methodNames = Object.keys(maintenanceApi).sort();
+    expect(methodNames).toEqual([
+      'complete',
+      'create',
+      'getByEntryId',
+      'getFullView',
+      'getTypes',
+      'getUnitChoices',
+      'update',
+    ]);
+  });
+});

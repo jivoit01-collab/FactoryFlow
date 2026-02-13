@@ -1,11 +1,11 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff } from 'lucide-react'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 
-import type { ApiError } from '@/core/api/types'
-import { authService } from '@/core/auth/services/auth.service'
-import { Button, Input, Label } from '@/shared/components/ui'
+import type { ApiError } from '@/core/api/types';
+import { authService } from '@/core/auth/services/auth.service';
+import { Button, Input, Label } from '@/shared/components/ui';
 import {
   Dialog,
   DialogContent,
@@ -13,18 +13,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/shared/components/ui/dialog'
-import { useScrollToError } from '@/shared/hooks'
+} from '@/shared/components/ui/dialog';
+import { useScrollToError } from '@/shared/hooks';
 
 import {
   CHANGE_PASSWORD_FORM_DEFAULTS,
   type ChangePasswordFormData,
   changePasswordSchema,
-} from '../schemas/changePassword.schema'
+} from '../schemas/changePassword.schema';
 
 interface ChangePasswordDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 /**
@@ -34,11 +34,11 @@ interface ChangePasswordDialogProps {
  * Validates old and new passwords and calls the change password API.
  */
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [showOldPassword, setShowOldPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const {
     register,
@@ -48,48 +48,48 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   } = useForm<ChangePasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: CHANGE_PASSWORD_FORM_DEFAULTS,
-  })
+  });
 
-  useScrollToError(errors)
+  useScrollToError(errors);
 
   const onSubmit = async (data: ChangePasswordFormData) => {
-    setIsLoading(true)
-    setError(null)
-    setSuccess(false)
+    setIsLoading(true);
+    setError(null);
+    setSuccess(false);
 
     try {
-      await authService.changePassword(data.old_password, data.new_password)
-      setSuccess(true)
+      await authService.changePassword(data.old_password, data.new_password);
+      setSuccess(true);
 
       // Reset form and close dialog after 2 seconds
       setTimeout(() => {
-        reset()
-        setSuccess(false)
-        onOpenChange(false)
-      }, 2000)
+        reset();
+        setSuccess(false);
+        onOpenChange(false);
+      }, 2000);
     } catch (err) {
       // Handle ApiError type (from API interceptor) or generic Error
       if (err && typeof err === 'object' && 'message' in err && 'status' in err) {
-        const apiError = err as ApiError
-        setError(apiError.message)
+        const apiError = err as ApiError;
+        setError(apiError.message);
       } else if (err instanceof Error) {
-        setError(err.message)
+        setError(err.message);
       } else {
-        setError('Failed to change password. Please try again.')
+        setError('Failed to change password. Please try again.');
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleClose = () => {
     if (!isLoading) {
-      reset()
-      setError(null)
-      setSuccess(false)
-      onOpenChange(false)
+      reset();
+      setError(null);
+      setSuccess(false);
+      onOpenChange(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -177,5 +177,5 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,20 +1,20 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff } from 'lucide-react'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 
-import { Button, Input, Label } from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+import { Button, Input, Label } from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
-import { LOGIN_FORM_DEFAULTS, type LoginFormData, loginSchema } from '../schemas/login.schema'
+import { LOGIN_FORM_DEFAULTS, type LoginFormData, loginSchema } from '../schemas/login.schema';
 
 interface LoginFormProps {
-  onSubmit: (data: LoginFormData) => void
-  isLoading?: boolean
+  onSubmit: (data: LoginFormData) => void;
+  isLoading?: boolean;
 }
 
 export function LoginForm({ onSubmit, isLoading }: LoginFormProps) {
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -22,9 +22,9 @@ export function LoginForm({ onSubmit, isLoading }: LoginFormProps) {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: LOGIN_FORM_DEFAULTS,
-  })
+  });
 
-  useScrollToError(errors)
+  useScrollToError(errors);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -37,7 +37,7 @@ export function LoginForm({ onSubmit, isLoading }: LoginFormProps) {
           {...register('email', {
             required: true,
             onChange: (e) => {
-              e.target.value = e.target.value.toLowerCase()
+              e.target.value = e.target.value.toLowerCase();
             },
           })}
           disabled={isLoading}
@@ -73,5 +73,5 @@ export function LoginForm({ onSubmit, isLoading }: LoginFormProps) {
         {isLoading ? 'Signing in...' : 'Sign In'}
       </Button>
     </form>
-  )
+  );
 }

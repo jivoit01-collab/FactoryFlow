@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // ═══════════════════════════════════════════════════════════════
 // Tests — components/forms/index.ts barrel re-exports (FCV)
@@ -14,13 +14,13 @@ describe('forms/index barrel exports', () => {
   const content = readFileSync(
     resolve(process.cwd(), 'src/modules/gate/components/forms/index.ts'),
     'utf-8',
-  )
+  );
 
   it('exports VehicleDriverFormShell', () => {
-    expect(content).toContain("export { VehicleDriverFormShell } from './VehicleDriverFormShell'")
-  })
+    expect(content).toContain("export { VehicleDriverFormShell } from './VehicleDriverFormShell'");
+  });
 
   it('exports SecurityCheckFormShell', () => {
-    expect(content).toContain("export { SecurityCheckFormShell } from './SecurityCheckFormShell'")
-  })
-})
+    expect(content).toContain("export { SecurityCheckFormShell } from './SecurityCheckFormShell'");
+  });
+});

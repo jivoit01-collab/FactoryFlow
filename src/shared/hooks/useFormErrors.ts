@@ -1,27 +1,27 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState } from 'react';
 
 /**
  * Return type for the form errors hook.
  */
 export interface UseFormErrorsReturn {
   /** Current error messages keyed by field name */
-  errors: Record<string, string>
+  errors: Record<string, string>;
   /** Sets an error for a specific field */
-  setError: (field: string, message: string) => void
+  setError: (field: string, message: string) => void;
   /** Sets multiple errors at once */
-  setErrors: (errors: Record<string, string>) => void
+  setErrors: (errors: Record<string, string>) => void;
   /** Clears the error for a specific field */
-  clearError: (field: string) => void
+  clearError: (field: string) => void;
   /** Clears all errors */
-  clearAllErrors: () => void
+  clearAllErrors: () => void;
   /** Clears errors for multiple fields */
-  clearErrors: (fields: string[]) => void
+  clearErrors: (fields: string[]) => void;
   /** Checks if a specific field has an error */
-  hasError: (field: string) => boolean
+  hasError: (field: string) => boolean;
   /** Checks if there are any errors */
-  hasAnyError: boolean
+  hasAnyError: boolean;
   /** Gets the error message for a specific field */
-  getError: (field: string) => string | undefined
+  getError: (field: string) => string | undefined;
 }
 
 /**
@@ -55,58 +55,58 @@ export interface UseFormErrorsReturn {
  * ```
  */
 export function useFormErrors(initialErrors: Record<string, string> = {}): UseFormErrorsReturn {
-  const [errors, setErrorsState] = useState<Record<string, string>>(initialErrors)
+  const [errors, setErrorsState] = useState<Record<string, string>>(initialErrors);
 
   const setError = useCallback((field: string, message: string) => {
-    setErrorsState((prev) => ({ ...prev, [field]: message }))
-  }, [])
+    setErrorsState((prev) => ({ ...prev, [field]: message }));
+  }, []);
 
   const setErrors = useCallback((newErrors: Record<string, string>) => {
-    setErrorsState(newErrors)
-  }, [])
+    setErrorsState(newErrors);
+  }, []);
 
   const clearError = useCallback((field: string) => {
     setErrorsState((prev) => {
-      if (!(field in prev)) return prev
-      const newErrors = { ...prev }
-      delete newErrors[field]
-      return newErrors
-    })
-  }, [])
+      if (!(field in prev)) return prev;
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
   const clearAllErrors = useCallback(() => {
-    setErrorsState({})
-  }, [])
+    setErrorsState({});
+  }, []);
 
   const clearErrors = useCallback((fields: string[]) => {
     setErrorsState((prev) => {
-      const newErrors = { ...prev }
-      let changed = false
+      const newErrors = { ...prev };
+      let changed = false;
       fields.forEach((field) => {
         if (field in newErrors) {
-          delete newErrors[field]
-          changed = true
+          delete newErrors[field];
+          changed = true;
         }
-      })
-      return changed ? newErrors : prev
-    })
-  }, [])
+      });
+      return changed ? newErrors : prev;
+    });
+  }, []);
 
   const hasError = useCallback(
     (field: string) => {
-      return field in errors
+      return field in errors;
     },
-    [errors]
-  )
+    [errors],
+  );
 
   const getError = useCallback(
     (field: string) => {
-      return errors[field]
+      return errors[field];
     },
-    [errors]
-  )
+    [errors],
+  );
 
-  const hasAnyError = Object.keys(errors).length > 0
+  const hasAnyError = Object.keys(errors).length > 0;
 
   return {
     errors,
@@ -118,5 +118,5 @@ export function useFormErrors(initialErrors: Record<string, string> = {}): UseFo
     hasError,
     hasAnyError,
     getError,
-  }
+  };
 }

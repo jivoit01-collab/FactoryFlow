@@ -6,34 +6,34 @@ import {
   FileText,
   Plus,
   XCircle,
-} from 'lucide-react'
-import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+} from 'lucide-react';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { getEntryStatusClasses } from '@/config/constants'
-import { useGlobalDateRange } from '@/core/store/hooks'
-import { Button, Card, CardContent } from '@/shared/components/ui'
+import { getEntryStatusClasses } from '@/config/constants';
+import { useGlobalDateRange } from '@/core/store/hooks';
+import { Button, Card, CardContent } from '@/shared/components/ui';
 
-import { useVehicleEntries, useVehicleEntriesCount } from '../../api/vehicle/vehicleEntry.queries'
-import { DateRangePicker } from '../../components/DateRangePicker'
-import type { EntryFlowConfig } from '../../constants/entryFlowConfig'
+import { useVehicleEntries, useVehicleEntriesCount } from '../../api/vehicle/vehicleEntry.queries';
+import { DateRangePicker } from '../../components/DateRangePicker';
+import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
 
 interface StatusConfigItem {
-  label: string
-  color: string
-  bgColor: string
-  icon: React.ElementType
+  label: string;
+  color: string;
+  bgColor: string;
+  icon: React.ElementType;
 }
 
 export interface DashboardStatusConfig {
-  statusOrder: string[]
-  statusConfig: Record<string, StatusConfigItem>
-  gridCols: string
+  statusOrder: string[];
+  statusConfig: Record<string, StatusConfigItem>;
+  gridCols: string;
 }
 
 interface SharedDashboardProps {
-  config: EntryFlowConfig
-  statusConfig?: DashboardStatusConfig
+  config: EntryFlowConfig;
+  statusConfig?: DashboardStatusConfig;
 }
 
 // Default 3-status config used by construction, daily-needs, maintenance
@@ -60,7 +60,7 @@ const DEFAULT_STATUS_CONFIG: DashboardStatusConfig = {
     },
   },
   gridCols: 'grid-cols-3',
-}
+};
 
 // 6-status config used by raw materials
 export const RAW_MATERIAL_STATUS_CONFIG: DashboardStatusConfig = {
@@ -104,14 +104,14 @@ export const RAW_MATERIAL_STATUS_CONFIG: DashboardStatusConfig = {
     },
   },
   gridCols: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
-}
+};
 
 export default function SharedDashboard({
   config,
   statusConfig = DEFAULT_STATUS_CONFIG,
 }: SharedDashboardProps) {
-  const navigate = useNavigate()
-  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
+  const navigate = useNavigate();
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   // Convert date range to API params
   const apiParams = useMemo(() => {
@@ -119,65 +119,65 @@ export default function SharedDashboard({
       from_date: dateRange.from,
       to_date: dateRange.to,
       entry_type: config.entryType,
-    }
-  }, [dateRange, config.entryType])
+    };
+  }, [dateRange, config.entryType]);
 
   // Fetch recent entries with entry_type and date filter
-  const { data: apiEntries = [], isLoading: entriesLoading } = useVehicleEntries(apiParams)
+  const { data: apiEntries = [], isLoading: entriesLoading } = useVehicleEntries(apiParams);
 
   // Fetch status counts with the same filters
-  const { data: countData, isLoading: countLoading } = useVehicleEntriesCount(apiParams)
+  const { data: countData, isLoading: countLoading } = useVehicleEntriesCount(apiParams);
 
   // Transform API count response to status counts object
   const statusCounts = useMemo((): Record<string, number> => {
-    const defaultCounts: Record<string, number> = {}
+    const defaultCounts: Record<string, number> = {};
     statusConfig.statusOrder.forEach((key) => {
-      defaultCounts[key] = 0
-    })
+      defaultCounts[key] = 0;
+    });
 
-    if (!countData?.total_vehicle_entries) return defaultCounts
+    if (!countData?.total_vehicle_entries) return defaultCounts;
 
     countData.total_vehicle_entries.forEach(
       ({ status, count }: { status: string; count: number }) => {
-        const key = status.toLowerCase()
+        const key = status.toLowerCase();
         if (key in defaultCounts) {
-          defaultCounts[key] = count
+          defaultCounts[key] = count;
         }
-      }
-    )
+      },
+    );
 
-    return defaultCounts
-  }, [countData, statusConfig.statusOrder])
+    return defaultCounts;
+  }, [countData, statusConfig.statusOrder]);
 
-  const entries = apiEntries
-  const isLoading = entriesLoading || countLoading
+  const entries = apiEntries;
+  const isLoading = entriesLoading || countLoading;
 
   // Get 2 most recent entries
   const recentEntries = useMemo(() => {
     return [...entries]
       .sort((a, b) => {
-        const dateA = a.entry_time ? new Date(a.entry_time).getTime() : 0
-        const dateB = b.entry_time ? new Date(b.entry_time).getTime() : 0
-        return dateB - dateA
+        const dateA = a.entry_time ? new Date(a.entry_time).getTime() : 0;
+        const dateB = b.entry_time ? new Date(b.entry_time).getTime() : 0;
+        return dateB - dateA;
       })
-      .slice(0, 2)
-  }, [entries])
+      .slice(0, 2);
+  }, [entries]);
 
   // Format date/time for display
   const formatDateTime = (dateTime?: string) => {
-    if (!dateTime) return '-'
+    if (!dateTime) return '-';
     try {
-      const date = new Date(dateTime)
+      const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return dateTime
+      return dateTime;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -192,9 +192,9 @@ export default function SharedDashboard({
             date={dateRangeAsDateObjects}
             onDateChange={(date) => {
               if (date && 'from' in date) {
-                setDateRange(date)
+                setDateRange(date);
               } else {
-                setDateRange(undefined)
+                setDateRange(undefined);
               }
             }}
           />
@@ -241,7 +241,7 @@ export default function SharedDashboard({
                   <span className="font-medium text-sm">{entry.entry_no}</span>
                   <span
                     className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${getEntryStatusClasses(
-                      entry.status || ''
+                      entry.status || '',
                     )}`}
                   >
                     {entry.status}
@@ -272,12 +272,12 @@ export default function SharedDashboard({
         ) : (
           <div className={`grid ${statusConfig.gridCols} gap-3`}>
             {statusConfig.statusOrder.map((statusKey) => {
-              const statusUpper = statusKey.toUpperCase()
-              const sc = statusConfig.statusConfig[statusUpper]
-              if (!sc) return null
+              const statusUpper = statusKey.toUpperCase();
+              const sc = statusConfig.statusConfig[statusUpper];
+              if (!sc) return null;
 
-              const Icon = sc.icon
-              const count = statusCounts[statusKey] || 0
+              const Icon = sc.icon;
+              const count = statusCounts[statusKey] || 0;
 
               return (
                 <Card
@@ -293,11 +293,11 @@ export default function SharedDashboard({
                     <p className={`mt-1 text-xs font-medium ${sc.color}`}>{sc.label}</p>
                   </CardContent>
                 </Card>
-              )
+              );
             })}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

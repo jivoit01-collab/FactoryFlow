@@ -1,8 +1,8 @@
-import { AlertCircle, ArrowLeft, Edit, FlaskConical, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, Edit, FlaskConical, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types'
+import type { ApiError } from '@/core/api/types';
 import {
   Button,
   Card,
@@ -17,27 +17,27 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
+} from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
 import {
   useCreateQCParameter,
   useDeleteQCParameter,
   useQCParametersByMaterialType,
   useUpdateQCParameter,
-} from '../../api/qcParameter/qcParameter.queries'
-import { MaterialTypeSelect } from '../../components'
-import { PARAMETER_TYPE_LABELS } from '../../constants'
-import type { CreateQCParameterRequest, ParameterType, QCParameter } from '../../types'
+} from '../../api/qcParameter/qcParameter.queries';
+import { MaterialTypeSelect } from '../../components';
+import { PARAMETER_TYPE_LABELS } from '../../constants';
+import type { CreateQCParameterRequest, ParameterType, QCParameter } from '../../types';
 
 export default function QCParametersPage() {
-  const navigate = useNavigate()
-  const [selectedMaterialType, setSelectedMaterialType] = useState<number | null>(null)
+  const navigate = useNavigate();
+  const [selectedMaterialType, setSelectedMaterialType] = useState<number | null>(null);
   const { data: parameters = [], isLoading: isLoadingParams } =
-    useQCParametersByMaterialType(selectedMaterialType)
+    useQCParametersByMaterialType(selectedMaterialType);
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingParam, setEditingParam] = useState<QCParameter | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingParam, setEditingParam] = useState<QCParameter | null>(null);
   const [formData, setFormData] = useState<CreateQCParameterRequest>({
     parameter_code: '',
     parameter_name: '',
@@ -46,19 +46,19 @@ export default function QCParametersPage() {
     uom: '',
     sequence: 1,
     is_mandatory: true,
-  })
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+  });
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
-  const createParameter = useCreateQCParameter()
-  const updateParameter = useUpdateQCParameter()
-  const deleteParameter = useDeleteQCParameter()
+  const createParameter = useCreateQCParameter();
+  const updateParameter = useUpdateQCParameter();
+  const deleteParameter = useDeleteQCParameter();
 
   const handleOpenDialog = (param?: QCParameter) => {
     if (param) {
-      setEditingParam(param)
+      setEditingParam(param);
       setFormData({
         parameter_code: param.parameter_code,
         parameter_name: param.parameter_name,
@@ -69,9 +69,9 @@ export default function QCParametersPage() {
         uom: param.uom,
         sequence: param.sequence,
         is_mandatory: param.is_mandatory,
-      })
+      });
     } else {
-      setEditingParam(null)
+      setEditingParam(null);
       setFormData({
         parameter_code: '',
         parameter_name: '',
@@ -80,61 +80,61 @@ export default function QCParametersPage() {
         uom: '',
         sequence: parameters.length + 1,
         is_mandatory: true,
-      })
+      });
     }
-    setApiErrors({})
-    setIsDialogOpen(true)
-  }
+    setApiErrors({});
+    setIsDialogOpen(true);
+  };
 
   const handleCloseDialog = () => {
-    setIsDialogOpen(false)
-    setEditingParam(null)
-    setApiErrors({})
-  }
+    setIsDialogOpen(false);
+    setEditingParam(null);
+    setApiErrors({});
+  };
 
   const handleSave = async () => {
     if (!selectedMaterialType && !editingParam) {
-      setApiErrors({ general: 'Please select a material type first' })
-      return
+      setApiErrors({ general: 'Please select a material type first' });
+      return;
     }
     if (!formData.parameter_code.trim()) {
-      setApiErrors({ parameter_code: 'Code is required' })
-      return
+      setApiErrors({ parameter_code: 'Code is required' });
+      return;
     }
     if (!formData.parameter_name.trim()) {
-      setApiErrors({ parameter_name: 'Name is required' })
-      return
+      setApiErrors({ parameter_name: 'Name is required' });
+      return;
     }
 
     try {
-      setApiErrors({})
+      setApiErrors({});
       if (editingParam) {
-        await updateParameter.mutateAsync({ id: editingParam.id, data: formData })
+        await updateParameter.mutateAsync({ id: editingParam.id, data: formData });
       } else {
         await createParameter.mutateAsync({
           materialTypeId: selectedMaterialType!,
           data: formData,
-        })
+        });
       }
-      handleCloseDialog()
+      handleCloseDialog();
     } catch (error) {
-      const apiError = error as ApiError
-      setApiErrors({ general: apiError.message || 'Failed to save parameter' })
+      const apiError = error as ApiError;
+      setApiErrors({ general: apiError.message || 'Failed to save parameter' });
     }
-  }
+  };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this parameter?')) return
+    if (!confirm('Are you sure you want to delete this parameter?')) return;
 
     try {
-      await deleteParameter.mutateAsync(id)
+      await deleteParameter.mutateAsync(id);
     } catch (error) {
-      const apiError = error as ApiError
-      alert(apiError.message || 'Failed to delete parameter')
+      const apiError = error as ApiError;
+      alert(apiError.message || 'Failed to delete parameter');
     }
-  }
+  };
 
-  const isSaving = createParameter.isPending || updateParameter.isPending
+  const isSaving = createParameter.isPending || updateParameter.isPending;
 
   return (
     <div className="space-y-6 pb-6">
@@ -431,5 +431,5 @@ export default function QCParametersPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

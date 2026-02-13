@@ -5,14 +5,14 @@
 // exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
   queryOptions: vi.fn((opts: any) => opts),
-}))
+}));
 
 vi.mock('../../../api/vehicle/vehicleEntry.api', () => ({
   vehicleEntryApi: {
@@ -22,7 +22,7 @@ vi.mock('../../../api/vehicle/vehicleEntry.api', () => ({
     update: vi.fn(),
     getCount: vi.fn(),
   },
-}))
+}));
 
 import {
   useVehicleEntries,
@@ -30,7 +30,7 @@ import {
   useVehicleEntry,
   useCreateVehicleEntry,
   useUpdateVehicleEntry,
-} from '../../../api/vehicle/vehicleEntry.queries'
+} from '../../../api/vehicle/vehicleEntry.queries';
 
 // ═══════════════════════════════════════════════════════════════
 // Hook existence
@@ -38,22 +38,22 @@ import {
 
 describe('vehicleEntry queries', () => {
   it('exports useVehicleEntries as a function', () => {
-    expect(typeof useVehicleEntries).toBe('function')
-  })
+    expect(typeof useVehicleEntries).toBe('function');
+  });
 
   it('exports useVehicleEntriesCount as a function', () => {
-    expect(typeof useVehicleEntriesCount).toBe('function')
-  })
+    expect(typeof useVehicleEntriesCount).toBe('function');
+  });
 
   it('exports useVehicleEntry as a function', () => {
-    expect(typeof useVehicleEntry).toBe('function')
-  })
+    expect(typeof useVehicleEntry).toBe('function');
+  });
 
   it('exports useCreateVehicleEntry as a function', () => {
-    expect(typeof useCreateVehicleEntry).toBe('function')
-  })
+    expect(typeof useCreateVehicleEntry).toBe('function');
+  });
 
   it('exports useUpdateVehicleEntry as a function', () => {
-    expect(typeof useUpdateVehicleEntry).toBe('function')
-  })
-})
+    expect(typeof useUpdateVehicleEntry).toBe('function');
+  });
+});

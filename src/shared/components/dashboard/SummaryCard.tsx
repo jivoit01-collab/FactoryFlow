@@ -1,27 +1,27 @@
-import { ChevronRight, type LucideIcon } from 'lucide-react'
-import { type ReactNode } from 'react'
+import { ChevronRight, type LucideIcon } from 'lucide-react';
+import { type ReactNode } from 'react';
 
-import { Card, CardContent } from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
+import { Card, CardContent } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 /**
  * Props for the SummaryCard component.
  */
 export interface SummaryCardProps {
   /** Title of the summary card */
-  title: string
+  title: string;
   /** Main count/value to display prominently */
-  value: number | string
+  value: number | string;
   /** Icon to display next to the title */
-  icon?: LucideIcon
+  icon?: LucideIcon;
   /** Whether the card is clickable */
-  onClick?: () => void
+  onClick?: () => void;
   /** Additional details to show below the main value */
-  details?: Array<{ label: string; value: number | string }>
+  details?: Array<{ label: string; value: number | string }>;
   /** Optional CSS class */
-  className?: string
+  className?: string;
   /** Children to render at the bottom of the card */
-  children?: ReactNode
+  children?: ReactNode;
 }
 
 /**
@@ -55,17 +55,21 @@ export function SummaryCard({
       className={cn(
         'bg-primary/5 border-primary/20',
         onClick && 'cursor-pointer hover:shadow-md transition-shadow',
-        className
+        className,
       )}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
-      onKeyDown={onClick ? (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onClick()
-        }
-      } : undefined}
+      onKeyDown={
+        onClick
+          ? (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
     >
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
@@ -92,5 +96,5 @@ export function SummaryCard({
         {children}
       </CardContent>
     </Card>
-  )
+  );
 }

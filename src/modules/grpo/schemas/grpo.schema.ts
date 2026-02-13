@@ -1,9 +1,9 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
 export const grpoPostItemSchema = z.object({
   po_item_receipt_id: z.number(),
   accepted_qty: z.number().min(0, 'Quantity cannot be negative'),
-})
+});
 
 export const grpoPostSchema = z
   .object({
@@ -17,6 +17,6 @@ export const grpoPostSchema = z
   .refine((data) => data.items.some((item) => item.accepted_qty > 0), {
     message: 'At least one item must have accepted quantity greater than 0',
     path: ['items'],
-  })
+  });
 
-export type GRPOPostFormData = z.infer<typeof grpoPostSchema>
+export type GRPOPostFormData = z.infer<typeof grpoPostSchema>;

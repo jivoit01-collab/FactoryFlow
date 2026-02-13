@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // ═══════════════════════════════════════════════════════════════
 // Step2Page — File Content Verification
@@ -14,10 +14,9 @@ describe('Step2Page', () => {
   const content = readFileSync(
     resolve(process.cwd(), 'src/modules/gate/pages/rawmaterialpages/Step2Page.tsx'),
     'utf-8',
-  )
+  );
 
   it('exports Step2Page as default function', () => {
-    expect(content).toContain('export default function')
-  })
-
-})
+    expect(content).toContain('export default function');
+  });
+});

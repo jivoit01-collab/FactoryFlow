@@ -5,7 +5,7 @@
 // expected method names for managing weighment records.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -15,7 +15,7 @@ vi.mock('@/core/api', () => ({
     patch: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
-}))
+}));
 
 vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
@@ -24,9 +24,9 @@ vi.mock('@/config/constants', () => ({
       CREATE: vi.fn(),
     },
   },
-}))
+}));
 
-import { weighmentApi } from '../../../api/weighment/weighment.api'
+import { weighmentApi } from '../../../api/weighment/weighment.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence
@@ -34,28 +34,28 @@ import { weighmentApi } from '../../../api/weighment/weighment.api'
 
 describe('weighmentApi', () => {
   it('is defined as an object', () => {
-    expect(weighmentApi).toBeDefined()
-    expect(typeof weighmentApi).toBe('object')
-  })
+    expect(weighmentApi).toBeDefined();
+    expect(typeof weighmentApi).toBe('object');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Method existence
   // ═══════════════════════════════════════════════════════════════
 
   it('has a get method', () => {
-    expect(typeof weighmentApi.get).toBe('function')
-  })
+    expect(typeof weighmentApi.get).toBe('function');
+  });
 
   it('has a create method', () => {
-    expect(typeof weighmentApi.create).toBe('function')
-  })
+    expect(typeof weighmentApi.create).toBe('function');
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
-    const methodNames = Object.keys(weighmentApi).sort()
-    expect(methodNames).toEqual(['create', 'get'])
-  })
-})
+    const methodNames = Object.keys(weighmentApi).sort();
+    expect(methodNames).toEqual(['create', 'get']);
+  });
+});

@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   ArrowLeft,
@@ -12,59 +12,59 @@ import {
   Truck,
   User,
   XCircle,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+} from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { ENTRY_STATUS, FINAL_STATUS } from '@/config/constants'
-import type { ApiError } from '@/core/api/types'
-import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui'
-import { useScrollToError } from '@/shared/hooks'
-import { cn } from '@/shared/utils'
+import { ENTRY_STATUS, FINAL_STATUS } from '@/config/constants';
+import type { ApiError } from '@/core/api/types';
+import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 import {
   getErrorMessage,
   getServerErrorMessage,
   isServerError as checkServerError,
-} from '@/shared/utils'
+} from '@/shared/utils';
 
 import {
   useCompleteGateEntry,
   useGateEntryFullView,
-} from '../../api/gateEntryFullView/gateEntryFullView.queries'
-import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
-import { useEntryId } from '../../hooks'
+} from '../../api/gateEntryFullView/gateEntryFullView.queries';
+import { securityCheckApi } from '../../api/securityCheck/securityCheck.api';
+import { useEntryId } from '../../hooks';
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
   const getStatusColor = () => {
-    const upper = status.toUpperCase()
+    const upper = status.toUpperCase();
     switch (upper) {
       case ENTRY_STATUS.COMPLETED:
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       case ENTRY_STATUS.DRAFT:
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
       case 'PASSED':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       case 'FAILED':
       case FINAL_STATUS.REJECTED:
       case 'QC REJECTED':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
       case FINAL_STATUS.PENDING:
       case FINAL_STATUS.HOLD:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
       case FINAL_STATUS.ACCEPTED:
       case 'QC ACCEPTED':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       default:
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
     }
-  }
+  };
 
   return (
     <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getStatusColor())}>
       {status}
     </span>
-  )
+  );
 }
 
 // Check/Cross icon
@@ -73,7 +73,7 @@ function BooleanIcon({ value }: { value: boolean }) {
     <CheckCircle2 className="h-5 w-5 text-green-500" />
   ) : (
     <XCircle className="h-5 w-5 text-red-500" />
-  )
+  );
 }
 
 // Success Screen Component with animated checkmark
@@ -81,8 +81,8 @@ function SuccessScreen({
   onNavigateToDashboard,
   onNavigateToHome,
 }: {
-  onNavigateToDashboard: () => void
-  onNavigateToHome: () => void
+  onNavigateToDashboard: () => void;
+  onNavigateToHome: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
@@ -134,124 +134,124 @@ function SuccessScreen({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 export default function ReviewPage() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { entryId, entryIdNumber, isEditMode } = useEntryId()
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { entryId, entryIdNumber, isEditMode } = useEntryId();
 
-  const [isSubmittingSecurity, setIsSubmittingSecurity] = useState(false)
-  const [isCompleting, setIsCompleting] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
-  const [securityJustSubmitted, setSecurityJustSubmitted] = useState(false)
+  const [isSubmittingSecurity, setIsSubmittingSecurity] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [securityJustSubmitted, setSecurityJustSubmitted] = useState(false);
 
   const handleNavigateToList = () => {
-    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
-    navigate('/gate/raw-materials')
-  }
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+    queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] });
+    navigate('/gate/raw-materials');
+  };
 
   const handleNavigateToHome = () => {
-    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] })
-    queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] })
-    navigate('/')
-  }
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+    queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] });
+    navigate('/');
+  };
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
-  useScrollToError(apiErrors)
+  useScrollToError(apiErrors);
 
   // Fetch full gate entry data
-  const { data: gateEntry, isLoading, error: fetchError } = useGateEntryFullView(entryIdNumber)
+  const { data: gateEntry, isLoading, error: fetchError } = useGateEntryFullView(entryIdNumber);
 
-  const completeGateEntry = useCompleteGateEntry()
+  const completeGateEntry = useCompleteGateEntry();
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/attachments`)
+      navigate(`/gate/raw-materials/edit/${entryId}/attachments`);
     } else {
-      navigate(`/gate/raw-materials/new/attachments?entryId=${entryId}`)
+      navigate(`/gate/raw-materials/new/attachments?entryId=${entryId}`);
     }
-  }
+  };
 
   const handleSubmitSecurity = async () => {
     if (!entryId) {
-      setApiErrors({ general: 'Entry ID is missing.' })
-      return
+      setApiErrors({ general: 'Entry ID is missing.' });
+      return;
     }
 
-    setApiErrors({})
-    setIsSubmittingSecurity(true)
+    setApiErrors({});
+    setIsSubmittingSecurity(true);
 
     try {
       // Get security data to retrieve the security ID
-      const securityData = await securityCheckApi.get(entryIdNumber!)
+      const securityData = await securityCheckApi.get(entryIdNumber!);
 
       if (!securityData.id) {
         setApiErrors({
           general: 'Security check data not found. Please complete security check first.',
-        })
-        setIsSubmittingSecurity(false)
-        return
+        });
+        setIsSubmittingSecurity(false);
+        return;
       }
 
       // Submit security check (this locks Step 2 from updates)
-      await securityCheckApi.submit(securityData.id)
+      await securityCheckApi.submit(securityData.id);
 
       // Mark that security was just submitted so we can show Complete Entry button
-      setSecurityJustSubmitted(true)
+      setSecurityJustSubmitted(true);
 
       // Refresh the gate entry data
-      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView', entryIdNumber] })
+      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView', entryIdNumber] });
     } catch (error) {
-      const apiError = error as ApiError & { detail?: string }
-      const errorMessage = apiError.message || apiError.detail || 'Failed to submit security check'
-      setApiErrors({ general: errorMessage })
+      const apiError = error as ApiError & { detail?: string };
+      const errorMessage = apiError.message || apiError.detail || 'Failed to submit security check';
+      setApiErrors({ general: errorMessage });
     } finally {
-      setIsSubmittingSecurity(false)
+      setIsSubmittingSecurity(false);
     }
-  }
+  };
 
   const handleComplete = async () => {
     if (!entryId) {
-      setApiErrors({ general: 'Entry ID is missing.' })
-      return
+      setApiErrors({ general: 'Entry ID is missing.' });
+      return;
     }
 
-    setApiErrors({})
-    setIsCompleting(true)
+    setApiErrors({});
+    setIsCompleting(true);
 
     try {
       // Complete the gate entry
-      await completeGateEntry.mutateAsync(entryIdNumber!)
+      await completeGateEntry.mutateAsync(entryIdNumber!);
 
       // Show success screen
-      setShowSuccess(true)
+      setShowSuccess(true);
     } catch (error) {
       if (checkServerError(error)) {
         setApiErrors({
           general: 'Cannot complete the entry at the moment. Please try again later.',
-        })
+        });
       } else {
-        setApiErrors({ general: getErrorMessage(error, 'Failed to complete gate entry') })
+        setApiErrors({ general: getErrorMessage(error, 'Failed to complete gate entry') });
       }
     } finally {
-      setIsCompleting(false)
+      setIsCompleting(false);
     }
-  }
+  };
 
   const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return date.toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    })
-  }
+    });
+  };
 
   // Show success screen after completion
   if (showSuccess) {
@@ -260,7 +260,7 @@ export default function ReviewPage() {
         onNavigateToDashboard={handleNavigateToList}
         onNavigateToHome={handleNavigateToHome}
       />
-    )
+    );
   }
 
   if (isLoading) {
@@ -268,13 +268,13 @@ export default function ReviewPage() {
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
 
   if (fetchError) {
     const errorMessage = checkServerError(fetchError)
       ? getServerErrorMessage()
-      : 'Failed to load gate entry details. Please try again.'
+      : 'Failed to load gate entry details. Please try again.';
     return (
       <div className="space-y-6 pb-6">
         <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
@@ -290,14 +290,14 @@ export default function ReviewPage() {
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   if (!gateEntry) {
-    return null
+    return null;
   }
 
-  const isAlreadyCompleted = gateEntry.gate_entry.status === ENTRY_STATUS.COMPLETED
+  const isAlreadyCompleted = gateEntry.gate_entry.status === ENTRY_STATUS.COMPLETED;
 
   return (
     <div className="space-y-6 pb-6">
@@ -631,5 +631,5 @@ export default function ReviewPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

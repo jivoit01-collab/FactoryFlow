@@ -4,21 +4,21 @@
  */
 
 export interface RouteConfig {
-  path: string
-  title: string
+  path: string;
+  title: string;
   /** Required permissions (Django format: 'app_label.permission_codename') - permissions come from backend API */
-  permissions?: readonly string[]
+  permissions?: readonly string[];
   /** Required groups */
-  groups?: readonly string[]
+  groups?: readonly string[];
   /** If true, user must have ALL permissions. If false (default), ANY permission grants access */
-  requireAll?: boolean
-  icon?: string
-  showInSidebar?: boolean
+  requireAll?: boolean;
+  icon?: string;
+  showInSidebar?: boolean;
   /** Module prefix for dynamic sidebar filtering (e.g., 'gatein' to show if user has any 'gatein.*' permission) */
-  modulePrefix?: string
+  modulePrefix?: string;
   /** Whether this route has a submenu in the sidebar */
-  hasSubmenu?: boolean
-  children?: Record<string, RouteConfig>
+  hasSubmenu?: boolean;
+  children?: Record<string, RouteConfig>;
 }
 
 export const ROUTES = {
@@ -153,6 +153,6 @@ export const ROUTES = {
     title: 'Profile',
     showInSidebar: false,
   },
-} as const
+} as const;
 
-export type RouteName = keyof typeof ROUTES
+export type RouteName = keyof typeof ROUTES;

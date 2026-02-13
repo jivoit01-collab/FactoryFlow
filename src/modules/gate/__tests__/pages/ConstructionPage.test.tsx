@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
@@ -7,18 +7,20 @@ vi.mock('react-router-dom', () => ({
   useParams: () => ({}),
   useSearchParams: () => [new URLSearchParams()],
   Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
-}))
+}));
 
-import ConstructionPage from '../../pages/ConstructionPage'
+import ConstructionPage from '../../pages/ConstructionPage';
 
 describe('ConstructionPage', () => {
   it('renders the page heading', () => {
-    render(<ConstructionPage />)
-    expect(screen.getByText('Construction (Civil/Building Work)')).toBeInTheDocument()
-  })
+    render(<ConstructionPage />);
+    expect(screen.getByText('Construction (Civil/Building Work)')).toBeInTheDocument();
+  });
 
   it('renders the description', () => {
-    render(<ConstructionPage />)
-    expect(screen.getByText('Manage construction materials and civil/building work gate entries')).toBeInTheDocument()
-  })
-})
+    render(<ConstructionPage />);
+    expect(
+      screen.getByText('Manage construction materials and civil/building work gate entries'),
+    ).toBeInTheDocument();
+  });
+});
