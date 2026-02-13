@@ -14,12 +14,14 @@ const RMStep2Page = lazy(() => import('./pages/rawMaterialPages/Step2Page'))
 const RMStep3Page = lazy(() => import('./pages/rawMaterialPages/Step3Page'))
 const RMArrivalSlipPage = lazy(() => import('./pages/rawMaterialPages/ArrivalSlipPage'))
 const RMWeighmentPage = lazy(() => import('./pages/rawMaterialPages/Step4Page'))
+const RMAttachmentsPage = lazy(() => import('./pages/rawMaterialPages/AttachmentsPage'))
 const RMReviewPage = lazy(() => import('./pages/rawMaterialPages/ReviewPage'))
 
 // Daily Needs wizard pages
 const DNStep1Page = lazy(() => import('./pages/dailyNeedsPages/Step1Page'))
 const DNStep2Page = lazy(() => import('./pages/dailyNeedsPages/Step2Page'))
 const DNStep3Page = lazy(() => import('./pages/dailyNeedsPages/Step3Page'))
+const DNAttachmentsPage = lazy(() => import('./pages/dailyNeedsPages/AttachmentsPage'))
 const DNReviewPage = lazy(() => import('./pages/dailyNeedsPages/ReviewPage'))
 
 // Maintenance wizard pages
@@ -28,6 +30,7 @@ const MaintenanceAllPage = lazy(() => import('./pages/maintenancePages/Maintenan
 const MNStep1Page = lazy(() => import('./pages/maintenancePages/Step1Page'))
 const MNStep2Page = lazy(() => import('./pages/maintenancePages/Step2Page'))
 const MNStep3Page = lazy(() => import('./pages/maintenancePages/Step3Page'))
+const MNAttachmentsPage = lazy(() => import('./pages/maintenancePages/AttachmentsPage'))
 const MNReviewPage = lazy(() => import('./pages/maintenancePages/ReviewPage'))
 
 // Construction wizard pages
@@ -36,6 +39,7 @@ const ConstructionAllPage = lazy(() => import('./pages/constructionPages/Constru
 const COStep1Page = lazy(() => import('./pages/constructionPages/Step1Page'))
 const COStep2Page = lazy(() => import('./pages/constructionPages/Step2Page'))
 const COStep3Page = lazy(() => import('./pages/constructionPages/Step3Page'))
+const COAttachmentsPage = lazy(() => import('./pages/constructionPages/AttachmentsPage'))
 const COReviewPage = lazy(() => import('./pages/constructionPages/ReviewPage'))
 
 // Person Gate-In pages (Visitor/Labour)
@@ -103,6 +107,11 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
     },
     {
+      path: '/gate/raw-materials/new/attachments',
+      element: <RMAttachmentsPage />,
+      layout: 'main',
+    },
+    {
       path: '/gate/raw-materials/new/review',
       element: <RMReviewPage />,
       layout: 'main',
@@ -131,6 +140,11 @@ export const gateModuleConfig: ModuleConfig = {
     {
       path: '/gate/raw-materials/edit/:entryId/step5',
       element: <RMWeighmentPage />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/raw-materials/edit/:entryId/attachments',
+      element: <RMAttachmentsPage />,
       layout: 'main',
     },
     {
@@ -167,6 +181,11 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
     },
     {
+      path: '/gate/daily-needs/new/attachments',
+      element: <DNAttachmentsPage />,
+      layout: 'main',
+    },
+    {
       path: '/gate/daily-needs/new/review',
       element: <DNReviewPage />,
       layout: 'main',
@@ -185,6 +204,11 @@ export const gateModuleConfig: ModuleConfig = {
     {
       path: '/gate/daily-needs/edit/:entryId/step3',
       element: <DNStep3Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/daily-needs/edit/:entryId/attachments',
+      element: <DNAttachmentsPage />,
       layout: 'main',
     },
     {
@@ -221,6 +245,11 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
     },
     {
+      path: '/gate/maintenance/new/attachments',
+      element: <MNAttachmentsPage />,
+      layout: 'main',
+    },
+    {
       path: '/gate/maintenance/new/review',
       element: <MNReviewPage />,
       layout: 'main',
@@ -239,6 +268,11 @@ export const gateModuleConfig: ModuleConfig = {
     {
       path: '/gate/maintenance/edit/:entryId/step3',
       element: <MNStep3Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/maintenance/edit/:entryId/attachments',
+      element: <MNAttachmentsPage />,
       layout: 'main',
     },
     {
@@ -263,6 +297,11 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
     },
     {
+      path: '/gate/construction/new/attachments',
+      element: <COAttachmentsPage />,
+      layout: 'main',
+    },
+    {
       path: '/gate/construction/new/review',
       element: <COReviewPage />,
       layout: 'main',
@@ -281,6 +320,11 @@ export const gateModuleConfig: ModuleConfig = {
     {
       path: '/gate/construction/edit/:entryId/step3',
       element: <COStep3Page />,
+      layout: 'main',
+    },
+    {
+      path: '/gate/construction/edit/:entryId/attachments',
+      element: <COAttachmentsPage />,
       layout: 'main',
     },
     {

@@ -201,6 +201,15 @@ export default function InspectionDetailPage() {
         [field]: value,
       },
     }))
+    // Clear parameter error when user fills in a value
+    const errorKey = `param_${parameterId}`
+    if (apiErrors[errorKey]) {
+      setApiErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[errorKey]
+        return newErrors
+      })
+    }
   }
 
   const handleSave = async () => {
@@ -219,6 +228,15 @@ export default function InspectionDetailPage() {
       }
       if (!formData.purchase_order_no?.trim()) {
         errors.purchase_order_no = 'Purchase Order No. is required'
+      }
+
+      // Validate mandatory parameters have result values
+      const mandatoryParams = qcParameters.filter((p) => p.is_mandatory)
+      for (const param of mandatoryParams) {
+        const result = parameterResults[param.id]
+        if (!result?.result_value?.trim()) {
+          errors[`param_${param.id}`] = `${param.parameter_name} result is required`
+        }
       }
 
       if (Object.keys(errors).length > 0) {
@@ -567,6 +585,11 @@ export default function InspectionDetailPage() {
                 const parameterId = 'parameter_master' in param ? param.parameter_master : param.id
                 const paramName = param.parameter_name
                 const standardValue = param.standard_value
+                const isMandatory =
+                  'is_mandatory' in param
+                    ? param.is_mandatory
+                    : qcParameters.find((p) => p.id === parameterId)?.is_mandatory ?? false
+                const paramError = apiErrors[`param_${parameterId}`]
                 const currentValue = parameterResults[parameterId] || {
                   result_value: '',
                   is_within_spec: true,
@@ -574,9 +597,18 @@ export default function InspectionDetailPage() {
                 }
 
                 return (
-                  <div key={parameterId} className="border rounded-lg p-3 space-y-3">
+                  <div
+                    key={parameterId}
+                    className={cn(
+                      'border rounded-lg p-3 space-y-3',
+                      paramError && 'border-destructive'
+                    )}
+                  >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{paramName}</span>
+                      <span className="font-medium text-sm">
+                        {paramName}
+                        {isMandatory && <span className="text-destructive"> *</span>}
+                      </span>
                       <label className="flex items-center gap-2 text-sm">
                         <input
                           type="checkbox"
@@ -592,15 +624,20 @@ export default function InspectionDetailPage() {
                     </div>
                     <div className="text-sm text-muted-foreground">Standard: {standardValue}</div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Result</Label>
+                      <Label className="text-xs">
+                        Result{isMandatory && <span className="text-destructive"> *</span>}
+                      </Label>
                       <Input
                         value={currentValue.result_value}
                         onChange={(e) =>
                           handleParameterChange(parameterId, 'result_value', e.target.value)
                         }
                         disabled={!canEdit || isSaving}
-                        className="w-full"
+                        className={cn('w-full', paramError && 'border-destructive')}
                       />
+                      {paramError && (
+                        <p className="text-xs text-destructive">{paramError}</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Remarks</Label>
@@ -637,6 +674,11 @@ export default function InspectionDetailPage() {
                       'parameter_master' in param ? param.parameter_master : param.id
                     const paramName = param.parameter_name
                     const standardValue = param.standard_value
+                    const isMandatory =
+                      'is_mandatory' in param
+                        ? param.is_mandatory
+                        : qcParameters.find((p) => p.id === parameterId)?.is_mandatory ?? false
+                    const paramError = apiErrors[`param_${parameterId}`]
                     const currentValue = parameterResults[parameterId] || {
                       result_value: '',
                       is_within_spec: true,
@@ -646,7 +688,10 @@ export default function InspectionDetailPage() {
                     return (
                       <tr key={parameterId} className="border-b">
                         <td className="p-3">
-                          <span className="font-medium">{paramName}</span>
+                          <span className="font-medium">
+                            {paramName}
+                            {isMandatory && <span className="text-destructive"> *</span>}
+                          </span>
                         </td>
                         <td className="p-3 text-muted-foreground">{standardValue}</td>
                         <td className="p-3">
@@ -656,8 +701,11 @@ export default function InspectionDetailPage() {
                               handleParameterChange(parameterId, 'result_value', e.target.value)
                             }
                             disabled={!canEdit || isSaving}
-                            className="w-full"
+                            className={cn('w-full', paramError && 'border-destructive')}
                           />
+                          {paramError && (
+                            <p className="text-xs text-destructive mt-1">{paramError}</p>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           <input

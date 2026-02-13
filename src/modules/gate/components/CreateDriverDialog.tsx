@@ -17,7 +17,7 @@ import {
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
 
-import { useCreateDriver } from '../api/driver/driver.queries'
+import { useCreateDriver, useUpdateDriver } from '../api/driver/driver.queries'
 import {
   type DriverFormData,
   driverSchema,
@@ -28,14 +28,38 @@ import {
 interface CreateDriverDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: (driverId: number, driverName: string) => void
+  onSuccess?: (driver: {
+    id: number
+    name: string
+    mobile_no: string
+    license_no: string
+    id_proof_type: string
+    id_proof_number: string
+    photo: string | null
+  }) => void
+
+  /** Optional — pass to enable edit mode */
+  initialData?: {
+    id: number
+    name: string
+    mobile_no: string
+    license_no: string
+    id_proof_type: string
+    id_proof_number: string
+    photo?: string | null
+  }
 }
 
-export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriverDialogProps) {
+export function CreateDriverDialog({ open, onOpenChange, onSuccess, initialData }: CreateDriverDialogProps) {
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({})
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isResettingRef = useRef(false)
   const createDriver = useCreateDriver()
+  const updateDriver = useUpdateDriver()
+
+  const isEditMode = !!initialData
+  const mutation = isEditMode ? updateDriver : createDriver
 
   const {
     register,
@@ -65,21 +89,37 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
 
   // Reset form and errors when dialog opens/closes
   useEffect(() => {
-    if (open) {
+    if (!open) return
+
+    setApiErrors({})
+    isResettingRef.current = true
+
+    if (initialData) {
+      reset({
+        name: initialData.name,
+        mobile_no: initialData.mobile_no,
+        license_no: initialData.license_no,
+        id_proof_type: initialData.id_proof_type as any,
+        id_proof_number: initialData.id_proof_number,
+      })
+
+      setPhotoPreview(initialData.photo ?? null)
+    } else {
       reset()
-
-      setApiErrors({})
-
       setPhotoPreview(null)
     }
-  }, [open, reset])
+  }, [open, initialData, reset])
 
-  // Clear id_proof_number when id_proof_type changes
+  // Clear id_proof_number when id_proof_type changes (skip during reset)
   useEffect(() => {
+    if (isResettingRef.current) {
+      isResettingRef.current = false
+      return
+    }
     setValue('id_proof_number', '', { shouldValidate: false })
   }, [idProofType, setValue])
 
-  // Handle photo preview
+  // Handle photo preview for new file uploads only
   useEffect(() => {
     if (photoFile && photoFile instanceof File) {
       const reader = new FileReader()
@@ -87,8 +127,6 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
         setPhotoPreview(reader.result as string)
       }
       reader.readAsDataURL(photoFile)
-    } else {
-      setPhotoPreview(null)
     }
   }, [photoFile])
 
@@ -110,23 +148,20 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
   const onSubmit = async (data: DriverFormData) => {
     setApiErrors({})
     try {
-      const result = await createDriver.mutateAsync(data)
+      const result = isEditMode
+        ? await updateDriver.mutateAsync({ ...data, id: initialData.id })
+        : await createDriver.mutateAsync(data)
       reset()
       setPhotoPreview(null)
       onOpenChange(false)
-      if (onSuccess) {
-        onSuccess(result.id, result.name)
-      }
+      onSuccess?.(result)
     } catch (error) {
-      // Handle API errors
       const apiError = error as ApiError
 
       if (apiError.errors) {
-        // Map API errors to form fields
         const fieldErrors: Record<string, string> = {}
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            // Map API field names to form field names
             const formField =
               field === 'mobile_no'
                 ? 'mobile_no'
@@ -146,8 +181,9 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
         })
         setApiErrors(fieldErrors)
       } else {
-        // General error message
-        setApiErrors({ general: apiError.message || 'Failed to create driver' })
+        setApiErrors({
+          general: apiError.message || (isEditMode ? 'Failed to update driver' : 'Failed to create driver'),
+        })
       }
     }
   }
@@ -156,10 +192,16 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Driver</DialogTitle>
+          <DialogTitle>
+            {isEditMode ? 'Update Driver' : 'Add New Driver'}
+          </DialogTitle>
+
           <DialogDescription>
-            Fill in the details to create a new driver. All fields are required.
+            {isEditMode
+              ? 'Update the driver details below.'
+              : 'Fill in the details to create a new driver. All fields are required.'}
           </DialogDescription>
+
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -177,7 +219,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
               id="name"
               placeholder="Enter driver name"
               {...register('name')}
-              disabled={createDriver.isPending}
+              disabled={mutation.isPending}
               className={errors.name || apiErrors.name ? 'border-destructive' : ''}
             />
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
@@ -194,7 +236,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
               id="mobile_no"
               placeholder="9876543210"
               {...register('mobile_no')}
-              disabled={createDriver.isPending}
+              disabled={mutation.isPending}
               className={errors.mobile_no || apiErrors.mobile_no ? 'border-destructive' : ''}
             />
             {errors.mobile_no && (
@@ -217,7 +259,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
                   e.target.value = e.target.value.toUpperCase()
                 },
               })}
-              disabled={createDriver.isPending}
+              disabled={mutation.isPending}
               className={errors.license_no || apiErrors.license_no ? 'border-destructive' : ''}
             />
             <p className="text-xs text-muted-foreground">
@@ -239,7 +281,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
               id="id_proof_type"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               {...register('id_proof_type')}
-              disabled={createDriver.isPending}
+              disabled={mutation.isPending}
             >
               {ID_PROOF_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -281,7 +323,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
                 ID_PROOF_VALIDATION[idProofType as keyof typeof ID_PROOF_VALIDATION]?.maxLength ??
                 50
               }
-              disabled={createDriver.isPending}
+              disabled={mutation.isPending}
               className={
                 errors.id_proof_number || apiErrors.id_proof_number ? 'border-destructive' : ''
               }
@@ -307,7 +349,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
                 type="file"
                 accept="image/*"
                 onChange={handlePhotoChange}
-                disabled={createDriver.isPending}
+                disabled={mutation.isPending}
                 className="hidden"
                 id="photo-upload"
               />
@@ -316,7 +358,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
                   type="button"
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={createDriver.isPending}
+                  disabled={mutation.isPending}
                   className="w-full"
                 >
                   <Camera className="h-4 w-4 mr-2" />
@@ -328,7 +370,7 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
                     variant="outline"
                     size="icon"
                     onClick={handleRemovePhoto}
-                    disabled={createDriver.isPending}
+                    disabled={mutation.isPending}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -367,12 +409,18 @@ export function CreateDriverDialog({ open, onOpenChange, onSuccess }: CreateDriv
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={createDriver.isPending}
+              disabled={mutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createDriver.isPending}>
-              {createDriver.isPending ? 'Creating...' : 'Create Driver'}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending
+                ? isEditMode
+                  ? 'Updating...'
+                  : 'Creating...'
+                : isEditMode
+                  ? 'Update Driver'
+                  : 'Create Driver'}
             </Button>
           </DialogFooter>
         </form>

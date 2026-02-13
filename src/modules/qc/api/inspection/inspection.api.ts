@@ -6,15 +6,67 @@ import type {
   ApprovalRequest,
   CreateInspectionRequest,
   Inspection,
+  InspectionListParams,
   PendingInspection,
   UpdateParameterResultRequest,
 } from '../../types'
 
+function buildQueryString(params?: InspectionListParams): string {
+  if (!params) return ''
+  const searchParams = new URLSearchParams()
+  if (params.from_date) searchParams.append('from_date', params.from_date)
+  if (params.to_date) searchParams.append('to_date', params.to_date)
+  if (params.workflow_status) searchParams.append('workflow_status', params.workflow_status)
+  if (params.final_status) searchParams.append('final_status', params.final_status)
+  const qs = searchParams.toString()
+  return qs ? `?${qs}` : ''
+}
+
 export const inspectionApi = {
+  // Get all inspections with optional filters
+  async getList(params?: InspectionListParams): Promise<Inspection[]> {
+    const response = await apiClient.get<Inspection[]>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.INSPECTIONS_LIST + buildQueryString(params)
+    )
+    return response.data
+  },
+
   // Get list of pending arrival slips for QA inspection
-  async getPendingList(): Promise<PendingInspection[]> {
+  async getPendingList(params?: InspectionListParams): Promise<PendingInspection[]> {
     const response = await apiClient.get<PendingInspection[]>(
-      API_ENDPOINTS.QUALITY_CONTROL_V2.PENDING_INSPECTIONS
+      API_ENDPOINTS.QUALITY_CONTROL_V2.PENDING_INSPECTIONS + buildQueryString(params)
+    )
+    return response.data
+  },
+
+  // Get inspections awaiting QA Chemist approval
+  async getAwaitingChemist(params?: InspectionListParams): Promise<Inspection[]> {
+    const response = await apiClient.get<Inspection[]>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.AWAITING_CHEMIST + buildQueryString(params)
+    )
+    return response.data
+  },
+
+  // Get inspections awaiting QA Manager approval
+  async getAwaitingQAM(params?: InspectionListParams): Promise<Inspection[]> {
+    const response = await apiClient.get<Inspection[]>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.AWAITING_QAM + buildQueryString(params)
+    )
+    return response.data
+  },
+
+  // Get completed inspections
+  async getCompleted(params?: InspectionListParams): Promise<Inspection[]> {
+    const response = await apiClient.get<Inspection[]>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.COMPLETED_INSPECTIONS + buildQueryString(params)
+    )
+    return response.data
+  },
+
+  // Get rejected inspections
+  async getRejected(params?: InspectionListParams): Promise<Inspection[]> {
+    const response = await apiClient.get<Inspection[]>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.REJECTED_INSPECTIONS + buildQueryString(params)
     )
     return response.data
   },

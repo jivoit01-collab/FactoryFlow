@@ -66,7 +66,7 @@ export default function Step3Page() {
   const queryClient = useQueryClient()
   const { entryId, entryIdNumber, isEditMode } = useEntryId()
   const currentStep = 3
-  const totalSteps = 3
+  const totalSteps = 4
   const progressPercentage = (currentStep / totalSteps) * 100
 
   // API hooks
@@ -197,9 +197,9 @@ export default function Step3Page() {
       return
     }
 
-    // In edit mode (and not fill data mode and not update mode), navigate to review page
+    // In edit mode (and not fill data mode and not update mode), navigate to attachments page
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/construction/edit/${entryId}/review`)
+      navigate(`/gate/construction/edit/${entryId}/attachments`)
       return
     }
 
@@ -280,12 +280,12 @@ export default function Step3Page() {
         await createConstructionEntry.mutateAsync(requestData)
       }
 
-      // Navigate to review page
+      // Navigate to attachments page
       setIsNavigating(true)
       if (isEditMode) {
-        navigate(`/gate/construction/edit/${entryId}/review`)
+        navigate(`/gate/construction/edit/${entryId}/attachments`)
       } else {
-        navigate(`/gate/construction/new/review?entryId=${entryId}`)
+        navigate(`/gate/construction/new/attachments?entryId=${entryId}`)
       }
     } catch (error) {
       const apiError = error as ApiError
@@ -700,9 +700,9 @@ export default function Step3Page() {
                 Saving...
               </>
             ) : effectiveEditMode && !updateMode ? (
-              'Review'
+              'Next'
             ) : (
-              'Save & Review'
+              'Save & Next'
             )}
           </Button>
         </div>

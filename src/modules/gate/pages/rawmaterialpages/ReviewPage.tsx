@@ -170,9 +170,9 @@ export default function ReviewPage() {
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step5`)
+      navigate(`/gate/raw-materials/edit/${entryId}/attachments`)
     } else {
-      navigate(`/gate/raw-materials/new/step5?entryId=${entryId}`)
+      navigate(`/gate/raw-materials/new/attachments?entryId=${entryId}`)
     }
   }
 

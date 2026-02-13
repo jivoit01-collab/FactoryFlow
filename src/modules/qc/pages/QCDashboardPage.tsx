@@ -11,12 +11,21 @@ import {
   UserCheck,
   XCircle,
 } from 'lucide-react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import type { ApiError } from '@/core/api/types'
+import { useGlobalDateRange } from '@/core/store/hooks'
+import { DateRangePicker } from '@/modules/gate/components'
 import { Button, Card, CardContent } from '@/shared/components/ui'
 
-import { usePendingInspections } from '../api/inspection/inspection.queries'
+import {
+  useAwaitingChemistInspections,
+  useAwaitingQAMInspections,
+  useCompletedInspections,
+  usePendingInspections,
+  useRejectedInspections,
+} from '../api/inspection/inspection.queries'
 import { WORKFLOW_STATUS } from '../constants'
 
 // Status configuration - compact like Gate module
@@ -83,36 +92,72 @@ const getStatusBadgeClass = (status: string | null, hasInspection: boolean) => {
 
 export default function QCDashboardPage() {
   const navigate = useNavigate()
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
 
-  // Fetch pending inspections for counts
-  const { data: pendingInspections = [], isLoading, error, refetch } = usePendingInspections()
+  const dateParams = useMemo(
+    () => ({
+      from_date: dateRange.from,
+      to_date: dateRange.to,
+    }),
+    [dateRange]
+  )
+
+  // Fetch data from backend status-based endpoints
+  const {
+    data: pendingList = [],
+    isLoading: pendingLoading,
+    error: pendingError,
+    refetch: refetchPending,
+  } = usePendingInspections(dateParams)
+
+  const {
+    data: awaitingChemistList = [],
+    isLoading: chemistLoading,
+    error: chemistError,
+  } = useAwaitingChemistInspections(dateParams)
+
+  const {
+    data: awaitingQAMList = [],
+    isLoading: qamLoading,
+    error: qamError,
+  } = useAwaitingQAMInspections(dateParams)
+
+  const {
+    data: completedList = [],
+    isLoading: completedLoading,
+    error: completedError,
+  } = useCompletedInspections(dateParams)
+
+  const {
+    data: rejectedList = [],
+    isLoading: rejectedLoading,
+    error: rejectedError,
+  } = useRejectedInspections(dateParams)
+
+  const isLoading =
+    pendingLoading || chemistLoading || qamLoading || completedLoading || rejectedLoading
+  const error = pendingError || chemistError || qamError || completedError || rejectedError
 
   // Check if error is a permission error (403)
   const apiError = error as ApiError | null
   const isPermissionError = apiError?.status === 403
 
-  // Calculate counts from the data
+  // Calculate counts from backend data
   const counts = {
-    pending: pendingInspections.filter((p) => !p.has_inspection).length,
-    draft: pendingInspections.filter(
+    pending: pendingList.filter((p) => !p.has_inspection).length,
+    draft: pendingList.filter(
       (p) => p.has_inspection && p.inspection_status === WORKFLOW_STATUS.DRAFT
     ).length,
-    awaiting_approval: pendingInspections.filter(
-      (p) =>
-        p.has_inspection &&
-        (p.inspection_status === WORKFLOW_STATUS.SUBMITTED ||
-          p.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED)
-    ).length,
-    approved: pendingInspections.filter(
-      (p) =>
-        p.has_inspection &&
-        (p.inspection_status === WORKFLOW_STATUS.QAM_APPROVED ||
-          p.inspection_status === WORKFLOW_STATUS.COMPLETED)
-    ).length,
-    rejected: 0,
+    awaiting_approval: awaitingChemistList.length + awaitingQAMList.length,
+    approved: completedList.length,
+    rejected: rejectedList.length,
   }
 
   const totalPending = counts.pending + counts.draft + counts.awaiting_approval
+
+  const refetch = () => {
+    refetchPending()
+  }
 
   // Format date/time for display - consistent with Gate module
   const formatDateTime = (dateTime?: string | null) => {
@@ -140,10 +185,22 @@ export default function QCDashboardPage() {
             Manage raw material inspections and quality approvals
           </p>
         </div>
-        <Button onClick={() => navigate('/qc/pending')} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Start Inspection
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <DateRangePicker
+            date={dateRangeAsDateObjects}
+            onDateChange={(date) => {
+              if (date && 'from' in date) {
+                setDateRange(date)
+              } else {
+                setDateRange(undefined)
+              }
+            }}
+          />
+          <Button onClick={() => navigate('/qc/pending')} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Start Inspection
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -236,13 +293,13 @@ export default function QCDashboardPage() {
               </button>
             </div>
 
-            {pendingInspections.length === 0 ? (
+            {pendingList.length === 0 ? (
               <div className="flex items-center justify-center h-16 text-sm text-muted-foreground border rounded-lg">
                 No arrival slips yet
               </div>
             ) : (
               <div className="space-y-2">
-                {pendingInspections.slice(0, 3).map((item) => (
+                {pendingList.slice(0, 3).map((item) => (
                   <div
                     key={item.arrival_slip.id}
                     className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"

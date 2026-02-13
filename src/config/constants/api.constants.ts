@@ -64,6 +64,10 @@ export const API_ENDPOINTS = {
     CREATE: (poItemId: number) => `/quality-control/po-items/${poItemId}/qc/`,
     GET: (poItemId: number) => `/quality-control/po-items/${poItemId}/qc/view`,
   },
+  // Gate Attachments
+  GATE_ATTACHMENTS: {
+    BY_ENTRY: (entryId: number) => `/gate-core/gate-attachments/${entryId}/`,
+  },
   // Gate Core - Full View
   GATE_CORE: {
     FULL_VIEW: (entryId: number) => `/gate-core/raw-material-gate-entry/${entryId}/`,
@@ -118,7 +122,12 @@ export const API_ENDPOINTS = {
     QC_PARAMETER_BY_ID: (id: number) => `/quality-control/parameters/${id}/`,
 
     // Inspections
+    INSPECTIONS_LIST: '/quality-control/inspections/',
     PENDING_INSPECTIONS: '/quality-control/inspections/pending/',
+    AWAITING_CHEMIST: '/quality-control/inspections/awaiting-chemist/',
+    AWAITING_QAM: '/quality-control/inspections/awaiting-qam/',
+    COMPLETED_INSPECTIONS: '/quality-control/inspections/completed/',
+    REJECTED_INSPECTIONS: '/quality-control/inspections/rejected/',
     INSPECTION_BY_ID: (id: number) => `/quality-control/inspections/${id}/`,
     INSPECTION_FOR_SLIP: (slipId: number) => `/quality-control/arrival-slips/${slipId}/inspection/`,
     INSPECTION_PARAMETERS: (inspectionId: number) =>

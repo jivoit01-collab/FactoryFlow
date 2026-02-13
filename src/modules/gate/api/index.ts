@@ -9,6 +9,10 @@
 export * from './arrivalSlip/arrivalSlip.api'
 export * from './arrivalSlip/arrivalSlip.queries'
 
+// Attachment
+export * from './attachment/attachment.api'
+export * from './attachment/attachment.queries'
+
 // Construction
 export * from './construction/construction.api'
 export * from './construction/construction.queries'

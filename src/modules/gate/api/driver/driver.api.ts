@@ -28,6 +28,10 @@ export interface CreateDriverRequest {
   photo?: File
 }
 
+export interface UpdateDriverRequest extends CreateDriverRequest {
+  id: number
+}
+
 export const driverApi = {
   /**
    * Get list of driver names for dropdown (lightweight)
@@ -54,7 +58,6 @@ export const driverApi = {
   },
 
   async create(data: CreateDriverRequest): Promise<Driver> {
-    // API expects form-data format (for file upload)
     const formData = new FormData()
     formData.append('name', data.name)
     formData.append('mobile_no', data.mobile_no)
@@ -70,6 +73,29 @@ export const driverApi = {
         'Content-Type': 'multipart/form-data',
       },
     })
+    return response.data
+  },
+
+  async update(data: UpdateDriverRequest): Promise<Driver> {
+    const formData = new FormData()
+    formData.append('name', data.name)
+    formData.append('mobile_no', data.mobile_no)
+    formData.append('license_no', data.license_no)
+    formData.append('id_proof_type', data.id_proof_type)
+    formData.append('id_proof_number', data.id_proof_number)
+    if (data.photo) {
+      formData.append('photo', data.photo)
+    }
+
+    const response = await apiClient.put<Driver>(
+      API_ENDPOINTS.DRIVER.DRIVER_BY_ID(data.id),
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    )
     return response.data
   },
 }

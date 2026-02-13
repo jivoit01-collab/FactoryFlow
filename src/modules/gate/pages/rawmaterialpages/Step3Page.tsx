@@ -12,7 +12,6 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { ENTRY_STATUS } from '@/config/constants'
 import type { ApiError } from '@/core/api/types'
 import {
   Button,
@@ -26,13 +25,18 @@ import {
 import { useScrollToError } from '@/shared/hooks'
 import { useDebounce } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
-import { getServerErrorMessage, isServerError as checkServerError } from '@/shared/utils'
+import {
+  getErrorMessage,
+  getServerErrorMessage,
+  isNotFoundError as checkNotFoundError,
+  isServerError as checkServerError,
+} from '@/shared/utils'
 
 import type { PurchaseOrder, Vendor } from '../../api/po/po.api'
 import { useOpenPOs } from '../../api/po/po.queries'
 import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { VendorSelect } from '../../components'
+import { FillDataAlert, StepHeader, StepLoadingSpinner, VendorSelect } from '../../components'
+import { WIZARD_CONFIG } from '../../constants'
 import { useEntryId } from '../../hooks'
 
 interface POItemFormData {
@@ -58,8 +62,7 @@ export default function Step3Page() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { entryId, entryIdNumber, isEditMode } = useEntryId()
-  const totalSteps = 5
-  const currentStep = 3
+  const currentStep = WIZARD_CONFIG.STEPS.PO_RECEIPT
 
   // Stable ID generation using useId
   const baseId = useId()
@@ -79,11 +82,6 @@ export default function Step3Page() {
   // State to keep button disabled after API success until navigation completes
   const [isNavigating, setIsNavigating] = useState(false)
   const effectiveEditMode = isEditMode && !fillDataMode
-
-  // Fetch vehicle entry to check status
-  const { data: vehicleEntryData } = useVehicleEntry(
-    isEditMode && entryIdNumber ? entryIdNumber : null
-  )
 
   // State for multiple PO forms - start with one empty form
   // Note: We use baseId with initial counter of 1 for stable initial ID
@@ -421,7 +419,6 @@ export default function Step3Page() {
       // Check if at least one item has received quantity > 0
       const hasReceivedQty = form.items.some((item) => item.received_qty_now > 0)
       if (!hasReceivedQty) {
-        // Set errors on all items that don't have received_qty_now > 0
         const itemErrors: Record<string, string> = {
           [`${form.id}_received`]: 'Please enter received quantities for at least one item',
         }
@@ -429,6 +426,19 @@ export default function Step3Page() {
           if (!item.received_qty_now || item.received_qty_now <= 0) {
             itemErrors[`${form.id}_item_${item.po_item_code}`] = 'Please enter received quantity'
           }
+        })
+        setApiErrors(itemErrors)
+        return
+      }
+      // Check that received quantity does not exceed remaining PO quantity
+      const overReceivedItems = form.items.filter(
+        (item) => item.received_qty_now > item.remaining_qty_initial
+      )
+      if (overReceivedItems.length > 0) {
+        const itemErrors: Record<string, string> = {}
+        overReceivedItems.forEach((item) => {
+          itemErrors[`${form.id}_item_${item.po_item_code}`] =
+            `Cannot exceed remaining quantity (${item.remaining_qty_initial} ${item.uom})`
         })
         setApiErrors(itemErrors)
         return
@@ -479,18 +489,8 @@ export default function Step3Page() {
     }
   }
 
-  const progressPercentage = (currentStep / totalSteps) * 100
-
   // Check if error is "not found" error
-  const isNotFoundError = Boolean(
-    poReceiptsError &&
-    (() => {
-      const error = poReceiptsError as unknown as ApiError
-      const errorMessage = error.message?.toLowerCase() || ''
-      const is404 = error.status === 404
-      return is404 || errorMessage.includes('not found')
-    })()
-  )
+  const isNotFoundError = checkNotFoundError(poReceiptsError)
 
   // Check if error is a server error (5xx)
   const hasServerError = checkServerError(poReceiptsError)
@@ -506,75 +506,37 @@ export default function Step3Page() {
   const isReadOnly =
     (effectiveEditMode && hasPOReceiptsData && !updateMode && !fillDataMode) ||
     (effectiveEditMode && hasNoPOReceiptsData && !fillDataMode)
-  const canUpdate =
-    effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED && hasPOReceiptsData
-
-  const handleUpdate = () => {
-    setUpdateMode(true)
-  }
+  // PO receipts are immutable once submitted — no update allowed
+  const canUpdate = false
 
   if (effectiveEditMode && isLoadingPOReceipts) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <StepLoadingSpinner />
   }
 
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Material Inward - Step {currentStep} of {totalSteps}
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <span className="text-sm font-medium text-muted-foreground min-w-[3rem]">
-            {Math.round(progressPercentage)}%
-          </span>
-        </div>
-      </div>
-
-      {/* Server error message */}
-      {hasServerError && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {getServerErrorMessage()}
-        </div>
-      )}
+      <StepHeader
+        currentStep={currentStep}
+        error={
+          hasServerError
+            ? getServerErrorMessage()
+            : apiErrors.general ||
+              (poReceiptsError && !isNotFoundError
+                ? getErrorMessage(poReceiptsError, 'Failed to load PO receipts')
+                : null)
+        }
+      />
 
       {/* Show Fill Data button when no PO receipts data exists */}
       {hasNoPOReceiptsData && !fillDataMode && !hasServerError && (
-        <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              <span>
-                {isNotFoundError
-                  ? (() => {
-                      const error = poReceiptsError as unknown as ApiError
-                      return error.message || 'PO receipts not found'
-                    })()
-                  : 'No PO receipts found for this entry.'}
-              </span>
-            </div>
-            <Button onClick={handleFillData} size="sm">
-              Fill Data
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {apiErrors.general && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {apiErrors.general}
-        </div>
+        <FillDataAlert
+          message={
+            isNotFoundError
+              ? getErrorMessage(poReceiptsError, 'PO receipts not found')
+              : 'No PO receipts found for this entry.'
+          }
+          onFillData={handleFillData}
+        />
       )}
 
       <div className="space-y-6">
@@ -641,11 +603,7 @@ export default function Step3Page() {
           >
             Cancel
           </Button>
-          {effectiveEditMode && canUpdate && !updateMode && (
-            <Button type="button" onClick={handleUpdate}>
-              Update
-            </Button>
-          )}
+          {/* PO receipts are immutable once submitted */}
           <Button
             type="button"
             onClick={handleNext}

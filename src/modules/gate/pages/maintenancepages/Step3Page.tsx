@@ -60,7 +60,7 @@ export default function Step3Page() {
   const queryClient = useQueryClient()
   const { entryId, entryIdNumber, isEditMode } = useEntryId()
   const currentStep = 3
-  const totalSteps = 3
+  const totalSteps = 4
 
   // API hooks
   const createMaintenanceEntry = useCreateMaintenanceEntry(entryIdNumber || 0)
@@ -202,9 +202,9 @@ export default function Step3Page() {
       return
     }
 
-    // In edit mode (and not fill data mode and not update mode), navigate to review page
+    // In edit mode (and not fill data mode and not update mode), navigate to attachments page
     if (effectiveEditMode && !updateMode) {
-      navigate(`/gate/maintenance/edit/${entryId}/review`)
+      navigate(`/gate/maintenance/edit/${entryId}/attachments`)
       return
     }
 
@@ -266,12 +266,12 @@ export default function Step3Page() {
         await createMaintenanceEntry.mutateAsync(requestData)
       }
 
-      // Navigate to review page
+      // Navigate to attachments page
       setIsNavigating(true)
       if (isEditMode) {
-        navigate(`/gate/maintenance/edit/${entryId}/review`)
+        navigate(`/gate/maintenance/edit/${entryId}/attachments`)
       } else {
-        navigate(`/gate/maintenance/new/review?entryId=${entryId}`)
+        navigate(`/gate/maintenance/new/attachments?entryId=${entryId}`)
       }
     } catch (error) {
       const apiError = error as ApiError
@@ -574,7 +574,7 @@ export default function Step3Page() {
         }
         isEditMode={effectiveEditMode}
         isUpdateMode={updateMode}
-        nextLabel={effectiveEditMode && !updateMode ? 'Review' : 'Save & Next'}
+        nextLabel={effectiveEditMode && !updateMode ? 'Next' : 'Save & Next'}
       />
     </div>
   )
