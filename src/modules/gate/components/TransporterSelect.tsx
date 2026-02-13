@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
-import { useTransporterNames, useTransporterById } from '../api/transporter/transporter.queries'
+import { useState } from 'react'
+
 import { SearchableSelect } from '@/shared/components'
+
+import type { TransporterName } from '../api/transporter/transporter.api'
+import { useTransporterById, useTransporterNames } from '../api/transporter/transporter.queries'
 import { CreateTransporterDialog } from './CreateTransporterDialog'
-import type { TransporterName, Transporter } from '../api/transporter/transporter.api'
 
 export interface TransporterDetails {
   name: string
@@ -35,29 +37,13 @@ export function TransporterSelect({
 }: TransporterSelectProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [selectedTransporterDetails, setSelectedTransporterDetails] = useState<Transporter | null>(
-    null
-  )
 
-  const { data: transporterNames = [], isLoading } = useTransporterNames(isDropdownOpen && !disabled)
+  const { data: transporterNames = [], isLoading } = useTransporterNames(
+    isDropdownOpen && !disabled
+  )
   const { data: transporterDetails } = useTransporterById(selectedId, selectedId !== null)
 
-  const prevTransporterDetailsRef = useRef(transporterDetails)
-
-  // Sync transporter details when fetched (for popover display only)
-  const syncTransporterDetails = useCallback(() => {
-    if (transporterDetails && transporterDetails !== prevTransporterDetailsRef.current) {
-      prevTransporterDetailsRef.current = transporterDetails
-      setSelectedTransporterDetails(transporterDetails)
-    }
-  }, [transporterDetails])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with fetched data is a valid pattern
-    syncTransporterDetails()
-  }, [syncTransporterDetails])
-
-  const details = externalDetails || selectedTransporterDetails
+  const details = externalDetails || transporterDetails
 
   return (
     <SearchableSelect<TransporterName>
@@ -79,7 +65,6 @@ export function TransporterSelect({
       onOpenChange={setIsDropdownOpen}
       onSelectedKeyChange={(key) => {
         setSelectedId(key as number | null)
-        if (!key) setSelectedTransporterDetails(null)
       }}
       onItemSelect={(transporter) => {
         setSelectedId(transporter.id)
@@ -87,7 +72,6 @@ export function TransporterSelect({
       }}
       onClear={() => {
         setSelectedId(null)
-        setSelectedTransporterDetails(null)
         onChange('')
       }}
       renderPopoverContent={(selKey) =>

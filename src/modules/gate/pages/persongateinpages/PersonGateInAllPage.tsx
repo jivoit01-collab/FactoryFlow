@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react'
+import { ArrowLeft, Plus, Search } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, ArrowLeft } from 'lucide-react'
+
+import { useGlobalDateRange } from '@/core/store/hooks'
 import { Button, Input } from '@/shared/components/ui'
+
 import { usePersonEntries } from '../../api/personGateIn/personGateIn.queries'
 import { DateRangePicker } from '../../components/DateRangePicker'
-import { useGlobalDateRange } from '@/core/store/hooks'
 
 export default function PersonGateInAllPage() {
   const navigate = useNavigate()
@@ -98,11 +100,7 @@ export default function PersonGateInAllPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/gate/visitor-labour')}
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate('/gate/visitor-labour')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

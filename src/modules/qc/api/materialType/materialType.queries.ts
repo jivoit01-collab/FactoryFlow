@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { materialTypeApi, type ListMaterialTypesParams } from './materialType.api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import type { CreateMaterialTypeRequest } from '../../types'
+import { type ListMaterialTypesParams, materialTypeApi } from './materialType.api'
 
 // Query keys
 export const MATERIAL_TYPE_QUERY_KEYS = {

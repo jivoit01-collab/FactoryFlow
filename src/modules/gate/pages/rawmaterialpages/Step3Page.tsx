@@ -1,37 +1,39 @@
-import { useState, useEffect, useMemo, useRef, useId } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  Loader2,
   Package,
   Plus,
   Trash2,
-  ArrowLeft,
-  ChevronDown,
-  Check,
-  Loader2,
-  AlertCircle,
 } from 'lucide-react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+import { ENTRY_STATUS } from '@/config/constants'
+import type { ApiError } from '@/core/api/types'
 import {
   Button,
-  Input,
-  Label,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Input,
+  Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
+import { useDebounce } from '@/shared/hooks'
+import { cn } from '@/shared/utils'
+import { getServerErrorMessage, isServerError as checkServerError } from '@/shared/utils'
+
+import type { PurchaseOrder, Vendor } from '../../api/po/po.api'
 import { useOpenPOs } from '../../api/po/po.queries'
 import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries'
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
 import { VendorSelect } from '../../components'
 import { useEntryId } from '../../hooks'
-import { cn } from '@/shared/utils'
-import { useDebounce } from '@/shared/hooks'
-import { isServerError as checkServerError, getServerErrorMessage } from '@/shared/utils'
-import type { ApiError } from '@/core/api/types'
-import type { PurchaseOrder, Vendor } from '../../api/po/po.api'
-import { ENTRY_STATUS } from '@/config/constants'
 
 interface POItemFormData {
   po_item_code: string
@@ -154,7 +156,11 @@ export default function Step3Page() {
       )
     )
     // Clear errors
-    const errorKeys = [`${poFormId}_supplierCode`, `${poFormId}_supplierName`, `${poFormId}_poNumber`]
+    const errorKeys = [
+      `${poFormId}_supplierCode`,
+      `${poFormId}_supplierName`,
+      `${poFormId}_poNumber`,
+    ]
     setApiErrors((prev) => {
       const newErrors = { ...prev }
       errorKeys.forEach((key) => delete newErrors[key])
@@ -889,9 +895,7 @@ function POCard({
 
           {/* Supplier Name (auto-filled from vendor selection) */}
           <div className="space-y-2">
-            <Label htmlFor={`supplier-name-${poForm.id}`}>
-              Supplier Name
-            </Label>
+            <Label htmlFor={`supplier-name-${poForm.id}`}>Supplier Name</Label>
             <Input
               id={`supplier-name-${poForm.id}`}
               placeholder="Auto-filled from supplier selection"

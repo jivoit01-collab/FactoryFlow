@@ -1,13 +1,15 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
 import { toast } from 'sonner'
+
+import { API_CONFIG, API_ENDPOINTS, AUTH_CONFIG, HTTP_STATUS } from '@/config/constants'
 import { env } from '@/config/env.config'
-import { API_CONFIG, HTTP_STATUS, AUTH_CONFIG, API_ENDPOINTS } from '@/config/constants'
-import type { ApiError } from './types'
 import { indexedDBService } from '@/core/auth/services/indexedDb.service'
 import {
   refreshAccessToken,
   shouldRefreshToken as shouldProactivelyRefresh,
 } from '@/core/auth/utils/tokenRefresh.util'
+
+import type { ApiError } from './types'
 
 let isRefreshing = false
 let isInitialized = false
@@ -61,11 +63,6 @@ const processQueue = (error: unknown, token: string | null = null) => {
 /**
  * Check if URL is an auth endpoint that should skip token handling
  * Only login and refresh endpoints should skip token (they don't need/use access token)
- */
-
-/**
- * Check if URL is an auth endpoint that should skip token handling
- * Only login and refresh endpoints should skip token (they don't need/use access token)
  *
  * @param url - The request URL to check
  * @returns True if token should be skipped for this endpoint
@@ -89,6 +86,59 @@ async function performTokenRefresh(): Promise<string> {
   }
 
   return result.access
+}
+
+/**
+ * Extract field-level errors from API response data.
+ * Handles both nested {"errors": {...}} and flat {"field": ["error"]} formats.
+ */
+function extractFieldErrors(
+  responseData: Record<string, unknown> | undefined
+): Record<string, string[]> | undefined {
+  if (!responseData) return undefined
+
+  if (responseData.errors && typeof responseData.errors === 'object') {
+    return responseData.errors as Record<string, string[]>
+  }
+
+  const fieldErrors: Record<string, string[]> = {}
+  Object.entries(responseData).forEach(([key, value]) => {
+    if (key !== 'detail' && key !== 'message' && key !== 'errors' && key !== 'success') {
+      if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+        fieldErrors[key] = value as string[]
+      }
+    }
+  })
+  return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined
+}
+
+/**
+ * Extract a human-readable error message from API response data.
+ * Checks 'detail' (Django REST), 'message', and 'error' fields.
+ * Handles Python-style stringified lists (e.g., "['message']") and arrays.
+ */
+function extractErrorMessage(
+  responseData: Record<string, unknown> | undefined,
+  fallback: string = 'An error occurred'
+): string {
+  if (!responseData) return fallback
+
+  if (typeof responseData.detail === 'string') return responseData.detail
+  if (typeof responseData.message === 'string') return responseData.message
+
+  if (responseData.error) {
+    const errValue = responseData.error
+    if (typeof errValue === 'string') {
+      // Handle Python-style stringified lists: "['message']" or "['msg1', 'msg2']"
+      const match = errValue.match(/^\[['"](.+?)['"]\]$/)
+      return match ? match[1] : errValue
+    }
+    if (Array.isArray(errValue) && errValue.length > 0) {
+      return String(errValue[0])
+    }
+  }
+
+  return fallback
 }
 
 function createApiClient(): AxiosInstance {
@@ -160,19 +210,13 @@ function createApiClient(): AxiosInstance {
         // Skip refresh for login and refresh endpoints (they don't use access token)
         // But still transform the error to ApiError format for consistent error handling
         if (shouldSkipToken(originalRequest.url)) {
-          // Transform error to ApiError format before rejecting
-          // Backend may return 'detail' (Django REST framework) or 'message' field
           const responseData = error.response?.data as unknown as
             | Record<string, unknown>
             | undefined
           const apiError: ApiError = {
-            message:
-              (responseData?.detail as string) ||
-              (responseData?.message as string) ||
-              error.message ||
-              'Authentication failed',
+            message: extractErrorMessage(responseData, error.message || 'Authentication failed'),
             code: error.code,
-            errors: responseData?.errors as Record<string, string[]> | undefined,
+            errors: extractFieldErrors(responseData),
             status: error.response?.status || 401,
           }
           return Promise.reject(apiError)
@@ -218,55 +262,13 @@ function createApiClient(): AxiosInstance {
       }
 
       // Transform error to ApiError format
-      // Check for both 'detail' (Django REST framework) and 'message' (custom API) fields
       const responseData = error.response?.data as unknown as Record<string, unknown> | undefined
-
-      // Check if errors are nested under 'errors' key or directly on response data
-      // Some APIs return: {"errors": {"name": ["error"]}}
-      // Others return: {"name": ["error"]} directly
-      let errors: Record<string, string[]> | undefined
-      if (responseData?.errors && typeof responseData.errors === 'object') {
-        errors = responseData.errors as Record<string, string[]>
-      } else if (responseData) {
-        // Check if response data itself contains field errors (flat structure)
-        const fieldErrors: Record<string, string[]> = {}
-        Object.entries(responseData).forEach(([key, value]) => {
-          // Skip common error properties that aren't field errors
-          if (key !== 'detail' && key !== 'message' && key !== 'errors' && key !== 'success') {
-            if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
-              fieldErrors[key] = value as string[]
-            }
-          }
-        })
-        if (Object.keys(fieldErrors).length > 0) {
-          errors = fieldErrors
-        }
-      }
-
-      // Extract error message - check various response formats
-      let errorMessage = 'An error occurred'
-      if (responseData?.detail) {
-        errorMessage = responseData.detail as string
-      } else if (responseData?.message) {
-        errorMessage = responseData.message as string
-      } else if (responseData?.error) {
-        // Handle 'error' field (e.g., "['Person already inside']" or plain string)
-        const errValue = responseData.error
-        if (typeof errValue === 'string') {
-          // Handle Python-style stringified list: "['message']"
-          const match = errValue.match(/^\['(.+)'\]$/)
-          errorMessage = match ? match[1] : errValue
-        } else if (Array.isArray(errValue) && errValue.length > 0) {
-          errorMessage = errValue[0]
-        }
-      } else if (error.message) {
-        errorMessage = error.message
-      }
+      const errorMessage = extractErrorMessage(responseData, error.message)
 
       const apiError: ApiError = {
         message: errorMessage,
         code: error.code,
-        errors: errors,
+        errors: extractFieldErrors(responseData),
         status: error.response?.status || 500,
       }
 

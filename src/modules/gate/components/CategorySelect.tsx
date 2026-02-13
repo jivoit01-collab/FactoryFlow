@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useDailyNeedCategories } from '../api/dailyNeed/dailyNeed.queries'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { DailyNeedCategory } from '../api/dailyNeed/dailyNeed.api'
+import { useDailyNeedCategories } from '../api/dailyNeed/dailyNeed.queries'
 
 interface CategorySelectProps {
   value?: number | ''

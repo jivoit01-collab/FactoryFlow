@@ -1,11 +1,21 @@
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  FileText,
+  Plus,
+  XCircle,
+} from 'lucide-react'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ChevronRight, FileText, Clock, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
-import { Button, Card, CardContent } from '@/shared/components/ui'
+
 import { getEntryStatusClasses } from '@/config/constants'
+import { useGlobalDateRange } from '@/core/store/hooks'
+import { Button, Card, CardContent } from '@/shared/components/ui'
+
 import { useVehicleEntries, useVehicleEntriesCount } from '../../api/vehicle/vehicleEntry.queries'
 import { DateRangePicker } from '../../components/DateRangePicker'
-import { useGlobalDateRange } from '@/core/store/hooks'
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig'
 
 interface StatusConfigItem {
@@ -96,7 +106,10 @@ export const RAW_MATERIAL_STATUS_CONFIG: DashboardStatusConfig = {
   gridCols: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
 }
 
-export default function SharedDashboard({ config, statusConfig = DEFAULT_STATUS_CONFIG }: SharedDashboardProps) {
+export default function SharedDashboard({
+  config,
+  statusConfig = DEFAULT_STATUS_CONFIG,
+}: SharedDashboardProps) {
   const navigate = useNavigate()
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange()
 
@@ -124,12 +137,14 @@ export default function SharedDashboard({ config, statusConfig = DEFAULT_STATUS_
 
     if (!countData?.total_vehicle_entries) return defaultCounts
 
-    countData.total_vehicle_entries.forEach(({ status, count }: { status: string; count: number }) => {
-      const key = status.toLowerCase()
-      if (key in defaultCounts) {
-        defaultCounts[key] = count
+    countData.total_vehicle_entries.forEach(
+      ({ status, count }: { status: string; count: number }) => {
+        const key = status.toLowerCase()
+        if (key in defaultCounts) {
+          defaultCounts[key] = count
+        }
       }
-    })
+    )
 
     return defaultCounts
   }, [countData, statusConfig.statusOrder])
@@ -183,7 +198,10 @@ export default function SharedDashboard({ config, statusConfig = DEFAULT_STATUS_
               }
             }}
           />
-          <Button onClick={() => navigate(`${config.routePrefix}/new`)} className="w-full sm:w-auto">
+          <Button
+            onClick={() => navigate(`${config.routePrefix}/new`)}
+            className="w-full sm:w-auto"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add New Entry
           </Button>

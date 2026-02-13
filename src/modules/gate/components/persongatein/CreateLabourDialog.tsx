@@ -1,19 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
+import { VALIDATION_PATTERNS } from '@/config/constants'
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Button,
   Input,
   Label,
 } from '@/shared/components/ui'
-import { useCreateLabour } from '../../api/personGateIn/personGateIn.queries'
-import type { Labour } from '../../api/personGateIn/personGateIn.api'
-import { VALIDATION_PATTERNS } from '@/config/constants'
 import { cn } from '@/shared/utils'
+
+import type { Labour } from '../../api/personGateIn/personGateIn.api'
+import { useCreateLabour } from '../../api/personGateIn/personGateIn.queries'
 import { ContractorSelect } from '../ContractorSelect'
 
 interface CreateLabourDialogProps {
@@ -105,9 +107,7 @@ export function CreateLabourDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Add New Labour</DialogTitle>
-          <DialogDescription>
-            Fill in the details to register a new labour.
-          </DialogDescription>
+          <DialogDescription>Fill in the details to register a new labour.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,9 +129,7 @@ export function CreateLabourDialog({
               disabled={createLabour.isPending}
               className={apiErrors.name ? 'border-destructive' : ''}
             />
-            {apiErrors.name && (
-              <p className="text-sm text-destructive">{apiErrors.name}</p>
-            )}
+            {apiErrors.name && <p className="text-sm text-destructive">{apiErrors.name}</p>}
           </div>
 
           <div className="space-y-2">
@@ -158,7 +156,11 @@ export function CreateLabourDialog({
                   const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10)
                   setFormData((prev) => ({ ...prev, mobile: value }))
                   if (apiErrors.mobile) {
-                    setApiErrors((prev) => { const n = { ...prev }; delete n.mobile; return n })
+                    setApiErrors((prev) => {
+                      const n = { ...prev }
+                      delete n.mobile
+                      return n
+                    })
                   }
                 }}
                 maxLength={10}
@@ -196,7 +198,9 @@ export function CreateLabourDialog({
                 id="permit_valid_till"
                 type="date"
                 value={formData.permit_valid_till}
-                onChange={(e) => setFormData((prev) => ({ ...prev, permit_valid_till: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, permit_valid_till: e.target.value }))
+                }
                 disabled={createLabour.isPending}
               />
             </div>

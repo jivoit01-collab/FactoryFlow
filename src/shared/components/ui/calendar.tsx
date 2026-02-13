@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   DayPicker,
@@ -5,9 +6,9 @@ import {
   type MonthCaptionProps,
   useNavigation,
 } from 'react-day-picker'
-import { format } from 'date-fns'
 
 import { cn } from '@/shared/utils'
+
 import { Button } from './button'
 
 export type CalendarProps = DayPickerProps & {

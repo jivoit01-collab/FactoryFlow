@@ -1,5 +1,5 @@
-import * as React from 'react'
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'
+import * as React from 'react'
 
 import { cn } from '@/shared/utils'
 
@@ -22,4 +22,4 @@ const CollapsibleContent = React.forwardRef<
 ))
 CollapsibleContent.displayName = CollapsiblePrimitive.Content.displayName
 
-export { Collapsible, CollapsibleTrigger, CollapsibleContent }
+export { Collapsible, CollapsibleContent, CollapsibleTrigger }

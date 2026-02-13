@@ -1,24 +1,26 @@
-import { useState, useMemo } from 'react'
-import { Send, AlertCircle, Users, Loader2, Search, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Loader2, Search, Send, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
+
+import type { ApiError } from '@/core/api'
 import {
+  Badge,
   Button,
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
+  Checkbox,
   Input,
   Label,
   Textarea,
-  Checkbox,
-  Badge,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
+
 import { useCompanyUsers, useSendNotification } from '../api/sendNotification.queries'
-import { NOTIFICATION_TYPES } from '../types/sendNotification.types'
 import type { SendNotificationRequest } from '../types/sendNotification.types'
-import type { ApiError } from '@/core/api'
+import { NOTIFICATION_TYPES } from '../types/sendNotification.types'
 
 type RecipientMode = 'all' | 'specific'
 
@@ -42,8 +44,7 @@ export default function SendNotificationPage() {
     if (!userSearch.trim()) return users
     const search = userSearch.toLowerCase()
     return users.filter(
-      (u) =>
-        u.full_name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search)
+      (u) => u.full_name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search)
     )
   }, [users, userSearch])
 
@@ -148,9 +149,7 @@ export default function SendNotificationPage() {
       {/* Header */}
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Send Notification</h2>
-        <p className="text-muted-foreground">
-          Broadcast a notification to users in your company
-        </p>
+        <p className="text-muted-foreground">Broadcast a notification to users in your company</p>
       </div>
 
       {/* General error */}
@@ -181,9 +180,7 @@ export default function SendNotificationPage() {
                 onChange={(e) => handleInputChange('title', e.target.value)}
                 className={apiErrors.title ? 'border-destructive' : ''}
               />
-              {apiErrors.title && (
-                <p className="text-sm text-destructive">{apiErrors.title}</p>
-              )}
+              {apiErrors.title && <p className="text-sm text-destructive">{apiErrors.title}</p>}
             </div>
 
             {/* Body */}
@@ -199,9 +196,7 @@ export default function SendNotificationPage() {
                 onChange={(e) => handleInputChange('body', e.target.value)}
                 className={apiErrors.body ? 'border-destructive' : ''}
               />
-              {apiErrors.body && (
-                <p className="text-sm text-destructive">{apiErrors.body}</p>
-              )}
+              {apiErrors.body && <p className="text-sm text-destructive">{apiErrors.body}</p>}
             </div>
 
             {/* Notification Type */}
@@ -277,10 +272,10 @@ export default function SendNotificationPage() {
           <CardContent className="space-y-4">
             {/* Recipient Mode Toggle */}
             <div className="flex gap-1 rounded-lg border bg-muted p-1">
-              {([
+              {[
                 { key: 'all' as const, label: 'All Users' },
                 { key: 'specific' as const, label: 'Specific Users' },
-              ]).map(({ key, label }) => (
+              ].map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
@@ -320,9 +315,7 @@ export default function SendNotificationPage() {
 
                 {/* Selection controls */}
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    {selectedUserIds.length} selected
-                  </p>
+                  <p className="text-sm text-muted-foreground">{selectedUserIds.length} selected</p>
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -368,9 +361,7 @@ export default function SendNotificationPage() {
                           />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">{user.full_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {user.email}
-                            </p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                           </div>
                         </label>
                       ))}

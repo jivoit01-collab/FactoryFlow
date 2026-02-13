@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useDepartments } from '../api/department/department.queries'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { Department } from '../api/department/department.api'
+import { useDepartments } from '../api/department/department.queries'
 
 interface DepartmentSelectProps {
   value?: number | ''
@@ -49,9 +51,7 @@ export function DepartmentSelect({
         <div className="flex flex-col">
           <span className="text-sm">{department.name}</span>
           {department.description && (
-            <span className="text-xs text-muted-foreground">
-              {department.description}
-            </span>
+            <span className="text-xs text-muted-foreground">{department.description}</span>
           )}
         </div>
       )}

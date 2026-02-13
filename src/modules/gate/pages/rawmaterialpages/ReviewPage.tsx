@@ -1,36 +1,38 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  FileCheck,
-  ArrowLeft,
   AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  FileCheck,
+  Home,
+  Package,
+  Scale,
+  ShieldCheck,
   Truck,
   User,
-  ShieldCheck,
-  Scale,
-  Package,
-  CheckCircle2,
   XCircle,
-  Clock,
-  Home,
 } from 'lucide-react'
-import {
-  Button,
-  Label,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+import { ENTRY_STATUS, FINAL_STATUS } from '@/config/constants'
+import type { ApiError } from '@/core/api/types'
+import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
-import type { ApiError } from '@/core/api/types'
-import { isServerError as checkServerError, getServerErrorMessage, getErrorMessage } from '@/shared/utils'
-import { useGateEntryFullView, useCompleteGateEntry } from '../../api/gateEntryFullView/gateEntryFullView.queries'
+import {
+  getErrorMessage,
+  getServerErrorMessage,
+  isServerError as checkServerError,
+} from '@/shared/utils'
+
+import {
+  useCompleteGateEntry,
+  useGateEntryFullView,
+} from '../../api/gateEntryFullView/gateEntryFullView.queries'
 import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
 import { useEntryId } from '../../hooks'
-import { ENTRY_STATUS, FINAL_STATUS } from '@/config/constants'
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
@@ -229,7 +231,9 @@ export default function ReviewPage() {
       setShowSuccess(true)
     } catch (error) {
       if (checkServerError(error)) {
-        setApiErrors({ general: 'Cannot complete the entry at the moment. Please try again later.' })
+        setApiErrors({
+          general: 'Cannot complete the entry at the moment. Please try again later.',
+        })
       } else {
         setApiErrors({ general: getErrorMessage(error, 'Failed to complete gate entry') })
       }
@@ -566,14 +570,14 @@ export default function ReviewPage() {
               {gateEntry.security_check?.is_submitted || securityJustSubmitted ? (
                 <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
                   <CheckCircle2 className="h-5 w-5" />
-                  <span className="font-medium">Security check submitted. Ready to complete entry.</span>
+                  <span className="font-medium">
+                    Security check submitted. Ready to complete entry.
+                  </span>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label className="text-base font-medium">
-                      Security Inspection Pending
-                    </Label>
+                    <Label className="text-base font-medium">Security Inspection Pending</Label>
                     <p className="text-sm text-muted-foreground">
                       Submit security check to proceed with completing the entry
                     </p>
@@ -607,11 +611,7 @@ export default function ReviewPage() {
                   {isSubmittingSecurity ? 'Submitting...' : 'Submit Security'}
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  onClick={handleComplete}
-                  disabled={isCompleting}
-                >
+                <Button type="button" onClick={handleComplete} disabled={isCompleting}>
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   {isCompleting ? 'Completing...' : 'Complete Entry'}
                 </Button>

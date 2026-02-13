@@ -1,8 +1,10 @@
+import './index.css'
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+
 import { App } from '@/app'
 import { loadRuntimeConfig } from '@/config/runtime.config'
-import './index.css'
 
 // Bootstrap application after loading runtime config
 async function bootstrap() {

@@ -1,7 +1,8 @@
-import { lazy } from 'react'
 import { PackageCheck } from 'lucide-react'
+import { lazy } from 'react'
+
+import { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS } from '@/config/permissions'
 import type { ModuleConfig } from '@/core/types'
-import { GRPO_PERMISSIONS, GRPO_MODULE_PREFIX } from '@/config/permissions'
 
 // Lazy load GRPO pages
 const GRPODashboardPage = lazy(() => import('./pages/GRPODashboardPage'))

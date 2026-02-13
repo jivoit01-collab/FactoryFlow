@@ -1,31 +1,27 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
-  LogOut,
-  XCircle,
-  Clock,
-  MapPin,
-  User,
-  Phone,
   Briefcase,
   Car,
-  FileText,
   CheckCircle2,
+  Clock,
+  FileText,
+  LogOut,
+  MapPin,
+  Phone,
+  User,
+  XCircle,
 } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
+
 import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui'
-import {
-  usePersonEntry,
-  useExitPersonEntry,
   useCancelPersonEntry,
-  useVisitor,
+  useExitPersonEntry,
   useLabour,
+  usePersonEntry,
+  useVisitor,
 } from '../../api/personGateIn/personGateIn.queries'
 import { GateSelect } from '../../components'
 
@@ -175,9 +171,7 @@ export default function EntryDetailPage() {
               <h2 className="text-3xl font-bold tracking-tight">{entry.name_snapshot}</h2>
               {getStatusBadge(entry.status)}
             </div>
-            <p className="text-muted-foreground">
-              {isVisitor ? 'Visitor' : 'Labour'} Entry
-            </p>
+            <p className="text-muted-foreground">{isVisitor ? 'Visitor' : 'Labour'} Entry</p>
           </div>
         </div>
 

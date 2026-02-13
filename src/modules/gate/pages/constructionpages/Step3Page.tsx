@@ -1,25 +1,36 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Building2, Package, FileCheck, FileText, AlertCircle } from 'lucide-react'
+import { AlertCircle, Building2, FileCheck, FileText, Package } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+import { ENTRY_STATUS, SECURITY_APPROVAL_STATUS, VALIDATION_PATTERNS } from '@/config/constants'
+import type { ApiError } from '@/core/api'
 import {
-  Input,
-  Label,
+  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Button,
+  Input,
+  Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { useEntryId } from '../../hooks'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { useConstructionEntry, useCreateConstructionEntry, useUpdateConstructionEntry } from '../../api/construction/construction.queries'
-import { FillDataAlert, ConstructionCategorySelect, UnitSelect } from '../../components'
-import { isNotFoundError as checkNotFoundError, isServerError as checkServerError, getErrorMessage, getServerErrorMessage } from '@/shared/utils'
+import {
+  getErrorMessage,
+  getServerErrorMessage,
+  isNotFoundError as checkNotFoundError,
+  isServerError as checkServerError,
+} from '@/shared/utils'
 import { cn } from '@/shared/utils'
-import { VALIDATION_PATTERNS, ENTRY_STATUS, SECURITY_APPROVAL_STATUS } from '@/config/constants'
-import type { ApiError } from '@/core/api'
+
+import {
+  useConstructionEntry,
+  useCreateConstructionEntry,
+  useUpdateConstructionEntry,
+} from '../../api/construction/construction.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import { ConstructionCategorySelect, FillDataAlert, UnitSelect } from '../../components'
+import { useEntryId } from '../../hooks'
 
 // Security approval options
 const SECURITY_APPROVAL_OPTIONS = [
@@ -116,9 +127,10 @@ export default function Step3Page() {
   useEffect(() => {
     if (effectiveEditMode && constructionData) {
       // Extract category ID from nested object or direct value
-      const categoryId = typeof constructionData.material_category === 'object'
-        ? constructionData.material_category.id.toString()
-        : constructionData.material_category?.toString() || ''
+      const categoryId =
+        typeof constructionData.material_category === 'object'
+          ? constructionData.material_category.id.toString()
+          : constructionData.material_category?.toString() || ''
 
       setFormData({
         projectName: constructionData.project_name || '',
@@ -129,12 +141,12 @@ export default function Step3Page() {
         materialCategory: categoryId,
         materialDescription: constructionData.material_description || '',
         quantity: constructionData.quantity?.toString() || '',
-        unit: typeof constructionData.unit === 'object'
-          ? constructionData.unit?.id?.toString() || ''
-          : constructionData.unit?.toString() || '',
-        unitName: typeof constructionData.unit === 'object'
-          ? constructionData.unit?.name || ''
-          : '',
+        unit:
+          typeof constructionData.unit === 'object'
+            ? constructionData.unit?.id?.toString() || ''
+            : constructionData.unit?.toString() || '',
+        unitName:
+          typeof constructionData.unit === 'object' ? constructionData.unit?.name || '' : '',
         challanNumber: constructionData.challan_number || '',
         invoiceNumber: constructionData.invoice_number || '',
         siteEngineer: constructionData.site_engineer || '',
@@ -203,12 +215,18 @@ export default function Step3Page() {
       return
     }
     // Validate contractor contact (optional, but if provided must be valid phone)
-    if (formData.contractorContact.trim() && !VALIDATION_PATTERNS.phone.test(formData.contractorContact.trim())) {
+    if (
+      formData.contractorContact.trim() &&
+      !VALIDATION_PATTERNS.phone.test(formData.contractorContact.trim())
+    ) {
       setApiErrors({ contractorContact: 'Please enter a valid 10-digit phone number' })
       return
     }
     // Validate vehicle number (optional, but if provided must be valid format)
-    if (formData.vehicleNumber.trim() && !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicleNumber.trim().toUpperCase())) {
+    if (
+      formData.vehicleNumber.trim() &&
+      !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicleNumber.trim().toUpperCase())
+    ) {
       setApiErrors({ vehicleNumber: 'Please enter a valid vehicle number (e.g., MH12AB1234)' })
       return
     }
@@ -286,7 +304,8 @@ export default function Step3Page() {
   }
 
   const isLoading = effectiveEditMode && isLoadingConstruction
-  const isSaving = createConstructionEntry.isPending || updateConstructionEntry.isPending || isNavigating
+  const isSaving =
+    createConstructionEntry.isPending || updateConstructionEntry.isPending || isNavigating
 
   // Select styling classes
   const selectClassName =
@@ -511,7 +530,7 @@ export default function Step3Page() {
                     value={formData.unit || undefined}
                     onChange={(unitId, unitName) => {
                       handleInputChange('unit', unitId)
-                      setFormData(prev => ({ ...prev, unitName }))
+                      setFormData((prev) => ({ ...prev, unitName }))
                     }}
                     placeholder="Select unit"
                     disabled={isReadOnly}
@@ -674,11 +693,7 @@ export default function Step3Page() {
               Update
             </Button>
           )}
-          <Button
-            type="button"
-            onClick={handleNext}
-            disabled={isSaving}
-          >
+          <Button type="button" onClick={handleNext} disabled={isSaving}>
             {isSaving ? (
               <>
                 <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />

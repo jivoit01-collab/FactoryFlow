@@ -325,7 +325,7 @@ export function useFeatures() {
 ### Step 4: Register in Module Registry
 
 ```typescript
-// src/app/modules/index.ts
+// src/app/registry/index.ts
 import { newModuleConfig } from '@/modules/new-module/module.config'
 
 const modules: ModuleConfig[] = [

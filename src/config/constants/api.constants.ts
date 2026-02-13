@@ -120,8 +120,7 @@ export const API_ENDPOINTS = {
     // Inspections
     PENDING_INSPECTIONS: '/quality-control/inspections/pending/',
     INSPECTION_BY_ID: (id: number) => `/quality-control/inspections/${id}/`,
-    INSPECTION_FOR_SLIP: (slipId: number) =>
-      `/quality-control/arrival-slips/${slipId}/inspection/`,
+    INSPECTION_FOR_SLIP: (slipId: number) => `/quality-control/arrival-slips/${slipId}/inspection/`,
     INSPECTION_PARAMETERS: (inspectionId: number) =>
       `/quality-control/inspections/${inspectionId}/parameters/`,
     INSPECTION_SUBMIT: (id: number) => `/quality-control/inspections/${id}/submit/`,

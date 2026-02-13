@@ -1,11 +1,13 @@
+import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react'
 import { useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, AlertCircle, ShieldX, ChevronRight } from 'lucide-react'
-import { Button } from '@/shared/components/ui'
-import { useGRPOHistory } from '../api'
-import { GRPO_STATUS_CONFIG, GRPO_STATUS } from '../constants'
-import type { GRPOStatus, GRPOHistoryEntry } from '../types'
+
 import type { ApiError } from '@/core/api/types'
+import { Button } from '@/shared/components/ui'
+
+import { useGRPOHistory } from '../api'
+import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants'
+import type { GRPOHistoryEntry, GRPOStatus } from '../types'
 
 // Status filter configuration
 const STATUS_FILTERS = {

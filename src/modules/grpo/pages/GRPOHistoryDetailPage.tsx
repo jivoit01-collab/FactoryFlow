@@ -1,9 +1,11 @@
+import { AlertCircle, ArrowLeft, RefreshCw, ShieldX } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, AlertCircle, ShieldX, RefreshCw } from 'lucide-react'
+
+import type { ApiError } from '@/core/api/types'
 import { Button, Card, CardContent } from '@/shared/components/ui'
+
 import { useGRPODetail } from '../api'
 import { GRPO_STATUS_CONFIG } from '../constants'
-import type { ApiError } from '@/core/api/types'
 
 // Format date/time for display
 const formatDateTime = (dateTime?: string | null) => {

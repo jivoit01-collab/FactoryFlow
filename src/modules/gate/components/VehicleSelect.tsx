@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
-import { useVehicleNames, useVehicleById } from '../api/vehicle/vehicle.queries'
+import { useCallback, useEffect, useRef, useState } from 'react'
+
 import { SearchableSelect } from '@/shared/components'
+
+import type { Vehicle, VehicleName } from '../api/vehicle/vehicle.api'
+import { useVehicleById, useVehicleNames } from '../api/vehicle/vehicle.queries'
 import { CreateVehicleDialog } from './CreateVehicleDialog'
-import type { VehicleName, Vehicle } from '../api/vehicle/vehicle.api'
 
 interface VehicleSelectProps {
   value?: string

@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
-import { useDriverNames, useDriverById } from '../api/driver/driver.queries'
+import { useEffect, useRef, useState } from 'react'
+
 import { SearchableSelect } from '@/shared/components'
+
+import type { DriverName } from '../api/driver/driver.api'
+import { useDriverById, useDriverNames } from '../api/driver/driver.queries'
 import { CreateDriverDialog } from './CreateDriverDialog'
-import type { DriverName, Driver } from '../api/driver/driver.api'
 
 interface DriverSelectProps {
   value?: string
@@ -34,7 +36,6 @@ export function DriverSelect({
 }: DriverSelectProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [selectedDriverDetails, setSelectedDriverDetails] = useState<Driver | null>(null)
 
   const { data: driverNames = [], isLoading } = useDriverNames(isDropdownOpen && !disabled)
   const { data: driverDetails } = useDriverById(selectedId, selectedId !== null)
@@ -46,11 +47,10 @@ export function DriverSelect({
     onChangeRef.current = onChange
   }, [onChange])
 
-  // Sync driver details when fetched and call onChange with mapped data
-  const syncDriverDetails = useCallback(() => {
+  // Push driver details to parent when fetched
+  useEffect(() => {
     if (driverDetails && driverDetails !== prevDriverDetailsRef.current) {
       prevDriverDetailsRef.current = driverDetails
-      setSelectedDriverDetails(driverDetails)
       onChangeRef.current({
         driverId: driverDetails.id,
         driverName: driverDetails.name,
@@ -62,11 +62,6 @@ export function DriverSelect({
       })
     }
   }, [driverDetails])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with fetched data is a valid pattern
-    syncDriverDetails()
-  }, [syncDriverDetails])
 
   return (
     <SearchableSelect<DriverName>
@@ -88,14 +83,14 @@ export function DriverSelect({
       onOpenChange={setIsDropdownOpen}
       onSelectedKeyChange={(key) => {
         setSelectedId(key as number | null)
-        if (!key) setSelectedDriverDetails(null)
+        if (!key) prevDriverDetailsRef.current = undefined
       }}
       onItemSelect={(driver) => {
         setSelectedId(driver.id)
       }}
       onClear={() => {
         setSelectedId(null)
-        setSelectedDriverDetails(null)
+        prevDriverDetailsRef.current = undefined
         onChange({
           driverId: 0,
           driverName: '',
@@ -107,36 +102,28 @@ export function DriverSelect({
         })
       }}
       renderPopoverContent={(selKey) =>
-        selectedDriverDetails ? (
+        driverDetails ? (
           <div className="space-y-2">
             <div className="space-y-1.5 text-sm">
               <div>
                 <span className="font-medium">Name:</span>{' '}
-                <span className="text-muted-foreground">{selectedDriverDetails.name}</span>
+                <span className="text-muted-foreground">{driverDetails.name}</span>
               </div>
               <div>
                 <span className="font-medium">Mobile Number:</span>{' '}
-                <span className="text-muted-foreground">
-                  {selectedDriverDetails.mobile_no}
-                </span>
+                <span className="text-muted-foreground">{driverDetails.mobile_no}</span>
               </div>
               <div>
                 <span className="font-medium">License Number:</span>{' '}
-                <span className="text-muted-foreground">
-                  {selectedDriverDetails.license_no}
-                </span>
+                <span className="text-muted-foreground">{driverDetails.license_no}</span>
               </div>
               <div>
                 <span className="font-medium">ID Proof Type:</span>{' '}
-                <span className="text-muted-foreground">
-                  {selectedDriverDetails.id_proof_type}
-                </span>
+                <span className="text-muted-foreground">{driverDetails.id_proof_type}</span>
               </div>
               <div>
                 <span className="font-medium">ID Proof Number:</span>{' '}
-                <span className="text-muted-foreground">
-                  {selectedDriverDetails.id_proof_number}
-                </span>
+                <span className="text-muted-foreground">{driverDetails.id_proof_number}</span>
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { apiClient } from '@/core/api'
+
 import type { UnitChoice } from '../maintenance/maintenance.api'
 
 // Types
@@ -139,7 +140,10 @@ export const constructionApi = {
   /**
    * Create construction entry for a vehicle entry
    */
-  create: async (entryId: number, data: CreateConstructionRequest): Promise<CreateConstructionResponse> => {
+  create: async (
+    entryId: number,
+    data: CreateConstructionRequest
+  ): Promise<CreateConstructionResponse> => {
     const response = await apiClient.post<CreateConstructionResponse>(
       `/construction-gatein/gate-entries/${entryId}/construction/`,
       data
@@ -150,7 +154,10 @@ export const constructionApi = {
   /**
    * Update construction entry for a vehicle entry
    */
-  update: async (entryId: number, data: CreateConstructionRequest): Promise<CreateConstructionResponse> => {
+  update: async (
+    entryId: number,
+    data: CreateConstructionRequest
+  ): Promise<CreateConstructionResponse> => {
     const response = await apiClient.put<CreateConstructionResponse>(
       `/construction-gatein/gate-entries/${entryId}/construction/update/`,
       data

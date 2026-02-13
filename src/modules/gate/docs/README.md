@@ -33,7 +33,7 @@ gate/
 │   └── weighment/
 ├── components/
 │   ├── forms/                 # VehicleDriverFormShell
-│   ├── persongatein/          # Visitor/Labour components
+│   ├── personGateIn/          # Visitor/Labour components
 │   ├── VehicleSelect.tsx
 │   ├── DriverSelect.tsx
 │   ├── TransporterSelect.tsx
@@ -44,11 +44,11 @@ gate/
 │   └── entryFlowConfig.ts    # Config-driven entry flow definitions
 ├── pages/
 │   ├── shared/                # SharedStep1Page, SharedStep2Page, etc.
-│   ├── rawmaterialpages/
-│   ├── dailyneedspages/
-│   ├── constructionpages/
-│   ├── maintenancepages/
-│   └── persongateinpages/
+│   ├── rawMaterialPages/
+│   ├── dailyNeedsPages/
+│   ├── constructionPages/
+│   ├── maintenancePages/
+│   └── personGateInPages/
 ├── hooks/
 ├── schemas/
 └── utils/

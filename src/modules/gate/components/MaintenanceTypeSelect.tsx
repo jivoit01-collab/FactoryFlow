@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react'
-import { useMaintenanceTypes } from '../api/maintenance/maintenance.queries'
+import { useMemo, useState } from 'react'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { MaintenanceType } from '../api/maintenance/maintenance.api'
+import { useMaintenanceTypes } from '../api/maintenance/maintenance.queries'
 
 interface MaintenanceTypeSelectProps {
   value?: string

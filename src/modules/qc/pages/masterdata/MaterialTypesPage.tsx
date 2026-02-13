@@ -1,29 +1,31 @@
+import { AlertCircle, ArrowLeft, Edit, FlaskConical, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, ArrowLeft, Plus, Edit, Trash2, AlertCircle } from 'lucide-react'
+
+import type { ApiError } from '@/core/api/types'
 import {
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Input,
-  Label,
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  Input,
+  Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
+
 import {
-  useMaterialTypes,
   useCreateMaterialType,
-  useUpdateMaterialType,
   useDeleteMaterialType,
+  useMaterialTypes,
+  useUpdateMaterialType,
 } from '../../api/materialType/materialType.queries'
-import type { MaterialType, CreateMaterialTypeRequest } from '../../types'
-import type { ApiError } from '@/core/api/types'
+import type { CreateMaterialTypeRequest, MaterialType } from '../../types'
 
 export default function MaterialTypesPage() {
   const navigate = useNavigate()
@@ -176,9 +178,7 @@ export default function MaterialTypesPage() {
                       <tr key={type.id} className="border-b hover:bg-muted/50">
                         <td className="p-3 font-medium">{type.code}</td>
                         <td className="p-3">{type.name}</td>
-                        <td className="p-3 text-muted-foreground">
-                          {type.description || '-'}
-                        </td>
+                        <td className="p-3 text-muted-foreground">{type.description || '-'}</td>
                         <td className="p-3 text-center">
                           <div className="flex justify-center gap-2">
                             <Button
@@ -212,9 +212,7 @@ export default function MaterialTypesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {editingType ? 'Edit Material Type' : 'Add Material Type'}
-            </DialogTitle>
+            <DialogTitle>{editingType ? 'Edit Material Type' : 'Add Material Type'}</DialogTitle>
           </DialogHeader>
 
           {apiErrors.general && (
@@ -232,9 +230,7 @@ export default function MaterialTypesPage() {
                 placeholder="e.g., CAP_BLUE"
                 disabled={isSaving}
               />
-              {apiErrors.code && (
-                <p className="text-sm text-destructive">{apiErrors.code}</p>
-              )}
+              {apiErrors.code && <p className="text-sm text-destructive">{apiErrors.code}</p>}
             </div>
 
             <div className="space-y-2">
@@ -245,18 +241,14 @@ export default function MaterialTypesPage() {
                 placeholder="e.g., Cap Blue Plain"
                 disabled={isSaving}
               />
-              {apiErrors.name && (
-                <p className="text-sm text-destructive">{apiErrors.name}</p>
-              )}
+              {apiErrors.name && <p className="text-sm text-destructive">{apiErrors.name}</p>}
             </div>
 
             <div className="space-y-2">
               <Label>Description</Label>
               <Input
                 value={formData.description || ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, description: e.target.value }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Optional description"
                 disabled={isSaving}
               />

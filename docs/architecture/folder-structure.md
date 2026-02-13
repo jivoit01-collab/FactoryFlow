@@ -194,7 +194,7 @@ src/modules/gate/
 ├── pages/
 │   ├── RawMaterialsDashboard.tsx  # Entry statistics dashboard
 │   ├── RawMaterialsPage.tsx       # Entry list with filters
-│   └── rawmaterialpages/          # Multi-step entry process
+│   └── rawMaterialPages/          # Multi-step entry process
 │       ├── Step1Page.tsx          # Driver, transporter, vehicle
 │       ├── Step2Page.tsx          # Purchase order info
 │       ├── Step3Page.tsx          # PO receipt details

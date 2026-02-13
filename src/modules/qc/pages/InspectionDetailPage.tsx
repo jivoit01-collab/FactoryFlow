@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 import {
-  FlaskConical,
+  AlertCircle,
   ArrowLeft,
+  CheckCircle2,
+  FileText,
+  FlaskConical,
+  Pencil,
   Save,
   Send,
-  CheckCircle2,
   XCircle,
-  AlertCircle,
-  FileText,
-  Pencil,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+
+import type { ApiError } from '@/core/api/types'
 import {
   Button,
   Card,
@@ -22,28 +24,33 @@ import {
   Textarea,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { useInspectionPermissions } from '../hooks'
 import { cn } from '@/shared/utils'
+
+import { useArrivalSlipById } from '../api/arrivalSlip/arrivalSlip.queries'
 import {
-  useInspectionForSlip,
-  useCreateInspection,
-  useUpdateParameterResults,
-  useSubmitInspection,
   useApproveAsChemist,
   useApproveAsQAM,
+  useCreateInspection,
+  useInspectionForSlip,
   useRejectInspection,
+  useSubmitInspection,
+  useUpdateParameterResults,
 } from '../api/inspection/inspection.queries'
-import { useArrivalSlipById } from '../api/arrivalSlip/arrivalSlip.queries'
 import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries'
 import { MaterialTypeSelect } from '../components'
-import { WORKFLOW_STATUS, FINAL_STATUS, WORKFLOW_STATUS_CONFIG, FINAL_STATUS_CONFIG } from '../constants'
+import {
+  FINAL_STATUS,
+  FINAL_STATUS_CONFIG,
+  WORKFLOW_STATUS,
+  WORKFLOW_STATUS_CONFIG,
+} from '../constants'
+import { useInspectionPermissions } from '../hooks'
 import type {
   CreateInspectionRequest,
-  UpdateParameterResultRequest,
   InspectionFinalStatus,
   ParameterResult,
+  UpdateParameterResultRequest,
 } from '../types'
-import type { ApiError } from '@/core/api/types'
 
 export default function InspectionDetailPage() {
   const navigate = useNavigate()
@@ -56,10 +63,7 @@ export default function InspectionDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
 
   // Fetch existing inspection
-  const {
-    data: inspection,
-    isLoading: isLoadingInspection,
-  } = useInspectionForSlip(arrivalSlipId)
+  const { data: inspection, isLoading: isLoadingInspection } = useInspectionForSlip(arrivalSlipId)
 
   // Fetch arrival slip data for prefilling (only needed when creating new inspection)
   const { data: arrivalSlip, isLoading: isLoadingArrivalSlip } = useArrivalSlipById(
@@ -84,7 +88,10 @@ export default function InspectionDetailPage() {
 
   // Parameter results state
   const [parameterResults, setParameterResults] = useState<
-    Record<number, { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }>
+    Record<
+      number,
+      { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
+    >
   >({})
 
   // Approval remarks
@@ -583,9 +590,7 @@ export default function InspectionDetailPage() {
                         <span className="text-muted-foreground">Within Spec</span>
                       </label>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Standard: {standardValue}
-                    </div>
+                    <div className="text-sm text-muted-foreground">Standard: {standardValue}</div>
                     <div className="space-y-1">
                       <Label className="text-xs">Result</Label>
                       <Input
@@ -628,7 +633,8 @@ export default function InspectionDetailPage() {
                 </thead>
                 <tbody>
                   {(inspection?.parameter_results || qcParameters).map((param) => {
-                    const parameterId = 'parameter_master' in param ? param.parameter_master : param.id
+                    const parameterId =
+                      'parameter_master' in param ? param.parameter_master : param.id
                     const paramName = param.parameter_name
                     const standardValue = param.standard_value
                     const currentValue = parameterResults[parameterId] || {
@@ -771,7 +777,6 @@ export default function InspectionDetailPage() {
           )}
         </div>
       </div>
-
     </div>
   )
 }

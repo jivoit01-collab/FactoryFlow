@@ -62,7 +62,14 @@ export interface WizardStepConfig {
 export const WIZARD_CONFIGS: Record<EntryType, WizardStepConfig> = {
   RAW_MATERIAL: {
     totalSteps: 6,
-    stepLabels: ['Vehicle & Driver', 'Security Check', 'PO Receipts', 'Arrival Slip', 'Weighment', 'Review'],
+    stepLabels: [
+      'Vehicle & Driver',
+      'Security Check',
+      'PO Receipts',
+      'Arrival Slip',
+      'Weighment',
+      'Review',
+    ],
   },
   CONSTRUCTION: {
     totalSteps: 4,

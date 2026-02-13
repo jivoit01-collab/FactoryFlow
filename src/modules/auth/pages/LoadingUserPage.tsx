@@ -1,12 +1,13 @@
-import { useEffect, useState, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useAppDispatch } from '@/core/store'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+
+import { AUTH_ROUTES } from '@/config/constants'
+import { ROUTES } from '@/config/routes.config'
 import { updateUser } from '@/core/auth'
 import { authService } from '@/core/auth/services/auth.service'
 import { indexedDBService } from '@/core/auth/services/indexedDb.service'
-import { AUTH_ROUTES } from '@/config/constants'
-import { ROUTES } from '@/config/routes.config'
 import { ensureValidToken } from '@/core/auth/utils/tokenRefresh.util'
+import { useAppDispatch } from '@/core/store'
 import { PageLoadError } from '@/shared/components/PageLoadError'
 
 /**
@@ -32,7 +33,7 @@ export default function LoadingUserPage() {
   useEffect(() => {
     // Prefetch common pages in the background
     // These will be ready by the time the user navigates
-    import('@/modules/gate/pages/rawmaterialpages/RawMaterialsDashboard')
+    import('@/modules/gate/pages/rawMaterialPages/RawMaterialsDashboard')
     import('@/modules/gate/pages/GateDashboardPage')
   }, [])
 

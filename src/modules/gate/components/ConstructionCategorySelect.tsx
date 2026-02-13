@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useConstructionCategories } from '../api/construction/construction.queries'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { ConstructionCategory } from '../api/construction/construction.api'
+import { useConstructionCategories } from '../api/construction/construction.queries'
 
 interface ConstructionCategorySelectProps {
   value?: string

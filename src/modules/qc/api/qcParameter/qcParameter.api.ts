@@ -1,6 +1,7 @@
-import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
-import type { QCParameter, CreateQCParameterRequest } from '../../types'
+import { apiClient } from '@/core/api'
+
+import type { CreateQCParameterRequest, QCParameter } from '../../types'
 
 export interface ListQCParametersParams {
   material_type_id?: number

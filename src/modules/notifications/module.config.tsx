@@ -1,7 +1,8 @@
-import { lazy } from 'react'
 import { Bell } from 'lucide-react'
+import { lazy } from 'react'
+
+import { NOTIFICATION_MODULE_PREFIX, NOTIFICATION_PERMISSIONS } from '@/config/permissions'
 import type { ModuleConfig } from '@/core/types'
-import { NOTIFICATION_PERMISSIONS, NOTIFICATION_MODULE_PREFIX } from '@/config/permissions'
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const SendNotificationPage = lazy(() => import('./pages/SendNotificationPage'))

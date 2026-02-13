@@ -1,5 +1,5 @@
-import { indexedDBService } from '../services/indexedDb.service'
 import { authService } from '../services/auth.service'
+import { indexedDBService } from '../services/indexedDb.service'
 import type { RefreshTokenResponse } from '../types/auth.types'
 
 /**

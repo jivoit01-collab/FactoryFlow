@@ -1,15 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import {
-  personGateInApi,
-  type CreatePersonTypeRequest,
-  type CreateGateRequest,
   type CreateContractorRequest,
-  type CreateVisitorRequest,
-  type CreateLabourRequest,
   type CreateEntryRequest,
-  type ExitEntryRequest,
-  type UpdateEntryRequest,
+  type CreateGateRequest,
+  type CreateLabourRequest,
+  type CreatePersonTypeRequest,
+  type CreateVisitorRequest,
   type EntryFilters,
+  type ExitEntryRequest,
+  personGateInApi,
+  type UpdateEntryRequest,
 } from './personGateIn.api'
 
 // ===== Person Types =====
@@ -370,7 +371,10 @@ export function useLabourHistory(labourId: number | null) {
   })
 }
 
-export function useCheckPersonStatus(params: { visitor?: number; labour?: number }, enabled: boolean = true) {
+export function useCheckPersonStatus(
+  params: { visitor?: number; labour?: number },
+  enabled: boolean = true
+) {
   return useQuery({
     queryKey: ['checkPersonStatus', params],
     queryFn: () => personGateInApi.checkPersonStatus(params),

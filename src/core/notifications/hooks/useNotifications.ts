@@ -1,18 +1,20 @@
 import { useCallback } from 'react'
+
 import { useAppDispatch, useAppSelector } from '@/core/store'
 import {
-  setupPushNotifications,
   fetchNotifications,
-  fetchUnreadCount,
-  markNotificationsAsRead,
-  markAllNotificationsAsRead,
   fetchPreferences,
-  updatePreference,
+  fetchUnreadCount,
+  markAllNotificationsAsRead,
+  markNotificationsAsRead,
   selectFCMState,
   selectNotificationsState,
   selectPreferencesState,
   selectUnreadCount,
+  setupPushNotifications,
+  updatePreference,
 } from '@/core/store/slices/notification.slice'
+
 import type { NotificationListParams } from '../types'
 
 /**

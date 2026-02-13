@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react'
-import { useContractors } from '../api/personGateIn/personGateIn.queries'
+import { useMemo, useState } from 'react'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { Contractor } from '../api/personGateIn/personGateIn.api'
+import { useContractors } from '../api/personGateIn/personGateIn.queries'
 
 interface ContractorSelectProps {
   value?: string
@@ -34,7 +36,7 @@ export function ContractorSelect({
 
   const filteredContractors = useMemo(
     () => (activeOnly ? contractors.filter((c) => c.is_active) : contractors),
-    [contractors, activeOnly],
+    [contractors, activeOnly]
   )
 
   return (

@@ -1,12 +1,14 @@
+import { LayoutDashboard } from 'lucide-react'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LayoutDashboard } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui'
+
+import { getAllNavigation } from '@/app/registry'
 import { usePermission } from '@/core/auth'
-import { getAllNavigation } from '@/app/modules'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui'
 
 const descriptions: Record<string, string> = {
-  '/gate': 'Manage gate entries for raw materials, daily needs, maintenance, construction, and visitors',
+  '/gate':
+    'Manage gate entries for raw materials, daily needs, maintenance, construction, and visitors',
   '/qc': 'Inspections, approvals, and master data management',
   '/grpo': 'Goods receipt and purchase order posting',
 }

@@ -1,38 +1,43 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { FileText, AlertCircle, Check } from 'lucide-react'
+import { AlertCircle, Check, FileText } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+import { VALIDATION_PATTERNS } from '@/config/constants'
+import { ARRIVAL_SLIP_STATUS } from '@/config/constants'
+import type { ApiError } from '@/core/api'
 import {
-  Input,
-  Label,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   Checkbox,
+  Input,
+  Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
-import { VALIDATION_PATTERNS } from '@/config/constants'
-import { usePOReceipts } from '../../api/po/poReceipt.queries'
-import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
-import { useCreateArrivalSlip, useSubmitArrivalSlip } from '../../api/arrivalSlip/arrivalSlip.queries'
 import {
-  arrivalSlipApi,
-  type ArrivalSlip,
-  type CreateArrivalSlipRequest,
-} from '../../api/arrivalSlip/arrivalSlip.api'
-import { useEntryId } from '../../hooks'
-import { StepHeader, StepFooter, StepLoadingSpinner, FillDataAlert } from '../../components'
-import { WIZARD_CONFIG } from '../../constants'
-import {
-  isNotFoundError as checkNotFoundError,
-  isServerError as checkServerError,
   getErrorMessage,
   getServerErrorMessage,
+  isNotFoundError as checkNotFoundError,
+  isServerError as checkServerError,
 } from '@/shared/utils'
-import type { ApiError } from '@/core/api'
-import { ARRIVAL_SLIP_STATUS } from '@/config/constants'
+
+import {
+  type ArrivalSlip,
+  arrivalSlipApi,
+  type CreateArrivalSlipRequest,
+} from '../../api/arrivalSlip/arrivalSlip.api'
+import {
+  useCreateArrivalSlip,
+  useSubmitArrivalSlip,
+} from '../../api/arrivalSlip/arrivalSlip.queries'
+import { usePOReceipts } from '../../api/po/poReceipt.queries'
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries'
+import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components'
+import { WIZARD_CONFIG } from '../../constants'
+import { useEntryId } from '../../hooks'
 
 interface ArrivalSlipFormData {
   particulars: string
@@ -245,8 +250,13 @@ export default function ArrivalSlipPage() {
     }
     if (!form.formData.truck_no_as_per_bill.trim()) {
       errors[`${form.id}_truck_no_as_per_bill`] = 'Truck number is required'
-    } else if (!VALIDATION_PATTERNS.vehicleNumber.test(form.formData.truck_no_as_per_bill.trim().toUpperCase())) {
-      errors[`${form.id}_truck_no_as_per_bill`] = 'Please enter a valid vehicle number (e.g., MH12AB1234)'
+    } else if (
+      !VALIDATION_PATTERNS.vehicleNumber.test(
+        form.formData.truck_no_as_per_bill.trim().toUpperCase()
+      )
+    ) {
+      errors[`${form.id}_truck_no_as_per_bill`] =
+        'Please enter a valid vehicle number (e.g., MH12AB1234)'
     }
 
     return errors
@@ -496,7 +506,9 @@ export default function ArrivalSlipPage() {
                     )}
                   />
                   {apiErrors[`${form.id}_billing_qty`] && (
-                    <p className="text-sm text-destructive">{apiErrors[`${form.id}_billing_qty`]}</p>
+                    <p className="text-sm text-destructive">
+                      {apiErrors[`${form.id}_billing_qty`]}
+                    </p>
                   )}
                 </div>
 
@@ -517,7 +529,9 @@ export default function ArrivalSlipPage() {
                     )}
                   />
                   {apiErrors[`${form.id}_billing_uom`] && (
-                    <p className="text-sm text-destructive">{apiErrors[`${form.id}_billing_uom`]}</p>
+                    <p className="text-sm text-destructive">
+                      {apiErrors[`${form.id}_billing_uom`]}
+                    </p>
                   )}
                 </div>
 

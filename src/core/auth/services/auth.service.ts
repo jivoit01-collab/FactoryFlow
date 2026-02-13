@@ -1,19 +1,25 @@
-import { apiClient } from '@/core/api'
 import { API_ENDPOINTS, AUTH_CONFIG } from '@/config/constants'
-import type {
-  LoginCredentials,
-  LoginResponse,
-  RefreshTokenResponse,
-  MeResponse,
-  User,
-  UserCompany,
-} from '../types/auth.types'
-import { indexedDBService, type AuthData } from './indexedDb.service'
+import { apiClient } from '@/core/api'
 import {
   validateLoginResponse,
   validateRefreshTokenResponse,
   validateUserResponse,
 } from '@/core/api/utils/validation.util'
+
+import type {
+  LoginCredentials,
+  LoginResponse,
+  MeResponse,
+  RefreshTokenResponse,
+  User,
+  UserCompany,
+} from '../types/auth.types'
+import { type AuthData, indexedDBService } from './indexedDb.service'
+
+const SECONDS_TO_MS = 1000
+function secondsToMs(seconds: number): number {
+  return seconds * SECONDS_TO_MS
+}
 
 export const authService = {
   /**
@@ -31,9 +37,9 @@ export const authService = {
     // Validate response structure
     const data = validateLoginResponse(response.data)
 
-    // Calculate token expiry using tokensExpiresIn from API (convert seconds to milliseconds)
-    const accessExpiresAt = Date.now() + data.tokensExpiresIn.access_expires_in * 1000
-    const refreshExpiresAt = Date.now() + data.tokensExpiresIn.refresh_expires_in * 1000
+    // Calculate token expiry using tokensExpiresIn from API
+    const accessExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.access_expires_in)
+    const refreshExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.refresh_expires_in)
 
     // Store in IndexedDB with expiry timestamps
     await indexedDBService.saveAuthDataLogin({
@@ -72,9 +78,9 @@ export const authService = {
     // Validate response structure
     const data = validateRefreshTokenResponse(response.data)
 
-    // Calculate new token expiry using tokensExpiresIn from API (convert seconds to milliseconds)
-    const accessExpiresAt = Date.now() + data.tokensExpiresIn.access_expires_in * 1000
-    const refreshExpiresAt = Date.now() + data.tokensExpiresIn.refresh_expires_in * 1000
+    // Calculate new token expiry using tokensExpiresIn from API
+    const accessExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.access_expires_in)
+    const refreshExpiresAt = Date.now() + secondsToMs(data.tokensExpiresIn.refresh_expires_in)
 
     // Update IndexedDB
     await indexedDBService.updateTokens(

@@ -1,7 +1,8 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { usersApi } from './users.api'
-import { sendNotificationApi } from './sendNotification.api'
+import { useMutation, useQuery } from '@tanstack/react-query'
+
 import type { SendNotificationRequest } from '../types/sendNotification.types'
+import { sendNotificationApi } from './sendNotification.api'
+import { usersApi } from './users.api'
 
 export const NOTIFICATION_QUERY_KEYS = {
   users: ['company-users'] as const,

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { useAppSelector } from '@/core/store'
+
 import { AUTH_ROUTES } from '@/config/constants'
+import { useAppSelector } from '@/core/store'
+
 import { usePermission } from '../hooks/usePermission'
 
 interface ProtectedRouteProps {

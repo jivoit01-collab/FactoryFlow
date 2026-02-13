@@ -1,20 +1,22 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+
+import { ENTRY_STATUS } from '@/config/constants'
+import type { ApiError } from '@/core/api/types'
+import { getServerErrorMessage, isServerError as checkServerError } from '@/shared/utils'
+
 import {
   useCreateVehicleEntry,
-  useVehicleEntry,
   useUpdateVehicleEntry,
+  useVehicleEntry,
 } from '../../api/vehicle/vehicleEntry.queries'
 import {
-  VehicleDriverFormShell,
-  type VehicleDriverFormData,
-  type VehicleSelection,
   type DriverSelection,
+  type VehicleDriverFormData,
+  VehicleDriverFormShell,
+  type VehicleSelection,
 } from '../../components'
-import { ENTRY_STATUS } from '@/config/constants'
-import { isServerError as checkServerError, getServerErrorMessage } from '@/shared/utils'
-import type { ApiError } from '@/core/api/types'
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig'
 
 interface SharedStep1PageProps {
@@ -28,9 +30,11 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
   const isEditMode = !!entryId
   const createVehicleEntry = useCreateVehicleEntry()
   const updateVehicleEntry = useUpdateVehicleEntry()
-  const { data: entryData, isLoading: isLoadingEntry, error: entryError } = useVehicleEntry(
-    entryId ? parseInt(entryId) : null
-  )
+  const {
+    data: entryData,
+    isLoading: isLoadingEntry,
+    error: entryError,
+  } = useVehicleEntry(entryId ? parseInt(entryId) : null)
 
   // Check if error is a server error (5xx)
   const hasServerError = checkServerError(entryError)

@@ -1,15 +1,16 @@
-import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
-import { ChevronDown, Check, Loader2, Plus, HelpCircle } from 'lucide-react'
+import { Check, ChevronDown, HelpCircle, Loader2, Plus } from 'lucide-react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+
 import {
+  Button,
   Input,
   Label,
-  Button,
   Popover,
-  PopoverTrigger,
   PopoverContent,
+  PopoverTrigger,
 } from '@/shared/components/ui'
-import { cn } from '@/shared/utils'
 import { useDebounce } from '@/shared/hooks'
+import { cn } from '@/shared/utils'
 
 type ItemKey = string | number
 
@@ -55,7 +56,7 @@ export interface SearchableSelectProps<TItem> {
   renderCreateDialog?: (
     open: boolean,
     onOpenChange: (open: boolean) => void,
-    updateSelection: (key: ItemKey, label: string) => void,
+    updateSelection: (key: ItemKey, label: string) => void
   ) => ReactNode
 }
 
@@ -109,15 +110,21 @@ export function SearchableSelect<TItem>({
   const filteredItems = items.filter((item) => activeFilter(item, debouncedSearch))
 
   // Wrappers to notify parent of state changes
-  const updateIsOpen = useCallback((open: boolean) => {
-    setIsOpen(open)
-    onOpenChange?.(open)
-  }, [onOpenChange])
+  const updateIsOpen = useCallback(
+    (open: boolean) => {
+      setIsOpen(open)
+      onOpenChange?.(open)
+    },
+    [onOpenChange]
+  )
 
-  const updateSelectedKey = useCallback((key: ItemKey | null) => {
-    setSelectedKey(key)
-    onSelectedKeyChange?.(key)
-  }, [onSelectedKeyChange])
+  const updateSelectedKey = useCallback(
+    (key: ItemKey | null) => {
+      setSelectedKey(key)
+      onSelectedKeyChange?.(key)
+    },
+    [onSelectedKeyChange]
+  )
 
   // Sync defaultDisplayText when it changes from parent (edit mode)
   useEffect(() => {
@@ -138,9 +145,7 @@ export function SearchableSelect<TItem>({
     }
 
     if (value && items.length > 0) {
-      const item = items.find(
-        (i) => getItemLabel(i) === value || String(getItemKey(i)) === value
-      )
+      const item = items.find((i) => getItemLabel(i) === value || String(getItemKey(i)) === value)
       if (item) {
         updateSelectedKey(getItemKey(item))
         setSearchTerm(getItemLabel(item))
@@ -202,18 +207,21 @@ export function SearchableSelect<TItem>({
     setIsDialogOpen(true)
   }
 
-  const updateSelection = useCallback((key: ItemKey, newLabel: string) => {
-    updateSelectedKey(key)
-    setSearchTerm(newLabel)
-    updateIsOpen(false)
-  }, [updateSelectedKey, updateIsOpen])
+  const updateSelection = useCallback(
+    (key: ItemKey, newLabel: string) => {
+      updateSelectedKey(key)
+      setSearchTerm(newLabel)
+      updateIsOpen(false)
+    },
+    [updateSelectedKey, updateIsOpen]
+  )
 
   const hasCreateDialog = addNewLabel && renderCreateDialog
 
   return (
     <div className="space-y-2">
-      {label && (
-        renderPopoverContent ? (
+      {label &&
+        (renderPopoverContent ? (
           <div className="flex items-center gap-1">
             <Label htmlFor={inputId}>
               {label} {required && <span className="text-destructive">*</span>}
@@ -237,8 +245,7 @@ export function SearchableSelect<TItem>({
           <Label htmlFor={inputId}>
             {label} {required && <span className="text-destructive">*</span>}
           </Label>
-        )
-      )}
+        ))}
       <div ref={containerRef} className="relative">
         <div className="relative">
           <Input
@@ -275,9 +282,7 @@ export function SearchableSelect<TItem>({
         {isOpen && (
           <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-60 overflow-auto">
             {isError ? (
-              <div className="p-4 text-center text-sm text-destructive">
-                {errorText}
-              </div>
+              <div className="p-4 text-center text-sm text-destructive">{errorText}</div>
             ) : isLoading ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />

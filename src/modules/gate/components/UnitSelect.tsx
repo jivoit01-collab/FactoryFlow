@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useUnitChoices } from '../api/maintenance/maintenance.queries'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { UnitChoice } from '../api/maintenance/maintenance.api'
+import { useUnitChoices } from '../api/maintenance/maintenance.queries'
 
 interface UnitSelectProps {
   value?: string

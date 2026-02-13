@@ -1,12 +1,12 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Home } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 // Short display names for breadcrumb segments
 const SHORT_NAMES: Record<string, string> = {
   'raw-materials': 'RM',
   'daily-needs': 'Daily',
-  'maintenance': 'Maint.',
-  'construction': 'Const.',
+  maintenance: 'Maint.',
+  construction: 'Const.',
   'visitor-labour': 'Visitors',
   'quality-check': 'QC',
   qc: 'QC',
@@ -151,7 +151,7 @@ export function Breadcrumbs() {
               </span>
             ) : isClickable ? (
               <Link
-                to={isNavigable ? path : (redirectPath || path)}
+                to={isNavigable ? path : redirectPath || path}
                 onClick={(e) => handleClick(e, path, isNavigable, redirectPath)}
                 className="hover:text-foreground hover:bg-muted/50 rounded px-2 py-0.5 transition-colors"
               >

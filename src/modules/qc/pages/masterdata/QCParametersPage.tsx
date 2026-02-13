@@ -1,32 +1,34 @@
+import { AlertCircle, ArrowLeft, Edit, FlaskConical, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, ArrowLeft, Plus, Edit, Trash2, AlertCircle } from 'lucide-react'
+
+import type { ApiError } from '@/core/api/types'
 import {
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Input,
-  Label,
   Checkbox,
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  Input,
+  Label,
 } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
-import { MaterialTypeSelect } from '../../components'
+
 import {
-  useQCParametersByMaterialType,
   useCreateQCParameter,
-  useUpdateQCParameter,
   useDeleteQCParameter,
+  useQCParametersByMaterialType,
+  useUpdateQCParameter,
 } from '../../api/qcParameter/qcParameter.queries'
+import { MaterialTypeSelect } from '../../components'
 import { PARAMETER_TYPE_LABELS } from '../../constants'
-import type { QCParameter, CreateQCParameterRequest, ParameterType } from '../../types'
-import type { ApiError } from '@/core/api/types'
+import type { CreateQCParameterRequest, ParameterType, QCParameter } from '../../types'
 
 export default function QCParametersPage() {
   const navigate = useNavigate()
@@ -180,9 +182,7 @@ export default function QCParametersPage() {
       {selectedMaterialType && (
         <Card>
           <CardHeader>
-            <CardTitle>
-              Parameters ({parameters.length})
-            </CardTitle>
+            <CardTitle>Parameters ({parameters.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoadingParams ? (
@@ -219,9 +219,7 @@ export default function QCParametersPage() {
                           {PARAMETER_TYPE_LABELS[param.parameter_type]}
                         </td>
                         <td className="p-3">{param.uom || '-'}</td>
-                        <td className="p-3 text-center">
-                          {param.is_mandatory ? 'Yes' : 'No'}
-                        </td>
+                        <td className="p-3 text-center">{param.is_mandatory ? 'Yes' : 'No'}</td>
                         <td className="p-3 text-center">
                           <div className="flex justify-center gap-2">
                             <Button
@@ -272,9 +270,7 @@ export default function QCParametersPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {editingParam ? 'Edit Parameter' : 'Add Parameter'}
-            </DialogTitle>
+            <DialogTitle>{editingParam ? 'Edit Parameter' : 'Add Parameter'}</DialogTitle>
           </DialogHeader>
 
           {apiErrors.general && (

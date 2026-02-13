@@ -1,18 +1,19 @@
+import { Check } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useAppDispatch, useAppSelector } from '@/core/store'
+import { useLocation, useNavigate } from 'react-router-dom'
+
+import { ROUTES } from '@/config/routes.config'
 import { switchCompany } from '@/core/auth'
 import { indexedDBService } from '@/core/auth/services/indexedDb.service'
-import { ROUTES } from '@/config/routes.config'
+import { useAppDispatch, useAppSelector } from '@/core/store'
 import {
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Button,
 } from '@/shared/components/ui'
-import { Check } from 'lucide-react'
 
 /**
  * CompanySelectionPage component

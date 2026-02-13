@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { useWarehouses } from '../api'
+
 import { SearchableSelect } from '@/shared/components'
+
+import { useWarehouses } from '../api'
 import type { Warehouse } from '../types'
 
 interface WarehouseSelectProps {
@@ -47,9 +49,7 @@ export function WarehouseSelect({
       renderItem={(warehouse) => (
         <div>
           <span className="text-sm">{warehouse.warehouse_name}</span>
-          <span className="text-xs text-muted-foreground ml-2">
-            ({warehouse.warehouse_code})
-          </span>
+          <span className="text-xs text-muted-foreground ml-2">({warehouse.warehouse_code})</span>
         </div>
       )}
       loadingText="Loading warehouses..."

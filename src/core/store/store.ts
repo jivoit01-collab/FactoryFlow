@@ -1,7 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit'
-import { rootReducer } from './rootReducer'
+
 import { authSyncMiddleware } from '@/core/auth/store/authSyncMiddleware'
+
 import { saveFiltersToStorage } from './filtersSlice'
+import { rootReducer } from './rootReducer'
 
 export const store = configureStore({
   reducer: rootReducer,

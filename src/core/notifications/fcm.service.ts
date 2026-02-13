@@ -1,8 +1,9 @@
-import { getToken, onMessage, deleteToken, type MessagePayload } from 'firebase/messaging'
+import { deleteToken, getToken, type MessagePayload, onMessage } from 'firebase/messaging'
+
 import {
-  initializeFirebase,
-  getFirebaseMessaging,
   getFCMServiceWorkerRegistration,
+  getFirebaseMessaging,
+  initializeFirebase,
   isFirebaseConfigured,
 } from '@/config/firebase.config'
 

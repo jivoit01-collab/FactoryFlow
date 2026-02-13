@@ -1,21 +1,23 @@
-import { useNavigate } from 'react-router-dom'
 import {
-  PackageCheck,
+  AlertCircle,
+  CheckCircle2,
   ChevronRight,
   Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  ShieldX,
-  RefreshCw,
   History,
   List,
+  PackageCheck,
+  RefreshCw,
+  ShieldX,
+  XCircle,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+import type { ApiError } from '@/core/api/types'
 import { Button, Card, CardContent } from '@/shared/components/ui'
+
 import { usePendingGRPOEntries } from '../api'
 import { useGRPOHistory } from '../api'
 import { GRPO_STATUS } from '../constants'
-import type { ApiError } from '@/core/api/types'
 
 // Status configuration for overview grid
 const STATUS_CONFIG = {
@@ -75,8 +77,9 @@ export default function GRPODashboardPage() {
   const historyCounts = {
     pending: historyEntries.filter((h) => h.status === GRPO_STATUS.PENDING).length,
     posted: historyEntries.filter((h) => h.status === GRPO_STATUS.POSTED).length,
-    failed: historyEntries.filter((h) => h.status === GRPO_STATUS.FAILED || h.status === GRPO_STATUS.PARTIALLY_POSTED)
-      .length,
+    failed: historyEntries.filter(
+      (h) => h.status === GRPO_STATUS.FAILED || h.status === GRPO_STATUS.PARTIALLY_POSTED
+    ).length,
   }
 
   return (
@@ -192,8 +195,7 @@ export default function GRPODashboardPage() {
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="font-medium text-sm">{entry.entry_no}</span>
                       <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                        {entry.pending_po_count} PO{entry.pending_po_count !== 1 ? 's' : ''}{' '}
-                        pending
+                        {entry.pending_po_count} PO{entry.pending_po_count !== 1 ? 's' : ''} pending
                       </span>
                     </div>
                     <div className="flex items-center gap-2">

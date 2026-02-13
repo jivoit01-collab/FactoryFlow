@@ -1,15 +1,16 @@
-import { useEffect, useRef, useCallback } from 'react'
 import { type MessagePayload } from 'firebase/messaging'
+import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-import { useAppDispatch, useAppSelector } from '@/core/store'
-import { fcmService, notificationService } from '@/core/notifications'
-import {
-  setupPushNotifications,
-  fetchUnreadCount,
-  addNotification,
-  selectFCMState,
-} from '@/core/store/slices/notification.slice'
+
 import type { Notification } from '@/core/notifications'
+import { fcmService, notificationService } from '@/core/notifications'
+import { useAppDispatch, useAppSelector } from '@/core/store'
+import {
+  addNotification,
+  fetchUnreadCount,
+  selectFCMState,
+  setupPushNotifications,
+} from '@/core/store/slices/notification.slice'
 
 interface NotificationProviderProps {
   children: React.ReactNode

@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Bell, CheckCheck, Loader2, ChevronLeft, ChevronRight, Send } from 'lucide-react'
+import { Bell, CheckCheck, ChevronLeft, ChevronRight, Loader2, Send } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+import { NOTIFICATION_PERMISSIONS } from '@/config/permissions'
+import { Authorized } from '@/core/auth'
+import type { Notification } from '@/core/notifications'
+import { useNotificationList } from '@/core/notifications/hooks'
 import { Button } from '@/shared/components/ui'
 import { cn } from '@/shared/utils'
-import { useNotificationList } from '@/core/notifications/hooks'
-import { Authorized } from '@/core/auth'
-import { NOTIFICATION_PERMISSIONS } from '@/config/permissions'
-import type { Notification } from '@/core/notifications'
 
 const PAGE_SIZE = 20
 
@@ -102,11 +103,13 @@ export default function NotificationsPage() {
 
       {/* Filter Tabs */}
       <div className="flex gap-1 rounded-lg border bg-muted p-1 w-fit">
-        {([
-          { key: 'all', label: 'All' },
-          { key: 'unread', label: 'Unread' },
-          { key: 'read', label: 'Read' },
-        ] as const).map(({ key, label }) => (
+        {(
+          [
+            { key: 'all', label: 'All' },
+            { key: 'unread', label: 'Unread' },
+            { key: 'read', label: 'Read' },
+          ] as const
+        ).map(({ key, label }) => (
           <button
             key={key}
             type="button"

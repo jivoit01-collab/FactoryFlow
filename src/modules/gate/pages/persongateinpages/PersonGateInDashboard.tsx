@@ -1,16 +1,10 @@
+import { AlertTriangle, ChevronRight, Clock, LogIn, Plus, UserCheck, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Plus,
-  ChevronRight,
-  Users,
-  LogIn,
-  UserCheck,
-  Clock,
-  AlertTriangle,
-} from 'lucide-react'
+
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui'
-import { usePersonGateInDashboard } from '../../api/personGateIn/personGateIn.queries'
+
 import { PERSON_TYPE_IDS } from '../../api/personGateIn/personGateIn.api'
+import { usePersonGateInDashboard } from '../../api/personGateIn/personGateIn.queries'
 
 // Status badge styling
 const getStatusBadgeClass = (status: string) => {
@@ -73,9 +67,7 @@ export default function PersonGateInDashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Visitor/Labour</h2>
-          <p className="text-muted-foreground">
-            Manage visitor and labour gate entries
-          </p>
+          <p className="text-muted-foreground">Manage visitor and labour gate entries</p>
         </div>
         <Button onClick={() => navigate('/gate/visitor-labour/new')} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
@@ -109,16 +101,25 @@ export default function PersonGateInDashboard() {
               <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800 flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <span>
-                    <span className="font-semibold text-purple-600 dark:text-purple-400">{dashboard?.current.visitors_inside ?? 0}</span> Visitors
+                    <span className="font-semibold text-purple-600 dark:text-purple-400">
+                      {dashboard?.current.visitors_inside ?? 0}
+                    </span>{' '}
+                    Visitors
                   </span>
                   <span>
-                    <span className="font-semibold text-orange-600 dark:text-orange-400">{dashboard?.current.labours_inside ?? 0}</span> Labours
+                    <span className="font-semibold text-orange-600 dark:text-orange-400">
+                      {dashboard?.current.labours_inside ?? 0}
+                    </span>{' '}
+                    Labours
                   </span>
                 </div>
                 {(dashboard?.current.long_duration_count ?? 0) > 0 && (
                   <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                     <AlertTriangle className="h-3.5 w-3.5" />
-                    <span className="font-semibold">{dashboard?.current.long_duration_count}</span> Long Duration
+                    <span className="font-semibold">
+                      {dashboard?.current.long_duration_count}
+                    </span>{' '}
+                    Long Duration
                   </span>
                 )}
               </div>
@@ -203,7 +204,9 @@ export default function PersonGateInDashboard() {
                 </div>
                 <div
                   className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => navigate(`/gate/visitor-labour/all?person_type=${PERSON_TYPE_IDS.VISITOR}`)}
+                  onClick={() =>
+                    navigate(`/gate/visitor-labour/all?person_type=${PERSON_TYPE_IDS.VISITOR}`)
+                  }
                 >
                   <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                     {dashboard?.today.visitors ?? 0}
@@ -212,7 +215,9 @@ export default function PersonGateInDashboard() {
                 </div>
                 <div
                   className="text-center p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => navigate(`/gate/visitor-labour/all?person_type=${PERSON_TYPE_IDS.LABOUR}`)}
+                  onClick={() =>
+                    navigate(`/gate/visitor-labour/all?person_type=${PERSON_TYPE_IDS.LABOUR}`)
+                  }
                 >
                   <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                     {dashboard?.today.labours ?? 0}
@@ -249,7 +254,9 @@ export default function PersonGateInDashboard() {
                       <div
                         key={gate.id}
                         className="flex items-center justify-between p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => navigate(`/gate/visitor-labour/all?gate_in=${gate.id}&status=IN`)}
+                        onClick={() =>
+                          navigate(`/gate/visitor-labour/all?gate_in=${gate.id}&status=IN`)
+                        }
                       >
                         <span className="text-sm font-medium">{gate.name}</span>
                         <span className="text-sm font-bold text-green-600 dark:text-green-400">
@@ -282,7 +289,10 @@ export default function PersonGateInDashboard() {
                         <span className="text-sm font-medium">{type.name}</span>
                         <div className="flex items-center gap-4">
                           <span className="text-xs text-muted-foreground">
-                            Inside: <span className="font-bold text-green-600 dark:text-green-400">{type.inside_count}</span>
+                            Inside:{' '}
+                            <span className="font-bold text-green-600 dark:text-green-400">
+                              {type.inside_count}
+                            </span>
                           </span>
                           <span className="text-xs text-muted-foreground">
                             Today: <span className="font-bold">{type.today_count}</span>

@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Check, Loader2 } from 'lucide-react'
+import { Check, ChevronDown, Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+
 import { Input, Label } from '@/shared/components/ui'
-import { useGates } from '../../api/personGateIn/personGateIn.queries'
 import { cn } from '@/shared/utils'
+
 import type { Gate } from '../../api/personGateIn/personGateIn.api'
+import { useGates } from '../../api/personGateIn/personGateIn.queries'
 
 interface GateSelectProps {
   value?: number | null

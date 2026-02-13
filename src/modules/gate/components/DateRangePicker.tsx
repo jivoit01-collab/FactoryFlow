@@ -1,11 +1,12 @@
-import { useState } from 'react'
 import { format } from 'date-fns'
 import { Calendar as CalendarIcon, X } from 'lucide-react'
-import { Calendar } from '@/shared/components/ui/calendar'
+import { useState } from 'react'
+import type { DateRange } from 'react-day-picker'
+
 import { Button } from '@/shared/components/ui/button'
+import { Calendar } from '@/shared/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
 import { cn } from '@/shared/utils'
-import type { DateRange } from 'react-day-picker'
 
 interface DateRangePickerProps {
   date?: Date | DateRange

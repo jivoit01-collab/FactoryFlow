@@ -1,6 +1,8 @@
 import { Download, X } from 'lucide-react'
-import { Button } from '@/shared/components/ui/button'
+
 import { APP_NAME } from '@/config/constants'
+import { Button } from '@/shared/components/ui/button'
+
 import { usePWAInstall } from './usePWAInstall'
 
 export function PWAInstallPrompt() {

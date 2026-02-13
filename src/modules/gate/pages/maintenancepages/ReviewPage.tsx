@@ -1,42 +1,46 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  FileCheck,
-  ArrowLeft,
   AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  FileCheck,
+  FileText,
+  Home,
+  ShieldCheck,
   Truck,
   User,
-  ShieldCheck,
   Wrench,
-  CheckCircle2,
   XCircle,
-  Clock,
-  Home,
-  FileText,
-  AlertTriangle,
 } from 'lucide-react'
-import {
-  Button,
-  Label,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+import { ENTRY_STATUS, getEntryStatusClasses } from '@/config/constants'
+import type { ApiError } from '@/core/api/types'
+import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui'
 import { useScrollToError } from '@/shared/hooks'
 import { cn } from '@/shared/utils'
-import type { ApiError } from '@/core/api/types'
-import { isServerError as checkServerError, getServerErrorMessage, getErrorMessage } from '@/shared/utils'
-import { useMaintenanceFullView, useCompleteMaintenanceEntry } from '../../api/maintenance/maintenance.queries'
+import {
+  getErrorMessage,
+  getServerErrorMessage,
+  isServerError as checkServerError,
+} from '@/shared/utils'
+
+import {
+  useCompleteMaintenanceEntry,
+  useMaintenanceFullView,
+} from '../../api/maintenance/maintenance.queries'
 import { securityCheckApi } from '../../api/securityCheck/securityCheck.api'
 import { useEntryId } from '../../hooks'
-import { ENTRY_STATUS, getEntryStatusClasses } from '@/config/constants'
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getEntryStatusClasses(status))}>
+    <span
+      className={cn('px-2 py-1 rounded-full text-xs font-medium', getEntryStatusClasses(status))}
+    >
       {status}
     </span>
   )
@@ -230,7 +234,9 @@ export default function ReviewPage() {
       setShowSuccess(true)
     } catch (error) {
       if (checkServerError(error)) {
-        setApiErrors({ general: 'Cannot complete the entry at the moment. Please try again later.' })
+        setApiErrors({
+          general: 'Cannot complete the entry at the moment. Please try again later.',
+        })
       } else {
         setApiErrors({ general: getErrorMessage(error, 'Failed to complete gate entry') })
       }
@@ -464,8 +470,8 @@ export default function ReviewPage() {
                   <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                      {maintenanceDetails.urgency_level === 'CRITICAL' ? 'Critical' : 'High'} Priority
-                      Item
+                      {maintenanceDetails.urgency_level === 'CRITICAL' ? 'Critical' : 'High'}{' '}
+                      Priority Item
                     </p>
                     <p className="text-sm text-amber-700 dark:text-amber-300">
                       Please ensure expedited processing.
@@ -503,7 +509,9 @@ export default function ReviewPage() {
                   </div>
                   {maintenanceDetails.part_number && (
                     <div>
-                      <Label className="text-muted-foreground text-xs">Part Number / Model Number</Label>
+                      <Label className="text-muted-foreground text-xs">
+                        Part Number / Model Number
+                      </Label>
                       <p className="font-medium">{maintenanceDetails.part_number}</p>
                     </div>
                   )}
@@ -571,14 +579,14 @@ export default function ReviewPage() {
               {gateEntry.security_check?.is_submitted || securityJustSubmitted ? (
                 <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
                   <CheckCircle2 className="h-5 w-5" />
-                  <span className="font-medium">Security check submitted. Ready to complete entry.</span>
+                  <span className="font-medium">
+                    Security check submitted. Ready to complete entry.
+                  </span>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label className="text-base font-medium">
-                      Security Inspection Pending
-                    </Label>
+                    <Label className="text-base font-medium">Security Inspection Pending</Label>
                     <p className="text-sm text-muted-foreground">
                       Submit security check to proceed with completing the entry
                     </p>
@@ -612,11 +620,7 @@ export default function ReviewPage() {
                   {isSubmittingSecurity ? 'Submitting...' : 'Submit Security'}
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  onClick={handleComplete}
-                  disabled={isCompleting}
-                >
+                <Button type="button" onClick={handleComplete} disabled={isCompleting}>
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   {isCompleting ? 'Completing...' : 'Complete Entry'}
                 </Button>

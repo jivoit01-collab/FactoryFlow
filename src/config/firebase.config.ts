@@ -1,5 +1,5 @@
-import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { getMessaging, type Messaging, isSupported } from 'firebase/messaging'
+import { type FirebaseApp, initializeApp } from 'firebase/app'
+import { getMessaging, isSupported, type Messaging } from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -20,9 +20,9 @@ let fcmServiceWorkerRegistration: ServiceWorkerRegistration | null = null
 export const isFirebaseConfigured = (): boolean => {
   return Boolean(
     firebaseConfig.apiKey &&
-      firebaseConfig.projectId &&
-      firebaseConfig.messagingSenderId &&
-      firebaseConfig.appId
+    firebaseConfig.projectId &&
+    firebaseConfig.messagingSenderId &&
+    firebaseConfig.appId
   )
 }
 

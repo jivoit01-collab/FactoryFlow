@@ -1,5 +1,6 @@
-import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
+import { apiClient } from '@/core/api'
+
 import type { Transporter } from '../transporter/transporter.api'
 
 // Vehicle type from API

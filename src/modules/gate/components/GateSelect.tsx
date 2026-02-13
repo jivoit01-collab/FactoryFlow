@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react'
-import { useGates } from '../api/personGateIn/personGateIn.queries'
+import { useMemo, useState } from 'react'
+
 import { SearchableSelect } from '@/shared/components'
+
 import type { Gate } from '../api/personGateIn/personGateIn.api'
+import { useGates } from '../api/personGateIn/personGateIn.queries'
 
 interface GateSelectProps {
   value?: string
@@ -31,7 +33,7 @@ export function GateSelect({
 
   const filteredGates = useMemo(
     () => (activeOnly ? gates.filter((g) => g.is_active) : gates),
-    [gates, activeOnly],
+    [gates, activeOnly]
   )
 
   return (

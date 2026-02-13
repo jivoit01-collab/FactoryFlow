@@ -6,7 +6,7 @@ This document defines the dependency rules that keep modules independent and del
 
 **If a module cannot be deleted without breaking another module, the boundaries are wrong.**
 
-Every feature module under `src/modules/` must be self-contained. Deleting any single module should only require removing its entry from the module registry (`src/app/modules/index.ts`) — no other module should fail to compile.
+Every feature module under `src/modules/` must be self-contained. Deleting any single module should only require removing its entry from the module registry (`src/app/registry/index.ts`) — no other module should fail to compile.
 
 ## Layer Hierarchy
 
@@ -62,7 +62,7 @@ This keeps modules decoupled while still allowing cache coordination.
 
 ## Module Registration
 
-Modules are registered in the composition root at `src/app/modules/index.ts`. This is the **only** place where modules are imported together:
+Modules are registered in the composition root at `src/app/registry/index.ts`. This is the **only** place where modules are imported together:
 
 ```typescript
 import { gateModuleConfig } from '@/modules/gate/module.config'
@@ -78,7 +78,7 @@ Each module exports a `ModuleConfig` from its `module.config.tsx` defining route
 
 1. Create `src/modules/{name}/` with the standard structure (see [Module Structure](../modules/overview.md))
 2. Create `module.config.tsx` exporting a `ModuleConfig`
-3. Register it in `src/app/modules/index.ts`
+3. Register it in `src/app/registry/index.ts`
 4. If it needs constants shared with other modules, put them in `src/config/constants/`
 
 ## Verifying Boundaries

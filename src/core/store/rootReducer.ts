@@ -1,8 +1,9 @@
 import { combineReducers } from '@reduxjs/toolkit'
-import { getAllReducers } from '@/app/modules'
 
+import { getAllReducers } from '@/app/registry'
 // Core reducers that are always included
 import authReducer from '@/core/auth/store/authSlice'
+
 import filtersReducer from './filtersSlice'
 import notificationReducer from './slices/notification.slice'
 

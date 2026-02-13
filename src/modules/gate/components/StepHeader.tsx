@@ -1,4 +1,5 @@
 import { AlertCircle } from 'lucide-react'
+
 import { WIZARD_CONFIG } from '../constants'
 
 interface StepHeaderProps {

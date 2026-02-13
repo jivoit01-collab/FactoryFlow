@@ -1,4 +1,5 @@
-import { useMemo, useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
+
 import { useAppSelector } from '@/core/store'
 
 /**
@@ -27,7 +28,7 @@ export function usePermission() {
    * Check if user has any of the specified permissions
    */
   const hasAnyPermission = useCallback(
-    (requiredPermissions: string[]): boolean => {
+    (requiredPermissions: readonly string[]): boolean => {
       return requiredPermissions.some((permission) => permissions.includes(permission))
     },
     [permissions]
@@ -37,7 +38,7 @@ export function usePermission() {
    * Check if user has all of the specified permissions
    */
   const hasAllPermissions = useCallback(
-    (requiredPermissions: string[]): boolean => {
+    (requiredPermissions: readonly string[]): boolean => {
       return requiredPermissions.every((permission) => permissions.includes(permission))
     },
     [permissions]

@@ -1,5 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { vehicleApi, type CreateVehicleRequest } from './vehicle.api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+import { type CreateVehicleRequest, vehicleApi } from './vehicle.api'
 
 /**
  * Fetch vehicle types for dropdown

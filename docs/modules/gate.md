@@ -12,17 +12,17 @@ src/modules/gate/
 │   ├── DailyNeedsPage.tsx            # Daily needs entries
 │   ├── ConstructionPage.tsx          # Construction entries
 │   ├── ContractorLaborPage.tsx       # Contractor/Labor redirect
-│   ├── rawmaterialpages/             # Multi-step entry workflow
+│   ├── rawMaterialPages/             # Multi-step entry workflow
 │   │   ├── Step1Page.tsx             # Driver, Transporter, Vehicle
 │   │   ├── Step2Page.tsx             # Purchase Order
 │   │   ├── Step3Page.tsx             # PO Receipt
 │   │   ├── Step4Page.tsx             # Weighment
 │   │   ├── Step5Page.tsx             # Quality Control
 │   │   └── ReviewPage.tsx            # Final Review
-│   ├── dailyneedspages/              # Daily needs workflow
-│   ├── constructionpages/            # Construction workflow
-│   ├── maintenancepages/             # Maintenance workflow
-│   └── persongateinpages/            # Visitor/Labour management
+│   ├── dailyNeedsPages/              # Daily needs workflow
+│   ├── constructionPages/            # Construction workflow
+│   ├── maintenancePages/             # Maintenance workflow
+│   └── personGateInPages/            # Visitor/Labour management
 │       ├── PersonGateInDashboard.tsx # Dashboard with stats
 │       ├── PersonGateInAllPage.tsx   # All entries list
 │       ├── NewEntryPage.tsx          # Create new entry
@@ -50,7 +50,7 @@ src/modules/gate/
 │   ├── StepHeader.tsx
 │   ├── StepFooter.tsx
 │   ├── DateRangePicker.tsx           # Date range selection
-│   ├── persongatein/                 # Person gate-in components
+│   ├── personGateIn/                 # Person gate-in components
 │   │   ├── VisitorSelect.tsx         # Visitor search/select
 │   │   ├── LabourSelect.tsx          # Labour search/select
 │   │   ├── GateSelect.tsx            # Gate selection

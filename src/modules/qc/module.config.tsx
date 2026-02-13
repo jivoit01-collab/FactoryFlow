@@ -1,7 +1,8 @@
-import { lazy } from 'react'
 import { FlaskConical } from 'lucide-react'
+import { lazy } from 'react'
+
+import { QC_MODULE_PREFIX, QC_PERMISSIONS } from '@/config/permissions'
 import type { ModuleConfig } from '@/core/types'
-import { QC_PERMISSIONS, QC_MODULE_PREFIX } from '@/config/permissions'
 
 // Lazy load QC pages
 const QCDashboardPage = lazy(() => import('./pages/QCDashboardPage'))

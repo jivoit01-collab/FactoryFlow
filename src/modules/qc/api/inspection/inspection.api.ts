@@ -1,12 +1,13 @@
-import { apiClient } from '@/core/api'
 import { API_ENDPOINTS } from '@/config/constants'
+import { apiClient } from '@/core/api'
 import type { ApiError } from '@/core/api/types'
+
 import type {
+  ApprovalRequest,
+  CreateInspectionRequest,
   Inspection,
   PendingInspection,
-  CreateInspectionRequest,
   UpdateParameterResultRequest,
-  ApprovalRequest,
 } from '../../types'
 
 export const inspectionApi = {

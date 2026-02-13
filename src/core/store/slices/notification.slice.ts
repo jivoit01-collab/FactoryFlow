@@ -1,10 +1,11 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit'
-import { fcmService, notificationService } from '@/core/notifications'
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
+
 import type {
   Notification,
-  NotificationPreference,
   NotificationListParams,
+  NotificationPreference,
 } from '@/core/notifications'
+import { fcmService, notificationService } from '@/core/notifications'
 
 // ============================================
 // State Interface
@@ -140,7 +141,9 @@ export const fetchUnreadCount = createAsyncThunk(
       const count = await notificationService.getUnreadCount()
       return count
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch unread count')
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Failed to fetch unread count'
+      )
     }
   }
 )
@@ -177,9 +180,7 @@ export const markAllNotificationsAsRead = createAsyncThunk(
       dispatch(fetchNotifications(undefined))
       return true
     } catch (error) {
-      return rejectWithValue(
-        error instanceof Error ? error.message : 'Failed to mark all as read'
-      )
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to mark all as read')
     }
   }
 )
@@ -198,9 +199,7 @@ export const fetchPreferences = createAsyncThunk(
       const preferences = await notificationService.getPreferences()
       return preferences
     } catch (error) {
-      return rejectWithValue(
-        error instanceof Error ? error.message : 'Failed to fetch preferences'
-      )
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch preferences')
     }
   }
 )
@@ -218,9 +217,7 @@ export const updatePreference = createAsyncThunk(
       const updated = await notificationService.updatePreference(notificationTypeId, isEnabled)
       return updated
     } catch (error) {
-      return rejectWithValue(
-        error instanceof Error ? error.message : 'Failed to update preference'
-      )
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update preference')
     }
   }
 )
