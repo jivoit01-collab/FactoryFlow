@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-import { useState, useMemo, useCallback } from 'react'
-import { isReadOnly as computeReadOnly } from '@/shared/utils/formConditions'
-=======
 import { useCallback, useMemo, useState } from 'react'
->>>>>>> 603966473e6bd7bdf8287141258c53dd5770897d
 
 /**
  * Configuration for the edit form state hook.
@@ -104,20 +99,10 @@ export function useEditFormState({
   // 1. In effective edit mode AND update mode is not active AND there's no not found error, OR
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly = useMemo(() => {
-<<<<<<< HEAD
-    return computeReadOnly({
-      effectiveEditMode,
-      updateMode,
-      hasNotFoundError: isEditMode && hasNotFoundError,
-      fillDataMode,
-    })
-  }, [effectiveEditMode, updateMode, hasNotFoundError, fillDataMode, isEditMode])
-=======
     return (
       (effectiveEditMode && !updateMode && !hasNotFoundError) || (hasNotFoundError && !fillDataMode)
     )
   }, [effectiveEditMode, updateMode, hasNotFoundError, fillDataMode])
->>>>>>> 603966473e6bd7bdf8287141258c53dd5770897d
 
   const enableFillDataMode = useCallback(() => {
     setFillDataMode(true)
