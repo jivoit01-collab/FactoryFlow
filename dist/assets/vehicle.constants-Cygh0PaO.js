@@ -1,0 +1,1 @@
+const T={RAW_MATERIAL:"RAW_MATERIAL",CONSTRUCTION:"CONSTRUCTION",DAILY_NEED:"DAILY_NEED",MAINTENANCE:"MAINTENANCE"},A={LOADED:"Loaded",PARTIALLY_LOADED:"Partially Loaded",EMPTY:"Empty"},O={GOOD:"Good",POOR:"Poor"};function L(E){return E?A.LOADED:A.PARTIALLY_LOADED}function N(E){return E?O.GOOD:O.POOR}export{T as E,O as T,A as V,N as a,L as g};

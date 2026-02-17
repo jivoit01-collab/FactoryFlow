@@ -8,8 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 vitest_mistake.md
 node_modules
-dist
-dist-ssr
+# dist
+# dist-ssr
 *.local
 
 # Environment files - NEVER commit these!
