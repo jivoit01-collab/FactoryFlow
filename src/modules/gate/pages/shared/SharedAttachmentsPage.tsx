@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { FileText, Paperclip, Upload } from 'lucide-react';
+import { ExternalLink, FileText, Paperclip, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -151,9 +151,12 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
                         const isImage = isImageUrl(url);
 
                         return (
-                          <div
+                          <a
                             key={attachment.id}
-                            className="group relative rounded-lg border bg-card overflow-hidden"
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative rounded-lg border bg-card overflow-hidden block hover:ring-2 hover:ring-primary/50 transition-all"
                           >
                             {isImage ? (
                               <div className="aspect-square">
@@ -186,12 +189,13 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
                                 <FileText className="h-12 w-12 text-muted-foreground" />
                               </div>
                             )}
-                            <div className="p-2">
-                              <p className="text-xs font-medium truncate" title={fileName}>
+                            <div className="flex items-center gap-1 p-2">
+                              <p className="text-xs font-medium truncate flex-1" title={fileName}>
                                 {fileName}
                               </p>
+                              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
-                          </div>
+                          </a>
                         );
                       })}
                     </div>
