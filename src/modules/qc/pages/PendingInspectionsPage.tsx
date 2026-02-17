@@ -7,16 +7,11 @@ import { useGlobalDateRange } from '@/core/store/hooks';
 import { DateRangePicker } from '@/modules/gate/components';
 import { Button } from '@/shared/components/ui';
 
-import {
-  useCompletedInspections,
-  useInspections,
-  usePendingInspections,
-  useRejectedInspections,
-} from '../api/inspection/inspection.queries';
-import { WORKFLOW_STATUS, WORKFLOW_STATUS_CONFIG } from '../constants';
-import type { Inspection, InspectionWorkflowStatus, PendingInspection } from '../types';
+import { useInspectionsByTab } from '../api/inspection/inspection.queries';
+import { WORKFLOW_STATUS_CONFIG } from '../constants';
+import type { InspectionListItem, InspectionListWorkflowStatus } from '../types';
 
-// Tab metadata (no filter functions - backend handles filtering)
+// Tab metadata
 const TAB_CONFIG = {
   all: {
     label: 'All',
@@ -53,76 +48,20 @@ const TAB_CONFIG = {
 type StatusFilterKey = keyof typeof TAB_CONFIG;
 const TAB_KEYS = Object.keys(TAB_CONFIG) as StatusFilterKey[];
 
-// Normalized item for rendering rows (works for both PendingInspection and Inspection)
-interface NormalizedItem {
-  id: number;
-  entryNo: string;
-  reportNo?: string;
-  itemName: string;
-  partyName: string;
-  statusLabel: string;
-  statusBadgeClass: string;
-  submittedAt: string | null;
-  navigateTo: string;
-  billingQty?: string;
-  billingUom?: string;
-}
-
-// Status badge styling
-const getStatusBadgeClass = (status: string | null, hasInspection: boolean) => {
-  if (!hasInspection) {
-    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-  }
-  switch (status) {
-    case WORKFLOW_STATUS.DRAFT:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-    case WORKFLOW_STATUS.SUBMITTED:
-    case WORKFLOW_STATUS.QA_CHEMIST_APPROVED:
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    case WORKFLOW_STATUS.QAM_APPROVED:
-    case WORKFLOW_STATUS.COMPLETED:
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-    case 'REJECTED':
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-  }
+// Status badge styling based on workflow_status
+const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
+  NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  QA_CHEMIST_APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  QAM_APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-function normalizePendingItem(item: PendingInspection): NormalizedItem {
-  const status = item.has_inspection ? item.inspection_status : null;
-  const statusConfig = status ? WORKFLOW_STATUS_CONFIG[status as InspectionWorkflowStatus] : null;
-
-  return {
-    id: item.arrival_slip.id,
-    entryNo: item.arrival_slip.entry_no,
-    itemName: item.arrival_slip.item_name,
-    partyName: item.arrival_slip.party_name,
-    statusLabel: statusConfig ? statusConfig.label : 'Pending',
-    statusBadgeClass: getStatusBadgeClass(status, item.has_inspection),
-    submittedAt: item.arrival_slip.submitted_at,
-    navigateTo: item.has_inspection
-      ? `/qc/inspections/${item.arrival_slip.id}`
-      : `/qc/inspections/${item.arrival_slip.id}/new`,
-    billingQty: item.arrival_slip.billing_qty,
-    billingUom: item.arrival_slip.billing_uom,
-  };
-}
-
-function normalizeInspectionItem(item: Inspection): NormalizedItem {
-  const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
-
-  return {
-    id: item.id,
-    entryNo: item.entry_no,
-    reportNo: item.report_no,
-    itemName: item.item_name,
-    partyName: item.supplier_name,
-    statusLabel: statusConfig?.label || item.workflow_status,
-    statusBadgeClass: getStatusBadgeClass(item.workflow_status, true),
-    submittedAt: item.created_at,
-    navigateTo: `/qc/inspections/${item.arrival_slip}`,
-  };
+function getNavigateTo(item: InspectionListItem): string {
+  return item.inspection_id
+    ? `/qc/inspections/${item.arrival_slip_id}`
+    : `/qc/inspections/${item.arrival_slip_id}/new`;
 }
 
 export default function PendingInspectionsPage() {
@@ -142,119 +81,8 @@ export default function PendingInspectionsPage() {
   const statusFilter = (searchParams.get('status') as StatusFilterKey) || 'all';
   const currentTab = TAB_CONFIG[statusFilter] || TAB_CONFIG.all;
 
-  // Fetch data from appropriate backend endpoints
-  const {
-    data: allInspections = [],
-    isLoading: allLoading,
-    error: allError,
-    refetch: refetchAll,
-  } = useInspections(dateParams);
-
-  const {
-    data: pendingItems = [],
-    isLoading: pendingLoading,
-    error: pendingError,
-    refetch: refetchPending,
-  } = usePendingInspections(dateParams);
-
-  const {
-    data: completedItems = [],
-    isLoading: completedLoading,
-    error: completedError,
-    refetch: refetchCompleted,
-  } = useCompletedInspections(dateParams);
-
-  const {
-    data: rejectedItems = [],
-    isLoading: rejectedLoading,
-    error: rejectedError,
-    refetch: refetchRejected,
-  } = useRejectedInspections(dateParams);
-
-  // Select data based on active tab
-  const { items, isLoading, error } = useMemo(() => {
-    switch (statusFilter) {
-      case 'all': {
-        // Merge inspections with pending arrival slips that don't have inspections yet
-        const inspectionItems = allInspections.map(normalizeInspectionItem);
-        const slipIdsWithInspections = new Set(allInspections.map((i) => i.arrival_slip));
-        const pendingWithoutInspection = pendingItems
-          .filter((p) => !p.has_inspection && !slipIdsWithInspections.has(p.arrival_slip.id))
-          .map(normalizePendingItem);
-        return {
-          items: [...inspectionItems, ...pendingWithoutInspection],
-          isLoading: allLoading || pendingLoading,
-          error: allError || pendingError,
-        };
-      }
-      case 'pending':
-        return {
-          items: pendingItems.filter((p) => !p.has_inspection).map(normalizePendingItem),
-          isLoading: pendingLoading,
-          error: pendingError,
-        };
-      case 'draft':
-        return {
-          items: pendingItems
-            .filter((p) => p.has_inspection && p.inspection_status === WORKFLOW_STATUS.DRAFT)
-            .map(normalizePendingItem),
-          isLoading: pendingLoading,
-          error: pendingError,
-        };
-      case 'actionable':
-        return {
-          items: pendingItems
-            .filter(
-              (p) =>
-                !p.has_inspection ||
-                p.inspection_status === WORKFLOW_STATUS.DRAFT ||
-                p.inspection_status === WORKFLOW_STATUS.SUBMITTED ||
-                p.inspection_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED,
-            )
-            .map(normalizePendingItem),
-          isLoading: pendingLoading,
-          error: pendingError,
-        };
-      case 'approved':
-        return {
-          items: completedItems.map(normalizeInspectionItem),
-          isLoading: completedLoading,
-          error: completedError,
-        };
-      case 'rejected':
-        return {
-          items: rejectedItems.map(normalizeInspectionItem),
-          isLoading: rejectedLoading,
-          error: rejectedError,
-        };
-      default: {
-        const defaultInspectionItems = allInspections.map(normalizeInspectionItem);
-        const defaultSlipIds = new Set(allInspections.map((i) => i.arrival_slip));
-        const defaultPending = pendingItems
-          .filter((p) => !p.has_inspection && !defaultSlipIds.has(p.arrival_slip.id))
-          .map(normalizePendingItem);
-        return {
-          items: [...defaultInspectionItems, ...defaultPending],
-          isLoading: allLoading || pendingLoading,
-          error: allError || pendingError,
-        };
-      }
-    }
-  }, [
-    statusFilter,
-    allInspections,
-    pendingItems,
-    completedItems,
-    rejectedItems,
-    allLoading,
-    pendingLoading,
-    completedLoading,
-    rejectedLoading,
-    allError,
-    pendingError,
-    completedError,
-    rejectedError,
-  ]);
+  // Single hook — fetches the correct endpoint based on active tab
+  const { data: items = [], isLoading, error, refetch } = useInspectionsByTab(statusFilter, dateParams);
 
   // Check if error is a permission error (403)
   const apiError = error as ApiError | null;
@@ -267,13 +95,6 @@ export default function PendingInspectionsPage() {
     } else {
       setSearchParams({ status: filter });
     }
-  };
-
-  const refetch = () => {
-    refetchAll();
-    refetchPending();
-    refetchCompleted();
-    refetchRejected();
   };
 
   // Format date/time - consistent with Gate module
@@ -404,36 +225,45 @@ export default function PendingInspectionsPage() {
           </div>
 
           <div className="space-y-2">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => navigate(item.navigateTo)}
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <span className="font-medium text-sm">{item.reportNo || item.entryNo}</span>
-                  <span
-                    className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 ${item.statusBadgeClass}`}
-                  >
-                    {item.statusLabel}
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden md:inline truncate">
-                    {item.itemName} • {item.partyName}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {item.billingQty && (
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
-                      {item.billingQty} {item.billingUom}
+            {items.map((item) => {
+              const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
+              const badgeClass =
+                STATUS_BADGE_CLASSES[item.workflow_status] ||
+                'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+
+              return (
+                <div
+                  key={item.arrival_slip_id}
+                  className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => navigate(getNavigateTo(item))}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className="font-medium text-sm">
+                      {item.report_no || item.entry_no}
                     </span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {formatDateTime(item.submittedAt)}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    <span
+                      className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 ${badgeClass}`}
+                    >
+                      {statusConfig?.label || item.workflow_status}
+                    </span>
+                    <span className="text-xs text-muted-foreground hidden md:inline truncate">
+                      {item.item_name} • {item.party_name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {item.billing_qty && (
+                      <span className="text-xs text-muted-foreground hidden sm:inline">
+                        {item.billing_qty} {item.billing_uom}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateTime(item.submitted_at)}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

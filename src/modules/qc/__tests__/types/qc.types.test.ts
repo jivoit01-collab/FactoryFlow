@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type {
   ArrivalSlipStatus,
   InspectionWorkflowStatus,
+  InspectionListWorkflowStatus,
   InspectionFinalStatus,
   ParameterType,
   MaterialType,
@@ -11,11 +12,11 @@ import type {
   ParameterResult,
   UpdateParameterResultRequest,
   ArrivalSlipForQC,
-  PendingInspection,
+  InspectionListItem,
+  InspectionCounts,
   Inspection,
   CreateInspectionRequest,
   ApprovalRequest,
-  QCDashboardCounts,
 } from '../../types';
 
 // ═══════════════════════════════════════════════════════════════
@@ -46,9 +47,24 @@ describe('InspectionWorkflowStatus', () => {
       'SUBMITTED',
       'QA_CHEMIST_APPROVED',
       'QAM_APPROVED',
-      'COMPLETED',
+      'REJECTED',
     ];
     expect(statuses).toHaveLength(5);
+    statuses.forEach((s) => expect(typeof s).toBe('string'));
+  });
+});
+
+describe('InspectionListWorkflowStatus', () => {
+  it('includes NOT_STARTED plus all workflow statuses', () => {
+    const statuses: InspectionListWorkflowStatus[] = [
+      'NOT_STARTED',
+      'DRAFT',
+      'SUBMITTED',
+      'QA_CHEMIST_APPROVED',
+      'QAM_APPROVED',
+      'REJECTED',
+    ];
+    expect(statuses).toHaveLength(6);
     statuses.forEach((s) => expect(typeof s).toBe('string'));
   });
 });
@@ -203,44 +219,63 @@ describe('ArrivalSlipForQC', () => {
   });
 });
 
-describe('PendingInspection', () => {
-  it('is usable with required fields', () => {
-    const pending: PendingInspection = {
-      arrival_slip: {
-        id: 1,
-        po_item_receipt: 1,
-        po_item_code: 'X',
-        item_name: 'X',
-        po_receipt_id: 1,
-        vehicle_entry_id: 1,
-        entry_no: 'VE-1',
-        particulars: '',
-        arrival_datetime: '',
-        weighing_required: false,
-        party_name: '',
-        billing_qty: '0',
-        billing_uom: 'KG',
-        in_time_to_qa: null,
-        truck_no_as_per_bill: '',
-        commercial_invoice_no: '',
-        eway_bill_no: '',
-        bilty_no: '',
-        has_certificate_of_analysis: false,
-        has_certificate_of_quantity: false,
-        status: 'SUBMITTED',
-        is_submitted: true,
-        submitted_at: null,
-        submitted_by: null,
-        submitted_by_name: null,
-        remarks: '',
-        created_at: '',
-        updated_at: '',
-      },
-      has_inspection: false,
-      inspection_status: null,
+describe('InspectionListItem', () => {
+  it('is usable with inspection present', () => {
+    const item: InspectionListItem = {
+      arrival_slip_id: 1,
+      inspection_id: 5,
+      entry_no: 'GE-001',
+      report_no: 'RPT-001',
+      item_name: 'Steel Rod',
+      party_name: 'ABC Suppliers',
+      billing_qty: '100.000',
+      billing_uom: 'KG',
+      workflow_status: 'DRAFT',
+      final_status: 'PENDING',
+      created_at: '2024-01-01T00:00:00Z',
+      submitted_at: '2024-01-01T10:00:00Z',
     };
-    expect(pending.has_inspection).toBe(false);
-    expect(pending.inspection_status).toBeNull();
+    expect(item.arrival_slip_id).toBe(1);
+    expect(item.inspection_id).toBe(5);
+    expect(item.workflow_status).toBe('DRAFT');
+  });
+
+  it('is usable without inspection (NOT_STARTED)', () => {
+    const item: InspectionListItem = {
+      arrival_slip_id: 2,
+      inspection_id: null,
+      entry_no: 'GE-002',
+      report_no: null,
+      item_name: 'Steel Rod',
+      party_name: 'ABC Suppliers',
+      billing_qty: '50.000',
+      billing_uom: 'KG',
+      workflow_status: 'NOT_STARTED',
+      final_status: null,
+      created_at: '2024-01-02T00:00:00Z',
+      submitted_at: '2024-01-02T10:00:00Z',
+    };
+    expect(item.inspection_id).toBeNull();
+    expect(item.workflow_status).toBe('NOT_STARTED');
+    expect(item.final_status).toBeNull();
+  });
+});
+
+describe('InspectionCounts', () => {
+  it('is usable with all fields', () => {
+    const counts: InspectionCounts = {
+      not_started: 5,
+      draft: 3,
+      awaiting_chemist: 2,
+      awaiting_qam: 1,
+      completed: 10,
+      rejected: 2,
+      hold: 1,
+      actionable: 11,
+    };
+    expect(counts.not_started).toBe(5);
+    expect(counts.actionable).toBe(11);
+    expect(counts.hold).toBe(1);
   });
 });
 
@@ -322,21 +357,5 @@ describe('ApprovalRequest', () => {
     const req: ApprovalRequest = { remarks: 'Approved', final_status: 'ACCEPTED' };
     expect(req.remarks).toBe('Approved');
     expect(req.final_status).toBe('ACCEPTED');
-  });
-});
-
-describe('QCDashboardCounts', () => {
-  it('is usable with all fields', () => {
-    const counts: QCDashboardCounts = {
-      pending_inspection: 5,
-      draft: 3,
-      awaiting_chemist: 2,
-      awaiting_manager: 1,
-      approved_today: 4,
-      rejected: 0,
-    };
-    expect(counts.pending_inspection).toBe(5);
-    expect(counts.draft).toBe(3);
-    expect(counts.rejected).toBe(0);
   });
 });

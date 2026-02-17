@@ -1,13 +1,16 @@
 // Arrival Slip types
 export type ArrivalSlipStatus = 'DRAFT' | 'SUBMITTED' | 'REJECTED';
 
-// Inspection workflow status
+// Inspection workflow status (DB states)
 export type InspectionWorkflowStatus =
   | 'DRAFT'
   | 'SUBMITTED'
   | 'QA_CHEMIST_APPROVED'
   | 'QAM_APPROVED'
-  | 'COMPLETED';
+  | 'REJECTED';
+
+// Extended workflow status for list views (includes computed NOT_STARTED)
+export type InspectionListWorkflowStatus = 'NOT_STARTED' | InspectionWorkflowStatus;
 
 // Inspection final status
 export type InspectionFinalStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'HOLD';
@@ -120,11 +123,32 @@ export interface ArrivalSlipForQC {
   updated_at: string;
 }
 
-// Pending Inspection (arrival slip awaiting inspection)
-export interface PendingInspection {
-  arrival_slip: ArrivalSlipForQC;
-  has_inspection: boolean;
-  inspection_status: InspectionWorkflowStatus | null;
+// Lightweight list item returned by all list endpoints (queried from MaterialArrivalSlip)
+export interface InspectionListItem {
+  arrival_slip_id: number;
+  inspection_id: number | null;
+  entry_no: string;
+  report_no: string | null;
+  item_name: string;
+  party_name: string;
+  billing_qty: string;
+  billing_uom: string;
+  workflow_status: InspectionListWorkflowStatus;
+  final_status: InspectionFinalStatus | null;
+  created_at: string;
+  submitted_at: string | null;
+}
+
+// Dashboard counts from /inspections/counts/
+export interface InspectionCounts {
+  not_started: number;
+  draft: number;
+  awaiting_chemist: number;
+  awaiting_qam: number;
+  completed: number;
+  rejected: number;
+  hold: number;
+  actionable: number;
 }
 
 // Inspection
@@ -189,12 +213,3 @@ export interface ApprovalRequest {
   final_status?: InspectionFinalStatus;
 }
 
-// Dashboard counts
-export interface QCDashboardCounts {
-  pending_inspection: number;
-  draft: number;
-  awaiting_chemist: number;
-  awaiting_manager: number;
-  approved_today: number;
-  rejected: number;
-}

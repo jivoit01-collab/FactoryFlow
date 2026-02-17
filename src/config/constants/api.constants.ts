@@ -124,10 +124,13 @@ export const API_ENDPOINTS = {
     // Inspections
     INSPECTIONS_LIST: '/quality-control/inspections/',
     PENDING_INSPECTIONS: '/quality-control/inspections/pending/',
+    DRAFT_INSPECTIONS: '/quality-control/inspections/draft/',
+    ACTIONABLE_INSPECTIONS: '/quality-control/inspections/actionable/',
     AWAITING_CHEMIST: '/quality-control/inspections/awaiting-chemist/',
     AWAITING_QAM: '/quality-control/inspections/awaiting-qam/',
     COMPLETED_INSPECTIONS: '/quality-control/inspections/completed/',
     REJECTED_INSPECTIONS: '/quality-control/inspections/rejected/',
+    INSPECTION_COUNTS: '/quality-control/inspections/counts/',
     INSPECTION_BY_ID: (id: number) => `/quality-control/inspections/${id}/`,
     INSPECTION_FOR_SLIP: (slipId: number) => `/quality-control/arrival-slips/${slipId}/inspection/`,
     INSPECTION_PARAMETERS: (inspectionId: number) =>

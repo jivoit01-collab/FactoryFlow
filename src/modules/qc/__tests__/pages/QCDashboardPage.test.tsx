@@ -42,15 +42,16 @@ describe('QCDashboardPage — Exports', () => {
     expect(content).toContain('CardContent');
   });
 
-  it('imports usePendingInspections', () => {
+  it('imports useInspectionCounts and useActionableInspections', () => {
     const content = readSource();
-    expect(content).toContain('usePendingInspections');
+    expect(content).toContain('useInspectionCounts');
+    expect(content).toContain('useActionableInspections');
     expect(content).toContain("from '../api/inspection/inspection.queries'");
   });
 
-  it('imports WORKFLOW_STATUS from constants', () => {
+  it('imports WORKFLOW_STATUS_CONFIG from constants', () => {
     const content = readSource();
-    expect(content).toContain('WORKFLOW_STATUS');
+    expect(content).toContain('WORKFLOW_STATUS_CONFIG');
     expect(content).toContain("from '../constants'");
   });
 });
@@ -81,13 +82,12 @@ describe('QCDashboardPage — Header', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('QCDashboardPage — Stats', () => {
-  it('calculates counts from pending inspections data', () => {
+  it('uses counts from useInspectionCounts', () => {
     const content = readSource();
+    expect(content).toContain('countsData');
     expect(content).toContain('counts.pending');
     expect(content).toContain('counts.draft');
     expect(content).toContain('counts.awaiting_approval');
-    // counts.approved is accessed via counts[statusKey] in STATUS_ORDER loop
-    expect(content).toContain('approved: pendingInspections.filter');
   });
 
   it('has Pending Actions summary card', () => {
@@ -135,6 +135,6 @@ describe('QCDashboardPage — States', () => {
   it('has Recent Arrival Slips section', () => {
     const content = readSource();
     expect(content).toContain('Recent Arrival Slips');
-    expect(content).toContain('pendingInspections.slice(0, 3)');
+    expect(content).toContain('recentItems.slice(0, 3)');
   });
 });

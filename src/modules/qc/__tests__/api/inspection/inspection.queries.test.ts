@@ -17,7 +17,15 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('../../../api/inspection/inspection.api', () => ({
   inspectionApi: {
+    getList: vi.fn(),
     getPendingList: vi.fn(),
+    getDraftList: vi.fn(),
+    getActionableList: vi.fn(),
+    getCompletedList: vi.fn(),
+    getRejectedList: vi.fn(),
+    getCounts: vi.fn(),
+    getAwaitingChemist: vi.fn(),
+    getAwaitingQAM: vi.fn(),
     getById: vi.fn(),
     getForSlip: vi.fn(),
     create: vi.fn(),
@@ -33,6 +41,9 @@ vi.mock('../../../api/inspection/inspection.api', () => ({
 import {
   INSPECTION_QUERY_KEYS,
   usePendingInspections,
+  useActionableInspections,
+  useInspectionCounts,
+  useInspectionsByTab,
   useInspection,
   useInspectionForSlip,
   useCreateInspection,
@@ -55,6 +66,18 @@ describe('INSPECTION_QUERY_KEYS', () => {
 
   it('pending key extends all', () => {
     expect(INSPECTION_QUERY_KEYS.pending()).toEqual(['inspections', 'pending']);
+  });
+
+  it('draft key extends all', () => {
+    expect(INSPECTION_QUERY_KEYS.draft()).toEqual(['inspections', 'draft']);
+  });
+
+  it('actionable key extends all', () => {
+    expect(INSPECTION_QUERY_KEYS.actionable()).toEqual(['inspections', 'actionable']);
+  });
+
+  it('counts key extends all', () => {
+    expect(INSPECTION_QUERY_KEYS.counts()).toEqual(['inspections', 'counts']);
   });
 
   it('detail key includes id', () => {
@@ -88,6 +111,54 @@ describe('usePendingInspections', () => {
     usePendingInspections();
     const config = mockUseQuery.mock.calls[0][0] as Record<string, unknown>;
     expect(config.refetchInterval).toBe(60_000);
+  });
+});
+
+describe('useActionableInspections', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('calls useQuery', () => {
+    useActionableInspections();
+    expect(mockUseQuery).toHaveBeenCalled();
+  });
+});
+
+describe('useInspectionCounts', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('calls useQuery', () => {
+    useInspectionCounts();
+    expect(mockUseQuery).toHaveBeenCalled();
+  });
+
+  it('has staleTime of 30 seconds', () => {
+    useInspectionCounts();
+    const config = mockUseQuery.mock.calls[0][0] as Record<string, unknown>;
+    expect(config.staleTime).toBe(30_000);
+  });
+});
+
+describe('useInspectionsByTab', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('calls useQuery for all tab', () => {
+    useInspectionsByTab('all');
+    expect(mockUseQuery).toHaveBeenCalled();
+  });
+
+  it('calls useQuery for pending tab', () => {
+    useInspectionsByTab('pending');
+    expect(mockUseQuery).toHaveBeenCalled();
+  });
+
+  it('calls useQuery for draft tab', () => {
+    useInspectionsByTab('draft');
+    expect(mockUseQuery).toHaveBeenCalled();
+  });
+
+  it('defaults to all for unknown tab', () => {
+    useInspectionsByTab('unknown');
+    expect(mockUseQuery).toHaveBeenCalled();
   });
 });
 

@@ -39,11 +39,12 @@ vi.mock('@/config/permissions', () => ({
 
 vi.mock('../../constants', () => ({
   WORKFLOW_STATUS: {
+    NOT_STARTED: 'NOT_STARTED',
     DRAFT: 'DRAFT',
     SUBMITTED: 'SUBMITTED',
     QA_CHEMIST_APPROVED: 'QA_CHEMIST_APPROVED',
     QAM_APPROVED: 'QAM_APPROVED',
-    COMPLETED: 'COMPLETED',
+    REJECTED: 'REJECTED',
   },
 }));
 
@@ -196,8 +197,8 @@ describe('useInspectionPermissions', () => {
     expect(result.current.isCompleted).toBe(true);
   });
 
-  it('isCompleted true when COMPLETED', () => {
-    const inspection = makeInspection({ workflow_status: 'COMPLETED' });
+  it('isCompleted true when REJECTED', () => {
+    const inspection = makeInspection({ workflow_status: 'REJECTED' });
     const { result } = renderHook(() => useInspectionPermissions(inspection));
     expect(result.current.isCompleted).toBe(true);
   });

@@ -37,26 +37,25 @@ describe('PendingInspectionsPage — Exports', () => {
     expect(content).toContain("from 'react-router-dom'");
   });
 
-  it('imports usePendingInspections', () => {
+  it('imports useInspectionsByTab hook', () => {
     const content = readSource();
-    expect(content).toContain('usePendingInspections');
+    expect(content).toContain('useInspectionsByTab');
   });
 
-  it('imports WORKFLOW_STATUS and WORKFLOW_STATUS_CONFIG', () => {
+  it('imports WORKFLOW_STATUS_CONFIG', () => {
     const content = readSource();
-    expect(content).toContain('WORKFLOW_STATUS');
     expect(content).toContain('WORKFLOW_STATUS_CONFIG');
   });
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Filters
+// Tabs
 // ═══════════════════════════════════════════════════════════════
 
-describe('PendingInspectionsPage — Filters', () => {
-  it('defines STATUS_FILTERS with all tabs', () => {
+describe('PendingInspectionsPage — Tabs', () => {
+  it('defines TAB_CONFIG with all tabs', () => {
     const content = readSource();
-    expect(content).toContain('STATUS_FILTERS');
+    expect(content).toContain('TAB_CONFIG');
     expect(content).toContain("label: 'All'");
     expect(content).toContain("label: 'Actionable'");
     expect(content).toContain("label: 'Pending'");
@@ -68,12 +67,6 @@ describe('PendingInspectionsPage — Filters', () => {
   it('gets status filter from URL search params', () => {
     const content = readSource();
     expect(content).toContain("searchParams.get('status')");
-  });
-
-  it('filters inspections with useMemo', () => {
-    const content = readSource();
-    expect(content).toContain('filteredInspections');
-    expect(content).toContain('useMemo');
   });
 });
 
@@ -90,7 +83,7 @@ describe('PendingInspectionsPage — States', () => {
 
   it('shows empty state', () => {
     const content = readSource();
-    expect(content).toContain('filteredInspections.length === 0');
+    expect(content).toContain('items.length === 0');
   });
 
   it('handles permission error', () => {
@@ -105,9 +98,9 @@ describe('PendingInspectionsPage — States', () => {
     expect(content).toContain('refetch');
   });
 
-  it('navigates to inspection detail or new inspection', () => {
+  it('uses arrival_slip_id for navigation', () => {
     const content = readSource();
-    expect(content).toContain('navigate(`/qc/inspections/${item.arrival_slip.id}`)');
-    expect(content).toContain('navigate(`/qc/inspections/${item.arrival_slip.id}/new`)');
+    expect(content).toContain('arrival_slip_id');
+    expect(content).toContain('/qc/inspections/');
   });
 });

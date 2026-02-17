@@ -351,19 +351,19 @@ export default function SendNotificationPage() {
                   ) : (
                     <div className="divide-y">
                       {filteredUsers.map((user) => (
-                        <label
+                        <div
                           key={user.id}
+                          onClick={() => toggleUser(user.id)}
                           className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors"
                         >
                           <Checkbox
                             checked={selectedUserIds.includes(user.id)}
-                            onCheckedChange={() => toggleUser(user.id)}
                           />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">{user.full_name}</p>
                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   )}

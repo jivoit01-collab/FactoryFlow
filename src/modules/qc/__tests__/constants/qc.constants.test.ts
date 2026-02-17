@@ -38,7 +38,7 @@ describe('qc.constants — Imports', () => {
   it('imports types from ../types', () => {
     const content = readSource();
     expect(content).toContain("from '../types'");
-    expect(content).toContain('InspectionWorkflowStatus');
+    expect(content).toContain('InspectionListWorkflowStatus');
     expect(content).toContain('InspectionFinalStatus');
   });
 });
@@ -54,14 +54,15 @@ describe('qc.constants — WORKFLOW_STATUS', () => {
     expect(content).toContain('as const satisfies');
   });
 
-  it('has all 5 workflow status keys', () => {
+  it('has all 6 workflow status keys', () => {
     const content = readSource();
     expect(content).toMatch(/WORKFLOW_STATUS\s*=\s*\{/);
+    expect(content).toContain("NOT_STARTED: 'NOT_STARTED'");
     expect(content).toContain("DRAFT: 'DRAFT'");
     expect(content).toContain("SUBMITTED: 'SUBMITTED'");
     expect(content).toContain("QA_CHEMIST_APPROVED: 'QA_CHEMIST_APPROVED'");
     expect(content).toContain("QAM_APPROVED: 'QAM_APPROVED'");
-    expect(content).toContain("COMPLETED: 'COMPLETED'");
+    expect(content).toContain("REJECTED: 'REJECTED'");
   });
 });
 
@@ -70,26 +71,28 @@ describe('qc.constants — WORKFLOW_STATUS', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('qc.constants — WORKFLOW_STATUS_CONFIG', () => {
-  it('exports WORKFLOW_STATUS_CONFIG typed as Record<InspectionWorkflowStatus, StatusConfig>', () => {
+  it('exports WORKFLOW_STATUS_CONFIG typed as Record<InspectionListWorkflowStatus, StatusConfig>', () => {
     const content = readSource();
     expect(content).toContain('export const WORKFLOW_STATUS_CONFIG');
-    expect(content).toContain('Record<InspectionWorkflowStatus, StatusConfig>');
+    expect(content).toContain('Record<InspectionListWorkflowStatus, StatusConfig>');
   });
 
-  it('has entries for all 5 workflow statuses with label, color, bgColor, icon', () => {
+  it('has entries for all 6 workflow statuses with label, color, bgColor, icon', () => {
     const content = readSource();
-    // Check all 5 entries exist
+    // Check all 6 entries exist
+    expect(content).toMatch(/NOT_STARTED:\s*\{/);
     expect(content).toMatch(/DRAFT:\s*\{/);
     expect(content).toMatch(/SUBMITTED:\s*\{/);
     expect(content).toMatch(/QA_CHEMIST_APPROVED:\s*\{/);
     expect(content).toMatch(/QAM_APPROVED:\s*\{/);
-    expect(content).toMatch(/COMPLETED:\s*\{/);
+    expect(content).toMatch(/REJECTED:\s*\{/);
     // Check shape fields
+    expect(content).toContain("label: 'Pending'");
     expect(content).toContain("label: 'Draft'");
     expect(content).toContain("label: 'Awaiting Chemist'");
     expect(content).toContain("label: 'Awaiting Manager'");
     expect(content).toContain("label: 'Approved'");
-    expect(content).toContain("label: 'Completed'");
+    expect(content).toContain("label: 'Rejected'");
   });
 });
 
@@ -138,15 +141,10 @@ describe('qc.constants — PARAMETER_TYPE_LABELS', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('qc.constants — Re-exports', () => {
-  it('re-exports FINAL_STATUS from @/config/constants', () => {
-    const content = readSource();
-    expect(content).toContain('export { FINAL_STATUS');
-    expect(content).toContain("from '@/config/constants'");
-  });
-
-  it('re-exports ARRIVAL_SLIP_STATUS from @/config/constants', () => {
+  it('re-exports FINAL_STATUS and ARRIVAL_SLIP_STATUS from @/config/constants', () => {
     const content = readSource();
     expect(content).toContain('ARRIVAL_SLIP_STATUS');
+    expect(content).toContain('FINAL_STATUS');
     expect(content).toContain("from '@/config/constants'");
   });
 });

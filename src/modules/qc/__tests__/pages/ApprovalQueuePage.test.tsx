@@ -81,13 +81,13 @@ describe('ApprovalQueuePage — Tabs', () => {
   it('has QA Chemist Queue tab', () => {
     const content = readSource();
     expect(content).toContain('QA Chemist Queue');
-    expect(content).toContain('chemistCount');
+    expect(content).toContain('chemistQueue.length');
   });
 
   it('has QA Manager Queue tab', () => {
     const content = readSource();
     expect(content).toContain('QA Manager Queue');
-    expect(content).toContain('managerCount');
+    expect(content).toContain('managerQueue.length');
   });
 
   it('permission-gates tabs', () => {
@@ -122,6 +122,6 @@ describe('ApprovalQueuePage — States', () => {
   it('has Review button for each inspection', () => {
     const content = readSource();
     expect(content).toContain('Review');
-    expect(content).toContain('navigate(`/qc/inspections/${item.arrival_slip.id}`)');
+    expect(content).toContain('navigate(`/qc/inspections/${item.arrival_slip}`)');
   });
 });

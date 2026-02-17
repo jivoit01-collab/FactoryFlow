@@ -772,7 +772,7 @@ export default function InspectionDetailPage() {
               </div>
             )}
 
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               {canApproveChemist && (
                 <Button onClick={handleApproveChemist} disabled={isSaving}>
                   <CheckCircle2 className="h-4 w-4 mr-2" />

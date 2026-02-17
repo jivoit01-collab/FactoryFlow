@@ -1,10 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, FileText, Paperclip, Upload, X } from 'lucide-react';
+import { FileText, Paperclip, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { useGateAttachments, useUploadAttachment } from '../../api/attachment/attachment.queries';
 import { StepFooter, StepHeader } from '../../components';

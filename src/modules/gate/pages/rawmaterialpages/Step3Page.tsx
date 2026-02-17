@@ -78,7 +78,7 @@ export default function Step3Page() {
   // State to track if we should behave like create mode (when Fill Data is clicked)
   const [fillDataMode, setFillDataMode] = useState(false);
   // State to track if Update button has been clicked (enables editing)
-  const [updateMode, setUpdateMode] = useState(false);
+  const [updateMode, _setUpdateMode] = useState(false);
   // State to keep button disabled after API success until navigation completes
   const [isNavigating, setIsNavigating] = useState(false);
   const effectiveEditMode = isEditMode && !fillDataMode;
@@ -507,7 +507,6 @@ export default function Step3Page() {
     (effectiveEditMode && hasPOReceiptsData && !updateMode && !fillDataMode) ||
     (effectiveEditMode && hasNoPOReceiptsData && !fillDataMode);
   // PO receipts are immutable once submitted — no update allowed
-  const canUpdate = false;
 
   if (effectiveEditMode && isLoadingPOReceipts) {
     return <StepLoadingSpinner />;

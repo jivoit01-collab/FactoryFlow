@@ -1,4 +1,5 @@
 import {
+  AlertCircle,
   CheckCircle2,
   Clock,
   FileText,
@@ -8,19 +9,20 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import type { InspectionFinalStatus, InspectionWorkflowStatus } from '../types';
+import type { InspectionFinalStatus, InspectionListWorkflowStatus } from '../types';
 
 // ============================================================================
 // Workflow Status Constants
 // ============================================================================
 
 export const WORKFLOW_STATUS = {
+  NOT_STARTED: 'NOT_STARTED',
   DRAFT: 'DRAFT',
   SUBMITTED: 'SUBMITTED',
   QA_CHEMIST_APPROVED: 'QA_CHEMIST_APPROVED',
   QAM_APPROVED: 'QAM_APPROVED',
-  COMPLETED: 'COMPLETED',
-} as const satisfies Record<string, InspectionWorkflowStatus>;
+  REJECTED: 'REJECTED',
+} as const satisfies Record<string, InspectionListWorkflowStatus>;
 
 // Re-export cross-module constants so existing qc-internal imports still work
 export { ARRIVAL_SLIP_STATUS, FINAL_STATUS } from '@/config/constants';
@@ -32,7 +34,13 @@ interface StatusConfig {
   icon: LucideIcon;
 }
 
-export const WORKFLOW_STATUS_CONFIG: Record<InspectionWorkflowStatus, StatusConfig> = {
+export const WORKFLOW_STATUS_CONFIG: Record<InspectionListWorkflowStatus, StatusConfig> = {
+  NOT_STARTED: {
+    label: 'Pending',
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-50',
+    icon: Clock,
+  },
   DRAFT: {
     label: 'Draft',
     color: 'text-yellow-600',
@@ -57,11 +65,11 @@ export const WORKFLOW_STATUS_CONFIG: Record<InspectionWorkflowStatus, StatusConf
     bgColor: 'bg-green-50',
     icon: CheckCircle2,
   },
-  COMPLETED: {
-    label: 'Completed',
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
-    icon: CheckCircle2,
+  REJECTED: {
+    label: 'Rejected',
+    color: 'text-red-600',
+    bgColor: 'bg-red-50',
+    icon: XCircle,
   },
 };
 
@@ -88,7 +96,7 @@ export const FINAL_STATUS_CONFIG: Record<InspectionFinalStatus, StatusConfig> = 
     label: 'On Hold',
     color: 'text-orange-600',
     bgColor: 'bg-orange-50',
-    icon: Clock,
+    icon: AlertCircle,
   },
 };
 

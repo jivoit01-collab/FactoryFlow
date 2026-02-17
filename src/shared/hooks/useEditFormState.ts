@@ -100,9 +100,9 @@ export function useEditFormState({
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly = useMemo(() => {
     return (
-      (effectiveEditMode && !updateMode && !hasNotFoundError) || (hasNotFoundError && !fillDataMode)
+      (effectiveEditMode && !updateMode && !hasNotFoundError) || (isEditMode && hasNotFoundError && !fillDataMode)
     );
-  }, [effectiveEditMode, updateMode, hasNotFoundError, fillDataMode]);
+  }, [effectiveEditMode, isEditMode, updateMode, hasNotFoundError, fillDataMode]);
 
   const enableFillDataMode = useCallback(() => {
     setFillDataMode(true);

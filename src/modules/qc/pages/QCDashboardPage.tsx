@@ -20,13 +20,11 @@ import { DateRangePicker } from '@/modules/gate/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import {
-  useAwaitingChemistInspections,
-  useAwaitingQAMInspections,
-  useCompletedInspections,
-  usePendingInspections,
-  useRejectedInspections,
+  useActionableInspections,
+  useInspectionCounts,
 } from '../api/inspection/inspection.queries';
-import { WORKFLOW_STATUS } from '../constants';
+import { WORKFLOW_STATUS_CONFIG } from '../constants';
+import type { InspectionListItem, InspectionListWorkflowStatus } from '../types';
 
 // Status configuration - compact like Gate module
 const STATUS_CONFIG = {
@@ -69,26 +67,21 @@ const STATUS_CONFIG = {
 
 const STATUS_ORDER = ['pending', 'draft', 'awaiting_approval', 'approved', 'rejected'] as const;
 
-// Status badge styling - consistent with Gate module
-const getStatusBadgeClass = (status: string | null, hasInspection: boolean) => {
-  if (!hasInspection) {
-    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-  }
-  switch (status) {
-    case WORKFLOW_STATUS.DRAFT:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-    case WORKFLOW_STATUS.SUBMITTED:
-    case WORKFLOW_STATUS.QA_CHEMIST_APPROVED:
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    case WORKFLOW_STATUS.QAM_APPROVED:
-    case WORKFLOW_STATUS.COMPLETED:
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-    case 'REJECTED':
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-  }
+// Status badge styling
+const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
+  NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  QA_CHEMIST_APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  QAM_APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
+
+function getNavigateTo(item: InspectionListItem): string {
+  return item.inspection_id
+    ? `/qc/inspections/${item.arrival_slip_id}`
+    : `/qc/inspections/${item.arrival_slip_id}/new`;
+}
 
 export default function QCDashboardPage() {
   const navigate = useNavigate();
@@ -102,61 +95,41 @@ export default function QCDashboardPage() {
     [dateRange],
   );
 
-  // Fetch data from backend status-based endpoints
+  // Single lightweight query for all counts
   const {
-    data: pendingList = [],
-    isLoading: pendingLoading,
-    error: pendingError,
-    refetch: refetchPending,
-  } = usePendingInspections(dateParams);
+    data: countsData,
+    isLoading: countsLoading,
+    error: countsError,
+    refetch: refetchCounts,
+  } = useInspectionCounts(dateParams);
 
+  // Actionable items for "Recent Arrival Slips" section
   const {
-    data: awaitingChemistList = [],
-    isLoading: chemistLoading,
-    error: chemistError,
-  } = useAwaitingChemistInspections(dateParams);
+    data: recentItems = [],
+    isLoading: recentLoading,
+    error: recentError,
+  } = useActionableInspections(dateParams);
 
-  const {
-    data: awaitingQAMList = [],
-    isLoading: qamLoading,
-    error: qamError,
-  } = useAwaitingQAMInspections(dateParams);
-
-  const {
-    data: completedList = [],
-    isLoading: completedLoading,
-    error: completedError,
-  } = useCompletedInspections(dateParams);
-
-  const {
-    data: rejectedList = [],
-    isLoading: rejectedLoading,
-    error: rejectedError,
-  } = useRejectedInspections(dateParams);
-
-  const isLoading =
-    pendingLoading || chemistLoading || qamLoading || completedLoading || rejectedLoading;
-  const error = pendingError || chemistError || qamError || completedError || rejectedError;
+  const isLoading = countsLoading || recentLoading;
+  const error = countsError || recentError;
 
   // Check if error is a permission error (403)
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
-  // Calculate counts from backend data
+  // Map counts to dashboard status keys
   const counts = {
-    pending: pendingList.filter((p) => !p.has_inspection).length,
-    draft: pendingList.filter(
-      (p) => p.has_inspection && p.inspection_status === WORKFLOW_STATUS.DRAFT,
-    ).length,
-    awaiting_approval: awaitingChemistList.length + awaitingQAMList.length,
-    approved: completedList.length,
-    rejected: rejectedList.length,
+    pending: countsData?.not_started ?? 0,
+    draft: countsData?.draft ?? 0,
+    awaiting_approval: (countsData?.awaiting_chemist ?? 0) + (countsData?.awaiting_qam ?? 0),
+    approved: countsData?.completed ?? 0,
+    rejected: countsData?.rejected ?? 0,
   };
 
   const totalPending = counts.pending + counts.draft + counts.awaiting_approval;
 
   const refetch = () => {
-    refetchPending();
+    refetchCounts();
   };
 
   // Format date/time for display - consistent with Gate module
@@ -293,41 +266,44 @@ export default function QCDashboardPage() {
               </button>
             </div>
 
-            {pendingList.length === 0 ? (
+            {recentItems.length === 0 ? (
               <div className="flex items-center justify-center h-16 text-sm text-muted-foreground border rounded-lg">
                 No arrival slips yet
               </div>
             ) : (
               <div className="space-y-2">
-                {pendingList.slice(0, 3).map((item) => (
-                  <div
-                    key={item.arrival_slip.id}
-                    className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() =>
-                      item.has_inspection
-                        ? navigate(`/qc/inspections/${item.arrival_slip.id}`)
-                        : navigate(`/qc/inspections/${item.arrival_slip.id}/new`)
-                    }
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-medium text-sm">{item.arrival_slip.entry_no}</span>
-                      <span
-                        className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(item.inspection_status, item.has_inspection)}`}
-                      >
-                        {item.has_inspection ? item.inspection_status : 'Pending'}
-                      </span>
-                      <span className="text-xs text-muted-foreground hidden sm:inline truncate">
-                        {item.arrival_slip.particulars} • {item.arrival_slip.party_name}
-                      </span>
+                {recentItems.slice(0, 3).map((item) => {
+                  const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
+                  const badgeClass =
+                    STATUS_BADGE_CLASSES[item.workflow_status] ||
+                    'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+
+                  return (
+                    <div
+                      key={item.arrival_slip_id}
+                      className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(getNavigateTo(item))}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="font-medium text-sm">{item.entry_no}</span>
+                        <span
+                          className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${badgeClass}`}
+                        >
+                          {statusConfig?.label || item.workflow_status}
+                        </span>
+                        <span className="text-xs text-muted-foreground hidden sm:inline truncate">
+                          {item.item_name} • {item.party_name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateTime(item.submitted_at)}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(item.arrival_slip.submitted_at)}
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -46,7 +46,7 @@ export function useInspectionPermissions(inspection: Inspection | null | undefin
     const isLocked = inspection?.is_locked ?? false;
     const isCompleted =
       inspection?.workflow_status === WORKFLOW_STATUS.QAM_APPROVED ||
-      inspection?.workflow_status === WORKFLOW_STATUS.COMPLETED;
+      inspection?.workflow_status === WORKFLOW_STATUS.REJECTED;
 
     // Contextual permissions (combining permission + workflow state)
     return {
