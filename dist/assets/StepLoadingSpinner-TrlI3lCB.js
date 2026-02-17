@@ -1,0 +1,1 @@
+import{j as r}from"./index-DVXWn1VN.js";function n(){return r.jsx("div",{className:"flex items-center justify-center h-64",children:r.jsx("div",{className:"h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"})})}export{n as S};
