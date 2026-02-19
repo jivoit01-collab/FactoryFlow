@@ -194,10 +194,6 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
       setApiErrors({ tyreCondition: 'Please select tyre condition' });
       return;
     }
-    if (!formData.sealNumberBefore) {
-      setApiErrors({ sealNumberBefore: 'Please enter seal number (before)' });
-      return;
-    }
     if (!formData.inspectedByName) {
       setApiErrors({ inspectedByName: 'Please enter inspector name' });
       return;
@@ -220,7 +216,7 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
         vehicle_condition_ok: vehicleConditionOk,
         tyre_condition_ok: tyreConditionOk,
         fire_extinguisher_available: fireExtinguisherAvailable,
-        seal_no_before: formData.sealNumberBefore,
+        seal_no_before: formData.sealNumberBefore || '',
         seal_no_after: formData.sealNumberAfter || undefined,
         alcohol_test_done: alcoholTestDone,
         alcohol_test_passed: alcoholTestDone ? alcoholTestPassed : undefined,

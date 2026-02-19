@@ -249,7 +249,7 @@ export function SecurityCheckFormShell({
 
               <div className="space-y-2">
                 <Label htmlFor="sealNumberBefore">
-                  Seal Number (Before) <span className="text-destructive">*</span>
+                  Seal Number (Before)
                 </Label>
                 <Input
                   id="sealNumberBefore"

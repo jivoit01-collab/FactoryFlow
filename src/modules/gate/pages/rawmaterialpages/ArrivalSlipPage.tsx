@@ -99,6 +99,7 @@ export default function ArrivalSlipPage() {
 
   const [isNavigating, setIsNavigating] = useState(false);
   const [fillDataMode, setFillDataMode] = useState(false);
+  const [arrivalSlipsNotFound, setArrivalSlipsNotFound] = useState(false);
 
   const effectiveEditMode = isEditMode && !fillDataMode;
 
@@ -191,6 +192,8 @@ export default function ArrivalSlipPage() {
 
       if (hasChanges) {
         setItemForms(updatedForms);
+      } else if (updatedForms.length > 0) {
+        setArrivalSlipsNotFound(true);
       }
     };
 
@@ -219,6 +222,7 @@ export default function ArrivalSlipPage() {
 
   const handleFillData = () => {
     setFillDataMode(true);
+    setArrivalSlipsNotFound(false);
     setApiErrors({});
   };
 
@@ -359,6 +363,9 @@ export default function ArrivalSlipPage() {
 
   const isSaving = createArrivalSlip.isPending || submitArrivalSlip.isPending;
 
+  // Forms are read-only when arrival slips are not found and fill data mode is not active
+  const isReadOnly = arrivalSlipsNotFound && !fillDataMode;
+
   return (
     <div className="space-y-6 pb-6">
       <StepHeader
@@ -385,6 +392,14 @@ export default function ArrivalSlipPage() {
         />
       )}
 
+      {/* Show error if arrival slips not found */}
+      {arrivalSlipsNotFound && !fillDataMode && (
+        <FillDataAlert
+          message="Arrival slip not found"
+          onFillData={handleFillData}
+        />
+      )}
+
       {/* Show info message if all slips are submitted */}
       {itemForms.length > 0 && itemForms.every((form) => form.isSubmitted) && (
         <div className="rounded-md bg-green-50 p-4 text-sm text-green-800 flex items-center gap-2">
@@ -396,7 +411,7 @@ export default function ArrivalSlipPage() {
       <div className="space-y-6">
         {/* Arrival Slip Forms for each PO Item Receipt */}
         {itemForms.map((form, index) => (
-          <Card key={form.id} className={form.isSubmitted ? 'opacity-75' : ''}>
+          <Card key={form.id} className={(form.isSubmitted || isReadOnly) ? 'opacity-75' : ''}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -429,10 +444,10 @@ export default function ArrivalSlipPage() {
                     placeholder="Material description"
                     value={form.formData.particulars}
                     onChange={(e) => handleFormChange(form.id, 'particulars', e.target.value)}
-                    disabled={form.isSubmitted || isSaving}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
                     className={cn(
                       apiErrors[`${form.id}_particulars`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50',
+                      (form.isSubmitted || isReadOnly) && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_particulars`] && (
@@ -452,10 +467,10 @@ export default function ArrivalSlipPage() {
                     type="datetime-local"
                     value={form.formData.arrival_datetime}
                     onChange={(e) => handleFormChange(form.id, 'arrival_datetime', e.target.value)}
-                    disabled={form.isSubmitted || isSaving}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
                     className={cn(
                       apiErrors[`${form.id}_arrival_datetime`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50',
+                      (form.isSubmitted || isReadOnly) && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_arrival_datetime`] && (
@@ -475,10 +490,10 @@ export default function ArrivalSlipPage() {
                     placeholder="Supplier name"
                     value={form.formData.party_name}
                     onChange={(e) => handleFormChange(form.id, 'party_name', e.target.value)}
-                    disabled={form.isSubmitted || isSaving}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
                     className={cn(
                       apiErrors[`${form.id}_party_name`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50',
+                      (form.isSubmitted || isReadOnly) && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_party_name`] && (
@@ -499,10 +514,10 @@ export default function ArrivalSlipPage() {
                     placeholder="0"
                     value={form.formData.billing_qty}
                     onChange={(e) => handleFormChange(form.id, 'billing_qty', e.target.value)}
-                    disabled={form.isSubmitted || isSaving}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
                     className={cn(
                       apiErrors[`${form.id}_billing_qty`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50',
+                      (form.isSubmitted || isReadOnly) && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_billing_qty`] && (
@@ -522,10 +537,10 @@ export default function ArrivalSlipPage() {
                     placeholder="Pcs, Kg, etc."
                     value={form.formData.billing_uom}
                     onChange={(e) => handleFormChange(form.id, 'billing_uom', e.target.value)}
-                    disabled={form.isSubmitted || isSaving}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
                     className={cn(
                       apiErrors[`${form.id}_billing_uom`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50',
+                      (form.isSubmitted || isReadOnly) && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_billing_uom`] && (
@@ -548,10 +563,10 @@ export default function ArrivalSlipPage() {
                       const value = e.target.value.toUpperCase().replace(/\s/g, '');
                       handleFormChange(form.id, 'truck_no_as_per_bill', value);
                     }}
-                    disabled={form.isSubmitted || isSaving}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
                     className={cn(
                       apiErrors[`${form.id}_truck_no_as_per_bill`] && 'border-destructive',
-                      form.isSubmitted && 'cursor-not-allowed opacity-50',
+                      (form.isSubmitted || isReadOnly) && 'cursor-not-allowed opacity-50',
                     )}
                   />
                   {apiErrors[`${form.id}_truck_no_as_per_bill`] && (
@@ -571,8 +586,8 @@ export default function ArrivalSlipPage() {
                     onChange={(e) =>
                       handleFormChange(form.id, 'commercial_invoice_no', e.target.value)
                     }
-                    disabled={form.isSubmitted || isSaving}
-                    className={form.isSubmitted ? 'cursor-not-allowed opacity-50' : ''}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
+                    className={(form.isSubmitted || isReadOnly) ? 'cursor-not-allowed opacity-50' : ''}
                   />
                 </div>
 
@@ -584,8 +599,8 @@ export default function ArrivalSlipPage() {
                     placeholder="E-way bill number"
                     value={form.formData.eway_bill_no}
                     onChange={(e) => handleFormChange(form.id, 'eway_bill_no', e.target.value)}
-                    disabled={form.isSubmitted || isSaving}
-                    className={form.isSubmitted ? 'cursor-not-allowed opacity-50' : ''}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
+                    className={(form.isSubmitted || isReadOnly) ? 'cursor-not-allowed opacity-50' : ''}
                   />
                 </div>
 
@@ -597,8 +612,8 @@ export default function ArrivalSlipPage() {
                     placeholder="Bilty/LR number"
                     value={form.formData.bilty_no}
                     onChange={(e) => handleFormChange(form.id, 'bilty_no', e.target.value)}
-                    disabled={form.isSubmitted || isSaving}
-                    className={form.isSubmitted ? 'cursor-not-allowed opacity-50' : ''}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
+                    className={(form.isSubmitted || isReadOnly) ? 'cursor-not-allowed opacity-50' : ''}
                   />
                 </div>
 
@@ -610,8 +625,8 @@ export default function ArrivalSlipPage() {
                     placeholder="Any additional remarks"
                     value={form.formData.remarks}
                     onChange={(e) => handleFormChange(form.id, 'remarks', e.target.value)}
-                    disabled={form.isSubmitted || isSaving}
-                    className={form.isSubmitted ? 'cursor-not-allowed opacity-50' : ''}
+                    disabled={form.isSubmitted || isSaving || isReadOnly}
+                    className={(form.isSubmitted || isReadOnly) ? 'cursor-not-allowed opacity-50' : ''}
                   />
                 </div>
 
@@ -626,7 +641,7 @@ export default function ArrivalSlipPage() {
                         onCheckedChange={(checked) =>
                           handleFormChange(form.id, 'has_certificate_of_analysis', checked === true)
                         }
-                        disabled={form.isSubmitted || isSaving}
+                        disabled={form.isSubmitted || isSaving || isReadOnly}
                       />
                       <Label
                         htmlFor={`has_certificate_of_analysis-${form.id}`}
@@ -642,7 +657,7 @@ export default function ArrivalSlipPage() {
                         onCheckedChange={(checked) =>
                           handleFormChange(form.id, 'has_certificate_of_quantity', checked === true)
                         }
-                        disabled={form.isSubmitted || isSaving}
+                        disabled={form.isSubmitted || isSaving || isReadOnly}
                       />
                       <Label
                         htmlFor={`has_certificate_of_quantity-${form.id}`}

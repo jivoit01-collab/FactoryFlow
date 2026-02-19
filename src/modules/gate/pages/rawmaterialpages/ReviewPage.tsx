@@ -462,24 +462,24 @@ export default function ReviewPage() {
                 <div>
                   <Label className="text-muted-foreground text-xs">Gross Weight</Label>
                   <p className="font-medium text-lg">
-                    {gateEntry.weighment.gross_weight.toLocaleString()} kg
+                    {gateEntry.weighment.gross_weight != null ? `${gateEntry.weighment.gross_weight.toLocaleString()} kg` : '—'}
                   </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">Tare Weight</Label>
                   <p className="font-medium text-lg">
-                    {gateEntry.weighment.tare_weight.toLocaleString()} kg
+                    {gateEntry.weighment.tare_weight != null ? `${gateEntry.weighment.tare_weight.toLocaleString()} kg` : '—'}
                   </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">Net Weight</Label>
                   <p className="font-medium text-lg text-primary">
-                    {gateEntry.weighment.net_weight.toLocaleString()} kg
+                    {gateEntry.weighment.net_weight != null ? `${gateEntry.weighment.net_weight.toLocaleString()} kg` : '—'}
                   </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">Weighbridge Slip No.</Label>
-                  <p className="font-medium">{gateEntry.weighment.weighbridge_slip_no}</p>
+                  <p className="font-medium">{gateEntry.weighment.weighbridge_slip_no || '—'}</p>
                 </div>
               </div>
             </CardContent>

@@ -273,9 +273,9 @@ function createApiClient(): AxiosInstance {
       };
 
       // Show global toast notification for API errors
-      // Skip 401 (handled by token refresh/redirect) and errors with only field-level errors
+      // Skip 401 (handled by token refresh/redirect) and 404 (handled by page-level UI)
       const status = apiError.status;
-      if (status !== HTTP_STATUS.UNAUTHORIZED) {
+      if (status !== HTTP_STATUS.UNAUTHORIZED && status !== HTTP_STATUS.NOT_FOUND) {
         toast.error(errorMessage);
       }
 

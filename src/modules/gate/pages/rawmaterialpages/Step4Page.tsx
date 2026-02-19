@@ -16,6 +16,7 @@ import {
 } from '@/shared/utils';
 
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
+import type { CreateWeighmentRequest } from '../../api/weighment/weighment.api';
 import { useCreateWeighment, useWeighment } from '../../api/weighment/weighment.queries';
 import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
@@ -149,46 +150,17 @@ export default function Step4Page() {
 
     setApiErrors({});
 
-    // Validation
-    if (!formData.grossWeight || parseFloat(formData.grossWeight) <= 0) {
-      setApiErrors({ grossWeight: 'Please enter gross weight' });
-      return;
-    }
-    if (!formData.tareWeight || parseFloat(formData.tareWeight) <= 0) {
-      setApiErrors({ tareWeight: 'Please enter tare weight' });
-      return;
-    }
-    if (parseFloat(formData.tareWeight) >= parseFloat(formData.grossWeight)) {
-      setApiErrors({ tareWeight: 'Tare weight must be less than gross weight' });
-      return;
-    }
-    if (!formData.weighbridgeTicketNo.trim()) {
-      setApiErrors({ weighbridgeTicketNo: 'Please enter weighbridge ticket number' });
-      return;
-    }
-    if (!formData.firstWeighmentTime.trim()) {
-      setApiErrors({ firstWeighmentTime: 'Please enter first weighment time' });
-      return;
-    }
-    if (!formData.secondWeighmentTime.trim()) {
-      setApiErrors({ secondWeighmentTime: 'Please enter second weighment time' });
-      return;
-    }
-
     try {
-      const requestData: {
-        gross_weight: number;
-        tare_weight: number;
-        weighbridge_slip_no: string;
-        first_weighment_time: string;
-        second_weighment_time: string;
-        remarks?: string;
-      } = {
-        gross_weight: parseFloat(formData.grossWeight),
-        tare_weight: parseFloat(formData.tareWeight),
-        weighbridge_slip_no: formData.weighbridgeTicketNo,
-        first_weighment_time: `${new Date().toISOString().slice(0, 10)}T${formData.firstWeighmentTime}:00`,
-        second_weighment_time: `${new Date().toISOString().slice(0, 10)}T${formData.secondWeighmentTime}:00`,
+      const requestData: CreateWeighmentRequest = {
+        gross_weight: parseFloat(formData.grossWeight) || 0,
+        tare_weight: parseFloat(formData.tareWeight) || 0,
+        weighbridge_slip_no: formData.weighbridgeTicketNo || '',
+        first_weighment_time: formData.firstWeighmentTime
+          ? `${new Date().toISOString().slice(0, 10)}T${formData.firstWeighmentTime}:00`
+          : undefined,
+        second_weighment_time: formData.secondWeighmentTime
+          ? `${new Date().toISOString().slice(0, 10)}T${formData.secondWeighmentTime}:00`
+          : undefined,
       };
 
       await createWeighment.mutateAsync(requestData);
@@ -282,7 +254,7 @@ export default function Step4Page() {
               {/* First Row */}
               <div className="space-y-2">
                 <Label htmlFor="grossWeight">
-                  Gross Weight <span className="text-destructive">*</span>
+                  Gross Weight
                 </Label>
                 <Input
                   id="grossWeight"
@@ -305,7 +277,7 @@ export default function Step4Page() {
 
               <div className="space-y-2">
                 <Label htmlFor="tareWeight">
-                  Tare Weight <span className="text-destructive">*</span>
+                  Tare Weight
                 </Label>
                 <Input
                   id="tareWeight"
@@ -343,7 +315,7 @@ export default function Step4Page() {
               {/* Second Row */}
               <div className="space-y-2">
                 <Label htmlFor="weighbridgeTicketNo">
-                  Weighbridge Ticket No. <span className="text-destructive">*</span>
+                  Weighbridge Ticket No.
                 </Label>
                 <Input
                   id="weighbridgeTicketNo"
@@ -363,7 +335,7 @@ export default function Step4Page() {
 
               <div className="space-y-2">
                 <Label htmlFor="firstWeighmentTime">
-                  First Weighment Time <span className="text-destructive">*</span>
+                  First Weighment Time
                 </Label>
                 <Input
                   id="firstWeighmentTime"
@@ -384,7 +356,7 @@ export default function Step4Page() {
 
               <div className="space-y-2">
                 <Label htmlFor="secondWeighmentTime">
-                  Second Weighment Time <span className="text-destructive">*</span>
+                  Second Weighment Time
                 </Label>
                 <Input
                   id="secondWeighmentTime"
