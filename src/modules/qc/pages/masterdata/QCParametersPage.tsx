@@ -48,6 +48,7 @@ export default function QCParametersPage() {
     is_mandatory: true,
   });
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [sequenceError, setSequenceError] = useState('');
 
   // Scroll to first error when errors occur
   useScrollToError(apiErrors);
@@ -72,24 +73,38 @@ export default function QCParametersPage() {
       });
     } else {
       setEditingParam(null);
+      const nextSequence = parameters.length > 0
+        ? Math.max(...parameters.map((p) => p.sequence)) + 1
+        : 1;
       setFormData({
         parameter_code: '',
         parameter_name: '',
         standard_value: '',
         parameter_type: 'TEXT',
         uom: '',
-        sequence: parameters.length + 1,
+        sequence: nextSequence,
         is_mandatory: true,
       });
     }
     setApiErrors({});
+    setSequenceError('');
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingParam(null);
+    setFormData({
+      parameter_code: '',
+      parameter_name: '',
+      standard_value: '',
+      parameter_type: 'TEXT',
+      uom: '',
+      sequence: 1,
+      is_mandatory: true,
+    });
     setApiErrors({});
+    setSequenceError('');
   };
 
   const handleSave = async () => {
@@ -103,6 +118,15 @@ export default function QCParametersPage() {
     }
     if (!formData.parameter_name.trim()) {
       setApiErrors({ parameter_name: 'Name is required' });
+      return;
+    }
+
+    // Sequence duplicate check
+    const duplicateSequence = parameters.find(
+      (p) => p.sequence === formData.sequence && p.id !== editingParam?.id,
+    );
+    if (duplicateSequence) {
+      setSequenceError(`Sequence ${formData.sequence} is already in use.`);
       return;
     }
 
@@ -267,7 +291,7 @@ export default function QCParametersPage() {
       )}
 
       {/* Add/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) handleCloseDialog() }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingParam ? 'Edit Parameter' : 'Add Parameter'}</DialogTitle>
@@ -285,9 +309,10 @@ export default function QCParametersPage() {
                 <Label>Code</Label>
                 <Input
                   value={formData.parameter_code}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, parameter_code: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase().replace(/\s/g, '');
+                    setFormData((prev) => ({ ...prev, parameter_code: val }));
+                  }}
                   placeholder="e.g., WEIGHT"
                   disabled={isSaving}
                 />
@@ -301,11 +326,16 @@ export default function QCParametersPage() {
                 <Input
                   type="number"
                   value={formData.sequence}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, sequence: parseInt(e.target.value) || 1 }))
-                  }
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, sequence: parseInt(e.target.value) || 1 }));
+                    if (sequenceError) setSequenceError('');
+                  }}
                   disabled={isSaving}
+                  className={sequenceError ? 'border-destructive focus-visible:ring-destructive' : ''}
                 />
+                {sequenceError && (
+                  <p className="text-sm text-destructive">{sequenceError}</p>
+                )}
               </div>
             </div>
 
@@ -331,7 +361,12 @@ export default function QCParametersPage() {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, standard_value: e.target.value }))
                 }
-                placeholder="e.g., 1.35±0.10"
+                placeholder={
+                  formData.parameter_type === 'NUMERIC' ? 'e.g., 1.35' :
+                  formData.parameter_type === 'BOOLEAN' ? 'e.g., Pass / Fail' :
+                  formData.parameter_type === 'RANGE' ? 'e.g., 1.25 – 1.45' :
+                  'e.g., Smooth finish'
+                }
                 disabled={isSaving}
               />
             </div>

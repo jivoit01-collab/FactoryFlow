@@ -52,8 +52,14 @@ export function MaterialTypeSelect({
   const [formData, setFormData] = useState({ code: '', name: '', description: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  const resetForm = () => {
+    setFormData({ code: '', name: '', description: '' });
+    setFormErrors({});
+  };
+
   const handleCreateMaterialType = async (
     updateSelection: (key: string | number, label: string) => void,
+    closeDialog: (open: boolean) => void,
   ) => {
     if (!formData.code.trim()) {
       setFormErrors({ code: 'Code is required' });
@@ -78,6 +84,8 @@ export function MaterialTypeSelect({
 
       updateSelection(newType.id, newType.name);
       onChange(newType);
+      resetForm();
+      closeDialog(false);
     } catch (err) {
       const apiError = err as ApiError;
       setFormErrors({ general: apiError.message || 'Failed to create material type' });
@@ -121,7 +129,7 @@ export function MaterialTypeSelect({
       renderCreateDialog={
         canManageMaterialTypes
           ? (open, onOpenChange, updateSelection) => (
-              <Dialog open={open} onOpenChange={onOpenChange}>
+              <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) resetForm(); onOpenChange(isOpen); }}>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
                     <DialogTitle>Add Material Type</DialogTitle>
@@ -196,7 +204,7 @@ export function MaterialTypeSelect({
                       Cancel
                     </Button>
                     <Button
-                      onClick={() => handleCreateMaterialType(updateSelection)}
+                      onClick={() => handleCreateMaterialType(updateSelection, onOpenChange)}
                       disabled={createMaterialType.isPending}
                     >
                       {createMaterialType.isPending ? 'Creating...' : 'Create'}
