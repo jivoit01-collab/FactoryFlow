@@ -313,7 +313,15 @@ export default function InspectionDetailPage() {
       setIsEditing(false);
     } catch (error) {
       const apiError = error as ApiError;
-      setApiErrors({ general: apiError.message || 'Failed to save inspection' });
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to save inspection' });
+      }
     }
   };
 
@@ -328,7 +336,15 @@ export default function InspectionDetailPage() {
       await submitInspection.mutateAsync(inspection.id);
     } catch (error) {
       const apiError = error as ApiError;
-      setApiErrors({ general: apiError.message || 'Failed to submit inspection' });
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to submit inspection' });
+      }
     }
   };
 
@@ -343,7 +359,15 @@ export default function InspectionDetailPage() {
       });
     } catch (error) {
       const apiError = error as ApiError;
-      setApiErrors({ general: apiError.message || 'Failed to approve' });
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to approve' });
+      }
     }
   };
 
@@ -358,7 +382,15 @@ export default function InspectionDetailPage() {
       });
     } catch (error) {
       const apiError = error as ApiError;
-      setApiErrors({ general: apiError.message || 'Failed to approve' });
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to approve' });
+      }
     }
   };
 
@@ -377,7 +409,15 @@ export default function InspectionDetailPage() {
       });
     } catch (error) {
       const apiError = error as ApiError;
-      setApiErrors({ general: apiError.message || 'Failed to reject' });
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to reject' });
+      }
     }
   };
 

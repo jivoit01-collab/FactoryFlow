@@ -108,17 +108,18 @@ export default function QCParametersPage() {
   };
 
   const handleSave = async () => {
+    const errors: Record<string, string> = {};
+
     if (!selectedMaterialType && !editingParam) {
-      setApiErrors({ general: 'Please select a material type first' });
-      return;
+      errors.general = 'Please select a material type first';
     }
     if (!formData.parameter_code.trim()) {
-      setApiErrors({ parameter_code: 'Code is required' });
-      return;
+      errors.parameter_code = 'Code is required';
+    } else if (!/^[A-Z0-9_]+$/.test(formData.parameter_code)) {
+      errors.parameter_code = 'Code must be uppercase letters, numbers, and underscores only';
     }
     if (!formData.parameter_name.trim()) {
-      setApiErrors({ parameter_name: 'Name is required' });
-      return;
+      errors.parameter_name = 'Name is required';
     }
 
     // Sequence duplicate check
@@ -127,23 +128,40 @@ export default function QCParametersPage() {
     );
     if (duplicateSequence) {
       setSequenceError(`Sequence ${formData.sequence} is already in use.`);
+    }
+
+    if (Object.keys(errors).length > 0 || duplicateSequence) {
+      setApiErrors(errors);
       return;
     }
 
     try {
       setApiErrors({});
+      setSequenceError('');
+      const dataToSave = {
+        ...formData,
+        standard_value: formData.standard_value.trim() || '-',
+      };
       if (editingParam) {
-        await updateParameter.mutateAsync({ id: editingParam.id, data: formData });
+        await updateParameter.mutateAsync({ id: editingParam.id, data: dataToSave });
       } else {
         await createParameter.mutateAsync({
           materialTypeId: selectedMaterialType!,
-          data: formData,
+          data: dataToSave,
         });
       }
       handleCloseDialog();
     } catch (error) {
       const apiError = error as ApiError;
-      setApiErrors({ general: apiError.message || 'Failed to save parameter' });
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to save parameter' });
+      }
     }
   };
 
@@ -154,7 +172,15 @@ export default function QCParametersPage() {
       await deleteParameter.mutateAsync(id);
     } catch (error) {
       const apiError = error as ApiError;
-      alert(apiError.message || 'Failed to delete parameter');
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to delete parameter' });
+      }
     }
   };
 
@@ -179,6 +205,14 @@ export default function QCParametersPage() {
           </p>
         </div>
       </div>
+
+      {/* API Error */}
+      {apiErrors.general && !isDialogOpen && (
+        <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          {apiErrors.general}
+        </div>
+      )}
 
       {/* Material Type Filter */}
       <Card>
@@ -306,15 +340,23 @@ export default function QCParametersPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Code</Label>
+                <Label>Code <span className="text-destructive">*</span></Label>
                 <Input
                   value={formData.parameter_code}
                   onChange={(e) => {
-                    const val = e.target.value.toUpperCase().replace(/\s/g, '');
+                    const val = e.target.value.toUpperCase().replace(/\s+/g, '_');
                     setFormData((prev) => ({ ...prev, parameter_code: val }));
+                    if (apiErrors.parameter_code) {
+                      setApiErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.parameter_code;
+                        return next;
+                      });
+                    }
                   }}
                   placeholder="e.g., WEIGHT"
                   disabled={isSaving}
+                  className={apiErrors.parameter_code ? 'border-destructive focus-visible:ring-destructive' : ''}
                 />
                 {apiErrors.parameter_code && (
                   <p className="text-sm text-destructive">{apiErrors.parameter_code}</p>
@@ -340,14 +382,27 @@ export default function QCParametersPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>Name <span className="text-destructive">*</span></Label>
               <Input
                 value={formData.parameter_name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, parameter_name: e.target.value }))
-                }
-                placeholder="e.g., Weight"
+                onChange={(e) => {
+                  const val = e.target.value
+                    .replace(/\s+/g, '_')
+                    .split('_')
+                    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                    .join('_');
+                  setFormData((prev) => ({ ...prev, parameter_name: val }));
+                  if (apiErrors.parameter_name) {
+                    setApiErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.parameter_name;
+                      return next;
+                    });
+                  }
+                }}
+                placeholder="e.g., Cap_Blue"
                 disabled={isSaving}
+                className={apiErrors.parameter_name ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
               {apiErrors.parameter_name && (
                 <p className="text-sm text-destructive">{apiErrors.parameter_name}</p>
@@ -358,9 +413,20 @@ export default function QCParametersPage() {
               <Label>Standard Value</Label>
               <Input
                 value={formData.standard_value}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, standard_value: e.target.value }))
-                }
+                onChange={(e) => {
+                  const val = e.target.value
+                    .split(' ')
+                    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                    .join(' ');
+                  setFormData((prev) => ({ ...prev, standard_value: val }));
+                  if (apiErrors.standard_value) {
+                    setApiErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.standard_value;
+                      return next;
+                    });
+                  }
+                }}
                 placeholder={
                   formData.parameter_type === 'NUMERIC' ? 'e.g., 1.35' :
                   formData.parameter_type === 'BOOLEAN' ? 'e.g., Pass / Fail' :
@@ -368,7 +434,11 @@ export default function QCParametersPage() {
                   'e.g., Smooth finish'
                 }
                 disabled={isSaving}
+                className={apiErrors.standard_value ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {apiErrors.standard_value && (
+                <p className="text-sm text-destructive">{apiErrors.standard_value}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -397,8 +467,8 @@ export default function QCParametersPage() {
                 <Label>UOM</Label>
                 <Input
                   value={formData.uom}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, uom: e.target.value }))}
-                  placeholder="e.g., grams"
+                  onChange={(e) => setFormData((prev) => ({ ...prev, uom: e.target.value.toUpperCase() }))}
+                  placeholder="e.g., GM,MM,ML"
                   disabled={isSaving}
                 />
               </div>
