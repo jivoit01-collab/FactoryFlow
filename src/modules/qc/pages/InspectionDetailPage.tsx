@@ -212,6 +212,42 @@ export default function InspectionDetailPage() {
     }
   };
 
+  // Type-aware result change handler: auto-sets result_numeric and is_within_spec
+  const handleResultValueChange = (
+    parameterId: number,
+    value: string,
+    paramType: string,
+    minValue?: number | string | null,
+    maxValue?: number | string | null,
+  ) => {
+    handleParameterChange(parameterId, 'result_value', value);
+
+    if (paramType === 'NUMERIC' || paramType === 'RANGE') {
+      const numericVal = parseFloat(value);
+      if (!isNaN(numericVal)) {
+        handleParameterChange(parameterId, 'result_numeric', numericVal);
+        if (paramType === 'RANGE' && minValue != null && maxValue != null) {
+          const min = typeof minValue === 'string' ? parseFloat(minValue) : minValue;
+          const max = typeof maxValue === 'string' ? parseFloat(maxValue) : maxValue;
+          if (!isNaN(min) && !isNaN(max)) {
+            handleParameterChange(parameterId, 'is_within_spec', numericVal >= min && numericVal <= max);
+          }
+        }
+      }
+    } else if (paramType === 'BOOLEAN') {
+      handleParameterChange(parameterId, 'is_within_spec', value === 'Pass');
+    }
+  };
+
+  const getResultPlaceholder = (paramType: string) => {
+    switch (paramType) {
+      case 'NUMERIC': return 'Enter numeric value';
+      case 'RANGE': return 'Enter numeric value';
+      case 'BOOLEAN': return 'Select Pass or Fail';
+      case 'TEXT': default: return 'Enter text value';
+    }
+  };
+
   const handleSave = async () => {
     if (!arrivalSlipId) return;
 
@@ -585,6 +621,9 @@ export default function InspectionDetailPage() {
                 const parameterId = 'parameter_master' in param ? param.parameter_master : param.id;
                 const paramName = param.parameter_name;
                 const standardValue = param.standard_value;
+                const paramType = param.parameter_type;
+                const minValue = param.min_value;
+                const maxValue = param.max_value;
                 const isMandatory =
                   'is_mandatory' in param
                     ? param.is_mandatory
@@ -616,7 +655,7 @@ export default function InspectionDetailPage() {
                           onChange={(e) =>
                             handleParameterChange(parameterId, 'is_within_spec', e.target.checked)
                           }
-                          disabled={!canEdit || isSaving}
+                          disabled={!canEdit || isSaving || paramType === 'BOOLEAN' || paramType === 'RANGE'}
                           className="h-4 w-4 rounded border-gray-300"
                         />
                         <span className="text-muted-foreground">Within Spec</span>
@@ -627,14 +666,35 @@ export default function InspectionDetailPage() {
                       <Label className="text-xs">
                         Result{isMandatory && <span className="text-destructive"> *</span>}
                       </Label>
-                      <Input
-                        value={currentValue.result_value}
-                        onChange={(e) =>
-                          handleParameterChange(parameterId, 'result_value', e.target.value)
-                        }
-                        disabled={!canEdit || isSaving}
-                        className={cn('w-full', paramError && 'border-destructive')}
-                      />
+                      {paramType === 'BOOLEAN' ? (
+                        <select
+                          value={currentValue.result_value}
+                          onChange={(e) =>
+                            handleResultValueChange(parameterId, e.target.value, paramType)
+                          }
+                          disabled={!canEdit || isSaving}
+                          className={cn(
+                            'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+                            paramError && 'border-destructive',
+                          )}
+                        >
+                          <option value="">Select Pass or Fail</option>
+                          <option value="Pass">Pass</option>
+                          <option value="Fail">Fail</option>
+                        </select>
+                      ) : (
+                        <Input
+                          type={paramType === 'NUMERIC' || paramType === 'RANGE' ? 'number' : 'text'}
+                          step={paramType === 'NUMERIC' || paramType === 'RANGE' ? 'any' : undefined}
+                          value={currentValue.result_value}
+                          onChange={(e) =>
+                            handleResultValueChange(parameterId, e.target.value, paramType, minValue, maxValue)
+                          }
+                          disabled={!canEdit || isSaving}
+                          className={cn('w-full', paramError && 'border-destructive')}
+                          placeholder={getResultPlaceholder(paramType)}
+                        />
+                      )}
                       {paramError && <p className="text-xs text-destructive">{paramError}</p>}
                     </div>
                     <div className="space-y-1">
@@ -672,6 +732,9 @@ export default function InspectionDetailPage() {
                       'parameter_master' in param ? param.parameter_master : param.id;
                     const paramName = param.parameter_name;
                     const standardValue = param.standard_value;
+                    const paramType = param.parameter_type;
+                    const minValue = param.min_value;
+                    const maxValue = param.max_value;
                     const isMandatory =
                       'is_mandatory' in param
                         ? param.is_mandatory
@@ -693,14 +756,35 @@ export default function InspectionDetailPage() {
                         </td>
                         <td className="p-3 text-muted-foreground">{standardValue}</td>
                         <td className="p-3">
-                          <Input
-                            value={currentValue.result_value}
-                            onChange={(e) =>
-                              handleParameterChange(parameterId, 'result_value', e.target.value)
-                            }
-                            disabled={!canEdit || isSaving}
-                            className={cn('w-full', paramError && 'border-destructive')}
-                          />
+                          {paramType === 'BOOLEAN' ? (
+                            <select
+                              value={currentValue.result_value}
+                              onChange={(e) =>
+                                handleResultValueChange(parameterId, e.target.value, paramType)
+                              }
+                              disabled={!canEdit || isSaving}
+                              className={cn(
+                                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+                                paramError && 'border-destructive',
+                              )}
+                            >
+                              <option value="">Select Pass or Fail</option>
+                              <option value="Pass">Pass</option>
+                              <option value="Fail">Fail</option>
+                            </select>
+                          ) : (
+                            <Input
+                              type={paramType === 'NUMERIC' || paramType === 'RANGE' ? 'number' : 'text'}
+                              step={paramType === 'NUMERIC' || paramType === 'RANGE' ? 'any' : undefined}
+                              value={currentValue.result_value}
+                              onChange={(e) =>
+                                handleResultValueChange(parameterId, e.target.value, paramType, minValue, maxValue)
+                              }
+                              disabled={!canEdit || isSaving}
+                              className={cn('w-full', paramError && 'border-destructive')}
+                              placeholder={getResultPlaceholder(paramType)}
+                            />
+                          )}
                           {paramError && (
                             <p className="text-xs text-destructive mt-1">{paramError}</p>
                           )}
@@ -712,7 +796,7 @@ export default function InspectionDetailPage() {
                             onChange={(e) =>
                               handleParameterChange(parameterId, 'is_within_spec', e.target.checked)
                             }
-                            disabled={!canEdit || isSaving}
+                            disabled={!canEdit || isSaving || paramType === 'BOOLEAN' || paramType === 'RANGE'}
                             className="h-4 w-4 rounded border-gray-300"
                           />
                         </td>

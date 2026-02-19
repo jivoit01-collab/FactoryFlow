@@ -209,7 +209,7 @@ export default function MaterialTypesPage() {
       )}
 
       {/* Add/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) handleCloseDialog() }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingType ? 'Edit Material Type' : 'Add Material Type'}</DialogTitle>
