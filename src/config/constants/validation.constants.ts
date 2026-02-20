@@ -1,7 +1,7 @@
 export const VALIDATION_PATTERNS = {
   email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   phone: /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/,
-  vehicleNumber: /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/,
+  vehicleNumber: /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$/,
   alphanumeric: /^[a-zA-Z0-9]+$/,
   numeric: /^[0-9]+$/,
   // Indian ID document patterns
@@ -26,5 +26,5 @@ export const VALIDATION_MESSAGES = {
   maxLength: (field: string, max: number) => `${field} must be at most ${max} characters`,
   invalidEmail: 'Please enter a valid email address',
   invalidPhone: 'Please enter a valid phone number',
-  invalidVehicleNumber: 'Please enter a valid vehicle number (e.g., MH12AB1234)',
+  invalidVehicleNumber: 'Please enter a valid vehicle number (e.g., MH12AB1234, DL1LAB1234)',
 } as const;
