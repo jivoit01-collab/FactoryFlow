@@ -4,6 +4,14 @@ import type { ApiError } from '@/core/api/types';
 
 export type ArrivalSlipStatus = 'DRAFT' | 'SUBMITTED' | 'REJECTED';
 
+export interface ArrivalSlipAttachment {
+  id: number;
+  attachment_type: string;
+  file: string;
+  file_name: string;
+  uploaded_at: string;
+}
+
 export interface ArrivalSlip {
   id: number;
   po_item_receipt: number;
@@ -31,6 +39,7 @@ export interface ArrivalSlip {
   submitted_by: number | null;
   submitted_by_name: string | null;
   remarks: string;
+  attachments?: ArrivalSlipAttachment[];
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +58,12 @@ export interface CreateArrivalSlipRequest {
   has_certificate_of_analysis: boolean;
   has_certificate_of_quantity: boolean;
   remarks?: string;
+}
+
+export interface SubmitArrivalSlipRequest {
+  slipId: number;
+  certificateOfAnalysis?: File;
+  certificateOfQuantity?: File;
 }
 
 export interface ArrivalSlipListParams {
@@ -95,9 +110,25 @@ export const arrivalSlipApi = {
     return response.data;
   },
 
-  async submit(slipId: number): Promise<ArrivalSlip> {
+  async submit(request: SubmitArrivalSlipRequest): Promise<ArrivalSlip> {
+    const { slipId, certificateOfAnalysis, certificateOfQuantity } = request;
+    const formData = new FormData();
+
+    if (certificateOfAnalysis) {
+      formData.append('certificate_of_analysis', certificateOfAnalysis);
+    }
+    if (certificateOfQuantity) {
+      formData.append('certificate_of_quantity', certificateOfQuantity);
+    }
+
     const response = await apiClient.post<ArrivalSlip>(
       API_ENDPOINTS.QUALITY_CONTROL_V2.ARRIVAL_SLIP_SUBMIT(slipId),
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
     );
     return response.data;
   },

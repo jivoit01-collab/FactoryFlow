@@ -136,7 +136,7 @@ export default function NewEntryPage() {
       formData.vehicle_no.trim() &&
       !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicle_no.trim().toUpperCase())
     ) {
-      errors.vehicle_no = 'Please enter a valid vehicle number (e.g., MH12AB1234)';
+      errors.vehicle_no = 'Please enter a valid vehicle number (e.g., MH12AB1234, DL1LAB1234)';
     }
 
     if (Object.keys(errors).length > 0) {

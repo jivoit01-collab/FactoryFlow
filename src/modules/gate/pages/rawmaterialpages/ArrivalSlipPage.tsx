@@ -1,12 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, Check, FileText } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertCircle, Check, FileText, Paperclip, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { VALIDATION_PATTERNS } from '@/config/constants';
 import { ARRIVAL_SLIP_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api';
 import {
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -67,6 +68,8 @@ interface POItemReceiptWithSlip {
   existingSlip: ArrivalSlip | null;
   isSubmitted: boolean;
   slipId: number | null;
+  certificateOfAnalysisFile: File | null;
+  certificateOfQuantityFile: File | null;
 }
 
 export default function ArrivalSlipPage() {
@@ -125,6 +128,8 @@ export default function ArrivalSlipPage() {
               existingSlip: null,
               isSubmitted: false,
               slipId: null,
+              certificateOfAnalysisFile: null,
+              certificateOfQuantityFile: null,
               formData: {
                 particulars: `${item.item_name}`,
                 arrival_datetime: currentDateTime,
@@ -206,15 +211,54 @@ export default function ArrivalSlipPage() {
     value: string | boolean,
   ) => {
     setItemForms((prev) =>
-      prev.map((form) =>
-        form.id === itemId ? { ...form, formData: { ...form.formData, [field]: value } } : form,
-      ),
+      prev.map((form) => {
+        if (form.id !== itemId) return form;
+        const updated: POItemReceiptWithSlip = {
+          ...form,
+          formData: { ...form.formData, [field]: value },
+        };
+        // Clear file when certificate checkbox is unchecked
+        if (field === 'has_certificate_of_analysis' && value === false) {
+          updated.certificateOfAnalysisFile = null;
+          const ref = coaFileInputRefs.current[itemId];
+          if (ref) ref.value = '';
+        }
+        if (field === 'has_certificate_of_quantity' && value === false) {
+          updated.certificateOfQuantityFile = null;
+          const ref = coqFileInputRefs.current[itemId];
+          if (ref) ref.value = '';
+        }
+        return updated;
+      }),
     );
     // Clear error for this field
     if (apiErrors[`${itemId}_${field}`]) {
       setApiErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[`${itemId}_${field}`];
+        return newErrors;
+      });
+    }
+  };
+
+  // Refs for certificate file inputs (keyed by form item id)
+  const coaFileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const coqFileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  const handleFileChange = (
+    itemId: number,
+    type: 'certificateOfAnalysisFile' | 'certificateOfQuantityFile',
+    file: File | null,
+  ) => {
+    setItemForms((prev) =>
+      prev.map((form) => (form.id === itemId ? { ...form, [type]: file } : form)),
+    );
+    // Clear error for this field
+    const errorKey = `${itemId}_${type}`;
+    if (apiErrors[errorKey]) {
+      setApiErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
         return newErrors;
       });
     }
@@ -261,6 +305,23 @@ export default function ArrivalSlipPage() {
     ) {
       errors[`${form.id}_truck_no_as_per_bill`] =
         'Please enter a valid vehicle number (e.g., MH12AB1234)';
+    }
+
+    // Validate certificate files are provided when checkboxes are checked
+    const hasExistingCoa = form.existingSlip?.attachments?.some(
+      (a) => a.attachment_type === 'certificate_of_analysis',
+    );
+    if (form.formData.has_certificate_of_analysis && !form.certificateOfAnalysisFile && !hasExistingCoa) {
+      errors[`${form.id}_certificateOfAnalysisFile`] =
+        'Please upload Certificate of Analysis file';
+    }
+
+    const hasExistingCoq = form.existingSlip?.attachments?.some(
+      (a) => a.attachment_type === 'certificate_of_quantity',
+    );
+    if (form.formData.has_certificate_of_quantity && !form.certificateOfQuantityFile && !hasExistingCoq) {
+      errors[`${form.id}_certificateOfQuantityFile`] =
+        'Please upload Certificate of Quantity file';
     }
 
     return errors;
@@ -320,8 +381,12 @@ export default function ArrivalSlipPage() {
             data: requestData,
           });
 
-          // Submit the arrival slip to QA
-          await submitArrivalSlip.mutateAsync(slip.id);
+          // Submit the arrival slip to QA (with certificate files if selected)
+          await submitArrivalSlip.mutateAsync({
+            slipId: slip.id,
+            certificateOfAnalysis: form.certificateOfAnalysisFile || undefined,
+            certificateOfQuantity: form.certificateOfQuantityFile || undefined,
+          });
         }
       }
 
@@ -633,38 +698,209 @@ export default function ArrivalSlipPage() {
                 {/* Certificates */}
                 <div className="space-y-4 md:col-span-2 lg:col-span-3">
                   <Label>Certificates</Label>
-                  <div className="flex flex-wrap gap-6">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`has_certificate_of_analysis-${form.id}`}
-                        checked={form.formData.has_certificate_of_analysis}
-                        onCheckedChange={(checked) =>
-                          handleFormChange(form.id, 'has_certificate_of_analysis', checked === true)
-                        }
-                        disabled={form.isSubmitted || isSaving || isReadOnly}
-                      />
-                      <Label
-                        htmlFor={`has_certificate_of_analysis-${form.id}`}
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        Certificate of Analysis (COA)
-                      </Label>
+                  <div className="space-y-4">
+                    {/* COA */}
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`has_certificate_of_analysis-${form.id}`}
+                          checked={form.formData.has_certificate_of_analysis}
+                          onCheckedChange={(checked) =>
+                            handleFormChange(form.id, 'has_certificate_of_analysis', checked === true)
+                          }
+                          disabled={form.isSubmitted || isSaving || isReadOnly}
+                        />
+                        <Label
+                          htmlFor={`has_certificate_of_analysis-${form.id}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          Certificate of Analysis (COA)
+                        </Label>
+                      </div>
+                      {form.formData.has_certificate_of_analysis && (
+                        <div className="ml-6">
+                          {form.certificateOfAnalysisFile ? (
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                              <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="truncate">{form.certificateOfAnalysisFile.name}</span>
+                              {!form.isSubmitted && !isReadOnly && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-auto h-6 w-6 p-0"
+                                  onClick={() => {
+                                    handleFileChange(form.id, 'certificateOfAnalysisFile', null);
+                                    const ref = coaFileInputRefs.current[form.id];
+                                    if (ref) ref.value = '';
+                                  }}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : form.existingSlip?.attachments?.find(
+                              (a) => a.attachment_type === 'certificate_of_analysis',
+                            ) ? (
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                              <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="truncate">
+                                {form.existingSlip.attachments.find(
+                                  (a) => a.attachment_type === 'certificate_of_analysis',
+                                )?.file_name || 'COA uploaded'}
+                              </span>
+                              {!form.isSubmitted && !isReadOnly && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="ml-auto h-7 text-xs"
+                                  onClick={() => coaFileInputRefs.current[form.id]?.click()}
+                                >
+                                  Replace
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <div
+                              className={cn(
+                                'flex items-center gap-3 rounded-md border-2 border-dashed px-3 py-3 cursor-pointer transition-colors',
+                                apiErrors[`${form.id}_certificateOfAnalysisFile`]
+                                  ? 'border-destructive/50 hover:border-destructive'
+                                  : 'border-muted-foreground/25 hover:border-primary/50',
+                                (form.isSubmitted || isReadOnly) && 'cursor-not-allowed opacity-50',
+                              )}
+                              onClick={() => {
+                                if (!form.isSubmitted && !isReadOnly) {
+                                  coaFileInputRefs.current[form.id]?.click();
+                                }
+                              }}
+                            >
+                              <Upload className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">
+                                Click to upload COA file
+                              </span>
+                            </div>
+                          )}
+                          <input
+                            ref={(el) => { coaFileInputRefs.current[form.id] = el; }}
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              handleFileChange(form.id, 'certificateOfAnalysisFile', file);
+                            }}
+                            disabled={form.isSubmitted || isSaving || isReadOnly}
+                          />
+                          {apiErrors[`${form.id}_certificateOfAnalysisFile`] && (
+                            <p className="text-sm text-destructive">
+                              {apiErrors[`${form.id}_certificateOfAnalysisFile`]}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`has_certificate_of_quantity-${form.id}`}
-                        checked={form.formData.has_certificate_of_quantity}
-                        onCheckedChange={(checked) =>
-                          handleFormChange(form.id, 'has_certificate_of_quantity', checked === true)
-                        }
-                        disabled={form.isSubmitted || isSaving || isReadOnly}
-                      />
-                      <Label
-                        htmlFor={`has_certificate_of_quantity-${form.id}`}
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        Certificate of Quantity (COQ)
-                      </Label>
+
+                    {/* COQ */}
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`has_certificate_of_quantity-${form.id}`}
+                          checked={form.formData.has_certificate_of_quantity}
+                          onCheckedChange={(checked) =>
+                            handleFormChange(form.id, 'has_certificate_of_quantity', checked === true)
+                          }
+                          disabled={form.isSubmitted || isSaving || isReadOnly}
+                        />
+                        <Label
+                          htmlFor={`has_certificate_of_quantity-${form.id}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          Certificate of Quantity (COQ)
+                        </Label>
+                      </div>
+                      {form.formData.has_certificate_of_quantity && (
+                        <div className="ml-6">
+                          {form.certificateOfQuantityFile ? (
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                              <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="truncate">{form.certificateOfQuantityFile.name}</span>
+                              {!form.isSubmitted && !isReadOnly && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-auto h-6 w-6 p-0"
+                                  onClick={() => {
+                                    handleFileChange(form.id, 'certificateOfQuantityFile', null);
+                                    const ref = coqFileInputRefs.current[form.id];
+                                    if (ref) ref.value = '';
+                                  }}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : form.existingSlip?.attachments?.find(
+                              (a) => a.attachment_type === 'certificate_of_quantity',
+                            ) ? (
+                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                              <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="truncate">
+                                {form.existingSlip.attachments.find(
+                                  (a) => a.attachment_type === 'certificate_of_quantity',
+                                )?.file_name || 'COQ uploaded'}
+                              </span>
+                              {!form.isSubmitted && !isReadOnly && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="ml-auto h-7 text-xs"
+                                  onClick={() => coqFileInputRefs.current[form.id]?.click()}
+                                >
+                                  Replace
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <div
+                              className={cn(
+                                'flex items-center gap-3 rounded-md border-2 border-dashed px-3 py-3 cursor-pointer transition-colors',
+                                apiErrors[`${form.id}_certificateOfQuantityFile`]
+                                  ? 'border-destructive/50 hover:border-destructive'
+                                  : 'border-muted-foreground/25 hover:border-primary/50',
+                                (form.isSubmitted || isReadOnly) && 'cursor-not-allowed opacity-50',
+                              )}
+                              onClick={() => {
+                                if (!form.isSubmitted && !isReadOnly) {
+                                  coqFileInputRefs.current[form.id]?.click();
+                                }
+                              }}
+                            >
+                              <Upload className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">
+                                Click to upload COQ file
+                              </span>
+                            </div>
+                          )}
+                          <input
+                            ref={(el) => { coqFileInputRefs.current[form.id] = el; }}
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              handleFileChange(form.id, 'certificateOfQuantityFile', file);
+                            }}
+                            disabled={form.isSubmitted || isSaving || isReadOnly}
+                          />
+                          {apiErrors[`${form.id}_certificateOfQuantityFile`] && (
+                            <p className="text-sm text-destructive">
+                              {apiErrors[`${form.id}_certificateOfQuantityFile`]}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

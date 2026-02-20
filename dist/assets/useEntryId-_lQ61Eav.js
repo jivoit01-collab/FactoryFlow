@@ -1,0 +1,1 @@
+import{Q as o,z as u,g as c}from"./index--0m_tC-m.js";function l(){const{entryId:r}=o(),[s]=u(),e=c().pathname.includes("/edit/"),t=e?r||null:s.get("entryId"),n=t?parseInt(t,10):null,a=n&&!isNaN(n)?n:null;return{entryId:t,entryIdNumber:a,isEditMode:e}}export{l as u};

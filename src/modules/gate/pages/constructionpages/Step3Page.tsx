@@ -227,7 +227,7 @@ export default function Step3Page() {
       formData.vehicleNumber.trim() &&
       !VALIDATION_PATTERNS.vehicleNumber.test(formData.vehicleNumber.trim().toUpperCase())
     ) {
-      setApiErrors({ vehicleNumber: 'Please enter a valid vehicle number (e.g., MH12AB1234)' });
+      setApiErrors({ vehicleNumber: 'Please enter a valid vehicle number (e.g., MH12AB1234, DL1LAB1234)' });
       return;
     }
     if (!formData.materialCategory) {

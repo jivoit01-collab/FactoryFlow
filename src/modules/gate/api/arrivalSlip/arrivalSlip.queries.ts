@@ -4,6 +4,7 @@ import {
   arrivalSlipApi,
   type ArrivalSlipListParams,
   type CreateArrivalSlipRequest,
+  type SubmitArrivalSlipRequest,
 } from './arrivalSlip.api';
 
 export function useArrivalSlip(poItemReceiptId: number | null) {
@@ -68,7 +69,7 @@ export function useUpdateArrivalSlip() {
 export function useSubmitArrivalSlip() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (slipId: number) => arrivalSlipApi.submit(slipId),
+    mutationFn: (request: SubmitArrivalSlipRequest) => arrivalSlipApi.submit(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['arrivalSlip'] });
       queryClient.invalidateQueries({ queryKey: ['arrivalSlips'] });
