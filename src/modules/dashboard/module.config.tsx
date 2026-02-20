@@ -1,5 +1,6 @@
 import { LayoutDashboard } from 'lucide-react';
 
+import { GATE_MODULE_PREFIX, GATE_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 import DashboardPage from './pages/DashboardPage';
@@ -21,8 +22,8 @@ export const dashboardModuleConfig: ModuleConfig = {
       path: '/',
       title: 'Dashboard',
       icon: LayoutDashboard,
-      permissions: ['gatein.view_dashboard'],
-      modulePrefix: 'gatein',
+      permissions: [GATE_PERMISSIONS.DASHBOARD.VIEW],
+      modulePrefix: GATE_MODULE_PREFIX,
       showInSidebar: true,
     },
   ],

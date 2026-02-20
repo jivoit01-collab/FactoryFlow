@@ -9,6 +9,9 @@
  * import { QC_PERMISSIONS } from '@/config/permissions'
  */
 
+// Gate Module
+export { GATE_MODULE_PREFIX, GATE_PERMISSIONS, type GatePermission } from './gate.permissions';
+
 // Quality Control Module
 export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permissions';
 
