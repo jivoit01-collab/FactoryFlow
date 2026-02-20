@@ -1,7 +1,7 @@
 import { FlaskConical } from 'lucide-react';
 import { lazy } from 'react';
 
-import { QC_MODULE_PREFIX, QC_PERMISSIONS } from '@/config/permissions';
+import { QC_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 // Lazy load QC pages
@@ -16,8 +16,7 @@ const QCParametersPage = lazy(() => import('./pages/masterdata/QCParametersPage'
  * Quality Control module configuration
  *
  * Route permissions: Controls who can access each page (ProtectedRoute)
- * Navigation permissions: Controls what appears in sidebar submenu
- * Module prefix: Controls visibility of entire module in sidebar
+ * Navigation permissions: Controls what appears in sidebar and dashboard cards
  */
 export const qcModuleConfig: ModuleConfig = {
   name: 'qc',
@@ -81,13 +80,13 @@ export const qcModuleConfig: ModuleConfig = {
       title: 'Quality Control',
       icon: FlaskConical,
       showInSidebar: true,
-      modulePrefix: QC_MODULE_PREFIX,
+      permissions: [QC_PERMISSIONS.INSPECTION.VIEW, QC_PERMISSIONS.ARRIVAL_SLIP.VIEW],
       hasSubmenu: true,
       children: [
         {
           path: '/qc',
           title: 'Dashboard',
-          // No specific permission - shown if user has any QC permission (via modulePrefix)
+          permissions: [QC_PERMISSIONS.INSPECTION.VIEW, QC_PERMISSIONS.ARRIVAL_SLIP.VIEW],
         },
         {
           path: '/qc/pending',

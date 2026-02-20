@@ -1,7 +1,7 @@
 import { Bell } from 'lucide-react';
 import { lazy } from 'react';
 
-import { NOTIFICATION_MODULE_PREFIX, NOTIFICATION_PERMISSIONS } from '@/config/permissions';
+import { NOTIFICATION_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
@@ -28,7 +28,7 @@ export const notificationsModuleConfig: ModuleConfig = {
       title: 'Notifications',
       icon: Bell,
       showInSidebar: true,
-      modulePrefix: NOTIFICATION_MODULE_PREFIX,
+      permissions: [NOTIFICATION_PERMISSIONS.SEND, NOTIFICATION_PERMISSIONS.SEND_BULK],
       hasSubmenu: true,
       children: [
         {

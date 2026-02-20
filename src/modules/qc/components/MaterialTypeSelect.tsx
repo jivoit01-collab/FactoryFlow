@@ -61,16 +61,17 @@ export function MaterialTypeSelect({
     updateSelection: (key: string | number, label: string) => void,
     closeDialog: (open: boolean) => void,
   ) => {
+    const errors: Record<string, string> = {};
     if (!formData.code.trim()) {
-      setFormErrors({ code: 'Code is required' });
-      return;
-    }
-    if (!/^[A-Z0-9_]+$/.test(formData.code)) {
-      setFormErrors({ code: 'Code must be uppercase letters, numbers, and underscores only' });
-      return;
+      errors.code = 'Code is required';
+    } else if (!/^[A-Z0-9_]+$/.test(formData.code)) {
+      errors.code = 'Code must be uppercase letters, numbers, and underscores only';
     }
     if (!formData.name.trim()) {
-      setFormErrors({ name: 'Name is required' });
+      errors.name = 'Name is required';
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
@@ -88,7 +89,15 @@ export function MaterialTypeSelect({
       closeDialog(false);
     } catch (err) {
       const apiError = err as ApiError;
-      setFormErrors({ general: apiError.message || 'Failed to create material type' });
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setFormErrors(fieldErrors);
+      } else {
+        setFormErrors({ general: apiError.message || 'Failed to create material type' });
+      }
     }
   };
 
@@ -149,7 +158,7 @@ export function MaterialTypeSelect({
                       <Input
                         value={formData.code}
                         onChange={(e) => {
-                          const val = e.target.value.toUpperCase().replace(/\s/g, '');
+                          const val = e.target.value.toUpperCase().replace(/\s+/g, '_');
                           setFormData((prev) => ({ ...prev, code: val }));
                           if (formErrors.code) {
                             setFormErrors((prev) => ({ ...prev, code: '' }));
@@ -157,6 +166,7 @@ export function MaterialTypeSelect({
                         }}
                         placeholder="e.g., CAP_BLUE"
                         disabled={createMaterialType.isPending}
+                        className={formErrors.code ? 'border-destructive focus-visible:ring-destructive' : ''}
                       />
                       <p className="text-xs text-muted-foreground">
                         All caps, no spaces. Use underscores to separate words.
@@ -172,9 +182,19 @@ export function MaterialTypeSelect({
                       </Label>
                       <Input
                         value={formData.name}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) => {
+                          const val = e.target.value
+                            .split(' ')
+                            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                            .join(' ');
+                          setFormData((prev) => ({ ...prev, name: val }));
+                          if (formErrors.name) {
+                            setFormErrors((prev) => ({ ...prev, name: '' }));
+                          }
+                        }}
                         placeholder="e.g., Cap Blue Plain"
                         disabled={createMaterialType.isPending}
+                        className={formErrors.name ? 'border-destructive focus-visible:ring-destructive' : ''}
                       />
                       {formErrors.name && (
                         <p className="text-sm text-destructive">{formErrors.name}</p>

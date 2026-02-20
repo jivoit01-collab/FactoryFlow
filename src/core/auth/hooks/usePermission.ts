@@ -131,15 +131,19 @@ export function usePermission() {
   /**
    * Check if user has any permission for a module prefix
    * Used for dynamically showing modules in sidebar based on user's permissions
-   * @param modulePrefix - Module prefix (e.g., 'gatein', 'qualitycheck')
-   * @returns true if user has any permission starting with the module prefix
+   * @param modulePrefix - Single prefix or array of prefixes (for modules spanning multiple Django apps)
+   * @returns true if user has any permission starting with any of the module prefixes
    * @example
-   * hasModulePermission('gatein') // returns true if user has any 'gatein.*' permission
+   * hasModulePermission('quality_control') // single prefix
+   * hasModulePermission(['gate_core', 'person_gatein']) // multiple prefixes
    */
   const hasModulePermission = useCallback(
-    (modulePrefix: string): boolean => {
-      const prefix = `${modulePrefix}.`;
-      return permissions.some((permission) => permission.startsWith(prefix));
+    (modulePrefix: string | readonly string[]): boolean => {
+      const prefixes = Array.isArray(modulePrefix) ? modulePrefix : [modulePrefix];
+      return prefixes.some((prefix) => {
+        const p = `${prefix}.`;
+        return permissions.some((permission) => permission.startsWith(p));
+      });
     },
     [permissions],
   );

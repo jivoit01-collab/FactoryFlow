@@ -71,12 +71,17 @@ export default function MaterialTypesPage() {
   };
 
   const handleSave = async () => {
+    const errors: Record<string, string> = {};
     if (!formData.code.trim()) {
-      setApiErrors({ code: 'Code is required' });
-      return;
+      errors.code = 'Code is required';
+    } else if (!/^[A-Z0-9_]+$/.test(formData.code)) {
+      errors.code = 'Code must be uppercase letters, numbers, and underscores only';
     }
     if (!formData.name.trim()) {
-      setApiErrors({ name: 'Name is required' });
+      errors.name = 'Name is required';
+    }
+    if (Object.keys(errors).length > 0) {
+      setApiErrors(errors);
       return;
     }
 
@@ -90,7 +95,15 @@ export default function MaterialTypesPage() {
       handleCloseDialog();
     } catch (error) {
       const apiError = error as ApiError;
-      setApiErrors({ general: apiError.message || 'Failed to save material type' });
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to save material type' });
+      }
     }
   };
 
@@ -101,7 +114,15 @@ export default function MaterialTypesPage() {
       await deleteMaterialType.mutateAsync(id);
     } catch (error) {
       const apiError = error as ApiError;
-      alert(apiError.message || 'Failed to delete material type');
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to delete material type' });
+      }
     }
   };
 
@@ -136,6 +157,14 @@ export default function MaterialTypesPage() {
         <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
           Failed to load material types. Please try again.
+        </div>
+      )}
+
+      {/* API Error */}
+      {apiErrors.general && !isDialogOpen && (
+        <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          {apiErrors.general}
         </div>
       )}
 
@@ -223,23 +252,48 @@ export default function MaterialTypesPage() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Code</Label>
+              <Label>Code <span className="text-destructive">*</span></Label>
               <Input
                 value={formData.code}
-                onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value }))}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase().replace(/\s+/g, '_');
+                  setFormData((prev) => ({ ...prev, code: val }));
+                  if (apiErrors.code) {
+                    setApiErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.code;
+                      return next;
+                    });
+                  }
+                }}
                 placeholder="e.g., CAP_BLUE"
                 disabled={isSaving}
+                className={apiErrors.code ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
               {apiErrors.code && <p className="text-sm text-destructive">{apiErrors.code}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>Name <span className="text-destructive">*</span></Label>
               <Input
                 value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => {
+                  const val = e.target.value
+                    .split(' ')
+                    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                    .join(' ');
+                  setFormData((prev) => ({ ...prev, name: val }));
+                  if (apiErrors.name) {
+                    setApiErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.name;
+                      return next;
+                    });
+                  }
+                }}
                 placeholder="e.g., Cap Blue Plain"
                 disabled={isSaving}
+                className={apiErrors.name ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
               {apiErrors.name && <p className="text-sm text-destructive">{apiErrors.name}</p>}
             </div>

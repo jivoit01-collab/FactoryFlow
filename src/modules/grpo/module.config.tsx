@@ -1,7 +1,7 @@
 import { PackageCheck } from 'lucide-react';
 import { lazy } from 'react';
 
-import { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS } from '@/config/permissions';
+import { GRPO_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 // Lazy load GRPO pages
@@ -15,8 +15,7 @@ const GRPOHistoryDetailPage = lazy(() => import('./pages/GRPOHistoryDetailPage')
  * GRPO module configuration
  *
  * Route permissions: Controls who can access each page (ProtectedRoute)
- * Navigation permissions: Controls what appears in sidebar submenu
- * Module prefix: Controls visibility of entire module in sidebar
+ * Navigation permissions: Controls what appears in sidebar and dashboard cards
  */
 export const grpoModuleConfig: ModuleConfig = {
   name: 'grpo',
@@ -63,12 +62,13 @@ export const grpoModuleConfig: ModuleConfig = {
       title: 'GRPO',
       icon: PackageCheck,
       showInSidebar: true,
-      modulePrefix: GRPO_MODULE_PREFIX,
+      permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
       hasSubmenu: true,
       children: [
         {
           path: '/grpo',
           title: 'Dashboard',
+          permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
         },
         {
           path: '/grpo/pending',
