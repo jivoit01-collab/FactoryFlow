@@ -48,15 +48,12 @@ export const ROUTES = {
   },
 
   // Protected routes
-  // Dashboard permission: 'gatein.view_dashboard' - shown if user has any gatein permissions
+  // Dashboard is always visible for authenticated users
   DASHBOARD: {
     path: '/',
     title: 'Dashboard',
-    permissions: ['gatein.view_dashboard'],
     icon: 'LayoutDashboard',
     showInSidebar: true,
-    // Module prefix for dynamic sidebar filtering
-    modulePrefix: 'gatein',
   },
 
   // Gate - dropdown menu with multiple gate entry types

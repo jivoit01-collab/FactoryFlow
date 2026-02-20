@@ -13,8 +13,8 @@ export interface ModuleNavItem {
   icon?: LucideIcon;
   /** Required permissions (Django format: 'app_label.permission_codename') */
   permissions?: readonly string[];
-  /** Module prefix for dynamic sidebar filtering (e.g., 'gatein' to show if user has any 'gatein.*' permission) */
-  modulePrefix?: string;
+  /** Module prefix for dynamic sidebar filtering (e.g., 'quality_control' to show if user has any 'quality_control.*' permission). Use array for modules spanning multiple Django apps. */
+  modulePrefix?: string | readonly string[];
   /** Whether to show in sidebar */
   showInSidebar?: boolean;
   /** Whether this route has a submenu in the sidebar */
