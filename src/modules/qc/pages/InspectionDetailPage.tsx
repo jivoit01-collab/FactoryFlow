@@ -37,7 +37,7 @@ import {
   useUpdateParameterResults,
 } from '../api/inspection/inspection.queries';
 import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries';
-import { MaterialTypeSelect } from '../components';
+import { MaterialTypeSelect, QCSuccessScreen } from '../components';
 import {
   FINAL_STATUS,
   FINAL_STATUS_CONFIG,
@@ -99,6 +99,7 @@ export default function InspectionDetailPage() {
   const [finalStatus, setFinalStatus] = useState<InspectionFinalStatus>(FINAL_STATUS.ACCEPTED);
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [successAction, setSuccessAction] = useState<'chemist' | 'manager' | null>(null);
 
   // Scroll to first error when errors occur
   useScrollToError(apiErrors);
@@ -357,6 +358,7 @@ export default function InspectionDetailPage() {
         id: inspection.id,
         data: { remarks: approvalRemarks },
       });
+      setSuccessAction('chemist');
     } catch (error) {
       const apiError = error as ApiError;
       if (apiError.errors) {
@@ -380,6 +382,7 @@ export default function InspectionDetailPage() {
         id: inspection.id,
         data: { remarks: approvalRemarks, final_status: finalStatus },
       });
+      setSuccessAction('manager');
     } catch (error) {
       const apiError = error as ApiError;
       if (apiError.errors) {
@@ -452,6 +455,17 @@ export default function InspectionDetailPage() {
     approveAsChemist.isPending ||
     approveAsQAM.isPending ||
     rejectInspection.isPending;
+
+  // Show animated success screen after approval
+  if (successAction) {
+    return (
+      <QCSuccessScreen
+        type={successAction}
+        onNavigateToDashboard={() => navigate('/qc')}
+        onNavigateToHome={() => navigate('/')}
+      />
+    );
+  }
 
   if (isLoadingInspection || isLoadingArrivalSlip) {
     return (
