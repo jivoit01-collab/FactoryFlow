@@ -214,7 +214,7 @@ export function CreateVehicleDialog({
               placeholder="HR55AB1234"
               {...register('vehicle_number', {
                 onChange: (e) => {
-                  e.target.value = e.target.value.toUpperCase();
+                  e.target.value = e.target.value.toUpperCase().replace(/\s/g, '');
                 },
               })}
               disabled={isEditMode || mutation.isPending}
