@@ -174,28 +174,30 @@ export function VehicleDriverFormShell({
         {/* Vehicle Details Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Truck className="h-5 w-5" />
-                Vehicle Details
-              </div>
-
-              {formData.vehicleId != 0 && !isReadOnly && (
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="px-0 h-auto"
-                  onClick={() => setIsEditVehicleOpen(true)}
-                >
-                  Edit Vehicle
-                </Button>
-              )}
+            <CardTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" />
+              Vehicle Details
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="vehicle-select">
+                    Vehicle Number <span className="text-destructive">*</span>
+                  </Label>
+                  {formData.vehicleId != 0 && !isReadOnly && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="px-0 h-auto"
+                      onClick={() => setIsEditVehicleOpen(true)}
+                    >
+                      Edit Vehicle
+                    </Button>
+                  )}
+                </div>
                 <VehicleSelect
                   value={formData.vehicleNumber}
                   onChange={(vehicle) => {
@@ -211,7 +213,6 @@ export function VehicleDriverFormShell({
                     });
                   }}
                   placeholder="Enter vehicle number"
-                  label="Vehicle Number"
                   required
                   error={apiErrors.vehicle}
                   disabled={isReadOnly}
@@ -274,28 +275,30 @@ export function VehicleDriverFormShell({
         {/* Driver Information Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Driver Information
-              </div>
-
-              {formData.driverId != 0 && !isReadOnly && (
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="px-0 h-auto"
-                  onClick={() => setIsEditDriverOpen(true)}
-                >
-                  Edit Driver
-                </Button>
-              )}
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Driver Information
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="driver-select">
+                    Driver Name <span className="text-destructive">*</span>
+                  </Label>
+                  {formData.driverId != 0 && !isReadOnly && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="px-0 h-auto"
+                      onClick={() => setIsEditDriverOpen(true)}
+                    >
+                      Edit Driver
+                    </Button>
+                  )}
+                </div>
                 <DriverSelect
                   value={formData.driverName}
                   onChange={(driver) => {
@@ -311,7 +314,6 @@ export function VehicleDriverFormShell({
                     });
                   }}
                   placeholder="Enter driver name or license number"
-                  label="Driver Name"
                   required
                   error={apiErrors.driver}
                   disabled={isReadOnly || isSaving}
