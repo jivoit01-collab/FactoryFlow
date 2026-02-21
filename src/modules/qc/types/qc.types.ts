@@ -129,6 +129,7 @@ export interface InspectionListItem {
   inspection_id: number | null;
   entry_no: string;
   report_no: string | null;
+  internal_lot_no: string | null;
   item_name: string;
   party_name: string;
   billing_qty: string;
@@ -172,6 +173,7 @@ export interface Inspection {
   supplier_batch_lot_no: string;
   unit_packing: string;
   purchase_order_no: string;
+  internal_report_no: string;
   invoice_bill_no: string;
   vehicle_no: string;
   material_type: number;
@@ -199,9 +201,10 @@ export interface CreateInspectionRequest {
   sap_code: string;
   supplier_name: string;
   manufacturer_name: string;
-  supplier_batch_lot_no: string;
+  supplier_batch_lot_no?: string;
   unit_packing: string;
-  purchase_order_no: string;
+  purchase_order_no?: string;
+  internal_report_no?: string;
   invoice_bill_no: string;
   vehicle_no: string;
   material_type_id: number;

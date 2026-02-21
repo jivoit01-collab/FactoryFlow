@@ -80,6 +80,7 @@ export default function InspectionDetailPage() {
     supplier_batch_lot_no: '',
     unit_packing: '',
     purchase_order_no: '',
+    internal_report_no: '',
     invoice_bill_no: '',
     vehicle_no: '',
     material_type_id: 0,
@@ -129,6 +130,7 @@ export default function InspectionDetailPage() {
         supplier_batch_lot_no: inspection.supplier_batch_lot_no,
         unit_packing: inspection.unit_packing,
         purchase_order_no: inspection.purchase_order_no,
+        internal_report_no: inspection.internal_report_no,
         invoice_bill_no: inspection.invoice_bill_no,
         vehicle_no: inspection.vehicle_no,
         material_type_id: inspection.material_type,
@@ -260,13 +262,6 @@ export default function InspectionDetailPage() {
       if (!formData.material_type_id) {
         errors.material_type_id = 'Please select a material type';
       }
-      if (!formData.supplier_batch_lot_no?.trim()) {
-        errors.supplier_batch_lot_no = 'Supplier Batch/Lot No. is required';
-      }
-      if (!formData.purchase_order_no?.trim()) {
-        errors.purchase_order_no = 'Purchase Order No. is required';
-      }
-
       // Validate mandatory parameters have result values
       const mandatoryParams = qcParameters.filter((p) => p.is_mandatory);
       for (const param of mandatoryParams) {
@@ -591,6 +586,16 @@ export default function InspectionDetailPage() {
             </div>
 
             {/* User input fields */}
+            <div className="space-y-2">
+              <Label>Inspection Date</Label>
+              <Input
+                type="date"
+                value={formData.inspection_date || ''}
+                onChange={(e) => handleInputChange('inspection_date', e.target.value)}
+                disabled={!canEdit || isSaving}
+              />
+            </div>
+
             <MaterialTypeSelect
               label="Material Type"
               required
@@ -601,11 +606,10 @@ export default function InspectionDetailPage() {
             />
 
             <div className="space-y-2">
-              <Label>Inspection Date</Label>
+              <Label>Internal Report No.</Label>
               <Input
-                type="date"
-                value={formData.inspection_date || ''}
-                onChange={(e) => handleInputChange('inspection_date', e.target.value)}
+                value={formData.internal_report_no || ''}
+                onChange={(e) => handleInputChange('internal_report_no', e.target.value)}
                 disabled={!canEdit || isSaving}
               />
             </div>
@@ -620,33 +624,21 @@ export default function InspectionDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>
-                Supplier Batch/Lot No. <span className="text-destructive">*</span>
-              </Label>
+              <Label>Supplier Batch/Lot No.</Label>
               <Input
                 value={formData.supplier_batch_lot_no || ''}
                 onChange={(e) => handleInputChange('supplier_batch_lot_no', e.target.value)}
                 disabled={!canEdit || isSaving}
-                className={apiErrors.supplier_batch_lot_no ? 'border-destructive' : ''}
               />
-              {apiErrors.supplier_batch_lot_no && (
-                <p className="text-sm text-destructive">{apiErrors.supplier_batch_lot_no}</p>
-              )}
             </div>
 
             <div className="space-y-2">
-              <Label>
-                Purchase Order No. <span className="text-destructive">*</span>
-              </Label>
+              <Label>Purchase Order No.</Label>
               <Input
                 value={formData.purchase_order_no || ''}
                 onChange={(e) => handleInputChange('purchase_order_no', e.target.value)}
                 disabled={!canEdit || isSaving}
-                className={apiErrors.purchase_order_no ? 'border-destructive' : ''}
               />
-              {apiErrors.purchase_order_no && (
-                <p className="text-sm text-destructive">{apiErrors.purchase_order_no}</p>
-              )}
             </div>
 
             <div className="space-y-2 md:col-span-2 lg:col-span-3">

@@ -525,7 +525,7 @@ export default function ReviewPage() {
                           <th className="text-left p-2">Item</th>
                           <th className="text-right p-2">Ordered</th>
                           <th className="text-right p-2">Received</th>
-                          <th className="text-right p-2">Short</th>
+                          <th className="text-right p-2">Remaining</th>
                           <th className="text-center p-2">UOM</th>
                           <th className="text-center p-2 min-w-[120px]">QC Status</th>
                         </tr>
@@ -541,8 +541,8 @@ export default function ReviewPage() {
                             </td>
                             <td className="text-right p-2">{item.ordered_qty.toLocaleString()}</td>
                             <td className="text-right p-2">{item.received_qty.toLocaleString()}</td>
-                            <td className="text-right p-2 text-destructive">
-                              {item.short_qty > 0 ? `-${item.short_qty.toLocaleString()}` : '0'}
+                            <td className="text-right p-2">
+                              {item.short_qty > 0 ? item.short_qty.toLocaleString() : '0'}
                             </td>
                             <td className="text-center p-2">{item.uom}</td>
                             <td className="text-center p-2">
