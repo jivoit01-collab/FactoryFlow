@@ -1,13 +1,12 @@
 import { z } from 'zod';
 
-import { VALIDATION_MESSAGES, VALIDATION_PATTERNS } from '@/config/constants';
+import { VALIDATION_MESSAGES } from '@/config/constants';
 
 export const vehicleSchema = z.object({
   vehicle_number: z
     .string()
     .min(1, VALIDATION_MESSAGES.required('Vehicle number'))
-    .regex(VALIDATION_PATTERNS.vehicleNumber, VALIDATION_MESSAGES.invalidVehicleNumber)
-    .transform((val) => val.toUpperCase()),
+    .transform((val) => val.toUpperCase().replace(/\s/g, '')),
   vehicle_type: z
     .number({ error: 'Vehicle type is required' })
     .positive('Vehicle type must be selected'),
