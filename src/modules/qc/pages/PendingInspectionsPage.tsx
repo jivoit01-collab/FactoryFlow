@@ -1,11 +1,11 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react';
-import { useMemo } from 'react';
+import { AlertCircle, ArrowLeft, RefreshCw, Search, ShieldX } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { DateRangePicker } from '@/modules/gate/components';
-import { Button } from '@/shared/components/ui';
+import { Button, Input } from '@/shared/components/ui';
 
 import { useInspectionsByTab } from '../api/inspection/inspection.queries';
 import { WORKFLOW_STATUS_CONFIG } from '../constants';
@@ -67,6 +67,7 @@ function getNavigateTo(item: InspectionListItem): string {
 export default function PendingInspectionsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState('');
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   const dateParams = useMemo(
@@ -83,6 +84,19 @@ export default function PendingInspectionsPage() {
 
   // Single hook — fetches the correct endpoint based on active tab
   const { data: items = [], isLoading, error, refetch } = useInspectionsByTab(statusFilter, dateParams);
+
+  // Filter items based on search query
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return items;
+    const searchLower = search.toLowerCase();
+    return items.filter(
+      (item) =>
+        item.entry_no?.toLowerCase().includes(searchLower) ||
+        item.report_no?.toLowerCase().includes(searchLower) ||
+        item.internal_lot_no?.toLowerCase().includes(searchLower) ||
+        WORKFLOW_STATUS_CONFIG[item.workflow_status]?.label?.toLowerCase().includes(searchLower),
+    );
+  }, [items, search]);
 
   // Check if error is a permission error (403)
   const apiError = error as ApiError | null;
@@ -154,6 +168,17 @@ export default function PendingInspectionsPage() {
         </div>
       </div>
 
+      {/* Search Field */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search by entry no., report no., lot no., or status..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
       {/* Filter Tabs */}
       <div className="flex flex-wrap gap-2">
         {TAB_KEYS.map((key) => (
@@ -209,61 +234,67 @@ export default function PendingInspectionsPage() {
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && items.length === 0 && (
+      {!isLoading && !error && filteredItems.length === 0 && (
         <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
-          No {currentTab.label.toLowerCase()} inspections
+          {items.length === 0
+            ? `No ${currentTab.label.toLowerCase()} inspections`
+            : 'No inspections match your search'}
         </div>
       )}
 
-      {/* Inspections List */}
-      {!isLoading && !error && items.length > 0 && (
+      {/* Inspections Table */}
+      {!isLoading && !error && filteredItems.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-muted-foreground">
-              {currentTab.label} ({items.length})
+              {currentTab.label} ({filteredItems.length})
             </h3>
           </div>
 
-          <div className="space-y-2">
-            {items.map((item) => {
-              const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
-              const badgeClass =
-                STATUS_BADGE_CLASSES[item.workflow_status] ||
-                'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+          <div className="rounded-md border overflow-hidden">
+            <div className="overflow-x-auto max-w-full">
+              <table className="w-full min-w-[700px]">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="p-3 text-left text-sm font-medium">Gate Entry No.</th>
+                    <th className="p-3 text-left text-sm font-medium">Report No.</th>
+                    <th className="p-3 text-left text-sm font-medium">Internal Lot No.</th>
+                    <th className="p-3 text-left text-sm font-medium">Status</th>
+                    <th className="p-3 text-left text-sm font-medium">Date/Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map((item) => {
+                    const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
+                    const badgeClass =
+                      STATUS_BADGE_CLASSES[item.workflow_status] ||
+                      'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
 
-              return (
-                <div
-                  key={item.arrival_slip_id}
-                  className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => navigate(getNavigateTo(item))}
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="font-medium text-sm">
-                      {item.report_no || item.entry_no}
-                    </span>
-                    <span
-                      className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 ${badgeClass}`}
-                    >
-                      {statusConfig?.label || item.workflow_status}
-                    </span>
-                    <span className="text-xs text-muted-foreground hidden md:inline truncate">
-                      {item.item_name} • {item.party_name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {item.billing_qty && (
-                      <span className="text-xs text-muted-foreground hidden sm:inline">
-                        {item.billing_qty} {item.billing_uom}
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {formatDateTime(item.submitted_at)}
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              );
-            })}
+                    return (
+                      <tr
+                        key={item.arrival_slip_id}
+                        className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => navigate(getNavigateTo(item))}
+                      >
+                        <td className="p-3 text-sm font-medium">{item.entry_no || '-'}</td>
+                        <td className="p-3 text-sm">{item.report_no || '-'}</td>
+                        <td className="p-3 text-sm">{item.internal_lot_no || '-'}</td>
+                        <td className="p-3 text-sm">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass}`}
+                          >
+                            {statusConfig?.label || item.workflow_status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground">
+                          {formatDateTime(item.submitted_at || item.created_at)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
