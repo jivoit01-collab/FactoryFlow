@@ -2,8 +2,10 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   FileText,
   FlaskConical,
+  Paperclip,
   Pencil,
   Save,
   Send,
@@ -65,10 +67,8 @@ export default function InspectionDetailPage() {
   // Fetch existing inspection
   const { data: inspection, isLoading: isLoadingInspection } = useInspectionForSlip(arrivalSlipId);
 
-  // Fetch arrival slip data for prefilling (only needed when creating new inspection)
-  const { data: arrivalSlip, isLoading: isLoadingArrivalSlip } = useArrivalSlipById(
-    isNewInspection && !inspection ? arrivalSlipId : null,
-  );
+  // Fetch arrival slip data for prefilling and showing attachments
+  const { data: arrivalSlip, isLoading: isLoadingArrivalSlip } = useArrivalSlipById(arrivalSlipId);
 
   // Form state
   const [formData, setFormData] = useState<Partial<CreateInspectionRequest>>({
@@ -653,6 +653,93 @@ export default function InspectionDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Arrival Slip Attachments */}
+      {arrivalSlip && arrivalSlip.attachments?.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5" />
+              Attachments
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Certificate of Analysis */}
+            {arrivalSlip.attachments.some((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS') && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium">Certificate of Analysis</h4>
+                <div className="flex flex-wrap gap-4">
+                  {arrivalSlip.attachments
+                    .filter((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS')
+                    .map((attachment) => {
+                      const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(attachment.file);
+                      return (
+                        <a
+                          key={attachment.id}
+                          href={attachment.file}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                        >
+                          {isImage ? (
+                            <img
+                              src={attachment.file}
+                              alt="Certificate of Analysis"
+                              className="w-40 h-40 object-cover"
+                            />
+                          ) : (
+                            <div className="w-40 h-40 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
+                              <FileText className="h-8 w-8" />
+                              <span className="text-xs">View File</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </div>
+                          )}
+                        </a>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Certificate of Quantity */}
+            {arrivalSlip.attachments.some((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY') && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium">Certificate of Quantity</h4>
+                <div className="flex flex-wrap gap-4">
+                  {arrivalSlip.attachments
+                    .filter((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY')
+                    .map((attachment) => {
+                      const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(attachment.file);
+                      return (
+                        <a
+                          key={attachment.id}
+                          href={attachment.file}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                        >
+                          {isImage ? (
+                            <img
+                              src={attachment.file}
+                              alt="Certificate of Quantity"
+                              className="w-40 h-40 object-cover"
+                            />
+                          ) : (
+                            <div className="w-40 h-40 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
+                              <FileText className="h-8 w-8" />
+                              <span className="text-xs">View File</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </div>
+                          )}
+                        </a>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Parameter Results */}
       {((inspection?.parameter_results?.length ?? 0) > 0 || qcParameters.length > 0) && (
