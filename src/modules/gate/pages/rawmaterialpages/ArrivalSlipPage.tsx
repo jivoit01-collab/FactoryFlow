@@ -103,6 +103,8 @@ export default function ArrivalSlipPage() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [fillDataMode, setFillDataMode] = useState(false);
   const [arrivalSlipsNotFound, setArrivalSlipsNotFound] = useState(false);
+  // Tracks whether the second async fetch (existing slips) has completed
+  const [slipsFetched, setSlipsFetched] = useState(!isEditMode);
 
   const effectiveEditMode = isEditMode && !fillDataMode;
 
@@ -200,6 +202,8 @@ export default function ArrivalSlipPage() {
       } else if (updatedForms.length > 0) {
         setArrivalSlipsNotFound(true);
       }
+
+      setSlipsFetched(true);
     };
 
     fetchExistingSlips();
@@ -421,8 +425,9 @@ export default function ArrivalSlipPage() {
   const hasNoPOReceipts =
     effectiveEditMode && !isLoadingPOReceipts && (poReceipts.length === 0 || isNotFoundError);
 
-  // Show loading state
-  if (isLoadingPOReceipts || isLoadingVehicleEntry) {
+  // Show loading state — covers 3 phases:
+  // 1. PO receipts loading, 2. vehicle entry loading, 3. existing slips being fetched
+  if (isLoadingPOReceipts || isLoadingVehicleEntry || (effectiveEditMode && itemForms.length > 0 && !slipsFetched)) {
     return <StepLoadingSpinner />;
   }
 
