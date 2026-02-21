@@ -91,6 +91,16 @@ export interface UpdateParameterResultRequest {
   remarks?: string;
 }
 
+// Arrival Slip Attachment
+export type ArrivalSlipAttachmentType = 'CERTIFICATE_OF_ANALYSIS' | 'CERTIFICATE_OF_QUANTITY';
+
+export interface ArrivalSlipAttachment {
+  id: number;
+  file: string;
+  attachment_type: ArrivalSlipAttachmentType;
+  uploaded_at: string;
+}
+
 // Arrival Slip (from QC perspective)
 export interface ArrivalSlipForQC {
   id: number;
@@ -119,6 +129,7 @@ export interface ArrivalSlipForQC {
   submitted_by: number | null;
   submitted_by_name: string | null;
   remarks: string;
+  attachments: ArrivalSlipAttachment[];
   created_at: string;
   updated_at: string;
 }
