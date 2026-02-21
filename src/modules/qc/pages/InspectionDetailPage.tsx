@@ -80,7 +80,7 @@ export default function InspectionDetailPage() {
     supplier_batch_lot_no: '',
     unit_packing: '',
     purchase_order_no: '',
-    internal_report_no: '',
+    internal_lot_no: '',
     invoice_bill_no: '',
     vehicle_no: '',
     material_type_id: 0,
@@ -130,7 +130,7 @@ export default function InspectionDetailPage() {
         supplier_batch_lot_no: inspection.supplier_batch_lot_no,
         unit_packing: inspection.unit_packing,
         purchase_order_no: inspection.purchase_order_no,
-        internal_report_no: inspection.internal_report_no,
+        internal_lot_no: inspection.internal_lot_no,
         invoice_bill_no: inspection.invoice_bill_no,
         vehicle_no: inspection.vehicle_no,
         material_type_id: inspection.material_type,
@@ -606,10 +606,10 @@ export default function InspectionDetailPage() {
             />
 
             <div className="space-y-2">
-              <Label>Internal Report No.</Label>
+              <Label>Internal Lot No.</Label>
               <Input
-                value={formData.internal_report_no || ''}
-                onChange={(e) => handleInputChange('internal_report_no', e.target.value)}
+                value={formData.internal_lot_no || ''}
+                onChange={(e) => handleInputChange('internal_lot_no', e.target.value)}
                 disabled={!canEdit || isSaving}
               />
             </div>
