@@ -140,6 +140,14 @@ export function SearchableSelect<TItem>({
   // Sync search term with value prop
   const syncWithValue = useCallback(() => {
     if (disabled && value) {
+      // When disabled, still try to resolve the label from loaded items
+      if (items.length > 0) {
+        const item = items.find((i) => getItemLabel(i) === value || String(getItemKey(i)) === value);
+        if (item) {
+          setSearchTerm(getItemLabel(item));
+          return;
+        }
+      }
       setSearchTerm(value);
       return;
     }
