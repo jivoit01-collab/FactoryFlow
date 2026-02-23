@@ -144,7 +144,7 @@ export default function ArrivalSlipPage() {
                 commercial_invoice_no: '',
                 eway_bill_no: '',
                 bilty_no: '',
-                has_certificate_of_analysis: false,
+                has_certificate_of_analysis: true,
                 has_certificate_of_quantity: false,
                 remarks: '',
               },
@@ -340,13 +340,13 @@ export default function ArrivalSlipPage() {
         'Please enter a valid vehicle number (e.g., MH12AB1234)';
     }
 
-    // Validate certificate files are provided when checkboxes are checked
+    // COA is always required — must upload file regardless of checkbox
     const hasExistingCoa = form.existingSlip?.attachments?.some(
       (a) => a.attachment_type.toLowerCase() === 'certificate_of_analysis',
     );
-    if (form.formData.has_certificate_of_analysis && !form.certificateOfAnalysisFile && !hasExistingCoa) {
+    if (!form.certificateOfAnalysisFile && !hasExistingCoa) {
       errors[`${form.id}_certificateOfAnalysisFile`] =
-        'Please upload Certificate of Analysis file';
+        'Certificate of Analysis (COA) is required';
     }
 
     const hasExistingCoq = form.existingSlip?.attachments?.some(
@@ -390,36 +390,55 @@ export default function ArrivalSlipPage() {
 
     try {
       // Create/update and submit all arrival slips
+      // Track successfully submitted IDs so we don't re-submit on partial failure
+      const successfullySubmittedIds: number[] = [];
+
       for (const form of itemForms) {
         if (!form.isSubmitted) {
-          const requestData: CreateArrivalSlipRequest = {
-            particulars: form.formData.particulars,
-            arrival_datetime: new Date(form.formData.arrival_datetime).toISOString(),
-            weighing_required: true, // Always true
-            party_name: form.formData.party_name,
-            billing_qty: parseFloat(form.formData.billing_qty),
-            billing_uom: form.formData.billing_uom,
-            truck_no_as_per_bill: form.formData.truck_no_as_per_bill,
-            commercial_invoice_no: form.formData.commercial_invoice_no,
-            eway_bill_no: form.formData.eway_bill_no,
-            bilty_no: form.formData.bilty_no,
-            has_certificate_of_analysis: form.formData.has_certificate_of_analysis,
-            has_certificate_of_quantity: form.formData.has_certificate_of_quantity,
-            remarks: form.formData.remarks,
-          };
+          try {
+            const requestData: CreateArrivalSlipRequest = {
+              particulars: form.formData.particulars,
+              arrival_datetime: new Date(form.formData.arrival_datetime).toISOString(),
+              weighing_required: true, // Always true
+              party_name: form.formData.party_name,
+              billing_qty: parseFloat(form.formData.billing_qty),
+              billing_uom: form.formData.billing_uom,
+              truck_no_as_per_bill: form.formData.truck_no_as_per_bill,
+              commercial_invoice_no: form.formData.commercial_invoice_no,
+              eway_bill_no: form.formData.eway_bill_no,
+              bilty_no: form.formData.bilty_no,
+              has_certificate_of_analysis: true, // COA is always required
+              has_certificate_of_quantity: form.formData.has_certificate_of_quantity,
+              remarks: form.formData.remarks,
+            };
 
-          // Create or update the arrival slip
-          const slip = await createArrivalSlip.mutateAsync({
-            poItemReceiptId: form.id,
-            data: requestData,
-          });
+            // Create or update the arrival slip
+            const slip = await createArrivalSlip.mutateAsync({
+              poItemReceiptId: form.id,
+              data: requestData,
+            });
 
-          // Submit the arrival slip to QA (with certificate files if selected)
-          await submitArrivalSlip.mutateAsync({
-            slipId: slip.id,
-            certificateOfAnalysis: form.certificateOfAnalysisFile || undefined,
-            certificateOfQuantity: form.certificateOfQuantityFile || undefined,
-          });
+            // Submit the arrival slip to QA (with certificate files if selected)
+            await submitArrivalSlip.mutateAsync({
+              slipId: slip.id,
+              certificateOfAnalysis: form.certificateOfAnalysisFile || undefined,
+              certificateOfQuantity: form.certificateOfQuantityFile || undefined,
+            });
+
+            successfullySubmittedIds.push(form.id);
+          } catch (error) {
+            // Mark already-submitted slips so they won't be re-submitted on retry
+            if (successfullySubmittedIds.length > 0) {
+              setItemForms((prev) =>
+                prev.map((f) =>
+                  successfullySubmittedIds.includes(f.id)
+                    ? { ...f, isSubmitted: true }
+                    : f,
+                ),
+              );
+            }
+            throw error;
+          }
         }
       }
 
@@ -739,21 +758,17 @@ export default function ArrivalSlipPage() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id={`has_certificate_of_analysis-${form.id}`}
-                          checked={form.formData.has_certificate_of_analysis}
-                          onCheckedChange={(checked) =>
-                            handleFormChange(form.id, 'has_certificate_of_analysis', checked === true)
-                          }
-                          disabled={form.isSubmitted || isSaving || isReadOnly}
+                          checked={true}
+                          disabled={true}
                         />
                         <Label
                           htmlFor={`has_certificate_of_analysis-${form.id}`}
-                          className="text-sm font-medium cursor-pointer"
+                          className="text-sm font-medium"
                         >
-                          Certificate of Analysis (COA)
+                          Certificate of Analysis (COA) <span className="text-destructive">*</span>
                         </Label>
                       </div>
 
-                      {form.formData.has_certificate_of_analysis && (
                         <div className="space-y-2">
                           {form.certificateOfAnalysisFile ? (
                             /* New file selected */
@@ -883,7 +898,6 @@ export default function ArrivalSlipPage() {
                             </p>
                           )}
                         </div>
-                      )}
                     </div>
 
                     {/* ── COQ ── */}
