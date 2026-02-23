@@ -663,12 +663,12 @@ export default function InspectionDetailPage() {
               Attachments
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Certificate of Analysis */}
-            {arrivalSlip.attachments.some((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS') && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium">Certificate of Analysis</h4>
-                <div className="flex flex-wrap gap-4">
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Certificate of Analysis */}
+              {arrivalSlip.attachments.some((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS') && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Certificate of Analysis (COA)</h4>
                   {arrivalSlip.attachments
                     .filter((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS')
                     .map((attachment) => {
@@ -685,10 +685,10 @@ export default function InspectionDetailPage() {
                             <img
                               src={attachment.file}
                               alt="Certificate of Analysis"
-                              className="w-40 h-40 object-cover"
+                              className="w-full h-48 object-cover"
                             />
                           ) : (
-                            <div className="w-40 h-40 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
+                            <div className="w-full h-48 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
                               <FileText className="h-8 w-8" />
                               <span className="text-xs">View File</span>
                               <ExternalLink className="h-3 w-3" />
@@ -698,14 +698,12 @@ export default function InspectionDetailPage() {
                       );
                     })}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Certificate of Quantity */}
-            {arrivalSlip.attachments.some((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY') && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium">Certificate of Quantity</h4>
-                <div className="flex flex-wrap gap-4">
+              {/* Certificate of Quantity */}
+              {arrivalSlip.attachments.some((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY') && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Certificate of Quantity (COQ)</h4>
                   {arrivalSlip.attachments
                     .filter((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY')
                     .map((attachment) => {
@@ -722,10 +720,10 @@ export default function InspectionDetailPage() {
                             <img
                               src={attachment.file}
                               alt="Certificate of Quantity"
-                              className="w-40 h-40 object-cover"
+                              className="w-full h-48 object-cover"
                             />
                           ) : (
-                            <div className="w-40 h-40 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
+                            <div className="w-full h-48 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
                               <FileText className="h-8 w-8" />
                               <span className="text-xs">View File</span>
                               <ExternalLink className="h-3 w-3" />
@@ -735,8 +733,8 @@ export default function InspectionDetailPage() {
                       );
                     })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

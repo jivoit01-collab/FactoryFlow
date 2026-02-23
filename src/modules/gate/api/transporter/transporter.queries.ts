@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type CreateTransporterRequest, transporterApi } from './transporter.api';
+import { type CreateTransporterRequest, type UpdateTransporterRequest, transporterApi } from './transporter.api';
 
 /**
  * Fetch lightweight transporter names for dropdown
@@ -46,6 +46,19 @@ export function useCreateTransporter() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transporters'] });
       queryClient.invalidateQueries({ queryKey: ['transporterNames'] });
+    },
+  });
+}
+
+export function useUpdateTransporter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateTransporterRequest) => transporterApi.update(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['transporters'] });
+      queryClient.invalidateQueries({ queryKey: ['transporterNames'] });
+      queryClient.invalidateQueries({ queryKey: ['transporter', variables.id] });
     },
   });
 }

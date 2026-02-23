@@ -19,6 +19,7 @@ import { TransporterSelect } from '../TransporterSelect';
 import { VehicleSelect } from '../VehicleSelect';
 import { useState } from 'react';
 import { CreateDriverDialog } from '../CreateDriverDialog';
+import { CreateTransporterDialog } from '../CreateTransporterDialog';
 import { CreateVehicleDialog } from '../CreateVehicleDialog';
 
 // Get the server base URL for media files (without /api/v1)
@@ -36,6 +37,7 @@ export interface VehicleDriverFormData {
   vehicleId: number;
   vehicleNumber: string;
   vehicleType: string;
+  transporterId: number;
   transporterName: string;
   transporterContactPerson: string;
   transporterMobile: string;
@@ -56,6 +58,7 @@ export interface VehicleSelection {
   vehicleNumber: string;
   vehicleType: string;
   vehicleCapacity: string;
+  transporterId: number;
   transporterName: string;
   transporterContactPerson: string;
   transporterMobile: string;
@@ -131,6 +134,7 @@ export function VehicleDriverFormShell({
 
   const [isEditDriverOpen, setIsEditDriverOpen] = useState(false);
   const [isEditVehicleOpen, setIsEditVehicleOpen] = useState(false);
+  const [isEditTransporterOpen, setIsEditTransporterOpen] = useState(false);
 
   // Scroll to first error when errors occur
   useScrollToError(apiErrors);
@@ -207,6 +211,7 @@ export function VehicleDriverFormShell({
                       vehicleNumber: vehicle.vehicleNumber,
                       vehicleType: vehicle.vehicleType,
                       vehicleCapacity: vehicle.vehicleCapacity,
+                      transporterId: vehicle.transporterId,
                       transporterName: vehicle.transporterName,
                       transporterContactPerson: vehicle.transporterContactPerson,
                       transporterMobile: vehicle.transporterMobile,
@@ -220,12 +225,26 @@ export function VehicleDriverFormShell({
               </div>
 
               <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="transporter-select">
+                    Transporter Name <span className="text-destructive">*</span>
+                  </Label>
+                  {!!formData.transporterName && !isReadOnly && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="px-0 h-auto"
+                      onClick={() => setIsEditTransporterOpen(true)}
+                    >
+                      Edit Transporter
+                    </Button>
+                  )}
+                </div>
                 <TransporterSelect
                   value={formData.transporterName}
                   onChange={() => {}}
                   placeholder="Auto-filled from vehicle"
-                  label="Transporter Name"
-                  required
                   disabled
                   externalDetails={
                     formData.transporterName
@@ -489,9 +508,28 @@ export function VehicleDriverFormShell({
             vehicleNumber: vehicle.vehicle_number,
             vehicleType: vehicle.vehicle_type?.name ?? '',
             vehicleCapacity: vehicle.capacity_ton ? `${vehicle.capacity_ton} Tons` : '',
+            transporterId: vehicle.transporter?.id ?? 0,
             transporterName: vehicle.transporter?.name ?? '',
             transporterContactPerson: vehicle.transporter?.contact_person ?? '',
             transporterMobile: vehicle.transporter?.mobile_no ?? '',
+          });
+        }}
+      />
+
+      <CreateTransporterDialog
+        open={isEditTransporterOpen}
+        onOpenChange={setIsEditTransporterOpen}
+        initialData={{ id: formData.transporterId }}
+        onSuccess={(transporter) => {
+          onVehicleSelect({
+            vehicleId: formData.vehicleId,
+            vehicleNumber: formData.vehicleNumber,
+            vehicleType: formData.vehicleType,
+            vehicleCapacity: formData.vehicleCapacity,
+            transporterId: transporter.id,
+            transporterName: transporter.name,
+            transporterContactPerson: transporter.contact_person,
+            transporterMobile: transporter.mobile_no,
           });
         }}
       />

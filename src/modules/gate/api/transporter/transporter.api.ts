@@ -22,6 +22,10 @@ export interface CreateTransporterRequest {
   mobile_no: string;
 }
 
+export interface UpdateTransporterRequest extends CreateTransporterRequest {
+  id: number;
+}
+
 export const transporterApi = {
   /**
    * Get list of transporter names for dropdown (lightweight)
@@ -46,6 +50,24 @@ export const transporterApi = {
    */
   async getList(): Promise<Transporter[]> {
     const response = await apiClient.get<Transporter[]>(API_ENDPOINTS.VEHICLE.TRANSPORTERS);
+    return response.data;
+  },
+  
+  async update(data: UpdateTransporterRequest): Promise<Transporter> {
+    const formData = new URLSearchParams();
+    formData.append('name', data.name);
+    formData.append('contact_person', data.contact_person);
+    formData.append('mobile_no', data.mobile_no);
+
+    const response = await apiClient.put<Transporter>(
+      API_ENDPOINTS.VEHICLE.TRANSPORTER_BY_ID(data.id),
+      formData.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      },
+    );
     return response.data;
   },
 

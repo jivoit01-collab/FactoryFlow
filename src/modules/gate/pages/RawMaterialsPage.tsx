@@ -137,11 +137,12 @@ export default function RawMaterialsPage() {
       ) : (
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto max-w-full">
-            <table className="w-full min-w-[700px]">
+            <table className="w-full min-w-[850px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-3 text-left text-sm font-medium">Entry No.</th>
                   <th className="p-3 text-left text-sm font-medium">Vehicle</th>
+                  <th className="p-3 text-left text-sm font-medium">Supplier Name / Code</th>
                   <th className="p-3 text-left text-sm font-medium">Driver</th>
                   <th className="p-3 text-left text-sm font-medium">Entry Time</th>
                   <th className="p-3 text-left text-sm font-medium">Status</th>
@@ -159,6 +160,11 @@ export default function RawMaterialsPage() {
                   >
                     <td className="p-3 text-sm font-medium">{entry.entry_no || '-'}</td>
                     <td className="p-3 text-sm">{entry.vehicle?.vehicle_number || '-'}</td>
+                    <td className="p-3 text-sm">
+                      {entry.suppliers?.length > 0
+                        ? entry.suppliers.map((s: { supplier_name: string; supplier_code: string }) => `${s.supplier_name} / ${s.supplier_code}`).join(', ')
+                        : '-'}
+                    </td>
                     <td className="p-3 text-sm">{entry.driver?.name || '-'}</td>
                     <td className="p-3 text-sm text-muted-foreground">
                       {formatDateTime(entry.entry_time)}
