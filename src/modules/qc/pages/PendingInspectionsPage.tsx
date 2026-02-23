@@ -1,6 +1,7 @@
-import { AlertCircle, ArrowLeft, RefreshCw, Search, ShieldX } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertCircle, ArrowLeft, Download, RefreshCw, Search, ShieldX } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 
 import type { ApiError } from '@/core/api/types';
 import { useGlobalDateRange } from '@/core/store/hooks';
@@ -111,6 +112,45 @@ export default function PendingInspectionsPage() {
     }
   };
 
+  // Export filtered table data to Excel
+  const handleExportExcel = useCallback(() => {
+    if (filteredItems.length === 0) return;
+
+    const rows = filteredItems.map((item) => ({
+      'Gate Entry No.': item.entry_no || '-',
+      'Report No.': item.report_no || '-',
+      'Internal Lot No.': item.internal_lot_no || '-',
+      'Material Type': item.material_type_name || '-',
+      'Status': WORKFLOW_STATUS_CONFIG[item.workflow_status]?.label || item.workflow_status,
+      'Date/Time': item.submitted_at || item.created_at
+        ? new Date(item.submitted_at || item.created_at).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '-',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    // Auto-size columns based on content
+    const colWidths = Object.keys(rows[0]).map((key) => {
+      const maxLen = Math.max(
+        key.length,
+        ...rows.map((r) => String(r[key as keyof typeof r] ?? '').length),
+      );
+      return { wch: maxLen + 2 };
+    });
+    ws['!cols'] = colWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inspections');
+
+    const fileName = `Inspections_${currentTab.label}_${dateRange.from || 'all'}_to_${dateRange.to || 'all'}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }, [filteredItems, currentTab.label, dateRange]);
+
   // Format date/time - consistent with Gate module
   const formatDateTime = (dateTime?: string | null) => {
     if (!dateTime) return '-';
@@ -156,6 +196,16 @@ export default function PendingInspectionsPage() {
               }
             }}
           />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={filteredItems.length === 0 || isLoading}
+            className="w-full sm:w-auto"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
           <Button
             variant="outline"
             size="sm"
