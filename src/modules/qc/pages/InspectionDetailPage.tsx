@@ -7,6 +7,7 @@ import {
   FlaskConical,
   Paperclip,
   Pencil,
+  Printer,
   Save,
   Send,
   XCircle,
@@ -473,7 +474,7 @@ export default function InspectionDetailPage() {
   return (
     <div className="space-y-6 pb-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print-no-break">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate('/qc/pending')}>
@@ -654,86 +655,89 @@ export default function InspectionDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Arrival Slip Attachments */}
-      {arrivalSlip && arrivalSlip.attachments?.length > 0 && (
-        <Card>
+      {/* Certificate of Analysis (COA) - separate page when printing */}
+      {arrivalSlip && arrivalSlip.attachments?.some((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS') && (
+        <Card className="print-page-break">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Paperclip className="h-5 w-5" />
-              Attachments
+              Certificate of Analysis (COA)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Certificate of Analysis */}
-              {arrivalSlip.attachments.some((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS') && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Certificate of Analysis (COA)</h4>
-                  {arrivalSlip.attachments
-                    .filter((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS')
-                    .map((attachment) => {
-                      const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(attachment.file);
-                      return (
-                        <a
-                          key={attachment.id}
-                          href={attachment.file}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                        >
-                          {isImage ? (
-                            <img
-                              src={attachment.file}
-                              alt="Certificate of Analysis"
-                              className="w-full h-48 object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-48 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
-                              <FileText className="h-8 w-8" />
-                              <span className="text-xs">View File</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </div>
-                          )}
-                        </a>
-                      );
-                    })}
-                </div>
-              )}
+              {arrivalSlip.attachments
+                .filter((a) => a.attachment_type === 'CERTIFICATE_OF_ANALYSIS')
+                .map((attachment) => {
+                  const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(attachment.file);
+                  return (
+                    <a
+                      key={attachment.id}
+                      href={attachment.file}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                    >
+                      {isImage ? (
+                        <img
+                          src={attachment.file}
+                          alt="Certificate of Analysis"
+                          className="w-full print-attachment-img"
+                        />
+                      ) : (
+                        <div className="w-full h-48 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
+                          <FileText className="h-8 w-8" />
+                          <span className="text-xs">View File</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </div>
+                      )}
+                    </a>
+                  );
+                })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-              {/* Certificate of Quantity */}
-              {arrivalSlip.attachments.some((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY') && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Certificate of Quantity (COQ)</h4>
-                  {arrivalSlip.attachments
-                    .filter((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY')
-                    .map((attachment) => {
-                      const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(attachment.file);
-                      return (
-                        <a
-                          key={attachment.id}
-                          href={attachment.file}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                        >
-                          {isImage ? (
-                            <img
-                              src={attachment.file}
-                              alt="Certificate of Quantity"
-                              className="w-full h-48 object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-48 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
-                              <FileText className="h-8 w-8" />
-                              <span className="text-xs">View File</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </div>
-                          )}
-                        </a>
-                      );
-                    })}
-                </div>
-              )}
+      {/* Certificate of Quantity (COQ) - separate page when printing */}
+      {arrivalSlip && arrivalSlip.attachments?.some((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY') && (
+        <Card className="print-page-break">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5" />
+              Certificate of Quantity (COQ)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {arrivalSlip.attachments
+                .filter((a) => a.attachment_type === 'CERTIFICATE_OF_QUANTITY')
+                .map((attachment) => {
+                  const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(attachment.file);
+                  return (
+                    <a
+                      key={attachment.id}
+                      href={attachment.file}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                    >
+                      {isImage ? (
+                        <img
+                          src={attachment.file}
+                          alt="Certificate of Quantity"
+                          className="w-full print-attachment-img"
+                        />
+                      ) : (
+                        <div className="w-full h-48 flex flex-col items-center justify-center gap-2 bg-muted/30 text-muted-foreground">
+                          <FileText className="h-8 w-8" />
+                          <span className="text-xs">View File</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </div>
+                      )}
+                    </a>
+                  );
+                })}
             </div>
           </CardContent>
         </Card>
@@ -1012,12 +1016,18 @@ export default function InspectionDetailPage() {
       )}
 
       {/* Footer Actions */}
-      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
+      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between print-hide">
         <Button variant="outline" onClick={() => navigate('/qc/pending')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
         <div className="flex gap-4">
+          {inspection && (
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print
+            </Button>
+          )}
           {canUpdate && (
             <Button variant="outline" onClick={() => setIsEditing(true)}>
               <Pencil className="h-4 w-4 mr-2" />

@@ -57,3 +57,92 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles for Inspection Detail Page */
+@media print {
+  /* Hide navigation, sidebar, buttons, and interactive elements */
+  nav,
+  aside,
+  header,
+  .print-hide,
+  button,
+  [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Hide Radix UI portals (dialogs, popovers, tooltips) from printing */
+  [data-radix-portal],
+  [data-radix-popper-content-wrapper],
+  [role="dialog"],
+  [role="tooltip"] {
+    display: none !important;
+  }
+
+  /* Reset page margins and background */
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Reset main content area — remove sidebar margin and header padding */
+  main {
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Remove shadows and decorative borders */
+  .border,
+  [class*="shadow"] {
+    box-shadow: none !important;
+  }
+
+  /* Keep small sections together — avoid breaking mid-section */
+  .print-no-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* COA and COQ each start on a new page */
+  .print-page-break {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Remove overflow-hidden so images are not clipped in print */
+  .print-page-break,
+  .print-page-break * {
+    overflow: visible !important;
+  }
+
+  /* Attachment images fill the printable area */
+  .print-attachment-img {
+    display: block !important;
+    height: auto !important;
+    max-height: 85vh;
+    max-width: 100% !important;
+    object-fit: contain !important;
+    width: auto !important;
+    margin: 0 auto;
+  }
+
+  /* Ensure inputs show their values as plain text */
+  input,
+  textarea,
+  select {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: black !important;
+    -webkit-appearance: none;
+    opacity: 1 !important;
+  }
+
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    opacity: 1 !important;
+    color: black !important;
+  }
+}
