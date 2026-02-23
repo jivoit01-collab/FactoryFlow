@@ -259,6 +259,7 @@ export default function PendingInspectionsPage() {
                     <th className="p-3 text-left text-sm font-medium">Gate Entry No.</th>
                     <th className="p-3 text-left text-sm font-medium">Report No.</th>
                     <th className="p-3 text-left text-sm font-medium">Internal Lot No.</th>
+                    <th className="p-3 text-left text-sm font-medium">Material Type</th>
                     <th className="p-3 text-left text-sm font-medium">Status</th>
                     <th className="p-3 text-left text-sm font-medium">Date/Time</th>
                   </tr>
@@ -279,6 +280,7 @@ export default function PendingInspectionsPage() {
                         <td className="p-3 text-sm font-medium">{item.entry_no || '-'}</td>
                         <td className="p-3 text-sm">{item.report_no || '-'}</td>
                         <td className="p-3 text-sm">{item.internal_lot_no || '-'}</td>
+                        <td className="p-3 text-sm">{item.material_type_name || '-'}</td>
                         <td className="p-3 text-sm">
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass}`}
