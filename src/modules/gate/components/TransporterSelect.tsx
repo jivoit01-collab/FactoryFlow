@@ -107,9 +107,10 @@ export function TransporterSelect({
         <CreateTransporterDialog
           open={open}
           onOpenChange={onOpenChange}
-          onSuccess={(transporterName) => {
-            updateSelection(0, transporterName);
-            onChange(transporterName);
+          onSuccess={(transporter) => {
+            updateSelection(transporter.id, transporter.name);
+            setSelectedId(transporter.id);
+            onChange(transporter.name);
           }}
         />
       )}

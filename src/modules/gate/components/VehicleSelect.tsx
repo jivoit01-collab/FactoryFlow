@@ -14,6 +14,7 @@ interface VehicleSelectProps {
     vehicleNumber: string;
     vehicleType: string;
     vehicleCapacity: string;
+    transporterId: number;
     transporterName: string;
     transporterContactPerson: string;
     transporterMobile: string;
@@ -59,6 +60,7 @@ export function VehicleSelect({
         vehicleNumber: vehicleDetails.vehicle_number,
         vehicleType,
         vehicleCapacity: `${vehicleDetails.capacity_ton} Tons`,
+        transporterId: vehicleDetails.transporter?.id || 0,
         transporterName: vehicleDetails.transporter?.name || '',
         transporterContactPerson: vehicleDetails.transporter?.contact_person || '',
         transporterMobile: vehicleDetails.transporter?.mobile_no || '',
@@ -104,6 +106,7 @@ export function VehicleSelect({
           vehicleNumber: '',
           vehicleType: '',
           vehicleCapacity: '',
+          transporterId: 0,
           transporterName: '',
           transporterContactPerson: '',
           transporterMobile: '',
