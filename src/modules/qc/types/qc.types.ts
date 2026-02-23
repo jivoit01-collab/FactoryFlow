@@ -147,6 +147,7 @@ export interface InspectionListItem {
   billing_uom: string;
   workflow_status: InspectionListWorkflowStatus;
   final_status: InspectionFinalStatus | null;
+  material_type_name: string | null;
   created_at: string;
   submitted_at: string | null;
 }
