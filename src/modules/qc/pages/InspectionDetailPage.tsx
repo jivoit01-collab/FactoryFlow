@@ -578,7 +578,7 @@ export default function InspectionDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Invoice/Bill No.</Label>
+              <Label>Commercial Invoice No.</Label>
               <Input
                 value={formData.invoice_bill_no || ''}
                 onChange={(e) => handleInputChange('invoice_bill_no', e.target.value)}
@@ -615,6 +615,7 @@ export default function InspectionDetailPage() {
               />
             </div>
 
+            {/* NOTE: Manufacturer Name field is currently in discussion and can become usable anytime in the future.
             <div className="space-y-2">
               <Label>Manufacturer Name</Label>
               <Input
@@ -623,6 +624,7 @@ export default function InspectionDetailPage() {
                 disabled={!canEdit || isSaving}
               />
             </div>
+            */}
 
             <div className="space-y-2">
               <Label>Supplier Batch/Lot No.</Label>
@@ -633,6 +635,7 @@ export default function InspectionDetailPage() {
               />
             </div>
 
+            {/* NOTE: Purchase Order No. field is currently in discussion and can become usable anytime in the future.
             <div className="space-y-2">
               <Label>Purchase Order No.</Label>
               <Input
@@ -641,6 +644,7 @@ export default function InspectionDetailPage() {
                 disabled={!canEdit || isSaving}
               />
             </div>
+            */}
 
             <div className="space-y-2 md:col-span-2 lg:col-span-3">
               <Label>Remarks</Label>

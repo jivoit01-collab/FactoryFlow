@@ -404,7 +404,7 @@ export default function ArrivalSlipPage() {
               billing_qty: parseFloat(form.formData.billing_qty),
               billing_uom: form.formData.billing_uom,
               truck_no_as_per_bill: form.formData.truck_no_as_per_bill,
-              commercial_invoice_no: form.formData.commercial_invoice_no,
+              commercial_invoice_no: form.formData.commercial_invoice_no.trim() || '-',
               eway_bill_no: form.formData.eway_bill_no,
               bilty_no: form.formData.bilty_no,
               has_certificate_of_analysis: true, // COA is always required
@@ -696,10 +696,10 @@ export default function ArrivalSlipPage() {
 
                 {/* Commercial Invoice No */}
                 <div className="space-y-2">
-                  <Label htmlFor={`commercial_invoice_no-${form.id}`}>Commercial Invoice No.</Label>
+                  <Label htmlFor={`commercial_invoice_no-${form.id}`}>Commercial Invoice No. <span className="text-destructive">*</span></Label>
                   <Input
                     id={`commercial_invoice_no-${form.id}`}
-                    placeholder="Invoice number"
+                    placeholder="Invoice number (use - if not available)"
                     value={form.formData.commercial_invoice_no}
                     onChange={(e) =>
                       handleFormChange(form.id, 'commercial_invoice_no', e.target.value)
