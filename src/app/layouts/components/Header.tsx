@@ -63,6 +63,11 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
         <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
           <Menu className="h-5 w-5" />
         </Button>
+        {currentCompany && (
+          <span className="text-sm font-semibold truncate max-w-48">
+            {currentCompany.company_name}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
