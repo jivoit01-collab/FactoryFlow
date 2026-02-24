@@ -59,6 +59,11 @@
 }
 
 /* Print styles for Inspection Detail Page */
+@page {
+  size: A4;
+  margin: 10mm;
+}
+
 @media print {
   /* Hide navigation, sidebar, buttons, and interactive elements */
   nav,
@@ -78,8 +83,9 @@
     display: none !important;
   }
 
-  /* Reset page margins and background */
-  body {
+  /* Reset page margins and background — force all text to black */
+  body,
+  body * {
     background: white !important;
     color: black !important;
     -webkit-print-color-adjust: exact;
@@ -90,6 +96,9 @@
   main {
     margin-left: 0 !important;
     padding-top: 0 !important;
+    transform: scale(0.9);
+    transform-origin: top left;
+    width: 111.11%; /* compensate for 0.9 scale: 100/0.9 */
   }
 
   /* Remove shadows and decorative borders */
@@ -127,8 +136,8 @@
     margin: 0 auto;
   }
 
-  /* Ensure inputs show their values as plain text */
-  input,
+  /* Ensure text inputs show their values as plain text */
+  input:not([type="checkbox"]):not([type="radio"]),
   textarea,
   select {
     border: none !important;
@@ -139,10 +148,22 @@
     opacity: 1 !important;
   }
 
-  input:disabled,
+  input:disabled:not([type="checkbox"]):not([type="radio"]),
   textarea:disabled,
   select:disabled {
     opacity: 1 !important;
     color: black !important;
+  }
+
+  /* Preserve checkbox native appearance in print */
+  input[type="checkbox"],
+  input[type="radio"] {
+    -webkit-appearance: checkbox !important;
+    appearance: checkbox !important;
+    opacity: 1 !important;
+    width: 14px !important;
+    height: 14px !important;
+    background: white !important;
+    border: 1px solid black !important;
   }
 }
