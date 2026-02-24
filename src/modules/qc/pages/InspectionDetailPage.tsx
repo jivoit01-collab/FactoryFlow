@@ -37,6 +37,7 @@ import {
   useInspectionForSlip,
   useRejectInspection,
   useSubmitInspection,
+  useUpdateInspection,
   useUpdateParameterResults,
 } from '../api/inspection/inspection.queries';
 import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries';
@@ -113,6 +114,7 @@ export default function InspectionDetailPage() {
 
   // Mutations
   const createInspection = useCreateInspection();
+  const updateInspection = useUpdateInspection();
   const updateParameters = useUpdateParameterResults();
   const submitInspection = useSubmitInspection();
   const approveAsChemist = useApproveAsChemist();
@@ -279,13 +281,19 @@ export default function InspectionDetailPage() {
 
       let currentInspectionId = inspection?.id;
 
-      // If no inspection exists, create one
       if (!inspection) {
+        // Create new inspection
         const newInspection = await createInspection.mutateAsync({
           slipId: arrivalSlipId,
           data: formData as CreateInspectionRequest,
         });
         currentInspectionId = newInspection.id;
+      } else {
+        // Update existing inspection data
+        await updateInspection.mutateAsync({
+          slipId: arrivalSlipId,
+          data: formData as CreateInspectionRequest,
+        });
       }
 
       // Update parameter results if we have an inspection and parameter results
@@ -446,6 +454,7 @@ export default function InspectionDetailPage() {
 
   const isSaving =
     createInspection.isPending ||
+    updateInspection.isPending ||
     updateParameters.isPending ||
     submitInspection.isPending ||
     approveAsChemist.isPending ||
