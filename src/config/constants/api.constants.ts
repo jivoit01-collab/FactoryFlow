@@ -111,6 +111,7 @@ export const API_ENDPOINTS = {
       `/quality-control/po-items/${poItemReceiptId}/arrival-slip/`,
     ARRIVAL_SLIP_BY_ID: (slipId: number) => `/quality-control/arrival-slips/${slipId}/`,
     ARRIVAL_SLIP_SUBMIT: (slipId: number) => `/quality-control/arrival-slips/${slipId}/submit/`,
+    ARRIVAL_SLIP_SEND_BACK: (slipId: number) => `/quality-control/arrival-slips/${slipId}/send-back/`,
 
     // Material Types
     MATERIAL_TYPES: '/quality-control/material-types/',

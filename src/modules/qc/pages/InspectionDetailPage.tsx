@@ -10,6 +10,7 @@ import {
   Printer,
   Save,
   Send,
+  Undo2,
   XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -29,7 +30,7 @@ import {
 import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
 
-import { useArrivalSlipById } from '../api/arrivalSlip/arrivalSlip.queries';
+import { useArrivalSlipById, useSendBackArrivalSlip } from '../api/arrivalSlip/arrivalSlip.queries';
 import {
   useApproveAsChemist,
   useApproveAsQAM,
@@ -48,7 +49,7 @@ import {
   WORKFLOW_STATUS,
   WORKFLOW_STATUS_CONFIG,
 } from '../constants';
-import { useInspectionPermissions } from '../hooks';
+import { useArrivalSlipPermissions, useInspectionPermissions } from '../hooks';
 import type {
   CreateInspectionRequest,
   InspectionFinalStatus,
@@ -120,6 +121,10 @@ export default function InspectionDetailPage() {
   const approveAsChemist = useApproveAsChemist();
   const approveAsQAM = useApproveAsQAM();
   const rejectInspection = useRejectInspection();
+  const sendBackArrivalSlip = useSendBackArrivalSlip();
+
+  // Send-back state
+  const [sendBackRemarks, setSendBackRemarks] = useState('');
 
   // Load existing inspection data
   useEffect(() => {
@@ -428,6 +433,30 @@ export default function InspectionDetailPage() {
     }
   };
 
+  const handleSendBack = async () => {
+    if (!arrivalSlipId) return;
+
+    try {
+      setApiErrors({});
+      await sendBackArrivalSlip.mutateAsync({
+        slipId: arrivalSlipId,
+        data: sendBackRemarks.trim() ? { remarks: sendBackRemarks.trim() } : undefined,
+      });
+      navigate('/qc/pending');
+    } catch (error) {
+      const apiError = error as ApiError;
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setApiErrors(fieldErrors);
+      } else {
+        setApiErrors({ general: apiError.message || 'Failed to send back arrival slip' });
+      }
+    }
+  };
+
   // Permission checks using the centralized permission hook
   const {
     canEditInspection,
@@ -438,6 +467,15 @@ export default function InspectionDetailPage() {
     canEditFields,
     isLocked,
   } = useInspectionPermissions(inspection);
+
+  const { canSendBack: hasSendBackPermission } = useArrivalSlipPermissions();
+
+  // Show Send Back button when: arrival slip is SUBMITTED, no inspection started, user has permission
+  const showSendBack =
+    hasSendBackPermission &&
+    arrivalSlip?.status === 'SUBMITTED' &&
+    !inspection &&
+    isNewInspection;
 
   const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT;
 
@@ -459,7 +497,8 @@ export default function InspectionDetailPage() {
     submitInspection.isPending ||
     approveAsChemist.isPending ||
     approveAsQAM.isPending ||
-    rejectInspection.isPending;
+    rejectInspection.isPending ||
+    sendBackArrivalSlip.isPending;
 
   // Show animated success screen after approval
   if (successAction) {
@@ -1024,6 +1063,42 @@ export default function InspectionDetailPage() {
                 </Button>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Send Back to Gate */}
+      {showSendBack && (
+        <Card className="border-orange-500/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
+              <Undo2 className="h-5 w-5" />
+              Send Back to Gate
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Send this arrival slip back to the gate person for correction. They will be notified
+              and can edit and resubmit the slip.
+            </p>
+            <div className="space-y-2">
+              <Label>Remarks (optional)</Label>
+              <Textarea
+                value={sendBackRemarks}
+                onChange={(e) => setSendBackRemarks(e.target.value)}
+                placeholder="Explain what needs to be corrected..."
+                rows={3}
+              />
+            </div>
+            <Button
+              variant="outline"
+              className="border-orange-500 text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950"
+              onClick={handleSendBack}
+              disabled={isSaving}
+            >
+              <Undo2 className="h-4 w-4 mr-2" />
+              {sendBackArrivalSlip.isPending ? 'Sending Back...' : 'Send Back to Gate'}
+            </Button>
           </CardContent>
         </Card>
       )}

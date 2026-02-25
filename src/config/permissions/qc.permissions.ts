@@ -20,6 +20,8 @@ export const QC_PERMISSIONS = {
     SUBMIT: 'quality_control.can_submit_arrival_slip',
     /** View material arrival slips (Django default: view_materialarrivalslip) */
     VIEW: 'quality_control.view_materialarrivalslip',
+    /** Send arrival slip back to gate for correction (custom permission) */
+    SEND_BACK: 'quality_control.can_send_back_arrival_slip',
   },
 
   // ============================================

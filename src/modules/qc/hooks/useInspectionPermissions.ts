@@ -99,6 +99,7 @@ export function useArrivalSlipPermissions() {
       ]),
       canSubmit: hasAnyPermission([QC_PERMISSIONS.ARRIVAL_SLIP.SUBMIT]),
       canView: hasAnyPermission([QC_PERMISSIONS.ARRIVAL_SLIP.VIEW]),
+      canSendBack: hasAnyPermission([QC_PERMISSIONS.ARRIVAL_SLIP.SEND_BACK]),
     }),
     [hasAnyPermission],
   );
