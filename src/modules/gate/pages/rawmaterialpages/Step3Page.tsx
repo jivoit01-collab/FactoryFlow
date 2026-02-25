@@ -48,6 +48,7 @@ interface POItemFormData {
   remaining_qty_initial: number; // Initial remaining from PO (ordered - previously received)
   remaining_qty: number; // Auto-calculated: remaining_qty_initial - received_qty_now
   uom: string;
+  rate: number;
 }
 
 interface POFormData {
@@ -198,6 +199,7 @@ export default function Step3Page() {
                 remaining_qty_initial: remainingQtyFromPO, // Store initial remaining
                 remaining_qty: remainingQtyFromPO, // Will be recalculated when user enters received_qty_now
                 uom: item.uom,
+                rate: parseFloat(item.rate || '0'),
               };
             }),
           };
@@ -368,6 +370,7 @@ export default function Step3Page() {
             remaining_qty_initial: orderedQty, // Placeholder - would need PO data
             remaining_qty: orderedQty - receivedQtyNow,
             uom: item.uom,
+            rate: 0,
           };
         }),
       }));
@@ -887,6 +890,7 @@ function POCard({
                       <tr>
                         <th className="p-3 text-left text-sm font-medium">PO Item Code</th>
                         <th className="p-3 text-left text-sm font-medium">Item Name</th>
+                        <th className="p-3 text-right text-sm font-medium">Rate</th>
                         <th className="p-3 text-left text-sm font-medium">Ordered Qty</th>
                         <th className="p-3 text-left text-sm font-medium">Received Qty</th>
                         <th className="p-3 text-left text-sm font-medium">Received Now</th>
@@ -899,6 +903,7 @@ function POCard({
                         <tr key={item.po_item_code} className="border-t">
                           <td className="p-3 text-sm">{item.po_item_code}</td>
                           <td className="p-3 text-sm">{item.item_name}</td>
+                          <td className="p-3 text-sm text-right">{item.rate > 0 ? item.rate.toFixed(2) : '-'}</td>
                           <td className="p-3 text-sm">{item.ordered_qty}</td>
                           <td className="p-3 text-sm text-muted-foreground">
                             {item.received_qty > 0 ? item.received_qty : '-'}

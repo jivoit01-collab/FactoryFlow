@@ -8,6 +8,7 @@ export interface POItem {
   received_qty: string;
   remaining_qty: string;
   uom: string;
+  rate: string;
 }
 
 export interface PurchaseOrder {
