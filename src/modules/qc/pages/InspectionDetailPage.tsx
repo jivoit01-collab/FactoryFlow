@@ -470,12 +470,11 @@ export default function InspectionDetailPage() {
 
   const { canSendBack: hasSendBackPermission } = useArrivalSlipPermissions();
 
-  // Show Send Back button when: arrival slip is SUBMITTED, no inspection started, user has permission
+  // Show Send Back button when: arrival slip is SUBMITTED, no inspection or inspection still in DRAFT, user has permission
   const showSendBack =
     hasSendBackPermission &&
     arrivalSlip?.status === 'SUBMITTED' &&
-    !inspection &&
-    isNewInspection;
+    (!inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT);
 
   const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT;
 
