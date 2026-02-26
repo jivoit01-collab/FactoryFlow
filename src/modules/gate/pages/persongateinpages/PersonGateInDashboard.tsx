@@ -1,4 +1,13 @@
-import { AlertTriangle, ChevronRight, Clock, LogIn, Plus, UserCheck, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  ChevronRight,
+  Clock,
+  HardHat,
+  LogIn,
+  Plus,
+  UserCheck,
+  Users,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
@@ -309,7 +318,7 @@ export default function PersonGateInDashboard() {
           {/* Quick Actions */}
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h3>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <Button
                 variant="outline"
                 className="h-auto py-3 flex flex-col items-center gap-1"
@@ -341,6 +350,14 @@ export default function PersonGateInDashboard() {
               >
                 <Users className="h-5 w-5" />
                 <span className="text-xs">Manage Labours</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-3 flex flex-col items-center gap-1"
+                onClick={() => navigate('/gate/visitor-labour/contractors')}
+              >
+                <HardHat className="h-5 w-5" />
+                <span className="text-xs">Contractor Labours</span>
               </Button>
             </div>
           </div>

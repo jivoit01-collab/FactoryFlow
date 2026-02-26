@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  type BulkLabourEntryRequest,
+  type BulkLabourExitRequest,
   type CreateContractorRequest,
   type CreateEntryRequest,
   type CreateGateRequest,
@@ -379,5 +381,49 @@ export function useCheckPersonStatus(
     queryKey: ['checkPersonStatus', params],
     queryFn: () => personGateInApi.checkPersonStatus(params),
     enabled: enabled && (!!params.visitor || !!params.labour),
+  });
+}
+
+// ===== Contractor Labours Status =====
+
+export function useContractorLaboursStatus(contractorId: number | null) {
+  return useQuery({
+    queryKey: ['contractorLaboursStatus', contractorId],
+    queryFn: () => personGateInApi.getContractorLaboursStatus(contractorId!),
+    enabled: !!contractorId,
+    staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
+  });
+}
+
+// ===== Bulk Operations =====
+
+export function useBulkCreateEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkLabourEntryRequest) => personGateInApi.bulkCreateEntry(data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['insideList'] });
+      queryClient.invalidateQueries({ queryKey: ['personEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['personGateInDashboard'] });
+      queryClient.invalidateQueries({
+        queryKey: ['contractorLaboursStatus', variables.contractor_id],
+      });
+    },
+  });
+}
+
+export function useBulkExitEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkLabourExitRequest) => personGateInApi.bulkExitEntry(data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['insideList'] });
+      queryClient.invalidateQueries({ queryKey: ['personEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['personGateInDashboard'] });
+      queryClient.invalidateQueries({
+        queryKey: ['contractorLaboursStatus', variables.contractor_id],
+      });
+    },
   });
 }

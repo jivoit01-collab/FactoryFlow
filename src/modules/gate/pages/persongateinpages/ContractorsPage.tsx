@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Edit2, Plus, Search, Trash2, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Edit2, Plus, Search, Trash2, Users, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -372,6 +372,18 @@ export default function ContractorsPage() {
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Manage Labours"
+                          onClick={() =>
+                            navigate(
+                              `/gate/visitor-labour/contractor/${contractor.id}/labours`,
+                            )
+                          }
+                        >
+                          <Users className="h-3 w-3 text-blue-500" />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(contractor)}>
                           <Edit2 className="h-3 w-3" />
                         </Button>

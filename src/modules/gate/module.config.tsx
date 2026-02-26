@@ -52,6 +52,9 @@ const EntryDetailPage = lazy(() => import('./pages/personGateInPages/EntryDetail
 const VisitorsPage = lazy(() => import('./pages/personGateInPages/VisitorsPage'));
 const LaboursPage = lazy(() => import('./pages/personGateInPages/LaboursPage'));
 const ContractorsPage = lazy(() => import('./pages/personGateInPages/ContractorsPage'));
+const ContractorLaboursPage = lazy(
+  () => import('./pages/personGateInPages/ContractorLaboursPage'),
+);
 
 // Other gate entry type pages
 const DailyNeedsPage = lazy(() => import('./pages/DailyNeedsPage'));
@@ -444,6 +447,12 @@ export const gateModuleConfig: ModuleConfig = {
     {
       path: '/gate/visitor-labour/contractors',
       element: <ContractorsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+    },
+    {
+      path: '/gate/visitor-labour/contractor/:contractorId/labours',
+      element: <ContractorLaboursPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
     },

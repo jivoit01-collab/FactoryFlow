@@ -250,6 +250,76 @@ export interface SearchEntriesResponse {
   results: EntryLog[];
 }
 
+// ===== Bulk Operation Types =====
+
+export interface BulkLabourEntryItem {
+  labour_id: number;
+  purpose?: string;
+  remarks?: string;
+  vehicle_no?: string;
+}
+
+export interface BulkLabourEntryRequest {
+  contractor_id: number;
+  gate_in: number;
+  person_type: number;
+  approved_by?: number;
+  labours: BulkLabourEntryItem[];
+}
+
+export interface BulkLabourExitItem {
+  labour_id: number;
+}
+
+export interface BulkLabourExitRequest {
+  contractor_id: number;
+  gate_out: number;
+  labours: BulkLabourExitItem[];
+}
+
+export interface BulkResultItem {
+  labour_id: number;
+  labour_name: string;
+  status: string;
+  reason?: string;
+  entry_log_id?: number;
+}
+
+export interface BulkEntryResponse {
+  total_requested: number;
+  total_created: number;
+  total_skipped: number;
+  results: BulkResultItem[];
+  entries: EntryLog[];
+}
+
+export interface BulkExitResponse {
+  total_requested: number;
+  total_exited: number;
+  total_skipped: number;
+  results: BulkResultItem[];
+}
+
+// ===== Contractor Labours Status Types =====
+
+export interface ContractorLabourStatus {
+  id: number;
+  name: string;
+  mobile?: string;
+  skill_type?: string;
+  photo?: string;
+  permit_valid_till?: string;
+  is_inside: boolean;
+}
+
+export interface ContractorLaboursStatusResponse {
+  contractor_id: number;
+  contractor_name: string;
+  total_active_labours: number;
+  total_currently_inside: number;
+  labours: ContractorLabourStatus[];
+}
+
 // ===== API Filters =====
 
 export interface EntryFilters {
@@ -515,6 +585,36 @@ export const personGateInApi = {
     const response = await apiClient.get<CheckStatusResponse>('/person-gatein/check-status/', {
       params,
     });
+    return response.data;
+  },
+
+  // ===== Contractor Labours Status =====
+  // GET /contractor/{id}/labours-status/ - Get contractor's labours with inside status
+  getContractorLaboursStatus: async (
+    contractorId: number,
+  ): Promise<ContractorLaboursStatusResponse> => {
+    const response = await apiClient.get<ContractorLaboursStatusResponse>(
+      `/person-gatein/contractor/${contractorId}/labours-status/`,
+    );
+    return response.data;
+  },
+
+  // ===== Bulk Operations =====
+  // POST /entry/bulk-create/ - Bulk entry for multiple labours
+  bulkCreateEntry: async (data: BulkLabourEntryRequest): Promise<BulkEntryResponse> => {
+    const response = await apiClient.post<BulkEntryResponse>(
+      '/person-gatein/entry/bulk-create/',
+      data,
+    );
+    return response.data;
+  },
+
+  // POST /entry/bulk-exit/ - Bulk exit for multiple labours
+  bulkExitEntry: async (data: BulkLabourExitRequest): Promise<BulkExitResponse> => {
+    const response = await apiClient.post<BulkExitResponse>(
+      '/person-gatein/entry/bulk-exit/',
+      data,
+    );
     return response.data;
   },
 };
