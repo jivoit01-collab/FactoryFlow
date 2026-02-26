@@ -144,6 +144,7 @@ export interface CreateEntryRequest {
   approved_by?: number;
   vehicle_no?: string;
   remarks?: string;
+  actual_entry_time?: string;
 }
 
 export interface ExitEntryRequest {
@@ -264,6 +265,7 @@ export interface BulkLabourEntryRequest {
   gate_in: number;
   person_type: number;
   approved_by?: number;
+  actual_entry_time?: string;
   labours: BulkLabourEntryItem[];
 }
 

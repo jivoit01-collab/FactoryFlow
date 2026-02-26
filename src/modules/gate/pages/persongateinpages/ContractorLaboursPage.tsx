@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   CircleCheck,
   CircleMinus,
+  Clock,
   LogIn,
   LogOut,
   Search,
@@ -23,6 +24,13 @@ import {
 } from '../../api/personGateIn/personGateIn.queries';
 import { GateSelect } from '../../components/persongatein/GateSelect';
 
+function getCurrentLocalDateTime(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
 export default function ContractorLaboursPage() {
   const navigate = useNavigate();
   const { contractorId } = useParams<{ contractorId: string }>();
@@ -30,6 +38,7 @@ export default function ContractorLaboursPage() {
 
   const [search, setSearch] = useState('');
   const [selectedGate, setSelectedGate] = useState<Gate | null>(null);
+  const [actualEntryTime, setActualEntryTime] = useState(getCurrentLocalDateTime());
   const [processingLabourIds, setProcessingLabourIds] = useState<Set<number>>(new Set());
   const [bulkAction, setBulkAction] = useState<'entry' | 'exit' | null>(null);
 
@@ -63,6 +72,11 @@ export default function ContractorLaboursPage() {
     [filteredLabours],
   );
 
+  const getActualEntryTimeISO = (): string | undefined => {
+    if (!actualEntryTime) return undefined;
+    return new Date(actualEntryTime).toISOString();
+  };
+
   const handleSingleEntry = async (labour: ContractorLabourStatus) => {
     if (!selectedGate) {
       toast.error('Please select a gate first');
@@ -76,6 +90,7 @@ export default function ContractorLaboursPage() {
         contractor_id: contractorIdNum,
         gate_in: selectedGate.id,
         person_type: PERSON_TYPE_IDS.LABOUR,
+        actual_entry_time: getActualEntryTimeISO(),
         labours: [{ labour_id: labour.id }],
       });
       const item = result.results[0];
@@ -139,6 +154,7 @@ export default function ContractorLaboursPage() {
         contractor_id: contractorIdNum,
         gate_in: selectedGate.id,
         person_type: PERSON_TYPE_IDS.LABOUR,
+        actual_entry_time: getActualEntryTimeISO(),
         labours: outsideLabours.map((l) => ({ labour_id: l.id })),
       });
       toast.success(
@@ -286,6 +302,19 @@ export default function ContractorLaboursPage() {
                 onChange={setSelectedGate}
                 placeholder="Select gate for entry/exit"
                 required
+              />
+            </div>
+
+            {/* Actual Entry Time */}
+            <div className="w-full sm:w-56">
+              <Label className="mb-1.5 block">
+                <Clock className="h-3.5 w-3.5 inline mr-1" />
+                Entry Time
+              </Label>
+              <Input
+                type="datetime-local"
+                value={actualEntryTime}
+                onChange={(e) => setActualEntryTime(e.target.value)}
               />
             </div>
 

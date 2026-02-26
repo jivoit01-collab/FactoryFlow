@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, User, Users } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Clock, User, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -27,6 +27,13 @@ import { GateSelect, LabourSelect, VisitorSelect } from '../../components/person
 
 type PersonTypeValue = 'visitor' | 'labour';
 
+function getCurrentLocalDateTime(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
 interface FormData {
   person_type: number | null;
   visitor: number | null;
@@ -35,6 +42,7 @@ interface FormData {
   purpose: string;
   vehicle_no: string;
   remarks: string;
+  actual_entry_time: string;
 }
 
 export default function NewEntryPage() {
@@ -52,6 +60,7 @@ export default function NewEntryPage() {
     purpose: '',
     vehicle_no: '',
     remarks: '',
+    actual_entry_time: getCurrentLocalDateTime(),
   });
   const [selectedPerson, setSelectedPerson] = useState<Visitor | Labour | null>(null);
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
@@ -151,6 +160,9 @@ export default function NewEntryPage() {
         purpose: formData.purpose || undefined,
         vehicle_no: formData.vehicle_no || undefined,
         remarks: formData.remarks || undefined,
+        actual_entry_time: formData.actual_entry_time
+          ? new Date(formData.actual_entry_time).toISOString()
+          : undefined,
       };
 
       if (personType === 'visitor') {
@@ -306,6 +318,22 @@ export default function NewEntryPage() {
                 error={apiErrors.gate_in}
                 required
               />
+
+              {/* Entry Time */}
+              <div>
+                <Label>
+                  <Clock className="h-3.5 w-3.5 inline mr-1" />
+                  Entry Time
+                </Label>
+                <Input
+                  type="datetime-local"
+                  value={formData.actual_entry_time}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, actual_entry_time: e.target.value }))
+                  }
+                  className="mt-1"
+                />
+              </div>
 
               {/* Purpose */}
               <div>
