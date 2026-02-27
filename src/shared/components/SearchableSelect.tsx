@@ -148,7 +148,8 @@ export function SearchableSelect<TItem>({
           return;
         }
       }
-      setSearchTerm(value);
+      // Use defaultDisplayText (the name) instead of raw value (the ID)
+      setSearchTerm(defaultDisplayText || value);
       return;
     }
 
@@ -163,7 +164,7 @@ export function SearchableSelect<TItem>({
       updateSelectedKey(null);
       setSearchTerm('');
     }
-  }, [value, items, disabled, getItemLabel, getItemKey, updateSelectedKey]);
+  }, [value, items, disabled, defaultDisplayText, getItemLabel, getItemKey, updateSelectedKey]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props is a valid pattern
