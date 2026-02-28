@@ -561,12 +561,22 @@ export default function InspectionDetailPage() {
       </div>
 
       {/* Error Message */}
-      {apiErrors.general && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {apiErrors.general}
-        </div>
-      )}
+      {(() => {
+        const messages: string[] = [];
+        if (apiErrors.general) messages.push(apiErrors.general);
+        // Show field-level errors that aren't rendered inline (e.g. internal_lot_no)
+        Object.entries(apiErrors).forEach(([key, msg]) => {
+          if (key !== 'general' && key !== 'material_type_id' && !key.startsWith('param_') && key !== 'approval_remarks') {
+            messages.push(msg);
+          }
+        });
+        return messages.length > 0 ? (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <div>{messages.join('. ')}</div>
+          </div>
+        ) : null;
+      })()}
 
       {/* Inspection Form */}
       <Card>
