@@ -1,8 +1,12 @@
 export type {
+  AttachmentStatus,
+  ExtraCharge,
+  GRPOAttachment,
   GRPOHistoryEntry,
   GRPOHistoryLine,
   GRPOStatus,
   PendingGRPOEntry,
+  PostGRPOItemRequest,
   PostGRPORequest,
   PostGRPOResponse,
   PreviewItem,

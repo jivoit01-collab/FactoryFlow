@@ -150,6 +150,11 @@ export const API_ENDPOINTS = {
     POST: '/grpo/post/',
     HISTORY: '/grpo/history/',
     DETAIL: (postingId: number) => `/grpo/${postingId}/`,
+    ATTACHMENTS: (postingId: number) => `/grpo/${postingId}/attachments/`,
+    ATTACHMENT_DELETE: (postingId: number, attachmentId: number) =>
+      `/grpo/${postingId}/attachments/${attachmentId}/`,
+    ATTACHMENT_RETRY: (postingId: number, attachmentId: number) =>
+      `/grpo/${postingId}/attachments/${attachmentId}/retry/`,
   },
 } as const;
 
