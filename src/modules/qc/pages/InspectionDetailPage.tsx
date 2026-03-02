@@ -659,7 +659,7 @@ export default function InspectionDetailPage() {
               required
               value={formData.material_type_id || undefined}
               onChange={(type) => handleInputChange('material_type_id', type?.id || 0)}
-              disabled={!canEdit || isSaving || !!inspection}
+              disabled={!canEdit || isSaving}
               error={apiErrors.material_type_id}
             />
 
@@ -813,7 +813,7 @@ export default function InspectionDetailPage() {
           <CardContent>
             {/* Mobile: stacked card layout */}
             <div className="md:hidden space-y-4">
-              {(inspection?.parameter_results || qcParameters).map((param) => {
+              {(inspection?.parameter_results?.length ? inspection.parameter_results : qcParameters).map((param) => {
                 const parameterId = 'parameter_master' in param ? param.parameter_master : param.id;
                 const paramName = param.parameter_name;
                 const standardValue = param.standard_value;
@@ -923,7 +923,7 @@ export default function InspectionDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(inspection?.parameter_results || qcParameters).map((param) => {
+                  {(inspection?.parameter_results?.length ? inspection.parameter_results : qcParameters).map((param) => {
                     const parameterId =
                       'parameter_master' in param ? param.parameter_master : param.id;
                     const paramName = param.parameter_name;
