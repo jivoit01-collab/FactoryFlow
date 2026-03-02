@@ -376,7 +376,7 @@ export default function ReviewPage() {
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">Vehicle Type</Label>
-                <p className="font-medium">{gateEntry.vehicle.vehicle_type.name}</p>
+                <p className="font-medium">{gateEntry.vehicle.vehicle_type}</p>
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">Capacity</Label>

@@ -19,15 +19,26 @@ import {
 } from '@/shared/components/ui';
 
 import { useGRPOPreview, usePostGRPO } from '../api';
-import { WarehouseSelect } from '../components';
+import { ExtraChargesSection, WarehouseSelect } from '../components';
 import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants';
-import type { PostGRPOResponse, PreviewPOReceipt } from '../types';
+import type { ExtraCharge, PostGRPOResponse, PreviewPOReceipt } from '../types';
+
+// Per-item form state
+interface ItemFormState {
+  accepted_qty: number;
+  unit_price?: number;
+  tax_code?: string;
+  gl_account?: string;
+  variety?: string;
+}
 
 // Per-PO form state
 interface POFormState {
-  items: Record<number, number>; // po_item_receipt_id -> accepted_qty
+  items: Record<number, ItemFormState>;
   warehouseCode: string;
   comments: string;
+  vendorRef: string;
+  extraCharges: ExtraCharge[];
 }
 
 export default function GRPOPreviewPage() {
@@ -53,26 +64,51 @@ export default function GRPOPreviewPage() {
       if (formStates[po.po_receipt_id]) {
         return formStates[po.po_receipt_id];
       }
-      // Initialize with received_qty as default
-      const items: Record<number, number> = {};
+      // Initialize with preview data as defaults
+      const items: Record<number, ItemFormState> = {};
       po.items.forEach((item) => {
-        items[item.po_item_receipt_id] = item.received_qty;
+        items[item.po_item_receipt_id] = {
+          accepted_qty: item.received_qty,
+          unit_price: item.unit_price ? parseFloat(item.unit_price) : undefined,
+          tax_code: item.tax_code || undefined,
+          gl_account: item.gl_account || undefined,
+          variety: undefined,
+        };
       });
-      return { items, warehouseCode: '', comments: '' };
+      return {
+        items,
+        warehouseCode: po.items[0]?.warehouse_code || '',
+        comments: '',
+        vendorRef: po.vendor_ref || '',
+        extraCharges: [],
+      };
     },
     [formStates],
   );
+
+  // Helper to get the default empty form state
+  const defaultFormState = (): POFormState => ({
+    items: {},
+    warehouseCode: '',
+    comments: '',
+    vendorRef: '',
+    extraCharges: [],
+  });
 
   // Update item quantity
   const updateItemQty = (poReceiptId: number, poItemReceiptId: number, value: string) => {
     const qty = value === '' ? 0 : parseFloat(value);
     setFormStates((prev) => {
-      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' };
+      const current = prev[poReceiptId] || defaultFormState();
+      const currentItem = current.items[poItemReceiptId] || { accepted_qty: 0 };
       return {
         ...prev,
         [poReceiptId]: {
           ...current,
-          items: { ...current.items, [poItemReceiptId]: isNaN(qty) ? 0 : qty },
+          items: {
+            ...current.items,
+            [poItemReceiptId]: { ...currentItem, accepted_qty: isNaN(qty) ? 0 : qty },
+          },
         },
       };
     });
@@ -87,10 +123,33 @@ export default function GRPOPreviewPage() {
     }
   };
 
+  // Update a field on a specific item
+  const updateItemField = (
+    poReceiptId: number,
+    poItemReceiptId: number,
+    field: keyof ItemFormState,
+    value: string | number | undefined,
+  ) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      const currentItem = current.items[poItemReceiptId] || { accepted_qty: 0 };
+      return {
+        ...prev,
+        [poReceiptId]: {
+          ...current,
+          items: {
+            ...current.items,
+            [poItemReceiptId]: { ...currentItem, [field]: value },
+          },
+        },
+      };
+    });
+  };
+
   // Update warehouse code
   const updateWarehouseCode = (poReceiptId: number, value: string) => {
     setFormStates((prev) => {
-      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' };
+      const current = prev[poReceiptId] || defaultFormState();
       return { ...prev, [poReceiptId]: { ...current, warehouseCode: value } };
     });
   };
@@ -98,8 +157,24 @@ export default function GRPOPreviewPage() {
   // Update comments
   const updateComments = (poReceiptId: number, value: string) => {
     setFormStates((prev) => {
-      const current = prev[poReceiptId] || { items: {}, warehouseCode: '', comments: '' };
+      const current = prev[poReceiptId] || defaultFormState();
       return { ...prev, [poReceiptId]: { ...current, comments: value } };
+    });
+  };
+
+  // Update vendor reference
+  const updateVendorRef = (poReceiptId: number, value: string) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      return { ...prev, [poReceiptId]: { ...current, vendorRef: value } };
+    });
+  };
+
+  // Update extra charges
+  const updateExtraCharges = (poReceiptId: number, charges: ExtraCharge[]) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      return { ...prev, [poReceiptId]: { ...current, extraCharges: charges } };
     });
   };
 
@@ -109,7 +184,8 @@ export default function GRPOPreviewPage() {
     const errors: Record<string, string> = {};
 
     po.items.forEach((item) => {
-      const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty;
+      const itemForm = form.items[item.po_item_receipt_id];
+      const accepted = itemForm?.accepted_qty ?? item.received_qty;
       if (accepted < 0) {
         errors[`item_${item.po_item_receipt_id}`] = 'Cannot be negative';
       }
@@ -120,7 +196,8 @@ export default function GRPOPreviewPage() {
     });
 
     const hasValidQty = po.items.some((item) => {
-      const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty;
+      const itemForm = form.items[item.po_item_receipt_id];
+      const accepted = itemForm?.accepted_qty ?? item.received_qty;
       return accepted > 0;
     });
     if (!hasValidQty) {
@@ -143,10 +220,17 @@ export default function GRPOPreviewPage() {
     if (!confirmPO || !entryId) return;
 
     const form = getFormState(confirmPO);
-    const items = confirmPO.items.map((item) => ({
-      po_item_receipt_id: item.po_item_receipt_id,
-      accepted_qty: form.items[item.po_item_receipt_id] ?? item.received_qty,
-    }));
+    const items = confirmPO.items.map((item) => {
+      const itemForm = form.items[item.po_item_receipt_id];
+      return {
+        po_item_receipt_id: item.po_item_receipt_id,
+        accepted_qty: itemForm?.accepted_qty ?? item.received_qty,
+        unit_price: itemForm?.unit_price,
+        tax_code: itemForm?.tax_code || undefined,
+        gl_account: itemForm?.gl_account || undefined,
+        variety: itemForm?.variety || undefined,
+      };
+    });
 
     try {
       setApiErrors({});
@@ -154,9 +238,11 @@ export default function GRPOPreviewPage() {
         vehicle_entry_id: entryId,
         po_receipt_id: confirmPO.po_receipt_id,
         items,
-        branch_id: DEFAULT_BRANCH_ID,
+        branch_id: confirmPO.branch_id || DEFAULT_BRANCH_ID,
         warehouse_code: form.warehouseCode || undefined,
         comments: form.comments || undefined,
+        vendor_ref: form.vendorRef || undefined,
+        extra_charges: form.extraCharges.length > 0 ? form.extraCharges : undefined,
       });
       setConfirmPO(null);
       setSuccessResult(result);
@@ -272,7 +358,8 @@ export default function GRPOPreviewPage() {
                     </div>
                     <p className="text-sm text-muted-foreground">{po.supplier_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      Invoice: {po.invoice_no} | Challan: {po.challan_no}
+                      Invoice: {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
+                      {po.branch_id != null && ` | Branch: ${po.branch_id}`}
                     </p>
                   </div>
                 </div>
@@ -283,15 +370,17 @@ export default function GRPOPreviewPage() {
                     <div className="border-t pt-4 space-y-3">
                       <h4 className="text-sm font-medium">Items</h4>
                       {po.items.map((item) => {
-                        const acceptedQty =
-                          form.items[item.po_item_receipt_id] ?? item.received_qty;
+                        const itemForm = form.items[item.po_item_receipt_id] || {
+                          accepted_qty: item.received_qty,
+                        };
+                        const acceptedQty = itemForm.accepted_qty;
                         const rejectedQty = Math.max(0, item.received_qty - acceptedQty);
                         const errorKey = `item_${item.po_item_receipt_id}`;
 
                         return (
                           <div
                             key={item.po_item_receipt_id}
-                            className="p-3 rounded-md border bg-muted/30 space-y-2"
+                            className="p-3 rounded-md border bg-muted/30 space-y-3"
                           >
                             <div className="flex items-start justify-between">
                               <div>
@@ -315,6 +404,7 @@ export default function GRPOPreviewPage() {
                               </span>
                             </div>
 
+                            {/* Quantity Row */}
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1">
                                 <Label className="text-xs">Accepted Qty</Label>
@@ -348,6 +438,78 @@ export default function GRPOPreviewPage() {
                                 />
                               </div>
                             </div>
+
+                            {/* Item Detail Fields */}
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Unit Price</Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step="any"
+                                  value={itemForm.unit_price ?? ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateItemField(
+                                      po.po_receipt_id,
+                                      item.po_item_receipt_id,
+                                      'unit_price',
+                                      val === '' ? undefined : parseFloat(val) || 0,
+                                    );
+                                  }}
+                                  placeholder="0.00"
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Tax Code</Label>
+                                <Input
+                                  value={itemForm.tax_code ?? ''}
+                                  onChange={(e) =>
+                                    updateItemField(
+                                      po.po_receipt_id,
+                                      item.po_item_receipt_id,
+                                      'tax_code',
+                                      e.target.value || undefined,
+                                    )
+                                  }
+                                  placeholder="e.g. GST18"
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">G/L Account</Label>
+                                <Input
+                                  value={itemForm.gl_account ?? ''}
+                                  onChange={(e) =>
+                                    updateItemField(
+                                      po.po_receipt_id,
+                                      item.po_item_receipt_id,
+                                      'gl_account',
+                                      e.target.value || undefined,
+                                    )
+                                  }
+                                  placeholder="Account code"
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Variety</Label>
+                                <Input
+                                  value={itemForm.variety ?? ''}
+                                  onChange={(e) =>
+                                    updateItemField(
+                                      po.po_receipt_id,
+                                      item.po_item_receipt_id,
+                                      'variety',
+                                      e.target.value || undefined,
+                                    )
+                                  }
+                                  placeholder="e.g. TMT-500D"
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
@@ -355,13 +517,22 @@ export default function GRPOPreviewPage() {
 
                     {/* PO Form Fields */}
                     <div className="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Vendor Reference</Label>
+                        <Input
+                          value={form.vendorRef}
+                          onChange={(e) => updateVendorRef(po.po_receipt_id, e.target.value)}
+                          placeholder="Invoice / challan number"
+                          className="h-8 text-sm"
+                        />
+                      </div>
                       <WarehouseSelect
                         label="Warehouse Code"
                         value={form.warehouseCode}
                         onChange={(code) => updateWarehouseCode(po.po_receipt_id, code)}
                         placeholder="Select warehouse"
                       />
-                      <div className="space-y-1">
+                      <div className="space-y-1 sm:col-span-2">
                         <Label className="text-xs">Comments</Label>
                         <Input
                           value={form.comments}
@@ -370,6 +541,14 @@ export default function GRPOPreviewPage() {
                           className="h-8 text-sm"
                         />
                       </div>
+                    </div>
+
+                    {/* Extra Charges */}
+                    <div className="border-t pt-4">
+                      <ExtraChargesSection
+                        charges={form.extraCharges}
+                        onChange={(charges) => updateExtraCharges(po.po_receipt_id, charges)}
+                      />
                     </div>
 
                     {/* Post Button */}
@@ -398,7 +577,7 @@ export default function GRPOPreviewPage() {
           <DialogHeader>
             <DialogTitle>Confirm GRPO Posting</DialogTitle>
             <DialogDescription>
-              Review the quantities below before posting to SAP.
+              Review the details below before posting to SAP.
             </DialogDescription>
           </DialogHeader>
           {confirmPO && (
@@ -411,10 +590,36 @@ export default function GRPOPreviewPage() {
                 <span className="text-muted-foreground">Supplier:</span>{' '}
                 <span className="font-medium">{confirmPO.supplier_name}</span>
               </div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">Branch ID:</span>{' '}
+                <span className="font-medium">
+                  {confirmPO.branch_id || DEFAULT_BRANCH_ID}
+                </span>
+              </div>
+              {(() => {
+                const confirmForm = getFormState(confirmPO);
+                return (
+                  <>
+                    {confirmForm.vendorRef && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Vendor Ref:</span>{' '}
+                        <span className="font-medium">{confirmForm.vendorRef}</span>
+                      </div>
+                    )}
+                    {confirmForm.warehouseCode && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Warehouse:</span>{' '}
+                        <span className="font-medium">{confirmForm.warehouseCode}</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               <div className="border-t pt-3 space-y-2">
                 {confirmPO.items.map((item) => {
-                  const form = getFormState(confirmPO);
-                  const accepted = form.items[item.po_item_receipt_id] ?? item.received_qty;
+                  const confirmForm = getFormState(confirmPO);
+                  const itemForm = confirmForm.items[item.po_item_receipt_id];
+                  const accepted = itemForm?.accepted_qty ?? item.received_qty;
                   return (
                     <div
                       key={item.po_item_receipt_id}
@@ -428,6 +633,20 @@ export default function GRPOPreviewPage() {
                   );
                 })}
               </div>
+              {(() => {
+                const confirmForm = getFormState(confirmPO);
+                if (confirmForm.extraCharges.length === 0) return null;
+                const total = confirmForm.extraCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
+                return (
+                  <div className="border-t pt-3 text-sm">
+                    <span className="text-muted-foreground">Extra Charges:</span>{' '}
+                    <span className="font-medium">
+                      {confirmForm.extraCharges.length} charge(s), total{' '}
+                      {total.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
           <DialogFooter>

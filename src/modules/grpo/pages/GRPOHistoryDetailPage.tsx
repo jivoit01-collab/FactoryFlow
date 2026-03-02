@@ -1,10 +1,13 @@
 import { AlertCircle, ArrowLeft, RefreshCw, ShieldX } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { GRPO_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
+import { useHasPermission } from '@/core/auth';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useGRPODetail } from '../api';
+import { AttachmentsSection } from '../components';
 import { GRPO_STATUS_CONFIG } from '../constants';
 
 // Format date/time for display
@@ -30,6 +33,7 @@ export default function GRPOHistoryDetailPage() {
   const id = postingId ? parseInt(postingId, 10) : null;
 
   const { data: posting, isLoading, error, refetch } = useGRPODetail(id);
+  const canManageAttachments = useHasPermission(GRPO_PERMISSIONS.MANAGE_ATTACHMENTS);
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
@@ -173,6 +177,15 @@ export default function GRPOHistoryDetailPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Attachments */}
+          {posting.status === 'POSTED' && (
+            <AttachmentsSection
+              postingId={posting.id}
+              attachments={posting.attachments || []}
+              canManage={canManageAttachments}
+            />
           )}
 
           {/* Back Button */}

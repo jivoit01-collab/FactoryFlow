@@ -190,6 +190,39 @@ export const GRPO_STATUS_CONFIG: Record<GRPOStatus, StatusConfigWithIcon> = {
 };
 
 // ============================================================================
+// GRPO Attachment Status Constants
+// ============================================================================
+
+export const ATTACHMENT_STATUS = {
+  PENDING: 'PENDING',
+  LINKED: 'LINKED',
+  FAILED: 'FAILED',
+} as const;
+
+export type AttachmentStatusType = (typeof ATTACHMENT_STATUS)[keyof typeof ATTACHMENT_STATUS];
+
+export const ATTACHMENT_STATUS_CONFIG: Record<AttachmentStatusType, StatusConfigWithIcon> = {
+  PENDING: {
+    label: 'Pending',
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-50',
+    icon: Clock,
+  },
+  LINKED: {
+    label: 'Linked',
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    icon: CheckCircle2,
+  },
+  FAILED: {
+    label: 'Failed',
+    color: 'text-red-600',
+    bgColor: 'bg-red-50',
+    icon: XCircle,
+  },
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 

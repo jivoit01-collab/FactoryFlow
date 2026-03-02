@@ -1,1 +1,7 @@
-export { DEFAULT_BRANCH_ID, GRPO_STATUS, GRPO_STATUS_CONFIG } from './grpo.constants';
+export {
+  ATTACHMENT_STATUS,
+  ATTACHMENT_STATUS_CONFIG,
+  DEFAULT_BRANCH_ID,
+  GRPO_STATUS,
+  GRPO_STATUS_CONFIG,
+} from './grpo.constants';

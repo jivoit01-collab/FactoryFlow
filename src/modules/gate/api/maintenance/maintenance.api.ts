@@ -72,7 +72,7 @@ export interface MaintenanceFullViewGateEntry {
 
 export interface MaintenanceFullViewVehicle {
   vehicle_number: string;
-  vehicle_type: { id: number; name: string };
+  vehicle_type: string;
   capacity_ton: number;
 }
 
