@@ -51,6 +51,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "dist/*"
           target: "/var/www/react-app"
+          strip_components: 1
 
       - name: Restart Nginx
         uses: appleboy/ssh-action@v1.0.3
