@@ -22,7 +22,7 @@ import {
   useBulkExitEntry,
   useContractorLaboursStatus,
 } from '../../api/personGateIn/personGateIn.queries';
-import { GateSelect } from '../../components/persongatein/GateSelect';
+import { GateSelect } from '../../components/personGateIn/GateSelect';
 
 function getCurrentLocalDateTime(): string {
   const now = new Date();
