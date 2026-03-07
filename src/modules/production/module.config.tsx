@@ -8,6 +8,7 @@ import type { ModuleConfig } from '@/core/types';
 const PlanningDashboardPage = lazy(() => import('./planning/pages/PlanningDashboardPage'));
 const CreatePlanPage = lazy(() => import('./planning/pages/CreatePlanPage'));
 const PlanDetailPage = lazy(() => import('./planning/pages/PlanDetailPage'));
+const BulkImportPage = lazy(() => import('./planning/pages/BulkImportPage'));
 
 export const productionModuleConfig: ModuleConfig = {
   name: 'production',
@@ -21,6 +22,12 @@ export const productionModuleConfig: ModuleConfig = {
     {
       path: '/production/planning/create',
       element: <CreatePlanPage />,
+      layout: 'main',
+      permissions: [PRODUCTION_PERMISSIONS.CREATE_PLAN],
+    },
+    {
+      path: '/production/planning/bulk-import',
+      element: <BulkImportPage />,
       layout: 'main',
       permissions: [PRODUCTION_PERMISSIONS.CREATE_PLAN],
     },

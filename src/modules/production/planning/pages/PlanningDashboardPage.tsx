@@ -6,11 +6,13 @@ import {
   Eye,
   Pencil,
   Plus,
+  FileSpreadsheet,
   RefreshCw,
   ShieldX,
   Trash2,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
@@ -19,6 +21,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -30,7 +33,10 @@ import {
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { DashboardLoading } from '@/shared/components/dashboard/DashboardLoading';
 
-import { useDeletePlan, usePlans, usePlanSummary } from '../api';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { PLANNING_QUERY_KEYS, useDeletePlan, usePlans, usePlanSummary } from '../api';
+import { planningApi } from '../api/planning.api';
 import { PlanStatusBadge } from '../components/PlanStatusBadge';
 import { PlanSummaryCards } from '../components/PlanSummaryCards';
 import { SAPPostingBadge } from '../components/SAPPostingBadge';
@@ -104,6 +110,86 @@ export default function PlanningDashboardPage() {
     });
   };
 
+  // Multi-select for bulk delete
+  const queryClient = useQueryClient();
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteProgress, setBulkDeleteProgress] = useState(0);
+
+  const draftPlans = useMemo(() => plans.filter((p) => p.status === 'DRAFT'), [plans]);
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === draftPlans.length && draftPlans.length > 0) return new Set();
+      return new Set(draftPlans.map((p) => p.id));
+    });
+  }, [draftPlans]);
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkDeleting(true);
+    setBulkDeleteProgress(0);
+    let successCount = 0;
+    let failCount = 0;
+    let completed = 0;
+
+    const ids = Array.from(selectedIds);
+    const CONCURRENCY = 5;
+
+    await new Promise<void>((resolve) => {
+      let next = 0;
+
+      const run = async () => {
+        const idx = next++;
+        if (idx >= ids.length) return;
+
+        try {
+          await planningApi.deletePlan(ids[idx]);
+          successCount++;
+        } catch {
+          failCount++;
+        }
+
+        completed++;
+        setBulkDeleteProgress(completed);
+
+        if (completed === ids.length) {
+          resolve();
+        } else {
+          run();
+        }
+      };
+
+      for (let i = 0; i < Math.min(CONCURRENCY, ids.length); i++) {
+        run();
+      }
+    });
+
+    // Invalidate queries once after all deletes
+    await queryClient.invalidateQueries({ queryKey: PLANNING_QUERY_KEYS.all });
+
+    setIsBulkDeleting(false);
+    setShowBulkDeleteDialog(false);
+    setSelectedIds(new Set());
+    setBulkDeleteProgress(0);
+
+    if (failCount === 0) {
+      toast.success(`Deleted ${successCount} plan(s) successfully`);
+    } else {
+      toast.warning(`${successCount} deleted, ${failCount} failed`);
+    }
+  };
+
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
@@ -117,7 +203,16 @@ export default function PlanningDashboardPage() {
           icon: <Plus className="h-4 w-4 mr-2" />,
           onClick: () => navigate('/production/planning/create'),
         }}
-      />
+      >
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => navigate('/production/planning/bulk-import')}
+        >
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Bulk Add Plans
+        </Button>
+      </DashboardHeader>
 
       {isLoading ? (
         <DashboardLoading />
@@ -224,6 +319,30 @@ export default function PlanningDashboardPage() {
             </div>
           )}
 
+          {/* Bulk Selection Bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
+              <span className="text-sm font-medium">
+                {selectedIds.size} plan(s) selected
+              </span>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowBulkDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete Selected
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear Selection
+              </Button>
+            </div>
+          )}
+
           {/* Plans Table */}
           {plans.length === 0 ? (
             <Card>
@@ -247,6 +366,12 @@ export default function PlanningDashboardPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={draftPlans.length > 0 && selectedIds.size === draftPlans.length}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </th>
                       <th className="text-left font-medium px-4 py-3">Item Code</th>
                       <th className="text-left font-medium px-4 py-3">Item Name</th>
                       <th className="text-left font-medium px-4 py-3 hidden lg:table-cell">
@@ -278,6 +403,16 @@ export default function PlanningDashboardPage() {
                         }`}
                         onClick={() => navigate(`/production/planning/${plan.id}`)}
                       >
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          {plan.status === 'DRAFT' ? (
+                            <Checkbox
+                              checked={selectedIds.has(plan.id)}
+                              onCheckedChange={() => toggleSelect(plan.id)}
+                            />
+                          ) : (
+                            <span className="inline-block h-4 w-4" />
+                          )}
+                        </td>
                         <td className="px-4 py-3 font-mono text-xs">{plan.item_code}</td>
                         <td className="px-4 py-3 max-w-[200px] truncate">{plan.item_name}</td>
                         <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">
@@ -371,7 +506,7 @@ export default function PlanningDashboardPage() {
         </>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog (single) */}
       <Dialog open={!!planToDelete} onOpenChange={() => setPlanToDelete(null)}>
         <DialogContent>
           <DialogHeader>
@@ -391,6 +526,42 @@ export default function PlanningDashboardPage() {
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={showBulkDeleteDialog} onOpenChange={() => !isBulkDeleting && setShowBulkDeleteDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {selectedIds.size} Plan(s)?</DialogTitle>
+            <DialogDescription>
+              {isBulkDeleting
+                ? `Deleting ${bulkDeleteProgress} of ${selectedIds.size} plan(s)...`
+                : `This will permanently delete ${selectedIds.size} selected draft plan(s). This action cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          {isBulkDeleting && (
+            <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-destructive transition-all"
+                style={{ width: `${(bulkDeleteProgress / selectedIds.size) * 100}%` }}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isBulkDeleting}>Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+            >
+              {isBulkDeleting
+                ? `Deleting ${bulkDeleteProgress}/${selectedIds.size}...`
+                : `Delete ${selectedIds.size} Plan(s)`}
             </Button>
           </DialogFooter>
         </DialogContent>
