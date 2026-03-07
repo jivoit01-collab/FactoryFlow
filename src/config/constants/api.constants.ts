@@ -156,6 +156,30 @@ export const API_ENDPOINTS = {
     ATTACHMENT_RETRY: (postingId: number, attachmentId: number) =>
       `/grpo/${postingId}/attachments/${attachmentId}/retry/`,
   },
+  // Production Planning
+  PRODUCTION_PLANNING: {
+    LIST: '/production-planning/',
+    CREATE: '/production-planning/',
+    SUMMARY: '/production-planning/summary/',
+    DETAIL: (planId: number) => `/production-planning/${planId}/`,
+    POST_TO_SAP: (planId: number) => `/production-planning/${planId}/post-to-sap/`,
+    CLOSE: (planId: number) => `/production-planning/${planId}/close/`,
+    MATERIALS: (planId: number) => `/production-planning/${planId}/materials/`,
+    MATERIAL_DELETE: (planId: number, materialId: number) =>
+      `/production-planning/${planId}/materials/${materialId}/`,
+    WEEKLY_PLANS: (planId: number) => `/production-planning/${planId}/weekly-plans/`,
+    WEEKLY_PLAN_DETAIL: (planId: number, weekId: number) =>
+      `/production-planning/${planId}/weekly-plans/${weekId}/`,
+    DAILY_ENTRIES: (weekId: number) =>
+      `/production-planning/weekly-plans/${weekId}/daily-entries/`,
+    DAILY_ENTRY_DETAIL: (weekId: number, entryId: number) =>
+      `/production-planning/weekly-plans/${weekId}/daily-entries/${entryId}/`,
+    DAILY_ENTRIES_ALL: '/production-planning/daily-entries/',
+    DROPDOWN_ITEMS: '/production-planning/dropdown/items/',
+    DROPDOWN_UOM: '/production-planning/dropdown/uom/',
+    DROPDOWN_WAREHOUSES: '/production-planning/dropdown/warehouses/',
+    DROPDOWN_BOM: '/production-planning/dropdown/bom/',
+  },
 } as const;
 
 export const HTTP_STATUS = {

@@ -1,5 +1,5 @@
 import { AlertCircle, ArrowLeft, CheckCircle2, Package, RefreshCw, ShieldX } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { FINAL_STATUS } from '@/config/constants';
@@ -58,25 +58,42 @@ export default function GRPOPreviewPage() {
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
-  // Get or initialize form state for a PO
-  const getFormState = useCallback(
-    (po: PreviewPOReceipt): POFormState => {
-      if (formStates[po.po_receipt_id]) {
-        return formStates[po.po_receipt_id];
-      }
-      // Initialize with preview data as defaults
-      const items: Record<number, ItemFormState> = {};
-      po.items.forEach((item) => {
-        items[item.po_item_receipt_id] = {
-          accepted_qty: item.received_qty,
-          unit_price: item.unit_price ? parseFloat(item.unit_price) : undefined,
-          tax_code: item.tax_code || undefined,
-          gl_account: item.gl_account || undefined,
-          variety: undefined,
+  // Initialize form states from preview data when it loads
+  useEffect(() => {
+    if (previewData.length === 0) return;
+    setFormStates((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      previewData.forEach((po) => {
+        if (next[po.po_receipt_id]) return;
+        changed = true;
+        const items: Record<number, ItemFormState> = {};
+        po.items.forEach((item) => {
+          items[item.po_item_receipt_id] = {
+            accepted_qty: item.received_qty,
+            unit_price: item.unit_price ? parseFloat(item.unit_price) : undefined,
+            tax_code: item.tax_code || undefined,
+            gl_account: item.gl_account || undefined,
+            variety: undefined,
+          };
+        });
+        next[po.po_receipt_id] = {
+          items,
+          warehouseCode: po.items[0]?.warehouse_code || '',
+          comments: '',
+          vendorRef: po.vendor_ref || '',
+          extraCharges: [],
         };
       });
-      return {
-        items,
+      return changed ? next : prev;
+    });
+  }, [previewData]);
+
+  // Get form state for a PO (guaranteed to exist after useEffect runs)
+  const getFormState = useCallback(
+    (po: PreviewPOReceipt): POFormState => {
+      return formStates[po.po_receipt_id] || {
+        items: {},
         warehouseCode: po.items[0]?.warehouse_code || '',
         comments: '',
         vendorRef: po.vendor_ref || '',
