@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 
@@ -8,6 +8,7 @@ import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 import { MachineStatusDot } from '../components/MachineStatusDot';
 import { TIME_SLOTS } from '../constants';
 import { useDailyProductionReport, useProductionLines } from '../api/execution.queries';
+import type { ProductionRunDetail } from '../types';
 
 export default function DailyProductionReportPage() {
   const navigate = useNavigate();
@@ -15,11 +16,18 @@ export default function DailyProductionReportPage() {
   const [lineId, setLineId] = useState<number | undefined>();
 
   const { data: lines = [] } = useProductionLines(true);
-  const { data: report, isLoading } = useDailyProductionReport({ date, line_id: lineId });
+  const { data: runs = [], isLoading } = useDailyProductionReport({ date, line_id: lineId });
 
   const handlePrint = () => {
     window.print();
   };
+
+  // Compute summary from the flat runs array returned by backend
+  const summary = useMemo(() => {
+    const totalProduction = runs.reduce((sum, r) => sum + r.total_production, 0);
+    const totalBreakdown = runs.reduce((sum, r) => sum + r.total_breakdown_time, 0);
+    return { totalProduction, totalBreakdown };
+  }, [runs]);
 
   return (
     <div className="space-y-6 p-6">
@@ -81,7 +89,7 @@ export default function DailyProductionReportPage() {
           <div className="h-32 bg-muted rounded animate-pulse" />
           <div className="h-96 bg-muted rounded animate-pulse" />
         </div>
-      ) : !report ? (
+      ) : runs.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-muted-foreground">
@@ -97,7 +105,7 @@ export default function DailyProductionReportPage() {
             <p className="text-sm">JIVO WELLNESS PVT. LTD.</p>
           </div>
 
-          {/* Report Info */}
+          {/* Report Summary */}
           <Card className="print:shadow-none print:border">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Report Summary</CardTitle>
@@ -111,188 +119,129 @@ export default function DailyProductionReportPage() {
                 <div>
                   <span className="text-muted-foreground">Total Production</span>
                   <p className="font-bold text-blue-600">
-                    {report.total_production?.toLocaleString() ?? 0} Cases
+                    {summary.totalProduction.toLocaleString()} Cases
                   </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Total Breakdown</span>
                   <p className="font-bold text-red-600">
-                    {report.total_breakdown ?? 0} min
+                    {summary.totalBreakdown} min
                   </p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Efficiency</span>
-                  <p className="font-bold text-green-600">
-                    {report.efficiency?.toFixed(1) ?? '0.0'}%
-                  </p>
+                  <span className="text-muted-foreground">Total Runs</span>
+                  <p className="font-bold text-green-600">{runs.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Runs */}
-          {report.runs?.map((run: Record<string, unknown>) => {
-            const runData = run as {
-              id: number;
-              run_number: number;
-              brand?: string;
-              plan_item_name?: string;
-              pack?: string;
-              line_name?: string;
-              sap_order_no?: string;
-              rated_speed?: string;
-              status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED';
-              total_production: number;
-              total_breakdown_time: number;
-              total_minutes_pe?: number;
-              total_minutes_me?: number;
-              line_breakdown_time?: number;
-              external_breakdown_time?: number;
-              unrecorded_time?: number;
-              logs?: {
-                time_slot: string;
-                produced_cases: number;
-                machine_status: 'RUNNING' | 'IDLE' | 'BREAKDOWN' | 'CHANGEOVER';
-                recd_minutes: number;
-                breakdown_detail: string;
-              }[];
-              manpower?: { worker_count: number }[];
-            };
-
-            const totalWorkers = runData.manpower?.reduce(
-              (sum, m) => sum + m.worker_count,
-              0,
-            ) ?? 0;
-
-            return (
-              <Card key={runData.id} className="print:shadow-none print:border print:break-inside-avoid">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                      Run #{runData.run_number} — {runData.brand || runData.plan_item_name || 'Production Run'}
-                      {runData.pack && ` ${runData.pack}`}
-                    </CardTitle>
-                    <ProductionStatusBadge status={runData.status} />
+          {runs.map((runData: ProductionRunDetail) => (
+            <Card key={runData.id} className="print:shadow-none print:border print:break-inside-avoid">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    Run #{runData.run_number} — {runData.brand || runData.plan_item_name || 'Production Run'}
+                    {runData.pack && ` ${runData.pack}`}
+                  </CardTitle>
+                  <ProductionStatusBadge status={runData.status} />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Run Info Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">Line</span>
+                    <p className="font-medium">{runData.line_name}</p>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Run Info Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  {runData.sap_order_no && (
                     <div>
-                      <span className="text-muted-foreground">Line</span>
-                      <p className="font-medium">{runData.line_name}</p>
-                    </div>
-                    {runData.sap_order_no && (
-                      <div>
-                        <span className="text-muted-foreground">SAP Order</span>
-                        <p className="font-medium">{runData.sap_order_no}</p>
-                      </div>
-                    )}
-                    <div>
-                      <span className="text-muted-foreground">Rated Speed</span>
-                      <p className="font-medium">{runData.rated_speed ?? '—'} cases/hr</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Manpower</span>
-                      <p className="font-medium">{totalWorkers} workers</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Total PE Minutes</span>
-                      <p className="font-medium">{runData.total_minutes_pe ?? '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Total ME Minutes</span>
-                      <p className="font-medium">{runData.total_minutes_me ?? '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Line Breakdown</span>
-                      <p className="font-medium">{runData.line_breakdown_time ?? 0} min</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">External Breakdown</span>
-                      <p className="font-medium">{runData.external_breakdown_time ?? 0} min</p>
-                    </div>
-                  </div>
-
-                  {/* Hourly Production Table (read-only) */}
-                  {runData.logs && runData.logs.length > 0 && (
-                    <div className="overflow-x-auto rounded-lg border">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-muted/50">
-                            <th className="px-2 py-2 text-left font-medium">Time</th>
-                            <th className="px-2 py-2 text-right font-medium">Prod (Cases)</th>
-                            <th className="px-2 py-2 text-center font-medium">Machine</th>
-                            <th className="px-2 py-2 text-right font-medium">Recd Mins</th>
-                            <th className="px-2 py-2 text-left font-medium">Detail</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {TIME_SLOTS.map((slot) => {
-                            const log = runData.logs?.find((l) => l.time_slot === slot.slot);
-                            return (
-                              <tr key={slot.slot} className="border-b last:border-0">
-                                <td className="px-2 py-1.5 font-medium text-muted-foreground">
-                                  {slot.slot}
-                                </td>
-                                <td className="px-2 py-1.5 text-right font-mono">
-                                  {log?.produced_cases || '—'}
-                                </td>
-                                <td className="px-2 py-1.5 text-center">
-                                  {log ? (
-                                    <MachineStatusDot status={log.machine_status} showLabel />
-                                  ) : (
-                                    '—'
-                                  )}
-                                </td>
-                                <td className="px-2 py-1.5 text-right font-mono">
-                                  {log?.recd_minutes || '—'}
-                                </td>
-                                <td className="px-2 py-1.5 text-muted-foreground">
-                                  {log?.breakdown_detail || '—'}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          <tr className="bg-blue-50 dark:bg-blue-900/20 font-bold text-xs">
-                            <td className="px-2 py-2">TOTAL</td>
-                            <td className="px-2 py-2 text-right font-mono">
-                              {runData.total_production.toLocaleString()}
-                            </td>
-                            <td className="px-2 py-2" />
-                            <td className="px-2 py-2 text-right font-mono">
-                              {runData.logs?.reduce((sum, l) => sum + l.recd_minutes, 0) ?? 0}
-                            </td>
-                            <td className="px-2 py-2" />
-                          </tr>
-                        </tbody>
-                      </table>
+                      <span className="text-muted-foreground">SAP Order</span>
+                      <p className="font-medium">{runData.sap_order_no}</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                  <div>
+                    <span className="text-muted-foreground">Rated Speed</span>
+                    <p className="font-medium">{runData.rated_speed ?? '—'} cases/hr</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Total PE Minutes</span>
+                    <p className="font-medium">{runData.total_minutes_pe ?? '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Total ME Minutes</span>
+                    <p className="font-medium">{runData.total_minutes_me ?? '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Line Breakdown</span>
+                    <p className="font-medium">{runData.line_breakdown_time ?? 0} min</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">External Breakdown</span>
+                    <p className="font-medium">{runData.external_breakdown_time ?? 0} min</p>
+                  </div>
+                </div>
 
-          {/* Signature Row */}
-          <Card className="print:shadow-none print:border">
-            <CardContent className="p-6">
-              <div className="grid grid-cols-3 gap-8">
-                <div className="text-center">
-                  <div className="border-b border-dashed pb-8 mb-2" />
-                  <p className="text-xs text-muted-foreground">Sign of Associate</p>
-                </div>
-                <div className="text-center">
-                  <div className="border-b border-dashed pb-8 mb-2" />
-                  <p className="text-xs text-muted-foreground">Sign of Engineer</p>
-                </div>
-                <div className="text-center">
-                  <div className="border-b border-dashed pb-8 mb-2" />
-                  <p className="text-xs text-muted-foreground">HOD Sign</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                {/* Hourly Production Table */}
+                {runData.logs && runData.logs.length > 0 && (
+                  <div className="overflow-x-auto rounded-lg border">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="px-2 py-2 text-left font-medium">Time</th>
+                          <th className="px-2 py-2 text-right font-medium">Prod (Cases)</th>
+                          <th className="px-2 py-2 text-center font-medium">Machine</th>
+                          <th className="px-2 py-2 text-right font-medium">Recd Mins</th>
+                          <th className="px-2 py-2 text-left font-medium">Detail</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {TIME_SLOTS.map((slot) => {
+                          const log = runData.logs?.find((l) => l.time_slot === slot.slot);
+                          return (
+                            <tr key={slot.slot} className="border-b last:border-0">
+                              <td className="px-2 py-1.5 font-medium text-muted-foreground">
+                                {slot.slot}
+                              </td>
+                              <td className="px-2 py-1.5 text-right font-mono">
+                                {log?.produced_cases || '—'}
+                              </td>
+                              <td className="px-2 py-1.5 text-center">
+                                {log ? (
+                                  <MachineStatusDot status={log.machine_status} showLabel />
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                              <td className="px-2 py-1.5 text-right font-mono">
+                                {log?.recd_minutes || '—'}
+                              </td>
+                              <td className="px-2 py-1.5 text-muted-foreground">
+                                {log?.breakdown_detail || '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        <tr className="bg-blue-50 dark:bg-blue-900/20 font-bold text-xs">
+                          <td className="px-2 py-2">TOTAL</td>
+                          <td className="px-2 py-2 text-right font-mono">
+                            {runData.total_production.toLocaleString()}
+                          </td>
+                          <td className="px-2 py-2" />
+                          <td className="px-2 py-2 text-right font-mono">
+                            {runData.logs?.reduce((sum, l) => sum + l.recd_minutes, 0) ?? 0}
+                          </td>
+                          <td className="px-2 py-2" />
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+
         </div>
       )}
     </div>

@@ -97,10 +97,6 @@ export interface ProductionRunDetail extends ProductionRun {
   updated_at: string;
   logs: ProductionLog[];
   breakdowns: MachineBreakdown[];
-  materials: ProductionMaterialUsage[];
-  machine_runtime: MachineRuntime[];
-  manpower: ProductionManpower[];
-  waste_logs: WasteLog[];
 }
 
 // ============================================================================
@@ -280,35 +276,22 @@ export interface WasteLog {
 // ============================================================================
 
 export interface AnalyticsData {
-  oee: number;
-  availability: number;
-  performance: number;
-  quality: number;
-  line_efficiency: number;
-  material_loss_pct: number;
-  downtime_hours: number;
-  production_vs_plan_pct: number;
+  total_runs: number;
+  total_production: number;
+  total_pe_minutes: number;
+  total_breakdown_minutes: number;
+  total_line_breakdown_minutes: number;
+  total_external_breakdown_minutes: number;
+  available_time_minutes: number;
+  operating_time_minutes: number;
+  availability_percent: number;
 }
 
 export interface YieldReportData {
-  run: ProductionRunDetail;
+  run: ProductionRun;
   materials: ProductionMaterialUsage[];
-  machine_runtime: MachineRuntime[];
-  total_wastage: number;
-  material_loss_pct: number;
-}
-
-// ============================================================================
-// Dashboard Summary
-// ============================================================================
-
-export interface ExecutionDashboardSummary {
-  todays_production: number;
-  active_runs: number;
-  total_breakdown_minutes: number;
-  line_efficiency: number;
-  pending_clearances: number;
-  pending_waste_approvals: number;
+  machine_runtimes: MachineRuntime[];
+  manpower: ProductionManpower[];
 }
 
 // ============================================================================

@@ -9,10 +9,10 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
-import { useAnalytics, useOEE, useProductionLines } from '../api/execution.queries';
+import { useAnalytics, useProductionLines } from '../api/execution.queries';
 
 const REPORT_CARDS = [
   {
@@ -29,7 +29,7 @@ const REPORT_CARDS = [
     icon: PieChart,
     color: 'text-green-600',
     bg: 'bg-green-50 dark:bg-green-900/20',
-    path: null, // Navigate from run detail
+    path: null,
   },
   {
     title: 'Line Clearance Report',
@@ -41,7 +41,7 @@ const REPORT_CARDS = [
   },
   {
     title: 'Analytics',
-    description: 'OEE, efficiency trends, downtime analysis, production vs plan',
+    description: 'Availability, efficiency trends, downtime analysis',
     icon: TrendingUp,
     color: 'text-purple-600',
     bg: 'bg-purple-50 dark:bg-purple-900/20',
@@ -72,7 +72,11 @@ export default function ReportsPage() {
   };
 
   const { data: analytics } = useAnalytics(analyticsParams);
-  const { data: oee } = useOEE(analyticsParams);
+
+  const availabilityPct = analytics?.availability_percent ?? null;
+  const downtimeHours = analytics
+    ? (analytics.total_breakdown_minutes / 60).toFixed(1)
+    : null;
 
   return (
     <div className="space-y-6 p-6">
@@ -137,106 +141,50 @@ export default function ReportsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* OEE Card */}
+          {/* Availability Card */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-blue-600" />
-                OEE (Overall Equipment Effectiveness)
+                Availability
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-blue-600">
-                {oee?.oee != null ? `${oee.oee.toFixed(1)}%` : '—'}
+                {availabilityPct != null ? `${availabilityPct}%` : '—'}
               </p>
-              {oee && (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Availability</span>
-                    <span className="font-medium">{oee.availability?.toFixed(1)}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
+              {analytics && (
+                <div className="mt-3">
+                  <div className="h-2 rounded-full bg-gray-200 dark:bg-gray-700">
                     <div
-                      className="h-1.5 rounded-full bg-blue-500"
-                      style={{ width: `${Math.min(oee.availability ?? 0, 100)}%` }}
+                      className="h-2 rounded-full bg-blue-500"
+                      style={{ width: `${Math.min(availabilityPct ?? 0, 100)}%` }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Performance</span>
-                    <span className="font-medium">{oee.performance?.toFixed(1)}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
-                    <div
-                      className="h-1.5 rounded-full bg-amber-500"
-                      style={{ width: `${Math.min(oee.performance ?? 0, 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Quality</span>
-                    <span className="font-medium">{oee.quality?.toFixed(1)}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
-                    <div
-                      className="h-1.5 rounded-full bg-green-500"
-                      style={{ width: `${Math.min(oee.quality ?? 0, 100)}%` }}
-                    />
-                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Operating: {analytics.operating_time_minutes} min / Available: {analytics.available_time_minutes} min
+                  </p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Line Efficiency Card */}
+          {/* Total Production Card */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-600" />
-                Line Efficiency
+                Total Production
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-green-600">
-                {analytics?.line_efficiency != null
-                  ? `${analytics.line_efficiency.toFixed(1)}%`
+                {analytics?.total_production != null
+                  ? analytics.total_production.toLocaleString()
                   : '—'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Target: 85%
-              </p>
-              {analytics?.line_efficiency != null && (
-                <div className="mt-3">
-                  <div className="h-2 rounded-full bg-gray-200 dark:bg-gray-700 relative">
-                    <div
-                      className="h-2 rounded-full bg-green-500"
-                      style={{ width: `${Math.min(analytics.line_efficiency, 100)}%` }}
-                    />
-                    <div
-                      className="absolute top-0 h-2 w-0.5 bg-red-500"
-                      style={{ left: '85%' }}
-                      title="Target: 85%"
-                    />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Material Loss Card */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <PieChart className="h-4 w-4 text-amber-600" />
-                Material Loss
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-amber-600">
-                {analytics?.material_loss_pct != null
-                  ? `${analytics.material_loss_pct.toFixed(1)}%`
-                  : '—'}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Threshold: 2%
+                Across {analytics?.total_runs ?? 0} completed runs
               </p>
             </CardContent>
           </Card>
@@ -251,31 +199,59 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-red-600">
-                {analytics?.downtime_hours != null
-                  ? `${analytics.downtime_hours.toFixed(1)} hrs`
-                  : '—'}
+                {downtimeHours != null ? `${downtimeHours} hrs` : '—'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Total downtime in selected period
               </p>
+              {analytics && (
+                <div className="mt-2 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Line Breakdowns</span>
+                    <span>{analytics.total_line_breakdown_minutes} min</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">External Breakdowns</span>
+                    <span>{analytics.total_external_breakdown_minutes} min</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Production vs Plan Card */}
+          {/* PE Minutes Card */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-purple-600" />
-                Production vs Plan
+                PE Minutes
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-purple-600">
-                {analytics?.production_vs_plan_pct != null
-                  ? `${analytics.production_vs_plan_pct.toFixed(1)}%`
+                {analytics?.total_pe_minutes != null
+                  ? analytics.total_pe_minutes.toLocaleString()
                   : '—'}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Achievement rate</p>
+              <p className="text-xs text-muted-foreground mt-1">Total productive equipment minutes</p>
+            </CardContent>
+          </Card>
+
+          {/* Breakdown Summary Card */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <PieChart className="h-4 w-4 text-amber-600" />
+                Breakdown Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-amber-600">
+                {analytics?.total_breakdown_minutes != null
+                  ? `${analytics.total_breakdown_minutes} min`
+                  : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">Total breakdown across all runs</p>
             </CardContent>
           </Card>
         </div>

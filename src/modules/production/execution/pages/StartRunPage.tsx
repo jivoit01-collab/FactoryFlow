@@ -14,17 +14,20 @@ import {
   Label,
 } from '@/shared/components/ui';
 
+import { usePlans } from '@/modules/production/planning/api';
 import { createRunSchema, type CreateRunFormData } from '../schemas';
 import { useProductionLines, useCreateRun } from '../api/execution.queries';
 
 export default function StartRunPage() {
   const navigate = useNavigate();
   const { data: lines = [] } = useProductionLines(true);
+  const { data: plans = [] } = usePlans('OPEN');
   const createRun = useCreateRun();
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<CreateRunFormData>({
     resolver: zodResolver(createRunSchema),
@@ -32,6 +35,14 @@ export default function StartRunPage() {
       date: new Date().toISOString().slice(0, 10),
     },
   });
+
+  const handlePlanChange = (planId: number) => {
+    setValue('production_plan_id', planId);
+    const plan = plans.find((p) => p.id === planId);
+    if (plan) {
+      setValue('brand', plan.item_name);
+    }
+  };
 
   const onSubmit = async (data: CreateRunFormData) => {
     try {
@@ -44,7 +55,7 @@ export default function StartRunPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
@@ -70,15 +81,27 @@ export default function StartRunPage() {
               )}
             </div>
 
-            {/* Production Plan ID */}
+            {/* Production Plan */}
             <div className="space-y-2">
-              <Label htmlFor="production_plan_id">Production Plan ID *</Label>
-              <Input
+              <Label htmlFor="production_plan_id">Production Plan *</Label>
+              <select
                 id="production_plan_id"
-                type="number"
-                placeholder="Enter plan ID"
-                {...register('production_plan_id', { valueAsNumber: true })}
-              />
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                {...register('production_plan_id', {
+                  valueAsNumber: true,
+                  onChange: (e) => {
+                    const id = Number(e.target.value);
+                    if (id) handlePlanChange(id);
+                  },
+                })}
+              >
+                <option value="">Select a plan</option>
+                {plans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.item_name} ({plan.item_code}) — {Number(plan.planned_qty).toLocaleString()} {plan.uom}
+                  </option>
+                ))}
+              </select>
               {errors.production_plan_id && (
                 <p className="text-xs text-red-500">{errors.production_plan_id.message}</p>
               )}

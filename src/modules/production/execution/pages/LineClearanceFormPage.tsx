@@ -24,6 +24,7 @@ import {
   useSubmitClearance,
   useUpdateClearance,
 } from '../api';
+import { usePlans } from '@/modules/production/planning/api';
 import { ClearanceAuthorizationSection } from '../components/ClearanceAuthorizationSection';
 import { ClearanceChecklistTable } from '../components/ClearanceChecklistTable';
 import { ClearanceDecision } from '../components/ClearanceDecision';
@@ -46,7 +47,7 @@ export default function LineClearanceFormPage() {
   const [planId, setPlanId] = useState<number | ''>('');
   const [documentId, setDocumentId] = useState('');
 
-  // ---- Shared state (for editing checklist items + signatures) ----
+  // ---- Shared state (for editing checklist items) ----
   const [items, setItems] = useState<ClearanceChecklistItem[]>([]);
   const [supervisorSign, setSupervisorSign] = useState('');
   const [inchargeSign, setInchargeSign] = useState('');
@@ -54,6 +55,7 @@ export default function LineClearanceFormPage() {
   // ---- Queries ----
   const { data: detail, isLoading: detailLoading } = useClearanceDetail(clearanceId);
   const { data: lines } = useProductionLines(true);
+  const { data: plans = [] } = usePlans('OPEN');
 
   // ---- Mutations ----
   const createClearance = useCreateClearance();
@@ -65,8 +67,8 @@ export default function LineClearanceFormPage() {
   useEffect(() => {
     if (detail) {
       setItems(detail.items);
-      setSupervisorSign(detail.production_supervisor_sign);
-      setInchargeSign(detail.production_incharge_sign);
+      setSupervisorSign(detail.production_supervisor_sign || '');
+      setInchargeSign(detail.production_incharge_sign || '');
     }
   }, [detail]);
 
@@ -161,7 +163,7 @@ export default function LineClearanceFormPage() {
     approveClearance.isPending;
 
   const hasUnfilledItems = items.some((i) => i.result === 'NA');
-  const hasSignature = !!(supervisorSign || inchargeSign);
+  const hasSignature = !!supervisorSign.trim() || !!inchargeSign.trim();
   const canSubmit = !hasUnfilledItems && hasSignature;
 
   // ---- Loading state ----
@@ -241,15 +243,21 @@ export default function LineClearanceFormPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="clearance_plan">
-                  Production Plan ID <span className="text-destructive">*</span>
+                  Production Plan <span className="text-destructive">*</span>
                 </Label>
-                <Input
+                <select
                   id="clearance_plan"
-                  type="number"
                   value={planId}
                   onChange={(e) => setPlanId(e.target.value ? Number(e.target.value) : '')}
-                  placeholder="Enter plan ID"
-                />
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select plan...</option>
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.item_name} ({plan.item_code}) — {Number(plan.planned_qty).toLocaleString()} {plan.uom}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
@@ -323,9 +331,9 @@ export default function LineClearanceFormPage() {
           <ClearanceAuthorizationSection
             supervisorSign={supervisorSign}
             inchargeSign={inchargeSign}
-            qaApproved={detail.qa_approved}
-            qaApprovedBy={detail.qa_approved_by}
-            qaApprovedAt={detail.qa_approved_at}
+            qaApproved={detail.status === 'CLEARED'}
+            qaApprovedBy={detail.qa_approved_by ?? null}
+            qaApprovedAt={detail.qa_approved_at ?? null}
             disabled={!isEditable}
             onSupervisorChange={setSupervisorSign}
             onInchargeChange={setInchargeSign}

@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, CheckCircle2, Package, RefreshCw, ShieldX } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Package, Paperclip, RefreshCw, ShieldX, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -39,6 +39,7 @@ interface POFormState {
   comments: string;
   vendorRef: string;
   extraCharges: ExtraCharge[];
+  attachments: File[];
 }
 
 export default function GRPOPreviewPage() {
@@ -83,6 +84,7 @@ export default function GRPOPreviewPage() {
           comments: '',
           vendorRef: po.vendor_ref || '',
           extraCharges: [],
+          attachments: [],
         };
       });
       return changed ? next : prev;
@@ -98,6 +100,7 @@ export default function GRPOPreviewPage() {
         comments: '',
         vendorRef: po.vendor_ref || '',
         extraCharges: [],
+        attachments: [],
       };
     },
     [formStates],
@@ -110,6 +113,7 @@ export default function GRPOPreviewPage() {
     comments: '',
     vendorRef: '',
     extraCharges: [],
+    attachments: [],
   });
 
   // Update item quantity
@@ -195,6 +199,42 @@ export default function GRPOPreviewPage() {
     });
   };
 
+  // Add attachments
+  const addAttachments = (poReceiptId: number, files: FileList) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      return {
+        ...prev,
+        [poReceiptId]: {
+          ...current,
+          attachments: [...current.attachments, ...Array.from(files)],
+        },
+      };
+    });
+    // Clear attachment error
+    if (apiErrors.attachments) {
+      setApiErrors((prev) => {
+        const next = { ...prev };
+        delete next.attachments;
+        return next;
+      });
+    }
+  };
+
+  // Remove an attachment
+  const removeAttachment = (poReceiptId: number, index: number) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      return {
+        ...prev,
+        [poReceiptId]: {
+          ...current,
+          attachments: current.attachments.filter((_, i) => i !== index),
+        },
+      };
+    });
+  };
+
   // Validate before posting
   const validatePO = (po: PreviewPOReceipt): boolean => {
     const form = getFormState(po);
@@ -219,6 +259,10 @@ export default function GRPOPreviewPage() {
     });
     if (!hasValidQty) {
       errors.general = 'At least one item must have accepted quantity greater than 0';
+    }
+
+    if (form.attachments.length === 0) {
+      errors.attachments = 'At least one attachment (invoice/bill) is required';
     }
 
     setApiErrors(errors);
@@ -260,6 +304,7 @@ export default function GRPOPreviewPage() {
         comments: form.comments || undefined,
         vendor_ref: form.vendorRef || undefined,
         extra_charges: form.extraCharges.length > 0 ? form.extraCharges : undefined,
+        attachments: form.attachments,
       });
       setConfirmPO(null);
       setSuccessResult(result);
@@ -568,6 +613,66 @@ export default function GRPOPreviewPage() {
                       />
                     </div>
 
+                    {/* Attachments (mandatory) */}
+                    <div className="border-t pt-4 space-y-2">
+                      <Label className="text-sm font-medium">
+                        Attachment (Invoice/Bill) <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.multiple = true;
+                            input.accept = '.pdf,.png,.jpg,.jpeg,.doc,.docx';
+                            input.onchange = (e) => {
+                              const files = (e.target as HTMLInputElement).files;
+                              if (files && files.length > 0) {
+                                addAttachments(po.po_receipt_id, files);
+                              }
+                            };
+                            input.click();
+                          }}
+                        >
+                          <Paperclip className="h-3.5 w-3.5" />
+                          Choose Files
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          PDF, PNG, JPG, DOC accepted
+                        </span>
+                      </div>
+                      {form.attachments.length > 0 && (
+                        <div className="space-y-1">
+                          {form.attachments.map((file, idx) => (
+                            <div
+                              key={`${file.name}-${idx}`}
+                              className="flex items-center gap-2 text-sm p-1.5 rounded bg-muted/40 border"
+                            >
+                              <Paperclip className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="truncate flex-1">{file.name}</span>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
+                                {(file.size / 1024).toFixed(0)} KB
+                              </span>
+                              <button
+                                type="button"
+                                className="p-0.5 hover:bg-muted rounded"
+                                onClick={() => removeAttachment(po.po_receipt_id, idx)}
+                              >
+                                <X className="h-3.5 w-3.5 text-muted-foreground" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {apiErrors.attachments && (
+                        <p className="text-xs text-destructive">{apiErrors.attachments}</p>
+                      )}
+                    </div>
+
                     {/* Post Button */}
                     <div className="border-t pt-4 flex justify-end gap-2">
                       <Button variant="outline" size="sm" onClick={() => navigate('/grpo/pending')}>
@@ -650,6 +755,17 @@ export default function GRPOPreviewPage() {
                   );
                 })}
               </div>
+              {(() => {
+                const confirmForm = getFormState(confirmPO);
+                return (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Attachments:</span>{' '}
+                    <span className="font-medium">
+                      {confirmForm.attachments.length} file(s)
+                    </span>
+                  </div>
+                );
+              })()}
               {(() => {
                 const confirmForm = getFormState(confirmPO);
                 if (confirmForm.extraCharges.length === 0) return null;

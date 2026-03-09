@@ -18,7 +18,6 @@ import type {
   CreateMaterialUsageRequest,
   CreateRunRequest,
   CreateWasteLogRequest,
-  ExecutionDashboardSummary,
   LineClearance,
   LineClearanceDetail,
   Machine,
@@ -45,13 +44,6 @@ import type {
 const EP = API_ENDPOINTS.PRODUCTION_EXECUTION;
 
 export const executionApi = {
-  // ---- Dashboard ----
-
-  async getDashboardSummary(): Promise<ExecutionDashboardSummary> {
-    const response = await apiClient.get<ExecutionDashboardSummary>(EP.DASHBOARD_SUMMARY);
-    return response.data;
-  },
-
   // ---- Production Lines ----
 
   async getLines(isActive?: boolean): Promise<ProductionLine[]> {
@@ -444,16 +436,6 @@ export const executionApi = {
     };
     if (queryParams.line_id) params.line_id = queryParams.line_id;
     const response = await apiClient.get<AnalyticsData>(EP.REPORTS_ANALYTICS, { params });
-    return response.data;
-  },
-
-  async getOEE(queryParams: AnalyticsQueryParams): Promise<AnalyticsData> {
-    const params: Record<string, string | number> = {
-      date_from: queryParams.date_from,
-      date_to: queryParams.date_to,
-    };
-    if (queryParams.line_id) params.line_id = queryParams.line_id;
-    const response = await apiClient.get<AnalyticsData>(EP.REPORTS_OEE, { params });
     return response.data;
   },
 };

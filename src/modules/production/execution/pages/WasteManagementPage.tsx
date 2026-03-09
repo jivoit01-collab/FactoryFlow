@@ -33,6 +33,7 @@ import {
   useCreateWasteLog,
   useWasteDetail,
   useApproveWaste,
+  useProductionRuns,
 } from '../api/execution.queries';
 import type { WasteApprovalStatus, WasteLog } from '../types';
 
@@ -52,6 +53,7 @@ export default function WasteManagementPage() {
     reason: '',
   });
 
+  const { data: runs = [] } = useProductionRuns({});
   const { data: wasteLogs = [], isLoading } = useWasteLogs(
     statusFilter !== 'ALL' ? { approval_status: statusFilter } : undefined,
   );
@@ -264,13 +266,19 @@ export default function WasteManagementPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Production Run ID *</Label>
-              <Input
-                type="number"
-                placeholder="Enter run ID"
+              <Label>Production Run *</Label>
+              <select
                 value={newWaste.production_run_id}
                 onChange={(e) => setNewWaste({ ...newWaste, production_run_id: e.target.value })}
-              />
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select a run</option>
+                {runs.map((run) => (
+                  <option key={run.id} value={run.id}>
+                    Run #{run.run_number} — {run.brand || run.plan_item_name || 'Production Run'} — {run.line_name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

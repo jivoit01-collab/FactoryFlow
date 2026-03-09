@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Clock, Factory, Gauge, Package, Plus } from 'lucide-react';
+import { AlertTriangle, Factory, Gauge, Package, Plus } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
 import { RunCard } from '../components/RunCard';
-import { useExecutionDashboard, useProductionRuns } from '../api/execution.queries';
+import { useProductionRuns } from '../api/execution.queries';
 import type { RunStatus } from '../types';
 
 const STATUS_TABS: { label: string; value: RunStatus | 'ALL' }[] = [
@@ -21,34 +21,46 @@ export default function ExecutionDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<RunStatus | 'ALL'>('ALL');
 
   const today = new Date().toISOString().slice(0, 10);
-  const { data: summary } = useExecutionDashboard();
+  const { data: allRuns = [] } = useProductionRuns({ date: today });
   const { data: runs = [], isLoading } = useProductionRuns({
     date: today,
     ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
   });
 
+  // Compute summary from today's runs (no dedicated backend endpoint)
+  const summary = useMemo(() => {
+    const todaysProduction = allRuns.reduce((sum, r) => sum + r.total_production, 0);
+    const activeRuns = allRuns.filter((r) => r.status === 'IN_PROGRESS').length;
+    const totalBreakdown = allRuns.reduce((sum, r) => sum + r.total_breakdown_time, 0);
+    return {
+      todays_production: todaysProduction,
+      active_runs: activeRuns,
+      total_breakdown_minutes: totalBreakdown,
+    };
+  }, [allRuns]);
+
   const summaryCards = [
     {
       label: "Today's Production",
-      value: `${(summary?.todays_production ?? 0).toLocaleString()} Cases`,
+      value: `${summary.todays_production.toLocaleString()} Cases`,
       icon: Package,
       color: 'text-blue-600',
     },
     {
       label: 'Active Runs',
-      value: String(summary?.active_runs ?? 0),
+      value: String(summary.active_runs),
       icon: Factory,
       color: 'text-green-600',
     },
     {
       label: 'Breakdown Time',
-      value: `${summary?.total_breakdown_minutes ?? 0} min`,
+      value: `${summary.total_breakdown_minutes} min`,
       icon: AlertTriangle,
       color: 'text-red-600',
     },
     {
-      label: 'Line Efficiency',
-      value: `${(summary?.line_efficiency ?? 0).toFixed(1)}%`,
+      label: 'Total Runs',
+      value: String(allRuns.length),
       icon: Gauge,
       color: 'text-purple-600',
     },
@@ -82,44 +94,6 @@ export default function ExecutionDashboardPage() {
           </Card>
         ))}
       </div>
-
-      {/* Alerts */}
-      {summary && (summary.pending_clearances > 0 || summary.pending_waste_approvals > 0) && (
-        <div className="flex flex-wrap gap-3">
-          {summary.pending_clearances > 0 && (
-            <Card
-              className="flex-1 min-w-[200px] cursor-pointer hover:shadow-md transition-shadow border-amber-200 dark:border-amber-800"
-              onClick={() => navigate('/production/execution/line-clearance')}
-            >
-              <CardContent className="p-4 flex items-center gap-3">
-                <Clock className="h-5 w-5 text-amber-600" />
-                <div>
-                  <p className="text-sm font-medium">Pending Clearances</p>
-                  <p className="text-xs text-muted-foreground">
-                    {summary.pending_clearances} clearance(s) awaiting QA
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {summary.pending_waste_approvals > 0 && (
-            <Card
-              className="flex-1 min-w-[200px] cursor-pointer hover:shadow-md transition-shadow border-red-200 dark:border-red-800"
-              onClick={() => navigate('/production/execution/waste')}
-            >
-              <CardContent className="p-4 flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                <div>
-                  <p className="text-sm font-medium">Pending Waste Approvals</p>
-                  <p className="text-xs text-muted-foreground">
-                    {summary.pending_waste_approvals} waste log(s) need approval
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
 
       {/* Status Tabs */}
       <div className="flex items-center gap-2">

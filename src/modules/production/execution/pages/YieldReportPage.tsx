@@ -9,9 +9,10 @@ import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 import { MachineTimeTable } from '../components/MachineTimeTable';
 import { MaterialConsumptionTable } from '../components/MaterialConsumptionTable';
 import { BatchTabs } from '../components/BatchTabs';
-import { SignatureBlock } from '../components/SignatureBlock';
 import {
   useRunDetail,
+  useMaterialUsage,
+  useMachineRuntime,
   useCreateMachineRuntime,
   useCreateMaterialUsage,
 } from '../api/execution.queries';
@@ -22,7 +23,9 @@ export default function YieldReportPage() {
   const navigate = useNavigate();
   const id = Number(runId);
 
-  const { data: run, isLoading, isError } = useRunDetail(id || null);
+  const { data: run, isLoading: runLoading, isError } = useRunDetail(id || null);
+  const { data: materials = [] } = useMaterialUsage(id || null);
+  const { data: machineRuntimes = [] } = useMachineRuntime(id || null);
   const saveMachineRuntime = useCreateMachineRuntime(id);
   const saveMaterials = useCreateMaterialUsage(id);
 
@@ -32,13 +35,6 @@ export default function YieldReportPage() {
   const [pendingMaterials, setPendingMaterials] = useState<CreateMaterialUsageRequest[] | null>(
     null,
   );
-  const [signatures, setSignatures] = useState({
-    engineer: '',
-    am: '',
-    store: '',
-    wastage: '',
-    hod: '',
-  });
 
   const isCompleted = run?.status === 'COMPLETED';
   const disabled = isCompleted;
@@ -59,7 +55,7 @@ export default function YieldReportPage() {
     }
   };
 
-  if (isLoading) {
+  if (runLoading) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-8 bg-muted rounded w-1/3 animate-pulse" />
@@ -81,8 +77,8 @@ export default function YieldReportPage() {
     );
   }
 
-  const totalWastage = run.materials.reduce((sum, m) => sum + Number(m.wastage_qty), 0);
-  const totalSupply = run.materials.reduce(
+  const totalWastage = materials.reduce((sum, m) => sum + Number(m.wastage_qty), 0);
+  const totalSupply = materials.reduce(
     (sum, m) => sum + Number(m.opening_qty) + Number(m.issued_qty),
     0,
   );
@@ -155,7 +151,7 @@ export default function YieldReportPage() {
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Machine Runtime</p>
             <p className="text-lg font-bold text-green-600">
-              {run.machine_runtime
+              {machineRuntimes
                 .reduce((sum, r) => sum + r.runtime_minutes, 0)
                 .toLocaleString()}{' '}
               min
@@ -174,7 +170,7 @@ export default function YieldReportPage() {
         </CardHeader>
         <CardContent>
           <MachineTimeTable
-            runtimes={run.machine_runtime}
+            runtimes={machineRuntimes}
             disabled={disabled}
             onSave={(data) => setPendingRuntime(data)}
           />
@@ -204,7 +200,7 @@ export default function YieldReportPage() {
         </CardHeader>
         <CardContent>
           <MaterialConsumptionTable
-            materials={run.materials}
+            materials={materials}
             batchNumber={activeBatch}
             disabled={disabled}
             onSave={(data) => setPendingMaterials(data)}
@@ -212,46 +208,6 @@ export default function YieldReportPage() {
         </CardContent>
       </Card>
 
-      {/* Signatures */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Signatures</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <SignatureBlock
-              label="Engineer"
-              value={signatures.engineer}
-              disabled={disabled}
-              onChange={(v) => setSignatures((s) => ({ ...s, engineer: v }))}
-            />
-            <SignatureBlock
-              label="AM"
-              value={signatures.am}
-              disabled={disabled}
-              onChange={(v) => setSignatures((s) => ({ ...s, am: v }))}
-            />
-            <SignatureBlock
-              label="Store"
-              value={signatures.store}
-              disabled={disabled}
-              onChange={(v) => setSignatures((s) => ({ ...s, store: v }))}
-            />
-            <SignatureBlock
-              label="Wastage Approval"
-              value={signatures.wastage}
-              disabled={disabled}
-              onChange={(v) => setSignatures((s) => ({ ...s, wastage: v }))}
-            />
-            <SignatureBlock
-              label="HOD"
-              value={signatures.hod}
-              disabled={disabled}
-              onChange={(v) => setSignatures((s) => ({ ...s, hod: v }))}
-            />
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

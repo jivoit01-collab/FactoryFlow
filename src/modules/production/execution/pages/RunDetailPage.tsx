@@ -18,12 +18,12 @@ import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 import { RunSummaryCards } from '../components/RunSummaryCards';
 import { HourlyProductionGrid } from '../components/HourlyProductionGrid';
 import { ManpowerSection } from '../components/ManpowerSection';
-import { ClearanceAuthorizationSection } from '../components/ClearanceAuthorizationSection';
 import {
   useRunDetail,
   useUpdateRun,
   useCompleteRun,
   useCreateLogs,
+  useManpower,
   useCreateManpower,
   useUpdateManpower,
 } from '../api/execution.queries';
@@ -35,6 +35,7 @@ export default function RunDetailPage() {
   const id = Number(runId);
 
   const { data: run, isLoading, isError } = useRunDetail(id || null);
+  const { data: manpowerData = [] } = useManpower(id || null);
   const updateRun = useUpdateRun(id);
   const completeRun = useCompleteRun(id);
   const createLogs = useCreateLogs(id);
@@ -42,8 +43,6 @@ export default function RunDetailPage() {
   const updateManpower = useUpdateManpower(id);
 
   const [pendingLogs, setPendingLogs] = useState<CreateLogRequest[] | null>(null);
-  const [supervisorSign, setSupervisorSign] = useState('');
-  const [inchargeSign, setInchargeSign] = useState('');
 
   const isCompleted = run?.status === 'COMPLETED';
   const disabled = isCompleted;
@@ -92,6 +91,7 @@ export default function RunDetailPage() {
   ) => {
     try {
       await updateManpower.mutateAsync({ manpowerId, data });
+      toast.success('Manpower entry updated');
     } catch {
       toast.error('Failed to update manpower');
     }
@@ -228,22 +228,10 @@ export default function RunDetailPage() {
 
       {/* Manpower */}
       <ManpowerSection
-        manpower={run.manpower}
+        manpower={manpowerData}
         disabled={disabled}
         onAdd={handleAddManpower}
         onUpdate={handleUpdateManpower}
-      />
-
-      {/* Authorization */}
-      <ClearanceAuthorizationSection
-        supervisorSign={supervisorSign}
-        inchargeSign={inchargeSign}
-        qaApproved={false}
-        qaApprovedBy={null}
-        qaApprovedAt={null}
-        disabled={disabled}
-        onSupervisorChange={setSupervisorSign}
-        onInchargeChange={setInchargeSign}
       />
     </div>
   );

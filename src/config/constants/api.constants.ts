@@ -182,8 +182,6 @@ export const API_ENDPOINTS = {
   },
   // Production Execution
   PRODUCTION_EXECUTION: {
-    // Dashboard
-    DASHBOARD_SUMMARY: '/production-execution/dashboard/summary/',
     // Production Lines
     LINES: '/production-execution/lines/',
     LINE_DETAIL: (lineId: number) => `/production-execution/lines/${lineId}/`,
@@ -247,7 +245,6 @@ export const API_ENDPOINTS = {
     REPORTS_DAILY: '/production-execution/reports/daily-production/',
     REPORTS_YIELD: (runId: number) => `/production-execution/reports/yield/${runId}/`,
     REPORTS_ANALYTICS: '/production-execution/reports/analytics/',
-    REPORTS_OEE: '/production-execution/reports/oee/',
   },
 } as const;
 

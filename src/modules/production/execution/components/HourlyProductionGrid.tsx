@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { cn } from '@/shared/utils';
 import { Input } from '@/shared/components/ui';
@@ -23,7 +23,35 @@ interface GridRow {
   recdMinutes: number;
   breakdownDetail: string;
   remarks: string;
-  existingLogId?: number;
+}
+
+function buildRows(logs: ProductionLog[]): GridRow[] {
+  return TIME_SLOTS.map((slot) => {
+    const existing = logs.find((l) => l.time_slot === slot.slot);
+    return {
+      timeSlot: slot.slot,
+      start: slot.start,
+      end: slot.end,
+      producedCases: existing?.produced_cases ?? 0,
+      machineStatus: existing?.machine_status ?? 'RUNNING',
+      recdMinutes: existing?.recd_minutes ?? 0,
+      breakdownDetail: existing?.breakdown_detail ?? '',
+      remarks: existing?.remarks ?? '',
+    };
+  });
+}
+
+function rowsToRequests(rows: GridRow[]): CreateLogRequest[] {
+  return rows.map((row) => ({
+    time_slot: row.timeSlot,
+    time_start: row.start,
+    time_end: row.end,
+    produced_cases: row.producedCases,
+    machine_status: row.machineStatus,
+    recd_minutes: row.recdMinutes,
+    breakdown_detail: row.breakdownDetail,
+    remarks: row.remarks,
+  }));
 }
 
 export function HourlyProductionGrid({
@@ -31,22 +59,11 @@ export function HourlyProductionGrid({
   disabled = false,
   onLogsChange,
 }: HourlyProductionGridProps) {
-  // Build grid rows from TIME_SLOTS, merging with existing logs
-  const rows: GridRow[] = useMemo(() => {
-    return TIME_SLOTS.map((slot) => {
-      const existing = logs.find((l) => l.time_slot === slot.slot);
-      return {
-        timeSlot: slot.slot,
-        start: slot.start,
-        end: slot.end,
-        producedCases: existing?.produced_cases ?? 0,
-        machineStatus: existing?.machine_status ?? 'RUNNING',
-        recdMinutes: existing?.recd_minutes ?? 0,
-        breakdownDetail: existing?.breakdown_detail ?? '',
-        remarks: existing?.remarks ?? '',
-        existingLogId: existing?.id,
-      };
-    });
+  const [rows, setRows] = useState<GridRow[]>(() => buildRows(logs));
+
+  // Sync from backend when logs change (e.g. after save)
+  useEffect(() => {
+    setRows(buildRows(logs));
   }, [logs]);
 
   // Current hour detection
@@ -55,24 +72,14 @@ export function HourlyProductionGrid({
 
   const updateRow = useCallback(
     (index: number, field: keyof GridRow, value: string | number) => {
-      const updated = [...rows];
-      updated[index] = { ...updated[index], [field]: value };
-
-      // Convert to CreateLogRequest array (only rows with data)
-      const logRequests: CreateLogRequest[] = updated.map((row) => ({
-        time_slot: row.timeSlot,
-        time_start: row.start,
-        time_end: row.end,
-        produced_cases: row.producedCases,
-        machine_status: row.machineStatus,
-        recd_minutes: row.recdMinutes,
-        breakdown_detail: row.breakdownDetail,
-        remarks: row.remarks,
-      }));
-
-      onLogsChange(logRequests);
+      setRows((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], [field]: value };
+        onLogsChange(rowsToRequests(updated));
+        return updated;
+      });
     },
-    [rows, onLogsChange],
+    [onLogsChange],
   );
 
   // Totals

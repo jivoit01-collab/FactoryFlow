@@ -31,8 +31,6 @@ import { executionApi } from './execution.api';
 
 export const EXECUTION_QUERY_KEYS = {
   all: ['production-execution'] as const,
-  // Dashboard
-  dashboard: () => [...EXECUTION_QUERY_KEYS.all, 'dashboard'] as const,
   // Lines & Machines
   lines: (isActive?: boolean) => [...EXECUTION_QUERY_KEYS.all, 'lines', { isActive }] as const,
   machines: (lineId?: number, machineType?: string) =>
@@ -74,21 +72,7 @@ export const EXECUTION_QUERY_KEYS = {
     [...EXECUTION_QUERY_KEYS.all, 'report-yield', runId] as const,
   analytics: (params: AnalyticsQueryParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'analytics', params] as const,
-  oee: (params: AnalyticsQueryParams) =>
-    [...EXECUTION_QUERY_KEYS.all, 'oee', params] as const,
 };
-
-// ============================================================================
-// Dashboard
-// ============================================================================
-
-export function useExecutionDashboard() {
-  return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.dashboard(),
-    queryFn: () => executionApi.getDashboardSummary(),
-    staleTime: 30 * 1000,
-  });
-}
 
 // ============================================================================
 // Lines & Machines
@@ -154,7 +138,7 @@ export function useUpdateRun(runId: number) {
     mutationFn: (data: UpdateRunRequest) => executionApi.updateRun(runId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
-      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.dashboard() });
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runs() });
     },
   });
 }
@@ -574,11 +558,3 @@ export function useAnalytics(params: AnalyticsQueryParams) {
   });
 }
 
-export function useOEE(params: AnalyticsQueryParams) {
-  return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.oee(params),
-    queryFn: () => executionApi.getOEE(params),
-    enabled: !!params.date_from && !!params.date_to,
-    staleTime: 5 * 60 * 1000,
-  });
-}
