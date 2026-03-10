@@ -26,9 +26,17 @@ export const grpoApi = {
     return response.data;
   },
 
-  // Post GRPO to SAP
+  // Post GRPO to SAP (multipart/form-data with attachments)
   async post(data: PostGRPORequest): Promise<PostGRPOResponse> {
-    const response = await apiClient.post<PostGRPOResponse>(API_ENDPOINTS.GRPO.POST, data);
+    const { attachments, ...jsonData } = data;
+    const formData = new FormData();
+    formData.append('data', JSON.stringify(jsonData));
+    attachments.forEach((file) => {
+      formData.append('attachments', file);
+    });
+    const response = await apiClient.post<PostGRPOResponse>(API_ENDPOINTS.GRPO.POST, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 

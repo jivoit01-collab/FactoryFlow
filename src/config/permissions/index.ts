@@ -18,6 +18,16 @@ export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permis
 // GRPO Module
 export { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS, type GRPOPermission } from './grpo.permissions';
 
+// Production Module
+export {
+  EXECUTION_MODULE_PREFIX,
+  EXECUTION_PERMISSIONS,
+  type ExecutionPermission,
+  PRODUCTION_MODULE_PREFIX,
+  PRODUCTION_PERMISSIONS,
+  type ProductionPermission,
+} from './production.permissions';
+
 // Notifications Module
 export {
   NOTIFICATION_MODULE_PREFIX,

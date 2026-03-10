@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import { SearchableSelect } from '@/shared/components';
 
 import { useWarehouses } from '../api';
@@ -24,9 +22,7 @@ export function WarehouseSelect({
   label,
   required = false,
 }: WarehouseSelectProps) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-  const { data: warehouses = [], isLoading } = useWarehouses(isDropdownOpen);
+  const { data: warehouses = [], isLoading } = useWarehouses(true);
 
   return (
     <SearchableSelect<Warehouse>
@@ -55,7 +51,7 @@ export function WarehouseSelect({
       loadingText="Loading warehouses..."
       emptyText="No warehouses available"
       notFoundText="No warehouses found"
-      onOpenChange={setIsDropdownOpen}
+      onOpenChange={() => {}}
       onItemSelect={(warehouse) => {
         onChange(warehouse.warehouse_code);
       }}

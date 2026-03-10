@@ -110,6 +110,7 @@ export interface PostGRPORequest {
   comments?: string;
   vendor_ref?: string;
   extra_charges?: ExtraCharge[];
+  attachments: File[];
 }
 
 // Post success response
