@@ -39,10 +39,10 @@ export const grpoApi = {
       files.forEach((file) => {
         formData.append('attachments', file);
       });
-      // Do NOT set Content-Type header — browser sets it with correct boundary
       const response = await apiClient.post<PostGRPOResponse>(
         API_ENDPOINTS.GRPO.POST,
         formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
       );
       return response.data;
     }
@@ -91,6 +91,7 @@ export const grpoApi = {
     const response = await apiClient.post<GRPOAttachment>(
       API_ENDPOINTS.GRPO.ATTACHMENTS(postingId),
       formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return response.data;
   },
