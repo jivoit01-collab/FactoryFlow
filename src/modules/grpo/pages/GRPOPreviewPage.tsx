@@ -261,10 +261,6 @@ export default function GRPOPreviewPage() {
       errors.general = 'At least one item must have accepted quantity greater than 0';
     }
 
-    if (form.attachments.length === 0) {
-      errors.attachments = 'At least one attachment (invoice/bill) is required';
-    }
-
     setApiErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -304,7 +300,7 @@ export default function GRPOPreviewPage() {
         comments: form.comments || undefined,
         vendor_ref: form.vendorRef || undefined,
         extra_charges: form.extraCharges.length > 0 ? form.extraCharges : undefined,
-        attachments: form.attachments,
+        attachments: form.attachments.length > 0 ? form.attachments : undefined,
       });
       setConfirmPO(null);
       setSuccessResult(result);
@@ -613,10 +609,10 @@ export default function GRPOPreviewPage() {
                       />
                     </div>
 
-                    {/* Attachments (mandatory) */}
+                    {/* Attachments (optional) */}
                     <div className="border-t pt-4 space-y-2">
                       <Label className="text-sm font-medium">
-                        Attachment (Invoice/Bill) <span className="text-destructive">*</span>
+                        Attachments (optional)
                       </Label>
                       <div className="flex items-center gap-2">
                         <Button
@@ -628,7 +624,7 @@ export default function GRPOPreviewPage() {
                             const input = document.createElement('input');
                             input.type = 'file';
                             input.multiple = true;
-                            input.accept = '.pdf,.png,.jpg,.jpeg,.doc,.docx';
+                            input.accept = '.pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx';
                             input.onchange = (e) => {
                               const files = (e.target as HTMLInputElement).files;
                               if (files && files.length > 0) {
@@ -642,7 +638,7 @@ export default function GRPOPreviewPage() {
                           Choose Files
                         </Button>
                         <span className="text-xs text-muted-foreground">
-                          PDF, PNG, JPG, DOC accepted
+                          PDF, PNG, JPG, DOC, XLS accepted
                         </span>
                       </div>
                       {form.attachments.length > 0 && (
@@ -818,6 +814,33 @@ export default function GRPOPreviewPage() {
                   })}
                 </span>
               </div>
+              {/* Attachment upload statuses */}
+              {successResult.attachments && successResult.attachments.length > 0 && (() => {
+                const linked = successResult.attachments.filter(
+                  (a) => a.sap_attachment_status === 'LINKED',
+                );
+                const failed = successResult.attachments.filter(
+                  (a) => a.sap_attachment_status === 'FAILED',
+                );
+                return (
+                  <div className="border-t pt-2 space-y-1.5">
+                    {linked.length > 0 && (
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>{linked.length} attachment(s) uploaded successfully</span>
+                      </div>
+                    )}
+                    {failed.length > 0 && (
+                      <div className="flex items-center gap-2 text-yellow-600">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span>
+                          {failed.length} attachment(s) failed to upload to SAP. Files saved locally — retry from detail page.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
           <DialogFooter className="flex-col gap-2 sm:flex-col">

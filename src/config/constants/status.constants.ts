@@ -195,6 +195,7 @@ export const GRPO_STATUS_CONFIG: Record<GRPOStatus, StatusConfigWithIcon> = {
 
 export const ATTACHMENT_STATUS = {
   PENDING: 'PENDING',
+  UPLOADED: 'UPLOADED',
   LINKED: 'LINKED',
   FAILED: 'FAILED',
 } as const;
@@ -206,6 +207,12 @@ export const ATTACHMENT_STATUS_CONFIG: Record<AttachmentStatusType, StatusConfig
     label: 'Pending',
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-50',
+    icon: Clock,
+  },
+  UPLOADED: {
+    label: 'Uploaded',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
     icon: Clock,
   },
   LINKED: {
