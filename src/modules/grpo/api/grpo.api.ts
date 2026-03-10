@@ -26,17 +26,32 @@ export const grpoApi = {
     return response.data;
   },
 
-  // Post GRPO to SAP (multipart/form-data with attachments)
+  // Post GRPO to SAP
+  // Uses multipart/form-data when attachments are provided, JSON otherwise
   async post(data: PostGRPORequest): Promise<PostGRPOResponse> {
     const { attachments, ...jsonData } = data;
-    const formData = new FormData();
-    formData.append('data', JSON.stringify(jsonData));
-    attachments.forEach((file) => {
-      formData.append('attachments', file);
-    });
-    const response = await apiClient.post<PostGRPOResponse>(API_ENDPOINTS.GRPO.POST, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const files = attachments ?? [];
+
+    if (files.length > 0) {
+      // Multipart/form-data with files
+      const formData = new FormData();
+      formData.append('data', JSON.stringify(jsonData));
+      files.forEach((file) => {
+        formData.append('attachments', file);
+      });
+      // Do NOT set Content-Type header — browser sets it with correct boundary
+      const response = await apiClient.post<PostGRPOResponse>(
+        API_ENDPOINTS.GRPO.POST,
+        formData,
+      );
+      return response.data;
+    }
+
+    // JSON (no attachments)
+    const response = await apiClient.post<PostGRPOResponse>(
+      API_ENDPOINTS.GRPO.POST,
+      jsonData,
+    );
     return response.data;
   },
 
@@ -76,7 +91,6 @@ export const grpoApi = {
     const response = await apiClient.post<GRPOAttachment>(
       API_ENDPOINTS.GRPO.ATTACHMENTS(postingId),
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return response.data;
   },

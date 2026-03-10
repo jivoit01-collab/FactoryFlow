@@ -17,7 +17,7 @@ export type QCStatus =
   | 'INSPECTION_PENDING';
 
 // SAP Attachment Status
-export type AttachmentStatus = 'PENDING' | 'LINKED' | 'FAILED';
+export type AttachmentStatus = 'PENDING' | 'UPLOADED' | 'LINKED' | 'FAILED';
 
 // GRPO Attachment (linked to a posted GRPO)
 export interface GRPOAttachment {
@@ -110,7 +110,16 @@ export interface PostGRPORequest {
   comments?: string;
   vendor_ref?: string;
   extra_charges?: ExtraCharge[];
-  attachments: File[];
+  attachments?: File[];
+}
+
+// Attachment result in post response
+export interface PostGRPOAttachmentResult {
+  id: number;
+  original_filename: string;
+  sap_attachment_status: AttachmentStatus;
+  sap_absolute_entry: number | null;
+  sap_error_message: string | null;
 }
 
 // Post success response
@@ -121,6 +130,7 @@ export interface PostGRPOResponse {
   sap_doc_num: number;
   sap_doc_total: number;
   message: string;
+  attachments: PostGRPOAttachmentResult[];
 }
 
 // History line item
