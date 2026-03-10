@@ -30,7 +30,9 @@
       "Bash(grep -E \"\\(module\\\\.config|^[^/]*modules/production/[^/]+\\\\.ts$\\)\")",
       "Bash(xargs grep -l \"CreatePlan\\\\|BulkImport\\\\|Planning\")",
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
-      "Bash(grep -r \"useNavigate\\\\|useParams\\\\|useLocation\" /d/Test_CompanyJivo/factory/FactoryFlow/src/modules/production/planning/pages/*.tsx)"
+      "Bash(grep -r \"useNavigate\\\\|useParams\\\\|useLocation\" /d/Test_CompanyJivo/factory/FactoryFlow/src/modules/production/planning/pages/*.tsx)",
+      "Bash(grep -E \"\\\\.\\(md|doc|txt\\)$|^d\")",
+      "Bash(done)"
     ]
   }
 }
