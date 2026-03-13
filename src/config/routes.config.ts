@@ -139,6 +139,49 @@ export const ROUTES = {
     },
   },
 
+  // Production - full production lifecycle management
+  PRODUCTION: {
+    path: '/production',
+    title: 'Production',
+    icon: 'Factory',
+    showInSidebar: true,
+    hasSubmenu: true,
+    children: {
+      PLANNING: {
+        path: '/production/planning',
+        title: 'Planning',
+      },
+      MATERIAL: {
+        path: '/production/material',
+        title: 'Material Acquisition',
+      },
+      MANUFACTURING: {
+        path: '/production/manufacturing',
+        title: 'Production',
+      },
+      QC: {
+        path: '/production/qc',
+        title: 'QC (In-Process)',
+      },
+      RETURN_WASTAGE: {
+        path: '/production/return-wastage',
+        title: 'Return & Wastage',
+      },
+      MAINTENANCE: {
+        path: '/production/maintenance',
+        title: 'Maintenance',
+      },
+      LABOUR: {
+        path: '/production/labour',
+        title: 'Labour',
+      },
+      REPORTS: {
+        path: '/production/reports',
+        title: 'Reports',
+      },
+    },
+  },
+
   NOTIFICATIONS: {
     path: '/notifications',
     title: 'Notifications',

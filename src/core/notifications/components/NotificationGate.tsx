@@ -35,6 +35,9 @@ export function NotificationGate({ children }: { children: React.ReactNode }) {
   // Permission granted — render the app
   if (permission === 'granted') return <>{children}</>;
 
+  // Notification is optional — allow access even without permission
+  if (permission === 'default' || permission === 'denied') return <>{children}</>;
+
   const isDenied = permission === 'denied';
 
   return (
