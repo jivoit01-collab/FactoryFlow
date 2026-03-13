@@ -9,6 +9,7 @@ const GateDashboardPage = lazy(() => import('./pages/GateDashboardPage'));
 const RawMaterialsDashboard = lazy(() => import('./pages/rawMaterialPages/RawMaterialsDashboard'));
 const RawMaterialsPage = lazy(() => import('./pages/RawMaterialsPage'));
 
+
 // Raw Materials wizard pages
 const RMStep1Page = lazy(() => import('./pages/rawMaterialPages/Step1Page'));
 const RMStep2Page = lazy(() => import('./pages/rawMaterialPages/Step2Page'));

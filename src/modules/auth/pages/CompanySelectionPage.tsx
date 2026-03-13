@@ -84,7 +84,8 @@ export default function CompanySelectionPage() {
           <img
             src="/JivoWellnessLogo.png"
             alt="Jivo Wellness Logo"
-            className="h-16 w-auto dark:invert"
+            className="h-16 w-auto dark:invert cursor-pointer"
+            onClick={() => window.location.reload()}
           />
         </div>
         <CardTitle className="text-2xl font-bold">Select Company</CardTitle>
