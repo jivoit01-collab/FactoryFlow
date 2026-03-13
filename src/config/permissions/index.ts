@@ -25,9 +25,3 @@ export {
   type NotificationPermission,
 } from './notification.permissions';
 
-// Production Module
-export {
-  PRODUCTION_MODULE_PREFIX,
-  PRODUCTION_PERMISSIONS,
-  type ProductionPermission,
-} from './production.permissions';

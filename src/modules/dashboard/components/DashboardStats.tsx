@@ -11,7 +11,6 @@ const descriptions: Record<string, string> = {
     'Manage gate entries for raw materials, daily needs, maintenance, construction, and visitors',
   '/qc': 'Inspections, approvals, and master data management',
   '/grpo': 'Goods receipt and purchase order posting',
-  '/production': 'End-to-end production lifecycle management',
 };
 
 export function DashboardStats() {
