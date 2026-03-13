@@ -74,6 +74,7 @@ export interface PreviewPOReceipt {
   vehicle_entry_id: number;
   entry_no: string;
   entry_status: string;
+  entry_date?: string;
   is_ready_for_grpo: boolean;
   po_receipt_id: number;
   po_number: string;
@@ -111,6 +112,10 @@ export interface PostGRPORequest {
   vendor_ref?: string;
   extra_charges?: ExtraCharge[];
   attachments?: File[];
+  doc_date?: string;
+  doc_due_date?: string;
+  tax_date?: string;
+  should_roundoff?: boolean;
 }
 
 // Attachment result in post response

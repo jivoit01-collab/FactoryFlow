@@ -40,6 +40,10 @@ interface POFormState {
   vendorRef: string;
   extraCharges: ExtraCharge[];
   attachments: File[];
+  docDate: string;
+  docDueDate: string;
+  taxDate: string;
+  shouldRoundoff: boolean;
 }
 
 export default function GRPOPreviewPage() {
@@ -78,6 +82,7 @@ export default function GRPOPreviewPage() {
             variety: undefined,
           };
         });
+        const entryDate = po.entry_date ? po.entry_date.slice(0, 10) : '';
         next[po.po_receipt_id] = {
           items,
           warehouseCode: po.items[0]?.warehouse_code || '',
@@ -85,6 +90,10 @@ export default function GRPOPreviewPage() {
           vendorRef: po.vendor_ref || '',
           extraCharges: [],
           attachments: [],
+          docDate: entryDate,
+          docDueDate: entryDate,
+          taxDate: entryDate,
+          shouldRoundoff: true,
         };
       });
       return changed ? next : prev;
@@ -101,6 +110,10 @@ export default function GRPOPreviewPage() {
         vendorRef: po.vendor_ref || '',
         extraCharges: [],
         attachments: [],
+        docDate: '',
+        docDueDate: '',
+        taxDate: '',
+        roundOff: '',
       };
     },
     [formStates],
@@ -114,6 +127,10 @@ export default function GRPOPreviewPage() {
     vendorRef: '',
     extraCharges: [],
     attachments: [],
+    docDate: '',
+    docDueDate: '',
+    taxDate: '',
+    roundOff: '',
   });
 
   // Update item quantity
@@ -199,6 +216,50 @@ export default function GRPOPreviewPage() {
     });
   };
 
+  // Update doc date
+  const updateDocDate = (poReceiptId: number, value: string) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      return { ...prev, [poReceiptId]: { ...current, docDate: value } };
+    });
+  };
+
+  // Update doc due date
+  const updateDocDueDate = (poReceiptId: number, value: string) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      return { ...prev, [poReceiptId]: { ...current, docDueDate: value } };
+    });
+  };
+
+  // Update tax date
+  const updateTaxDate = (poReceiptId: number, value: string) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      return { ...prev, [poReceiptId]: { ...current, taxDate: value } };
+    });
+  };
+
+  // Update should round off
+  const updateShouldRoundoff = (poReceiptId: number, value: boolean) => {
+    setFormStates((prev) => {
+      const current = prev[poReceiptId] || defaultFormState();
+      return { ...prev, [poReceiptId]: { ...current, shouldRoundoff: value } };
+    });
+  };
+
+  // Calculate estimated total for a PO (items subtotal + extra charges)
+  const calcTotal = (po: PreviewPOReceipt, form: POFormState): number => {
+    const itemsTotal = po.items.reduce((sum, item) => {
+      const itemForm = form.items[item.po_item_receipt_id];
+      const qty = itemForm?.accepted_qty ?? item.received_qty;
+      const price = itemForm?.unit_price ?? (item.unit_price ? parseFloat(item.unit_price) : 0);
+      return sum + qty * price;
+    }, 0);
+    const chargesTotal = form.extraCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
+    return itemsTotal + chargesTotal;
+  };
+
   // Add attachments
   const addAttachments = (poReceiptId: number, files: FileList) => {
     setFormStates((prev) => {
@@ -261,6 +322,14 @@ export default function GRPOPreviewPage() {
       errors.general = 'At least one item must have accepted quantity greater than 0';
     }
 
+    if (!form.vendorRef.trim()) {
+      errors.vendorRef = 'Vendor reference is required';
+    }
+
+    if (form.attachments.length === 0) {
+      errors.attachments = 'At least one attachment is required';
+    }
+
     setApiErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -301,6 +370,10 @@ export default function GRPOPreviewPage() {
         vendor_ref: form.vendorRef || undefined,
         extra_charges: form.extraCharges.length > 0 ? form.extraCharges : undefined,
         attachments: form.attachments.length > 0 ? form.attachments : undefined,
+        doc_date: form.docDate || undefined,
+        doc_due_date: form.docDueDate || undefined,
+        tax_date: form.taxDate || undefined,
+        should_roundoff: form.shouldRoundoff || undefined,
       });
       setConfirmPO(null);
       setSuccessResult(result);
@@ -576,13 +649,27 @@ export default function GRPOPreviewPage() {
                     {/* PO Form Fields */}
                     <div className="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-xs">Vendor Reference</Label>
+                        <Label className="text-xs">
+                          Vendor Reference <span className="text-destructive">*</span>
+                        </Label>
                         <Input
                           value={form.vendorRef}
-                          onChange={(e) => updateVendorRef(po.po_receipt_id, e.target.value)}
+                          onChange={(e) => {
+                            updateVendorRef(po.po_receipt_id, e.target.value);
+                            if (apiErrors.vendorRef) {
+                              setApiErrors((prev) => {
+                                const next = { ...prev };
+                                delete next.vendorRef;
+                                return next;
+                              });
+                            }
+                          }}
                           placeholder="Invoice / challan number"
-                          className="h-8 text-sm"
+                          className={`h-8 text-sm${apiErrors.vendorRef ? ' border-destructive' : ''}`}
                         />
+                        {apiErrors.vendorRef && (
+                          <p className="text-xs text-destructive">{apiErrors.vendorRef}</p>
+                        )}
                       </div>
                       <WarehouseSelect
                         label="Warehouse Code"
@@ -590,6 +677,33 @@ export default function GRPOPreviewPage() {
                         onChange={(code) => updateWarehouseCode(po.po_receipt_id, code)}
                         placeholder="Select warehouse"
                       />
+                      <div className="space-y-1">
+                        <Label className="text-xs">Posting Date</Label>
+                        <Input
+                          type="date"
+                          value={form.docDate}
+                          onChange={(e) => updateDocDate(po.po_receipt_id, e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Due Date</Label>
+                        <Input
+                          type="date"
+                          value={form.docDueDate}
+                          onChange={(e) => updateDocDueDate(po.po_receipt_id, e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Tax Date</Label>
+                        <Input
+                          type="date"
+                          value={form.taxDate}
+                          onChange={(e) => updateTaxDate(po.po_receipt_id, e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
                       <div className="space-y-1 sm:col-span-2">
                         <Label className="text-xs">Comments</Label>
                         <Input
@@ -609,10 +723,10 @@ export default function GRPOPreviewPage() {
                       />
                     </div>
 
-                    {/* Attachments (optional) */}
+                    {/* Attachments */}
                     <div className="border-t pt-4 space-y-2">
                       <Label className="text-sm font-medium">
-                        Attachments (optional)
+                        Attachments <span className="text-destructive">*</span>
                       </Label>
                       <div className="flex items-center gap-2">
                         <Button
@@ -668,6 +782,40 @@ export default function GRPOPreviewPage() {
                         <p className="text-xs text-destructive">{apiErrors.attachments}</p>
                       )}
                     </div>
+
+                    {/* Total Amount + Round Off */}
+                    {(() => {
+                      const total = calcTotal(po, form);
+                      if (total === 0) return null;
+                      return (
+                        <div className="border-t pt-4 flex items-center justify-between">
+                          <span className="text-sm font-medium">Estimated Total</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              id={`roundoff-${po.po_receipt_id}`}
+                              type="checkbox"
+                              checked={form.shouldRoundoff}
+                              onChange={(e) =>
+                                updateShouldRoundoff(po.po_receipt_id, e.target.checked)
+                              }
+                              className="h-4 w-4 rounded border-input accent-primary"
+                            />
+                            <Label
+                              htmlFor={`roundoff-${po.po_receipt_id}`}
+                              className="text-sm cursor-pointer"
+                            >
+                              Auto Round Off
+                            </Label>
+                            <span className="text-sm font-semibold">
+                              {total.toLocaleString('en-IN', {
+                                style: 'currency',
+                                currency: 'INR',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Post Button */}
                     <div className="border-t pt-4 flex justify-end gap-2">
@@ -730,6 +878,30 @@ export default function GRPOPreviewPage() {
                         <span className="font-medium">{confirmForm.warehouseCode}</span>
                       </div>
                     )}
+                    {confirmForm.docDate && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Posting Date:</span>{' '}
+                        <span className="font-medium">{confirmForm.docDate}</span>
+                      </div>
+                    )}
+                    {confirmForm.docDueDate && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Due Date:</span>{' '}
+                        <span className="font-medium">{confirmForm.docDueDate}</span>
+                      </div>
+                    )}
+                    {confirmForm.taxDate && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Tax Date:</span>{' '}
+                        <span className="font-medium">{confirmForm.taxDate}</span>
+                      </div>
+                    )}
+                    {confirmForm.shouldRoundoff && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Round Off:</span>{' '}
+                        <span className="font-medium">Auto (backend calculated)</span>
+                      </div>
+                    )}
                   </>
                 );
               })()}
@@ -765,12 +937,28 @@ export default function GRPOPreviewPage() {
               {(() => {
                 const confirmForm = getFormState(confirmPO);
                 if (confirmForm.extraCharges.length === 0) return null;
-                const total = confirmForm.extraCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
+                const chargesTotal = confirmForm.extraCharges.reduce(
+                  (sum, c) => sum + (c.amount || 0),
+                  0,
+                );
                 return (
                   <div className="border-t pt-3 text-sm">
                     <span className="text-muted-foreground">Extra Charges:</span>{' '}
                     <span className="font-medium">
                       {confirmForm.extraCharges.length} charge(s), total{' '}
+                      {chargesTotal.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    </span>
+                  </div>
+                );
+              })()}
+              {(() => {
+                const confirmForm = getFormState(confirmPO);
+                const total = calcTotal(confirmPO, confirmForm);
+                if (total === 0) return null;
+                return (
+                  <div className="border-t pt-3 flex items-center justify-between">
+                    <span className="text-sm font-semibold">Estimated Total</span>
+                    <span className="text-sm font-semibold">
                       {total.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                     </span>
                   </div>

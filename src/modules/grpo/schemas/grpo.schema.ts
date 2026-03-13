@@ -26,6 +26,10 @@ export const grpoPostSchema = z
     comments: z.string().optional(),
     vendor_ref: z.string().optional(),
     extra_charges: z.array(extraChargeSchema).optional(),
+    doc_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD').optional(),
+    doc_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD').optional(),
+    tax_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD').optional(),
+    should_roundoff: z.boolean().optional(),
   })
   .refine((data) => data.items.some((item) => item.accepted_qty > 0), {
     message: 'At least one item must have accepted quantity greater than 0',
