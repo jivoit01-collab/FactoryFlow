@@ -3,9 +3,6 @@ import { useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@/config/routes.config';
 import { useAuth } from '@/core/auth';
-import { clearCurrentCompany } from '@/core/auth';
-import { indexedDBService } from '@/core/auth/services/indexedDb.service';
-import { useAppDispatch } from '@/core/store';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -25,8 +22,7 @@ import {
  * Displays user information, roles (companies), and permissions
  */
 export default function ProfilePage() {
-  const { user, permissions, logout, currentCompany } = useAuth();
-  const dispatch = useAppDispatch();
+  const { user, permissions, logout, currentCompany, switchCompany } = useAuth();
   const navigate = useNavigate();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
@@ -41,18 +37,13 @@ export default function ProfilePage() {
   const groupedPermissions = groupPermissionsByApp(permissions);
   const initials = getInitials(user.full_name, user.email);
 
-  const handleChangeCompany = async () => {
+  const handleSwitchCompany = async (company: (typeof user.companies)[0]) => {
+    if (currentCompany?.company_id === company.company_id) return;
     try {
-      // Clear current company from IndexedDB
-      await indexedDBService.updateCurrentCompany(null);
-
-      // Clear from Redux
-      dispatch(clearCurrentCompany());
-
-      // Navigate to company selection page
-      navigate(ROUTES.COMPANY_SELECTION.path, { replace: true });
+      await switchCompany(company);
+      navigate(ROUTES.DASHBOARD.path, { replace: true });
     } catch (error) {
-      console.error('Failed to change company:', error);
+      console.error('Failed to switch company:', error);
     }
   };
 
@@ -119,15 +110,6 @@ export default function ProfilePage() {
               >
                 Change Password
               </Button>
-              {currentCompany && (
-                <Button
-                  variant="outline"
-                  onClick={handleChangeCompany}
-                  className="w-full sm:w-auto"
-                >
-                  Change Company
-                </Button>
-              )}
               <Button
                 variant="outline"
                 onClick={logout}
@@ -149,10 +131,11 @@ export default function ProfilePage() {
                 return (
                   <Card
                     key={company.company_id}
-                    className={`border relative ${
+                    onClick={() => handleSwitchCompany(company)}
+                    className={`border relative transition-colors ${
                       isCurrentCompany
                         ? 'border-primary border-2 bg-primary/5 ring-2 ring-primary/20'
-                        : ''
+                        : 'cursor-pointer hover:border-primary/50 hover:bg-muted/50'
                     }`}
                   >
                     {isCurrentCompany && (
