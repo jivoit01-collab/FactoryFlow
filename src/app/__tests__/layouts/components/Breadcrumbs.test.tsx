@@ -24,11 +24,10 @@ describe('Breadcrumbs', () => {
     expect(content).toMatch(/export\s+function\s+Breadcrumbs/);
   });
 
-  it('imports Link, useLocation, useNavigate from react-router-dom', () => {
+  it('imports Link and useLocation from react-router-dom', () => {
     const content = readSource();
-    expect(content).toMatch(
-      /import\s*\{[^}]*Link[^}]*useLocation[^}]*useNavigate[^}]*\}\s*from\s*['"]react-router-dom['"]/,
-    );
+    expect(content).toMatch(/import\s*\{[^}]*Link[^}]*\}\s*from\s*['"]react-router-dom['"]/);
+    expect(content).toMatch(/import\s*\{[^}]*useLocation[^}]*\}\s*from\s*['"]react-router-dom['"]/);
   });
 
   it('imports ChevronRight and Home from lucide-react', () => {
@@ -43,21 +42,21 @@ describe('Breadcrumbs', () => {
     expect(content).not.toContain('@/core/auth');
   });
 
-  // ─── SHORT_NAMES Mapping ────────────────────────────────
+  // ─── SEGMENT_LABELS Mapping ─────────────────────────────
 
-  it('defines SHORT_NAMES record constant', () => {
+  it('defines SEGMENT_LABELS record constant', () => {
     const content = readSource();
-    expect(content).toMatch(/const\s+SHORT_NAMES:\s*Record<string,\s*string>/);
+    expect(content).toMatch(/const\s+SEGMENT_LABELS:\s*Record<string,\s*string>/);
   });
 
-  it("maps 'raw-materials' to 'RM'", () => {
+  it("maps 'raw-materials' to 'Raw Materials'", () => {
     const content = readSource();
-    expect(content).toMatch(/'raw-materials':\s*'RM'/);
+    expect(content).toMatch(/'raw-materials':\s*'Raw Materials'/);
   });
 
-  it("maps 'daily-needs' to 'Daily'", () => {
+  it("maps 'daily-needs' to 'Daily Needs'", () => {
     const content = readSource();
-    expect(content).toMatch(/'daily-needs':\s*'Daily'/);
+    expect(content).toMatch(/'daily-needs':\s*'Daily Needs'/);
   });
 
   it("maps 'quality-check' to 'QC'", () => {
@@ -79,72 +78,116 @@ describe('Breadcrumbs', () => {
     expect(content).toMatch(/step5:\s*'Step 5'/);
   });
 
-  it("maps 'material-types' to 'Materials'", () => {
+  it("maps 'material-types' to 'Material Types'", () => {
     const content = readSource();
-    expect(content).toMatch(/'material-types':\s*'Materials'/);
+    expect(content).toMatch(/'material-types':\s*'Material Types'/);
   });
 
-  it("maps 'maintenance' to 'Maint.'", () => {
+  it("maps 'maintenance' to 'Maintenance'", () => {
     const content = readSource();
-    expect(content).toMatch(/'maintenance':\s*'Maint\.'/);
+    expect(content).toMatch(/maintenance:\s*'Maintenance'/);
+  });
+
+  it("maps production module segments", () => {
+    const content = readSource();
+    expect(content).toMatch(/production:\s*'Production'/);
+    expect(content).toMatch(/planning:\s*'Planning'/);
+    expect(content).toMatch(/execution:\s*'Execution'/);
+    expect(content).toMatch(/breakdowns:\s*'Breakdowns'/);
+    expect(content).toMatch(/'line-clearance':\s*'Line Clearance'/);
+    expect(content).toMatch(/'machine-checklists':\s*'Machine Checklists'/);
   });
 
   // ─── NAVIGABLE_PATHS ────────────────────────────────────
 
-  it('defines NAVIGABLE_PATHS array', () => {
+  it('defines NAVIGABLE_PATHS as a Set', () => {
     const content = readSource();
-    expect(content).toMatch(/const\s+NAVIGABLE_PATHS\s*=\s*\[/);
+    expect(content).toMatch(/const\s+NAVIGABLE_PATHS\s*=\s*new\s+Set\(\[/);
   });
 
   it("includes root path '/'", () => {
     const content = readSource();
-    expect(content).toMatch(/NAVIGABLE_PATHS\s*=\s*\[[\s\S]*?'\/'/);
+    expect(content).toContain("'/'");
   });
 
-  it('includes gate paths', () => {
+  it('includes all gate paths', () => {
     const content = readSource();
     expect(content).toContain("'/gate'");
     expect(content).toContain("'/gate/raw-materials'");
+    expect(content).toContain("'/gate/raw-materials/all'");
+    expect(content).toContain("'/gate/daily-needs'");
+    expect(content).toContain("'/gate/maintenance'");
+    expect(content).toContain("'/gate/construction'");
+    expect(content).toContain("'/gate/visitor-labour'");
+    expect(content).toContain("'/gate/visitor-labour/all'");
+    expect(content).toContain("'/gate/visitor-labour/inside'");
+    expect(content).toContain("'/gate/visitor-labour/visitors'");
+    expect(content).toContain("'/gate/visitor-labour/labours'");
+    expect(content).toContain("'/gate/visitor-labour/contractors'");
   });
 
   it('includes QC and GRPO paths', () => {
     const content = readSource();
     expect(content).toContain("'/qc'");
+    expect(content).toContain("'/qc/pending'");
+    expect(content).toContain("'/qc/approvals'");
     expect(content).toContain("'/grpo'");
+    expect(content).toContain("'/grpo/pending'");
+    expect(content).toContain("'/grpo/history'");
+  });
+
+  it('includes all production paths', () => {
+    const content = readSource();
+    expect(content).toContain("'/production'");
+    expect(content).toContain("'/production/planning'");
+    expect(content).toContain("'/production/execution'");
+    expect(content).toContain("'/production/execution/breakdowns'");
+    expect(content).toContain("'/production/execution/line-clearance'");
+    expect(content).toContain("'/production/execution/machine-checklists'");
+    expect(content).toContain("'/production/execution/waste'");
+    expect(content).toContain("'/production/execution/reports'");
   });
 
   // ─── Helper Functions ────────────────────────────────────
 
-  it('defines getDisplayName function with numeric ID check', () => {
+  it('defines getLabel function with numeric ID check', () => {
     const content = readSource();
-    expect(content).toMatch(/function\s+getDisplayName\(segment:\s*string\)/);
+    expect(content).toMatch(/function\s+getLabel\(segment:\s*string\)/);
     expect(content).toContain('/^\\d+$/.test(segment)');
     expect(content).toContain('`#${segment}`');
   });
 
-  it('defines isNavigablePath function', () => {
+  it('defines resolveTarget function', () => {
     const content = readSource();
-    expect(content).toMatch(/function\s+isNavigablePath\(path:\s*string\)/);
-    expect(content).toContain('NAVIGABLE_PATHS.includes(path)');
+    expect(content).toMatch(/function\s+resolveTarget\(path:\s*string,\s*segments:\s*string\[\]\)/);
   });
 
-  it('defines getRedirectPath function handling /edit and /new paths', () => {
+  it('resolveTarget uses NAVIGABLE_PATHS.has', () => {
     const content = readSource();
-    expect(content).toMatch(/function\s+getRedirectPath/);
-    expect(content).toContain("path.includes('/edit')");
-    expect(content).toContain("path.includes('/new')");
+    expect(content).toContain('NAVIGABLE_PATHS.has(path)');
   });
 
-  it('redirects /inspections to /qc/pending', () => {
+  it('handles edit workflows by redirecting to parent list', () => {
     const content = readSource();
-    expect(content).toContain("path.includes('/inspections')");
+    expect(content).toContain("segments.indexOf('edit')");
+  });
+
+  it('redirects /qc/inspections to /qc/pending', () => {
+    const content = readSource();
+    expect(content).toContain("'/qc/inspections'");
     expect(content).toContain("'/qc/pending'");
   });
 
   it('redirects /grpo/preview to /grpo/pending', () => {
     const content = readSource();
-    expect(content).toContain("path === '/grpo/preview'");
+    expect(content).toContain("'/grpo/preview'");
     expect(content).toContain("'/grpo/pending'");
+  });
+
+  it('redirects production/execution/runs to execution dashboard', () => {
+    const content = readSource();
+    expect(content).toContain("'/production/execution/runs'");
+    expect(content).toContain("'/production/execution'");
   });
 
   // ─── Rendering ───────────────────────────────────────────
@@ -153,5 +196,20 @@ describe('Breadcrumbs', () => {
     const content = readSource();
     expect(content).toContain('<Home className="h-4 w-4"');
     expect(content).toMatch(/<Link[\s\S]*?to="\/"/m);
+  });
+
+  it('renders aria-current="page" on the last segment', () => {
+    const content = readSource();
+    expect(content).toContain('aria-current="page"');
+  });
+
+  it('has aria-label on the nav element', () => {
+    const content = readSource();
+    expect(content).toContain('aria-label="Breadcrumb"');
+  });
+
+  it('returns null for root path (no segments to display)', () => {
+    const content = readSource();
+    expect(content).toContain('if (segments.length === 0) return null');
   });
 });

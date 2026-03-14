@@ -12,7 +12,7 @@ dev-dist
 dist
 dist-ssr
 *.local
-
+.claude
 ssh_key*
 
 # Environment files - NEVER commit these!
