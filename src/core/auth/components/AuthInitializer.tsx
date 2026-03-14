@@ -94,8 +94,20 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
   const permissionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tokenIntervalCleanupRef = useRef<(() => void) | null>(null);
 
-  // Capture the intended URL on initial load (before any redirects)
-  const intendedUrlRef = useRef(location.pathname + location.search);
+  // Capture the intended URL on initial load (before any redirects).
+  // Sanitize: auth-internal pages must never be used as a return URL, otherwise
+  // LoadingUserPage would navigate back to /select-company after loading, causing
+  // the company selection page to appear a second time.
+  const AUTH_INTERNAL_PATHS = [
+    ROUTES.COMPANY_SELECTION.path,
+    ROUTES.LOADING_USER.path,
+    ROUTES.LOGIN.path,
+  ];
+  const intendedUrlRef = useRef(
+    (AUTH_INTERNAL_PATHS as string[]).includes(location.pathname)
+      ? ROUTES.DASHBOARD.path
+      : location.pathname + location.search,
+  );
 
   // Initialize auth from IndexedDB on mount
   useEffect(() => {
@@ -125,10 +137,15 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
           const currentCompany = await indexedDBService.getCurrentCompany();
           const intendedUrl = intendedUrlRef.current;
           if (!currentCompany) {
-            navigate(ROUTES.COMPANY_SELECTION.path, {
-              replace: true,
-              state: { from: intendedUrl },
-            });
+            // Guard against the race condition where LoginPage already navigated
+            // here concurrently (e.g. user refreshes page with old valid tokens
+            // and quickly submits the login form).
+            if (window.location.pathname !== ROUTES.COMPANY_SELECTION.path) {
+              navigate(ROUTES.COMPANY_SELECTION.path, {
+                replace: true,
+                state: { from: intendedUrl },
+              });
+            }
           } else {
             navigate(ROUTES.LOADING_USER.path, { replace: true, state: { from: intendedUrl } });
           }
