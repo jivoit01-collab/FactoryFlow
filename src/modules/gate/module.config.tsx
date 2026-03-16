@@ -73,6 +73,7 @@ export const gateModuleConfig: ModuleConfig = {
       element: <GateDashboardPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.DASHBOARD.VIEW, GATE_PERMISSIONS.GATE_ENTRY.VIEW],
+      breadcrumb: { label: 'Gate' },
     },
 
     // ── Raw Materials ────────────────────────────────────────────
@@ -81,6 +82,7 @@ export const gateModuleConfig: ModuleConfig = {
       element: <RawMaterialsDashboard />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RAW_MATERIAL.VIEW, GATE_PERMISSIONS.RAW_MATERIAL.VIEW_FULL],
+      breadcrumb: { label: 'RM' },
     },
     {
       path: '/gate/raw-materials/all',
@@ -181,6 +183,7 @@ export const gateModuleConfig: ModuleConfig = {
       element: <DailyNeedsPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.DAILY_NEEDS.VIEW, GATE_PERMISSIONS.DAILY_NEEDS.VIEW_FULL],
+      breadcrumb: { label: 'Daily' },
     },
     {
       path: '/gate/daily-needs/all',
@@ -257,6 +260,7 @@ export const gateModuleConfig: ModuleConfig = {
       element: <MaintenanceDashboard />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.MAINTENANCE.VIEW, GATE_PERMISSIONS.MAINTENANCE.VIEW_FULL],
+      breadcrumb: { label: 'Maint.' },
     },
     {
       path: '/gate/maintenance/all',
@@ -394,6 +398,7 @@ export const gateModuleConfig: ModuleConfig = {
       element: <ConstructionDashboard />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
+      breadcrumb: { label: 'Const.' },
     },
     {
       path: '/gate/construction/all',
@@ -408,6 +413,7 @@ export const gateModuleConfig: ModuleConfig = {
       element: <PersonGateInDashboard />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+      breadcrumb: { label: 'Visitors' },
     },
     {
       path: '/gate/visitor-labour/all',

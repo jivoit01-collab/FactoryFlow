@@ -50,6 +50,7 @@ export {
   SheetTitle,
   SheetTrigger,
 } from './sheet';
+export { Select, SelectOption, type SelectProps } from './select';
 export { Switch, type SwitchProps } from './switch';
 export { Textarea, type TextareaProps } from './textarea';
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';

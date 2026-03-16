@@ -32,7 +32,8 @@
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
       "Bash(grep -r \"useNavigate\\\\|useParams\\\\|useLocation\" /d/Test_CompanyJivo/factory/FactoryFlow/src/modules/production/planning/pages/*.tsx)",
       "Bash(grep -E \"\\\\.\\(md|doc|txt\\)$|^d\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(xargs grep:*)"
     ]
   }
 }
