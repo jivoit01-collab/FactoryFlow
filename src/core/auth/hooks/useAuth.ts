@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { AUTH_CONFIG, AUTH_ROUTES } from '@/config/constants';
+import { queryClient } from '@/core/api/queryClient';
 import { useAppDispatch, useAppSelector } from '@/core/store';
 import {
   cleanupPushNotifications,
@@ -141,6 +142,7 @@ export function useAuth() {
     async (company: UserCompany) => {
       await authService.switchCompany(company);
       dispatch(switchCompanyAction(company));
+      queryClient.clear();
     },
     [dispatch],
   );
