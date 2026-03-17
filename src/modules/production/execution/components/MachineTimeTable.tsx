@@ -1,112 +1,50 @@
-import { useMemo } from 'react';
-
-import { Input } from '@/shared/components/ui';
-
+import { Plus } from 'lucide-react';
+import { Button } from '@/shared/components/ui';
 import { MACHINE_TYPE_LABELS } from '../constants';
-import type { CreateMachineRuntimeRequest, MachineRuntime, MachineType } from '../types';
-
-const MACHINE_TYPES: MachineType[] = [
-  'FILLER',
-  'CAPPER',
-  'CONVEYOR',
-  'LABELER',
-  'CODING',
-  'SHRINK_PACK',
-  'STICKER_LABELER',
-  'TAPPING_MACHINE',
-];
+import type { MachineRuntime } from '../types';
 
 interface MachineTimeTableProps {
   runtimes: MachineRuntime[];
-  disabled?: boolean;
-  onSave: (data: CreateMachineRuntimeRequest[]) => void;
+  onAdd?: () => void;
+  readOnly?: boolean;
 }
 
-export function MachineTimeTable({ runtimes, disabled = false, onSave }: MachineTimeTableProps) {
-  const rows = useMemo(() => {
-    return MACHINE_TYPES.map((type) => {
-      const existing = runtimes.find((r) => r.machine_type === type);
-      return {
-        machineType: type,
-        label: MACHINE_TYPE_LABELS[type],
-        runtimeMinutes: existing?.runtime_minutes ?? 0,
-        downtimeMinutes: existing?.downtime_minutes ?? 0,
-        existingId: existing?.id,
-      };
-    });
-  }, [runtimes]);
-
-  const totalRuntime = rows.reduce((sum, r) => sum + r.runtimeMinutes, 0);
-  const totalDowntime = rows.reduce((sum, r) => sum + r.downtimeMinutes, 0);
-
-  const handleChange = (
-    machineType: MachineType,
-    field: 'runtimeMinutes' | 'downtimeMinutes',
-    value: number,
-  ) => {
-    const updated = rows.map((row) =>
-      row.machineType === machineType ? { ...row, [field]: value } : row,
-    );
-    onSave(
-      updated.map((row) => ({
-        machine_type: row.machineType,
-        runtime_minutes: row.runtimeMinutes,
-        downtime_minutes: row.downtimeMinutes,
-      })),
-    );
-  };
-
+export function MachineTimeTable({ runtimes, onAdd, readOnly }: MachineTimeTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            <th className="px-3 py-2.5 text-left font-medium">Machine</th>
-            <th className="w-36 px-3 py-2.5 text-right font-medium">Runtime (min)</th>
-            <th className="w-36 px-3 py-2.5 text-right font-medium">Downtime (min)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.machineType} className="border-b last:border-0">
-              <td className="px-3 py-1.5 font-medium text-muted-foreground bg-muted/30">
-                {row.label}
-              </td>
-              <td className="px-3 py-1.5">
-                <Input
-                  type="number"
-                  min={0}
-                  value={row.runtimeMinutes || ''}
-                  disabled={disabled}
-                  placeholder="0"
-                  className="h-8 text-right font-mono text-xs w-full"
-                  onChange={(e) =>
-                    handleChange(row.machineType, 'runtimeMinutes', parseInt(e.target.value) || 0)
-                  }
-                />
-              </td>
-              <td className="px-3 py-1.5">
-                <Input
-                  type="number"
-                  min={0}
-                  value={row.downtimeMinutes || ''}
-                  disabled={disabled}
-                  placeholder="0"
-                  className="h-8 text-right font-mono text-xs w-full"
-                  onChange={(e) =>
-                    handleChange(row.machineType, 'downtimeMinutes', parseInt(e.target.value) || 0)
-                  }
-                />
-              </td>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold">Machine Runtime</h3>
+        {!readOnly && onAdd && (
+          <Button size="sm" onClick={onAdd}>
+            <Plus className="h-4 w-4 mr-1" /> Add Entry
+          </Button>
+        )}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="text-left p-2 font-medium">Machine Type</th>
+              <th className="text-right p-2 font-medium">Runtime (min)</th>
+              <th className="text-right p-2 font-medium">Downtime (min)</th>
+              <th className="text-left p-2 font-medium">Remarks</th>
             </tr>
-          ))}
-          <tr className="bg-blue-50 dark:bg-blue-900/20 font-bold">
-            <td className="px-3 py-2.5">TOTAL</td>
-            <td className="px-3 py-2.5 text-right font-mono">{totalRuntime.toLocaleString()}</td>
-            <td className="px-3 py-2.5 text-right font-mono">{totalDowntime.toLocaleString()}</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {runtimes.map((r) => (
+              <tr key={r.id} className="border-b hover:bg-muted/30">
+                <td className="p-2">{MACHINE_TYPE_LABELS[r.machine_type]}</td>
+                <td className="p-2 text-right">{r.runtime_minutes}</td>
+                <td className="p-2 text-right text-red-600">{r.downtime_minutes}</td>
+                <td className="p-2 text-muted-foreground">{r.remarks || '-'}</td>
+              </tr>
+            ))}
+            {runtimes.length === 0 && (
+              <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">No runtime data</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

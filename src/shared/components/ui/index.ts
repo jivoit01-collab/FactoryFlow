@@ -37,6 +37,16 @@ export {
 export { Input, type InputProps } from './input';
 export { Label } from './label';
 export { Popover, PopoverContent, PopoverTrigger } from './popover';
+export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+} from './select';
 export { Separator } from './separator';
 export {
   Sheet,
@@ -51,5 +61,6 @@ export {
   SheetTrigger,
 } from './sheet';
 export { Switch, type SwitchProps } from './switch';
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 export { Textarea, type TextareaProps } from './textarea';
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';

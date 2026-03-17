@@ -11,13 +11,13 @@ import {
 
 import type { ApiError } from './types';
 
-let isRefreshing = false;
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
+
+// Promise-based lock for token refresh to prevent race conditions.
+// When a refresh is in-flight, `refreshPromise` holds the pending Promise
+// so concurrent callers await the same operation instead of triggering duplicates.
+let refreshPromise: Promise<string> | null = null;
 
 /**
  * Wait for auth initialization to complete
@@ -49,16 +49,22 @@ export function setInitializationPromise(promise: Promise<void>): void {
   });
 }
 
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve(token!);
-    }
+/**
+ * Acquire a refreshed token, reusing an in-flight refresh if one exists.
+ * This eliminates the race condition where multiple concurrent calls
+ * could each trigger their own refresh request.
+ */
+async function acquireRefreshedToken(): Promise<string> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = performTokenRefresh().finally(() => {
+    refreshPromise = null;
   });
-  failedQueue = [];
-};
+
+  return refreshPromise;
+}
 
 /**
  * Check if URL is an auth endpoint that should skip token handling
@@ -169,16 +175,13 @@ function createApiClient(): AxiosInstance {
           // Check if we should proactively refresh
           const shouldRefresh = await shouldProactivelyRefresh();
 
-          if (shouldRefresh && !isRefreshing) {
-            isRefreshing = true;
+          if (shouldRefresh) {
             try {
-              const newToken = await performTokenRefresh();
+              const newToken = await acquireRefreshedToken();
               config.headers.Authorization = `${AUTH_CONFIG.tokenPrefix} ${newToken}`;
             } catch {
               // Continue with existing token, will be caught by response interceptor
               config.headers.Authorization = `${AUTH_CONFIG.tokenPrefix} ${token}`;
-            } finally {
-              isRefreshing = false;
             }
           } else {
             config.headers.Authorization = `${AUTH_CONFIG.tokenPrefix} ${token}`;
@@ -222,36 +225,20 @@ function createApiClient(): AxiosInstance {
           return Promise.reject(apiError);
         }
 
-        if (isRefreshing) {
-          // Wait for ongoing refresh
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then((token) => {
-              originalRequest.headers.Authorization = `${AUTH_CONFIG.tokenPrefix} ${token}`;
-              return client(originalRequest);
-            })
-            .catch((err) => Promise.reject(err));
-        }
-
         originalRequest._retry = true;
-        isRefreshing = true;
 
         try {
-          const newToken = await performTokenRefresh();
-          processQueue(null, newToken);
+          // acquireRefreshedToken reuses an in-flight refresh if one exists,
+          // so concurrent 401 responses all await the same refresh call.
+          const newToken = await acquireRefreshedToken();
           originalRequest.headers.Authorization = `${AUTH_CONFIG.tokenPrefix} ${newToken}`;
           return client(originalRequest);
         } catch (refreshError) {
-          processQueue(refreshError, null);
-
           // Clear IndexedDB
           await indexedDBService.clearAuthData();
 
           window.location.href = '/login';
           return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
         }
       }
 
@@ -298,15 +285,11 @@ export function setupTokenRefreshInterval(): () => void {
     if (!token) return;
 
     const shouldRefresh = await shouldProactivelyRefresh();
-    if (shouldRefresh && !isRefreshing) {
-      isRefreshing = true;
+    if (shouldRefresh) {
       try {
-        await performTokenRefresh();
+        await acquireRefreshedToken();
       } catch {
         // Token refresh failed - will be handled on next API call
-        // Error is silently logged to avoid console spam
-      } finally {
-        isRefreshing = false;
       }
     }
   }, AUTH_CONFIG.tokenCheckInterval);

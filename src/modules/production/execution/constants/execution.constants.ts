@@ -13,11 +13,15 @@ import {
 import type { StatusColorConfig } from '@/config/constants/status.constants';
 
 import type {
+  BreakdownType,
   ChecklistFrequency,
   ChecklistStatus,
+  ClearanceResult,
   ClearanceStatus,
   MachineStatus,
   MachineType,
+  QCResult,
+  FinalQCResult,
   RunStatus,
   Shift,
   WasteApprovalStatus,
@@ -79,10 +83,10 @@ export const MACHINE_STATUS_COLORS: Record<MachineStatus, StatusColorConfig> = {
     darkText: 'dark:text-green-400',
   },
   IDLE: {
-    bg: 'bg-gray-100',
-    text: 'text-gray-800',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-300',
+    bg: 'bg-yellow-100',
+    text: 'text-yellow-800',
+    darkBg: 'dark:bg-yellow-900/30',
+    darkText: 'dark:text-yellow-400',
   },
   BREAKDOWN: {
     bg: 'bg-red-100',
@@ -91,10 +95,90 @@ export const MACHINE_STATUS_COLORS: Record<MachineStatus, StatusColorConfig> = {
     darkText: 'dark:text-red-400',
   },
   CHANGEOVER: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-800',
-    darkBg: 'dark:bg-amber-900/30',
-    darkText: 'dark:text-amber-400',
+    bg: 'bg-purple-100',
+    text: 'text-purple-800',
+    darkBg: 'dark:bg-purple-900/30',
+    darkText: 'dark:text-purple-400',
+  },
+};
+
+// ============================================================================
+// Machine Type
+// ============================================================================
+
+export const MACHINE_TYPE_LABELS: Record<MachineType, string> = {
+  FILLER: 'Filler',
+  CAPPER: 'Capper',
+  CONVEYOR: 'Conveyor',
+  LABELER: 'Labeler',
+  CODING: 'Coding',
+  SHRINK_PACK: 'Shrink Pack',
+  STICKER_LABELER: 'Sticker Labeler',
+  TAPPING_MACHINE: 'Tapping Machine',
+};
+
+// ============================================================================
+// Breakdown Type
+// ============================================================================
+
+export const BREAKDOWN_TYPE_LABELS: Record<BreakdownType, string> = {
+  LINE: 'Line',
+  EXTERNAL: 'External',
+};
+
+export const BREAKDOWN_TYPE_COLORS: Record<BreakdownType, StatusColorConfig> = {
+  LINE: {
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    darkBg: 'dark:bg-red-900/30',
+    darkText: 'dark:text-red-400',
+  },
+  EXTERNAL: {
+    bg: 'bg-orange-100',
+    text: 'text-orange-800',
+    darkBg: 'dark:bg-orange-900/30',
+    darkText: 'dark:text-orange-400',
+  },
+};
+
+// ============================================================================
+// Checklist Frequency
+// ============================================================================
+
+export const FREQUENCY_LABELS: Record<ChecklistFrequency, string> = {
+  DAILY: 'Daily',
+  WEEKLY: 'Weekly',
+  MONTHLY: 'Monthly',
+};
+
+// ============================================================================
+// Checklist Status
+// ============================================================================
+
+export const CHECKLIST_STATUS_LABELS: Record<ChecklistStatus, string> = {
+  OK: 'OK',
+  NOT_OK: 'Not OK',
+  NA: 'N/A',
+};
+
+export const CHECKLIST_STATUS_COLORS: Record<ChecklistStatus, StatusColorConfig> = {
+  OK: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    darkBg: 'dark:bg-green-900/30',
+    darkText: 'dark:text-green-400',
+  },
+  NOT_OK: {
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    darkBg: 'dark:bg-red-900/30',
+    darkText: 'dark:text-red-400',
+  },
+  NA: {
+    bg: 'bg-gray-100',
+    text: 'text-gray-800',
+    darkBg: 'dark:bg-gray-800',
+    darkText: 'dark:text-gray-300',
   },
 };
 
@@ -144,34 +228,13 @@ export const CLEARANCE_STATUS_ICONS: Record<ClearanceStatus, LucideIcon> = {
 };
 
 // ============================================================================
-// Checklist Status
+// Clearance Result
 // ============================================================================
 
-export const CHECKLIST_STATUS_LABELS: Record<ChecklistStatus, string> = {
-  OK: 'OK',
-  NOT_OK: 'Not OK',
+export const CLEARANCE_RESULT_LABELS: Record<ClearanceResult, string> = {
+  YES: 'Yes',
+  NO: 'No',
   NA: 'N/A',
-};
-
-export const CHECKLIST_STATUS_COLORS: Record<ChecklistStatus, StatusColorConfig> = {
-  OK: {
-    bg: 'bg-green-100',
-    text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
-    darkText: 'dark:text-green-400',
-  },
-  NOT_OK: {
-    bg: 'bg-red-100',
-    text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
-    darkText: 'dark:text-red-400',
-  },
-  NA: {
-    bg: 'bg-gray-100',
-    text: 'text-gray-600',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-400',
-  },
 };
 
 // ============================================================================
@@ -186,10 +249,10 @@ export const WASTE_APPROVAL_LABELS: Record<WasteApprovalStatus, string> = {
 
 export const WASTE_APPROVAL_COLORS: Record<WasteApprovalStatus, StatusColorConfig> = {
   PENDING: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-800',
-    darkBg: 'dark:bg-amber-900/30',
-    darkText: 'dark:text-amber-400',
+    bg: 'bg-yellow-100',
+    text: 'text-yellow-800',
+    darkBg: 'dark:bg-yellow-900/30',
+    darkText: 'dark:text-yellow-400',
   },
   PARTIALLY_APPROVED: {
     bg: 'bg-blue-100',
@@ -206,8 +269,8 @@ export const WASTE_APPROVAL_COLORS: Record<WasteApprovalStatus, StatusColorConfi
 };
 
 export const WASTE_APPROVAL_ICONS: Record<WasteApprovalStatus, LucideIcon> = {
-  PENDING: AlertTriangle,
-  PARTIALLY_APPROVED: Clock,
+  PENDING: Clock,
+  PARTIALLY_APPROVED: AlertTriangle,
   FULLY_APPROVED: CheckCircle2,
 };
 
@@ -249,85 +312,87 @@ export const SHIFT_COLORS: Record<Shift, StatusColorConfig> = {
 };
 
 // ============================================================================
-// Machine Types
+// QC Result
 // ============================================================================
 
-export const MACHINE_TYPE_LABELS: Record<MachineType, string> = {
-  FILLER: 'Filler',
-  CAPPER: 'Capper',
-  CONVEYOR: 'Conveyor',
-  LABELER: 'Labeler',
-  CODING: 'Coding',
-  SHRINK_PACK: 'Shrink Pack',
-  STICKER_LABELER: 'Sticker Labeler',
-  TAPPING_MACHINE: 'Tapping Machine',
+export const QC_RESULT_LABELS: Record<QCResult, string> = {
+  PASS: 'Pass',
+  FAIL: 'Fail',
+  NA: 'N/A',
 };
 
-export const MACHINE_TYPE_OPTIONS: { value: MachineType; label: string }[] = [
-  { value: 'FILLER', label: 'Filler' },
-  { value: 'CAPPER', label: 'Capper' },
-  { value: 'CONVEYOR', label: 'Conveyor' },
-  { value: 'LABELER', label: 'Labeler' },
-  { value: 'CODING', label: 'Coding' },
-  { value: 'SHRINK_PACK', label: 'Shrink Pack' },
-  { value: 'STICKER_LABELER', label: 'Sticker Labeler' },
-  { value: 'TAPPING_MACHINE', label: 'Tapping Machine' },
-];
+export const QC_RESULT_COLORS: Record<QCResult, StatusColorConfig> = {
+  PASS: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    darkBg: 'dark:bg-green-900/30',
+    darkText: 'dark:text-green-400',
+  },
+  FAIL: {
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    darkBg: 'dark:bg-red-900/30',
+    darkText: 'dark:text-red-400',
+  },
+  NA: {
+    bg: 'bg-gray-100',
+    text: 'text-gray-800',
+    darkBg: 'dark:bg-gray-800',
+    darkText: 'dark:text-gray-300',
+  },
+};
 
-// ============================================================================
-// Checklist Frequency
-// ============================================================================
+export const FINAL_QC_LABELS: Record<FinalQCResult, string> = {
+  PASS: 'Pass',
+  FAIL: 'Fail',
+  CONDITIONAL: 'Conditional',
+};
 
-export const CHECKLIST_FREQUENCY_LABELS: Record<ChecklistFrequency, string> = {
-  DAILY: 'Daily',
-  WEEKLY: 'Weekly',
-  MONTHLY: 'Monthly',
+export const FINAL_QC_COLORS: Record<FinalQCResult, StatusColorConfig> = {
+  PASS: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    darkBg: 'dark:bg-green-900/30',
+    darkText: 'dark:text-green-400',
+  },
+  FAIL: {
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    darkBg: 'dark:bg-red-900/30',
+    darkText: 'dark:text-red-400',
+  },
+  CONDITIONAL: {
+    bg: 'bg-amber-100',
+    text: 'text-amber-800',
+    darkBg: 'dark:bg-amber-900/30',
+    darkText: 'dark:text-amber-400',
+  },
 };
 
 // ============================================================================
-// Time Slots (12-hour shift: 07:00 to 19:00)
+// Time Slots (07:00 - 19:00)
 // ============================================================================
 
-export interface TimeSlot {
-  slot: string;
-  start: string;
-  end: string;
-}
-
-export const TIME_SLOTS: TimeSlot[] = [
-  { slot: '07:00-08:00', start: '07:00', end: '08:00' },
-  { slot: '08:00-09:00', start: '08:00', end: '09:00' },
-  { slot: '09:00-10:00', start: '09:00', end: '10:00' },
-  { slot: '10:00-11:00', start: '10:00', end: '11:00' },
-  { slot: '11:00-12:00', start: '11:00', end: '12:00' },
-  { slot: '12:00-13:00', start: '12:00', end: '13:00' },
-  { slot: '13:00-14:00', start: '13:00', end: '14:00' },
-  { slot: '14:00-15:00', start: '14:00', end: '15:00' },
-  { slot: '15:00-16:00', start: '15:00', end: '16:00' },
-  { slot: '16:00-17:00', start: '16:00', end: '17:00' },
-  { slot: '17:00-18:00', start: '17:00', end: '18:00' },
-  { slot: '18:00-19:00', start: '18:00', end: '19:00' },
-];
-
-// ============================================================================
-// Standard Materials (for yield report pre-fill)
-// ============================================================================
-
-export const STANDARD_MATERIALS = [
-  'Bottle',
-  'Cap',
-  'Front Label',
-  'Back Label',
-  'Tikki',
-  'Shrink',
-  'Carton',
+export const TIME_SLOTS = [
+  { slot: '07:00-08:00', start: '07:00:00', end: '08:00:00' },
+  { slot: '08:00-09:00', start: '08:00:00', end: '09:00:00' },
+  { slot: '09:00-10:00', start: '09:00:00', end: '10:00:00' },
+  { slot: '10:00-11:00', start: '10:00:00', end: '11:00:00' },
+  { slot: '11:00-12:00', start: '11:00:00', end: '12:00:00' },
+  { slot: '12:00-13:00', start: '12:00:00', end: '13:00:00' },
+  { slot: '13:00-14:00', start: '13:00:00', end: '14:00:00' },
+  { slot: '14:00-15:00', start: '14:00:00', end: '15:00:00' },
+  { slot: '15:00-16:00', start: '15:00:00', end: '16:00:00' },
+  { slot: '16:00-17:00', start: '16:00:00', end: '17:00:00' },
+  { slot: '17:00-18:00', start: '17:00:00', end: '18:00:00' },
+  { slot: '18:00-19:00', start: '18:00:00', end: '19:00:00' },
 ] as const;
 
 // ============================================================================
-// Line Clearance Checkpoints (auto-created by backend, for reference)
+// Standard Line Clearance Items
 // ============================================================================
 
-export const LINE_CLEARANCE_CHECKPOINTS = [
+export const STANDARD_CLEARANCE_ITEMS = [
   'Previous product, labels and packaging materials removed',
   'Machine/equipment cleaned and free from product residues',
   'Utensils, scoops and accessories cleaned and available',
@@ -338,27 +403,3 @@ export const LINE_CLEARANCE_CHECKPOINTS = [
   'Coding machine updated with correct product/batch details',
   'Environmental conditions (temperature/humidity) within limits',
 ] as const;
-
-// ============================================================================
-// Breakdown Type Labels
-// ============================================================================
-
-export const BREAKDOWN_TYPE_LABELS: Record<string, string> = {
-  LINE: 'Line',
-  EXTERNAL: 'External',
-};
-
-export const BREAKDOWN_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'LINE', label: 'Line' },
-  { value: 'EXTERNAL', label: 'External' },
-];
-
-// ============================================================================
-// Clearance Result Labels
-// ============================================================================
-
-export const CLEARANCE_RESULT_LABELS: Record<string, string> = {
-  YES: 'Yes',
-  NO: 'No',
-  NA: 'N/A',
-};

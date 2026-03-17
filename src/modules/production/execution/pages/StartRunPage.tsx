@@ -1,53 +1,47 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Play } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Input,
-  Label,
-} from '@/shared/components/ui';
+import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
 
-import { usePlans } from '@/modules/production/planning/api';
+import { useCreateRun, useLines, useSAPOrders } from '../api';
 import { createRunSchema, type CreateRunFormData } from '../schemas';
-import { useProductionLines, useCreateRun } from '../api/execution.queries';
 
-export default function StartRunPage() {
+function StartRunPage() {
   const navigate = useNavigate();
-  const { data: lines = [] } = useProductionLines(true);
-  const { data: plans = [] } = usePlans('OPEN');
+  const { data: sapOrders, isLoading: loadingSAP } = useSAPOrders();
+  const { data: lines } = useLines(true);
   const createRun = useCreateRun();
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<CreateRunFormData>({
+  const form = useForm<CreateRunFormData>({
     resolver: zodResolver(createRunSchema),
     defaultValues: {
-      date: new Date().toISOString().slice(0, 10),
+      date: new Date().toISOString().split('T')[0],
+      brand: '',
+      pack: '',
+      sap_order_no: '',
+      rated_speed: '',
     },
   });
 
-  const handlePlanChange = (planId: number) => {
-    setValue('production_plan_id', planId);
-    const plan = plans.find((p) => p.id === planId);
-    if (plan) {
-      setValue('brand', plan.item_name);
+  const onSelectSAPOrder = (docEntry: string) => {
+    const order = sapOrders?.find((o) => o.DocEntry === Number(docEntry));
+    if (order) {
+      form.setValue('sap_doc_entry', order.DocEntry);
+      form.setValue('sap_order_no', String(order.DocNum));
+      form.setValue('brand', order.ItemName);
+      form.setValue('pack', order.ItemCode);
     }
   };
 
   const onSubmit = async (data: CreateRunFormData) => {
     try {
       const run = await createRun.mutateAsync(data);
-      toast.success('Production run created');
+      toast.success('Production run created successfully');
       navigate(`/production/execution/runs/${run.id}`);
     } catch {
       toast.error('Failed to create production run');
@@ -55,123 +49,100 @@ export default function StartRunPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Start Production Run</h1>
-          <p className="text-sm text-muted-foreground">Create a new production run entry</p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <DashboardHeader title="Start Production Run" description="Create a new production run from a SAP order" />
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+        <ArrowLeft className="h-4 w-4 mr-2" /> Back
+      </Button>
+
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-2xl">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Run Details</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>SAP Order</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {/* Date */}
-            <div className="space-y-2">
-              <Label htmlFor="date">Date *</Label>
-              <Input id="date" type="date" {...register('date')} />
-              {errors.date && (
-                <p className="text-xs text-red-500">{errors.date.message}</p>
+            <div>
+              <Label>Select SAP Production Order</Label>
+              <Select onValueChange={onSelectSAPOrder} disabled={loadingSAP}>
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingSAP ? 'Loading orders...' : 'Select an order'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sapOrders?.map((order) => (
+                    <SelectItem key={order.DocEntry} value={String(order.DocEntry)}>
+                      #{order.DocNum} - {order.ItemName} ({order.RemainingQty} remaining)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.sap_doc_entry && (
+                <p className="text-sm text-red-500 mt-1">{form.formState.errors.sap_doc_entry.message}</p>
               )}
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Production Plan */}
-            <div className="space-y-2">
-              <Label htmlFor="production_plan_id">Production Plan *</Label>
-              <select
-                id="production_plan_id"
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                {...register('production_plan_id', {
-                  valueAsNumber: true,
-                  onChange: (e) => {
-                    const id = Number(e.target.value);
-                    if (id) handlePlanChange(id);
-                  },
-                })}
-              >
-                <option value="">Select a plan</option>
-                {plans.map((plan) => (
-                  <option key={plan.id} value={plan.id}>
-                    {plan.item_name} ({plan.item_code}) — {Number(plan.planned_qty).toLocaleString()} {plan.uom}
-                  </option>
-                ))}
-              </select>
-              {errors.production_plan_id && (
-                <p className="text-xs text-red-500">{errors.production_plan_id.message}</p>
-              )}
-            </div>
-
-            {/* Line */}
-            <div className="space-y-2">
-              <Label htmlFor="line_id">Production Line *</Label>
-              <select
-                id="line_id"
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                {...register('line_id', { valueAsNumber: true })}
-              >
-                <option value="">Select a line</option>
-                {lines.map((line) => (
-                  <option key={line.id} value={line.id}>
-                    {line.name}
-                  </option>
-                ))}
-              </select>
-              {errors.line_id && (
-                <p className="text-xs text-red-500">{errors.line_id.message}</p>
-              )}
-            </div>
-
-            {/* Brand & Pack */}
+        <Card>
+          <CardHeader><CardTitle>Run Details</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="brand">Brand</Label>
-                <Input id="brand" placeholder="e.g., Jivo Canola" {...register('brand')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pack">Pack Size</Label>
-                <Input id="pack" placeholder="e.g., 1L" {...register('pack')} />
-              </div>
-            </div>
-
-            {/* SAP Order & Rated Speed */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="sap_order_no">SAP Order No.</Label>
-                <Input
-                  id="sap_order_no"
-                  placeholder="SAP order number"
-                  {...register('sap_order_no')}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="rated_speed">Rated Speed (cases/hr)</Label>
-                <Input
-                  id="rated_speed"
-                  type="number"
-                  placeholder="e.g., 500"
-                  {...register('rated_speed', { valueAsNumber: true })}
-                />
-                {errors.rated_speed && (
-                  <p className="text-xs text-red-500">{errors.rated_speed.message}</p>
+              <div>
+                <Label>Production Line</Label>
+                <Select onValueChange={(v) => form.setValue('line_id', Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select line" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lines?.map((line) => (
+                      <SelectItem key={line.id} value={String(line.id)}>
+                        {line.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.line_id && (
+                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.line_id.message}</p>
                 )}
+              </div>
+              <div>
+                <Label>Date</Label>
+                <Input type="date" {...form.register('date')} />
+                {form.formState.errors.date && (
+                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.date.message}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Brand</Label>
+                <Input {...form.register('brand')} />
+                {form.formState.errors.brand && (
+                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.brand.message}</p>
+                )}
+              </div>
+              <div>
+                <Label>Pack</Label>
+                <Input {...form.register('pack')} />
+                {form.formState.errors.pack && (
+                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.pack.message}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>SAP Order No.</Label>
+                <Input {...form.register('sap_order_no')} readOnly />
+              </div>
+              <div>
+                <Label>Rated Speed (cases/hr)</Label>
+                <Input {...form.register('rated_speed')} placeholder="e.g., 150" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 mt-6">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-            Cancel
-          </Button>
+        <div className="flex justify-end gap-4">
+          <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
           <Button type="submit" disabled={createRun.isPending}>
-            <Play className="h-4 w-4 mr-2" />
             {createRun.isPending ? 'Creating...' : 'Start Run'}
           </Button>
         </div>
@@ -179,3 +150,5 @@ export default function StartRunPage() {
     </div>
   );
 }
+
+export default StartRunPage;

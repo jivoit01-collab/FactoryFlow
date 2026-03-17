@@ -2,160 +2,213 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
-  AnalyticsData,
-  AnalyticsQueryParams,
+  AnalyticsParams,
   ApproveClearanceRequest,
-  ApproveWasteRequest,
-  ChecklistQueryParams,
+  BulkChecklistRequest,
   ChecklistTemplate,
-  ClearanceQueryParams,
   CreateBreakdownRequest,
   CreateChecklistEntryRequest,
-  CreateClearanceRequest,
+  CreateCompressedAirRequest,
+  CreateElectricityRequest,
+  CreateGasRequest,
+  CreateLabourRequest,
+  CreateLineClearanceRequest,
   CreateLogRequest,
-  CreateMachineRuntimeRequest,
+  CreateMachineCostRequest,
+  CreateMachineRequest,
   CreateManpowerRequest,
   CreateMaterialUsageRequest,
+  CreateLineRequest,
+  CreateOverheadRequest,
   CreateRunRequest,
+  CreateRuntimeRequest,
+  CreateTemplateRequest,
   CreateWasteLogRequest,
+  CreateWaterRequest,
+  CreateInProcessQCRequest,
+  CreateFinalQCRequest,
+  DailyProductionReport,
+  DowntimeAnalytics,
+  FinalQCCheck,
+  InProcessQCCheck,
   LineClearance,
   LineClearanceDetail,
   Machine,
   MachineBreakdown,
   MachineChecklistEntry,
   MachineRuntime,
+  Manpower,
+  MaterialUsage,
+  OEEAnalytics,
   ProductionLine,
   ProductionLog,
-  ProductionManpower,
-  ProductionMaterialUsage,
   ProductionRun,
+  ProductionRunCost,
   ProductionRunDetail,
-  ReportQueryParams,
-  RunsQueryParams,
-  UpdateBreakdownRequest,
-  UpdateClearanceRequest,
-  UpdateMaterialUsageRequest,
+  ResourceCompressedAir,
+  ResourceElectricity,
+  ResourceGas,
+  ResourceLabour,
+  ResourceMachineCost,
+  ResourceOverhead,
+  ResourceWater,
+  SAPOrderDetail,
+  SAPProductionOrder,
+  UpdateLineClearanceRequest,
   UpdateRunRequest,
+  WasteAnalytics,
+  WasteApprovalRequest,
   WasteLog,
-  WasteQueryParams,
-  YieldReportData,
+  YieldReport,
 } from '../types';
 
 const EP = API_ENDPOINTS.PRODUCTION_EXECUTION;
 
 export const executionApi = {
-  // ---- Production Lines ----
+  // =========================================================================
+  // Master Data — Lines
+  // =========================================================================
 
   async getLines(isActive?: boolean): Promise<ProductionLine[]> {
     const params: Record<string, string> = {};
     if (isActive !== undefined) params.is_active = String(isActive);
-    const response = await apiClient.get<ProductionLine[]>(EP.LINES, { params });
-    return response.data;
+    const res = await apiClient.get<ProductionLine[]>(EP.LINES, { params });
+    return res.data;
   },
 
-  async createLine(data: { name: string; description?: string }): Promise<ProductionLine> {
-    const response = await apiClient.post<ProductionLine>(EP.LINES, data);
-    return response.data;
+  async createLine(data: CreateLineRequest): Promise<ProductionLine> {
+    const res = await apiClient.post<ProductionLine>(EP.LINES, data);
+    return res.data;
   },
 
-  async updateLine(
-    lineId: number,
-    data: Partial<{ name: string; description: string; is_active: boolean }>,
-  ): Promise<ProductionLine> {
-    const response = await apiClient.patch<ProductionLine>(EP.LINE_DETAIL(lineId), data);
-    return response.data;
+  async updateLine(lineId: number, data: Partial<CreateLineRequest>): Promise<ProductionLine> {
+    const res = await apiClient.patch<ProductionLine>(EP.LINE_DETAIL(lineId), data);
+    return res.data;
   },
 
   async deleteLine(lineId: number): Promise<void> {
     await apiClient.delete(EP.LINE_DETAIL(lineId));
   },
 
-  // ---- Machines ----
+  // =========================================================================
+  // Master Data — Machines
+  // =========================================================================
 
   async getMachines(lineId?: number, machineType?: string): Promise<Machine[]> {
     const params: Record<string, string | number> = {};
     if (lineId) params.line_id = lineId;
     if (machineType) params.machine_type = machineType;
-    const response = await apiClient.get<Machine[]>(EP.MACHINES, { params });
-    return response.data;
+    const res = await apiClient.get<Machine[]>(EP.MACHINES, { params });
+    return res.data;
   },
 
-  async createMachine(data: {
-    name: string;
-    machine_type: string;
-    line_id: number;
-  }): Promise<Machine> {
-    const response = await apiClient.post<Machine>(EP.MACHINES, data);
-    return response.data;
+  async createMachine(data: CreateMachineRequest): Promise<Machine> {
+    const res = await apiClient.post<Machine>(EP.MACHINES, data);
+    return res.data;
   },
 
-  async updateMachine(
-    machineId: number,
-    data: Partial<{ name: string; machine_type: string; line_id: number; is_active: boolean }>,
-  ): Promise<Machine> {
-    const response = await apiClient.patch<Machine>(EP.MACHINE_DETAIL(machineId), data);
-    return response.data;
+  async updateMachine(machineId: number, data: Partial<CreateMachineRequest>): Promise<Machine> {
+    const res = await apiClient.patch<Machine>(EP.MACHINE_DETAIL(machineId), data);
+    return res.data;
   },
 
   async deleteMachine(machineId: number): Promise<void> {
     await apiClient.delete(EP.MACHINE_DETAIL(machineId));
   },
 
-  // ---- Checklist Templates ----
+  // =========================================================================
+  // Master Data — Checklist Templates
+  // =========================================================================
 
-  async getChecklistTemplates(
-    machineType?: string,
-    frequency?: string,
-  ): Promise<ChecklistTemplate[]> {
+  async getChecklistTemplates(machineType?: string): Promise<ChecklistTemplate[]> {
     const params: Record<string, string> = {};
     if (machineType) params.machine_type = machineType;
-    if (frequency) params.frequency = frequency;
-    const response = await apiClient.get<ChecklistTemplate[]>(EP.CHECKLIST_TEMPLATES, { params });
-    return response.data;
+    const res = await apiClient.get<ChecklistTemplate[]>(EP.CHECKLIST_TEMPLATES, { params });
+    return res.data;
   },
 
-  // ---- Production Runs ----
+  async createChecklistTemplate(data: CreateTemplateRequest): Promise<ChecklistTemplate> {
+    const res = await apiClient.post<ChecklistTemplate>(EP.CHECKLIST_TEMPLATES, data);
+    return res.data;
+  },
 
-  async getRuns(queryParams?: RunsQueryParams): Promise<ProductionRun[]> {
-    const params: Record<string, string | number> = {};
-    if (queryParams?.date) params.date = queryParams.date;
-    if (queryParams?.line_id) params.line_id = queryParams.line_id;
-    if (queryParams?.status) params.status = queryParams.status;
-    if (queryParams?.production_plan_id) params.production_plan_id = queryParams.production_plan_id;
-    const response = await apiClient.get<ProductionRun[]>(EP.RUNS, { params });
-    return response.data;
+  async updateChecklistTemplate(
+    templateId: number,
+    data: Partial<CreateTemplateRequest>,
+  ): Promise<ChecklistTemplate> {
+    const res = await apiClient.patch<ChecklistTemplate>(
+      EP.CHECKLIST_TEMPLATE_DETAIL(templateId),
+      data,
+    );
+    return res.data;
+  },
+
+  async deleteChecklistTemplate(templateId: number): Promise<void> {
+    await apiClient.delete(EP.CHECKLIST_TEMPLATE_DETAIL(templateId));
+  },
+
+  // =========================================================================
+  // SAP Orders
+  // =========================================================================
+
+  async getSAPOrders(): Promise<SAPProductionOrder[]> {
+    const res = await apiClient.get<SAPProductionOrder[]>(EP.SAP_ORDERS);
+    return res.data;
+  },
+
+  async getSAPOrderDetail(docEntry: number): Promise<SAPOrderDetail> {
+    const res = await apiClient.get<SAPOrderDetail>(EP.SAP_ORDER_DETAIL(docEntry));
+    return res.data;
+  },
+
+  // =========================================================================
+  // Production Runs
+  // =========================================================================
+
+  async getRuns(status?: string, date?: string): Promise<ProductionRun[]> {
+    const params: Record<string, string> = {};
+    if (status) params.status = status;
+    if (date) params.date = date;
+    const res = await apiClient.get<ProductionRun[]>(EP.RUNS, { params });
+    return res.data;
   },
 
   async getRunDetail(runId: number): Promise<ProductionRunDetail> {
-    const response = await apiClient.get<ProductionRunDetail>(EP.RUN_DETAIL(runId));
-    return response.data;
+    const res = await apiClient.get<ProductionRunDetail>(EP.RUN_DETAIL(runId));
+    return res.data;
   },
 
-  async createRun(data: CreateRunRequest): Promise<ProductionRunDetail> {
-    const response = await apiClient.post<ProductionRunDetail>(EP.RUNS, data);
-    return response.data;
+  async createRun(data: CreateRunRequest): Promise<ProductionRun> {
+    const res = await apiClient.post<ProductionRun>(EP.RUNS, data);
+    return res.data;
   },
 
-  async updateRun(runId: number, data: UpdateRunRequest): Promise<ProductionRunDetail> {
-    const response = await apiClient.patch<ProductionRunDetail>(EP.RUN_DETAIL(runId), data);
-    return response.data;
+  async updateRun(runId: number, data: UpdateRunRequest): Promise<ProductionRun> {
+    const res = await apiClient.patch<ProductionRun>(EP.RUN_DETAIL(runId), data);
+    return res.data;
   },
 
-  async completeRun(runId: number): Promise<ProductionRunDetail> {
-    const response = await apiClient.post<ProductionRunDetail>(EP.RUN_COMPLETE(runId));
-    return response.data;
+  async deleteRun(runId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_DELETE(runId));
   },
 
-  // ---- Hourly Logs ----
+  async completeRun(runId: number): Promise<ProductionRun> {
+    const res = await apiClient.post<ProductionRun>(EP.RUN_COMPLETE(runId));
+    return res.data;
+  },
+
+  // =========================================================================
+  // Hourly Logs
+  // =========================================================================
 
   async getLogs(runId: number): Promise<ProductionLog[]> {
-    const response = await apiClient.get<ProductionLog[]>(EP.RUN_LOGS(runId));
-    return response.data;
+    const res = await apiClient.get<ProductionLog[]>(EP.RUN_LOGS(runId));
+    return res.data;
   },
 
-  async createLogs(runId: number, data: CreateLogRequest[]): Promise<ProductionLog[]> {
-    const response = await apiClient.post<ProductionLog[]>(EP.RUN_LOGS(runId), data);
-    return response.data;
+  async createLog(runId: number, data: CreateLogRequest): Promise<ProductionLog> {
+    const res = await apiClient.post<ProductionLog>(EP.RUN_LOGS(runId), data);
+    return res.data;
   },
 
   async updateLog(
@@ -163,279 +216,551 @@ export const executionApi = {
     logId: number,
     data: Partial<CreateLogRequest>,
   ): Promise<ProductionLog> {
-    const response = await apiClient.patch<ProductionLog>(EP.RUN_LOG_DETAIL(runId, logId), data);
-    return response.data;
+    const res = await apiClient.patch<ProductionLog>(EP.RUN_LOG_DETAIL(runId, logId), data);
+    return res.data;
   },
 
-  // ---- Breakdowns ----
+  async deleteLog(runId: number, logId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_LOG_DETAIL(runId, logId));
+  },
+
+  // =========================================================================
+  // Breakdowns
+  // =========================================================================
 
   async getBreakdowns(runId: number): Promise<MachineBreakdown[]> {
-    const response = await apiClient.get<MachineBreakdown[]>(EP.RUN_BREAKDOWNS(runId));
-    return response.data;
+    const res = await apiClient.get<MachineBreakdown[]>(EP.RUN_BREAKDOWNS(runId));
+    return res.data;
   },
 
   async createBreakdown(runId: number, data: CreateBreakdownRequest): Promise<MachineBreakdown> {
-    const response = await apiClient.post<MachineBreakdown>(EP.RUN_BREAKDOWNS(runId), data);
-    return response.data;
+    const res = await apiClient.post<MachineBreakdown>(EP.RUN_BREAKDOWNS(runId), data);
+    return res.data;
   },
 
   async updateBreakdown(
     runId: number,
     breakdownId: number,
-    data: UpdateBreakdownRequest,
+    data: Partial<CreateBreakdownRequest>,
   ): Promise<MachineBreakdown> {
-    const response = await apiClient.patch<MachineBreakdown>(
+    const res = await apiClient.patch<MachineBreakdown>(
       EP.RUN_BREAKDOWN_DETAIL(runId, breakdownId),
       data,
     );
-    return response.data;
+    return res.data;
   },
 
   async deleteBreakdown(runId: number, breakdownId: number): Promise<void> {
     await apiClient.delete(EP.RUN_BREAKDOWN_DETAIL(runId, breakdownId));
   },
 
-  // ---- Materials ----
+  // =========================================================================
+  // Materials
+  // =========================================================================
 
-  async getMaterials(runId: number, batchNumber?: number): Promise<ProductionMaterialUsage[]> {
-    const params: Record<string, number> = {};
-    if (batchNumber) params.batch_number = batchNumber;
-    const response = await apiClient.get<ProductionMaterialUsage[]>(EP.RUN_MATERIALS(runId), {
-      params,
-    });
-    return response.data;
+  async getMaterials(runId: number): Promise<MaterialUsage[]> {
+    const res = await apiClient.get<MaterialUsage[]>(EP.RUN_MATERIALS(runId));
+    return res.data;
   },
 
-  async createMaterials(
-    runId: number,
-    data: CreateMaterialUsageRequest[],
-  ): Promise<ProductionMaterialUsage[]> {
-    const response = await apiClient.post<ProductionMaterialUsage[]>(
-      EP.RUN_MATERIALS(runId),
-      data,
-    );
-    return response.data;
+  async createMaterial(runId: number, data: CreateMaterialUsageRequest): Promise<MaterialUsage> {
+    const res = await apiClient.post<MaterialUsage>(EP.RUN_MATERIALS(runId), data);
+    return res.data;
   },
 
   async updateMaterial(
     runId: number,
     materialId: number,
-    data: UpdateMaterialUsageRequest,
-  ): Promise<ProductionMaterialUsage> {
-    const response = await apiClient.patch<ProductionMaterialUsage>(
+    data: Partial<CreateMaterialUsageRequest>,
+  ): Promise<MaterialUsage> {
+    const res = await apiClient.patch<MaterialUsage>(
       EP.RUN_MATERIAL_DETAIL(runId, materialId),
       data,
     );
-    return response.data;
+    return res.data;
   },
 
-  // ---- Machine Runtime ----
+  async deleteMaterial(runId: number, materialId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_MATERIAL_DETAIL(runId, materialId));
+  },
+
+  // =========================================================================
+  // Machine Runtime
+  // =========================================================================
 
   async getMachineRuntime(runId: number): Promise<MachineRuntime[]> {
-    const response = await apiClient.get<MachineRuntime[]>(EP.RUN_MACHINE_RUNTIME(runId));
-    return response.data;
+    const res = await apiClient.get<MachineRuntime[]>(EP.RUN_MACHINE_RUNTIME(runId));
+    return res.data;
   },
 
-  async createMachineRuntime(
-    runId: number,
-    data: CreateMachineRuntimeRequest[],
-  ): Promise<MachineRuntime[]> {
-    const response = await apiClient.post<MachineRuntime[]>(
-      EP.RUN_MACHINE_RUNTIME(runId),
-      data,
-    );
-    return response.data;
+  async createMachineRuntime(runId: number, data: CreateRuntimeRequest): Promise<MachineRuntime> {
+    const res = await apiClient.post<MachineRuntime>(EP.RUN_MACHINE_RUNTIME(runId), data);
+    return res.data;
   },
 
   async updateMachineRuntime(
     runId: number,
     runtimeId: number,
-    data: Partial<CreateMachineRuntimeRequest>,
+    data: Partial<CreateRuntimeRequest>,
   ): Promise<MachineRuntime> {
-    const response = await apiClient.patch<MachineRuntime>(
+    const res = await apiClient.patch<MachineRuntime>(
       EP.RUN_MACHINE_RUNTIME_DETAIL(runId, runtimeId),
       data,
     );
-    return response.data;
+    return res.data;
   },
 
-  // ---- Manpower ----
-
-  async getManpower(runId: number): Promise<ProductionManpower[]> {
-    const response = await apiClient.get<ProductionManpower[]>(EP.RUN_MANPOWER(runId));
-    return response.data;
+  async deleteMachineRuntime(runId: number, runtimeId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_MACHINE_RUNTIME_DETAIL(runId, runtimeId));
   },
 
-  async createManpower(runId: number, data: CreateManpowerRequest): Promise<ProductionManpower> {
-    const response = await apiClient.post<ProductionManpower>(EP.RUN_MANPOWER(runId), data);
-    return response.data;
+  // =========================================================================
+  // Manpower
+  // =========================================================================
+
+  async getManpower(runId: number): Promise<Manpower[]> {
+    const res = await apiClient.get<Manpower[]>(EP.RUN_MANPOWER(runId));
+    return res.data;
+  },
+
+  async createManpower(runId: number, data: CreateManpowerRequest): Promise<Manpower> {
+    const res = await apiClient.post<Manpower>(EP.RUN_MANPOWER(runId), data);
+    return res.data;
   },
 
   async updateManpower(
     runId: number,
     manpowerId: number,
     data: Partial<CreateManpowerRequest>,
-  ): Promise<ProductionManpower> {
-    const response = await apiClient.patch<ProductionManpower>(
+  ): Promise<Manpower> {
+    const res = await apiClient.patch<Manpower>(
       EP.RUN_MANPOWER_DETAIL(runId, manpowerId),
       data,
     );
-    return response.data;
+    return res.data;
   },
 
-  // ---- Line Clearance ----
+  async deleteManpower(runId: number, manpowerId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_MANPOWER_DETAIL(runId, manpowerId));
+  },
 
-  async getClearances(queryParams?: ClearanceQueryParams): Promise<LineClearance[]> {
+  // =========================================================================
+  // Line Clearance
+  // =========================================================================
+
+  async getLineClearances(lineId?: number, status?: string): Promise<LineClearance[]> {
     const params: Record<string, string | number> = {};
-    if (queryParams?.date) params.date = queryParams.date;
-    if (queryParams?.line_id) params.line_id = queryParams.line_id;
-    if (queryParams?.status) params.status = queryParams.status;
-    const response = await apiClient.get<LineClearance[]>(EP.LINE_CLEARANCE, { params });
-    return response.data;
+    if (lineId) params.line_id = lineId;
+    if (status) params.status = status;
+    const res = await apiClient.get<LineClearance[]>(EP.LINE_CLEARANCE, { params });
+    return res.data;
   },
 
-  async getClearanceDetail(clearanceId: number): Promise<LineClearanceDetail> {
-    const response = await apiClient.get<LineClearanceDetail>(
-      EP.LINE_CLEARANCE_DETAIL(clearanceId),
-    );
-    return response.data;
+  async getLineClearanceDetail(clearanceId: number): Promise<LineClearanceDetail> {
+    const res = await apiClient.get<LineClearanceDetail>(EP.LINE_CLEARANCE_DETAIL(clearanceId));
+    return res.data;
   },
 
-  async createClearance(data: CreateClearanceRequest): Promise<LineClearanceDetail> {
-    const response = await apiClient.post<LineClearanceDetail>(EP.LINE_CLEARANCE, data);
-    return response.data;
+  async createLineClearance(data: CreateLineClearanceRequest): Promise<LineClearanceDetail> {
+    const res = await apiClient.post<LineClearanceDetail>(EP.LINE_CLEARANCE, data);
+    return res.data;
   },
 
-  async updateClearance(
+  async updateLineClearance(
     clearanceId: number,
-    data: UpdateClearanceRequest,
+    data: UpdateLineClearanceRequest,
   ): Promise<LineClearanceDetail> {
-    const response = await apiClient.patch<LineClearanceDetail>(
+    const res = await apiClient.patch<LineClearanceDetail>(
       EP.LINE_CLEARANCE_DETAIL(clearanceId),
       data,
     );
-    return response.data;
+    return res.data;
   },
 
-  async submitClearance(clearanceId: number): Promise<LineClearanceDetail> {
-    const response = await apiClient.post<LineClearanceDetail>(
-      EP.LINE_CLEARANCE_SUBMIT(clearanceId),
-    );
-    return response.data;
+  async submitLineClearance(clearanceId: number): Promise<LineClearanceDetail> {
+    const res = await apiClient.post<LineClearanceDetail>(EP.LINE_CLEARANCE_SUBMIT(clearanceId));
+    return res.data;
   },
 
-  async approveClearance(
+  async approveLineClearance(
     clearanceId: number,
     data: ApproveClearanceRequest,
   ): Promise<LineClearanceDetail> {
-    const response = await apiClient.post<LineClearanceDetail>(
+    const res = await apiClient.post<LineClearanceDetail>(
       EP.LINE_CLEARANCE_APPROVE(clearanceId),
       data,
     );
-    return response.data;
+    return res.data;
   },
 
-  // ---- Machine Checklists ----
+  // =========================================================================
+  // Machine Checklists
+  // =========================================================================
 
-  async getChecklistEntries(queryParams?: ChecklistQueryParams): Promise<MachineChecklistEntry[]> {
+  async getMachineChecklists(
+    machineId?: number,
+    date?: string,
+    month?: number,
+    year?: number,
+  ): Promise<MachineChecklistEntry[]> {
     const params: Record<string, string | number> = {};
-    if (queryParams?.machine_id) params.machine_id = queryParams.machine_id;
-    if (queryParams?.month) params.month = queryParams.month;
-    if (queryParams?.year) params.year = queryParams.year;
-    if (queryParams?.frequency) params.frequency = queryParams.frequency;
-    const response = await apiClient.get<MachineChecklistEntry[]>(EP.MACHINE_CHECKLISTS, {
-      params,
-    });
-    return response.data;
+    if (machineId) params.machine_id = machineId;
+    if (date) params.date = date;
+    if (month) params.month = month;
+    if (year) params.year = year;
+    const res = await apiClient.get<MachineChecklistEntry[]>(EP.MACHINE_CHECKLISTS, { params });
+    return res.data;
   },
 
   async createChecklistEntry(data: CreateChecklistEntryRequest): Promise<MachineChecklistEntry> {
-    const response = await apiClient.post<MachineChecklistEntry>(EP.MACHINE_CHECKLISTS, data);
-    return response.data;
+    const res = await apiClient.post<MachineChecklistEntry>(EP.MACHINE_CHECKLISTS, data);
+    return res.data;
   },
 
-  async bulkCreateChecklistEntries(
-    data: CreateChecklistEntryRequest[],
-  ): Promise<MachineChecklistEntry[]> {
-    const response = await apiClient.post<MachineChecklistEntry[]>(
-      EP.MACHINE_CHECKLISTS_BULK,
-      data,
-    );
-    return response.data;
+  async bulkCreateChecklists(data: BulkChecklistRequest): Promise<MachineChecklistEntry[]> {
+    const res = await apiClient.post<MachineChecklistEntry[]>(EP.MACHINE_CHECKLISTS_BULK, data);
+    return res.data;
   },
 
   async updateChecklistEntry(
     entryId: number,
     data: Partial<CreateChecklistEntryRequest>,
   ): Promise<MachineChecklistEntry> {
-    const response = await apiClient.patch<MachineChecklistEntry>(
+    const res = await apiClient.patch<MachineChecklistEntry>(
       EP.MACHINE_CHECKLIST_DETAIL(entryId),
       data,
     );
-    return response.data;
+    return res.data;
   },
 
-  // ---- Waste Management ----
+  // =========================================================================
+  // Waste Management
+  // =========================================================================
 
-  async getWasteLogs(queryParams?: WasteQueryParams): Promise<WasteLog[]> {
-    const params: Record<string, string | number> = {};
-    if (queryParams?.run_id) params.run_id = queryParams.run_id;
-    if (queryParams?.approval_status) params.approval_status = queryParams.approval_status;
-    const response = await apiClient.get<WasteLog[]>(EP.WASTE, { params });
-    return response.data;
+  async getWasteLogs(runId?: number): Promise<WasteLog[]> {
+    const params: Record<string, number> = {};
+    if (runId) params.production_run = runId;
+    const res = await apiClient.get<WasteLog[]>(EP.WASTE, { params });
+    return res.data;
   },
 
-  async getWasteDetail(wasteId: number): Promise<WasteLog> {
-    const response = await apiClient.get<WasteLog>(EP.WASTE_DETAIL(wasteId));
-    return response.data;
+  async getWasteLogDetail(wasteId: number): Promise<WasteLog> {
+    const res = await apiClient.get<WasteLog>(EP.WASTE_DETAIL(wasteId));
+    return res.data;
   },
 
   async createWasteLog(data: CreateWasteLogRequest): Promise<WasteLog> {
-    const response = await apiClient.post<WasteLog>(EP.WASTE, data);
-    return response.data;
+    const res = await apiClient.post<WasteLog>(EP.WASTE, data);
+    return res.data;
   },
 
-  async approveWasteEngineer(wasteId: number, data: ApproveWasteRequest): Promise<WasteLog> {
-    const response = await apiClient.post<WasteLog>(EP.WASTE_APPROVE_ENGINEER(wasteId), data);
-    return response.data;
+  async updateWasteLog(wasteId: number, data: Partial<CreateWasteLogRequest>): Promise<WasteLog> {
+    const res = await apiClient.patch<WasteLog>(EP.WASTE_DETAIL(wasteId), data);
+    return res.data;
   },
 
-  async approveWasteAM(wasteId: number, data: ApproveWasteRequest): Promise<WasteLog> {
-    const response = await apiClient.post<WasteLog>(EP.WASTE_APPROVE_AM(wasteId), data);
-    return response.data;
+  async deleteWasteLog(wasteId: number): Promise<void> {
+    await apiClient.delete(EP.WASTE_DETAIL(wasteId));
   },
 
-  async approveWasteStore(wasteId: number, data: ApproveWasteRequest): Promise<WasteLog> {
-    const response = await apiClient.post<WasteLog>(EP.WASTE_APPROVE_STORE(wasteId), data);
-    return response.data;
+  async approveWasteEngineer(wasteId: number, data: WasteApprovalRequest): Promise<WasteLog> {
+    const res = await apiClient.post<WasteLog>(EP.WASTE_APPROVE_ENGINEER(wasteId), data);
+    return res.data;
   },
 
-  async approveWasteHOD(wasteId: number, data: ApproveWasteRequest): Promise<WasteLog> {
-    const response = await apiClient.post<WasteLog>(EP.WASTE_APPROVE_HOD(wasteId), data);
-    return response.data;
+  async approveWasteAM(wasteId: number, data: WasteApprovalRequest): Promise<WasteLog> {
+    const res = await apiClient.post<WasteLog>(EP.WASTE_APPROVE_AM(wasteId), data);
+    return res.data;
   },
 
-  // ---- Reports ----
-
-  async getDailyProductionReport(queryParams: ReportQueryParams): Promise<ProductionRunDetail[]> {
-    const params: Record<string, string | number> = { date: queryParams.date };
-    if (queryParams.line_id) params.line_id = queryParams.line_id;
-    const response = await apiClient.get<ProductionRunDetail[]>(EP.REPORTS_DAILY, { params });
-    return response.data;
+  async approveWasteStore(wasteId: number, data: WasteApprovalRequest): Promise<WasteLog> {
+    const res = await apiClient.post<WasteLog>(EP.WASTE_APPROVE_STORE(wasteId), data);
+    return res.data;
   },
 
-  async getYieldReport(runId: number): Promise<YieldReportData> {
-    const response = await apiClient.get<YieldReportData>(EP.REPORTS_YIELD(runId));
-    return response.data;
+  async approveWasteHOD(wasteId: number, data: WasteApprovalRequest): Promise<WasteLog> {
+    const res = await apiClient.post<WasteLog>(EP.WASTE_APPROVE_HOD(wasteId), data);
+    return res.data;
   },
 
-  async getAnalytics(queryParams: AnalyticsQueryParams): Promise<AnalyticsData> {
-    const params: Record<string, string | number> = {
-      date_from: queryParams.date_from,
-      date_to: queryParams.date_to,
-    };
-    if (queryParams.line_id) params.line_id = queryParams.line_id;
-    const response = await apiClient.get<AnalyticsData>(EP.REPORTS_ANALYTICS, { params });
-    return response.data;
+  // =========================================================================
+  // Resources
+  // =========================================================================
+
+  // Electricity
+  async getElectricity(runId: number): Promise<ResourceElectricity[]> {
+    const res = await apiClient.get<ResourceElectricity[]>(EP.RUN_ELECTRICITY(runId));
+    return res.data;
+  },
+  async createElectricity(
+    runId: number,
+    data: CreateElectricityRequest,
+  ): Promise<ResourceElectricity> {
+    const res = await apiClient.post<ResourceElectricity>(EP.RUN_ELECTRICITY(runId), data);
+    return res.data;
+  },
+  async updateElectricity(
+    runId: number,
+    entryId: number,
+    data: Partial<CreateElectricityRequest>,
+  ): Promise<ResourceElectricity> {
+    const res = await apiClient.patch<ResourceElectricity>(
+      EP.RUN_ELECTRICITY_DETAIL(runId, entryId),
+      data,
+    );
+    return res.data;
+  },
+  async deleteElectricity(runId: number, entryId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_ELECTRICITY_DETAIL(runId, entryId));
+  },
+
+  // Water
+  async getWater(runId: number): Promise<ResourceWater[]> {
+    const res = await apiClient.get<ResourceWater[]>(EP.RUN_WATER(runId));
+    return res.data;
+  },
+  async createWater(runId: number, data: CreateWaterRequest): Promise<ResourceWater> {
+    const res = await apiClient.post<ResourceWater>(EP.RUN_WATER(runId), data);
+    return res.data;
+  },
+  async updateWater(
+    runId: number,
+    entryId: number,
+    data: Partial<CreateWaterRequest>,
+  ): Promise<ResourceWater> {
+    const res = await apiClient.patch<ResourceWater>(EP.RUN_WATER_DETAIL(runId, entryId), data);
+    return res.data;
+  },
+  async deleteWater(runId: number, entryId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_WATER_DETAIL(runId, entryId));
+  },
+
+  // Gas
+  async getGas(runId: number): Promise<ResourceGas[]> {
+    const res = await apiClient.get<ResourceGas[]>(EP.RUN_GAS(runId));
+    return res.data;
+  },
+  async createGas(runId: number, data: CreateGasRequest): Promise<ResourceGas> {
+    const res = await apiClient.post<ResourceGas>(EP.RUN_GAS(runId), data);
+    return res.data;
+  },
+  async updateGas(
+    runId: number,
+    entryId: number,
+    data: Partial<CreateGasRequest>,
+  ): Promise<ResourceGas> {
+    const res = await apiClient.patch<ResourceGas>(EP.RUN_GAS_DETAIL(runId, entryId), data);
+    return res.data;
+  },
+  async deleteGas(runId: number, entryId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_GAS_DETAIL(runId, entryId));
+  },
+
+  // Compressed Air
+  async getCompressedAir(runId: number): Promise<ResourceCompressedAir[]> {
+    const res = await apiClient.get<ResourceCompressedAir[]>(EP.RUN_COMPRESSED_AIR(runId));
+    return res.data;
+  },
+  async createCompressedAir(
+    runId: number,
+    data: CreateCompressedAirRequest,
+  ): Promise<ResourceCompressedAir> {
+    const res = await apiClient.post<ResourceCompressedAir>(EP.RUN_COMPRESSED_AIR(runId), data);
+    return res.data;
+  },
+  async updateCompressedAir(
+    runId: number,
+    entryId: number,
+    data: Partial<CreateCompressedAirRequest>,
+  ): Promise<ResourceCompressedAir> {
+    const res = await apiClient.patch<ResourceCompressedAir>(
+      EP.RUN_COMPRESSED_AIR_DETAIL(runId, entryId),
+      data,
+    );
+    return res.data;
+  },
+  async deleteCompressedAir(runId: number, entryId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_COMPRESSED_AIR_DETAIL(runId, entryId));
+  },
+
+  // Labour
+  async getLabour(runId: number): Promise<ResourceLabour[]> {
+    const res = await apiClient.get<ResourceLabour[]>(EP.RUN_LABOUR(runId));
+    return res.data;
+  },
+  async createLabour(runId: number, data: CreateLabourRequest): Promise<ResourceLabour> {
+    const res = await apiClient.post<ResourceLabour>(EP.RUN_LABOUR(runId), data);
+    return res.data;
+  },
+  async updateLabour(
+    runId: number,
+    entryId: number,
+    data: Partial<CreateLabourRequest>,
+  ): Promise<ResourceLabour> {
+    const res = await apiClient.patch<ResourceLabour>(
+      EP.RUN_LABOUR_DETAIL(runId, entryId),
+      data,
+    );
+    return res.data;
+  },
+  async deleteLabour(runId: number, entryId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_LABOUR_DETAIL(runId, entryId));
+  },
+
+  // Machine Costs
+  async getMachineCosts(runId: number): Promise<ResourceMachineCost[]> {
+    const res = await apiClient.get<ResourceMachineCost[]>(EP.RUN_MACHINE_COSTS(runId));
+    return res.data;
+  },
+  async createMachineCost(
+    runId: number,
+    data: CreateMachineCostRequest,
+  ): Promise<ResourceMachineCost> {
+    const res = await apiClient.post<ResourceMachineCost>(EP.RUN_MACHINE_COSTS(runId), data);
+    return res.data;
+  },
+  async updateMachineCost(
+    runId: number,
+    entryId: number,
+    data: Partial<CreateMachineCostRequest>,
+  ): Promise<ResourceMachineCost> {
+    const res = await apiClient.patch<ResourceMachineCost>(
+      EP.RUN_MACHINE_COSTS_DETAIL(runId, entryId),
+      data,
+    );
+    return res.data;
+  },
+  async deleteMachineCost(runId: number, entryId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_MACHINE_COSTS_DETAIL(runId, entryId));
+  },
+
+  // Overhead
+  async getOverhead(runId: number): Promise<ResourceOverhead[]> {
+    const res = await apiClient.get<ResourceOverhead[]>(EP.RUN_OVERHEAD(runId));
+    return res.data;
+  },
+  async createOverhead(runId: number, data: CreateOverheadRequest): Promise<ResourceOverhead> {
+    const res = await apiClient.post<ResourceOverhead>(EP.RUN_OVERHEAD(runId), data);
+    return res.data;
+  },
+  async updateOverhead(
+    runId: number,
+    entryId: number,
+    data: Partial<CreateOverheadRequest>,
+  ): Promise<ResourceOverhead> {
+    const res = await apiClient.patch<ResourceOverhead>(
+      EP.RUN_OVERHEAD_DETAIL(runId, entryId),
+      data,
+    );
+    return res.data;
+  },
+  async deleteOverhead(runId: number, entryId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_OVERHEAD_DETAIL(runId, entryId));
+  },
+
+  // =========================================================================
+  // Cost
+  // =========================================================================
+
+  async getRunCost(runId: number): Promise<ProductionRunCost> {
+    const res = await apiClient.get<ProductionRunCost>(EP.RUN_COST(runId));
+    return res.data;
+  },
+
+  async getCostAnalytics(params?: AnalyticsParams): Promise<ProductionRunCost[]> {
+    const res = await apiClient.get<ProductionRunCost[]>(EP.COST_ANALYTICS, { params });
+    return res.data;
+  },
+
+  // =========================================================================
+  // QC
+  // =========================================================================
+
+  async getInProcessQC(runId: number): Promise<InProcessQCCheck[]> {
+    const res = await apiClient.get<InProcessQCCheck[]>(EP.RUN_QC_INPROCESS(runId));
+    return res.data;
+  },
+
+  async createInProcessQC(
+    runId: number,
+    data: CreateInProcessQCRequest,
+  ): Promise<InProcessQCCheck> {
+    const res = await apiClient.post<InProcessQCCheck>(EP.RUN_QC_INPROCESS(runId), data);
+    return res.data;
+  },
+
+  async updateInProcessQC(
+    runId: number,
+    checkId: number,
+    data: Partial<CreateInProcessQCRequest>,
+  ): Promise<InProcessQCCheck> {
+    const res = await apiClient.patch<InProcessQCCheck>(
+      EP.RUN_QC_INPROCESS_DETAIL(runId, checkId),
+      data,
+    );
+    return res.data;
+  },
+
+  async deleteInProcessQC(runId: number, checkId: number): Promise<void> {
+    await apiClient.delete(EP.RUN_QC_INPROCESS_DETAIL(runId, checkId));
+  },
+
+  async getFinalQC(runId: number): Promise<FinalQCCheck> {
+    const res = await apiClient.get<FinalQCCheck>(EP.RUN_QC_FINAL(runId));
+    return res.data;
+  },
+
+  async createFinalQC(runId: number, data: CreateFinalQCRequest): Promise<FinalQCCheck> {
+    const res = await apiClient.post<FinalQCCheck>(EP.RUN_QC_FINAL(runId), data);
+    return res.data;
+  },
+
+  async updateFinalQC(
+    runId: number,
+    data: Partial<CreateFinalQCRequest>,
+  ): Promise<FinalQCCheck> {
+    const res = await apiClient.patch<FinalQCCheck>(EP.RUN_QC_FINAL(runId), data);
+    return res.data;
+  },
+
+  // =========================================================================
+  // Reports
+  // =========================================================================
+
+  async getDailyProductionReport(date?: string): Promise<DailyProductionReport> {
+    const params: Record<string, string> = {};
+    if (date) params.date = date;
+    const res = await apiClient.get<DailyProductionReport>(EP.REPORTS_DAILY, { params });
+    return res.data;
+  },
+
+  async getYieldReport(runId: number): Promise<YieldReport> {
+    const res = await apiClient.get<YieldReport>(EP.REPORTS_YIELD(runId));
+    return res.data;
+  },
+
+  async getLineClearanceReport(params?: AnalyticsParams): Promise<LineClearance[]> {
+    const res = await apiClient.get<LineClearance[]>(EP.REPORTS_LINE_CLEARANCE, { params });
+    return res.data;
+  },
+
+  async getAnalytics(params?: AnalyticsParams): Promise<unknown> {
+    const res = await apiClient.get(EP.REPORTS_ANALYTICS, { params });
+    return res.data;
+  },
+
+  async getOEEAnalytics(params?: AnalyticsParams): Promise<OEEAnalytics> {
+    const res = await apiClient.get<OEEAnalytics>(EP.REPORTS_OEE, { params });
+    return res.data;
+  },
+
+  async getDowntimeAnalytics(params?: AnalyticsParams): Promise<DowntimeAnalytics> {
+    const res = await apiClient.get<DowntimeAnalytics>(EP.REPORTS_DOWNTIME, { params });
+    return res.data;
+  },
+
+  async getWasteAnalytics(params?: AnalyticsParams): Promise<WasteAnalytics> {
+    const res = await apiClient.get<WasteAnalytics>(EP.REPORTS_WASTE_ANALYTICS, { params });
+    return res.data;
   },
 };

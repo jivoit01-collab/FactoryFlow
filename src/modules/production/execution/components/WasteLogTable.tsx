@@ -1,135 +1,46 @@
-import { CheckCircle2, Clock, Minus } from 'lucide-react';
-
-import { cn } from '@/shared/utils';
-
-import { WASTE_APPROVAL_COLORS, WASTE_APPROVAL_LABELS } from '../constants';
 import type { WasteLog } from '../types';
+import { WasteApprovalBadge } from './WasteApprovalBadge';
 
 interface WasteLogTableProps {
   wasteLogs: WasteLog[];
-  onRowClick: (wasteLog: WasteLog) => void;
+  onApprove?: (wasteId: number, level: 'engineer' | 'am' | 'store' | 'hod') => void;
+  onView?: (waste: WasteLog) => void;
 }
 
-function ApprovalCell({
-  signed,
-  signedBy,
-  signedAt,
-}: {
-  signed: boolean;
-  signedBy: string;
-  signedAt: string | null;
-}) {
-  if (signed && signedBy) {
-    return (
-      <span
-        className="inline-flex items-center gap-1 text-green-600 text-xs"
-        title={`Signed by: ${signedBy}${signedAt ? ` on ${new Date(signedAt).toLocaleString()}` : ''}`}
-      >
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Signed
-      </span>
-    );
-  }
-  if (signedBy === '' && !signed) {
-    return (
-      <span className="inline-flex items-center gap-1 text-amber-600 text-xs">
-        <Clock className="h-3.5 w-3.5" />
-        Pending
-      </span>
-    );
-  }
+export function WasteLogTable({ wasteLogs, onView }: WasteLogTableProps) {
   return (
-    <span className="text-gray-400">
-      <Minus className="h-3.5 w-3.5" />
-    </span>
-  );
-}
-
-export function WasteLogTable({ wasteLogs, onRowClick }: WasteLogTableProps) {
-  if (wasteLogs.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground text-sm">
-        No waste logs found.
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/50">
-            <th className="px-3 py-2.5 text-left font-medium">Material</th>
-            <th className="px-3 py-2.5 text-right font-medium">Wastage Qty</th>
-            <th className="px-3 py-2.5 text-left font-medium">Reason</th>
-            <th className="px-3 py-2.5 text-center font-medium">Engineer</th>
-            <th className="px-3 py-2.5 text-center font-medium">AM</th>
-            <th className="px-3 py-2.5 text-center font-medium">Store</th>
-            <th className="px-3 py-2.5 text-center font-medium">HOD</th>
-            <th className="px-3 py-2.5 text-center font-medium">Status</th>
+            <th className="text-left p-2 font-medium">Material</th>
+            <th className="text-right p-2 font-medium">Qty</th>
+            <th className="text-left p-2 font-medium">UoM</th>
+            <th className="text-left p-2 font-medium">Reason</th>
+            <th className="text-left p-2 font-medium">Status</th>
+            <th className="text-center p-2 font-medium">Engineer</th>
+            <th className="text-center p-2 font-medium">AM</th>
+            <th className="text-center p-2 font-medium">Store</th>
+            <th className="text-center p-2 font-medium">HOD</th>
           </tr>
         </thead>
         <tbody>
-          {wasteLogs.map((log) => {
-            const colors = WASTE_APPROVAL_COLORS[log.wastage_approval_status];
-            const label = WASTE_APPROVAL_LABELS[log.wastage_approval_status];
-            return (
-              <tr
-                key={log.id}
-                className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
-                onClick={() => onRowClick(log)}
-              >
-                <td className="px-3 py-2 font-medium">{log.material_name}</td>
-                <td className="px-3 py-2 text-right font-mono">
-                  {Number(log.wastage_qty).toLocaleString()} {log.uom}
-                </td>
-                <td className="px-3 py-2 max-w-[200px] truncate text-muted-foreground">
-                  {log.reason || '—'}
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <ApprovalCell
-                    signed={!!log.engineer_signed_by}
-                    signedBy={log.engineer_sign}
-                    signedAt={log.engineer_signed_at}
-                  />
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <ApprovalCell
-                    signed={!!log.am_signed_by}
-                    signedBy={log.am_sign}
-                    signedAt={log.am_signed_at}
-                  />
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <ApprovalCell
-                    signed={!!log.store_signed_by}
-                    signedBy={log.store_sign}
-                    signedAt={log.store_signed_at}
-                  />
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <ApprovalCell
-                    signed={!!log.hod_signed_by}
-                    signedBy={log.hod_sign}
-                    signedAt={log.hod_signed_at}
-                  />
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                      colors.bg,
-                      colors.text,
-                      colors.darkBg,
-                      colors.darkText,
-                    )}
-                  >
-                    {label}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
+          {wasteLogs.map((w) => (
+            <tr key={w.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => onView?.(w)}>
+              <td className="p-2">{w.material_name}</td>
+              <td className="p-2 text-right font-medium">{w.wastage_qty}</td>
+              <td className="p-2">{w.uom}</td>
+              <td className="p-2 truncate max-w-[150px]">{w.reason}</td>
+              <td className="p-2"><WasteApprovalBadge status={w.wastage_approval_status} /></td>
+              <td className="p-2 text-center">{w.engineer_sign ? '✓' : '-'}</td>
+              <td className="p-2 text-center">{w.am_sign ? '✓' : '-'}</td>
+              <td className="p-2 text-center">{w.store_sign ? '✓' : '-'}</td>
+              <td className="p-2 text-center">{w.hod_sign ? '✓' : '-'}</td>
+            </tr>
+          ))}
+          {wasteLogs.length === 0 && (
+            <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">No waste logs</td></tr>
+          )}
         </tbody>
       </table>
     </div>

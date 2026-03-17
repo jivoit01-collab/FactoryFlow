@@ -241,10 +241,59 @@ export const API_ENDPOINTS = {
       `/production-execution/waste/${wasteId}/approve/store/`,
     WASTE_APPROVE_HOD: (wasteId: number) =>
       `/production-execution/waste/${wasteId}/approve/hod/`,
+    // Resources
+    RUN_ELECTRICITY: (runId: number) =>
+      `/production-execution/runs/${runId}/resources/electricity/`,
+    RUN_ELECTRICITY_DETAIL: (runId: number, entryId: number) =>
+      `/production-execution/runs/${runId}/resources/electricity/${entryId}/`,
+    RUN_WATER: (runId: number) =>
+      `/production-execution/runs/${runId}/resources/water/`,
+    RUN_WATER_DETAIL: (runId: number, entryId: number) =>
+      `/production-execution/runs/${runId}/resources/water/${entryId}/`,
+    RUN_GAS: (runId: number) =>
+      `/production-execution/runs/${runId}/resources/gas/`,
+    RUN_GAS_DETAIL: (runId: number, entryId: number) =>
+      `/production-execution/runs/${runId}/resources/gas/${entryId}/`,
+    RUN_COMPRESSED_AIR: (runId: number) =>
+      `/production-execution/runs/${runId}/resources/compressed-air/`,
+    RUN_COMPRESSED_AIR_DETAIL: (runId: number, entryId: number) =>
+      `/production-execution/runs/${runId}/resources/compressed-air/${entryId}/`,
+    RUN_LABOUR: (runId: number) =>
+      `/production-execution/runs/${runId}/resources/labour/`,
+    RUN_LABOUR_DETAIL: (runId: number, entryId: number) =>
+      `/production-execution/runs/${runId}/resources/labour/${entryId}/`,
+    RUN_MACHINE_COSTS: (runId: number) =>
+      `/production-execution/runs/${runId}/resources/machine-costs/`,
+    RUN_MACHINE_COSTS_DETAIL: (runId: number, entryId: number) =>
+      `/production-execution/runs/${runId}/resources/machine-costs/${entryId}/`,
+    RUN_OVERHEAD: (runId: number) =>
+      `/production-execution/runs/${runId}/resources/overhead/`,
+    RUN_OVERHEAD_DETAIL: (runId: number, entryId: number) =>
+      `/production-execution/runs/${runId}/resources/overhead/${entryId}/`,
+    // Cost
+    RUN_COST: (runId: number) => `/production-execution/runs/${runId}/cost/`,
+    COST_ANALYTICS: '/production-execution/costs/analytics/',
+    // QC
+    RUN_QC_INPROCESS: (runId: number) =>
+      `/production-execution/runs/${runId}/qc/inprocess/`,
+    RUN_QC_INPROCESS_DETAIL: (runId: number, checkId: number) =>
+      `/production-execution/runs/${runId}/qc/inprocess/${checkId}/`,
+    RUN_QC_FINAL: (runId: number) =>
+      `/production-execution/runs/${runId}/qc/final/`,
+    // SAP Orders
+    SAP_ORDERS: '/production-execution/sap/orders/',
+    SAP_ORDER_DETAIL: (docEntry: number) =>
+      `/production-execution/sap/orders/${docEntry}/`,
     // Reports
     REPORTS_DAILY: '/production-execution/reports/daily-production/',
     REPORTS_YIELD: (runId: number) => `/production-execution/reports/yield/${runId}/`,
+    REPORTS_LINE_CLEARANCE: '/production-execution/reports/line-clearance/',
     REPORTS_ANALYTICS: '/production-execution/reports/analytics/',
+    REPORTS_OEE: '/production-execution/reports/analytics/oee/',
+    REPORTS_DOWNTIME: '/production-execution/reports/analytics/downtime/',
+    REPORTS_WASTE_ANALYTICS: '/production-execution/reports/analytics/waste/',
+    // Delete run
+    RUN_DELETE: (runId: number) => `/production-execution/runs/${runId}/`,
   },
 } as const;
 
