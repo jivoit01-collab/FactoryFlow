@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { ENTRY_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
+import { RecordTimestamps } from '@/shared/components';
 import { getServerErrorMessage, isServerError as checkServerError } from '@/shared/utils';
 
 import {
@@ -247,25 +248,33 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
   const isReadOnly = isEditMode;
 
   return (
-    <VehicleDriverFormShell
-      formData={formData}
-      onFormChange={handleInputChange}
-      isReadOnly={isReadOnly}
-      isLoading={isEditMode && isLoadingEntry}
-      isSaving={createVehicleEntry.isPending || updateVehicleEntry.isPending || isNavigating}
-      apiErrors={apiErrors}
-      currentStep={1}
-      totalSteps={config.totalSteps}
-      onVehicleSelect={handleVehicleSelect}
-      onDriverSelect={handleDriverSelect}
-      onCancel={handleCancel}
-      onNext={handleNext}
-      onUpdate={handleUpdate}
-      isEditMode={isEditMode}
-      canUpdate={canUpdate}
-      updateMode={updateMode}
-      serverError={hasServerError ? getServerErrorMessage() : null}
-      headerTitle={config.headerTitle}
-    />
+    <>
+      <VehicleDriverFormShell
+        formData={formData}
+        onFormChange={handleInputChange}
+        isReadOnly={isReadOnly}
+        isLoading={isEditMode && isLoadingEntry}
+        isSaving={createVehicleEntry.isPending || updateVehicleEntry.isPending || isNavigating}
+        apiErrors={apiErrors}
+        currentStep={1}
+        totalSteps={config.totalSteps}
+        onVehicleSelect={handleVehicleSelect}
+        onDriverSelect={handleDriverSelect}
+        onCancel={handleCancel}
+        onNext={handleNext}
+        onUpdate={handleUpdate}
+        isEditMode={isEditMode}
+        canUpdate={canUpdate}
+        updateMode={updateMode}
+        serverError={hasServerError ? getServerErrorMessage() : null}
+        headerTitle={config.headerTitle}
+      />
+      {isEditMode && entryData?.created_at && (
+        <RecordTimestamps
+          createdAt={entryData.created_at}
+          updatedAt={entryData.updated_at}
+        />
+      )}
+    </>
   );
 }

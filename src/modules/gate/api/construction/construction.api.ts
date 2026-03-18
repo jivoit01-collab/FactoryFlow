@@ -32,6 +32,8 @@ export interface ConstructionEntry {
   security_approval: string;
   inward_time?: string;
   remarks?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateConstructionRequest {
@@ -63,6 +65,7 @@ export interface ConstructionFullViewGateEntry {
   status: string;
   is_locked: boolean;
   created_at: string;
+  updated_at?: string;
   entry_type: string;
 }
 
@@ -105,6 +108,7 @@ export interface ConstructionFullViewDetails {
   remarks?: string;
   created_by: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface ConstructionFullView {
@@ -127,6 +131,13 @@ export const constructionApi = {
     return response.data;
   },
 
+
+
+
+
+
+
+  
   /**
    * Get construction entry by vehicle entry ID
    */

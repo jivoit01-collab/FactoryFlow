@@ -10,6 +10,7 @@ import {
   VEHICLE_CONDITIONS,
 } from '@/config/constants';
 import type { ApiError } from '@/core/api';
+import { RecordTimestamps } from '@/shared/components';
 import { getCurrentTimeHHMM, getTimeFromDatetime } from '@/shared/hooks';
 import {
   getErrorMessage,
@@ -248,27 +249,35 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
   };
 
   return (
-    <SecurityCheckFormShell
-      formData={formData}
-      onFormChange={handleInputChange}
-      isReadOnly={isReadOnly}
-      isLoading={effectiveEditMode && isLoadingSecurityCheck}
-      isSaving={createSecurityCheck.isPending || isNavigating}
-      apiErrors={apiErrors}
-      currentStep={currentStep}
-      totalSteps={config.totalSteps}
-      onPrevious={handlePrevious}
-      onCancel={handleCancel}
-      onNext={handleNext}
-      onUpdate={handleUpdate}
-      isEditMode={effectiveEditMode}
-      canUpdate={canUpdate}
-      updateMode={updateMode}
-      showFillDataAlert={effectiveEditMode && isNotFoundError && !fillDataMode}
-      onFillData={handleFillData}
-      fillDataMessage={getErrorMessage(securityCheckError, 'Security check not found')}
-      serverError={hasServerError ? getServerErrorMessage() : null}
-      headerTitle={config.headerTitle}
-    />
+    <>
+      <SecurityCheckFormShell
+        formData={formData}
+        onFormChange={handleInputChange}
+        isReadOnly={isReadOnly}
+        isLoading={effectiveEditMode && isLoadingSecurityCheck}
+        isSaving={createSecurityCheck.isPending || isNavigating}
+        apiErrors={apiErrors}
+        currentStep={currentStep}
+        totalSteps={config.totalSteps}
+        onPrevious={handlePrevious}
+        onCancel={handleCancel}
+        onNext={handleNext}
+        onUpdate={handleUpdate}
+        isEditMode={effectiveEditMode}
+        canUpdate={canUpdate}
+        updateMode={updateMode}
+        showFillDataAlert={effectiveEditMode && isNotFoundError && !fillDataMode}
+        onFillData={handleFillData}
+        fillDataMessage={getErrorMessage(securityCheckError, 'Security check not found')}
+        serverError={hasServerError ? getServerErrorMessage() : null}
+        headerTitle={config.headerTitle}
+      />
+      {isEditMode && vehicleEntryData?.created_at && (
+        <RecordTimestamps
+          createdAt={vehicleEntryData.created_at}
+          updatedAt={vehicleEntryData.updated_at}
+        />
+      )}
+    </>
   );
 }

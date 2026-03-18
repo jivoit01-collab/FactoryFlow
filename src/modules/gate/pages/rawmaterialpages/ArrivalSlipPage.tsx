@@ -8,6 +8,7 @@ import { env } from '@/config/env.config';
 import { VALIDATION_PATTERNS } from '@/config/constants';
 import { ARRIVAL_SLIP_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api';
+import { RecordTimestamps } from '@/shared/components';
 import {
   Button,
   Card,
@@ -1072,6 +1073,14 @@ export default function ArrivalSlipPage() {
           </Card>
         )}
       </div>
+
+      {/* Record Timestamps */}
+      {vehicleEntryData?.created_at && (
+        <RecordTimestamps
+          createdAt={vehicleEntryData.created_at}
+          updatedAt={vehicleEntryData.updated_at}
+        />
+      )}
 
       {/* Footer Actions */}
       <StepFooter

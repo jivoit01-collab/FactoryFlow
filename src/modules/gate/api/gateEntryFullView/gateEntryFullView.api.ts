@@ -8,6 +8,7 @@ export interface GateEntryFullView {
     status: string;
     is_locked: boolean;
     created_at: string;
+    updated_at?: string;
   };
   vehicle: {
     vehicle_number: string;

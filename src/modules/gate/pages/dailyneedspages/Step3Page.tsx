@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_STATUS, VALIDATION_PATTERNS } from '@/config/constants';
 import type { ApiError } from '@/core/api';
+import { RecordTimestamps } from '@/shared/components';
 import {
   Button,
   Card,
@@ -590,6 +591,14 @@ export default function Step3Page() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Record Timestamps */}
+      {isEditMode && vehicleEntryData?.created_at && (
+        <RecordTimestamps
+          createdAt={vehicleEntryData.created_at}
+          updatedAt={vehicleEntryData.updated_at}
+        />
+      )}
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">

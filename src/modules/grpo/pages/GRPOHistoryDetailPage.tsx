@@ -2,6 +2,7 @@ import { AlertCircle, ArrowLeft, RefreshCw, ShieldX } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useGRPODetail } from '../api';
@@ -174,6 +175,12 @@ export default function GRPOHistoryDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Record Timestamps */}
+          <RecordTimestamps
+            createdAt={posting.created_at}
+            updatedAt={posting.updated_at}
+          />
 
           {/* Back Button */}
           <Button variant="outline" onClick={() => navigate('/grpo/history')}>

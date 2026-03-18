@@ -4,9 +4,11 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api';
+import { RecordTimestamps } from '@/shared/components';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { useGateAttachments, useUploadAttachment } from '../../api/attachment/attachment.queries';
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import { StepFooter, StepHeader } from '../../components';
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
 import { useEntryId } from '../../hooks';
@@ -32,6 +34,11 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
   const previousStep = `step${config.totalSteps - 1}`;
 
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch vehicle entry data for timestamps
+  const { data: vehicleEntryData } = useVehicleEntry(
+    isEditMode && entryIdNumber ? entryIdNumber : null,
+  );
 
   // Fetch existing attachments
   const { data: attachments, isLoading } = useGateAttachments(entryIdNumber);
@@ -212,6 +219,14 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Record Timestamps */}
+      {isEditMode && vehicleEntryData?.created_at && (
+        <RecordTimestamps
+          createdAt={vehicleEntryData.created_at}
+          updatedAt={vehicleEntryData.updated_at}
+        />
       )}
 
       <StepFooter

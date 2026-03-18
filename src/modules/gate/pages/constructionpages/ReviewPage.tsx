@@ -23,6 +23,7 @@ import {
   getSecurityApprovalClasses,
 } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
+import { RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
@@ -582,6 +583,12 @@ export default function ReviewPage() {
           </Card>
         )}
       </div>
+
+      {/* Record Timestamps */}
+      <RecordTimestamps
+        createdAt={gateEntry.gate_entry.created_at}
+        updatedAt={gateEntry.gate_entry.updated_at}
+      />
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">

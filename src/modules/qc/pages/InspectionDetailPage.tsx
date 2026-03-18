@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { RecordTimestamps } from '@/shared/components';
 import {
   Button,
   Card,
@@ -1100,6 +1101,20 @@ export default function InspectionDetailPage() {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Record Timestamps */}
+      {inspection && (
+        <RecordTimestamps
+          createdAt={inspection.created_at}
+          updatedAt={inspection.updated_at}
+        />
+      )}
+      {!inspection && arrivalSlip && (
+        <RecordTimestamps
+          createdAt={arrivalSlip.created_at}
+          updatedAt={arrivalSlip.updated_at}
+        />
       )}
 
       {/* Footer Actions */}

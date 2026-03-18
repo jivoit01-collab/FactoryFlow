@@ -8,6 +8,7 @@ export interface DailyNeedFullView {
     status: string;
     is_locked: boolean;
     created_at: string;
+    updated_at?: string;
     entry_type: string;
   };
   vehicle: {
@@ -46,6 +47,7 @@ export interface DailyNeedFullView {
     remarks: string | null;
     created_by: string;
     created_at: string;
+    updated_at?: string;
   } | null;
 }
 

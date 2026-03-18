@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api';
+import { RecordTimestamps } from '@/shared/components';
 import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 import {
@@ -561,6 +562,14 @@ export default function Step3Page() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Record Timestamps */}
+      {isEditMode && vehicleEntryData?.created_at && (
+        <RecordTimestamps
+          createdAt={vehicleEntryData.created_at}
+          updatedAt={vehicleEntryData.updated_at}
+        />
       )}
 
       <StepFooter

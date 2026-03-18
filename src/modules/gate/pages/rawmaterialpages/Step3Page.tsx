@@ -13,6 +13,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { RecordTimestamps } from '@/shared/components';
 import {
   Button,
   Card,
@@ -35,6 +36,7 @@ import {
 import type { PurchaseOrder, Vendor } from '../../api/po/po.api';
 import { useOpenPOs } from '../../api/po/po.queries';
 import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries';
+import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import { FillDataAlert, StepHeader, StepLoadingSpinner, VendorSelect } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
 import { useEntryId } from '../../hooks';
@@ -68,6 +70,11 @@ export default function Step3Page() {
   // Stable ID generation using useId
   const baseId = useId();
   const poFormCounterRef = useRef(1);
+
+  // Fetch vehicle entry data for timestamps
+  const { data: vehicleEntryData } = useVehicleEntry(
+    isEditMode && entryIdNumber ? entryIdNumber : null,
+  );
 
   // Fetch existing PO receipts in edit mode
   const {
@@ -588,6 +595,14 @@ export default function Step3Page() {
           </div>
         )}
       </div>
+
+      {/* Record Timestamps */}
+      {isEditMode && vehicleEntryData?.created_at && (
+        <RecordTimestamps
+          createdAt={vehicleEntryData.created_at}
+          updatedAt={vehicleEntryData.updated_at}
+        />
+      )}
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
