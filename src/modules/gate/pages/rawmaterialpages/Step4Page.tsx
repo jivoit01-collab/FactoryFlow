@@ -21,12 +21,13 @@ import type { CreateWeighmentRequest } from '../../api/weighment/weighment.api';
 import { useCreateWeighment, useWeighment } from '../../api/weighment/weighment.queries';
 import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 export default function Step4Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = WIZARD_CONFIG.STEPS.WEIGHMENT;
   const createWeighment = useCreateWeighment(entryIdNumber || 0);
   const {

@@ -31,7 +31,7 @@ import {
 } from '../../api/construction/construction.queries';
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import { ConstructionCategorySelect, FillDataAlert, UnitSelect } from '../../components';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 // Security approval options
 const SECURITY_APPROVAL_OPTIONS = [
@@ -66,6 +66,7 @@ export default function Step3Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = 3;
   const totalSteps = 4;
   const progressPercentage = (currentStep / totalSteps) * 100;

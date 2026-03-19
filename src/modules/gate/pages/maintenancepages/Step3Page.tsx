@@ -30,7 +30,7 @@ import {
   StepHeader,
   UnitSelect,
 } from '../../components';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 // Urgency level options
 const URGENCY_OPTIONS = [
@@ -60,6 +60,7 @@ export default function Step3Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = 3;
   const totalSteps = 4;
 

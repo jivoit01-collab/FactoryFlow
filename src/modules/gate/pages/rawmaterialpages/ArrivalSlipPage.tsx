@@ -41,7 +41,7 @@ import { usePOReceipts } from '../../api/po/poReceipt.queries';
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 interface ArrivalSlipFormData {
   particulars: string;
@@ -79,6 +79,7 @@ export default function ArrivalSlipPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = WIZARD_CONFIG.STEPS.ARRIVAL_SLIP;
 
   // Fetch PO receipts

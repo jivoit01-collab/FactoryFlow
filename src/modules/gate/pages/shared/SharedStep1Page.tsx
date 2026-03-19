@@ -7,6 +7,8 @@ import type { ApiError } from '@/core/api/types';
 import { RecordTimestamps } from '@/shared/components';
 import { getServerErrorMessage, isServerError as checkServerError } from '@/shared/utils';
 
+import { useEntryStepTracker } from '../../hooks';
+
 import {
   useCreateVehicleEntry,
   useUpdateVehicleEntry,
@@ -28,6 +30,7 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId } = useParams<{ entryId?: string }>();
+  useEntryStepTracker();
   const isEditMode = !!entryId;
   const createVehicleEntry = useCreateVehicleEntry();
   const updateVehicleEntry = useUpdateVehicleEntry();

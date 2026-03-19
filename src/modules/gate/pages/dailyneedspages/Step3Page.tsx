@@ -27,7 +27,7 @@ import { cn } from '@/shared/utils';
 import { useCreateDailyNeed, useDailyNeed } from '../../api/dailyNeed/dailyNeed.queries';
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import { CategorySelect, DepartmentSelect, FillDataAlert, UnitSelect } from '../../components';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 interface DailyNeedsFormData {
   itemCategory: number | '';
@@ -49,6 +49,7 @@ export default function Step3Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = 3;
   const totalSteps = 4;
   const progressPercentage = (currentStep / totalSteps) * 100;

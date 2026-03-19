@@ -10,13 +10,14 @@ import {
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { getEntryStatusClasses } from '@/config/constants';
+import { ENTRY_STATUS, getEntryStatusClasses } from '@/config/constants';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useVehicleEntries, useVehicleEntriesCount } from '../../api/vehicle/vehicleEntry.queries';
 import { DateRangePicker } from '../../components/DateRangePicker';
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
+import { getLastStep } from '../../hooks';
 
 interface StatusConfigItem {
   label: string;
@@ -235,7 +236,11 @@ export default function SharedDashboard({
               <div
                 key={entry.id}
                 className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => navigate(`${config.routePrefix}/edit/${entry.id}/step1`)}
+                onClick={() => {
+                  const isCompleted = entry.status === ENTRY_STATUS.COMPLETED || entry.status === ENTRY_STATUS.QC_COMPLETED;
+                  const step = isCompleted ? 'review' : (getLastStep(entry.id) || 'step1');
+                  navigate(`${config.routePrefix}/edit/${entry.id}/${step}`);
+                }}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="font-medium text-sm">{entry.entry_no}</span>

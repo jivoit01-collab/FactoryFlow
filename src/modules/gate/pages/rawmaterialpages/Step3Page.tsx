@@ -39,7 +39,7 @@ import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.querie
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import { FillDataAlert, StepHeader, StepLoadingSpinner, VendorSelect } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 interface POItemFormData {
   po_item_code: string;
@@ -65,6 +65,7 @@ export default function Step3Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = WIZARD_CONFIG.STEPS.PO_RECEIPT;
 
   // Stable ID generation using useId

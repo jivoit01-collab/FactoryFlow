@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock,
+  Eye,
   FileCheck,
   FileText,
   Home,
@@ -34,7 +35,7 @@ import {
   useMaintenanceFullView,
 } from '../../api/maintenance/maintenance.queries';
 import { securityCheckApi } from '../../api/securityCheck/securityCheck.api';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
@@ -145,6 +146,7 @@ export default function ReviewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
 
   const [isSubmittingSecurity, setIsSubmittingSecurity] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -307,14 +309,24 @@ export default function ReviewPage() {
   return (
     <div className="space-y-6 pb-6">
       {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <FileCheck className="h-8 w-8" />
-          Final Review
-        </h2>
-        <p className="text-muted-foreground">
-          Review all details before completing the maintenance gate entry
-        </p>
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <FileCheck className="h-8 w-8" />
+            Final Review
+          </h2>
+          <p className="text-muted-foreground">
+            Review all details before completing the maintenance gate entry
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => navigate(`/gate/maintenance/edit/${entryId}/step1`)}
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          View Full Entry
+        </Button>
       </div>
 
       {apiErrors.general && (
