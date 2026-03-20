@@ -27,6 +27,7 @@ export const qcModuleConfig: ModuleConfig = {
       element: <QCDashboardPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.INSPECTION.VIEW, QC_PERMISSIONS.ARRIVAL_SLIP.VIEW],
+      breadcrumb: { label: 'QC' },
     },
     // Pending Inspections - requires inspection view permission
     {
@@ -65,6 +66,7 @@ export const qcModuleConfig: ModuleConfig = {
       element: <MaterialTypesPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_MATERIAL_TYPES],
+      breadcrumb: { label: 'Materials' },
     },
     // Master Data - QC Parameters - requires master data permission
     {
@@ -72,6 +74,7 @@ export const qcModuleConfig: ModuleConfig = {
       element: <QCParametersPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS],
+      breadcrumb: { label: 'Params' },
     },
   ],
   navigation: [

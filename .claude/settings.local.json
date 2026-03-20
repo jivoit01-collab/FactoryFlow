@@ -33,7 +33,7 @@
       "Bash(grep -r \"useNavigate\\\\|useParams\\\\|useLocation\" /d/Test_CompanyJivo/factory/FactoryFlow/src/modules/production/planning/pages/*.tsx)",
       "Bash(grep -E \"\\\\.\\(md|doc|txt\\)$|^d\")",
       "Bash(done)",
-      "Bash(npx shadcn@latest add tabs select --yes)"
+      "Bash(xargs grep:*)"
     ]
   }
 }

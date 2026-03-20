@@ -28,6 +28,13 @@ export {
   type ProductionPermission,
 } from './production.permissions';
 
+// Dashboards Module
+export {
+  DASHBOARDS_MODULE_PREFIX,
+  DASHBOARDS_PERMISSIONS,
+  type DashboardsPermission,
+} from './dashboards.permissions';
+
 // Notifications Module
 export {
   NOTIFICATION_MODULE_PREFIX,

@@ -60,6 +60,7 @@ export {
   SheetTitle,
   SheetTrigger,
 } from './sheet';
+export { Select, SelectOption, type SelectProps } from './select';
 export { Switch, type SwitchProps } from './switch';
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 export { Textarea, type TextareaProps } from './textarea';
