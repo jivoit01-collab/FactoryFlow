@@ -52,6 +52,8 @@ export interface SearchableSelectProps<TItem> {
   onClear: () => void;
   onOpenChange?: (isOpen: boolean) => void;
   onSelectedKeyChange?: (key: ItemKey | null) => void;
+  /** Called with debounced search term — use for server-side search */
+  onSearchChange?: (search: string) => void;
   // Create dialog (optional render prop)
   renderCreateDialog?: (
     open: boolean,
@@ -87,6 +89,7 @@ export function SearchableSelect<TItem>({
   onClear,
   onOpenChange,
   onSelectedKeyChange,
+  onSearchChange,
   renderCreateDialog,
 }: SearchableSelectProps<TItem>) {
   const [isOpen, setIsOpen] = useState(false);
@@ -99,6 +102,13 @@ export function SearchableSelect<TItem>({
   const prevDefaultDisplayTextRef = useRef(defaultDisplayText);
 
   const debouncedSearch = useDebounce(searchTerm, 100);
+
+  // Notify parent of debounced search changes (for server-side search)
+  const onSearchChangeRef = useRef(onSearchChange);
+  onSearchChangeRef.current = onSearchChange;
+  useEffect(() => {
+    onSearchChangeRef.current?.(debouncedSearch);
+  }, [debouncedSearch]);
 
   const defaultFilter = useCallback(
     (item: TItem, search: string) =>
@@ -137,24 +147,27 @@ export function SearchableSelect<TItem>({
     }
   }, [defaultDisplayText]);
 
-  // Sync search term with value prop
+  // Sync search term with value prop — uses refs for items to avoid
+  // re-running when items change (which would steal focus during server-side search)
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
   const syncWithValue = useCallback(() => {
+    const currentItems = itemsRef.current;
     if (disabled && value) {
-      // When disabled, still try to resolve the label from loaded items
-      if (items.length > 0) {
-        const item = items.find((i) => getItemLabel(i) === value || String(getItemKey(i)) === value);
+      if (currentItems.length > 0) {
+        const item = currentItems.find((i) => getItemLabel(i) === value || String(getItemKey(i)) === value);
         if (item) {
           setSearchTerm(getItemLabel(item));
           return;
         }
       }
-      // Use defaultDisplayText (the name) instead of raw value (the ID)
       setSearchTerm(defaultDisplayText || value);
       return;
     }
 
-    if (value && items.length > 0) {
-      const item = items.find((i) => getItemLabel(i) === value || String(getItemKey(i)) === value);
+    if (value && currentItems.length > 0) {
+      const item = currentItems.find((i) => getItemLabel(i) === value || String(getItemKey(i)) === value);
       if (item) {
         updateSelectedKey(getItemKey(item));
         setSearchTerm(getItemLabel(item));
@@ -164,13 +177,19 @@ export function SearchableSelect<TItem>({
       updateSelectedKey(null);
       setSearchTerm('');
     }
-  }, [value, items, disabled, defaultDisplayText, getItemLabel, getItemKey, updateSelectedKey]);
+  }, [value, disabled, defaultDisplayText, getItemLabel, getItemKey, updateSelectedKey]);
 
+  // Re-sync when value changes or when items load for the first time (for edit mode)
+  const hadItemsRef = useRef(false);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props is a valid pattern
-    syncWithValue();
-    prevValueRef.current = value;
-  }, [syncWithValue, value]);
+    const shouldSync = value !== prevValueRef.current || (!hadItemsRef.current && items.length > 0);
+    if (shouldSync) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props
+      syncWithValue();
+      prevValueRef.current = value;
+    }
+    if (items.length > 0) hadItemsRef.current = true;
+  }, [syncWithValue, value, items.length]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -266,7 +285,7 @@ export function SearchableSelect<TItem>({
             onFocus={() => updateIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            disabled={disabled || (isLoading && !isError)}
+            disabled={disabled}
             className={cn(
               'pr-10 cursor-text',
               inputClassName,

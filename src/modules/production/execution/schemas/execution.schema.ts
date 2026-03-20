@@ -5,67 +5,61 @@ import { z } from 'zod';
 // ============================================================================
 
 export const createRunSchema = z.object({
-  sap_doc_entry: z.number({ required_error: 'SAP order is required' }),
+  sap_doc_entry: z.number().nullable().optional(),
   line_id: z.number({ required_error: 'Production line is required' }),
   date: z.string().min(1, 'Date is required'),
-  brand: z.string().min(1, 'Brand is required'),
-  pack: z.string().min(1, 'Pack is required'),
-  sap_order_no: z.string().min(1, 'SAP order number is required'),
+  product: z.string().optional().default(''),
   rated_speed: z.string().optional(),
+  machine_ids: z.array(z.number()).optional().default([]),
+  labour_count: z.number().int().min(0).optional().default(0),
+  other_manpower_count: z.number().int().min(0).optional().default(0),
+  supervisor: z.string().optional().default(''),
+  operators: z.string().optional().default(''),
+  materials: z.array(z.object({
+    material_code: z.string(),
+    material_name: z.string(),
+    opening_qty: z.string().default('0'),
+    issued_qty: z.string().default('0'),
+    uom: z.string().default(''),
+  })).optional().default([]),
 });
 
 export type CreateRunFormData = z.infer<typeof createRunSchema>;
 
 // ============================================================================
-// Hourly Log Schema
+// Add Breakdown Schema (timeline action)
 // ============================================================================
 
-export const createLogSchema = z.object({
-  time_slot: z.string().min(1, 'Time slot is required'),
-  time_start: z.string().min(1, 'Start time is required'),
-  time_end: z.string().min(1, 'End time is required'),
-  produced_cases: z
-    .number({ required_error: 'Produced cases is required' })
-    .int()
-    .min(0, 'Must be 0 or more'),
-  machine_status: z.enum(['RUNNING', 'IDLE', 'BREAKDOWN', 'CHANGEOVER'], {
-    required_error: 'Machine status is required',
-  }),
-  recd_minutes: z
-    .number({ required_error: 'Recorded minutes is required' })
-    .int()
-    .min(0)
-    .max(60, 'Cannot exceed 60 minutes'),
-  breakdown_detail: z.string().optional(),
+export const addBreakdownSchema = z.object({
+  breakdown_category_id: z.number({ required_error: 'Breakdown type is required' }),
+  machine_id: z.number({ required_error: 'Machine is required' }),
+  reason: z.string().min(1, 'Reason is required'),
+  produced_cases: z.string().optional().default('0'),
   remarks: z.string().optional(),
 });
 
-export type CreateLogFormData = z.infer<typeof createLogSchema>;
+export type AddBreakdownFormData = z.infer<typeof addBreakdownSchema>;
 
 // ============================================================================
-// Breakdown Schema
+// Stop Production Schema
 // ============================================================================
 
-export const createBreakdownSchema = z
-  .object({
-    machine_id: z.number({ required_error: 'Machine is required' }),
-    start_time: z.string().min(1, 'Start time is required'),
-    end_time: z.string().min(1, 'End time is required'),
-    breakdown_minutes: z
-      .number({ required_error: 'Breakdown minutes is required' })
-      .int()
-      .positive('Must be greater than 0'),
-    type: z.enum(['LINE', 'EXTERNAL'], { required_error: 'Type is required' }),
-    reason: z.string().min(1, 'Reason is required'),
-    remarks: z.string().optional(),
-    is_unrecovered: z.boolean().optional(),
-  })
-  .refine((data) => new Date(data.end_time) > new Date(data.start_time), {
-    message: 'End time must be after start time',
-    path: ['end_time'],
-  });
+export const stopProductionSchema = z.object({
+  produced_cases: z.string().min(1, 'Cases produced is required'),
+  remarks: z.string().optional(),
+});
 
-export type CreateBreakdownFormData = z.infer<typeof createBreakdownSchema>;
+export type StopProductionFormData = z.infer<typeof stopProductionSchema>;
+
+// ============================================================================
+// Complete Run Schema
+// ============================================================================
+
+export const completeRunSchema = z.object({
+  total_production: z.string().min(1, 'Total production is required'),
+});
+
+export type CompleteRunFormData = z.infer<typeof completeRunSchema>;
 
 // ============================================================================
 // Material Usage Schema
@@ -76,13 +70,8 @@ export const createMaterialSchema = z.object({
   material_name: z.string().min(1, 'Material name is required'),
   opening_qty: z.string().min(1, 'Opening quantity is required'),
   issued_qty: z.string().min(1, 'Issued quantity is required'),
-  closing_qty: z.string().min(1, 'Closing quantity is required'),
+  closing_qty: z.string().optional(),
   uom: z.string().min(1, 'UoM is required'),
-  batch_number: z
-    .number({ required_error: 'Batch number is required' })
-    .int()
-    .min(1)
-    .max(3),
 });
 
 export type CreateMaterialFormData = z.infer<typeof createMaterialSchema>;
@@ -134,9 +123,9 @@ export type CreateManpowerFormData = z.infer<typeof createManpowerSchema>;
 // ============================================================================
 
 export const createClearanceSchema = z.object({
+  production_run_id: z.number().optional(),
   date: z.string().min(1, 'Date is required'),
   line_id: z.number({ required_error: 'Production line is required' }),
-  sap_doc_entry: z.number().optional(),
 });
 
 export type CreateClearanceFormData = z.infer<typeof createClearanceSchema>;
@@ -193,7 +182,8 @@ export const createCompressedAirSchema = z.object({
 export type CreateCompressedAirFormData = z.infer<typeof createCompressedAirSchema>;
 
 export const createLabourSchema = z.object({
-  worker_name: z.string().min(1, 'Worker name is required'),
+  description: z.string().optional().default(''),
+  worker_count: z.number({ required_error: 'Worker count is required' }).int().min(1),
   hours_worked: z.string().min(1, 'Hours worked is required'),
   rate_per_hour: z.string().min(1, 'Rate is required'),
 });

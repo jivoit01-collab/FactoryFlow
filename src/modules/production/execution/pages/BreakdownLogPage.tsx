@@ -63,7 +63,7 @@ function BreakdownLogPage() {
                   <td className="p-3">{r.date}</td>
                   <td className="p-3">{r.line_name}</td>
                   <td className="p-3 text-right text-red-600 font-medium">{r.total_breakdown_time}</td>
-                  <td className="p-3">{r.brand}</td>
+                  <td className="p-3">{r.product}</td>
                 </tr>
               ))}
             </tbody>

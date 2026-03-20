@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, FileText, Link } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardCheck, FileText, Link, Play, Shield, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,143 +14,383 @@ import {
 } from '@/shared/components/ui';
 
 import {
-  useRunDetail, useCompleteRun,
-  useCreateLog, useLogs,
-  useBreakdowns, useCreateBreakdown,
-  useMaterials, useCreateMaterial,
-  useMachineRuntime, useCreateMachineRuntime,
-  useManpower, useCreateManpower,
+  useRunDetail, useRunCost, useLabour,
+  useMaterials, useCreateMaterial, useUpdateMaterial,
   useMachines,
+  useStartProduction, useStopProduction, useAddBreakdown, useResolveBreakdown,
+  useUpdateSegment, useUpdateBreakdownRemarks,
+  useBreakdownCategories,
+  useLineClearances, useWasteLogs, useMachineChecklists,
 } from '../api';
+import { useProductionQCRunSessions } from '@/modules/qc/api/productionQC';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 import { RunSummaryCards } from '../components/RunSummaryCards';
-import { HourlyProductionGrid } from '../components/HourlyProductionGrid';
-import { BreakdownTable } from '../components/BreakdownTable';
+import { ProductionTimeline } from '../components/ProductionTimeline';
 import { MaterialConsumptionTable } from '../components/MaterialConsumptionTable';
 import { MachineTimeTable } from '../components/MachineTimeTable';
-import { ManpowerSection } from '../components/ManpowerSection';
-import { TIME_SLOTS, MACHINE_STATUS_LABELS, MACHINE_TYPE_LABELS, SHIFT_LABELS, BREAKDOWN_TYPE_LABELS } from '../constants';
-import { createLogSchema, type CreateLogFormData, createBreakdownSchema, type CreateBreakdownFormData, createMaterialSchema, type CreateMaterialFormData, createRuntimeSchema, type CreateRuntimeFormData, createManpowerSchema, type CreateManpowerFormData } from '../schemas';
-import type { MachineStatus, MachineType, BreakdownType, Shift } from '../types';
+import {
+  addBreakdownSchema, type AddBreakdownFormData,
+  stopProductionSchema, type StopProductionFormData,
+  createMaterialSchema, type CreateMaterialFormData,
+} from '../schemas';
+import type { MachineBreakdown, ProductionSegment } from '../types';
 
 function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const numRunId = Number(runId);
 
+  // ---------------------------------------------------------------------------
+  // Data hooks
+  // ---------------------------------------------------------------------------
   const { data: run, isLoading } = useRunDetail(numRunId || null);
-  const { data: logs = [] } = useLogs(numRunId);
-  const { data: breakdowns = [] } = useBreakdowns(numRunId);
   const { data: materials = [] } = useMaterials(numRunId);
-  const { data: runtimes = [] } = useMachineRuntime(numRunId);
-  const { data: manpowerEntries = [] } = useManpower(numRunId);
-  const { data: machines = [] } = useMachines(run?.line);
+  const { data: cost } = useRunCost(numRunId);
+  const { data: labourEntries = [] } = useLabour(numRunId);
+  const { data: allMachines = [] } = useMachines();
+  const runMachines = allMachines.filter((m) => run?.machine_ids?.includes(m.id));
+  const { data: breakdownCategories = [] } = useBreakdownCategories();
+  const { data: clearances = [] } = useLineClearances(run?.line);
+  const { data: wasteLogs = [] } = useWasteLogs(numRunId);
+  const { data: machineChecklists = [] } = useMachineChecklists(undefined, run?.date);
+  const { data: qcSessions = [] } = useProductionQCRunSessions(numRunId || null);
 
-  const completeRun = useCompleteRun(numRunId);
-  const createLog = useCreateLog(numRunId);
-  const createBreakdown = useCreateBreakdown(numRunId);
+  // ---------------------------------------------------------------------------
+  // Mutations
+  // ---------------------------------------------------------------------------
+  const startProduction = useStartProduction(numRunId);
+  const stopProduction = useStopProduction(numRunId);
+  const addBreakdown = useAddBreakdown(numRunId);
+  const resolveBreakdown = useResolveBreakdown(numRunId);
+  const updateSegment = useUpdateSegment(numRunId);
+  const updateBreakdownRemarks = useUpdateBreakdownRemarks(numRunId);
   const createMaterial = useCreateMaterial(numRunId);
-  const createRuntime = useCreateMachineRuntime(numRunId);
-  const createManpower = useCreateManpower(numRunId);
-
-  const [dialog, setDialog] = useState<string | null>(null);
+  const updateMaterial = useUpdateMaterial(numRunId);
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState<ProductionSegment | null>(null);
+  const [selectedBreakdown, setSelectedBreakdown] = useState<MachineBreakdown | null>(null);
+  const [editRemarks, setEditRemarks] = useState('');
+  const [editProducedCases, setEditProducedCases] = useState('');
   const isCompleted = run?.status === 'COMPLETED';
+  const hasActiveSegment = run?.segments?.some((s) => s.is_active) ?? false;
+  const hasActiveBreakdown = run?.breakdowns?.some((b) => b.is_active) ?? false;
+  const canComplete = !hasActiveSegment && !hasActiveBreakdown && run?.status === 'IN_PROGRESS';
 
-  // Log form
-  const logForm = useForm<CreateLogFormData>({ resolver: zodResolver(createLogSchema), defaultValues: { produced_cases: 0, recd_minutes: 60, machine_status: 'RUNNING' } });
-  const onSubmitLog = async (data: CreateLogFormData) => {
-    try { await createLog.mutateAsync(data); toast.success('Log entry added'); setDialog(null); logForm.reset(); } catch { toast.error('Failed to add log'); }
-  };
-
+  // ---------------------------------------------------------------------------
   // Breakdown form
-  const breakdownForm = useForm<CreateBreakdownFormData>({ resolver: zodResolver(createBreakdownSchema), defaultValues: { breakdown_minutes: 0, type: 'LINE', is_unrecovered: false } });
-  const onSubmitBreakdown = async (data: CreateBreakdownFormData) => {
-    try { await createBreakdown.mutateAsync(data); toast.success('Breakdown logged'); setDialog(null); breakdownForm.reset(); } catch { toast.error('Failed to log breakdown'); }
+  // ---------------------------------------------------------------------------
+  const breakdownForm = useForm<AddBreakdownFormData>({
+    resolver: zodResolver(addBreakdownSchema),
+    defaultValues: { produced_cases: '0', remarks: '' },
+  });
+  const onSubmitBreakdown = async (data: AddBreakdownFormData) => {
+    try {
+      await addBreakdown.mutateAsync(data);
+      toast.success('Breakdown added');
+      setDialog(null);
+      breakdownForm.reset();
+    } catch {
+      toast.error('Failed to add breakdown');
+    }
   };
 
+  // ---------------------------------------------------------------------------
+  // Stop Production form
+  // ---------------------------------------------------------------------------
+  const stopForm = useForm<StopProductionFormData>({
+    resolver: zodResolver(stopProductionSchema),
+    defaultValues: { produced_cases: '0' },
+  });
+  const onSubmitStop = async (data: StopProductionFormData) => {
+    try {
+      await stopProduction.mutateAsync({ produced_cases: data.produced_cases });
+      toast.success('Production stopped');
+      setDialog(null);
+      stopForm.reset();
+    } catch {
+      toast.error('Failed to stop production');
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // Material form
-  const materialForm = useForm<CreateMaterialFormData>({ resolver: zodResolver(createMaterialSchema), defaultValues: { batch_number: 1 } });
+  // ---------------------------------------------------------------------------
+  const materialForm = useForm<CreateMaterialFormData>({ resolver: zodResolver(createMaterialSchema) });
   const onSubmitMaterial = async (data: CreateMaterialFormData) => {
     try { await createMaterial.mutateAsync(data); toast.success('Material added'); setDialog(null); materialForm.reset(); } catch { toast.error('Failed to add material'); }
   };
 
-  // Runtime form
-  const runtimeForm = useForm<CreateRuntimeFormData>({ resolver: zodResolver(createRuntimeSchema), defaultValues: { runtime_minutes: 0, downtime_minutes: 0 } });
-  const onSubmitRuntime = async (data: CreateRuntimeFormData) => {
-    try { await createRuntime.mutateAsync(data); toast.success('Runtime entry added'); setDialog(null); runtimeForm.reset(); } catch { toast.error('Failed to add runtime'); }
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+  const handleStartProduction = async () => {
+    try {
+      await startProduction.mutateAsync();
+      toast.success('Production started');
+    } catch {
+      toast.error('Failed to start production');
+    }
   };
 
-  // Manpower form
-  const manpowerForm = useForm<CreateManpowerFormData>({ resolver: zodResolver(createManpowerSchema), defaultValues: { worker_count: 1, shift: 'MORNING' } });
-  const onSubmitManpower = async (data: CreateManpowerFormData) => {
-    try { await createManpower.mutateAsync(data); toast.success('Manpower entry added'); setDialog(null); manpowerForm.reset(); } catch { toast.error('Failed to add manpower'); }
+  const handleResolveBreakdown = async (breakdownId: number, action: 'start_production' | 'stop_production' | 'stop_unrecovered') => {
+    try {
+      await resolveBreakdown.mutateAsync({ breakdownId, data: { action } });
+      toast.success('Breakdown resolved');
+    } catch {
+      toast.error('Failed to resolve breakdown');
+    }
   };
 
-  const handleComplete = async () => {
-    if (!confirm('Complete this production run? This action cannot be undone.')) return;
-    try { await completeRun.mutateAsync(); toast.success('Run completed'); } catch { toast.error('Failed to complete run'); }
+  const handleSegmentClick = (segment: ProductionSegment) => {
+    setSelectedSegment(segment);
+    setEditRemarks(segment.remarks || '');
+    setEditProducedCases(segment.produced_cases || '0');
+    setDialog('segment-detail');
   };
 
+  const handleBreakdownClick = (breakdown: MachineBreakdown) => {
+    setSelectedBreakdown(breakdown);
+    setEditRemarks(breakdown.remarks || '');
+    setDialog('breakdown-detail');
+  };
+
+  const handleSaveSegmentRemarks = async () => {
+    if (!selectedSegment) return;
+    try {
+      await updateSegment.mutateAsync({
+        segmentId: selectedSegment.id,
+        data: { remarks: editRemarks },
+      });
+      toast.success('Segment updated');
+      setDialog(null);
+    } catch { toast.error('Failed to update segment'); }
+  };
+
+  const handleUpdateClosingQty = async (materialId: number, closingQty: string) => {
+    try {
+      await updateMaterial.mutateAsync({ materialId, data: { closing_qty: closingQty } });
+      toast.success('Closing qty updated');
+    } catch { toast.error('Failed to update closing qty'); }
+  };
+
+  const handleSaveBreakdownRemarks = async () => {
+    if (!selectedBreakdown) return;
+    try {
+      await updateBreakdownRemarks.mutateAsync({
+        breakdownId: selectedBreakdown.id,
+        data: { remarks: editRemarks },
+      });
+      toast.success('Breakdown updated');
+      setDialog(null);
+    } catch { toast.error('Failed to update breakdown'); }
+  };
+
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Loading / Error states
+  // ---------------------------------------------------------------------------
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading run details...</div>;
   if (!run) return <div className="p-8 text-center text-muted-foreground">Run not found</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/production/execution')}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/production/execution')}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
+          <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-2xl font-bold">Run #{run.run_number}</h2>
-            <ProductionStatusBadge status={run.status} />
+            <ProductionStatusBadge status={
+              isCompleted ? 'COMPLETED' :
+              hasActiveBreakdown ? 'BREAKDOWN' :
+              hasActiveSegment ? 'RUNNING' :
+              run.status === 'IN_PROGRESS' ? 'STOPPED' :
+              run.status
+            } />
           </div>
-          <p className="text-sm text-muted-foreground">
-            {run.date} &middot; {run.line_name} &middot; {run.brand} - {run.pack}
-            {run.sap_order_no && <> &middot; SAP: {run.sap_order_no}</>}
-          </p>
         </div>
-        <div className="flex gap-2">
+        <p className="text-sm text-muted-foreground">
+          {run.date} &middot; {run.line_name} &middot; {run.product}
+          {run.sap_doc_entry && <> &middot; SAP DocEntry: {run.sap_doc_entry}</>}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {!isCompleted && !hasActiveSegment && !hasActiveBreakdown && (
+            <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700" onClick={handleStartProduction} disabled={startProduction.isPending}>
+              <Play className="h-4 w-4 mr-1" /> Start Production
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/yield`)}>
             <FileText className="h-4 w-4 mr-1" /> Yield
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/resources`)}>
             <Link className="h-4 w-4 mr-1" /> Resources
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/qc`)}>
+          <Button variant="outline" size="sm" onClick={() => navigate(`/qc/production/runs/${run.id}`)}>
             <CheckCircle2 className="h-4 w-4 mr-1" /> QC
           </Button>
           {!isCompleted && (
-            <Button onClick={handleComplete} disabled={completeRun.isPending}>
+            <Button onClick={() => navigate(`/production/execution/runs/${run.id}/yield?complete=true`)} disabled={!canComplete} title={!canComplete ? 'Stop all running segments and resolve all breakdowns first' : undefined}>
               <CheckCircle2 className="h-4 w-4 mr-1" /> Complete Run
             </Button>
           )}
         </div>
       </div>
 
+      {/* Summary Cards */}
       <RunSummaryCards run={run} />
 
-      <Tabs defaultValue="logs" className="space-y-4">
+      {/* Manpower & Cost Summary */}
+      {(() => {
+        const actualLabourCount = labourEntries.reduce((sum, e) => sum + e.worker_count, 0);
+        const plannedLabour = run.labour_count;
+        const c = cost ? { labour: parseFloat(cost.labour_cost), total: parseFloat(cost.total_cost), perUnit: parseFloat(cost.per_unit_cost) } : null;
+        return (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            <Card>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground mb-1">Labour</div>
+                {actualLabourCount > 0 ? (
+                  <>
+                    <p className="text-lg font-bold">{actualLabourCount}</p>
+                    <p className="text-xs text-muted-foreground">planned: {plannedLabour}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-bold text-muted-foreground">{plannedLabour}</p>
+                    <p className="text-xs text-amber-600">planned (no actual added)</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground mb-1">Other Manpower</div>
+                <p className="text-lg font-bold">{run.other_manpower_count}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground mb-1">Supervisor</div>
+                <p className="text-sm font-medium truncate">{run.supervisor || '-'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground mb-1">Labour Cost</div>
+                <p className="text-lg font-bold">{c ? `₹${c.labour.toLocaleString()}` : '₹0'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground mb-1">Total Cost</div>
+                <p className="text-lg font-bold text-green-600">{c ? `₹${c.total.toLocaleString()}` : '₹0'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground mb-1">Per Unit Cost</div>
+                <p className="text-lg font-bold">{c && c.perUnit > 0 ? `₹${c.perUnit.toFixed(2)}` : '-'}</p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
+
+      {/* Status Indicators */}
+      <div className="flex flex-wrap gap-3">
+        {/* Line Clearance Status */}
+        {(() => {
+          const runClearance = clearances.find(
+            (c) => c.production_run === run.id
+          );
+          if (!runClearance) {
+            return (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2 text-sm">
+                <Shield className="h-4 w-4 text-amber-600" />
+                <span className="text-amber-800 dark:text-amber-200">Line Clearance: <span className="font-medium">Not Done</span></span>
+                <Button variant="link" size="sm" className="h-auto p-0 text-amber-700" onClick={() => navigate(`/production/execution/line-clearance/create?run_id=${run.id}`)}>Create</Button>
+              </div>
+            );
+          }
+          const statusColors = {
+            DRAFT: 'border-gray-300 bg-gray-50 dark:bg-gray-950/20 dark:border-gray-800',
+            SUBMITTED: 'border-blue-300 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800',
+            CLEARED: 'border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800',
+            NOT_CLEARED: 'border-red-300 bg-red-50 dark:bg-red-950/20 dark:border-red-800',
+          };
+          const statusText = { DRAFT: 'Draft', SUBMITTED: 'Submitted', CLEARED: 'Cleared', NOT_CLEARED: 'Not Cleared' };
+          return (
+            <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${statusColors[runClearance.status]}`}>
+              <Shield className="h-4 w-4" />
+              <span>Line Clearance: <span className="font-medium">{statusText[runClearance.status]}</span></span>
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => navigate(`/production/execution/line-clearance/${runClearance.id}`)}>View</Button>
+            </div>
+          );
+        })()}
+
+        {/* Waste Logs */}
+        <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+          <Trash2 className="h-4 w-4 text-muted-foreground" />
+          <span>Waste Logs: <span className="font-medium">{wasteLogs.length}</span></span>
+          <Button variant="link" size="sm" className="h-auto p-0" onClick={() => navigate(`/production/execution/waste?run_id=${run.id}`)}>
+            {wasteLogs.length > 0 ? 'View' : 'Log Waste'}
+          </Button>
+        </div>
+
+        {/* Machine Checklists */}
+        {(() => {
+          const runMachineIds = run.machine_ids || [];
+          const checkedMachineIds = new Set(machineChecklists.filter((c) => runMachineIds.includes(c.machine)).map((c) => c.machine));
+          const checkedCount = checkedMachineIds.size;
+          const totalMachines = runMachineIds.length;
+          const allDone = totalMachines > 0 && checkedCount >= totalMachines;
+          const firstUnfilledId = runMachineIds.find((id) => !checkedMachineIds.has(id));
+          const fillLink = firstUnfilledId
+            ? `/production/execution/machine-checklists?machine_id=${firstUnfilledId}&date=${run.date}`
+            : `/production/execution/machine-checklists?machine_id=${runMachineIds[0]}&date=${run.date}`;
+          return (
+            <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${allDone ? 'border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800' : 'border-gray-200'}`}>
+              <ClipboardCheck className={`h-4 w-4 ${allDone ? 'text-green-600' : 'text-muted-foreground'}`} />
+              <span>Machine Checklists: <span className="font-medium">{checkedCount}/{totalMachines}</span></span>
+              {totalMachines > 0 && (
+                <Button variant="link" size="sm" className="h-auto p-0" onClick={() => navigate(fillLink)}>
+                  {allDone ? 'View' : 'Fill'}
+                </Button>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="timeline" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="logs">Hourly Logs ({logs.length})</TabsTrigger>
-          <TabsTrigger value="breakdowns">Breakdowns ({breakdowns.length})</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="materials">Materials ({materials.length})</TabsTrigger>
-          <TabsTrigger value="runtime">Machine Runtime ({runtimes.length})</TabsTrigger>
-          <TabsTrigger value="manpower">Manpower ({manpowerEntries.length})</TabsTrigger>
+          <TabsTrigger value="runtime">Machine Runtime ({runMachines.length})</TabsTrigger>
+          <TabsTrigger value="qc">QC ({qcSessions.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="logs">
+        <TabsContent value="timeline">
           <Card>
             <CardContent className="p-4">
-              <HourlyProductionGrid logs={logs} onAdd={() => setDialog('log')} readOnly={isCompleted} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="breakdowns">
-          <Card>
-            <CardContent className="p-4">
-              <BreakdownTable breakdowns={breakdowns} onAdd={() => setDialog('breakdown')} readOnly={isCompleted} />
+              <ProductionTimeline
+                segments={run.segments}
+                breakdowns={run.breakdowns}
+                isCompleted={isCompleted}
+                ratedSpeed={run.rated_speed ? parseFloat(run.rated_speed) : null}
+                onAddBreakdown={() => setDialog('breakdown')}
+                onStopProduction={() => setDialog('stop')}
+                onResolveBreakdown={handleResolveBreakdown}
+                onSegmentClick={handleSegmentClick}
+                onBreakdownClick={handleBreakdownClick}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -158,7 +398,7 @@ function RunDetailPage() {
         <TabsContent value="materials">
           <Card>
             <CardContent className="p-4">
-              <MaterialConsumptionTable materials={materials} onAdd={() => setDialog('material')} readOnly={isCompleted} />
+              <MaterialConsumptionTable materials={materials} onAdd={() => setDialog('material')} onUpdateClosingQty={handleUpdateClosingQty} readOnly={isCompleted} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -166,85 +406,245 @@ function RunDetailPage() {
         <TabsContent value="runtime">
           <Card>
             <CardContent className="p-4">
-              <MachineTimeTable runtimes={runtimes} onAdd={() => setDialog('runtime')} readOnly={isCompleted} />
+              <MachineTimeTable machines={runMachines} segments={run.segments} breakdowns={run.breakdowns} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="manpower">
+        <TabsContent value="qc">
           <Card>
             <CardContent className="p-4">
-              <ManpowerSection entries={manpowerEntries} onAdd={() => setDialog('manpower')} readOnly={isCompleted} />
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Quality Control Sessions</h3>
+                <Button size="sm" variant="outline" onClick={() => navigate(`/qc/production/runs/${run.id}`)}>
+                  Open QC Page
+                </Button>
+              </div>
+              {qcSessions.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No QC sessions recorded for this run
+                </p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-2 font-medium">Round</th>
+                      <th className="text-left p-2 font-medium">Type</th>
+                      <th className="text-left p-2 font-medium">Material Type</th>
+                      <th className="text-left p-2 font-medium">Checked At</th>
+                      <th className="text-center p-2 font-medium">Parameters</th>
+                      <th className="text-left p-2 font-medium">Status</th>
+                      <th className="text-left p-2 font-medium">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {qcSessions.map((s) => (
+                      <tr
+                        key={s.id}
+                        className="border-b cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/qc/production/sessions/${s.id}`)}
+                      >
+                        <td className="p-2 font-medium">#{s.session_number}</td>
+                        <td className="p-2">
+                          <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                            s.session_type === 'FINAL'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                              : 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400'
+                          }`}>
+                            {s.session_type === 'FINAL' ? 'Final' : 'In-Process'}
+                          </span>
+                        </td>
+                        <td className="p-2 text-muted-foreground">{s.material_type_name}</td>
+                        <td className="p-2 text-muted-foreground text-xs">{new Date(s.checked_at).toLocaleString()}</td>
+                        <td className="p-2 text-center">{s.pass_count}/{s.total_params}</td>
+                        <td className="p-2">
+                          <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                            s.workflow_status === 'SUBMITTED'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                          }`}>
+                            {s.workflow_status === 'SUBMITTED' ? 'Submitted' : 'Draft'}
+                          </span>
+                        </td>
+                        <td className="p-2">
+                          {s.overall_result ? (
+                            <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                              s.overall_result === 'PASS'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>
+                              {s.overall_result}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
+
       </Tabs>
 
-      {/* Log Dialog */}
-      <Dialog open={dialog === 'log'} onOpenChange={() => setDialog(null)}>
+      {/* Add Breakdown Dialog */}
+      <Dialog open={dialog === 'breakdown'} onOpenChange={() => setDialog(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Add Hourly Log</DialogTitle></DialogHeader>
-          <form onSubmit={logForm.handleSubmit(onSubmitLog)} className="space-y-4">
+          <DialogHeader><DialogTitle>Add Breakdown</DialogTitle></DialogHeader>
+          <form onSubmit={breakdownForm.handleSubmit(onSubmitBreakdown)} className="space-y-4">
             <div>
-              <Label>Time Slot</Label>
-              <Select onValueChange={(v) => { const slot = TIME_SLOTS.find(s => s.slot === v); if (slot) { logForm.setValue('time_slot', slot.slot); logForm.setValue('time_start', slot.start); logForm.setValue('time_end', slot.end); } }}>
-                <SelectTrigger><SelectValue placeholder="Select time slot" /></SelectTrigger>
-                <SelectContent>{TIME_SLOTS.map((s) => (<SelectItem key={s.slot} value={s.slot}>{s.slot}</SelectItem>))}</SelectContent>
+              <Label>Breakdown Type</Label>
+              <Select onValueChange={(v) => breakdownForm.setValue('breakdown_category_id', Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Select breakdown type" /></SelectTrigger>
+                <SelectContent>
+                  {breakdownCategories.length === 0 ? (
+                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">No breakdown categories found.</div>
+                  ) : (
+                    breakdownCategories.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))
+                  )}
+                </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Produced Cases</Label><Input type="number" {...logForm.register('produced_cases', { valueAsNumber: true })} /></div>
-              <div><Label>Recd Minutes</Label><Input type="number" {...logForm.register('recd_minutes', { valueAsNumber: true })} /></div>
-            </div>
             <div>
-              <Label>Machine Status</Label>
-              <Select onValueChange={(v) => logForm.setValue('machine_status', v as MachineStatus)}>
-                <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                <SelectContent>{(Object.keys(MACHINE_STATUS_LABELS) as MachineStatus[]).map((s) => (<SelectItem key={s} value={s}>{MACHINE_STATUS_LABELS[s]}</SelectItem>))}</SelectContent>
+              <Label>Machine</Label>
+              <Select onValueChange={(v) => breakdownForm.setValue('machine_id', Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Select machine" /></SelectTrigger>
+                <SelectContent>
+                  {runMachines.length === 0 ? (
+                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">No machines assigned to this run.</div>
+                  ) : (
+                    runMachines.map((m) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))
+                  )}
+                </SelectContent>
               </Select>
             </div>
-            <div><Label>Remarks</Label><Textarea {...logForm.register('remarks')} /></div>
+            <div><Label>Reason</Label><Input {...breakdownForm.register('reason')} /></div>
+            <div><Label>Cases Produced</Label><Input type="number" {...breakdownForm.register('produced_cases')} /></div>
+            <div><Label>Remarks</Label><Textarea {...breakdownForm.register('remarks')} /></div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
-              <Button type="submit" disabled={createLog.isPending}>{createLog.isPending ? 'Saving...' : 'Add Entry'}</Button>
+              <Button type="submit" disabled={addBreakdown.isPending}>{addBreakdown.isPending ? 'Saving...' : 'Add Breakdown'}</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Breakdown Dialog */}
-      <Dialog open={dialog === 'breakdown'} onOpenChange={() => setDialog(null)}>
+      {/* Stop Production Dialog */}
+      <Dialog open={dialog === 'stop'} onOpenChange={() => setDialog(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Log Breakdown</DialogTitle></DialogHeader>
-          <form onSubmit={breakdownForm.handleSubmit(onSubmitBreakdown)} className="space-y-4">
+          <DialogHeader><DialogTitle>Stop Production</DialogTitle></DialogHeader>
+          <form onSubmit={stopForm.handleSubmit(onSubmitStop)} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              How many cases were produced in this running period?
+            </p>
             <div>
-              <Label>Machine</Label>
-              <Select onValueChange={(v) => breakdownForm.setValue('machine_id', Number(v))}>
-                <SelectTrigger><SelectValue placeholder="Select machine" /></SelectTrigger>
-                <SelectContent>{machines?.map((m) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}</SelectContent>
-              </Select>
+              <Label>Cases Produced</Label>
+              <Input type="number" step="0.1" {...stopForm.register('produced_cases')} placeholder="0" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Start Time</Label><Input type="datetime-local" {...breakdownForm.register('start_time')} /></div>
-              <div><Label>End Time</Label><Input type="datetime-local" {...breakdownForm.register('end_time')} /></div>
+            <div>
+              <Label>Remarks</Label>
+              <Textarea {...stopForm.register('remarks')} placeholder="Optional remarks..." />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Minutes</Label><Input type="number" {...breakdownForm.register('breakdown_minutes', { valueAsNumber: true })} /></div>
-              <div>
-                <Label>Type</Label>
-                <Select onValueChange={(v) => breakdownForm.setValue('type', v as BreakdownType)}>
-                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                  <SelectContent>{(Object.keys(BREAKDOWN_TYPE_LABELS) as BreakdownType[]).map((t) => (<SelectItem key={t} value={t}>{BREAKDOWN_TYPE_LABELS[t]}</SelectItem>))}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div><Label>Reason</Label><Input {...breakdownForm.register('reason')} /></div>
-            <div><Label>Remarks</Label><Textarea {...breakdownForm.register('remarks')} /></div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
-              <Button type="submit" disabled={createBreakdown.isPending}>{createBreakdown.isPending ? 'Saving...' : 'Log Breakdown'}</Button>
+              <Button type="submit" disabled={stopProduction.isPending}>{stopProduction.isPending ? 'Stopping...' : 'Stop Production'}</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Segment Detail Dialog */}
+      <Dialog open={dialog === 'segment-detail'} onOpenChange={() => setDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Running Segment</DialogTitle></DialogHeader>
+          {selectedSegment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Start Time</span>
+                  <p className="font-medium">{new Date(selectedSegment.start_time).toLocaleString()}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">End Time</span>
+                  <p className="font-medium">{selectedSegment.end_time ? new Date(selectedSegment.end_time).toLocaleString() : 'Running...'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Duration</span>
+                  <p className="font-medium">{selectedSegment.duration_minutes} min</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status</span>
+                  <p className="font-medium">{selectedSegment.is_active ? 'Active' : 'Stopped'}</p>
+                </div>
+              </div>
+              {!selectedSegment.is_active && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Cases Produced</span>
+                  <p className="font-medium">{selectedSegment.produced_cases}</p>
+                </div>
+              )}
+              <div>
+                <Label>Remarks</Label>
+                <Textarea value={editRemarks} onChange={(e) => setEditRemarks(e.target.value)} placeholder="Add remarks..." />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
+                <Button onClick={handleSaveSegmentRemarks} disabled={updateSegment.isPending}>
+                  {updateSegment.isPending ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Breakdown Detail Dialog */}
+      <Dialog open={dialog === 'breakdown-detail'} onOpenChange={() => setDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Breakdown Details</DialogTitle></DialogHeader>
+          {selectedBreakdown && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Machine</span>
+                  <p className="font-medium">{selectedBreakdown.machine_name || `#${selectedBreakdown.machine}`}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Type</span>
+                  <p className="font-medium">{selectedBreakdown.breakdown_category_name}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Start Time</span>
+                  <p className="font-medium">{new Date(selectedBreakdown.start_time).toLocaleString()}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">End Time</span>
+                  <p className="font-medium">{selectedBreakdown.end_time ? new Date(selectedBreakdown.end_time).toLocaleString() : 'Ongoing...'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Duration</span>
+                  <p className="font-medium">{selectedBreakdown.breakdown_minutes} min</p>
+                </div>
+              </div>
+              <div>
+                <span className="text-sm text-muted-foreground">Reason</span>
+                <p className="text-sm font-medium">{selectedBreakdown.reason}</p>
+              </div>
+              <div>
+                <Label>Remarks</Label>
+                <Textarea value={editRemarks} onChange={(e) => setEditRemarks(e.target.value)} placeholder="Add remarks..." />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
+                <Button onClick={handleSaveBreakdownRemarks} disabled={updateBreakdownRemarks.isPending}>
+                  {updateBreakdownRemarks.isPending ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -260,11 +660,10 @@ function RunDetailPage() {
             <div className="grid grid-cols-3 gap-4">
               <div><Label>Opening Qty</Label><Input {...materialForm.register('opening_qty')} /></div>
               <div><Label>Issued Qty</Label><Input {...materialForm.register('issued_qty')} /></div>
-              <div><Label>Closing Qty</Label><Input {...materialForm.register('closing_qty')} /></div>
+              <div><Label>Closing Qty</Label><Input {...materialForm.register('closing_qty')} placeholder="Optional" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>UoM</Label><Input {...materialForm.register('uom')} /></div>
-              <div><Label>Batch Number</Label><Input type="number" {...materialForm.register('batch_number', { valueAsNumber: true })} /></div>
+            <div>
+              <Label>UoM</Label><Input {...materialForm.register('uom')} />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
@@ -274,58 +673,6 @@ function RunDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Runtime Dialog */}
-      <Dialog open={dialog === 'runtime'} onOpenChange={() => setDialog(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add Machine Runtime</DialogTitle></DialogHeader>
-          <form onSubmit={runtimeForm.handleSubmit(onSubmitRuntime)} className="space-y-4">
-            <div>
-              <Label>Machine</Label>
-              <Select onValueChange={(v) => { const m = machines?.find(x => x.id === Number(v)); if (m) { runtimeForm.setValue('machine_id', m.id); runtimeForm.setValue('machine_type', m.machine_type); } }}>
-                <SelectTrigger><SelectValue placeholder="Select machine" /></SelectTrigger>
-                <SelectContent>{machines?.map((m) => (<SelectItem key={m.id} value={String(m.id)}>{m.name} ({MACHINE_TYPE_LABELS[m.machine_type]})</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Runtime (min)</Label><Input type="number" {...runtimeForm.register('runtime_minutes', { valueAsNumber: true })} /></div>
-              <div><Label>Downtime (min)</Label><Input type="number" {...runtimeForm.register('downtime_minutes', { valueAsNumber: true })} /></div>
-            </div>
-            <div><Label>Remarks</Label><Textarea {...runtimeForm.register('remarks')} /></div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
-              <Button type="submit" disabled={createRuntime.isPending}>{createRuntime.isPending ? 'Saving...' : 'Add Entry'}</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Manpower Dialog */}
-      <Dialog open={dialog === 'manpower'} onOpenChange={() => setDialog(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add Manpower</DialogTitle></DialogHeader>
-          <form onSubmit={manpowerForm.handleSubmit(onSubmitManpower)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Shift</Label>
-                <Select onValueChange={(v) => manpowerForm.setValue('shift', v as Shift)} defaultValue="MORNING">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{(Object.keys(SHIFT_LABELS) as Shift[]).map((s) => (<SelectItem key={s} value={s}>{SHIFT_LABELS[s]}</SelectItem>))}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>Worker Count</Label><Input type="number" {...manpowerForm.register('worker_count', { valueAsNumber: true })} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Supervisor</Label><Input {...manpowerForm.register('supervisor')} /></div>
-              <div><Label>Engineer</Label><Input {...manpowerForm.register('engineer')} /></div>
-            </div>
-            <div><Label>Remarks</Label><Textarea {...manpowerForm.register('remarks')} /></div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
-              <Button type="submit" disabled={createManpower.isPending}>{createManpower.isPending ? 'Saving...' : 'Add Entry'}</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

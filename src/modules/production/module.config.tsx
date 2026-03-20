@@ -28,7 +28,9 @@ const DailyProductionReportPage = lazy(
   () => import('./execution/pages/DailyProductionReportPage'),
 );
 const ResourceTrackingPage = lazy(() => import('./execution/pages/ResourceTrackingPage'));
-const QCPage = lazy(() => import('./execution/pages/QCPage'));
+// QC moved to /qc/production module — redirect component
+const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
+const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 
 export const productionModuleConfig: ModuleConfig = {
   name: 'production',
@@ -110,7 +112,7 @@ export const productionModuleConfig: ModuleConfig = {
     },
     {
       path: '/production/execution/runs/:runId/qc',
-      element: <QCPage />,
+      element: <QCRedirectPage />,
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.VIEW_RUN],
     },
@@ -162,6 +164,12 @@ export const productionModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
     },
+    {
+      path: '/production/execution/master-data',
+      element: <MasterDataPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
+    },
   ],
   navigation: [
     {
@@ -173,11 +181,6 @@ export const productionModuleConfig: ModuleConfig = {
       hasSubmenu: true,
       children: [
         {
-          path: '/production/planning',
-          title: 'Planning',
-          permissions: [PRODUCTION_PERMISSIONS.VIEW_PLAN],
-        },
-        {
           path: '/production/execution',
           title: 'Execution',
           permissions: [EXECUTION_PERMISSIONS.VIEW_RUN],
@@ -188,16 +191,6 @@ export const productionModuleConfig: ModuleConfig = {
           permissions: [EXECUTION_PERMISSIONS.VIEW_CLEARANCE],
         },
         {
-          path: '/production/execution/machine-checklists',
-          title: 'Machine Checklists',
-          permissions: [EXECUTION_PERMISSIONS.VIEW_CHECKLIST],
-        },
-        {
-          path: '/production/execution/breakdowns',
-          title: 'Breakdowns',
-          permissions: [EXECUTION_PERMISSIONS.VIEW_BREAKDOWN],
-        },
-        {
           path: '/production/execution/waste',
           title: 'Waste Management',
           permissions: [EXECUTION_PERMISSIONS.VIEW_WASTE],
@@ -206,6 +199,11 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/production/execution/reports',
           title: 'Reports',
           permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+        },
+        {
+          path: '/production/execution/master-data',
+          title: 'Master Data',
+          permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
         },
       ],
     },

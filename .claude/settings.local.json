@@ -33,7 +33,18 @@
       "Bash(grep -r \"useNavigate\\\\|useParams\\\\|useLocation\" /d/Test_CompanyJivo/factory/FactoryFlow/src/modules/production/planning/pages/*.tsx)",
       "Bash(grep -E \"\\\\.\\(md|doc|txt\\)$|^d\")",
       "Bash(done)",
-      "Bash(xargs grep:*)"
+      "Bash(npx shadcn@latest add tabs select --yes)",
+      "Bash(xargs grep:*)",
+      "Bash(.venv/Scripts/python.exe manage.py makemigrations production_execution)",
+      "Bash(.venv/Scripts/python.exe manage.py migrate production_execution)",
+      "Bash(.venv/Scripts/python.exe manage.py makemigrations production_execution --noinput)",
+      "Bash(python manage.py makemigrations quality_control production_execution)",
+      "Bash(source .venv/Scripts/activate)",
+      "Bash(python -c \"from quality_control.views_production_qc import *; print\\(''Views OK''\\)\")",
+      "Bash(python -c \"from quality_control.models import ProductionQCSession, ProductionQCResult; print\\(''Models OK''\\)\")",
+      "Bash(python manage.py check)",
+      "Bash(python manage.py makemigrations quality_control)",
+      "Bash(python manage.py migrate)"
     ]
   }
 }

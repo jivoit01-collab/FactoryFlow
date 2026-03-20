@@ -4,7 +4,7 @@
 
 export type RunStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED';
 
-export type MachineStatus = 'RUNNING' | 'IDLE' | 'BREAKDOWN' | 'CHANGEOVER';
+export type LiveStatus = 'DRAFT' | 'RUNNING' | 'BREAKDOWN' | 'STOPPED' | 'COMPLETED';
 
 export type MachineType =
   | 'FILLER'
@@ -15,8 +15,6 @@ export type MachineType =
   | 'SHRINK_PACK'
   | 'STICKER_LABELER'
   | 'TAPPING_MACHINE';
-
-export type BreakdownType = 'LINE' | 'EXTERNAL';
 
 export type ChecklistFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
@@ -77,7 +75,7 @@ export interface SAPProductionOrder {
   DocEntry: number;
   DocNum: number;
   ItemCode: string;
-  ItemName: string;
+  ProdName: string;
   PlannedQty: number;
   CmpltQty: number;
   RjctQty: number;
@@ -102,6 +100,12 @@ export interface SAPOrderDetail {
   components: SAPOrderComponent[];
 }
 
+export interface SAPItem {
+  ItemCode: string;
+  ItemName: string;
+  UomCode: string;
+}
+
 // ============================================================================
 // Production Runs
 // ============================================================================
@@ -113,43 +117,63 @@ export interface ProductionRun {
   date: string;
   line: number;
   line_name: string;
-  brand: string;
-  pack: string;
-  sap_order_no: string;
+  product: string;
   rated_speed: string;
-  total_production: number;
+  total_production: string;
+  total_running_minutes: number;
   total_breakdown_time: number;
+  rejected_qty: string;
+  reworked_qty: string;
   status: RunStatus;
+  live_status: LiveStatus;
   created_by: number | null;
   created_at: string;
 }
 
 export interface ProductionRunDetail extends ProductionRun {
-  total_minutes_pe: number;
-  total_minutes_me: number;
-  line_breakdown_time: number;
-  external_breakdown_time: number;
-  unrecorded_time: number;
+  labour_count: number;
+  other_manpower_count: number;
+  supervisor: string;
+  operators: string;
+  machine_ids: number[];
   updated_at: string;
-  logs: ProductionLog[];
+  segments: ProductionSegment[];
   breakdowns: MachineBreakdown[];
 }
 
 // ============================================================================
-// Hourly Production Logs
+// Production Segments
 // ============================================================================
 
-export interface ProductionLog {
+export interface ProductionSegment {
   id: number;
-  production_run: number;
-  time_slot: string;
-  time_start: string;
-  time_end: string;
-  produced_cases: number;
-  machine_status: MachineStatus;
-  recd_minutes: number;
-  breakdown_detail: string;
+  start_time: string;
+  end_time: string | null;
+  produced_cases: string;
+  is_active: boolean;
+  duration_minutes: number;
   remarks: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateSegmentRequest {
+  remarks?: string;
+  produced_cases?: string;
+}
+
+export interface UpdateBreakdownRemarksRequest {
+  remarks: string;
+}
+
+// ============================================================================
+// Breakdown Categories
+// ============================================================================
+
+export interface BreakdownCategory {
+  id: number;
+  name: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -163,11 +187,13 @@ export interface MachineBreakdown {
   production_run: number;
   machine: number;
   machine_name?: string;
+  breakdown_category: number | null;
+  breakdown_category_name: string;
   start_time: string;
   end_time: string;
   breakdown_minutes: number;
-  type: BreakdownType;
   is_unrecovered: boolean;
+  is_active: boolean;
   reason: string;
   remarks: string;
   created_at: string;
@@ -188,7 +214,6 @@ export interface MaterialUsage {
   closing_qty: string;
   wastage_qty: string;
   uom: string;
-  batch_number: number;
   created_at: string;
   updated_at: string;
 }
@@ -239,10 +264,11 @@ export interface LineClearanceItem {
 
 export interface LineClearance {
   id: number;
+  production_run: number | null;
+  run_number: number | null;
   date: string;
   line: number;
   line_name?: string;
-  sap_doc_entry: number | null;
   document_id: string;
   status: ClearanceStatus;
   created_by: number | null;
@@ -291,18 +317,24 @@ export interface WasteLog {
   id: number;
   production_run: number;
   run_number?: number;
+  run_date?: string;
+  run_product?: string;
   material_code: string;
   material_name: string;
   wastage_qty: string;
   uom: string;
   reason: string;
   engineer_sign: string;
+  engineer_signed_by: number | null;
   engineer_signed_at: string | null;
   am_sign: string;
+  am_signed_by: number | null;
   am_signed_at: string | null;
   store_sign: string;
+  store_signed_by: number | null;
   store_signed_at: string | null;
   hod_sign: string;
+  hod_signed_by: number | null;
   hod_signed_at: string | null;
   wastage_approval_status: WasteApprovalStatus;
   created_at: string;
@@ -320,7 +352,9 @@ export interface ResourceElectricity {
   units_consumed: string;
   rate_per_unit: string;
   total_cost: string;
+  created_by: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ResourceWater {
@@ -330,7 +364,9 @@ export interface ResourceWater {
   volume_consumed: string;
   rate_per_unit: string;
   total_cost: string;
+  created_by: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ResourceGas {
@@ -340,7 +376,9 @@ export interface ResourceGas {
   qty_consumed: string;
   rate_per_unit: string;
   total_cost: string;
+  created_by: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ResourceCompressedAir {
@@ -350,17 +388,22 @@ export interface ResourceCompressedAir {
   units_consumed: string;
   rate_per_unit: string;
   total_cost: string;
+  created_by: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ResourceLabour {
   id: number;
   production_run: number;
-  worker_name: string;
+  description: string;
+  worker_count: number;
   hours_worked: string;
   rate_per_hour: string;
   total_cost: string;
+  created_by: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ResourceMachineCost {
@@ -370,7 +413,9 @@ export interface ResourceMachineCost {
   hours_used: string;
   rate_per_hour: string;
   total_cost: string;
+  created_by: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ResourceOverhead {
@@ -378,7 +423,9 @@ export interface ResourceOverhead {
   production_run: number;
   expense_name: string;
   amount: string;
+  created_by: number | null;
   created_at: string;
+  updated_at: string;
 }
 
 // ============================================================================
@@ -524,42 +571,52 @@ export interface CreateTemplateRequest {
 }
 
 export interface CreateRunRequest {
-  sap_doc_entry: number;
+  sap_doc_entry?: number | null;
   line_id: number;
   date: string;
-  brand: string;
-  pack: string;
-  sap_order_no: string;
+  product?: string;
   rated_speed?: string;
+  machine_ids?: number[];
+  labour_count?: number;
+  other_manpower_count?: number;
+  supervisor?: string;
+  operators?: string;
+  materials?: MaterialInput[];
 }
 
 export interface UpdateRunRequest {
-  line_id?: number;
-  brand?: string;
-  pack?: string;
+  product?: string;
   rated_speed?: string;
+  machine_ids?: number[];
+  labour_count?: number;
+  other_manpower_count?: number;
+  supervisor?: string;
+  operators?: string;
 }
 
-export interface CreateLogRequest {
-  time_slot: string;
-  time_start: string;
-  time_end: string;
-  produced_cases: number;
-  machine_status: MachineStatus;
-  recd_minutes: number;
-  breakdown_detail?: string;
-  remarks?: string;
-}
-
-export interface CreateBreakdownRequest {
+export interface AddBreakdownRequest {
+  breakdown_category_id: number;
   machine_id: number;
-  start_time: string;
-  end_time: string;
-  breakdown_minutes: number;
-  type: BreakdownType;
   reason: string;
+  produced_cases?: string;
   remarks?: string;
-  is_unrecovered?: boolean;
+}
+
+export interface ResolveBreakdownRequest {
+  action: 'start_production' | 'stop_production' | 'stop_unrecovered';
+}
+
+export interface StopProductionRequest {
+  produced_cases: string;
+  remarks?: string;
+}
+
+export interface CompleteRunRequest {
+  total_production: string;
+}
+
+export interface CreateBreakdownCategoryRequest {
+  name: string;
 }
 
 export interface CreateMaterialUsageRequest {
@@ -567,9 +624,16 @@ export interface CreateMaterialUsageRequest {
   material_name: string;
   opening_qty: string;
   issued_qty: string;
-  closing_qty: string;
+  closing_qty?: string;
   uom: string;
-  batch_number: number;
+}
+
+export interface MaterialInput {
+  material_code: string;
+  material_name: string;
+  opening_qty: string;
+  issued_qty: string;
+  uom: string;
 }
 
 export interface CreateRuntimeRequest {
@@ -589,9 +653,9 @@ export interface CreateManpowerRequest {
 }
 
 export interface CreateLineClearanceRequest {
+  production_run_id?: number;
   date: string;
   line_id: number;
-  sap_doc_entry?: number;
 }
 
 export interface UpdateLineClearanceRequest {
@@ -655,7 +719,8 @@ export interface CreateCompressedAirRequest {
 }
 
 export interface CreateLabourRequest {
-  worker_name: string;
+  description?: string;
+  worker_count: number;
   hours_worked: string;
   rate_per_hour: string;
 }
