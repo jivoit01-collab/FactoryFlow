@@ -8,6 +8,8 @@ export interface POReceipt {
   po_number: string;
   supplier_code: string;
   supplier_name: string;
+  created_at?: string;
+  updated_at?: string;
   items: Array<{
     id?: number; // PO item ID for API calls
     po_item_code: string;

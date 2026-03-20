@@ -1,4 +1,5 @@
 export * from './dashboard';
+export { EntryTimeSummary } from './EntryTimeSummary';
 export { ErrorBoundary } from './ErrorBoundary';
 export { PageLoadError } from './PageLoadError';
 export { RecordTimestamps } from './RecordTimestamps';

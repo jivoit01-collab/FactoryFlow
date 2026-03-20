@@ -18,6 +18,7 @@ export function useCreatePOReceipt(entryId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['poReceipts'] });
       queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
     },
   });
 }

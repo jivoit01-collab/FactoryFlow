@@ -566,10 +566,10 @@ export default function Step3Page() {
       )}
 
       {/* Record Timestamps */}
-      {isEditMode && vehicleEntryData?.created_at && (
+      {isEditMode && maintenanceData?.created_at && (
         <RecordTimestamps
-          createdAt={vehicleEntryData.created_at}
-          updatedAt={vehicleEntryData.updated_at}
+          createdAt={maintenanceData.created_at}
+          updatedAt={maintenanceData.updated_at}
         />
       )}
 

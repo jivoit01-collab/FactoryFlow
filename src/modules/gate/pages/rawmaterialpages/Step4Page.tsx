@@ -382,10 +382,10 @@ export default function Step4Page() {
       </div>
 
       {/* Record Timestamps */}
-      {isEditMode && vehicleEntryData?.created_at && (
+      {isEditMode && weighmentData?.created_at && (
         <RecordTimestamps
-          createdAt={vehicleEntryData.created_at}
-          updatedAt={vehicleEntryData.updated_at}
+          createdAt={weighmentData.created_at}
+          updatedAt={weighmentData.updated_at}
         />
       )}
 

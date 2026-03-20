@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, Building2, FileCheck, FileText, Package } from 'lucide-react';
+import { Building2, FileCheck, FileText, Package } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,7 +7,6 @@ import { ENTRY_STATUS, SECURITY_APPROVAL_STATUS, VALIDATION_PATTERNS } from '@/c
 import type { ApiError } from '@/core/api';
 import { RecordTimestamps } from '@/shared/components';
 import {
-  Button,
   Card,
   CardContent,
   CardHeader,
@@ -30,7 +29,7 @@ import {
   useUpdateConstructionEntry,
 } from '../../api/construction/construction.queries';
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
-import { ConstructionCategorySelect, FillDataAlert, UnitSelect } from '../../components';
+import { ConstructionCategorySelect, FillDataAlert, StepFooter, StepHeader, UnitSelect } from '../../components';
 import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 // Security approval options
@@ -69,7 +68,7 @@ export default function Step3Page() {
   useEntryStepTracker();
   const currentStep = 3;
   const totalSteps = 4;
-  const progressPercentage = (currentStep / totalSteps) * 100;
+
 
   // API hooks
   const createConstructionEntry = useCreateConstructionEntry(entryIdNumber || 0);
@@ -315,39 +314,16 @@ export default function Step3Page() {
 
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Construction Entry - Step {currentStep} of {totalSteps}
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <span className="text-sm font-medium text-muted-foreground min-w-[3rem]">
-            {Math.round(progressPercentage)}%
-          </span>
-        </div>
-      </div>
-
-      {/* Server Error */}
-      {hasServerError && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {getServerErrorMessage()}
-        </div>
-      )}
-
-      {/* General Error */}
-      {!hasServerError && apiErrors.general && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {apiErrors.general}
-        </div>
-      )}
+      <StepHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        title="Construction Entry"
+        error={
+          hasServerError
+            ? getServerErrorMessage()
+            : apiErrors.general || null
+        }
+      />
 
       {/* Fill Data Alert */}
       {effectiveEditMode && isNotFoundError && !fillDataMode && (
@@ -682,41 +658,23 @@ export default function Step3Page() {
       )}
 
       {/* Record Timestamps */}
-      {isEditMode && vehicleEntryData?.created_at && (
+      {isEditMode && constructionData?.created_at && (
         <RecordTimestamps
-          createdAt={vehicleEntryData.created_at}
-          updatedAt={vehicleEntryData.updated_at}
+          createdAt={constructionData.created_at}
+          updatedAt={constructionData.updated_at}
         />
       )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-4 border-t">
-        <Button type="button" variant="outline" onClick={handlePrevious}>
-          Previous
-        </Button>
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="outline" onClick={handleCancel}>
-            Cancel
-          </Button>
-          {effectiveEditMode && canUpdate && !updateMode && (
-            <Button type="button" variant="secondary" onClick={handleUpdate}>
-              Update
-            </Button>
-          )}
-          <Button type="button" onClick={handleNext} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Saving...
-              </>
-            ) : effectiveEditMode && !updateMode ? (
-              'Next'
-            ) : (
-              'Save & Next'
-            )}
-          </Button>
-        </div>
-      </div>
+      <StepFooter
+        onPrevious={handlePrevious}
+        onCancel={handleCancel}
+        onNext={handleNext}
+        showUpdate={effectiveEditMode && canUpdate && !updateMode}
+        onUpdate={handleUpdate}
+        isSaving={isSaving}
+        isEditMode={effectiveEditMode}
+        isUpdateMode={updateMode}
+      />
     </div>
   );
 }

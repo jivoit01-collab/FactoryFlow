@@ -12,6 +12,9 @@ import {
 import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
 
+import { StepFooter } from '../StepFooter';
+import { StepHeader } from '../StepHeader';
+
 // Type definitions
 export interface SecurityCheckFormData {
   vehicleCondition: string;
@@ -63,6 +66,7 @@ export interface SecurityCheckFormShellProps {
 
   // Custom content (optional)
   headerTitle?: string;
+  children?: React.ReactNode;
 }
 
 // Format time for display
@@ -95,9 +99,8 @@ export function SecurityCheckFormShell({
   fillDataMessage = 'Security check not found',
   serverError,
   headerTitle = 'Material Inward',
+  children,
 }: SecurityCheckFormShellProps) {
-  const progressPercentage = (currentStep / totalSteps) * 100;
-
   // Scroll to first error when errors occur
   useScrollToError(apiErrors);
 
@@ -111,30 +114,12 @@ export function SecurityCheckFormShell({
 
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          {headerTitle} - Step {currentStep} of {totalSteps}
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <span className="text-sm font-medium text-muted-foreground min-w-[3rem]">
-            {Math.round(progressPercentage)}%
-          </span>
-        </div>
-      </div>
-
-      {(serverError || apiErrors.general) && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {serverError || apiErrors.general}
-        </div>
-      )}
+      <StepHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        title={headerTitle}
+        error={serverError || apiErrors.general || null}
+      />
 
       {/* Show not found error with Fill Data button */}
       {showFillDataAlert && onFillData && (
@@ -377,31 +362,18 @@ export function SecurityCheckFormShell({
         </Card>
       </div>
 
-      {/* Footer Actions */}
-      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={onPrevious}>
-          ← Previous
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        {isEditMode ? (
-          <>
-            {canUpdate && !updateMode && onUpdate && (
-              <Button type="button" onClick={onUpdate}>
-                Update
-              </Button>
-            )}
-            <Button type="button" onClick={onNext} disabled={isSaving}>
-              {updateMode ? (isSaving ? 'Saving...' : 'Save and Next →') : 'Next →'}
-            </Button>
-          </>
-        ) : (
-          <Button type="button" onClick={onNext} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save and Next →'}
-          </Button>
-        )}
-      </div>
+      {children}
+
+      <StepFooter
+        onPrevious={onPrevious}
+        onCancel={onCancel}
+        onNext={onNext}
+        showUpdate={isEditMode && canUpdate && !updateMode && !!onUpdate}
+        onUpdate={onUpdate}
+        isSaving={isSaving}
+        isEditMode={isEditMode}
+        isUpdateMode={updateMode}
+      />
     </div>
   );
 }

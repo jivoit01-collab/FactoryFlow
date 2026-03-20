@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, FileText, Package, Scale } from 'lucide-react';
+import { FileText, Package, Scale } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,7 +7,6 @@ import { ENTRY_STATUS, VALIDATION_PATTERNS } from '@/config/constants';
 import type { ApiError } from '@/core/api';
 import { RecordTimestamps } from '@/shared/components';
 import {
-  Button,
   Card,
   CardContent,
   CardHeader,
@@ -26,7 +25,7 @@ import { cn } from '@/shared/utils';
 
 import { useCreateDailyNeed, useDailyNeed } from '../../api/dailyNeed/dailyNeed.queries';
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
-import { CategorySelect, DepartmentSelect, FillDataAlert, UnitSelect } from '../../components';
+import { CategorySelect, DepartmentSelect, FillDataAlert, StepFooter, StepHeader, UnitSelect } from '../../components';
 import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 interface DailyNeedsFormData {
@@ -52,7 +51,7 @@ export default function Step3Page() {
   useEntryStepTracker();
   const currentStep = 3;
   const totalSteps = 4;
-  const progressPercentage = (currentStep / totalSteps) * 100;
+
 
   const { data: vehicleEntryData } = useVehicleEntry(
     isEditMode && entryIdNumber ? entryIdNumber : null,
@@ -277,30 +276,16 @@ export default function Step3Page() {
 
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Daily Needs Entry - Step {currentStep} of {totalSteps}
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <span className="text-sm font-medium text-muted-foreground min-w-[3rem]">
-            {Math.round(progressPercentage)}%
-          </span>
-        </div>
-      </div>
-
-      {(hasServerError || apiErrors.general) && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {hasServerError ? getServerErrorMessage() : apiErrors.general}
-        </div>
-      )}
+      <StepHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        title="Daily Needs Entry"
+        error={
+          hasServerError
+            ? getServerErrorMessage()
+            : apiErrors.general || null
+        }
+      />
 
       {/* Show not found error with Fill Data button */}
       {effectiveEditMode && isNotFoundError && !fillDataMode && !hasServerError && (
@@ -594,50 +579,23 @@ export default function Step3Page() {
       </div>
 
       {/* Record Timestamps */}
-      {isEditMode && vehicleEntryData?.created_at && (
+      {isEditMode && dailyNeedData?.created_at && (
         <RecordTimestamps
-          createdAt={vehicleEntryData.created_at}
-          updatedAt={vehicleEntryData.updated_at}
+          createdAt={dailyNeedData.created_at}
+          updatedAt={dailyNeedData.updated_at}
         />
       )}
 
-      {/* Footer Actions */}
-      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={handlePrevious}>
-          ← Previous
-        </Button>
-        <Button type="button" variant="outline" onClick={handleCancel}>
-          Cancel
-        </Button>
-        {effectiveEditMode ? (
-          <>
-            {canUpdate && !updateMode && (
-              <Button type="button" onClick={handleUpdate}>
-                Update
-              </Button>
-            )}
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={createDailyNeed.isPending || isNavigating}
-            >
-              {updateMode
-                ? createDailyNeed.isPending || isNavigating
-                  ? 'Saving...'
-                  : 'Save and Next →'
-                : 'Next →'}
-            </Button>
-          </>
-        ) : (
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            disabled={createDailyNeed.isPending || isNavigating}
-          >
-            {createDailyNeed.isPending || isNavigating ? 'Saving...' : 'Save and Next →'}
-          </Button>
-        )}
-      </div>
+      <StepFooter
+        onPrevious={handlePrevious}
+        onCancel={handleCancel}
+        onNext={handleSubmit}
+        showUpdate={effectiveEditMode && canUpdate && !updateMode}
+        onUpdate={handleUpdate}
+        isSaving={createDailyNeed.isPending || isNavigating}
+        isEditMode={effectiveEditMode}
+        isUpdateMode={updateMode}
+      />
     </div>
   );
 }

@@ -271,13 +271,14 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
         updateMode={updateMode}
         serverError={hasServerError ? getServerErrorMessage() : null}
         headerTitle={config.headerTitle}
-      />
-      {isEditMode && entryData?.created_at && (
-        <RecordTimestamps
-          createdAt={entryData.created_at}
-          updatedAt={entryData.updated_at}
-        />
-      )}
+      >
+        {isEditMode && entryData?.created_at && (
+          <RecordTimestamps
+            createdAt={entryData.created_at}
+            updatedAt={entryData.updated_at}
+          />
+        )}
+      </VehicleDriverFormShell>
     </>
   );
 }

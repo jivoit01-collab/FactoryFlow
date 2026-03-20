@@ -25,6 +25,7 @@ export function useCreateDailyNeed(entryId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailyNeed'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
     },
   });
 }

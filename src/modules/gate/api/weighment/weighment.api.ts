@@ -10,6 +10,8 @@ export interface Weighment {
   first_weighment_time?: string | null;
   second_weighment_time?: string | null;
   remarks?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateWeighmentRequest {

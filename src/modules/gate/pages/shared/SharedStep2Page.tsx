@@ -272,13 +272,14 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
         fillDataMessage={getErrorMessage(securityCheckError, 'Security check not found')}
         serverError={hasServerError ? getServerErrorMessage() : null}
         headerTitle={config.headerTitle}
-      />
-      {isEditMode && vehicleEntryData?.created_at && (
-        <RecordTimestamps
-          createdAt={vehicleEntryData.created_at}
-          updatedAt={vehicleEntryData.updated_at}
-        />
-      )}
+      >
+        {isEditMode && securityCheckData?.created_at && (
+          <RecordTimestamps
+            createdAt={securityCheckData.created_at}
+            updatedAt={securityCheckData.updated_at}
+          />
+        )}
+      </SecurityCheckFormShell>
     </>
   );
 }

@@ -37,6 +37,7 @@ export function useCreateConstructionEntry(entryId: number) {
       queryClient.invalidateQueries({ queryKey: ['constructionEntry', entryId] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
     },
   });
 }
@@ -54,6 +55,7 @@ export function useUpdateConstructionEntry(entryId: number) {
       queryClient.invalidateQueries({ queryKey: ['constructionFullView', entryId] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
     },
   });
 }
@@ -81,6 +83,7 @@ export function useCompleteConstructionEntry() {
       queryClient.invalidateQueries({ queryKey: ['constructionFullView'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
     },
   });
 }

@@ -1076,10 +1076,10 @@ export default function ArrivalSlipPage() {
       </div>
 
       {/* Record Timestamps */}
-      {vehicleEntryData?.created_at && (
+      {isEditMode && itemForms.length > 0 && itemForms[0].existingSlip?.created_at && (
         <RecordTimestamps
-          createdAt={vehicleEntryData.created_at}
-          updatedAt={vehicleEntryData.updated_at}
+          createdAt={itemForms[0].existingSlip.created_at}
+          updatedAt={itemForms[0].existingSlip.updated_at}
         />
       )}
 

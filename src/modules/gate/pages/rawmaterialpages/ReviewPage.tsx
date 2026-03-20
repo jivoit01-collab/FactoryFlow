@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_STATUS, FINAL_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
-import { RecordTimestamps } from '@/shared/components';
+import { EntryTimeSummary, RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
@@ -602,11 +602,30 @@ export default function ReviewPage() {
         )}
       </div>
 
-      {/* Record Timestamps */}
-      <RecordTimestamps
-        createdAt={gateEntry.gate_entry.created_at}
-        updatedAt={gateEntry.gate_entry.updated_at}
-      />
+      {/* Entry Time Summary */}
+      {(() => {
+        // Find the latest updated_at across all steps
+        const timestamps = [
+          gateEntry.gate_entry.updated_at,
+          gateEntry.security_check?.updated_at,
+          gateEntry.weighment?.updated_at,
+          ...gateEntry.po_receipts.map((po) => po.created_at),
+        ].filter(Boolean) as string[];
+        const latestUpdated = timestamps.length > 0
+          ? timestamps.reduce((a, b) => (new Date(a) > new Date(b) ? a : b))
+          : gateEntry.gate_entry.updated_at;
+        return latestUpdated ? (
+          <EntryTimeSummary
+            startedAt={gateEntry.gate_entry.created_at}
+            completedAt={latestUpdated}
+          />
+        ) : (
+          <RecordTimestamps
+            createdAt={gateEntry.gate_entry.created_at}
+            updatedAt={gateEntry.gate_entry.updated_at}
+          />
+        );
+      })()}
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
