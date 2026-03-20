@@ -197,6 +197,13 @@ export const API_ENDPOINTS = {
     DROPDOWN_WAREHOUSES: '/production-planning/dropdown/warehouses/',
     DROPDOWN_BOM: '/production-planning/dropdown/bom/',
   },
+  // SAP Plan Dashboard
+  SAP_PLAN_DASHBOARD: {
+    SUMMARY: '/sap/plan-dashboard/summary/',
+    DETAILS: '/sap/plan-dashboard/details/',
+    PROCUREMENT: '/sap/plan-dashboard/procurement/',
+    SKU_DETAIL: (docEntry: number) => `/sap/plan-dashboard/sku/${docEntry}/`,
+  },
   // Production Execution
   PRODUCTION_EXECUTION: {
     // Production Lines

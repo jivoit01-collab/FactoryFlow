@@ -26,6 +26,7 @@ export const grpoModuleConfig: ModuleConfig = {
       element: <GRPODashboardPage />,
       layout: 'main',
       permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
+      breadcrumb: { label: 'GRPO' },
     },
     // Pending entries list
     {
