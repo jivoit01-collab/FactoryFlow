@@ -1,16 +1,14 @@
 import { Plus } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
-import { BREAKDOWN_TYPE_COLORS, BREAKDOWN_TYPE_LABELS } from '../constants';
 import type { MachineBreakdown } from '../types';
 
 interface BreakdownTableProps {
   breakdowns: MachineBreakdown[];
   onAdd?: () => void;
-  onEdit?: (b: MachineBreakdown) => void;
   readOnly?: boolean;
 }
 
-export function BreakdownTable({ breakdowns, onAdd, onEdit, readOnly }: BreakdownTableProps) {
+export function BreakdownTable({ breakdowns, onAdd, readOnly }: BreakdownTableProps) {
   const totalMinutes = breakdowns.reduce((sum, b) => sum + b.breakdown_minutes, 0);
 
   return (
@@ -36,23 +34,20 @@ export function BreakdownTable({ breakdowns, onAdd, onEdit, readOnly }: Breakdow
             </tr>
           </thead>
           <tbody>
-            {breakdowns.map((b) => {
-              const typeColors = BREAKDOWN_TYPE_COLORS[b.type];
-              return (
-                <tr key={b.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => onEdit?.(b)}>
-                  <td className="p-2">{b.machine_name || `Machine #${b.machine}`}</td>
-                  <td className="p-2">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeColors.bg} ${typeColors.text} ${typeColors.darkBg} ${typeColors.darkText}`}>
-                      {BREAKDOWN_TYPE_LABELS[b.type]}
-                    </span>
-                  </td>
-                  <td className="p-2">{new Date(b.start_time).toLocaleTimeString()}</td>
-                  <td className="p-2">{new Date(b.end_time).toLocaleTimeString()}</td>
-                  <td className="p-2 text-right font-medium">{b.breakdown_minutes}</td>
-                  <td className="p-2 truncate max-w-[200px]">{b.reason}</td>
-                </tr>
-              );
-            })}
+            {breakdowns.map((b) => (
+              <tr key={b.id} className="border-b hover:bg-muted/30">
+                <td className="p-2">{b.machine_name || `Machine #${b.machine}`}</td>
+                <td className="p-2">
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                    {b.breakdown_category_name || 'Unknown'}
+                  </span>
+                </td>
+                <td className="p-2">{new Date(b.start_time).toLocaleTimeString()}</td>
+                <td className="p-2">{b.end_time ? new Date(b.end_time).toLocaleTimeString() : '--:--'}</td>
+                <td className="p-2 text-right font-medium">{b.breakdown_minutes}</td>
+                <td className="p-2 truncate max-w-[200px]">{b.reason}</td>
+              </tr>
+            ))}
             {breakdowns.length === 0 && (
               <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">No breakdowns recorded</td></tr>
             )}

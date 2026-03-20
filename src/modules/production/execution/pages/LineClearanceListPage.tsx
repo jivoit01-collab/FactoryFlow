@@ -47,11 +47,11 @@ function LineClearanceListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-3 font-medium">Document ID</th>
+                <th className="text-left p-3 font-medium">ID</th>
+                <th className="text-left p-3 font-medium">Run</th>
                 <th className="text-left p-3 font-medium">Date</th>
                 <th className="text-left p-3 font-medium">Line</th>
                 <th className="text-left p-3 font-medium">Status</th>
-                <th className="text-left p-3 font-medium">Created</th>
               </tr>
             </thead>
             <tbody>
@@ -62,10 +62,10 @@ function LineClearanceListPage() {
                   onClick={() => navigate(`/production/execution/line-clearance/${c.id}`)}
                 >
                   <td className="p-3 font-medium">{c.document_id || `#${c.id}`}</td>
+                  <td className="p-3">{c.run_number ? `Run #${c.run_number}` : <span className="text-muted-foreground">—</span>}</td>
                   <td className="p-3">{c.date}</td>
                   <td className="p-3">{c.line_name || `Line #${c.line}`}</td>
                   <td className="p-3"><ClearanceStatusBadge status={c.status} /></td>
-                  <td className="p-3 text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>

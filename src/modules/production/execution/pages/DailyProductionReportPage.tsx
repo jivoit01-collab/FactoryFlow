@@ -68,7 +68,7 @@ function DailyProductionReportPage() {
                       <tr key={r.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => navigate(`/production/execution/runs/${r.id}`)}>
                         <td className="p-2 font-medium">#{r.run_number}</td>
                         <td className="p-2">{r.line_name}</td>
-                        <td className="p-2">{r.brand} - {r.pack}</td>
+                        <td className="p-2">{r.product}</td>
                         <td className="p-2 text-right">{r.total_production}</td>
                         <td className="p-2 text-right text-red-600">{r.total_breakdown_time}</td>
                         <td className="p-2"><ProductionStatusBadge status={r.status} /></td>

@@ -142,6 +142,23 @@ export const API_ENDPOINTS = {
     APPROVE_CHEMIST: (id: number) => `/quality-control/inspections/${id}/approve/chemist/`,
     APPROVE_QAM: (id: number) => `/quality-control/inspections/${id}/approve/qam/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
+
+    // Production QC
+    PRODUCTION_QC_LIST: '/quality-control/production-qc/',
+    PRODUCTION_QC_PENDING: '/quality-control/production-qc/pending/',
+    PRODUCTION_QC_COUNTS: '/quality-control/production-qc/counts/',
+    PRODUCTION_QC_RUN_SESSIONS: (runId: number) =>
+      `/quality-control/production-qc/runs/${runId}/sessions/`,
+    PRODUCTION_QC_SESSION_DETAIL: (sessionId: number) =>
+      `/quality-control/production-qc/sessions/${sessionId}/`,
+    PRODUCTION_QC_SESSION_RESULTS: (sessionId: number) =>
+      `/quality-control/production-qc/sessions/${sessionId}/results/`,
+    PRODUCTION_QC_SESSION_SUBMIT: (sessionId: number) =>
+      `/quality-control/production-qc/sessions/${sessionId}/submit/`,
+    PRODUCTION_QC_SESSION_APPROVE: (sessionId: number) =>
+      `/quality-control/production-qc/sessions/${sessionId}/approve/`,
+    PRODUCTION_QC_SESSION_REJECT: (sessionId: number) =>
+      `/quality-control/production-qc/sessions/${sessionId}/reject/`,
   },
   // GRPO (Goods Receipt Purchase Order)
   GRPO: {
@@ -196,10 +213,10 @@ export const API_ENDPOINTS = {
     RUNS: '/production-execution/runs/',
     RUN_DETAIL: (runId: number) => `/production-execution/runs/${runId}/`,
     RUN_COMPLETE: (runId: number) => `/production-execution/runs/${runId}/complete/`,
-    // Hourly Logs
-    RUN_LOGS: (runId: number) => `/production-execution/runs/${runId}/logs/`,
-    RUN_LOG_DETAIL: (runId: number, logId: number) =>
-      `/production-execution/runs/${runId}/logs/${logId}/`,
+    // Breakdown Categories
+    BREAKDOWN_CATEGORIES: '/production-execution/breakdown-categories/',
+    BREAKDOWN_CATEGORY_DETAIL: (categoryId: number) =>
+      `/production-execution/breakdown-categories/${categoryId}/`,
     // Breakdowns
     RUN_BREAKDOWNS: (runId: number) => `/production-execution/runs/${runId}/breakdowns/`,
     RUN_BREAKDOWN_DETAIL: (runId: number, breakdownId: number) =>
@@ -284,6 +301,7 @@ export const API_ENDPOINTS = {
     SAP_ORDERS: '/production-execution/sap/orders/',
     SAP_ORDER_DETAIL: (docEntry: number) =>
       `/production-execution/sap/orders/${docEntry}/`,
+    SAP_ITEMS: '/production-execution/sap/items/',
     // Reports
     REPORTS_DAILY: '/production-execution/reports/daily-production/',
     REPORTS_YIELD: (runId: number) => `/production-execution/reports/yield/${runId}/`,
@@ -292,6 +310,19 @@ export const API_ENDPOINTS = {
     REPORTS_OEE: '/production-execution/reports/analytics/oee/',
     REPORTS_DOWNTIME: '/production-execution/reports/analytics/downtime/',
     REPORTS_WASTE_ANALYTICS: '/production-execution/reports/analytics/waste/',
+    // Timeline Actions
+    START_PRODUCTION: (runId: number) =>
+      `/production-execution/runs/${runId}/start-production/`,
+    STOP_PRODUCTION: (runId: number) =>
+      `/production-execution/runs/${runId}/stop-production/`,
+    ADD_BREAKDOWN: (runId: number) =>
+      `/production-execution/runs/${runId}/add-breakdown/`,
+    RESOLVE_BREAKDOWN: (runId: number, breakdownId: number) =>
+      `/production-execution/runs/${runId}/breakdowns/${breakdownId}/resolve/`,
+    SEGMENT_UPDATE: (runId: number, segmentId: number) =>
+      `/production-execution/runs/${runId}/segments/${segmentId}/`,
+    BREAKDOWN_UPDATE: (runId: number, breakdownId: number) =>
+      `/production-execution/runs/${runId}/breakdowns/${breakdownId}/update/`,
     // Delete run
     RUN_DELETE: (runId: number) => `/production-execution/runs/${runId}/`,
   },

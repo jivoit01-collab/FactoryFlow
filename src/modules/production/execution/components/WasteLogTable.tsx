@@ -3,16 +3,17 @@ import { WasteApprovalBadge } from './WasteApprovalBadge';
 
 interface WasteLogTableProps {
   wasteLogs: WasteLog[];
-  onApprove?: (wasteId: number, level: 'engineer' | 'am' | 'store' | 'hod') => void;
   onView?: (waste: WasteLog) => void;
+  showRunNumber?: boolean;
 }
 
-export function WasteLogTable({ wasteLogs, onView }: WasteLogTableProps) {
+export function WasteLogTable({ wasteLogs, onView, showRunNumber = false }: WasteLogTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/50">
+            {showRunNumber && <th className="text-left p-2 font-medium">Run</th>}
             <th className="text-left p-2 font-medium">Material</th>
             <th className="text-right p-2 font-medium">Qty</th>
             <th className="text-left p-2 font-medium">UoM</th>
@@ -27,6 +28,13 @@ export function WasteLogTable({ wasteLogs, onView }: WasteLogTableProps) {
         <tbody>
           {wasteLogs.map((w) => (
             <tr key={w.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => onView?.(w)}>
+              {showRunNumber && (
+                <td className="p-2">
+                  <span className="font-medium">#{w.run_number}</span>
+                  <span className="text-xs text-muted-foreground block">{w.run_date}</span>
+                  <span className="text-xs text-muted-foreground block truncate max-w-[150px]">{w.run_product}</span>
+                </td>
+              )}
               <td className="p-2">{w.material_name}</td>
               <td className="p-2 text-right font-medium">{w.wastage_qty}</td>
               <td className="p-2">{w.uom}</td>
@@ -39,7 +47,7 @@ export function WasteLogTable({ wasteLogs, onView }: WasteLogTableProps) {
             </tr>
           ))}
           {wasteLogs.length === 0 && (
-            <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">No waste logs</td></tr>
+            <tr><td colSpan={showRunNumber ? 10 : 9} className="p-4 text-center text-muted-foreground">No waste logs</td></tr>
           )}
         </tbody>
       </table>

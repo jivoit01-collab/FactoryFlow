@@ -13,12 +13,10 @@ import {
 import type { StatusColorConfig } from '@/config/constants/status.constants';
 
 import type {
-  BreakdownType,
   ChecklistFrequency,
   ChecklistStatus,
   ClearanceResult,
   ClearanceStatus,
-  MachineStatus,
   MachineType,
   QCResult,
   FinalQCResult,
@@ -65,44 +63,6 @@ export const RUN_STATUS_ICONS: Record<RunStatus, LucideIcon> = {
 };
 
 // ============================================================================
-// Machine Status
-// ============================================================================
-
-export const MACHINE_STATUS_LABELS: Record<MachineStatus, string> = {
-  RUNNING: 'Running',
-  IDLE: 'Idle',
-  BREAKDOWN: 'Breakdown',
-  CHANGEOVER: 'Changeover',
-};
-
-export const MACHINE_STATUS_COLORS: Record<MachineStatus, StatusColorConfig> = {
-  RUNNING: {
-    bg: 'bg-green-100',
-    text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
-    darkText: 'dark:text-green-400',
-  },
-  IDLE: {
-    bg: 'bg-yellow-100',
-    text: 'text-yellow-800',
-    darkBg: 'dark:bg-yellow-900/30',
-    darkText: 'dark:text-yellow-400',
-  },
-  BREAKDOWN: {
-    bg: 'bg-red-100',
-    text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
-    darkText: 'dark:text-red-400',
-  },
-  CHANGEOVER: {
-    bg: 'bg-purple-100',
-    text: 'text-purple-800',
-    darkBg: 'dark:bg-purple-900/30',
-    darkText: 'dark:text-purple-400',
-  },
-};
-
-// ============================================================================
 // Machine Type
 // ============================================================================
 
@@ -115,30 +75,6 @@ export const MACHINE_TYPE_LABELS: Record<MachineType, string> = {
   SHRINK_PACK: 'Shrink Pack',
   STICKER_LABELER: 'Sticker Labeler',
   TAPPING_MACHINE: 'Tapping Machine',
-};
-
-// ============================================================================
-// Breakdown Type
-// ============================================================================
-
-export const BREAKDOWN_TYPE_LABELS: Record<BreakdownType, string> = {
-  LINE: 'Line',
-  EXTERNAL: 'External',
-};
-
-export const BREAKDOWN_TYPE_COLORS: Record<BreakdownType, StatusColorConfig> = {
-  LINE: {
-    bg: 'bg-red-100',
-    text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
-    darkText: 'dark:text-red-400',
-  },
-  EXTERNAL: {
-    bg: 'bg-orange-100',
-    text: 'text-orange-800',
-    darkBg: 'dark:bg-orange-900/30',
-    darkText: 'dark:text-orange-400',
-  },
 };
 
 // ============================================================================
@@ -370,23 +306,14 @@ export const FINAL_QC_COLORS: Record<FinalQCResult, StatusColorConfig> = {
 };
 
 // ============================================================================
-// Time Slots (07:00 - 19:00)
+// Resolve Breakdown Actions
 // ============================================================================
 
-export const TIME_SLOTS = [
-  { slot: '07:00-08:00', start: '07:00:00', end: '08:00:00' },
-  { slot: '08:00-09:00', start: '08:00:00', end: '09:00:00' },
-  { slot: '09:00-10:00', start: '09:00:00', end: '10:00:00' },
-  { slot: '10:00-11:00', start: '10:00:00', end: '11:00:00' },
-  { slot: '11:00-12:00', start: '11:00:00', end: '12:00:00' },
-  { slot: '12:00-13:00', start: '12:00:00', end: '13:00:00' },
-  { slot: '13:00-14:00', start: '13:00:00', end: '14:00:00' },
-  { slot: '14:00-15:00', start: '14:00:00', end: '15:00:00' },
-  { slot: '15:00-16:00', start: '15:00:00', end: '16:00:00' },
-  { slot: '16:00-17:00', start: '16:00:00', end: '17:00:00' },
-  { slot: '17:00-18:00', start: '17:00:00', end: '18:00:00' },
-  { slot: '18:00-19:00', start: '18:00:00', end: '19:00:00' },
-] as const;
+export const RESOLVE_ACTION_LABELS: Record<string, string> = {
+  start_production: 'Fixed, Start Production',
+  stop_production: 'Fixed, Stop Production',
+  stop_unrecovered: 'Not Fixed, Stop Production',
+};
 
 // ============================================================================
 // Standard Line Clearance Items

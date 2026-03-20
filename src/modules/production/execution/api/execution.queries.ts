@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
+  AddBreakdownRequest,
   AnalyticsParams,
   ApproveClearanceRequest,
   BulkChecklistRequest,
-  CreateBreakdownRequest,
+  CompleteRunRequest,
   CreateChecklistEntryRequest,
   CreateCompressedAirRequest,
   CreateElectricityRequest,
@@ -14,7 +15,6 @@ import type {
   CreateLabourRequest,
   CreateLineClearanceRequest,
   CreateLineRequest,
-  CreateLogRequest,
   CreateMachineCostRequest,
   CreateMachineRequest,
   CreateManpowerRequest,
@@ -25,6 +25,10 @@ import type {
   CreateTemplateRequest,
   CreateWasteLogRequest,
   CreateWaterRequest,
+  ResolveBreakdownRequest,
+  StopProductionRequest,
+  UpdateBreakdownRemarksRequest,
+  UpdateSegmentRequest,
   UpdateLineClearanceRequest,
   UpdateRunRequest,
   WasteApprovalRequest,
@@ -52,8 +56,8 @@ export const EXECUTION_QUERY_KEYS = {
     [...EXECUTION_QUERY_KEYS.all, 'runs', { status, date }] as const,
   runDetail: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'run', runId] as const,
   // Run sub-resources
-  logs: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'logs', runId] as const,
   breakdowns: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'breakdowns', runId] as const,
+  breakdownCategories: () => [...EXECUTION_QUERY_KEYS.all, 'breakdown-categories'] as const,
   materials: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'materials', runId] as const,
   machineRuntime: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'runtime', runId] as const,
   manpower: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'manpower', runId] as const,
@@ -113,7 +117,7 @@ export function useCreateLine() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateLineRequest) => executionApi.createLine(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.lines() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'lines'] }),
   });
 }
 
@@ -122,7 +126,7 @@ export function useUpdateLine() {
   return useMutation({
     mutationFn: ({ lineId, data }: { lineId: number; data: Partial<CreateLineRequest> }) =>
       executionApi.updateLine(lineId, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.lines() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'lines'] }),
   });
 }
 
@@ -130,7 +134,7 @@ export function useDeleteLine() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (lineId: number) => executionApi.deleteLine(lineId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.lines() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'lines'] }),
   });
 }
 
@@ -150,7 +154,7 @@ export function useCreateMachine() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateMachineRequest) => executionApi.createMachine(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.machines() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'machines'] }),
   });
 }
 
@@ -164,7 +168,7 @@ export function useUpdateMachine() {
       machineId: number;
       data: Partial<CreateMachineRequest>;
     }) => executionApi.updateMachine(machineId, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.machines() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'machines'] }),
   });
 }
 
@@ -172,7 +176,7 @@ export function useDeleteMachine() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (machineId: number) => executionApi.deleteMachine(machineId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.machines() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'machines'] }),
   });
 }
 
@@ -193,7 +197,7 @@ export function useCreateChecklistTemplate() {
   return useMutation({
     mutationFn: (data: CreateTemplateRequest) => executionApi.createChecklistTemplate(data),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.checklistTemplates() }),
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'checklist-templates'] }),
   });
 }
 
@@ -208,7 +212,7 @@ export function useUpdateChecklistTemplate() {
       data: Partial<CreateTemplateRequest>;
     }) => executionApi.updateChecklistTemplate(templateId, data),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.checklistTemplates() }),
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'checklist-templates'] }),
   });
 }
 
@@ -217,7 +221,7 @@ export function useDeleteChecklistTemplate() {
   return useMutation({
     mutationFn: (templateId: number) => executionApi.deleteChecklistTemplate(templateId),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.checklistTemplates() }),
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'checklist-templates'] }),
   });
 }
 
@@ -241,14 +245,30 @@ export function useSAPOrderDetail(docEntry: number | null) {
   });
 }
 
+export function useSearchSAPItems(search: string) {
+  return useQuery({
+    queryKey: [...EXECUTION_QUERY_KEYS.all, 'sap-items', search] as const,
+    queryFn: () => executionApi.searchSAPItems(search),
+    enabled: search.length >= 2,
+    staleTime: 30 * 1000,
+  });
+}
+
 // ============================================================================
 // Production Runs
 // ============================================================================
 
-export function useRuns(status?: string, date?: string) {
+export function useRuns(filters?: {
+  status?: string;
+  date?: string;
+  date_from?: string;
+  date_to?: string;
+  line_id?: number;
+  search?: string;
+}) {
   return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.runs(status, date),
-    queryFn: () => executionApi.getRuns(status, date),
+    queryKey: [...EXECUTION_QUERY_KEYS.runs(), filters] as const,
+    queryFn: () => executionApi.getRuns(filters),
     staleTime: 30 * 1000,
   });
 }
@@ -277,7 +297,7 @@ export function useUpdateRun(runId: number) {
     mutationFn: (data: UpdateRunRequest) => executionApi.updateRun(runId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runs() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });
     },
   });
 }
@@ -295,56 +315,59 @@ export function useDeleteRun() {
 export function useCompleteRun(runId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => executionApi.completeRun(runId),
+    mutationFn: (data: CompleteRunRequest) => executionApi.completeRun(runId, data),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runs() });
     },
   });
 }
 
 // ============================================================================
-// Hourly Logs
+// Timeline Actions
 // ============================================================================
 
-export function useLogs(runId: number) {
-  return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.logs(runId),
-    queryFn: () => executionApi.getLogs(runId),
-    enabled: !!runId,
-  });
-}
-
-export function useCreateLog(runId: number) {
-  const qc = useQueryClient();
+export function useStartProduction(runId: number) {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateLogRequest) => executionApi.createLog(runId, data),
+    mutationFn: () => executionApi.startProduction(runId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.logs(runId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });
     },
   });
 }
 
-export function useUpdateLog(runId: number) {
-  const qc = useQueryClient();
+export function useStopProduction(runId: number) {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ logId, data }: { logId: number; data: Partial<CreateLogRequest> }) =>
-      executionApi.updateLog(runId, logId, data),
+    mutationFn: (data: StopProductionRequest) => executionApi.stopProduction(runId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.logs(runId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });
     },
   });
 }
 
-export function useDeleteLog(runId: number) {
-  const qc = useQueryClient();
+export function useAddBreakdown(runId: number) {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (logId: number) => executionApi.deleteLog(runId, logId),
+    mutationFn: (data: AddBreakdownRequest) => executionApi.addBreakdown(runId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.logs(runId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });
+    },
+  });
+}
+
+export function useResolveBreakdown(runId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ breakdownId, data }: { breakdownId: number; data: ResolveBreakdownRequest }) =>
+      executionApi.resolveBreakdown(runId, breakdownId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });
     },
   });
 }
@@ -352,6 +375,14 @@ export function useDeleteLog(runId: number) {
 // ============================================================================
 // Breakdowns
 // ============================================================================
+
+export function useBreakdownCategories() {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.breakdownCategories(),
+    queryFn: () => executionApi.getBreakdownCategories(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 export function useBreakdowns(runId: number) {
   return useQuery({
@@ -361,30 +392,24 @@ export function useBreakdowns(runId: number) {
   });
 }
 
-export function useCreateBreakdown(runId: number) {
-  const qc = useQueryClient();
+export function useUpdateSegment(runId: number) {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateBreakdownRequest) => executionApi.createBreakdown(runId, data),
+    mutationFn: ({ segmentId, data }: { segmentId: number; data: UpdateSegmentRequest }) =>
+      executionApi.updateSegment(runId, segmentId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.breakdowns(runId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
     },
   });
 }
 
-export function useUpdateBreakdown(runId: number) {
-  const qc = useQueryClient();
+export function useUpdateBreakdownRemarks(runId: number) {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      breakdownId,
-      data,
-    }: {
-      breakdownId: number;
-      data: Partial<CreateBreakdownRequest>;
-    }) => executionApi.updateBreakdown(runId, breakdownId, data),
+    mutationFn: ({ breakdownId, data }: { breakdownId: number; data: UpdateBreakdownRemarksRequest }) =>
+      executionApi.updateBreakdownRemarks(runId, breakdownId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.breakdowns(runId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
     },
   });
 }
@@ -570,7 +595,7 @@ export function useCreateLineClearance() {
   return useMutation({
     mutationFn: (data: CreateLineClearanceRequest) => executionApi.createLineClearance(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearances() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });
     },
   });
 }
@@ -582,7 +607,7 @@ export function useUpdateLineClearance(clearanceId: number) {
       executionApi.updateLineClearance(clearanceId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearances() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });
     },
   });
 }
@@ -593,7 +618,7 @@ export function useSubmitLineClearance(clearanceId: number) {
     mutationFn: () => executionApi.submitLineClearance(clearanceId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearances() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });
     },
   });
 }
@@ -605,7 +630,7 @@ export function useApproveLineClearance(clearanceId: number) {
       executionApi.approveLineClearance(clearanceId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearances() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });
     },
   });
 }
@@ -632,7 +657,7 @@ export function useCreateChecklistEntry() {
   return useMutation({
     mutationFn: (data: CreateChecklistEntryRequest) => executionApi.createChecklistEntry(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.checklists() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'checklists'] });
     },
   });
 }
@@ -642,7 +667,7 @@ export function useBulkCreateChecklists() {
   return useMutation({
     mutationFn: (data: BulkChecklistRequest) => executionApi.bulkCreateChecklists(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.checklists() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'checklists'] });
     },
   });
 }
@@ -658,7 +683,7 @@ export function useUpdateChecklistEntry() {
       data: Partial<CreateChecklistEntryRequest>;
     }) => executionApi.updateChecklistEntry(entryId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.checklists() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'checklists'] });
     },
   });
 }
@@ -688,7 +713,7 @@ export function useCreateWasteLog() {
   return useMutation({
     mutationFn: (data: CreateWasteLogRequest) => executionApi.createWasteLog(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.wasteLogs() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
     },
   });
 }
@@ -704,7 +729,7 @@ export function useUpdateWasteLog() {
       data: Partial<CreateWasteLogRequest>;
     }) => executionApi.updateWasteLog(wasteId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.wasteLogs() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
     },
   });
 }
@@ -714,7 +739,7 @@ export function useDeleteWasteLog() {
   return useMutation({
     mutationFn: (wasteId: number) => executionApi.deleteWasteLog(wasteId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.wasteLogs() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
     },
   });
 }
@@ -725,7 +750,7 @@ export function useApproveWasteEngineer() {
     mutationFn: ({ wasteId, data }: { wasteId: number; data: WasteApprovalRequest }) =>
       executionApi.approveWasteEngineer(wasteId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.wasteLogs() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
     },
   });
 }
@@ -736,7 +761,7 @@ export function useApproveWasteAM() {
     mutationFn: ({ wasteId, data }: { wasteId: number; data: WasteApprovalRequest }) =>
       executionApi.approveWasteAM(wasteId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.wasteLogs() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
     },
   });
 }
@@ -747,7 +772,7 @@ export function useApproveWasteStore() {
     mutationFn: ({ wasteId, data }: { wasteId: number; data: WasteApprovalRequest }) =>
       executionApi.approveWasteStore(wasteId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.wasteLogs() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
     },
   });
 }
@@ -758,7 +783,7 @@ export function useApproveWasteHOD() {
     mutationFn: ({ wasteId, data }: { wasteId: number; data: WasteApprovalRequest }) =>
       executionApi.approveWasteHOD(wasteId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.wasteLogs() });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
     },
   });
 }
@@ -779,6 +804,18 @@ export function useCreateElectricity(runId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateElectricityRequest) => executionApi.createElectricity(runId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.electricity(runId) });
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
+    },
+  });
+}
+
+export function useUpdateElectricity(runId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, data }: { entryId: number; data: Partial<CreateElectricityRequest> }) =>
+      executionApi.updateElectricity(runId, entryId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.electricity(runId) });
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
@@ -816,6 +853,18 @@ export function useCreateWater(runId: number) {
   });
 }
 
+export function useUpdateWater(runId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, data }: { entryId: number; data: Partial<CreateWaterRequest> }) =>
+      executionApi.updateWater(runId, entryId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.water(runId) });
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
+    },
+  });
+}
+
 export function useDeleteWater(runId: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -839,6 +888,18 @@ export function useCreateGas(runId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateGasRequest) => executionApi.createGas(runId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.gas(runId) });
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
+    },
+  });
+}
+
+export function useUpdateGas(runId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, data }: { entryId: number; data: Partial<CreateGasRequest> }) =>
+      executionApi.updateGas(runId, entryId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.gas(runId) });
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
@@ -877,6 +938,18 @@ export function useCreateCompressedAir(runId: number) {
   });
 }
 
+export function useUpdateCompressedAir(runId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, data }: { entryId: number; data: Partial<CreateCompressedAirRequest> }) =>
+      executionApi.updateCompressedAir(runId, entryId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.compressedAir(runId) });
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
+    },
+  });
+}
+
 export function useDeleteCompressedAir(runId: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -900,6 +973,18 @@ export function useCreateLabour(runId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateLabourRequest) => executionApi.createLabour(runId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.labour(runId) });
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
+    },
+  });
+}
+
+export function useUpdateLabour(runId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, data }: { entryId: number; data: Partial<CreateLabourRequest> }) =>
+      executionApi.updateLabour(runId, entryId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.labour(runId) });
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
@@ -937,6 +1022,18 @@ export function useCreateMachineCost(runId: number) {
   });
 }
 
+export function useUpdateMachineCost(runId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, data }: { entryId: number; data: Partial<CreateMachineCostRequest> }) =>
+      executionApi.updateMachineCost(runId, entryId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.machineCosts(runId) });
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
+    },
+  });
+}
+
 export function useDeleteMachineCost(runId: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -960,6 +1057,18 @@ export function useCreateOverhead(runId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateOverheadRequest) => executionApi.createOverhead(runId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.overhead(runId) });
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });
+    },
+  });
+}
+
+export function useUpdateOverhead(runId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, data }: { entryId: number; data: Partial<CreateOverheadRequest> }) =>
+      executionApi.updateOverhead(runId, entryId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.overhead(runId) });
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runCost(runId) });

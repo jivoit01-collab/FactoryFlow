@@ -59,6 +59,20 @@ export const QC_PERMISSIONS = {
     /** Manage QC parameter definitions */
     MANAGE_QC_PARAMETERS: 'quality_control.can_manage_qc_parameters',
   },
+
+  // ============================================
+  // PRODUCTION QC PERMISSIONS
+  // ============================================
+  PRODUCTION_QC: {
+    /** View production QC sessions */
+    VIEW: 'quality_control.can_view_production_qc',
+    /** Create production QC sessions */
+    CREATE: 'quality_control.can_create_production_qc',
+    /** Submit production QC for approval */
+    SUBMIT: 'quality_control.can_submit_production_qc',
+    /** Approve/reject production QC sessions */
+    APPROVE: 'quality_control.can_approve_production_qc',
+  },
 } as const;
 
 /** Module prefix for sidebar filtering */
@@ -72,4 +86,5 @@ export type QCPermission =
   | (typeof QC_PERMISSIONS.ARRIVAL_SLIP)[keyof typeof QC_PERMISSIONS.ARRIVAL_SLIP]
   | (typeof QC_PERMISSIONS.INSPECTION)[keyof typeof QC_PERMISSIONS.INSPECTION]
   | (typeof QC_PERMISSIONS.APPROVAL)[keyof typeof QC_PERMISSIONS.APPROVAL]
-  | (typeof QC_PERMISSIONS.MASTER_DATA)[keyof typeof QC_PERMISSIONS.MASTER_DATA];
+  | (typeof QC_PERMISSIONS.MASTER_DATA)[keyof typeof QC_PERMISSIONS.MASTER_DATA]
+  | (typeof QC_PERMISSIONS.PRODUCTION_QC)[keyof typeof QC_PERMISSIONS.PRODUCTION_QC];

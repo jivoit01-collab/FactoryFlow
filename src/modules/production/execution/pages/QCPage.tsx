@@ -137,7 +137,7 @@ function QCPage() {
 
       <DashboardHeader
         title={`Quality Control — Run #${run?.run_number || ''}`}
-        description={run ? `${run.date} · ${run.line_name} · ${run.brand}` : ''}
+        description={run ? `${run.date} · ${run.line_name} · ${run.product}` : ''}
       />
 
       <Tabs defaultValue="inprocess" className="space-y-4">

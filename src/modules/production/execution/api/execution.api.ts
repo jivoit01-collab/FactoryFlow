@@ -2,18 +2,20 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  AddBreakdownRequest,
   AnalyticsParams,
   ApproveClearanceRequest,
+  BreakdownCategory,
   BulkChecklistRequest,
   ChecklistTemplate,
-  CreateBreakdownRequest,
+  CompleteRunRequest,
+  CreateBreakdownCategoryRequest,
   CreateChecklistEntryRequest,
   CreateCompressedAirRequest,
   CreateElectricityRequest,
   CreateGasRequest,
   CreateLabourRequest,
   CreateLineClearanceRequest,
-  CreateLogRequest,
   CreateMachineCostRequest,
   CreateMachineRequest,
   CreateManpowerRequest,
@@ -41,10 +43,14 @@ import type {
   MaterialUsage,
   OEEAnalytics,
   ProductionLine,
-  ProductionLog,
   ProductionRun,
   ProductionRunCost,
   ProductionRunDetail,
+  ProductionSegment,
+  ResolveBreakdownRequest,
+  StopProductionRequest,
+  UpdateBreakdownRemarksRequest,
+  UpdateSegmentRequest,
   ResourceCompressedAir,
   ResourceElectricity,
   ResourceGas,
@@ -52,6 +58,7 @@ import type {
   ResourceMachineCost,
   ResourceOverhead,
   ResourceWater,
+  SAPItem,
   SAPOrderDetail,
   SAPProductionOrder,
   UpdateLineClearanceRequest,
@@ -161,14 +168,30 @@ export const executionApi = {
     return res.data;
   },
 
+  async searchSAPItems(search: string): Promise<SAPItem[]> {
+    const res = await apiClient.get<SAPItem[]>(EP.SAP_ITEMS, { params: { search } });
+    return res.data;
+  },
+
   // =========================================================================
   // Production Runs
   // =========================================================================
 
-  async getRuns(status?: string, date?: string): Promise<ProductionRun[]> {
-    const params: Record<string, string> = {};
-    if (status) params.status = status;
-    if (date) params.date = date;
+  async getRuns(filters?: {
+    status?: string;
+    date?: string;
+    date_from?: string;
+    date_to?: string;
+    line_id?: number;
+    search?: string;
+  }): Promise<ProductionRun[]> {
+    const params: Record<string, string | number> = {};
+    if (filters?.status) params.status = filters.status;
+    if (filters?.date) params.date = filters.date;
+    if (filters?.date_from) params.date_from = filters.date_from;
+    if (filters?.date_to) params.date_to = filters.date_to;
+    if (filters?.line_id) params.line_id = filters.line_id;
+    if (filters?.search) params.search = filters.search;
     const res = await apiClient.get<ProductionRun[]>(EP.RUNS, { params });
     return res.data;
   },
@@ -192,61 +215,95 @@ export const executionApi = {
     await apiClient.delete(EP.RUN_DELETE(runId));
   },
 
-  async completeRun(runId: number): Promise<ProductionRun> {
-    const res = await apiClient.post<ProductionRun>(EP.RUN_COMPLETE(runId));
+  async completeRun(runId: number, data: CompleteRunRequest): Promise<ProductionRunDetail> {
+    const res = await apiClient.post<ProductionRunDetail>(EP.RUN_COMPLETE(runId), data);
     return res.data;
   },
 
   // =========================================================================
-  // Hourly Logs
+  // Breakdown Categories
   // =========================================================================
 
-  async getLogs(runId: number): Promise<ProductionLog[]> {
-    const res = await apiClient.get<ProductionLog[]>(EP.RUN_LOGS(runId));
+  async getBreakdownCategories(): Promise<BreakdownCategory[]> {
+    const res = await apiClient.get<BreakdownCategory[]>(EP.BREAKDOWN_CATEGORIES);
     return res.data;
   },
 
-  async createLog(runId: number, data: CreateLogRequest): Promise<ProductionLog> {
-    const res = await apiClient.post<ProductionLog>(EP.RUN_LOGS(runId), data);
+  async createBreakdownCategory(data: CreateBreakdownCategoryRequest): Promise<BreakdownCategory> {
+    const res = await apiClient.post<BreakdownCategory>(EP.BREAKDOWN_CATEGORIES, data);
     return res.data;
   },
 
-  async updateLog(
+  async updateBreakdownCategory(
+    categoryId: number,
+    data: Partial<CreateBreakdownCategoryRequest & { is_active: boolean }>,
+  ): Promise<BreakdownCategory> {
+    const res = await apiClient.patch<BreakdownCategory>(
+      EP.BREAKDOWN_CATEGORY_DETAIL(categoryId),
+      data,
+    );
+    return res.data;
+  },
+
+  async deleteBreakdownCategory(categoryId: number): Promise<void> {
+    await apiClient.delete(EP.BREAKDOWN_CATEGORY_DETAIL(categoryId));
+  },
+
+  // =========================================================================
+  // Timeline Actions
+  // =========================================================================
+
+  async startProduction(runId: number): Promise<ProductionSegment> {
+    const res = await apiClient.post<ProductionSegment>(EP.START_PRODUCTION(runId));
+    return res.data;
+  },
+
+  async stopProduction(runId: number, data: StopProductionRequest): Promise<ProductionSegment> {
+    const res = await apiClient.post<ProductionSegment>(EP.STOP_PRODUCTION(runId), data);
+    return res.data;
+  },
+
+  async addBreakdown(runId: number, data: AddBreakdownRequest): Promise<MachineBreakdown> {
+    const res = await apiClient.post<MachineBreakdown>(EP.ADD_BREAKDOWN(runId), data);
+    return res.data;
+  },
+
+  async resolveBreakdown(
     runId: number,
-    logId: number,
-    data: Partial<CreateLogRequest>,
-  ): Promise<ProductionLog> {
-    const res = await apiClient.patch<ProductionLog>(EP.RUN_LOG_DETAIL(runId, logId), data);
+    breakdownId: number,
+    data: ResolveBreakdownRequest,
+  ): Promise<MachineBreakdown> {
+    const res = await apiClient.post<MachineBreakdown>(
+      EP.RESOLVE_BREAKDOWN(runId, breakdownId),
+      data,
+    );
     return res.data;
   },
 
-  async deleteLog(runId: number, logId: number): Promise<void> {
-    await apiClient.delete(EP.RUN_LOG_DETAIL(runId, logId));
+  // =========================================================================
+  // Breakdowns (read/delete)
+  // =========================================================================
+
+  async updateSegment(
+    runId: number,
+    segmentId: number,
+    data: UpdateSegmentRequest,
+  ): Promise<ProductionSegment> {
+    const res = await apiClient.patch<ProductionSegment>(EP.SEGMENT_UPDATE(runId, segmentId), data);
+    return res.data;
   },
 
-  // =========================================================================
-  // Breakdowns
-  // =========================================================================
+  async updateBreakdownRemarks(
+    runId: number,
+    breakdownId: number,
+    data: UpdateBreakdownRemarksRequest,
+  ): Promise<MachineBreakdown> {
+    const res = await apiClient.patch<MachineBreakdown>(EP.BREAKDOWN_UPDATE(runId, breakdownId), data);
+    return res.data;
+  },
 
   async getBreakdowns(runId: number): Promise<MachineBreakdown[]> {
     const res = await apiClient.get<MachineBreakdown[]>(EP.RUN_BREAKDOWNS(runId));
-    return res.data;
-  },
-
-  async createBreakdown(runId: number, data: CreateBreakdownRequest): Promise<MachineBreakdown> {
-    const res = await apiClient.post<MachineBreakdown>(EP.RUN_BREAKDOWNS(runId), data);
-    return res.data;
-  },
-
-  async updateBreakdown(
-    runId: number,
-    breakdownId: number,
-    data: Partial<CreateBreakdownRequest>,
-  ): Promise<MachineBreakdown> {
-    const res = await apiClient.patch<MachineBreakdown>(
-      EP.RUN_BREAKDOWN_DETAIL(runId, breakdownId),
-      data,
-    );
     return res.data;
   },
 
@@ -418,7 +475,7 @@ export const executionApi = {
   },
 
   async bulkCreateChecklists(data: BulkChecklistRequest): Promise<MachineChecklistEntry[]> {
-    const res = await apiClient.post<MachineChecklistEntry[]>(EP.MACHINE_CHECKLISTS_BULK, data);
+    const res = await apiClient.post<MachineChecklistEntry[]>(EP.MACHINE_CHECKLISTS_BULK, data.entries);
     return res.data;
   },
 
@@ -439,7 +496,7 @@ export const executionApi = {
 
   async getWasteLogs(runId?: number): Promise<WasteLog[]> {
     const params: Record<string, number> = {};
-    if (runId) params.production_run = runId;
+    if (runId) params.run_id = runId;
     const res = await apiClient.get<WasteLog[]>(EP.WASTE, { params });
     return res.data;
   },

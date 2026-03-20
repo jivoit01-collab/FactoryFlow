@@ -6,50 +6,126 @@ import type { ModuleConfig } from '@/core/types';
 
 // Lazy load QC pages
 const QCDashboardPage = lazy(() => import('./pages/QCDashboardPage'));
+
+// Arrival Slips submodule
 const PendingInspectionsPage = lazy(() => import('./pages/PendingInspectionsPage'));
 const InspectionDetailPage = lazy(() => import('./pages/InspectionDetailPage'));
 const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'));
+
+// Master Data (shared)
 const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'));
 const QCParametersPage = lazy(() => import('./pages/masterdata/QCParametersPage'));
+
+// Production QC submodule
+const ProductionQCDashboardPage = lazy(() => import('./pages/production/ProductionQCDashboardPage'));
+const ProductionQCRunPage = lazy(() => import('./pages/production/ProductionQCRunPage'));
+const ProductionQCSessionPage = lazy(() => import('./pages/production/ProductionQCSessionPage'));
 
 /**
  * Quality Control module configuration
  *
- * Route permissions: Controls who can access each page (ProtectedRoute)
- * Navigation permissions: Controls what appears in sidebar and dashboard cards
+ * Submodules:
+ * 1. Arrival Slips — Raw material inspection workflow
+ * 2. Production QC — Production run quality control
+ * 3. Master Data — Material types & QC parameters (shared)
  */
 export const qcModuleConfig: ModuleConfig = {
   name: 'qc',
   routes: [
-    // Dashboard - requires any QC view permission
+    // ==================== QC Dashboard ====================
     {
       path: '/qc',
       element: <QCDashboardPage />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.INSPECTION.VIEW, QC_PERMISSIONS.ARRIVAL_SLIP.VIEW],
+      permissions: [
+        QC_PERMISSIONS.INSPECTION.VIEW,
+        QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
+        QC_PERMISSIONS.PRODUCTION_QC.VIEW,
+      ],
     },
-    // Pending Inspections - requires inspection view permission
+
+    // ==================== Arrival Slips Submodule ====================
+    {
+      path: '/qc/arrival-slips',
+      element: <PendingInspectionsPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
+    },
+    {
+      path: '/qc/arrival-slips/inspections/:slipId/new',
+      element: <InspectionDetailPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.INSPECTION.CREATE],
+    },
+    {
+      path: '/qc/arrival-slips/inspections/:inspectionId',
+      element: <InspectionDetailPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
+    },
+    {
+      path: '/qc/arrival-slips/approvals',
+      element: <ApprovalQueuePage />,
+      layout: 'main',
+      permissions: [
+        QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
+        QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
+      ],
+    },
+
+    // ==================== Production QC Submodule ====================
+    {
+      path: '/qc/production',
+      element: <ProductionQCDashboardPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
+    },
+    {
+      path: '/qc/production/runs/:runId',
+      element: <ProductionQCRunPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
+    },
+    {
+      path: '/qc/production/sessions/:sessionId',
+      element: <ProductionQCSessionPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
+    },
+    // ==================== Shared Master Data ====================
+    {
+      path: '/qc/master/material-types',
+      element: <MaterialTypesPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_MATERIAL_TYPES],
+    },
+    {
+      path: '/qc/master/parameters',
+      element: <QCParametersPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS],
+    },
+
+    // ==================== Legacy route redirects ====================
+    // Keep old routes working (redirect via same components)
     {
       path: '/qc/pending',
       element: <PendingInspectionsPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
     },
-    // Create new inspection for arrival slip - requires create permission
     {
       path: '/qc/inspections/:slipId/new',
       element: <InspectionDetailPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.INSPECTION.CREATE],
     },
-    // View/Edit inspection - requires view permission (edit checked in component)
     {
       path: '/qc/inspections/:inspectionId',
       element: <InspectionDetailPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
     },
-    // Approval Queue - requires any approval permission
     {
       path: '/qc/approvals',
       element: <ApprovalQueuePage />,
@@ -59,20 +135,6 @@ export const qcModuleConfig: ModuleConfig = {
         QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
       ],
     },
-    // Master Data - Material Types - requires master data permission
-    {
-      path: '/qc/master/material-types',
-      element: <MaterialTypesPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_MATERIAL_TYPES],
-    },
-    // Master Data - QC Parameters - requires master data permission
-    {
-      path: '/qc/master/parameters',
-      element: <QCParametersPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS],
-    },
   ],
   navigation: [
     {
@@ -80,26 +142,39 @@ export const qcModuleConfig: ModuleConfig = {
       title: 'Quality Control',
       icon: FlaskConical,
       showInSidebar: true,
-      permissions: [QC_PERMISSIONS.INSPECTION.VIEW, QC_PERMISSIONS.ARRIVAL_SLIP.VIEW],
+      permissions: [
+        QC_PERMISSIONS.INSPECTION.VIEW,
+        QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
+        QC_PERMISSIONS.PRODUCTION_QC.VIEW,
+      ],
       hasSubmenu: true,
       children: [
         {
           path: '/qc',
           title: 'Dashboard',
-          permissions: [QC_PERMISSIONS.INSPECTION.VIEW, QC_PERMISSIONS.ARRIVAL_SLIP.VIEW],
+          permissions: [
+            QC_PERMISSIONS.INSPECTION.VIEW,
+            QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
+            QC_PERMISSIONS.PRODUCTION_QC.VIEW,
+          ],
         },
         {
-          path: '/qc/pending',
-          title: 'Pending Inspections',
+          path: '/qc/arrival-slips',
+          title: 'Arrival Slips',
           permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
         },
         {
-          path: '/qc/approvals',
-          title: 'Approvals',
+          path: '/qc/arrival-slips/approvals',
+          title: 'Arrival Slip Approvals',
           permissions: [
             QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
             QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
           ],
+        },
+        {
+          path: '/qc/production',
+          title: 'Production QC',
+          permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
         },
         {
           path: '/qc/master/material-types',

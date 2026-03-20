@@ -1,9 +1,7 @@
 import {
-  AlertTriangle,
   BarChart3,
-  CheckSquare,
-  ClipboardList,
-  Factory,
+  Cog,
+  ClipboardCheck,
   Play,
   ShieldCheck,
   Trash2,
@@ -11,9 +9,9 @@ import {
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { EXECUTION_PERMISSIONS, PRODUCTION_PERMISSIONS } from '@/config/permissions';
+import { EXECUTION_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 interface ProductionModuleCard {
   title: string;
@@ -26,16 +24,8 @@ interface ProductionModuleCard {
 
 const productionModules: ProductionModuleCard[] = [
   {
-    title: 'Planning',
-    description: 'Production plans, weekly targets & daily entries',
-    icon: <ClipboardList className="h-5 w-5" />,
-    route: '/production/planning',
-    color: 'text-blue-600',
-    permissions: [PRODUCTION_PERMISSIONS.VIEW_PLAN],
-  },
-  {
     title: 'Execution',
-    description: 'Active runs, hourly logging & production tracking',
+    description: 'Active runs, production tracking & timeline',
     icon: <Play className="h-5 w-5" />,
     route: '/production/execution',
     color: 'text-green-600',
@@ -52,18 +42,10 @@ const productionModules: ProductionModuleCard[] = [
   {
     title: 'Machine Checklists',
     description: 'Daily, weekly & monthly maintenance checklists',
-    icon: <CheckSquare className="h-5 w-5" />,
+    icon: <ClipboardCheck className="h-5 w-5" />,
     route: '/production/execution/machine-checklists',
     color: 'text-purple-600',
     permissions: [EXECUTION_PERMISSIONS.VIEW_CHECKLIST],
-  },
-  {
-    title: 'Breakdowns',
-    description: 'Machine breakdown logs & downtime tracking',
-    icon: <AlertTriangle className="h-5 w-5" />,
-    route: '/production/execution/breakdowns',
-    color: 'text-red-600',
-    permissions: [EXECUTION_PERMISSIONS.VIEW_BREAKDOWN],
   },
   {
     title: 'Waste Management',
@@ -83,12 +65,28 @@ const productionModules: ProductionModuleCard[] = [
   },
 ];
 
+const quickActions: ProductionModuleCard[] = [
+  {
+    title: 'Machines',
+    description: 'Add, edit & manage production machines',
+    icon: <Cog className="h-5 w-5" />,
+    route: '/production/execution/master-data',
+    color: 'text-gray-600',
+    permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
+  },
+];
+
 export default function ProductionDashboardPage() {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
 
   const visibleModules = useMemo(
     () => productionModules.filter((mod) => hasAnyPermission(mod.permissions)),
+    [hasAnyPermission],
+  );
+
+  const visibleQuickActions = useMemo(
+    () => quickActions.filter((mod) => hasAnyPermission(mod.permissions)),
     [hasAnyPermission],
   );
 
@@ -121,6 +119,25 @@ export default function ProductionDashboardPage() {
           ))}
         </div>
       </div>
+
+      {visibleQuickActions.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {visibleQuickActions.map((action, i) => (
+              <Button
+                key={`${action.route}-${i}`}
+                variant="outline"
+                className="h-auto py-3 flex flex-col items-center gap-1"
+                onClick={() => navigate(action.route)}
+              >
+                <div className={action.color}>{action.icon}</div>
+                <span className="text-xs">{action.title}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
