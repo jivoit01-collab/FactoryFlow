@@ -2,7 +2,7 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 
-import { Button, Checkbox, Input, Label, Select, SelectOption } from '@/shared/components/ui';
+import { Button, Checkbox, Input, Label, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
 
 import { STATUS_FILTER_OPTIONS } from '../constants';
 import type { PlanDashboardFilters } from '../types';
