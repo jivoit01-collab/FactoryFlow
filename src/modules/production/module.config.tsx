@@ -27,6 +27,8 @@ const ReportsPage = lazy(() => import('./execution/pages/ReportsPage'));
 const DailyProductionReportPage = lazy(
   () => import('./execution/pages/DailyProductionReportPage'),
 );
+const ResourceTrackingPage = lazy(() => import('./execution/pages/ResourceTrackingPage'));
+const QCPage = lazy(() => import('./execution/pages/QCPage'));
 
 export const productionModuleConfig: ModuleConfig = {
   name: 'production',
@@ -99,6 +101,18 @@ export const productionModuleConfig: ModuleConfig = {
       element: <BreakdownLogPage />,
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.VIEW_BREAKDOWN],
+    },
+    {
+      path: '/production/execution/runs/:runId/resources',
+      element: <ResourceTrackingPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.CREATE_MATERIAL],
+    },
+    {
+      path: '/production/execution/runs/:runId/qc',
+      element: <QCPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_RUN],
     },
     {
       path: '/production/execution/line-clearance',

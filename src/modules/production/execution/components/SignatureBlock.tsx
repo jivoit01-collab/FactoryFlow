@@ -1,29 +1,24 @@
-import { CheckCircle2 } from 'lucide-react';
-
-import { Input, Label } from '@/shared/components/ui';
-
 interface SignatureBlockProps {
   label: string;
-  value: string;
-  disabled?: boolean;
-  onChange: (value: string) => void;
+  sign: string;
+  signedAt: string | null;
 }
 
-export function SignatureBlock({ label, value, disabled = false, onChange }: SignatureBlockProps) {
+export function SignatureBlock({ label, sign, signedAt }: SignatureBlockProps) {
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        placeholder="Enter name to sign"
-      />
-      {value && (
-        <p className="text-xs text-green-600 flex items-center gap-1">
-          <CheckCircle2 className="h-3 w-3" />
-          Signed
-        </p>
+    <div className="border rounded-lg p-3">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      {sign ? (
+        <>
+          <p className="font-medium text-sm">{sign}</p>
+          {signedAt && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {new Date(signedAt).toLocaleString()}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground italic">Pending</p>
       )}
     </div>
   );

@@ -1,5 +1,3 @@
-import { Toaster } from 'sonner';
-
 import { AuthInitializer } from '@/core/auth/components/AuthInitializer';
 import { PWAInstallPrompt } from '@/core/pwa/PWAInstallPrompt';
 import { ErrorBoundary } from '@/shared/components';
@@ -18,7 +16,6 @@ function App() {
         <AuthInitializer>
           <AppRoutes />
         </AuthInitializer>
-        <Toaster richColors position="top-right" />
         <PWAInstallPrompt />
       </AppProviders>
     </ErrorBoundary>

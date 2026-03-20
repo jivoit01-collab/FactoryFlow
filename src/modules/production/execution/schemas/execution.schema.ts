@@ -1,176 +1,274 @@
 import { z } from 'zod';
 
 // ============================================================================
-// Production Run Schema
+// Production Run Schemas
 // ============================================================================
 
 export const createRunSchema = z.object({
-  production_plan_id: z.number({ required_error: 'Production plan is required' }).positive(),
-  line_id: z.number({ required_error: 'Production line is required' }).positive(),
+  sap_doc_entry: z.number({ required_error: 'SAP order is required' }),
+  line_id: z.number({ required_error: 'Production line is required' }),
   date: z.string().min(1, 'Date is required'),
-  brand: z.string().optional(),
-  pack: z.string().optional(),
-  sap_order_no: z.string().optional(),
-  rated_speed: z.number().positive('Rated speed must be positive').optional(),
+  brand: z.string().min(1, 'Brand is required'),
+  pack: z.string().min(1, 'Pack is required'),
+  sap_order_no: z.string().min(1, 'SAP order number is required'),
+  rated_speed: z.string().optional(),
 });
 
 export type CreateRunFormData = z.infer<typeof createRunSchema>;
 
 // ============================================================================
-// Hourly Production Log Schema
+// Hourly Log Schema
 // ============================================================================
 
-export const productionLogSchema = z.object({
+export const createLogSchema = z.object({
   time_slot: z.string().min(1, 'Time slot is required'),
   time_start: z.string().min(1, 'Start time is required'),
   time_end: z.string().min(1, 'End time is required'),
-  produced_cases: z.number().min(0, 'Cases cannot be negative').optional().default(0),
-  machine_status: z.enum(['RUNNING', 'IDLE', 'BREAKDOWN', 'CHANGEOVER']).optional().default('RUNNING'),
+  produced_cases: z
+    .number({ required_error: 'Produced cases is required' })
+    .int()
+    .min(0, 'Must be 0 or more'),
+  machine_status: z.enum(['RUNNING', 'IDLE', 'BREAKDOWN', 'CHANGEOVER'], {
+    required_error: 'Machine status is required',
+  }),
   recd_minutes: z
-    .number()
-    .min(0, 'Minutes cannot be negative')
-    .max(60, 'Minutes cannot exceed 60')
-    .optional()
-    .default(0),
-  breakdown_detail: z.string().optional().default(''),
-  remarks: z.string().optional().default(''),
+    .number({ required_error: 'Recorded minutes is required' })
+    .int()
+    .min(0)
+    .max(60, 'Cannot exceed 60 minutes'),
+  breakdown_detail: z.string().optional(),
+  remarks: z.string().optional(),
 });
 
-export type ProductionLogFormData = z.infer<typeof productionLogSchema>;
+export type CreateLogFormData = z.infer<typeof createLogSchema>;
 
 // ============================================================================
 // Breakdown Schema
 // ============================================================================
 
-export const breakdownSchema = z
+export const createBreakdownSchema = z
   .object({
-    machine_id: z.number({ required_error: 'Machine is required' }).positive(),
+    machine_id: z.number({ required_error: 'Machine is required' }),
     start_time: z.string().min(1, 'Start time is required'),
-    end_time: z.string().optional(),
-    breakdown_minutes: z.number().min(0).optional(),
-    type: z.enum(['LINE', 'EXTERNAL'], { required_error: 'Breakdown type is required' }),
-    is_unrecovered: z.boolean().optional().default(false),
+    end_time: z.string().min(1, 'End time is required'),
+    breakdown_minutes: z
+      .number({ required_error: 'Breakdown minutes is required' })
+      .int()
+      .positive('Must be greater than 0'),
+    type: z.enum(['LINE', 'EXTERNAL'], { required_error: 'Type is required' }),
     reason: z.string().min(1, 'Reason is required'),
-    remarks: z.string().optional().default(''),
+    remarks: z.string().optional(),
+    is_unrecovered: z.boolean().optional(),
   })
-  .refine(
-    (data) => {
-      if (data.end_time && data.start_time) {
-        return data.end_time >= data.start_time;
-      }
-      return true;
-    },
-    {
-      message: 'End time must be after start time',
-      path: ['end_time'],
-    },
-  );
+  .refine((data) => new Date(data.end_time) > new Date(data.start_time), {
+    message: 'End time must be after start time',
+    path: ['end_time'],
+  });
 
-export type BreakdownFormData = z.infer<typeof breakdownSchema>;
+export type CreateBreakdownFormData = z.infer<typeof createBreakdownSchema>;
 
 // ============================================================================
 // Material Usage Schema
 // ============================================================================
 
-export const materialUsageSchema = z.object({
-  material_code: z.string().optional().default(''),
+export const createMaterialSchema = z.object({
+  material_code: z.string().min(1, 'Material code is required'),
   material_name: z.string().min(1, 'Material name is required'),
-  opening_qty: z.number().min(0, 'Quantity cannot be negative').optional().default(0),
-  issued_qty: z.number().min(0, 'Quantity cannot be negative').optional().default(0),
-  closing_qty: z.number().min(0, 'Quantity cannot be negative').optional().default(0),
-  uom: z.string().optional().default(''),
-  batch_number: z.number().int().min(1).max(3).optional().default(1),
+  opening_qty: z.string().min(1, 'Opening quantity is required'),
+  issued_qty: z.string().min(1, 'Issued quantity is required'),
+  closing_qty: z.string().min(1, 'Closing quantity is required'),
+  uom: z.string().min(1, 'UoM is required'),
+  batch_number: z
+    .number({ required_error: 'Batch number is required' })
+    .int()
+    .min(1)
+    .max(3),
 });
 
-export type MaterialUsageFormData = z.infer<typeof materialUsageSchema>;
+export type CreateMaterialFormData = z.infer<typeof createMaterialSchema>;
 
 // ============================================================================
 // Machine Runtime Schema
 // ============================================================================
 
-export const machineRuntimeSchema = z.object({
-  machine_id: z.number().optional(),
-  machine_type: z.enum([
-    'FILLER',
-    'CAPPER',
-    'CONVEYOR',
-    'LABELER',
-    'CODING',
-    'SHRINK_PACK',
-    'STICKER_LABELER',
-    'TAPPING_MACHINE',
-  ]),
-  runtime_minutes: z.number().min(0, 'Minutes cannot be negative').optional().default(0),
-  downtime_minutes: z.number().min(0, 'Minutes cannot be negative').optional().default(0),
-  remarks: z.string().optional().default(''),
+export const createRuntimeSchema = z.object({
+  machine_id: z.number({ required_error: 'Machine is required' }),
+  machine_type: z.enum(
+    ['FILLER', 'CAPPER', 'CONVEYOR', 'LABELER', 'CODING', 'SHRINK_PACK', 'STICKER_LABELER', 'TAPPING_MACHINE'],
+    { required_error: 'Machine type is required' },
+  ),
+  runtime_minutes: z
+    .number({ required_error: 'Runtime is required' })
+    .int()
+    .min(0),
+  downtime_minutes: z
+    .number({ required_error: 'Downtime is required' })
+    .int()
+    .min(0),
+  remarks: z.string().optional(),
 });
 
-export type MachineRuntimeFormData = z.infer<typeof machineRuntimeSchema>;
-
-// ============================================================================
-// Line Clearance Schema
-// ============================================================================
-
-export const clearanceSchema = z.object({
-  date: z.string().min(1, 'Date is required'),
-  line_id: z.number({ required_error: 'Production line is required' }).positive(),
-  production_plan_id: z.number({ required_error: 'Production plan is required' }).positive(),
-  document_id: z.string().optional().default(''),
-});
-
-export type ClearanceFormData = z.infer<typeof clearanceSchema>;
-
-export const clearanceItemUpdateSchema = z.object({
-  id: z.number(),
-  result: z.enum(['YES', 'NO', 'NA']),
-  remarks: z.string().optional().default(''),
-});
-
-export type ClearanceItemUpdateFormData = z.infer<typeof clearanceItemUpdateSchema>;
-
-// ============================================================================
-// Checklist Entry Schema
-// ============================================================================
-
-export const checklistEntrySchema = z.object({
-  machine_id: z.number({ required_error: 'Machine is required' }).positive(),
-  template_id: z.number({ required_error: 'Template is required' }).positive(),
-  date: z.string().min(1, 'Date is required'),
-  status: z.enum(['OK', 'NOT_OK', 'NA']).optional().default('NA'),
-  operator: z.string().optional().default(''),
-  shift_incharge: z.string().optional().default(''),
-  remarks: z.string().optional().default(''),
-});
-
-export type ChecklistEntryFormData = z.infer<typeof checklistEntrySchema>;
-
-// ============================================================================
-// Waste Log Schema
-// ============================================================================
-
-export const wasteLogSchema = z.object({
-  production_run_id: z.number({ required_error: 'Production run is required' }).positive(),
-  material_code: z.string().optional().default(''),
-  material_name: z.string().min(1, 'Material name is required'),
-  wastage_qty: z
-    .number({ required_error: 'Wastage quantity is required' })
-    .positive('Quantity must be greater than 0'),
-  uom: z.string().optional().default(''),
-  reason: z.string().optional().default(''),
-});
-
-export type WasteLogFormData = z.infer<typeof wasteLogSchema>;
+export type CreateRuntimeFormData = z.infer<typeof createRuntimeSchema>;
 
 // ============================================================================
 // Manpower Schema
 // ============================================================================
 
-export const manpowerSchema = z.object({
-  shift: z.enum(['MORNING', 'AFTERNOON', 'NIGHT'], { required_error: 'Shift is required' }),
-  worker_count: z.number().int().min(0, 'Cannot be negative').optional().default(0),
-  supervisor: z.string().optional().default(''),
-  engineer: z.string().optional().default(''),
-  remarks: z.string().optional().default(''),
+export const createManpowerSchema = z.object({
+  shift: z.enum(['MORNING', 'AFTERNOON', 'NIGHT'], {
+    required_error: 'Shift is required',
+  }),
+  worker_count: z
+    .number({ required_error: 'Worker count is required' })
+    .int()
+    .positive('Must be at least 1'),
+  supervisor: z.string().min(1, 'Supervisor is required'),
+  engineer: z.string().min(1, 'Engineer is required'),
+  remarks: z.string().optional(),
 });
 
-export type ManpowerFormData = z.infer<typeof manpowerSchema>;
+export type CreateManpowerFormData = z.infer<typeof createManpowerSchema>;
+
+// ============================================================================
+// Line Clearance Schema
+// ============================================================================
+
+export const createClearanceSchema = z.object({
+  date: z.string().min(1, 'Date is required'),
+  line_id: z.number({ required_error: 'Production line is required' }),
+  sap_doc_entry: z.number().optional(),
+});
+
+export type CreateClearanceFormData = z.infer<typeof createClearanceSchema>;
+
+// ============================================================================
+// Waste Log Schema
+// ============================================================================
+
+export const createWasteSchema = z.object({
+  production_run_id: z.number({ required_error: 'Production run is required' }),
+  material_code: z.string().min(1, 'Material code is required'),
+  material_name: z.string().min(1, 'Material name is required'),
+  wastage_qty: z.string().min(1, 'Wastage quantity is required'),
+  uom: z.string().min(1, 'UoM is required'),
+  reason: z.string().min(1, 'Reason is required'),
+});
+
+export type CreateWasteFormData = z.infer<typeof createWasteSchema>;
+
+// ============================================================================
+// Resource Schemas
+// ============================================================================
+
+export const createElectricitySchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  units_consumed: z.string().min(1, 'Units consumed is required'),
+  rate_per_unit: z.string().min(1, 'Rate is required'),
+});
+
+export type CreateElectricityFormData = z.infer<typeof createElectricitySchema>;
+
+export const createWaterSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  volume_consumed: z.string().min(1, 'Volume consumed is required'),
+  rate_per_unit: z.string().min(1, 'Rate is required'),
+});
+
+export type CreateWaterFormData = z.infer<typeof createWaterSchema>;
+
+export const createGasSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  qty_consumed: z.string().min(1, 'Quantity consumed is required'),
+  rate_per_unit: z.string().min(1, 'Rate is required'),
+});
+
+export type CreateGasFormData = z.infer<typeof createGasSchema>;
+
+export const createCompressedAirSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  units_consumed: z.string().min(1, 'Units consumed is required'),
+  rate_per_unit: z.string().min(1, 'Rate is required'),
+});
+
+export type CreateCompressedAirFormData = z.infer<typeof createCompressedAirSchema>;
+
+export const createLabourSchema = z.object({
+  worker_name: z.string().min(1, 'Worker name is required'),
+  hours_worked: z.string().min(1, 'Hours worked is required'),
+  rate_per_hour: z.string().min(1, 'Rate is required'),
+});
+
+export type CreateLabourFormData = z.infer<typeof createLabourSchema>;
+
+export const createMachineCostSchema = z.object({
+  machine_name: z.string().min(1, 'Machine name is required'),
+  hours_used: z.string().min(1, 'Hours used is required'),
+  rate_per_hour: z.string().min(1, 'Rate is required'),
+});
+
+export type CreateMachineCostFormData = z.infer<typeof createMachineCostSchema>;
+
+export const createOverheadSchema = z.object({
+  expense_name: z.string().min(1, 'Expense name is required'),
+  amount: z.string().min(1, 'Amount is required'),
+});
+
+export type CreateOverheadFormData = z.infer<typeof createOverheadSchema>;
+
+// ============================================================================
+// QC Schemas
+// ============================================================================
+
+export const createInProcessQCSchema = z.object({
+  checked_at: z.string().min(1, 'Check time is required'),
+  parameter: z.string().min(1, 'Parameter is required'),
+  acceptable_min: z.string().optional(),
+  acceptable_max: z.string().optional(),
+  actual_value: z.string().optional(),
+  result: z.enum(['PASS', 'FAIL', 'NA'], { required_error: 'Result is required' }),
+  remarks: z.string().optional(),
+});
+
+export type CreateInProcessQCFormData = z.infer<typeof createInProcessQCSchema>;
+
+export const finalQCParameterSchema = z.object({
+  name: z.string().min(1, 'Parameter name is required'),
+  expected: z.string().min(1, 'Expected value is required'),
+  actual: z.string().min(1, 'Actual value is required'),
+  result: z.enum(['PASS', 'FAIL', 'NA'], { required_error: 'Result is required' }),
+});
+
+export const createFinalQCSchema = z.object({
+  checked_at: z.string().min(1, 'Check time is required'),
+  overall_result: z.enum(['PASS', 'FAIL', 'CONDITIONAL'], {
+    required_error: 'Overall result is required',
+  }),
+  parameters: z.array(finalQCParameterSchema).min(1, 'At least one parameter is required'),
+  remarks: z.string().optional(),
+});
+
+export type CreateFinalQCFormData = z.infer<typeof createFinalQCSchema>;
+
+// ============================================================================
+// Checklist Entry Schema
+// ============================================================================
+
+export const createChecklistSchema = z.object({
+  machine_id: z.number({ required_error: 'Machine is required' }),
+  machine_type: z.enum(
+    ['FILLER', 'CAPPER', 'CONVEYOR', 'LABELER', 'CODING', 'SHRINK_PACK', 'STICKER_LABELER', 'TAPPING_MACHINE'],
+    { required_error: 'Machine type is required' },
+  ),
+  date: z.string().min(1, 'Date is required'),
+  template_id: z.number({ required_error: 'Template is required' }),
+  task_description: z.string().min(1, 'Task description is required'),
+  frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY'], {
+    required_error: 'Frequency is required',
+  }),
+  status: z.enum(['OK', 'NOT_OK', 'NA'], { required_error: 'Status is required' }),
+  operator: z.string().optional(),
+  shift_incharge: z.string().optional(),
+  remarks: z.string().optional(),
+});
+
+export type CreateChecklistFormData = z.infer<typeof createChecklistSchema>;

@@ -16,7 +16,9 @@ export const NOTIFICATION_PERMISSIONS = {
 export const NOTIFICATION_MODULE_PREFIX = 'notifications';
 
 /**
- * Type for notification permission values
+ * Type for notification permission values (Django backend permissions).
+ * Named with "Django" prefix to avoid collision with the browser's
+ * global NotificationPermission type ('default' | 'granted' | 'denied').
  */
-export type NotificationPermission =
+export type NotificationDjangoPermission =
   (typeof NOTIFICATION_PERMISSIONS)[keyof typeof NOTIFICATION_PERMISSIONS];

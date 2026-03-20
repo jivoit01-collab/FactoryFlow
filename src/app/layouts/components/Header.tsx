@@ -64,9 +64,12 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </Button>
         {currentCompany && (
-          <span className="text-sm font-semibold truncate max-w-48">
+          <button
+            onClick={() => navigate(ROUTES.COMPANY_SELECTION.path)}
+            className="text-sm font-semibold truncate max-w-48 hover:underline cursor-pointer"
+          >
             {currentCompany.company_name}
-          </span>
+          </button>
         )}
       </div>
 

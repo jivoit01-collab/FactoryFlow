@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { AUTH_CONFIG, AUTH_ROUTES } from '@/config/constants';
+import { queryClient } from '@/core/api/queryClient';
 import { useAppDispatch, useAppSelector } from '@/core/store';
 import {
   cleanupPushNotifications,
@@ -31,6 +32,7 @@ export function useAuth() {
     useAppSelector((state) => state.auth);
 
   const permissionRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const refreshPermissionsRef: MutableRefObject<(() => Promise<void>) | null> = useRef(null);
 
   /**
    * Login with credentials
@@ -98,6 +100,9 @@ export function useAuth() {
     }
   }, [dispatch, isAuthenticated]);
 
+  // Keep ref in sync so the interval always calls the latest version
+  refreshPermissionsRef.current = refreshPermissions;
+
   /**
    * Initialize auth state from IndexedDB cache
    */
@@ -141,24 +146,26 @@ export function useAuth() {
     async (company: UserCompany) => {
       await authService.switchCompany(company);
       dispatch(switchCompanyAction(company));
+      queryClient.clear();
     },
     [dispatch],
   );
 
   /**
-   * Start periodic permission refresh
+   * Start periodic permission refresh.
+   * Uses refreshPermissionsRef so the interval always calls the latest
+   * version of refreshPermissions without needing to be recreated.
    */
   const startPermissionRefresh = useCallback(() => {
-    // Clear any existing interval
+    // Clear any existing interval before starting a new one
     if (permissionRefreshIntervalRef.current) {
       clearInterval(permissionRefreshIntervalRef.current);
     }
 
-    // Start new interval
     permissionRefreshIntervalRef.current = setInterval(() => {
-      refreshPermissions();
+      refreshPermissionsRef.current?.();
     }, AUTH_CONFIG.permissionRefreshInterval);
-  }, [refreshPermissions]);
+  }, []);
 
   /**
    * Stop periodic permission refresh

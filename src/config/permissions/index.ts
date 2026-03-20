@@ -39,6 +39,6 @@ export {
 export {
   NOTIFICATION_MODULE_PREFIX,
   NOTIFICATION_PERMISSIONS,
-  type NotificationPermission,
+  type NotificationDjangoPermission,
 } from './notification.permissions';
 

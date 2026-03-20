@@ -248,15 +248,28 @@ export default function GRPOPreviewPage() {
     });
   };
 
-  // Calculate estimated total for a PO (items subtotal + extra charges)
+  // Extract GST percentage from tax code (e.g. "CG+SG@18" → 18, "CG+SG@12" → 12)
+  const parseTaxPercent = (taxCode?: string | null): number => {
+    if (!taxCode) return 0;
+    const match = taxCode.match(/@(\d+(?:\.\d+)?)$/);
+    return match ? parseFloat(match[1]) : 0;
+  };
+
+  // Calculate estimated total for a PO (items subtotal + tax + extra charges + tax)
   const calcTotal = (po: PreviewPOReceipt, form: POFormState): number => {
     const itemsTotal = po.items.reduce((sum, item) => {
       const itemForm = form.items[item.po_item_receipt_id];
       const qty = itemForm?.accepted_qty ?? item.received_qty;
       const price = itemForm?.unit_price ?? (item.unit_price ? parseFloat(item.unit_price) : 0);
-      return sum + qty * price;
+      const lineTotal = qty * price;
+      const taxPercent = parseTaxPercent(itemForm?.tax_code ?? item.tax_code);
+      return sum + lineTotal + (lineTotal * taxPercent) / 100;
     }, 0);
-    const chargesTotal = form.extraCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
+    const chargesTotal = form.extraCharges.reduce((sum, c) => {
+      const amount = c.amount || 0;
+      const taxPercent = parseTaxPercent(c.tax_code);
+      return sum + amount + (amount * taxPercent) / 100;
+    }, 0);
     return itemsTotal + chargesTotal;
   };
 
