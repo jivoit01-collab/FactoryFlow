@@ -597,25 +597,13 @@ export default function ReviewPage() {
       </div>
 
       {/* Entry Time Summary */}
-      {(() => {
-        const timestamps = [
-          gateEntry.gate_entry.updated_at,
-          gateEntry.construction_details?.updated_at,
-        ].filter(Boolean) as string[];
-        const latestUpdated = timestamps.length > 0
-          ? timestamps.reduce((a, b) => (new Date(a) > new Date(b) ? a : b))
-          : gateEntry.gate_entry.updated_at;
-        return latestUpdated ? (
+    {(() => {
+        return (
           <EntryTimeSummary
             startedAt={gateEntry.gate_entry.created_at}
-            completedAt={latestUpdated}
+            completedAt={gateEntry.construction_details?.created_at || gateEntry.security_check?.created_at || gateEntry.gate_entry.created_at}
           />
-        ) : (
-          <RecordTimestamps
-            createdAt={gateEntry.gate_entry.created_at}
-            updatedAt={gateEntry.gate_entry.updated_at}
-          />
-        );
+        )
       })()}
 
       {/* Footer Actions */}

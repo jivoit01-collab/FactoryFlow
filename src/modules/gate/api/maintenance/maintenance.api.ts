@@ -92,6 +92,8 @@ export interface MaintenanceFullViewSecurityCheck {
   is_submitted: boolean;
   remarks?: string;
   inspected_by: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface MaintenanceFullViewDetails {

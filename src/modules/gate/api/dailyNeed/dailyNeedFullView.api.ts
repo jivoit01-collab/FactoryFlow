@@ -31,6 +31,8 @@ export interface DailyNeedFullView {
     is_submitted: boolean;
     remarks: string;
     inspected_by: string;
+    created_at?: string;
+    updated_at?: string;
   } | null;
   daily_need_details: {
     category: string;
