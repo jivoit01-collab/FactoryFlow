@@ -435,12 +435,12 @@ export default function Step3Page() {
       }
       // Check that received quantity does not exceed remaining PO quantity + 10% tolerance
       const overReceivedItems = form.items.filter(
-        (item) => item.received_qty_now > item.remaining_qty_initial * 1.1,
+        (item) => item.received_qty_now > (item.ordered_qty * 1.1 - item.received_qty),
       );
       if (overReceivedItems.length > 0) {
         const itemErrors: Record<string, string> = {};
         overReceivedItems.forEach((item) => {
-          const maxAllowed = (item.remaining_qty_initial * 1.1).toFixed(3);
+          const maxAllowed = (item.ordered_qty * 1.1 - item.received_qty).toFixed(3);
           itemErrors[`${form.id}_item_${item.po_item_code}`] =
             `Cannot exceed ${maxAllowed} ${item.uom} (remaining + 10% tolerance)`;
         });
@@ -914,7 +914,7 @@ function POCard({
                               type="number"
                               step="0.001"
                               min="0"
-                              max={item.remaining_qty_initial * 1.1}
+                              max={item.ordered_qty * 1.1 - item.received_qty}
                               placeholder="0.000"
                               value={item.received_qty_now || ''}
                               onChange={(e) =>
