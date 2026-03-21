@@ -247,7 +247,7 @@ export default function SharedStep1Page({ config }: SharedStep1PageProps) {
     }
   };
 
-  const canUpdate = isEditMode && entryData?.status === ENTRY_STATUS.DRAFT;
+  const canUpdate = isEditMode && entryData?.status === ENTRY_STATUS.DRAFT && false;
   const isReadOnly = isEditMode;
 
   return (

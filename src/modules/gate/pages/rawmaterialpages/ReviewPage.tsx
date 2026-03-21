@@ -604,27 +604,12 @@ export default function ReviewPage() {
 
       {/* Entry Time Summary */}
       {(() => {
-        // Find the latest updated_at across all steps
-        const timestamps = [
-          gateEntry.gate_entry.updated_at,
-          gateEntry.security_check?.updated_at,
-          gateEntry.weighment?.updated_at,
-          ...gateEntry.po_receipts.map((po) => po.created_at),
-        ].filter(Boolean) as string[];
-        const latestUpdated = timestamps.length > 0
-          ? timestamps.reduce((a, b) => (new Date(a) > new Date(b) ? a : b))
-          : gateEntry.gate_entry.updated_at;
-        return latestUpdated ? (
+        return (
           <EntryTimeSummary
             startedAt={gateEntry.gate_entry.created_at}
-            completedAt={latestUpdated}
+            completedAt={gateEntry.weighment?.created_at || gateEntry.po_receipts[0]?.created_at || gateEntry.security_check?.created_at || gateEntry.gate_entry.created_at}
           />
-        ) : (
-          <RecordTimestamps
-            createdAt={gateEntry.gate_entry.created_at}
-            updatedAt={gateEntry.gate_entry.updated_at}
-          />
-        );
+        )
       })()}
 
       {/* Footer Actions */}

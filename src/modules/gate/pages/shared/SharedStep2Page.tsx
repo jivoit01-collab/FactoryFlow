@@ -67,7 +67,7 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly =
     (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode);
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED;
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED && !securityCheckData?.is_submitted;
 
   // Form state
   const [formData, setFormData] = useState<SecurityCheckFormData>({
