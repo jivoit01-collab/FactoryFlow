@@ -209,9 +209,9 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
   });
 
-  it('renders Change Company button when currentCompany exists', () => {
+  it('renders current company role card', () => {
     render(<ProfilePage />);
-    expect(screen.getByRole('button', { name: /change company/i })).toBeInTheDocument();
+    expect(screen.getByText('Current')).toBeInTheDocument();
   });
 
   // ═══════════════════════════════════════════════════════════════

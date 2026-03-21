@@ -65,6 +65,6 @@ describe('driverApi', () => {
 
   it('exposes exactly the expected methods', () => {
     const methodNames = Object.keys(driverApi).sort();
-    expect(methodNames).toEqual(['create', 'getById', 'getList', 'getNames']);
+    expect(methodNames).toEqual(['create', 'getById', 'getList', 'getNames', 'update']);
   });
 });

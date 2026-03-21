@@ -1,50 +1,110 @@
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 
-// ═══════════════════════════════════════════════════════════════
-// StepFooter — File Content Verification
-// ═══════════════════════════════════════════════════════════════
-// This component imports from lucide-react and deep dependency
-// chains that hang Vite's module graph resolver in threads pool.
-// File-content verification avoids this entirely.
-// ═══════════════════════════════════════════════════════════════
+import { StepFooter } from '../../components/StepFooter';
 
 describe('StepFooter', () => {
-  const content = readFileSync(
-    resolve(process.cwd(), 'src/modules/gate/components/StepFooter.tsx'),
-    'utf-8',
-  );
+  const defaultProps = {
+    onCancel: vi.fn(),
+    onNext: vi.fn(),
+  };
 
-  it('exports a named function', () => {
-    expect(content).toContain('export function');
+  // ═══════════════════════════════════════════════════════════════
+  // Default rendering
+  // ═══════════════════════════════════════════════════════════════
+
+  it('renders Cancel and Next buttons', () => {
+    render(<StepFooter {...defaultProps} />);
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save and next/i })).toBeInTheDocument();
   });
 
-  it('imports icons from lucide-react', () => {
-    expect(content).toContain("from 'lucide-react'");
+  it('does not render Previous button when showPrevious is false', () => {
+    render(<StepFooter {...defaultProps} showPrevious={false} />);
+    expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
   });
 
-  it('imports from shared UI components', () => {
-    expect(content).toContain("from '@/shared/components/ui'");
+  it('renders Previous button when showPrevious is true and onPrevious provided', () => {
+    render(<StepFooter {...defaultProps} showPrevious onPrevious={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /previous/i })).toBeInTheDocument();
   });
 
-  it('has a return statement with JSX', () => {
-    expect(content).toContain('return (');
+  // ═══════════════════════════════════════════════════════════════
+  // Button labels
+  // ═══════════════════════════════════════════════════════════════
+
+  it('shows custom nextLabel when provided', () => {
+    render(<StepFooter {...defaultProps} nextLabel="Submit" />);
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
   });
 
-  it('defines StepFooterProps interface', () => {
-    expect(content).toContain('StepFooterProps');
+  it('shows "Next →" in edit mode without update mode', () => {
+    render(<StepFooter {...defaultProps} isEditMode />);
+    expect(screen.getByRole('button', { name: /next →/i })).toBeInTheDocument();
   });
 
-  it('renders text "Previous"', () => {
-    expect(content).toContain('Previous');
+  it('shows saving label when isSaving is true', () => {
+    render(<StepFooter {...defaultProps} isSaving />);
+    expect(screen.getByRole('button', { name: /saving/i })).toBeInTheDocument();
   });
 
-  it('renders text "Cancel"', () => {
-    expect(content).toContain('Cancel');
+  // ═══════════════════════════════════════════════════════════════
+  // Interactions
+  // ═══════════════════════════════════════════════════════════════
+
+  it('calls onCancel when Cancel is clicked', () => {
+    const onCancel = vi.fn();
+    render(<StepFooter {...defaultProps} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 
-  it('renders text "Save and Next →"', () => {
-    expect(content).toContain('Save and Next →');
+  it('calls onNext when Next is clicked', () => {
+    const onNext = vi.fn();
+    render(<StepFooter {...defaultProps} onNext={onNext} />);
+    fireEvent.click(screen.getByRole('button', { name: /save and next/i }));
+    expect(onNext).toHaveBeenCalledOnce();
+  });
+
+  it('calls onPrevious when Previous is clicked', () => {
+    const onPrevious = vi.fn();
+    render(<StepFooter {...defaultProps} showPrevious onPrevious={onPrevious} />);
+    fireEvent.click(screen.getByRole('button', { name: /previous/i }));
+    expect(onPrevious).toHaveBeenCalledOnce();
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Disabled state
+  // ═══════════════════════════════════════════════════════════════
+
+  it('disables next button when isSaving', () => {
+    render(<StepFooter {...defaultProps} isSaving />);
+    expect(screen.getByRole('button', { name: /saving/i })).toBeDisabled();
+  });
+
+  it('disables next button when isNextDisabled', () => {
+    render(<StepFooter {...defaultProps} isNextDisabled />);
+    expect(screen.getByRole('button', { name: /save and next/i })).toBeDisabled();
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Update button
+  // ═══════════════════════════════════════════════════════════════
+
+  it('shows Update button when showUpdate and onUpdate are provided', () => {
+    render(<StepFooter {...defaultProps} showUpdate onUpdate={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /update/i })).toBeInTheDocument();
+  });
+
+  it('does not show Update button by default', () => {
+    render(<StepFooter {...defaultProps} />);
+    expect(screen.queryByRole('button', { name: /^update$/i })).not.toBeInTheDocument();
+  });
+
+  it('calls onUpdate when Update is clicked', () => {
+    const onUpdate = vi.fn();
+    render(<StepFooter {...defaultProps} showUpdate onUpdate={onUpdate} />);
+    fireEvent.click(screen.getByRole('button', { name: /update/i }));
+    expect(onUpdate).toHaveBeenCalledOnce();
   });
 });

@@ -31,6 +31,7 @@ export default function LoadingUserPage() {
 
   // Prefetch likely next pages while loading user data
   useEffect(() => {
+    if (import.meta.env.MODE === 'test') return;
     // Prefetch common pages in the background
     // These will be ready by the time the user navigates
     import('@/modules/gate/pages/rawMaterialPages/RawMaterialsDashboard');

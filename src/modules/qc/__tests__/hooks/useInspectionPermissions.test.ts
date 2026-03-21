@@ -239,9 +239,9 @@ describe('useArrivalSlipPermissions', () => {
     expect(result.current.canView).toBe(false);
   });
 
-  it('returns object with exactly 4 permission flags', () => {
+  it('returns object with exactly 5 permission flags', () => {
     const { result } = renderHook(() => useArrivalSlipPermissions());
-    expect(Object.keys(result.current)).toEqual(['canCreate', 'canEdit', 'canSubmit', 'canView']);
+    expect(Object.keys(result.current)).toEqual(['canCreate', 'canEdit', 'canSubmit', 'canView', 'canSendBack']);
   });
 });
 

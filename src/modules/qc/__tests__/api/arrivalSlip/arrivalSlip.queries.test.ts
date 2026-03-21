@@ -6,9 +6,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockUseQuery = vi.fn(() => ({ data: undefined, isLoading: false }));
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: (...args: unknown[]) => mockUseQuery(...args),
-}));
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>();
+  return {
+    ...actual,
+    useQuery: (...args: unknown[]) => mockUseQuery(...args),
+  };
+});
 
 const mockGetById = vi.fn();
 vi.mock('../../../api/arrivalSlip/arrivalSlip.api', () => ({

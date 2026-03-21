@@ -204,6 +204,8 @@ describe('personGateInApi', () => {
   it('exposes exactly the expected methods', () => {
     const methodNames = Object.keys(personGateInApi).sort();
     expect(methodNames).toEqual([
+      'bulkCreateEntry',
+      'bulkExitEntry',
       'cancelEntry',
       'checkPersonStatus',
       'createContractor',
@@ -219,6 +221,7 @@ describe('personGateInApi', () => {
       'deleteVisitor',
       'exitEntry',
       'getAllEntries',
+      'getContractorLaboursStatus',
       'getContractors',
       'getDashboard',
       'getEntry',

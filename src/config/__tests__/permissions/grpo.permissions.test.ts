@@ -64,8 +64,8 @@ describe('GRPO_PERMISSIONS — Integrity', () => {
     expect(unique.size).toBe(allValues.length);
   });
 
-  it('total permission count is 5', () => {
-    expect(allValues).toHaveLength(5);
+  it('total permission count is 6', () => {
+    expect(allValues).toHaveLength(6);
   });
 
   it('all values follow "app_label.codename" format', () => {

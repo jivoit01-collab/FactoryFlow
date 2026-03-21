@@ -55,8 +55,8 @@ describe('arrivalSlipApi', () => {
     await expect(arrivalSlipApi.getById(1)).rejects.toThrow('Network error');
   });
 
-  it('only exposes getById as a method', () => {
-    const keys = Object.keys(arrivalSlipApi);
-    expect(keys).toEqual(['getById']);
+  it('exposes getById and sendBack methods', () => {
+    const keys = Object.keys(arrivalSlipApi).sort();
+    expect(keys).toEqual(['getById', 'sendBack']);
   });
 });

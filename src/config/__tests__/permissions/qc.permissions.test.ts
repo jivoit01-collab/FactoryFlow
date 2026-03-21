@@ -72,6 +72,7 @@ describe('QC_MODULE_PREFIX', () => {
       ...Object.values(QC_PERMISSIONS.INSPECTION),
       ...Object.values(QC_PERMISSIONS.APPROVAL),
       ...Object.values(QC_PERMISSIONS.MASTER_DATA),
+      ...Object.values(QC_PERMISSIONS.PRODUCTION_QC),
     ];
     for (const value of allValues) {
       expect(value).toContain(QC_MODULE_PREFIX);
@@ -89,6 +90,7 @@ describe('QC_PERMISSIONS — Integrity', () => {
     ...Object.values(QC_PERMISSIONS.INSPECTION),
     ...Object.values(QC_PERMISSIONS.APPROVAL),
     ...Object.values(QC_PERMISSIONS.MASTER_DATA),
+    ...Object.values(QC_PERMISSIONS.PRODUCTION_QC),
   ];
 
   it('no permission values are undefined', () => {
@@ -114,7 +116,7 @@ describe('QC_PERMISSIONS — Integrity', () => {
     }
   });
 
-  it('total permission count is 13', () => {
-    expect(allValues).toHaveLength(13);
+  it('total permission count is 18', () => {
+    expect(allValues).toHaveLength(18);
   });
 });

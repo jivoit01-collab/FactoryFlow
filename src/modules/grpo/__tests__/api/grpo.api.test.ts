@@ -79,12 +79,16 @@ describe('grpoApi', () => {
   it('exposes exactly the expected methods', () => {
     const methodNames = Object.keys(grpoApi).sort();
     expect(methodNames).toEqual([
+      'deleteAttachment',
+      'getAttachments',
       'getDetail',
       'getHistory',
       'getPendingEntries',
       'getPreview',
       'getWarehouses',
       'post',
+      'retryAttachment',
+      'uploadAttachment',
     ]);
   });
 });

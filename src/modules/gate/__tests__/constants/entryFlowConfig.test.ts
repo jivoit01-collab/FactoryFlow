@@ -60,8 +60,8 @@ describe('RAW_MATERIAL_FLOW', () => {
     expect(RAW_MATERIAL_FLOW.headerTitle).toBe('Material Inward');
   });
 
-  it('has totalSteps = 5', () => {
-    expect(RAW_MATERIAL_FLOW.totalSteps).toBe(5);
+  it('has totalSteps = 6', () => {
+    expect(RAW_MATERIAL_FLOW.totalSteps).toBe(6);
   });
 
   it('has dashboardTitle', () => {
@@ -106,8 +106,8 @@ describe('CONSTRUCTION_FLOW', () => {
     expect(CONSTRUCTION_FLOW.headerTitle).toBe('Construction Entry');
   });
 
-  it('has totalSteps = 3', () => {
-    expect(CONSTRUCTION_FLOW.totalSteps).toBe(3);
+  it('has totalSteps = 4', () => {
+    expect(CONSTRUCTION_FLOW.totalSteps).toBe(4);
   });
 
   it('has dashboardTitle', () => {
@@ -152,8 +152,8 @@ describe('DAILY_NEED_FLOW', () => {
     expect(DAILY_NEED_FLOW.headerTitle).toBe('Daily Needs Entry');
   });
 
-  it('has totalSteps = 3', () => {
-    expect(DAILY_NEED_FLOW.totalSteps).toBe(3);
+  it('has totalSteps = 4', () => {
+    expect(DAILY_NEED_FLOW.totalSteps).toBe(4);
   });
 
   it('has dashboardTitle', () => {
@@ -198,8 +198,8 @@ describe('MAINTENANCE_FLOW', () => {
     expect(MAINTENANCE_FLOW.headerTitle).toBe('Maintenance Entry');
   });
 
-  it('has totalSteps = 3', () => {
-    expect(MAINTENANCE_FLOW.totalSteps).toBe(3);
+  it('has totalSteps = 4', () => {
+    expect(MAINTENANCE_FLOW.totalSteps).toBe(4);
   });
 
   it('has dashboardTitle', () => {

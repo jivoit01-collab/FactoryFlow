@@ -70,6 +70,6 @@ describe('vehicleApi', () => {
 
   it('exposes exactly the expected methods', () => {
     const methodNames = Object.keys(vehicleApi).sort();
-    expect(methodNames).toEqual(['create', 'getById', 'getList', 'getNames', 'getVehicleTypes']);
+    expect(methodNames).toEqual(['create', 'getById', 'getList', 'getNames', 'getVehicleTypes', 'update']);
   });
 });

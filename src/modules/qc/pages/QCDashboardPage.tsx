@@ -140,7 +140,7 @@ export default function QCDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Arrival Slips Card */}
             <Card
-              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-blue-500"
+              className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate('/qc/arrival-slips')}
             >
               <CardContent className="p-5">
@@ -182,7 +182,7 @@ export default function QCDashboardPage() {
 
             {/* Production QC Card */}
             <Card
-              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-emerald-500"
+              className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate('/qc/production')}
             >
               <CardContent className="p-5">

@@ -10,9 +10,13 @@ vi.mock('react-router-dom', () => ({
   useLocation: () => ({ state: null }),
 }));
 
-vi.mock('@/config/constants', () => ({
-  AUTH_ROUTES: { login: '/login' },
-}));
+vi.mock('@/config/constants', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    AUTH_ROUTES: { login: '/login' },
+  };
+});
 
 vi.mock('@/config/routes.config', () => ({
   ROUTES: {

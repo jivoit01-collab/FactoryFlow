@@ -50,9 +50,8 @@ describe('ROUTES — Dashboard', () => {
     expect(ROUTES.DASHBOARD.path).toBe('/');
   });
 
-  it('has permissions array', () => {
-    expect(Array.isArray(ROUTES.DASHBOARD.permissions)).toBe(true);
-    expect(ROUTES.DASHBOARD.permissions!.length).toBeGreaterThan(0);
+  it('does not require specific permissions (visible to all authenticated users)', () => {
+    expect(ROUTES.DASHBOARD.permissions).toBeUndefined();
   });
 
   it('has icon and showInSidebar true', () => {
@@ -60,8 +59,8 @@ describe('ROUTES — Dashboard', () => {
     expect(ROUTES.DASHBOARD.showInSidebar).toBe(true);
   });
 
-  it('has modulePrefix "gatein"', () => {
-    expect(ROUTES.DASHBOARD.modulePrefix).toBe('gatein');
+  it('does not have a modulePrefix', () => {
+    expect(ROUTES.DASHBOARD.modulePrefix).toBeUndefined();
   });
 });
 

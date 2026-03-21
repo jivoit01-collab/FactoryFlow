@@ -44,7 +44,8 @@
       "Bash(python -c \"from quality_control.models import ProductionQCSession, ProductionQCResult; print\\(''Models OK''\\)\")",
       "Bash(python manage.py check)",
       "Bash(python manage.py makemigrations quality_control)",
-      "Bash(python manage.py migrate)"
+      "Bash(python manage.py migrate)",
+      "Bash(grep:*)"
     ]
   }
 }

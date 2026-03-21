@@ -11,8 +11,8 @@ import { WIZARD_CONFIG, TABLE_CONFIG, DEBOUNCE_CONFIG } from '../../constants/wi
 // ═══════════════════════════════════════════════════════════════
 
 describe('WIZARD_CONFIG', () => {
-  it('has TOTAL_STEPS = 5', () => {
-    expect(WIZARD_CONFIG.TOTAL_STEPS).toBe(5);
+  it('has TOTAL_STEPS = 6', () => {
+    expect(WIZARD_CONFIG.TOTAL_STEPS).toBe(6);
   });
 
   it('has STEPS.VEHICLE_DRIVER = 1', () => {

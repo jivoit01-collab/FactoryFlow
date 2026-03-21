@@ -1,191 +1,105 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { createRef } from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Button Component — File Content Verification
-// ═══════════════════════════════════════════════════════════════════════════════
-// Validates structure, variants, accessibility, and exports of the Button
-// component without importing it (Radix Slot + CVA deps hang Vite resolution).
-// ═══════════════════════════════════════════════════════════════════════════════
+import { Button } from '../../../components/ui/button';
 
-const readSource = () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  return fs.readFileSync(
-    path.resolve(process.cwd(), 'src/shared/components/ui/button.tsx'),
-    'utf-8',
-  );
-};
+describe('Button', () => {
+  // ═══════════════════════════════════════════════════════════════
+  // Rendering
+  // ═══════════════════════════════════════════════════════════════
 
-describe('shared/components/ui/button.tsx — file content verification', () => {
-  const source = readSource();
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Imports
-  // ═══════════════════════════════════════════════════════════════════════════
-  describe('imports', () => {
-    it('imports React', () => {
-      expect(source).toMatch(/import\s+\*\s+as\s+React\s+from\s+['"]react['"]/);
-    });
-
-    it('imports Slot from @radix-ui/react-slot', () => {
-      expect(source).toContain("import { Slot } from '@radix-ui/react-slot'");
-    });
-
-    it('imports cva and VariantProps from class-variance-authority', () => {
-      expect(source).toMatch(/import\s*\{[^}]*cva[^}]*VariantProps[^}]*\}/);
-      expect(source).toContain("from 'class-variance-authority'");
-    });
-
-    it('imports cn utility from @/shared/utils', () => {
-      expect(source).toMatch(/import\s*\{\s*cn\s*\}\s*from\s*['"]@\/shared\/utils['"]/);
-    });
+  it('renders children', () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByRole('button', { name: 'Click me' })).toBeInTheDocument();
   });
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // buttonVariants (CVA definition)
-  // ═══════════════════════════════════════════════════════════════════════════
-  describe('buttonVariants', () => {
-    it('defines buttonVariants with cva()', () => {
-      expect(source).toMatch(/const\s+buttonVariants\s*=\s*cva\(/);
-    });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // variant options
-    // ─────────────────────────────────────────────────────────────────────────
-    describe('variant options', () => {
-      it('includes default variant with bg-primary', () => {
-        expect(source).toMatch(/default:\s*['"]bg-primary\s+text-primary-foreground/);
-      });
-
-      it('includes destructive variant with bg-destructive', () => {
-        expect(source).toMatch(/destructive:\s*['"]bg-destructive\s+text-destructive-foreground/);
-      });
-
-      it('includes outline variant with border', () => {
-        expect(source).toMatch(/outline:\s*['"]border\s+border-input\s+bg-background/);
-      });
-
-      it('includes secondary variant with bg-secondary', () => {
-        expect(source).toMatch(/secondary:\s*['"]bg-secondary\s+text-secondary-foreground/);
-      });
-
-      it('includes ghost variant with hover:bg-accent', () => {
-        expect(source).toMatch(/ghost:\s*['"]hover:bg-accent/);
-      });
-
-      it('includes link variant with underline-offset', () => {
-        expect(source).toMatch(/link:\s*['"]text-primary\s+underline-offset-4/);
-      });
-    });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // size options
-    // ─────────────────────────────────────────────────────────────────────────
-    describe('size options', () => {
-      it('includes default size h-10', () => {
-        expect(source).toMatch(/default:\s*['"]h-10\s+px-4\s+py-2['"]/);
-      });
-
-      it('includes sm size h-9', () => {
-        expect(source).toMatch(/sm:\s*['"]h-9\s+rounded-md\s+px-3['"]/);
-      });
-
-      it('includes lg size h-11', () => {
-        expect(source).toMatch(/lg:\s*['"]h-11\s+rounded-md\s+px-8['"]/);
-      });
-
-      it('includes icon size h-10 w-10', () => {
-        expect(source).toMatch(/icon:\s*['"]h-10\s+w-10['"]/);
-      });
-    });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // default variants
-    // ─────────────────────────────────────────────────────────────────────────
-    describe('defaultVariants', () => {
-      it('sets default variant to "default"', () => {
-        expect(source).toMatch(/variant:\s*['"]default['"]/);
-      });
-
-      it('sets default size to "default"', () => {
-        expect(source).toMatch(/size:\s*['"]default['"]/);
-      });
-    });
+  it('renders as a button element by default', () => {
+    render(<Button>Test</Button>);
+    expect(screen.getByRole('button')).toBeInstanceOf(HTMLButtonElement);
   });
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ButtonProps interface
-  // ═══════════════════════════════════════════════════════════════════════════
-  describe('ButtonProps interface', () => {
-    it('extends React.ButtonHTMLAttributes<HTMLButtonElement>', () => {
-      expect(source).toContain('React.ButtonHTMLAttributes<HTMLButtonElement>');
-    });
+  // ═══════════════════════════════════════════════════════════════
+  // Variants
+  // ═══════════════════════════════════════════════════════════════
 
-    it('extends VariantProps<typeof buttonVariants>', () => {
-      expect(source).toContain('VariantProps<typeof buttonVariants>');
-    });
-
-    it('declares optional asChild prop', () => {
-      expect(source).toMatch(/asChild\?:\s*boolean/);
-    });
+  it('applies default variant classes', () => {
+    render(<Button>Default</Button>);
+    expect(screen.getByRole('button')).toHaveClass('bg-primary');
   });
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Component definition
-  // ═══════════════════════════════════════════════════════════════════════════
-  describe('Button component', () => {
-    it('is created with React.forwardRef', () => {
-      expect(source).toMatch(/const\s+Button\s*=\s*React\.forwardRef/);
-    });
-
-    it('forwards ref to HTMLButtonElement', () => {
-      expect(source).toContain('React.forwardRef<HTMLButtonElement, ButtonProps>');
-    });
-
-    it('uses Slot when asChild is true, otherwise renders button', () => {
-      expect(source).toMatch(/const\s+Comp\s*=\s*asChild\s*\?\s*Slot\s*:\s*['"]button['"]/);
-    });
-
-    it('applies buttonVariants with variant, size, and className', () => {
-      expect(source).toContain('cn(buttonVariants({ variant, size, className }))');
-    });
-
-    it('sets displayName to "Button"', () => {
-      expect(source).toContain("Button.displayName = 'Button'");
-    });
+  it('applies destructive variant classes', () => {
+    render(<Button variant="destructive">Delete</Button>);
+    expect(screen.getByRole('button')).toHaveClass('bg-destructive');
   });
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Exports
-  // ═══════════════════════════════════════════════════════════════════════════
-  describe('exports', () => {
-    it('exports Button and buttonVariants', () => {
-      expect(source).toMatch(/export\s*\{\s*Button\s*,\s*buttonVariants\s*\}/);
-    });
-
-    it('exports ButtonProps interface', () => {
-      expect(source).toMatch(/export\s+interface\s+ButtonProps/);
-    });
+  it('applies outline variant classes', () => {
+    render(<Button variant="outline">Outline</Button>);
+    expect(screen.getByRole('button')).toHaveClass('border');
   });
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Accessibility & base styles
-  // ═══════════════════════════════════════════════════════════════════════════
-  describe('accessibility & base styles', () => {
-    it('includes focus-visible ring styles', () => {
-      expect(source).toContain('focus-visible:outline-none');
-      expect(source).toContain('focus-visible:ring-2');
-      expect(source).toContain('focus-visible:ring-ring');
-    });
+  it('applies ghost variant classes', () => {
+    render(<Button variant="ghost">Ghost</Button>);
+    expect(screen.getByRole('button')).toHaveClass('hover:bg-accent');
+  });
 
-    it('disables pointer events and reduces opacity when disabled', () => {
-      expect(source).toContain('disabled:pointer-events-none');
-      expect(source).toContain('disabled:opacity-50');
-    });
+  // ═══════════════════════════════════════════════════════════════
+  // Sizes
+  // ═══════════════════════════════════════════════════════════════
 
-    it('constrains embedded SVG size', () => {
-      expect(source).toContain('[&_svg]:size-4');
-      expect(source).toContain('[&_svg]:shrink-0');
-    });
+  it('applies default size classes', () => {
+    render(<Button>Default</Button>);
+    expect(screen.getByRole('button')).toHaveClass('h-10');
+  });
+
+  it('applies sm size classes', () => {
+    render(<Button size="sm">Small</Button>);
+    expect(screen.getByRole('button')).toHaveClass('h-9');
+  });
+
+  it('applies lg size classes', () => {
+    render(<Button size="lg">Large</Button>);
+    expect(screen.getByRole('button')).toHaveClass('h-11');
+  });
+
+  it('applies icon size classes', () => {
+    render(<Button size="icon">X</Button>);
+    expect(screen.getByRole('button')).toHaveClass('h-10', 'w-10');
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Interactions & props
+  // ═══════════════════════════════════════════════════════════════
+
+  it('calls onClick handler', () => {
+    const onClick = vi.fn();
+    render(<Button onClick={onClick}>Click</Button>);
+    fireEvent.click(screen.getByRole('button'));
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('is disabled when disabled prop is true', () => {
+    render(<Button disabled>Disabled</Button>);
+    expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('forwards ref to the button element', () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<Button ref={ref}>Ref</Button>);
+    expect(ref.current).toBeInstanceOf(HTMLButtonElement);
+  });
+
+  it('merges custom className with variant classes', () => {
+    render(<Button className="custom-class">Custom</Button>);
+    const button = screen.getByRole('button');
+    expect(button).toHaveClass('custom-class');
+    expect(button).toHaveClass('bg-primary');
+  });
+
+  it('passes through HTML button attributes', () => {
+    render(<Button type="submit" aria-label="Submit form">Submit</Button>);
+    const button = screen.getByRole('button');
+    expect(button).toHaveAttribute('type', 'submit');
+    expect(button).toHaveAttribute('aria-label', 'Submit form');
   });
 });

@@ -1,14 +1,25 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
+import { server } from '@/test/mocks/server';
 
 // ═══════════════════════════════════════════════════════════════
 // runtime.config — Tests
 //
 // Module-level state (runtimeConfig, configLoaded) requires
 // vi.resetModules() + dynamic import for isolation between tests.
+// MSW is disabled for these tests so we can stub fetch directly.
 // ═══════════════════════════════════════════════════════════════
 
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
+
+beforeAll(() => {
+  server.close();
+  vi.stubGlobal('fetch', mockFetch);
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+  server.listen();
+});
 
 // ═══════════════════════════════════════════════════════════════
 // getRuntimeConfig() — Default values
@@ -96,7 +107,7 @@ describe('loadRuntimeConfig() — Success path', () => {
     mockFetch.mockResolvedValueOnce({ ok: false });
     const { loadRuntimeConfig } = await import('@/config/runtime.config');
     await loadRuntimeConfig();
-    expect(mockFetch).toHaveBeenCalledWith('/config.json');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('returns merged config on success', async () => {

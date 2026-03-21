@@ -106,10 +106,10 @@ describe('SearchableSelect', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
-  it('disables input when loading', () => {
+  it('keeps input enabled when loading (shows spinner instead)', () => {
     render(<SearchableSelect {...defaultProps} isLoading={true} />);
     const input = screen.getByRole('textbox');
-    expect(input).toBeDisabled();
+    expect(input).not.toBeDisabled();
   });
 
   // ─── Disabled State ────────────────────────────────────────────

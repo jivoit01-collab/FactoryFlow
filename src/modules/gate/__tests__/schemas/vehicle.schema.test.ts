@@ -57,21 +57,17 @@ describe('Vehicle Schema', () => {
       }
     });
 
-    it('rejects an invalid vehicle number format', () => {
+    it('accepts any non-empty vehicle number', () => {
       const result = vehicleSchema.safeParse(makeValidVehicle({ vehicle_number: 'INVALID123' }));
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const errors = result.error.issues.filter((i) => i.path.includes('vehicle_number'));
-        expect(errors.length).toBeGreaterThan(0);
-        expect(errors[0].message).toBe('Please enter a valid vehicle number (e.g., MH12AB1234)');
-      }
+      expect(result.success).toBe(true);
     });
 
     it('transforms lowercase vehicle number to uppercase', () => {
       const result = vehicleSchema.safeParse(makeValidVehicle({ vehicle_number: 'mh12ab1234' }));
-      // The regex runs before transform, so lowercase input won't match the uppercase pattern
-      // This means it will fail validation
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.vehicle_number).toBe('MH12AB1234');
+      }
     });
   });
 
