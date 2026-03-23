@@ -5,8 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { useGlobalDateRange } from '@/core/store/hooks';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
+import { DateRangePicker } from '@/modules/gate/components';
 import { Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/shared/components/ui';
 
 import { useWasteLogs, useCreateWasteLog, useApproveWasteEngineer, useApproveWasteAM, useApproveWasteStore, useApproveWasteHOD, useRuns, useSearchSAPItems } from '../api';
@@ -36,8 +38,7 @@ function WasteManagementPage() {
   // Filters (client-side)
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   const filteredWasteLogs = useMemo(() => {
     let result = wasteLogs;
@@ -54,16 +55,16 @@ function WasteManagementPage() {
     if (statusFilter !== 'ALL') {
       result = result.filter((w) => w.wastage_approval_status === statusFilter);
     }
-    if (dateFrom) {
-      result = result.filter((w) => (w.run_date || '') >= dateFrom);
+    if (dateRange.from) {
+      result = result.filter((w) => (w.run_date || '') >= dateRange.from);
     }
-    if (dateTo) {
-      result = result.filter((w) => (w.run_date || '') <= dateTo);
+    if (dateRange.to) {
+      result = result.filter((w) => (w.run_date || '') <= dateRange.to);
     }
     return result;
-  }, [wasteLogs, searchText, statusFilter, dateFrom, dateTo]);
+  }, [wasteLogs, searchText, statusFilter, dateRange]);
 
-  const hasFilters = searchText || statusFilter !== 'ALL' || dateFrom || dateTo;
+  const hasFilters = searchText || statusFilter !== 'ALL';
   const [materialSearch, setMaterialSearch] = useState('');
   const { data: sapItems = [], isLoading: loadingItems } = useSearchSAPItems(materialSearch);
   const handleMaterialSearch = useCallback((s: string) => setMaterialSearch(s), []);
@@ -151,11 +152,12 @@ function WasteManagementPage() {
             <SelectItem value="FULLY_APPROVED">Fully Approved</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2">
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px]" />
-          <span className="text-muted-foreground text-sm">to</span>
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[150px]" />
-        </div>
+        <DateRangePicker
+          date={dateRangeAsDateObjects}
+          onDateChange={(d) => {
+            if (d && 'from' in d) setDateRange(d);
+          }}
+        />
         {runIdFilter && (
           <div className="flex items-center gap-1 text-sm">
             <span className="text-muted-foreground">Run:</span>

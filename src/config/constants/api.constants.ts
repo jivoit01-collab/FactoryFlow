@@ -317,6 +317,14 @@ export const API_ENDPOINTS = {
     REPORTS_OEE: '/production-execution/reports/analytics/oee/',
     REPORTS_DOWNTIME: '/production-execution/reports/analytics/downtime/',
     REPORTS_WASTE_ANALYTICS: '/production-execution/reports/analytics/waste/',
+    REPORTS_RESOURCE_CONSUMPTION: '/production-execution/reports/analytics/resource-consumption/',
+    REPORTS_MONTHLY_SUMMARY: '/production-execution/reports/analytics/monthly-summary/',
+    REPORTS_PLAN_VS_PRODUCTION: '/production-execution/reports/analytics/plan-vs-production/',
+    REPORTS_PROCUREMENT_VS_PLANNED: '/production-execution/reports/analytics/procurement-vs-planned/',
+    REPORTS_OEE_TREND: '/production-execution/reports/analytics/oee-trend/',
+    REPORTS_DOWNTIME_PARETO: '/production-execution/reports/analytics/downtime-pareto/',
+    REPORTS_COST_ANALYSIS: '/production-execution/reports/analytics/cost-analysis/',
+    REPORTS_WASTE_TREND: '/production-execution/reports/analytics/waste-trend/',
     // Timeline Actions
     START_PRODUCTION: (runId: number) =>
       `/production-execution/runs/${runId}/start-production/`,

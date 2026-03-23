@@ -1,16 +1,22 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Calendar, Clock, Trash2 } from 'lucide-react';
+import { BarChart3, Calendar, Clock, Trash2, Zap, TrendingUp, Target, Package, AlertTriangle, DollarSign } from 'lucide-react';
 
+import { useGlobalDateRange } from '@/core/store/hooks';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
+import { DateRangePicker } from '@/modules/gate/components';
 
 import { useOEEAnalytics, useDowntimeAnalytics, useWasteAnalytics } from '../api';
 import type { AnalyticsParams } from '../types';
 
 function ReportsPage() {
   const navigate = useNavigate();
-  const [params, setParams] = useState<AnalyticsParams>({});
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
+  const params = useMemo<AnalyticsParams>(() => ({
+    date_from: dateRange.from,
+    date_to: dateRange.to,
+  }), [dateRange]);
 
   const { data: oeeData } = useOEEAnalytics(params);
   const { data: downtimeData } = useDowntimeAnalytics(params);
@@ -26,16 +32,38 @@ function ReportsPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-4 items-end">
-            <div>
-              <Label>From</Label>
-              <Input type="date" value={params.date_from || ''} onChange={(e) => setParams((p) => ({ ...p, date_from: e.target.value }))} className="w-[160px]" />
-            </div>
-            <div>
-              <Label>To</Label>
-              <Input type="date" value={params.date_to || ''} onChange={(e) => setParams((p) => ({ ...p, date_to: e.target.value }))} className="w-[160px]" />
-            </div>
+            <DateRangePicker
+              date={dateRangeAsDateObjects}
+              onDateChange={(d) => {
+                if (d && 'from' in d) setDateRange(d);
+              }}
+            />
             <Button variant="outline" onClick={() => navigate('/production/execution/reports/daily')}>
               <Calendar className="h-4 w-4 mr-1" /> Daily Report
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/production/execution/reports/resource-consumption')}>
+              <Zap className="h-4 w-4 mr-1" /> Resource Consumption
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/production/execution/reports/monthly-summary')}>
+              <TrendingUp className="h-4 w-4 mr-1" /> Monthly Summary
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/production/execution/reports/plan-vs-production')}>
+              <Target className="h-4 w-4 mr-1" /> Plan vs Production
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/production/execution/reports/procurement-vs-planned')}>
+              <Package className="h-4 w-4 mr-1" /> Procurement vs Planned
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/production/execution/reports/oee-trend')}>
+              <BarChart3 className="h-4 w-4 mr-1" /> OEE Trend
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/production/execution/reports/downtime-pareto')}>
+              <AlertTriangle className="h-4 w-4 mr-1" /> Downtime Pareto
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/production/execution/reports/cost-analysis')}>
+              <DollarSign className="h-4 w-4 mr-1" /> Cost Analysis
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/production/execution/reports/waste-trend')}>
+              <Trash2 className="h-4 w-4 mr-1" /> Waste Trend
             </Button>
           </div>
         </CardContent>

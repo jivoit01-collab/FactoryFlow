@@ -39,11 +39,26 @@ export interface FiltersState {
   dateRange: DateRange;
 }
 
-// Load initial state from localStorage or use defaults
-const storedFilters = loadFiltersFromStorage();
-const initialState: FiltersState = storedFilters || {
-  dateRange: getDefaultDateRange(),
-};
+// Load initial state from localStorage or use defaults.
+// Always clamp `to` to today so stale stored dates don't hide recent data.
+function getInitialState(): FiltersState {
+  const stored = loadFiltersFromStorage();
+  const defaults = { dateRange: getDefaultDateRange() };
+  if (!stored) return defaults;
+
+  const today = formatDateToISOString(new Date());
+  if (stored.dateRange.to < today) {
+    const clamped: FiltersState = {
+      dateRange: { from: stored.dateRange.from, to: today },
+    };
+    // Persist the clamped value so it doesn't revert on next read
+    saveFiltersToStorage(clamped);
+    return clamped;
+  }
+  return stored;
+}
+
+const initialState: FiltersState = getInitialState();
 
 const filtersSlice = createSlice({
   name: 'filters',

@@ -1,17 +1,33 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/components/ui';
+import { DateRangePicker } from '@/modules/gate/components';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { useDailyProductionReport } from '../api';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 
 function DailyProductionReportPage() {
   const navigate = useNavigate();
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const { data: report, isLoading } = useDailyProductionReport(date);
+  const [date, setDate] = useState(() => new Date());
+  const dateStr = useMemo(() => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, [date]);
+  const { data: runs, isLoading } = useDailyProductionReport(dateStr);
+
+  const totalProduction = useMemo(
+    () => runs?.reduce((sum, r) => sum + parseFloat(r.total_production as unknown as string || '0'), 0) ?? 0,
+    [runs],
+  );
+  const totalBreakdown = useMemo(
+    () => runs?.reduce((sum, r) => sum + (r.total_breakdown_time || 0), 0) ?? 0,
+    [runs],
+  );
 
   return (
     <div className="space-y-6">
@@ -23,34 +39,38 @@ function DailyProductionReportPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-[200px]" />
-          </div>
+          <DateRangePicker
+            mode="single"
+            date={date}
+            onDateChange={(d) => {
+              if (d instanceof Date) setDate(d);
+            }}
+          />
         </CardContent>
       </Card>
 
       {isLoading ? (
         <Card><CardContent className="p-8 animate-pulse bg-muted/50" /></Card>
-      ) : report ? (
+      ) : runs ? (
         <>
           <div className="grid grid-cols-2 gap-4">
             <Card>
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">Total Production</p>
-                <p className="text-3xl font-bold">{report.total_production} cases</p>
+                <p className="text-3xl font-bold">{totalProduction.toLocaleString()} cases</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">Total Breakdown</p>
-                <p className="text-3xl font-bold text-red-600">{report.total_breakdown_time} min</p>
+                <p className="text-3xl font-bold text-red-600">{totalBreakdown} min</p>
               </CardContent>
             </Card>
           </div>
 
-          {report.runs?.length > 0 ? (
+          {runs.length > 0 ? (
             <Card>
-              <CardHeader><CardTitle>Runs</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Runs ({runs.length})</CardTitle></CardHeader>
               <CardContent>
                 <table className="w-full text-sm">
                   <thead>
@@ -64,7 +84,7 @@ function DailyProductionReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {report.runs.map((r) => (
+                    {runs.map((r) => (
                       <tr key={r.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => navigate(`/production/execution/runs/${r.id}`)}>
                         <td className="p-2 font-medium">#{r.run_number}</td>
                         <td className="p-2">{r.line_name}</td>
