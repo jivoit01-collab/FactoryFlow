@@ -17,6 +17,7 @@ export function useCompleteDailyNeedEntry() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailyNeedFullView'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
       queryClient.invalidateQueries({ queryKey: ['dailyNeed'] });
     },
   });

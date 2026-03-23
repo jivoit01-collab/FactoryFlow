@@ -10,6 +10,7 @@ import {
   VEHICLE_CONDITIONS,
 } from '@/config/constants';
 import type { ApiError } from '@/core/api';
+import { RecordTimestamps } from '@/shared/components';
 import { getCurrentTimeHHMM, getTimeFromDatetime } from '@/shared/hooks';
 import {
   getErrorMessage,
@@ -26,7 +27,7 @@ import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import { type SecurityCheckFormData, SecurityCheckFormShell } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 interface SharedStep2PageProps {
   config: EntryFlowConfig;
@@ -36,6 +37,7 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = config.totalSteps === 5 ? WIZARD_CONFIG.STEPS.SECURITY_CHECK : 2;
   const createSecurityCheck = useCreateSecurityCheck(entryIdNumber || 0);
   const {
@@ -65,7 +67,7 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
   // 2. There's a not found error AND fill data mode is not active
   const isReadOnly =
     (effectiveEditMode && !updateMode && !isNotFoundError) || (isNotFoundError && !fillDataMode);
-  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED;
+  const canUpdate = effectiveEditMode && vehicleEntryData?.status !== ENTRY_STATUS.COMPLETED && !securityCheckData?.is_submitted;
 
   // Form state
   const [formData, setFormData] = useState<SecurityCheckFormData>({
@@ -248,27 +250,36 @@ export default function SharedStep2Page({ config }: SharedStep2PageProps) {
   };
 
   return (
-    <SecurityCheckFormShell
-      formData={formData}
-      onFormChange={handleInputChange}
-      isReadOnly={isReadOnly}
-      isLoading={effectiveEditMode && isLoadingSecurityCheck}
-      isSaving={createSecurityCheck.isPending || isNavigating}
-      apiErrors={apiErrors}
-      currentStep={currentStep}
-      totalSteps={config.totalSteps}
-      onPrevious={handlePrevious}
-      onCancel={handleCancel}
-      onNext={handleNext}
-      onUpdate={handleUpdate}
-      isEditMode={effectiveEditMode}
-      canUpdate={canUpdate}
-      updateMode={updateMode}
-      showFillDataAlert={effectiveEditMode && isNotFoundError && !fillDataMode}
-      onFillData={handleFillData}
-      fillDataMessage={getErrorMessage(securityCheckError, 'Security check not found')}
-      serverError={hasServerError ? getServerErrorMessage() : null}
-      headerTitle={config.headerTitle}
-    />
+    <>
+      <SecurityCheckFormShell
+        formData={formData}
+        onFormChange={handleInputChange}
+        isReadOnly={isReadOnly}
+        isLoading={effectiveEditMode && isLoadingSecurityCheck}
+        isSaving={createSecurityCheck.isPending || isNavigating}
+        apiErrors={apiErrors}
+        currentStep={currentStep}
+        totalSteps={config.totalSteps}
+        onPrevious={handlePrevious}
+        onCancel={handleCancel}
+        onNext={handleNext}
+        onUpdate={handleUpdate}
+        isEditMode={effectiveEditMode}
+        canUpdate={canUpdate}
+        updateMode={updateMode}
+        showFillDataAlert={effectiveEditMode && isNotFoundError && !fillDataMode}
+        onFillData={handleFillData}
+        fillDataMessage={getErrorMessage(securityCheckError, 'Security check not found')}
+        serverError={hasServerError ? getServerErrorMessage() : null}
+        headerTitle={config.headerTitle}
+      >
+        {isEditMode && securityCheckData?.created_at && (
+          <RecordTimestamps
+            createdAt={securityCheckData.created_at}
+            updatedAt={securityCheckData.updated_at}
+          />
+        )}
+      </SecurityCheckFormShell>
+    </>
   );
 }

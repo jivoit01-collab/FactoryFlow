@@ -17,6 +17,7 @@ export function useCompleteGateEntry() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
       // Invalidate GRPO pending list so newly completed entries appear
       queryClient.invalidateQueries({ queryKey: ['grpo', 'pending'] });
     },

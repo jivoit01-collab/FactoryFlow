@@ -8,6 +8,7 @@ import { env } from '@/config/env.config';
 import { VALIDATION_PATTERNS } from '@/config/constants';
 import { ARRIVAL_SLIP_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api';
+import { RecordTimestamps } from '@/shared/components';
 import {
   Button,
   Card,
@@ -40,7 +41,7 @@ import { usePOReceipts } from '../../api/po/poReceipt.queries';
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 interface ArrivalSlipFormData {
   particulars: string;
@@ -78,6 +79,7 @@ export default function ArrivalSlipPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = WIZARD_CONFIG.STEPS.ARRIVAL_SLIP;
 
   // Fetch PO receipts
@@ -1072,6 +1074,14 @@ export default function ArrivalSlipPage() {
           </Card>
         )}
       </div>
+
+      {/* Record Timestamps */}
+      {isEditMode && itemForms.length > 0 && itemForms[0].existingSlip?.created_at && (
+        <RecordTimestamps
+          createdAt={itemForms[0].existingSlip.created_at}
+          updatedAt={itemForms[0].existingSlip.updated_at}
+        />
+      )}
 
       {/* Footer Actions */}
       <StepFooter

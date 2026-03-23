@@ -2,7 +2,7 @@ import { Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { ENTRY_TYPES, getEntryStatusClasses } from '@/config/constants';
+import { ENTRY_STATUS, ENTRY_TYPES, getEntryStatusClasses } from '@/config/constants';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { Button, Input } from '@/shared/components/ui';
 
@@ -155,7 +155,8 @@ export default function RawMaterialsPage() {
                     key={entry.id}
                     className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
                     onClick={() => {
-                      navigate(`/gate/raw-materials/edit/${entry.id}/step1`);
+                      const isCompleted = entry.status === ENTRY_STATUS.COMPLETED || entry.status === ENTRY_STATUS.QC_COMPLETED;
+                      navigate(`/gate/raw-materials/edit/${entry.id}/${isCompleted ? 'review' : 'step1'}`);
                     }}
                   >
                     <td className="p-3 text-sm font-medium">{entry.entry_no || '-'}</td>

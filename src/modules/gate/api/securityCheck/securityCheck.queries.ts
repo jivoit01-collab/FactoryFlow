@@ -17,6 +17,7 @@ export function useCreateSecurityCheck(entryId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['securityCheck'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
       queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] });
     },
   });

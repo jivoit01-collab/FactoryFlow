@@ -14,6 +14,7 @@ export interface VehicleEntry {
   remarks?: string;
   entry_time?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateVehicleEntryRequest {

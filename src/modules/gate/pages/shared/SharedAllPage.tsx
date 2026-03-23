@@ -2,13 +2,14 @@ import { Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { getEntryStatusClasses } from '@/config/constants';
+import { ENTRY_STATUS, getEntryStatusClasses } from '@/config/constants';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { Button, Input } from '@/shared/components/ui';
 
 import { useVehicleEntries } from '../../api/vehicle/vehicleEntry.queries';
 import { DateRangePicker } from '../../components/DateRangePicker';
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
+import { getLastStep } from '../../hooks';
 
 interface SharedAllPageProps {
   config: EntryFlowConfig;
@@ -138,7 +139,9 @@ export default function SharedAllPage({ config }: SharedAllPageProps) {
                     key={entry.id}
                     className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
                     onClick={() => {
-                      navigate(`${config.routePrefix}/edit/${entry.id}/step1`);
+                      const isCompleted = entry.status === ENTRY_STATUS.COMPLETED || entry.status === ENTRY_STATUS.QC_COMPLETED;
+                      const step = isCompleted ? 'review' : (getLastStep(entry.id) || 'step1');
+                      navigate(`${config.routePrefix}/edit/${entry.id}/${step}`);
                     }}
                   >
                     <td className="p-3 text-sm font-medium">{entry.entry_no || '-'}</td>

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { useGateAttachments, useUploadAttachment } from '../../api/attachment/attachment.queries';
 import { StepFooter, StepHeader } from '../../components';
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
 
@@ -26,6 +26,7 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentStep = config.totalSteps;

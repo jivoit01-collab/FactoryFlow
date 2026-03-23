@@ -8,6 +8,7 @@ export interface GateEntryFullView {
     status: string;
     is_locked: boolean;
     created_at: string;
+    updated_at?: string;
   };
   vehicle: {
     vehicle_number: string;
@@ -28,18 +29,23 @@ export interface GateEntryFullView {
     is_submitted: boolean;
     remarks: string;
     inspected_by: string;
+    created_at?: string;
+    updated_at?: string;
   } | null;
   weighment: {
     gross_weight: number;
     tare_weight: number;
     net_weight: number;
     weighbridge_slip_no: string;
+    created_at?: string;
+    updated_at?: string;
   } | null;
   po_receipts: Array<{
     po_number: string;
     supplier_code: string;
     supplier_name: string;
     created_by: string;
+    created_at?: string;
     items: Array<{
       item_code: string;
       item_name: string;

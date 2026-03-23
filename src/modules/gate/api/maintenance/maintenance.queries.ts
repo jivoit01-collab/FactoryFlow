@@ -49,6 +49,7 @@ export function useCreateMaintenanceEntry(entryId: number) {
       queryClient.invalidateQueries({ queryKey: ['maintenanceEntry', entryId] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
     },
   });
 }
@@ -66,6 +67,7 @@ export function useUpdateMaintenanceEntry(entryId: number) {
       queryClient.invalidateQueries({ queryKey: ['maintenanceFullView', entryId] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
     },
   });
 }
@@ -93,6 +95,7 @@ export function useCompleteMaintenanceEntry() {
       queryClient.invalidateQueries({ queryKey: ['maintenanceFullView'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
       queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntry'] });
     },
   });
 }

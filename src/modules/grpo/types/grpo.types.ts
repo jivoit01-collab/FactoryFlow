@@ -163,6 +163,7 @@ export interface GRPOHistoryEntry {
   posted_at: string | null;
   posted_by: number | null;
   created_at: string;
+  updated_at?: string;
   lines: GRPOHistoryLine[];
   attachments: GRPOAttachment[];
 }

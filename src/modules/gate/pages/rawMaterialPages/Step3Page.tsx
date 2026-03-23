@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
-  ArrowLeft,
   Check,
   ChevronDown,
   Loader2,
@@ -13,6 +12,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { RecordTimestamps } from '@/shared/components';
 import {
   Button,
   Card,
@@ -35,9 +35,9 @@ import {
 import type { PurchaseOrder, Vendor } from '../../api/po/po.api';
 import { useOpenPOs } from '../../api/po/po.queries';
 import { useCreatePOReceipt, usePOReceipts } from '../../api/po/poReceipt.queries';
-import { FillDataAlert, StepHeader, StepLoadingSpinner, VendorSelect } from '../../components';
+import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner, VendorSelect } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 interface POItemFormData {
   po_item_code: string;
@@ -63,6 +63,7 @@ export default function Step3Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = WIZARD_CONFIG.STEPS.PO_RECEIPT;
 
   // Stable ID generation using useId
@@ -387,6 +388,11 @@ export default function Step3Page() {
     }
   };
 
+  const handleCancel = () => {
+    queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+    navigate('/gate/raw-materials');
+  };
+
   const createPOReceipt = useCreatePOReceipt(entryIdNumber || 0);
 
   const handleNext = async () => {
@@ -589,37 +595,27 @@ export default function Step3Page() {
         )}
       </div>
 
-      {/* Footer Actions */}
-      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
-        <Button type="button" variant="outline" onClick={handlePrevious}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Previous
-        </Button>
-        <div className="flex gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
-              navigate('/gate/raw-materials');
-            }}
-          >
-            Cancel
-          </Button>
-          {/* PO receipts are immutable once submitted */}
-          <Button
-            type="button"
-            onClick={handleNext}
-            disabled={createPOReceipt.isPending || isNavigating}
-          >
-            {effectiveEditMode && !updateMode && !fillDataMode
-              ? 'Next →'
-              : createPOReceipt.isPending || isNavigating
-                ? 'Saving...'
-                : 'Save and Next →'}
-          </Button>
-        </div>
-      </div>
+      {/* Record Timestamps */}
+      {isEditMode && existingPOReceipts.length > 0 && existingPOReceipts[0].created_at && (
+        <RecordTimestamps
+          createdAt={existingPOReceipts[0].created_at}
+          updatedAt={existingPOReceipts[0].updated_at}
+        />
+      )}
+
+      <StepFooter
+        onPrevious={handlePrevious}
+        onCancel={handleCancel}
+        onNext={handleNext}
+        isSaving={createPOReceipt.isPending || isNavigating}
+        isEditMode={effectiveEditMode}
+        isUpdateMode={updateMode}
+        nextLabel={
+          effectiveEditMode && !updateMode && !fillDataMode
+            ? 'Next →'
+            : undefined
+        }
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   Building2,
   CheckCircle2,
   Clock,
+  Eye,
   FileCheck,
   FileText,
   Home,
@@ -23,6 +24,7 @@ import {
   getSecurityApprovalClasses,
 } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
+import { EntryTimeSummary, RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
@@ -37,7 +39,7 @@ import {
   useConstructionFullView,
 } from '../../api/construction/construction.queries';
 import { securityCheckApi } from '../../api/securityCheck/securityCheck.api';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
@@ -138,6 +140,7 @@ export default function ReviewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
 
   const [isSubmittingSecurity, setIsSubmittingSecurity] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -300,14 +303,24 @@ export default function ReviewPage() {
   return (
     <div className="space-y-6 pb-6">
       {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <FileCheck className="h-8 w-8" />
-          Final Review
-        </h2>
-        <p className="text-muted-foreground">
-          Review all details before completing the construction gate entry
-        </p>
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <FileCheck className="h-8 w-8" />
+            Final Review
+          </h2>
+          <p className="text-muted-foreground">
+            Review all details before completing the construction gate entry
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => navigate(`/gate/construction/edit/${entryId}/step1`)}
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          View Full Entry
+        </Button>
       </div>
 
       {apiErrors.general && (
@@ -582,6 +595,16 @@ export default function ReviewPage() {
           </Card>
         )}
       </div>
+
+      {/* Entry Time Summary */}
+    {(() => {
+        return (
+          <EntryTimeSummary
+            startedAt={gateEntry.gate_entry.created_at}
+            completedAt={gateEntry.construction_details?.created_at || gateEntry.security_check?.created_at || gateEntry.gate_entry.created_at}
+          />
+        )
+      })()}
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">

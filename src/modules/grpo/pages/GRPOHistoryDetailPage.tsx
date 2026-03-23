@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { GRPO_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
+import { RecordTimestamps } from '@/shared/components';
 import { useHasPermission } from '@/core/auth';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
@@ -179,6 +180,11 @@ export default function GRPOHistoryDetailPage() {
             </Card>
           )}
 
+          {/* Record Timestamps */}
+          <RecordTimestamps
+            createdAt={posting.created_at}
+            updatedAt={posting.updated_at}
+          />
           {/* Attachments */}
           {posting.status === 'POSTED' && (
             <AttachmentsSection

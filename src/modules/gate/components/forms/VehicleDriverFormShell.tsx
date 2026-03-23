@@ -1,4 +1,4 @@
-import { AlertCircle, Camera, Truck, User } from 'lucide-react';
+import { Camera, Truck, User } from 'lucide-react';
 
 import { ID_PROOF_TYPES } from '@/config/constants';
 import { env } from '@/config/env.config';
@@ -15,6 +15,8 @@ import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
 
 import { DriverSelect } from '../DriverSelect';
+import { StepFooter } from '../StepFooter';
+import { StepHeader } from '../StepHeader';
 import { TransporterSelect } from '../TransporterSelect';
 import { VehicleSelect } from '../VehicleSelect';
 import { useState } from 'react';
@@ -108,6 +110,7 @@ export interface VehicleDriverFormShellProps {
 
   // Custom content (optional)
   headerTitle?: string;
+  children?: React.ReactNode;
 }
 
 export function VehicleDriverFormShell({
@@ -129,9 +132,8 @@ export function VehicleDriverFormShell({
   updateMode,
   serverError,
   headerTitle = 'Material Inward',
+  children,
 }: VehicleDriverFormShellProps) {
-  const progressPercentage = (currentStep / totalSteps) * 100;
-
   const [isEditDriverOpen, setIsEditDriverOpen] = useState(false);
   const [isEditVehicleOpen, setIsEditVehicleOpen] = useState(false);
   const [isEditTransporterOpen, setIsEditTransporterOpen] = useState(false);
@@ -149,30 +151,12 @@ export function VehicleDriverFormShell({
 
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          {headerTitle} - Step {currentStep} of {totalSteps}
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <span className="text-sm font-medium text-muted-foreground min-w-[3rem]">
-            {Math.round(progressPercentage)}%
-          </span>
-        </div>
-      </div>
-
-      {(serverError || apiErrors.general) && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {serverError || apiErrors.general}
-        </div>
-      )}
+      <StepHeader
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        title={headerTitle}
+        error={serverError || apiErrors.general || null}
+      />
 
       <div className="space-y-6">
         {/* Vehicle Details Section */}
@@ -534,28 +518,18 @@ export function VehicleDriverFormShell({
         }}
       />
 
-      {/* Footer Actions */}
-      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        {isEditMode ? (
-          <>
-            {canUpdate && !updateMode && onUpdate && (
-              <Button type="button" onClick={onUpdate}>
-                Update
-              </Button>
-            )}
-            <Button type="button" onClick={onNext} disabled={isSaving}>
-              {updateMode ? (isSaving ? 'Saving...' : 'Save and Next →') : 'Next →'}
-            </Button>
-          </>
-        ) : (
-          <Button type="button" onClick={onNext} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save and Next →'}
-          </Button>
-        )}
-      </div>
+      {children}
+
+      <StepFooter
+        onCancel={onCancel}
+        onNext={onNext}
+        showPrevious={false}
+        showUpdate={isEditMode && canUpdate && !updateMode && !!onUpdate}
+        onUpdate={onUpdate}
+        isSaving={isSaving}
+        isEditMode={isEditMode}
+        isUpdateMode={updateMode}
+      />
     </div>
   );
 }

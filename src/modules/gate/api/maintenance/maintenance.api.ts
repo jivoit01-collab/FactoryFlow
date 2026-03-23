@@ -38,6 +38,8 @@ export interface MaintenanceEntry {
   urgency_level: string;
   inward_time?: string;
   remarks?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateMaintenanceRequest {
@@ -67,6 +69,7 @@ export interface MaintenanceFullViewGateEntry {
   status: string;
   is_locked: boolean;
   created_at: string;
+  updated_at?: string;
   entry_type: string;
 }
 
@@ -89,6 +92,8 @@ export interface MaintenanceFullViewSecurityCheck {
   is_submitted: boolean;
   remarks?: string;
   inspected_by: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface MaintenanceFullViewDetails {
@@ -107,6 +112,7 @@ export interface MaintenanceFullViewDetails {
   remarks?: string;
   created_by: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface MaintenanceFullView {

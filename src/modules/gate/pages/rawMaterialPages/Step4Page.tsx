@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api';
+import { RecordTimestamps } from '@/shared/components';
 import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
@@ -20,12 +21,13 @@ import type { CreateWeighmentRequest } from '../../api/weighment/weighment.api';
 import { useCreateWeighment, useWeighment } from '../../api/weighment/weighment.queries';
 import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
-import { useEntryId } from '../../hooks';
+import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 export default function Step4Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
+  useEntryStepTracker();
   const currentStep = WIZARD_CONFIG.STEPS.WEIGHMENT;
   const createWeighment = useCreateWeighment(entryIdNumber || 0);
   const {
@@ -378,6 +380,14 @@ export default function Step4Page() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Record Timestamps */}
+      {isEditMode && weighmentData?.created_at && (
+        <RecordTimestamps
+          createdAt={weighmentData.created_at}
+          updatedAt={weighmentData.updated_at}
+        />
+      )}
 
       {/* Footer Actions */}
       <StepFooter
