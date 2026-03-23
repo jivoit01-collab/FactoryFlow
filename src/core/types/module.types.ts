@@ -37,6 +37,11 @@ export interface ModuleRoute {
   requiresAuth?: boolean;
   /** Layout type: 'auth' for AuthLayout, 'main' for MainLayout (default) */
   layout?: 'auth' | 'main';
+  /** Breadcrumb configuration for this route */
+  breadcrumb?: {
+    /** Short display label (e.g. 'RM' for 'raw-materials'). Falls back to auto-formatted segment name. */
+    label?: string;
+  };
 }
 
 /**

@@ -15,7 +15,7 @@ The Factory Management System is a modern, enterprise-grade React application de
 ## Technology Stack
 
 | Category | Technology |
-|----------|------------|
+| ---------- | ------------ |
 | **Frontend Framework** | React 19.2 with TypeScript 5.9 |
 | **Build Tool** | Vite 7.2 with SWC |
 | **State Management** | Redux Toolkit + React Query |
@@ -28,22 +28,26 @@ The Factory Management System is a modern, enterprise-grade React application de
 ## Documentation Structure
 
 ### Getting Started
+
 - [Installation Guide](./getting-started/installation.md) - Set up your development environment
 - [Quick Start](./getting-started/quick-start.md) - Get up and running quickly
 - [Project Structure](./getting-started/project-structure.md) - Understand the codebase organization
 
 ### Architecture
+
 - [Architecture Overview](./architecture/overview.md) - High-level system design
 - [Module Boundaries](./architecture/module-boundaries.md) - Module independence rules and dependency hierarchy
 - [Folder Structure](./architecture/folder-structure.md) - Directory organization and conventions
 - [State Management](./architecture/state-management.md) - Redux and React Query patterns
 
 ### API Reference
+
 - [API Overview](./api/overview.md) - API client architecture
 - [Authentication](./api/authentication.md) - Auth flow and token management
 - [Endpoints](./api/endpoints.md) - Available API endpoints
 
 ### Modules
+
 - [Modules Overview](./modules/overview.md) - Feature module architecture
 - [Authentication Module](./modules/auth.md) - User authentication and authorization
 - [Dashboard Module](./modules/dashboard.md) - Main dashboard
@@ -55,14 +59,17 @@ The Factory Management System is a modern, enterprise-grade React application de
 Each module also has local documentation at `src/modules/{name}/docs/README.md`.
 
 ### Components
+
 - [UI Components](./components/ui-components.md) - Reusable component library
 - [Layout Components](./components/layout.md) - Application layout system
 
 ### Configuration
+
 - [Environment Setup](./configuration/environment.md) - Environment variables and configuration
 - [Constants Reference](./configuration/constants.md) - Application constants
 
 ### Development
+
 - [Code Style Guide](./development/code-style.md) - Coding standards and conventions
 - [Contributing Guide](./development/contributing.md) - How to contribute to the project
 - [Testing](./development/testing.md) - Testing strategies and tools

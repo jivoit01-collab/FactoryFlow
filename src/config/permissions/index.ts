@@ -18,10 +18,27 @@ export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permis
 // GRPO Module
 export { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS, type GRPOPermission } from './grpo.permissions';
 
+// Production Module
+export {
+  EXECUTION_MODULE_PREFIX,
+  EXECUTION_PERMISSIONS,
+  type ExecutionPermission,
+  PRODUCTION_MODULE_PREFIX,
+  PRODUCTION_PERMISSIONS,
+  type ProductionPermission,
+} from './production.permissions';
+
+// Dashboards Module
+export {
+  DASHBOARDS_MODULE_PREFIX,
+  DASHBOARDS_PERMISSIONS,
+  type DashboardsPermission,
+} from './dashboards.permissions';
+
 // Notifications Module
 export {
   NOTIFICATION_MODULE_PREFIX,
   NOTIFICATION_PERMISSIONS,
-  type NotificationPermission,
+  type NotificationDjangoPermission,
 } from './notification.permissions';
 

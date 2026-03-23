@@ -229,3 +229,116 @@ export interface ApprovalRequest {
   final_status?: InspectionFinalStatus;
 }
 
+
+// ============================================================================
+// Production QC Types
+// ============================================================================
+
+export type ProductionQCSessionType = 'IN_PROCESS' | 'FINAL';
+
+export type ProductionQCWorkflowStatus = 'DRAFT' | 'SUBMITTED';
+
+export type ProductionQCOverallResult = 'PASS' | 'FAIL' | '';
+
+// Production QC Parameter Result (same structure as ParameterResult)
+export interface ProductionQCResult {
+  id: number;
+  parameter_master: number;
+  parameter_code: string;
+  parameter_name: string;
+  standard_value: string;
+  parameter_type: ParameterType;
+  min_value: string | null;
+  max_value: string | null;
+  uom: string;
+  is_mandatory: boolean;
+  result_value: string;
+  result_numeric: number | null;
+  is_within_spec: boolean | null;
+  remarks: string;
+}
+
+// Production QC Session (full detail with results)
+export interface ProductionQCSession {
+  id: number;
+  production_run: number;
+  run_number: number;
+  material_type: number;
+  material_type_name: string;
+  material_type_code: string;
+  session_number: number;
+  session_type: ProductionQCSessionType;
+  checked_at: string;
+  checked_by: number | null;
+  checked_by_name: string | null;
+  overall_result: ProductionQCOverallResult;
+  workflow_status: ProductionQCWorkflowStatus;
+  submitted_by: number | null;
+  submitted_by_name: string | null;
+  submitted_at: string | null;
+  remarks: string;
+  results: ProductionQCResult[];
+  created_at: string;
+  updated_at: string;
+}
+
+// Production QC Session list item (lightweight)
+export interface ProductionQCSessionListItem {
+  id: number;
+  production_run: number;
+  run_number: number;
+  run_date: string;
+  product: string;
+  line_name: string;
+  material_type: number;
+  material_type_name: string;
+  session_number: number;
+  session_type: ProductionQCSessionType;
+  checked_at: string;
+  checked_by_name: string | null;
+  overall_result: ProductionQCOverallResult;
+  workflow_status: ProductionQCWorkflowStatus;
+  pass_count: number;
+  fail_count: number;
+  total_params: number;
+  created_at: string;
+}
+
+// Production QC Counts
+export interface ProductionQCCounts {
+  draft: number;
+  submitted: number;
+}
+
+// Create session request
+export interface CreateProductionQCSessionRequest {
+  material_type_id: number;
+  session_type: ProductionQCSessionType;
+  checked_at: string;
+  remarks?: string;
+}
+
+// Update result request (same as existing pattern)
+export interface UpdateProductionQCResultRequest {
+  parameter_master_id: number;
+  result_value: string;
+  result_numeric?: number | null;
+  is_within_spec?: boolean | null;
+  remarks?: string;
+}
+
+// Production QC approval request
+export interface ProductionQCSubmitRequest {
+  overall_result: 'PASS' | 'FAIL';
+}
+
+// Production QC list filter params
+export interface ProductionQCListParams {
+  workflow_status?: ProductionQCWorkflowStatus;
+  session_type?: ProductionQCSessionType;
+  run_id?: number;
+  line?: number;
+  date_from?: string;
+  date_to?: string;
+}
+

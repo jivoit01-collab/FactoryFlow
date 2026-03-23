@@ -2,10 +2,12 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   Clock,
+  Factory,
   FileText,
   FlaskConical,
-  Plus,
+  Package,
   RefreshCw,
   ShieldX,
   UserCheck,
@@ -20,54 +22,13 @@ import { DateRangePicker } from '@/modules/gate/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import {
-  useActionableInspections,
   useInspectionCounts,
 } from '../api/inspection/inspection.queries';
+import { useProductionQCCounts } from '../api/productionQC';
 import { WORKFLOW_STATUS_CONFIG } from '../constants';
-import type { InspectionListItem, InspectionListWorkflowStatus } from '../types';
+import type { InspectionListWorkflowStatus } from '../types';
 
-// Status configuration - compact like Gate module
-const STATUS_CONFIG = {
-  pending: {
-    label: 'Pending',
-    color: 'text-yellow-600 dark:text-yellow-400',
-    bgColor: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-    icon: Clock,
-    link: '/qc/pending?status=pending',
-  },
-  draft: {
-    label: 'Draft',
-    color: 'text-gray-600 dark:text-gray-400',
-    bgColor: 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800',
-    icon: FileText,
-    link: '/qc/pending?status=draft',
-  },
-  awaiting_approval: {
-    label: 'Awaiting',
-    color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
-    icon: UserCheck,
-    link: '/qc/approvals',
-  },
-  approved: {
-    label: 'Approved',
-    color: 'text-green-600 dark:text-green-400',
-    bgColor: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-    icon: CheckCircle2,
-    link: '/qc/pending?status=approved',
-  },
-  rejected: {
-    label: 'Rejected',
-    color: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-    icon: XCircle,
-    link: '/qc/pending?status=rejected',
-  },
-};
-
-const STATUS_ORDER = ['pending', 'draft', 'awaiting_approval', 'approved', 'rejected'] as const;
-
-// Status badge styling
+// Status badge styling for arrival slips
 const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
   NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
@@ -76,12 +37,6 @@ const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
   QAM_APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
-
-function getNavigateTo(item: InspectionListItem): string {
-  return item.inspection_id
-    ? `/qc/inspections/${item.arrival_slip_id}`
-    : `/qc/inspections/${item.arrival_slip_id}/new`;
-}
 
 export default function QCDashboardPage() {
   const navigate = useNavigate();
@@ -95,7 +50,6 @@ export default function QCDashboardPage() {
     [dateRange],
   );
 
-  // Single lightweight query for all counts
   const {
     data: countsData,
     isLoading: countsLoading,
@@ -103,50 +57,25 @@ export default function QCDashboardPage() {
     refetch: refetchCounts,
   } = useInspectionCounts(dateParams);
 
-  // Actionable items for "Recent Arrival Slips" section
   const {
-    data: recentItems = [],
-    isLoading: recentLoading,
-    error: recentError,
-  } = useActionableInspections(dateParams);
+    data: prodQCCounts,
+    isLoading: prodQCLoading,
+  } = useProductionQCCounts();
 
-  const isLoading = countsLoading || recentLoading;
-  const error = countsError || recentError;
-
-  // Check if error is a permission error (403)
+  const isLoading = countsLoading || prodQCLoading;
+  const error = countsError;
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
-  // Map counts to dashboard status keys
-  const counts = {
-    pending: countsData?.not_started ?? 0,
-    draft: countsData?.draft ?? 0,
-    awaiting_approval: (countsData?.awaiting_chemist ?? 0) + (countsData?.awaiting_qam ?? 0),
-    approved: countsData?.completed ?? 0,
-    rejected: countsData?.rejected ?? 0,
-  };
+  // Arrival slip counts
+  const arrivalPending = (countsData?.not_started ?? 0) + (countsData?.draft ?? 0);
+  const arrivalAwaiting = (countsData?.awaiting_chemist ?? 0) + (countsData?.awaiting_qam ?? 0);
 
-  const totalPending = counts.pending + counts.draft + counts.awaiting_approval;
-
-  const refetch = () => {
-    refetchCounts();
-  };
-
-  // Format date/time for display - consistent with Gate module
-  const formatDateTime = (dateTime?: string | null) => {
-    if (!dateTime) return '-';
-    try {
-      const date = new Date(dateTime);
-      return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return dateTime;
-    }
-  };
+  // Production QC counts
+  const prodDraft = prodQCCounts?.draft ?? 0;
+  const prodSubmitted = prodQCCounts?.submitted ?? 0;
+  const prodApproved = prodQCCounts?.approved ?? 0;
+  const prodRejected = prodQCCounts?.rejected ?? 0;
 
   return (
     <div className="space-y-6">
@@ -155,25 +84,19 @@ export default function QCDashboardPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Quality Control</h2>
           <p className="text-muted-foreground">
-            Manage raw material inspections and quality approvals
+            Manage inspections, production quality checks, and master data
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <DateRangePicker
-            date={dateRangeAsDateObjects}
-            onDateChange={(date) => {
-              if (date && 'from' in date) {
-                setDateRange(date);
-              } else {
-                setDateRange(undefined);
-              }
-            }}
-          />
-          <Button onClick={() => navigate('/qc/pending')} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Start Inspection
-          </Button>
-        </div>
+        <DateRangePicker
+          date={dateRangeAsDateObjects}
+          onDateChange={(date) => {
+            if (date && 'from' in date) {
+              setDateRange(date);
+            } else {
+              setDateRange(undefined);
+            }
+          }}
+        />
       </div>
 
       {isLoading ? (
@@ -182,7 +105,7 @@ export default function QCDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Permission Error */}
+          {/* Error states */}
           {isPermissionError && (
             <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
               <ShieldX className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
@@ -192,13 +115,12 @@ export default function QCDashboardPage() {
                   {apiError?.message || 'You do not have permission to view this data.'}
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <Button variant="outline" size="sm" onClick={() => refetchCounts()}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           )}
 
-          {/* General API Error */}
           {error && !isPermissionError && (
             <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
               <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -208,144 +130,115 @@ export default function QCDashboardPage() {
                   {apiError?.message || 'An error occurred while loading the dashboard.'}
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <Button variant="outline" size="sm" onClick={() => refetchCounts()}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           )}
 
-          {/* Summary Card - Compact like PersonGateInDashboard */}
-          <Card
-            className="bg-primary/5 border-primary/20 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/qc/pending?status=actionable')}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FlaskConical className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium text-primary">Pending Actions</span>
-                </div>
-                <span className="text-3xl font-bold text-primary">{totalPending}</span>
-              </div>
-              <div className="mt-3 pt-3 border-t border-primary/20 flex items-center justify-between text-sm text-muted-foreground">
-                <div className="flex items-center gap-4">
-                  <span>
-                    <span className="font-semibold text-yellow-600 dark:text-yellow-400">
-                      {counts.pending}
-                    </span>{' '}
-                    Pending
-                  </span>
-                  <span>
-                    <span className="font-semibold text-gray-600 dark:text-gray-400">
-                      {counts.draft}
-                    </span>{' '}
-                    Draft
-                  </span>
-                  <span>
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">
-                      {counts.awaiting_approval}
-                    </span>{' '}
-                    Awaiting
-                  </span>
-                </div>
-                <ChevronRight className="h-4 w-4" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Entries - Compact like RawMaterialsDashboard */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Recent Arrival Slips</h3>
-              <button
-                onClick={() => navigate('/qc/pending')}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              >
-                Show more
-                <ChevronRight className="h-3 w-3" />
-              </button>
-            </div>
-
-            {recentItems.length === 0 ? (
-              <div className="flex items-center justify-center h-16 text-sm text-muted-foreground border rounded-lg">
-                No arrival slips yet
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {recentItems.slice(0, 3).map((item) => {
-                  const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
-                  const badgeClass =
-                    STATUS_BADGE_CLASSES[item.workflow_status] ||
-                    'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-
-                  return (
-                    <div
-                      key={item.arrival_slip_id}
-                      className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(getNavigateTo(item))}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="font-medium text-sm">{item.entry_no}</span>
-                        <span
-                          className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${badgeClass}`}
-                        >
-                          {statusConfig?.label || item.workflow_status}
-                        </span>
-                        <span className="text-xs text-muted-foreground hidden sm:inline truncate">
-                          {item.item_name} • {item.party_name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateTime(item.submitted_at)}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
+          {/* Submodule Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Arrival Slips Card */}
+            <Card
+              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-blue-500"
+              onClick={() => navigate('/qc/arrival-slips')}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                      <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <div>
+                      <h3 className="font-semibold">Arrival Slips</h3>
+                      <p className="text-xs text-muted-foreground">Raw material inspections</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-2 rounded-md bg-yellow-50 dark:bg-yellow-900/10">
+                    <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+                      {arrivalPending}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Pending</p>
+                  </div>
+                  <div className="text-center p-2 rounded-md bg-blue-50 dark:bg-blue-900/10">
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                      {arrivalAwaiting}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Awaiting</p>
+                  </div>
+                  <div className="text-center p-2 rounded-md bg-green-50 dark:bg-green-900/10">
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {countsData?.completed ?? 0}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Completed</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Production QC Card */}
+            <Card
+              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-emerald-500"
+              onClick={() => navigate('/qc/production')}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+                      <Factory className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Production QC</h3>
+                      <p className="text-xs text-muted-foreground">In-process & final QC checks</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="text-center p-2 rounded-md bg-gray-50 dark:bg-gray-900/10">
+                    <p className="text-lg font-bold text-gray-600 dark:text-gray-400">
+                      {prodDraft}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Draft</p>
+                  </div>
+                  <div className="text-center p-2 rounded-md bg-blue-50 dark:bg-blue-900/10">
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                      {prodSubmitted}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Submitted</p>
+                  </div>
+                  <div className="text-center p-2 rounded-md bg-green-50 dark:bg-green-900/10">
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {prodApproved}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Approved</p>
+                  </div>
+                  <div className="text-center p-2 rounded-md bg-red-50 dark:bg-red-900/10">
+                    <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                      {prodRejected}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Rejected</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Status Overview - Compact grid like RawMaterialsDashboard */}
+          {/* Master Data Quick Links */}
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Status Overview</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {STATUS_ORDER.map((statusKey) => {
-                const config = STATUS_CONFIG[statusKey];
-                const Icon = config.icon;
-                const count = counts[statusKey] || 0;
-
-                return (
-                  <Card
-                    key={statusKey}
-                    className={`${config.bgColor} border cursor-pointer hover:shadow-md transition-shadow`}
-                    onClick={() => navigate(config.link)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <Icon className={`h-4 w-4 ${config.color}`} />
-                        <span className={`text-xl font-bold ${config.color}`}>{count}</span>
-                      </div>
-                      <p className={`mt-1 text-xs font-medium ${config.color}`}>{config.label}</p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Quick Actions - Compact button grid like PersonGateInDashboard */}
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Master Data</h3>
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
                 className="h-auto py-3 flex flex-col items-center gap-1"
                 onClick={() => navigate('/qc/master/material-types')}
               >
-                <FileText className="h-5 w-5" />
+                <ClipboardCheck className="h-5 w-5" />
                 <span className="text-xs">Material Types</span>
               </Button>
               <Button
@@ -353,7 +246,7 @@ export default function QCDashboardPage() {
                 className="h-auto py-3 flex flex-col items-center gap-1"
                 onClick={() => navigate('/qc/master/parameters')}
               >
-                <FileText className="h-5 w-5" />
+                <FlaskConical className="h-5 w-5" />
                 <span className="text-xs">QC Parameters</span>
               </Button>
             </div>

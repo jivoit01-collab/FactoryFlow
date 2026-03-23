@@ -16,6 +16,8 @@ export const GRPO_PERMISSIONS = {
   VIEW_HISTORY: 'grpo.can_view_grpo_history',
   /** View individual GRPO posting detail */
   VIEW_POSTING: 'grpo.view_grpoposting',
+  /** Manage GRPO attachments (upload, delete, retry) */
+  MANAGE_ATTACHMENTS: 'grpo.can_manage_grpo_attachments',
 } as const;
 
 /** Module prefix for sidebar filtering */

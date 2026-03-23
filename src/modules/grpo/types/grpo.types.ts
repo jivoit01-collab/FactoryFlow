@@ -16,6 +16,29 @@ export type QCStatus =
   | 'ARRIVAL_SLIP_PENDING'
   | 'INSPECTION_PENDING';
 
+// SAP Attachment Status
+export type AttachmentStatus = 'PENDING' | 'UPLOADED' | 'LINKED' | 'FAILED';
+
+// GRPO Attachment (linked to a posted GRPO)
+export interface GRPOAttachment {
+  id: number;
+  file: string;
+  original_filename: string;
+  sap_attachment_status: AttachmentStatus;
+  sap_absolute_entry: number | null;
+  sap_error_message: string | null;
+  uploaded_at: string;
+  uploaded_by: number | null;
+}
+
+// Extra charge for GRPO posting
+export interface ExtraCharge {
+  expense_code: number;
+  amount: number;
+  remarks?: string;
+  tax_code?: string;
+}
+
 // Pending entry (GET /pending/)
 export interface PendingGRPOEntry {
   vehicle_entry_id: number;
@@ -39,6 +62,11 @@ export interface PreviewItem {
   rejected_qty: number;
   uom: string;
   qc_status: QCStatus;
+  unit_price: string | null;
+  tax_code: string | null;
+  warehouse_code: string | null;
+  gl_account: string | null;
+  sap_line_num: number | null;
 }
 
 // Preview PO receipt (GET /preview/{id}/)
@@ -46,6 +74,7 @@ export interface PreviewPOReceipt {
   vehicle_entry_id: number;
   entry_no: string;
   entry_status: string;
+  entry_date?: string;
   is_ready_for_grpo: boolean;
   po_receipt_id: number;
   po_number: string;
@@ -57,16 +86,45 @@ export interface PreviewPOReceipt {
   items: PreviewItem[];
   grpo_status: GRPOStatus | null;
   sap_doc_num: number | null;
+  sap_doc_entry: number | null;
+  branch_id: number | null;
+  vendor_ref: string;
+}
+
+// Post request item
+export interface PostGRPOItemRequest {
+  po_item_receipt_id: number;
+  accepted_qty: number;
+  unit_price?: number;
+  tax_code?: string;
+  gl_account?: string;
+  variety?: string;
 }
 
 // Post request (POST /post/)
 export interface PostGRPORequest {
   vehicle_entry_id: number;
   po_receipt_id: number;
-  items: { po_item_receipt_id: number; accepted_qty: number }[];
+  items: PostGRPOItemRequest[];
   branch_id: number;
   warehouse_code?: string;
   comments?: string;
+  vendor_ref?: string;
+  extra_charges?: ExtraCharge[];
+  attachments?: File[];
+  doc_date?: string;
+  doc_due_date?: string;
+  tax_date?: string;
+  should_roundoff?: boolean;
+}
+
+// Attachment result in post response
+export interface PostGRPOAttachmentResult {
+  id: number;
+  original_filename: string;
+  sap_attachment_status: AttachmentStatus;
+  sap_absolute_entry: number | null;
+  sap_error_message: string | null;
 }
 
 // Post success response
@@ -77,6 +135,7 @@ export interface PostGRPOResponse {
   sap_doc_num: number;
   sap_doc_total: number;
   message: string;
+  attachments: PostGRPOAttachmentResult[];
 }
 
 // History line item
@@ -106,4 +165,5 @@ export interface GRPOHistoryEntry {
   created_at: string;
   updated_at?: string;
   lines: GRPOHistoryLine[];
+  attachments: GRPOAttachment[];
 }

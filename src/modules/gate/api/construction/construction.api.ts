@@ -71,7 +71,7 @@ export interface ConstructionFullViewGateEntry {
 
 export interface ConstructionFullViewVehicle {
   vehicle_number: string;
-  vehicle_type: { id: number; name: string };
+  vehicle_type: string;
   capacity_ton: number;
 }
 

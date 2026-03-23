@@ -8,9 +8,12 @@ pnpm-debug.log*
 lerna-debug.log*
 vitest_mistake.md
 node_modules
-# dist
-# dist-ssr
+dev-dist
+dist
+dist-ssr
 *.local
+
+ssh_key*
 
 # Environment files - NEVER commit these!
 .env
@@ -29,3 +32,4 @@ node_modules
 *.njsproj
 *.sln
 *.sw?
+*markdown*

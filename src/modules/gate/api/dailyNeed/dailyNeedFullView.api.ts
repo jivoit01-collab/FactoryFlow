@@ -13,7 +13,7 @@ export interface DailyNeedFullView {
   };
   vehicle: {
     vehicle_number: string;
-    vehicle_type: { id: number; name: string };
+    vehicle_type: string;
     capacity_ton: number;
   };
   driver: {

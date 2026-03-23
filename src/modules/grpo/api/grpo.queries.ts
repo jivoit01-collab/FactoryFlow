@@ -7,11 +7,14 @@ import { grpoApi } from './grpo.api';
 export const GRPO_QUERY_KEYS = {
   all: ['grpo'] as const,
   pending: () => [...GRPO_QUERY_KEYS.all, 'pending'] as const,
-  preview: (vehicleEntryId: number) => [...GRPO_QUERY_KEYS.all, 'preview', vehicleEntryId] as const,
+  preview: (vehicleEntryId: number) =>
+    [...GRPO_QUERY_KEYS.all, 'preview', vehicleEntryId] as const,
   history: (vehicleEntryId?: number) =>
     [...GRPO_QUERY_KEYS.all, 'history', vehicleEntryId] as const,
   detail: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'detail', postingId] as const,
   warehouses: () => ['warehouses'] as const,
+  attachments: (postingId: number) =>
+    [...GRPO_QUERY_KEYS.all, 'attachments', postingId] as const,
 };
 
 // Get pending GRPO entries
@@ -72,5 +75,50 @@ export function useWarehouses(enabled: boolean = true) {
     queryFn: () => grpoApi.getWarehouses(),
     enabled,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+// List attachments for a GRPO posting
+export function useGRPOAttachments(postingId: number | null) {
+  return useQuery({
+    queryKey: GRPO_QUERY_KEYS.attachments(postingId!),
+    queryFn: () => grpoApi.getAttachments(postingId!),
+    enabled: !!postingId,
+  });
+}
+
+// Upload attachment to a GRPO posting
+export function useUploadGRPOAttachment(postingId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => grpoApi.uploadAttachment(postingId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.attachments(postingId) });
+      queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.detail(postingId) });
+    },
+  });
+}
+
+// Delete a GRPO attachment
+export function useDeleteGRPOAttachment(postingId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: number) => grpoApi.deleteAttachment(postingId, attachmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.attachments(postingId) });
+      queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.detail(postingId) });
+    },
+  });
+}
+
+// Retry a failed SAP attachment upload
+export function useRetryGRPOAttachment(postingId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: number) => grpoApi.retryAttachment(postingId, attachmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.attachments(postingId) });
+      queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.detail(postingId) });
+    },
   });
 }

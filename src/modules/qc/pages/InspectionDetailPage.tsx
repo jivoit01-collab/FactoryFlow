@@ -113,6 +113,7 @@ export default function InspectionDetailPage() {
   const { data: qcParameters = [] } = useQCParametersByMaterialType(
     formData.material_type_id || null,
   );
+  const parametersToShow = isEditing ? qcParameters : (inspection?.parameter_results || qcParameters);
 
   // Mutations
   const createInspection = useCreateInspection();
@@ -189,15 +190,20 @@ export default function InspectionDetailPage() {
   }, [arrivalSlip, inspection, isNewInspection]);
 
   const handleInputChange = (field: keyof CreateInspectionRequest, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (apiErrors[field]) {
-      setApiErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
+  setFormData((prev) => ({ ...prev, [field]: value }));
+
+  if (field === "material_type_id") {
+    setParameterResults({});
+  }
+
+  if (apiErrors[field]) {
+    setApiErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }
+};
 
   const handleParameterChange = (
     parameterId: number,
@@ -562,12 +568,22 @@ export default function InspectionDetailPage() {
       </div>
 
       {/* Error Message */}
-      {apiErrors.general && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {apiErrors.general}
-        </div>
-      )}
+      {(() => {
+        const messages: string[] = [];
+        if (apiErrors.general) messages.push(apiErrors.general);
+        // Show field-level errors that aren't rendered inline (e.g. internal_lot_no)
+        Object.entries(apiErrors).forEach(([key, msg]) => {
+          if (key !== 'general' && key !== 'material_type_id' && !key.startsWith('param_') && key !== 'approval_remarks') {
+            messages.push(msg);
+          }
+        });
+        return messages.length > 0 ? (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <div>{messages.join('. ')}</div>
+          </div>
+        ) : null;
+      })()}
 
       {/* Inspection Form */}
       <Card>
@@ -650,7 +666,7 @@ export default function InspectionDetailPage() {
               required
               value={formData.material_type_id || undefined}
               onChange={(type) => handleInputChange('material_type_id', type?.id || 0)}
-              disabled={!canEdit || isSaving || !!inspection}
+              disabled={!canEdit || isSaving}
               error={apiErrors.material_type_id}
             />
 
@@ -804,7 +820,7 @@ export default function InspectionDetailPage() {
           <CardContent>
             {/* Mobile: stacked card layout */}
             <div className="md:hidden space-y-4">
-              {(inspection?.parameter_results || qcParameters).map((param) => {
+              {(isEditing ? qcParameters : inspection?.parameter_results || qcParameters).map((param) => {
                 const parameterId = 'parameter_master' in param ? param.parameter_master : param.id;
                 const paramName = param.parameter_name;
                 const standardValue = param.standard_value;
@@ -914,7 +930,7 @@ export default function InspectionDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(inspection?.parameter_results || qcParameters).map((param) => {
+                  {parametersToShow.map((param) => {
                     const parameterId =
                       'parameter_master' in param ? param.parameter_master : param.id;
                     const paramName = param.parameter_name;

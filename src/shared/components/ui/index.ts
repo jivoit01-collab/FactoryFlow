@@ -50,6 +50,22 @@ export {
   SheetTitle,
   SheetTrigger,
 } from './sheet';
+export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+} from './select';
+export {
+  Select as NativeSelect,
+  SelectOption,
+  type SelectProps as NativeSelectProps,
+} from './native-select';
 export { Switch, type SwitchProps } from './switch';
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 export { Textarea, type TextareaProps } from './textarea';
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
