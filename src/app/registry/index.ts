@@ -11,6 +11,7 @@ import { grpoModuleConfig } from '@/modules/grpo/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
+import { settingsModuleConfig } from '@/modules/settings/module.config';
 
 /**
  * Central registry of all feature modules
@@ -25,6 +26,7 @@ export const moduleRegistry: ModuleConfig[] = [
   grpoModuleConfig,
   productionModuleConfig,
   notificationsModuleConfig,
+  settingsModuleConfig,
 ];
 
 /**

@@ -333,6 +333,16 @@ export const API_ENDPOINTS = {
     // Delete run
     RUN_DELETE: (runId: number) => `/production-execution/runs/${runId}/`,
   },
+  // Workflow Rules (Settings)
+  WORKFLOW_RULES: {
+    ACTION_POINTS: '/workflow-rules/action-points/',
+    CONDITION_TYPES: '/workflow-rules/condition-types/',
+    RULES: '/workflow-rules/rules/',
+    RULE_DETAIL: (id: number) => `/workflow-rules/rules/${id}/`,
+    RULE_TOGGLE: (id: number) => `/workflow-rules/rules/${id}/toggle/`,
+    CHECK: '/workflow-rules/check/',
+    AUDIT_LOG: '/workflow-rules/audit-log/',
+  },
 } as const;
 
 export const HTTP_STATUS = {

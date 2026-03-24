@@ -42,3 +42,10 @@ export {
   type NotificationDjangoPermission,
 } from './notification.permissions';
 
+// Settings Module (Workflow Rules)
+export {
+  SETTINGS_MODULE_PREFIX,
+  SETTINGS_PERMISSIONS,
+  type SettingsPermission,
+} from './settings.permissions';
+

@@ -44,7 +44,13 @@
       "Bash(python -c \"from quality_control.models import ProductionQCSession, ProductionQCResult; print\\(''Models OK''\\)\")",
       "Bash(python manage.py check)",
       "Bash(python manage.py makemigrations quality_control)",
-      "Bash(python manage.py migrate)"
+      "Bash(python manage.py migrate)",
+      "Bash(for module:*)",
+      "Bash(do echo:*)",
+      "Read(//d/Test_CompanyJivo/factory/FactoryFlow/src/modules/**)",
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "Bash(.venv/Scripts/python manage.py makemigrations workflow_rules --dry-run)",
+      "Bash(.venv/Scripts/python -c \":*)"
     ]
   }
 }
