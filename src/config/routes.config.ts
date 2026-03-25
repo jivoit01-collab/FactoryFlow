@@ -150,6 +150,12 @@ export const ROUTES = {
     title: 'Profile',
     showInSidebar: false,
   },
+
+  SETTINGS: {
+    path: '/settings',
+    title: 'Settings',
+    showInSidebar: false,
+  },
 } as const;
 
 export type RouteName = keyof typeof ROUTES;

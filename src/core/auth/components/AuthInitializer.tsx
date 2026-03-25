@@ -102,6 +102,7 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
     ROUTES.COMPANY_SELECTION.path,
     ROUTES.LOADING_USER.path,
     ROUTES.LOGIN.path,
+    ROUTES.SETTINGS.path,
   ];
   const intendedUrlRef = useRef(
     (AUTH_INTERNAL_PATHS as string[]).includes(location.pathname)

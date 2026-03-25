@@ -10,6 +10,8 @@ import { Button, Collapsible, CollapsibleContent } from '@/shared/components/ui'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
+import { SettingsDialog } from './SettingsDialog';
+
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
@@ -121,7 +123,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       {/* Navigation */}
       <nav
         className={cn(
-          'h-[calc(100vh-4rem)] overflow-y-auto flex flex-col gap-1 py-2',
+          'flex-1 overflow-y-auto flex flex-col gap-1 py-2',
           isCollapsed ? 'items-center' : 'px-2',
         )}
       >
@@ -239,6 +241,16 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           );
         })}
       </nav>
+
+      {/* Settings Button */}
+      <div
+        className={cn(
+          'border-t py-2',
+          isCollapsed ? 'flex justify-center' : 'px-2',
+        )}
+      >
+        <SettingsDialog isCollapsed={isCollapsed} />
+      </div>
 
       {/* Toggle Button */}
       <Button
