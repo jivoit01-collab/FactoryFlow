@@ -1,4 +1,4 @@
-import { Building2, HardHat, Package, UtensilsCrossed, Wrench } from 'lucide-react';
+import { Building2, HardHat, Package, Truck, UtensilsCrossed, Wrench } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -43,6 +43,13 @@ const gateModules: GateModuleCard[] = [
     route: ROUTES.GATE.children?.CONSTRUCTION.path || '/gate/construction',
     color: 'text-orange-600',
     permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
+  },
+  {
+    title: 'Outbound (Empty Vehicle)',
+    icon: <Truck className="h-5 w-5" />,
+    route: '/gate/outbound',
+    color: 'text-teal-600',
+    permissions: [GATE_PERMISSIONS.OUTBOUND.VIEW, GATE_PERMISSIONS.OUTBOUND.VIEW_FULL],
   },
   {
     title: 'Visitor/Labour',

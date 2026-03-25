@@ -7,6 +7,7 @@ export const ENTRY_TYPES = {
   CONSTRUCTION: 'CONSTRUCTION',
   DAILY_NEED: 'DAILY_NEED',
   MAINTENANCE: 'MAINTENANCE',
+  OUTBOUND: 'OUTBOUND',
 } as const;
 
 export type EntryType = (typeof ENTRY_TYPES)[keyof typeof ENTRY_TYPES];
@@ -19,6 +20,7 @@ export const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
   CONSTRUCTION: 'Construction',
   DAILY_NEED: 'Daily Needs',
   MAINTENANCE: 'Maintenance',
+  OUTBOUND: 'Outbound',
 };
 
 // ============================================================================
@@ -82,6 +84,10 @@ export const WIZARD_CONFIGS: Record<EntryType, WizardStepConfig> = {
   MAINTENANCE: {
     totalSteps: 4,
     stepLabels: ['Vehicle & Driver', 'Security Check', 'Maintenance Details', 'Review'],
+  },
+  OUTBOUND: {
+    totalSteps: 4,
+    stepLabels: ['Vehicle & Driver', 'Security Check', 'Outbound Details', 'Review'],
   },
 };
 

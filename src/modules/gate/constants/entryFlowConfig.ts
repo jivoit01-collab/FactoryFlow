@@ -54,3 +54,14 @@ export const MAINTENANCE_FLOW: EntryFlowConfig = {
   allPageTitle: 'Maintenance (Spare parts/Tools)',
   allPageDescription: 'Manage maintenance items, spare parts, and tools gate entries',
 };
+
+export const OUTBOUND_FLOW: EntryFlowConfig = {
+  entryType: ENTRY_TYPES.OUTBOUND,
+  routePrefix: '/gate/outbound',
+  headerTitle: 'Outbound Entry',
+  totalSteps: 4,
+  dashboardTitle: 'Outbound (Empty Vehicle)',
+  dashboardDescription: 'Manage empty vehicle arrivals for outbound dispatch',
+  allPageTitle: 'Outbound (Empty Vehicle)',
+  allPageDescription: 'Manage empty vehicle arrivals for outbound dispatch',
+};

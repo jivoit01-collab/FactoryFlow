@@ -123,6 +123,23 @@ export const GATE_PERMISSIONS = {
     /** Search entries */
     SEARCH: 'person_gatein.can_search_entry',
   },
+  // ============================================
+  // OUTBOUND GATE-IN PERMISSIONS (Empty Vehicle)
+  // ============================================
+  OUTBOUND: {
+    /** View outbound gate entries */
+    VIEW: 'outbound_gatein.view_outboundgateentry',
+    /** View full outbound gate entry */
+    VIEW_FULL: 'gate_core.can_view_outbound_full_entry',
+    /** Create new outbound gate entries */
+    CREATE: 'outbound_gatein.add_outboundgateentry',
+    /** Edit existing outbound gate entries */
+    EDIT: 'outbound_gatein.change_outboundgateentry',
+    /** Complete outbound gate entry */
+    COMPLETE: 'outbound_gatein.can_complete_outbound_entry',
+    /** Release vehicle for loading */
+    RELEASE: 'outbound_gatein.can_release_for_loading',
+  },
 } as const;
 
 /**
@@ -136,6 +153,7 @@ export const GATE_MODULE_PREFIX = [
   'daily_needs_gatein',
   'maintenance_gatein',
   'construction_gatein',
+  'outbound_gatein',
 ] as const;
 
 /**
@@ -148,4 +166,5 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.DAILY_NEEDS)[keyof typeof GATE_PERMISSIONS.DAILY_NEEDS]
   | (typeof GATE_PERMISSIONS.MAINTENANCE)[keyof typeof GATE_PERMISSIONS.MAINTENANCE]
   | (typeof GATE_PERMISSIONS.CONSTRUCTION)[keyof typeof GATE_PERMISSIONS.CONSTRUCTION]
-  | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN];
+  | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN]
+  | (typeof GATE_PERMISSIONS.OUTBOUND)[keyof typeof GATE_PERMISSIONS.OUTBOUND];

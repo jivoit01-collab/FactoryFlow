@@ -35,6 +35,13 @@ export {
   type DashboardsPermission,
 } from './dashboards.permissions';
 
+// Outbound Dispatch Module
+export {
+  DISPATCH_MODULE_PREFIX,
+  DISPATCH_PERMISSIONS,
+  type DispatchPermission,
+} from './dispatch.permissions';
+
 // Notifications Module
 export {
   NOTIFICATION_MODULE_PREFIX,

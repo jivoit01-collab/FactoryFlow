@@ -60,7 +60,7 @@ export const ROUTES = {
   GATE: {
     path: '/gate',
     title: 'Gate',
-    icon: 'Truck',
+    icon: 'DoorOpen',
     showInSidebar: true,
     hasSubmenu: true,
     children: {

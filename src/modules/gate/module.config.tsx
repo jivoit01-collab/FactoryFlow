@@ -1,4 +1,4 @@
-import { Truck } from 'lucide-react';
+import { DoorOpen } from 'lucide-react';
 import { lazy } from 'react';
 
 import { GATE_PERMISSIONS } from '@/config/permissions';
@@ -56,6 +56,15 @@ const ContractorsPage = lazy(() => import('./pages/personGateInPages/Contractors
 const ContractorLaboursPage = lazy(
   () => import('./pages/personGateInPages/ContractorLaboursPage'),
 );
+
+// Outbound wizard pages
+const OutboundDashboard = lazy(() => import('./pages/outboundPages/OutboundDashboard'));
+const OutboundAllPage = lazy(() => import('./pages/outboundPages/OutboundAllPage'));
+const OBStep1Page = lazy(() => import('./pages/outboundPages/Step1Page'));
+const OBStep2Page = lazy(() => import('./pages/outboundPages/Step2Page'));
+const OBStep3Page = lazy(() => import('./pages/outboundPages/Step3Page'));
+const OBAttachmentsPage = lazy(() => import('./pages/outboundPages/AttachmentsPage'));
+const OBReviewPage = lazy(() => import('./pages/outboundPages/ReviewPage'));
 
 // Other gate entry type pages
 const DailyNeedsPage = lazy(() => import('./pages/DailyNeedsPage'));
@@ -407,6 +416,83 @@ export const gateModuleConfig: ModuleConfig = {
       permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
     },
 
+    // ── Outbound (Empty Vehicle) ─────────────────────────────────
+    {
+      path: '/gate/outbound',
+      element: <OutboundDashboard />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.VIEW, GATE_PERMISSIONS.OUTBOUND.VIEW_FULL],
+      breadcrumb: { label: 'Outbound' },
+    },
+    {
+      path: '/gate/outbound/all',
+      element: <OutboundAllPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.VIEW, GATE_PERMISSIONS.OUTBOUND.VIEW_FULL],
+    },
+    // New Outbound Entry - Steps
+    {
+      path: '/gate/outbound/new',
+      element: <OBStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.CREATE],
+    },
+    {
+      path: '/gate/outbound/new/step2',
+      element: <OBStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.CREATE],
+    },
+    {
+      path: '/gate/outbound/new/step3',
+      element: <OBStep3Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.CREATE],
+    },
+    {
+      path: '/gate/outbound/new/attachments',
+      element: <OBAttachmentsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.CREATE],
+    },
+    {
+      path: '/gate/outbound/new/review',
+      element: <OBReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.CREATE],
+    },
+    // Edit Outbound Entry - Steps
+    {
+      path: '/gate/outbound/edit/:entryId/step1',
+      element: <OBStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.EDIT],
+    },
+    {
+      path: '/gate/outbound/edit/:entryId/step2',
+      element: <OBStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.EDIT],
+    },
+    {
+      path: '/gate/outbound/edit/:entryId/step3',
+      element: <OBStep3Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.EDIT],
+    },
+    {
+      path: '/gate/outbound/edit/:entryId/attachments',
+      element: <OBAttachmentsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.EDIT],
+    },
+    {
+      path: '/gate/outbound/edit/:entryId/review',
+      element: <OBReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.OUTBOUND.EDIT],
+    },
+
     // ── Person Gate-In (Visitor/Labour) ──────────────────────────
     {
       path: '/gate/visitor-labour',
@@ -468,7 +554,7 @@ export const gateModuleConfig: ModuleConfig = {
     {
       path: '/gate',
       title: 'Gate',
-      icon: Truck,
+      icon: DoorOpen,
       showInSidebar: true,
       permissions: [GATE_PERMISSIONS.DASHBOARD.VIEW, GATE_PERMISSIONS.GATE_ENTRY.VIEW],
       hasSubmenu: true,
@@ -492,6 +578,11 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/construction',
           title: 'Construction (Civil/Building Work)',
           permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
+        },
+        {
+          path: '/gate/outbound',
+          title: 'Outbound (Empty Vehicle)',
+          permissions: [GATE_PERMISSIONS.OUTBOUND.VIEW, GATE_PERMISSIONS.OUTBOUND.VIEW_FULL],
         },
         {
           path: '/gate/visitor-labour',

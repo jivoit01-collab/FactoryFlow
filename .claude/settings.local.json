@@ -44,7 +44,10 @@
       "Bash(python -c \"from quality_control.models import ProductionQCSession, ProductionQCResult; print\\(''Models OK''\\)\")",
       "Bash(python manage.py check)",
       "Bash(python manage.py makemigrations quality_control)",
-      "Bash(python manage.py migrate)"
+      "Bash(python manage.py migrate)",
+      "Bash(npx -p typescript tsc --noEmit)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(grep -E \"\\(model|\\\\.py$\\)\")"
     ]
   }
 }

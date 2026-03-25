@@ -7,6 +7,7 @@ import { authModuleConfig } from '@/modules/auth/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
+import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
 import { grpoModuleConfig } from '@/modules/grpo/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
@@ -24,6 +25,7 @@ export const moduleRegistry: ModuleConfig[] = [
   qcModuleConfig,
   grpoModuleConfig,
   productionModuleConfig,
+  dispatchModuleConfig,
   notificationsModuleConfig,
 ];
 

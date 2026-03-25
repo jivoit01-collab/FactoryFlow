@@ -160,6 +160,39 @@ export const API_ENDPOINTS = {
     PRODUCTION_QC_SESSION_REJECT: (sessionId: number) =>
       `/quality-control/production-qc/sessions/${sessionId}/reject/`,
   },
+  // Outbound Gate-In
+  OUTBOUND_GATEIN: {
+    PURPOSES: '/outbound-gatein/purposes/',
+    GET: (entryId: number) => `/outbound-gatein/gate-entries/${entryId}/outbound/`,
+    CREATE: (entryId: number) => `/outbound-gatein/gate-entries/${entryId}/outbound/`,
+    UPDATE: (entryId: number) => `/outbound-gatein/gate-entries/${entryId}/outbound/update/`,
+    COMPLETE: (entryId: number) => `/outbound-gatein/gate-entries/${entryId}/complete/`,
+    RELEASE: (entryId: number) => `/outbound-gatein/gate-entries/${entryId}/release-for-loading/`,
+    AVAILABLE_VEHICLES: '/outbound-gatein/available-vehicles/',
+    FULL_VIEW: (entryId: number) => `/gate-core/outbound-gate-entry/${entryId}/`,
+  },
+  // Outbound Dispatch
+  OUTBOUND: {
+    SHIPMENTS: '/outbound/shipments/',
+    SHIPMENT_DETAIL: (id: number) => `/outbound/shipments/${id}/`,
+    SYNC: '/outbound/shipments/sync/',
+    ASSIGN_BAY: (id: number) => `/outbound/shipments/${id}/assign-bay/`,
+    PICK_TASKS: (id: number) => `/outbound/shipments/${id}/pick-tasks/`,
+    GENERATE_PICKS: (id: number) => `/outbound/shipments/${id}/generate-picks/`,
+    PICK_TASK_UPDATE: (id: number) => `/outbound/pick-tasks/${id}/`,
+    PICK_TASK_SCAN: (id: number) => `/outbound/pick-tasks/${id}/scan/`,
+    CONFIRM_PACK: (id: number) => `/outbound/shipments/${id}/confirm-pack/`,
+    STAGE: (id: number) => `/outbound/shipments/${id}/stage/`,
+    LINK_VEHICLE: (id: number) => `/outbound/shipments/${id}/link-vehicle/`,
+    INSPECT_TRAILER: (id: number) => `/outbound/shipments/${id}/inspect-trailer/`,
+    LOAD: (id: number) => `/outbound/shipments/${id}/load/`,
+    SUPERVISOR_CONFIRM: (id: number) => `/outbound/shipments/${id}/supervisor-confirm/`,
+    GENERATE_BOL: (id: number) => `/outbound/shipments/${id}/generate-bol/`,
+    DISPATCH: (id: number) => `/outbound/shipments/${id}/dispatch/`,
+    GOODS_ISSUE: (id: number) => `/outbound/shipments/${id}/goods-issue/`,
+    GOODS_ISSUE_RETRY: (id: number) => `/outbound/shipments/${id}/goods-issue/retry/`,
+    DASHBOARD: '/outbound/dashboard/',
+  },
   // GRPO (Goods Receipt Purchase Order)
   GRPO: {
     PENDING: '/grpo/pending/',

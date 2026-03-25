@@ -7,10 +7,14 @@ import { usePermission } from '@/core/auth';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
 
 const descriptions: Record<string, string> = {
+  '/': 'Overview of all module dashboards and analytics',
   '/gate':
     'Manage gate entries for raw materials, daily needs, maintenance, construction, and visitors',
   '/qc': 'Inspections, approvals, and master data management',
   '/grpo': 'Goods receipt and purchase order posting',
+  '/production': 'Production execution, line management, waste management, and machine management',
+  '/dispatch': 'Shipment picking, packing, loading, and dispatch to customers',
+  '/notifications': 'System alerts, push notifications, and preferences',
 };
 
 export function DashboardStats() {
