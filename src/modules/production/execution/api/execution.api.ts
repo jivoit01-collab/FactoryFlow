@@ -67,6 +67,14 @@ import type {
   WasteApprovalRequest,
   WasteLog,
   YieldReport,
+  ResourceConsumptionReport,
+  MonthlySummaryReport,
+  PlanVsProductionReport,
+  ProcurementVsPlannedReport,
+  OEETrendReport,
+  DowntimeParetoReport,
+  CostAnalysisReport,
+  WasteTrendReport,
 } from '../types';
 
 const EP = API_ENDPOINTS.PRODUCTION_EXECUTION;
@@ -784,10 +792,10 @@ export const executionApi = {
   // Reports
   // =========================================================================
 
-  async getDailyProductionReport(date?: string): Promise<DailyProductionReport> {
+  async getDailyProductionReport(date?: string): Promise<ProductionRunDetail[]> {
     const params: Record<string, string> = {};
     if (date) params.date = date;
-    const res = await apiClient.get<DailyProductionReport>(EP.REPORTS_DAILY, { params });
+    const res = await apiClient.get<ProductionRunDetail[]>(EP.REPORTS_DAILY, { params });
     return res.data;
   },
 
@@ -818,6 +826,54 @@ export const executionApi = {
 
   async getWasteAnalytics(params?: AnalyticsParams): Promise<WasteAnalytics> {
     const res = await apiClient.get<WasteAnalytics>(EP.REPORTS_WASTE_ANALYTICS, { params });
+    return res.data;
+  },
+
+  // =========================================================================
+  // Phase 1 Reports
+  // =========================================================================
+
+  async getResourceConsumptionReport(params?: AnalyticsParams): Promise<ResourceConsumptionReport> {
+    const res = await apiClient.get<ResourceConsumptionReport>(EP.REPORTS_RESOURCE_CONSUMPTION, { params });
+    return res.data;
+  },
+
+  async getMonthlySummaryReport(params: { year: number; line?: number }): Promise<MonthlySummaryReport> {
+    const res = await apiClient.get<MonthlySummaryReport>(EP.REPORTS_MONTHLY_SUMMARY, { params });
+    return res.data;
+  },
+
+  async getPlanVsProductionReport(params?: AnalyticsParams): Promise<PlanVsProductionReport> {
+    const res = await apiClient.get<PlanVsProductionReport>(EP.REPORTS_PLAN_VS_PRODUCTION, { params });
+    return res.data;
+  },
+
+  async getProcurementVsPlannedReport(params: { sap_doc_entry: number }): Promise<ProcurementVsPlannedReport> {
+    const res = await apiClient.get<ProcurementVsPlannedReport>(EP.REPORTS_PROCUREMENT_VS_PLANNED, { params });
+    return res.data;
+  },
+
+  // =========================================================================
+  // Phase 2 Reports
+  // =========================================================================
+
+  async getOEETrendReport(params?: AnalyticsParams & { group_by?: string }): Promise<OEETrendReport> {
+    const res = await apiClient.get<OEETrendReport>(EP.REPORTS_OEE_TREND, { params });
+    return res.data;
+  },
+
+  async getDowntimeParetoReport(params?: AnalyticsParams): Promise<DowntimeParetoReport> {
+    const res = await apiClient.get<DowntimeParetoReport>(EP.REPORTS_DOWNTIME_PARETO, { params });
+    return res.data;
+  },
+
+  async getCostAnalysisReport(params?: AnalyticsParams): Promise<CostAnalysisReport> {
+    const res = await apiClient.get<CostAnalysisReport>(EP.REPORTS_COST_ANALYSIS, { params });
+    return res.data;
+  },
+
+  async getWasteTrendReport(params?: AnalyticsParams): Promise<WasteTrendReport> {
+    const res = await apiClient.get<WasteTrendReport>(EP.REPORTS_WASTE_TREND, { params });
     return res.data;
   },
 };

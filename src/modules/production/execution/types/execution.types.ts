@@ -759,6 +759,289 @@ export interface ApproveClearanceRequest {
 }
 
 // ============================================================================
+// Phase 1 Reports
+// ============================================================================
+
+export interface DailyResourceData {
+  date: string;
+  total_production: number;
+  electricity_units: number;
+  electricity_cost: number;
+  water_volume: number;
+  water_cost: number;
+  gas_units: number;
+  gas_cost: number;
+  compressed_air_units: number;
+  compressed_air_cost: number;
+  labour_hours: number;
+  labour_cost: number;
+  waste_qty: number;
+  total_resource_cost: number;
+  cost_per_case: number;
+}
+
+export interface ResourceConsumptionReport {
+  daily_data: DailyResourceData[];
+  summary: {
+    total_days: number;
+    total_production: number;
+    grand_total_cost: number;
+    avg_cost_per_case: number;
+  };
+}
+
+export interface MonthSummary {
+  month: number;
+  month_name: string;
+  total_runs: number;
+  total_production: number;
+  avg_oee: number;
+  total_cost: number;
+  cost_per_unit: number;
+  total_waste: number;
+  electricity_cost: number;
+  water_cost: number;
+  gas_cost: number;
+  compressed_air_cost: number;
+  labour_cost: number;
+  machine_cost: number;
+  overhead_cost: number;
+  total_breakdown_minutes: number;
+}
+
+export interface MonthlySummaryReport {
+  year: number;
+  months: MonthSummary[];
+  annual_summary: {
+    total_runs: number;
+    total_production: number;
+    avg_oee: number;
+    grand_total_cost: number;
+  };
+}
+
+export interface PlanVsProductionItem {
+  sap_doc_entry: number;
+  sap_doc_num: string;
+  item_code: string;
+  product_name: string;
+  planned_qty: number;
+  actual_production: number;
+  variance: number;
+  achievement_pct: number;
+  status: 'on_track' | 'behind' | 'exceeded';
+}
+
+export interface PlanVsProductionReport {
+  items: PlanVsProductionItem[];
+  summary: {
+    total_orders: number;
+    avg_achievement_pct: number;
+    total_planned: number;
+    total_actual: number;
+  };
+}
+
+export interface ProcurementItem {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  bom_planned_qty: number;
+  procured_qty: number;
+  consumed_qty: number;
+  procurement_fulfillment_pct: number;
+  excess_shortage: number;
+  consumption_vs_planned_pct: number;
+  status: 'fulfilled' | 'shortage' | 'excess';
+}
+
+export interface ProcurementVsPlannedReport {
+  sap_doc_entry: number;
+  sap_doc_num: string;
+  product_name: string;
+  items: ProcurementItem[];
+  summary: {
+    total_items: number;
+    fully_fulfilled: number;
+    shortage_items: number;
+  };
+}
+
+// ============================================================================
+// Phase 2 Reports
+// ============================================================================
+
+// OEE Trend
+export interface OEETrendPoint {
+  period: string;
+  avg_oee: number;
+  avg_availability: number;
+  avg_performance: number;
+  avg_quality: number;
+  run_count: number;
+}
+
+export interface OEEByLine {
+  line: string;
+  avg_oee: number;
+  min_oee: number;
+  max_oee: number;
+  run_count: number;
+}
+
+export interface OEERunDetail {
+  run_id: number;
+  run_number: number;
+  date: string;
+  line: string;
+  line_id: number;
+  availability: number;
+  performance: number;
+  quality: number;
+  oee: number;
+}
+
+export interface OEETrendReport {
+  trend: OEETrendPoint[];
+  by_line: OEEByLine[];
+  per_run: OEERunDetail[];
+  summary: {
+    total_runs: number;
+    avg_oee: number;
+    group_by: string;
+  };
+}
+
+// Downtime Pareto
+export interface DowntimeParetoItem {
+  category: string;
+  count: number;
+  total_minutes: number;
+  percentage: number;
+  cumulative_pct: number;
+}
+
+export interface DowntimeByMachine {
+  machine: string;
+  count: number;
+  total_minutes: number;
+}
+
+export interface DowntimeTrendPoint {
+  date: string;
+  count: number;
+  total_minutes: number;
+}
+
+export interface DowntimeParetoReport {
+  pareto: DowntimeParetoItem[];
+  by_machine: DowntimeByMachine[];
+  trend: DowntimeTrendPoint[];
+  summary: {
+    total_breakdowns: number;
+    total_breakdown_minutes: number;
+    total_running_minutes: number;
+    mtbf_minutes: number;
+    mttr_minutes: number;
+  };
+}
+
+// Cost Analysis
+export interface CostRunDetail {
+  run_id: number;
+  run_number: number;
+  date: string;
+  line: string;
+  product: string;
+  produced_qty: number;
+  raw_material_cost: number;
+  labour_cost: number;
+  machine_cost: number;
+  electricity_cost: number;
+  water_cost: number;
+  gas_cost: number;
+  compressed_air_cost: number;
+  overhead_cost: number;
+  total_cost: number;
+  per_unit_cost: number;
+}
+
+export interface CostTrendPoint {
+  date: string;
+  total_cost: number;
+  production: number;
+  per_unit_cost: number;
+  run_count: number;
+}
+
+export interface CostByLine {
+  line: string;
+  total_cost: number;
+  production: number;
+  avg_per_unit: number;
+  run_count: number;
+}
+
+export interface CostDistributionItem {
+  amount: number;
+  percentage: number;
+}
+
+export interface CostAnalysisReport {
+  per_run: CostRunDetail[];
+  trend: CostTrendPoint[];
+  by_line: CostByLine[];
+  cost_distribution: Record<string, CostDistributionItem>;
+  summary: {
+    total_cost: number;
+    avg_per_unit: number;
+    total_production: number;
+    run_count: number;
+  };
+}
+
+// Waste Trend
+export interface WasteMaterialDetail {
+  material_name: string;
+  uom: string;
+  total_qty: number;
+  count: number;
+}
+
+export interface WasteByReason {
+  reason: string;
+  total_qty: number;
+  count: number;
+}
+
+export interface WasteTrendPoint {
+  date: string;
+  total_qty: number;
+  count: number;
+}
+
+export interface WasteByStatus {
+  status: string;
+  count: number;
+  total_qty: number;
+}
+
+export interface WasteTrendReport {
+  by_material: WasteMaterialDetail[];
+  by_reason: WasteByReason[];
+  trend: WasteTrendPoint[];
+  by_approval_status: WasteByStatus[];
+  summary: {
+    total_waste_qty: number;
+    total_waste_logs: number;
+    unique_materials: number;
+    approval_rate: number;
+    waste_vs_production_pct: number;
+    total_production: number;
+  };
+}
+
+// ============================================================================
 // Filter/Query Params
 // ============================================================================
 

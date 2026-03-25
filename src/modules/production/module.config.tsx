@@ -28,6 +28,14 @@ const DailyProductionReportPage = lazy(
   () => import('./execution/pages/DailyProductionReportPage'),
 );
 const ResourceTrackingPage = lazy(() => import('./execution/pages/ResourceTrackingPage'));
+const ResourceConsumptionReportPage = lazy(() => import('./execution/pages/ResourceConsumptionReportPage'));
+const MonthlySummaryReportPage = lazy(() => import('./execution/pages/MonthlySummaryReportPage'));
+const PlanVsProductionReportPage = lazy(() => import('./execution/pages/PlanVsProductionReportPage'));
+const ProcurementVsPlannedReportPage = lazy(() => import('./execution/pages/ProcurementVsPlannedReportPage'));
+const OEETrendReportPage = lazy(() => import('./execution/pages/OEETrendReportPage'));
+const DowntimeParetoReportPage = lazy(() => import('./execution/pages/DowntimeParetoReportPage'));
+const CostAnalysisReportPage = lazy(() => import('./execution/pages/CostAnalysisReportPage'));
+const WasteTrendReportPage = lazy(() => import('./execution/pages/WasteTrendReportPage'));
 // QC moved to /qc/production module — redirect component
 const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
@@ -161,6 +169,54 @@ export const productionModuleConfig: ModuleConfig = {
     {
       path: '/production/execution/reports/daily',
       element: <DailyProductionReportPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/execution/reports/resource-consumption',
+      element: <ResourceConsumptionReportPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/execution/reports/monthly-summary',
+      element: <MonthlySummaryReportPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/execution/reports/plan-vs-production',
+      element: <PlanVsProductionReportPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/execution/reports/procurement-vs-planned',
+      element: <ProcurementVsPlannedReportPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/execution/reports/oee-trend',
+      element: <OEETrendReportPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/execution/reports/downtime-pareto',
+      element: <DowntimeParetoReportPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/execution/reports/cost-analysis',
+      element: <CostAnalysisReportPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/execution/reports/waste-trend',
+      element: <WasteTrendReportPage />,
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
     },

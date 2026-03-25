@@ -44,7 +44,11 @@
       "Bash(python -c \"from quality_control.models import ProductionQCSession, ProductionQCResult; print\\(''Models OK''\\)\")",
       "Bash(python manage.py check)",
       "Bash(python manage.py makemigrations quality_control)",
-      "Bash(python manage.py migrate)"
+      "Bash(python manage.py migrate)",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/services/report_service.py'', doraise=True\\); py_compile.compile\\(''production_execution/views.py'', doraise=True\\); py_compile.compile\\(''production_execution/urls.py'', doraise=True\\); py_compile.compile\\(''production_execution/services/sap_reader.py'', doraise=True\\); print\\(''All OK''\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/services/report_service.py'', doraise=True\\); py_compile.compile\\(''production_execution/views.py'', doraise=True\\); py_compile.compile\\(''production_execution/urls.py'', doraise=True\\); print\\(''All OK''\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/views.py'', doraise=True\\); print\\(''OK''\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/services/sap_reader.py'', doraise=True\\); print\\(''OK''\\)\")"
     ]
   }
 }

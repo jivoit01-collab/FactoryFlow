@@ -99,6 +99,24 @@ export const EXECUTION_QUERY_KEYS = {
     [...EXECUTION_QUERY_KEYS.all, 'downtime', params] as const,
   wasteAnalytics: (params?: AnalyticsParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'waste-analytics', params] as const,
+  // Phase 1 Reports
+  resourceConsumption: (params?: AnalyticsParams) =>
+    [...EXECUTION_QUERY_KEYS.all, 'resource-consumption', params] as const,
+  monthlySummary: (year: number, line?: number) =>
+    [...EXECUTION_QUERY_KEYS.all, 'monthly-summary', { year, line }] as const,
+  planVsProduction: (params?: AnalyticsParams) =>
+    [...EXECUTION_QUERY_KEYS.all, 'plan-vs-production', params] as const,
+  procurementVsPlanned: (sapDocEntry: number) =>
+    [...EXECUTION_QUERY_KEYS.all, 'procurement-vs-planned', sapDocEntry] as const,
+  // Phase 2 Reports
+  oeeTrend: (params?: AnalyticsParams & { group_by?: string }) =>
+    [...EXECUTION_QUERY_KEYS.all, 'oee-trend', params] as const,
+  downtimePareto: (params?: AnalyticsParams) =>
+    [...EXECUTION_QUERY_KEYS.all, 'downtime-pareto', params] as const,
+  costAnalysis: (params?: AnalyticsParams) =>
+    [...EXECUTION_QUERY_KEYS.all, 'cost-analysis', params] as const,
+  wasteTrend: (params?: AnalyticsParams) =>
+    [...EXECUTION_QUERY_KEYS.all, 'waste-trend', params] as const,
 };
 
 // ============================================================================
@@ -1224,6 +1242,79 @@ export function useWasteAnalytics(params?: AnalyticsParams) {
   return useQuery({
     queryKey: EXECUTION_QUERY_KEYS.wasteAnalytics(params),
     queryFn: () => executionApi.getWasteAnalytics(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+// ============================================================================
+// Phase 1 Reports
+// ============================================================================
+
+export function useResourceConsumptionReport(params?: AnalyticsParams) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.resourceConsumption(params),
+    queryFn: () => executionApi.getResourceConsumptionReport(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useMonthlySummaryReport(year: number, line?: number) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.monthlySummary(year, line),
+    queryFn: () => executionApi.getMonthlySummaryReport({ year, line }),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function usePlanVsProductionReport(params?: AnalyticsParams) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.planVsProduction(params),
+    queryFn: () => executionApi.getPlanVsProductionReport(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useProcurementVsPlannedReport(sapDocEntry: number | null) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.procurementVsPlanned(sapDocEntry!),
+    queryFn: () => executionApi.getProcurementVsPlannedReport({ sap_doc_entry: sapDocEntry! }),
+    enabled: !!sapDocEntry,
+    staleTime: 60 * 1000,
+  });
+}
+
+// ============================================================================
+// Phase 2 Reports
+// ============================================================================
+
+export function useOEETrendReport(params?: AnalyticsParams & { group_by?: string }) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.oeeTrend(params),
+    queryFn: () => executionApi.getOEETrendReport(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useDowntimeParetoReport(params?: AnalyticsParams) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.downtimePareto(params),
+    queryFn: () => executionApi.getDowntimeParetoReport(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCostAnalysisReport(params?: AnalyticsParams) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.costAnalysis(params),
+    queryFn: () => executionApi.getCostAnalysisReport(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useWasteTrendReport(params?: AnalyticsParams) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.wasteTrend(params),
+    queryFn: () => executionApi.getWasteTrendReport(params),
     staleTime: 60 * 1000,
   });
 }
