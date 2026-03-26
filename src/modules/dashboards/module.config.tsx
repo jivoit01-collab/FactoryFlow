@@ -6,6 +6,9 @@ import type { ModuleConfig } from '@/core/types';
 
 const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage'));
 const SAPPlanDashboardPage = lazy(() => import('./sap-plan/pages/SAPPlanDashboardPage'));
+const StockLevelDashboardPage = lazy(
+  () => import('./stock-level/pages/StockLevelDashboardPage'),
+);
 
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
@@ -14,7 +17,10 @@ export const dashboardsModuleConfig: ModuleConfig = {
       path: '/dashboards',
       element: <DashboardsLandingPage />,
       layout: 'main',
-      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
+      permissions: [
+        DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
+        DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+      ],
     },
     {
       path: '/dashboards/sap-plan',
@@ -23,6 +29,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
       breadcrumb: { label: 'SAP Plan' },
     },
+    {
+      path: '/dashboards/stock-levels',
+      element: <StockLevelDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
+      breadcrumb: { label: 'Stock Levels' },
+    },
   ],
   navigation: [
     {
@@ -30,13 +43,21 @@ export const dashboardsModuleConfig: ModuleConfig = {
       title: 'Dashboards',
       icon: BarChart3,
       showInSidebar: true,
-      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
+      permissions: [
+        DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
+        DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+      ],
       hasSubmenu: true,
       children: [
         {
           path: '/dashboards/sap-plan',
           title: 'SAP Material Plan',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
+        },
+        {
+          path: '/dashboards/stock-levels',
+          title: 'Stock Levels',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
         },
       ],
     },

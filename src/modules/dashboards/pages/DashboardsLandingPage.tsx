@@ -1,4 +1,4 @@
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Package } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,6 +23,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/sap-plan',
     color: 'text-indigo-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
+  },
+  {
+    title: 'Stock Levels',
+    description: 'Monitor on-hand inventory against minimum stock thresholds across warehouses',
+    icon: <Package className="h-5 w-5" />,
+    route: '/dashboards/stock-levels',
+    color: 'text-emerald-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
   },
 ];
 

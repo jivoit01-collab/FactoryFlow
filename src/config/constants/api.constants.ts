@@ -204,6 +204,10 @@ export const API_ENDPOINTS = {
     PROCUREMENT: '/sap/plan-dashboard/procurement/',
     SKU_DETAIL: (docEntry: number) => `/sap/plan-dashboard/sku/${docEntry}/`,
   },
+  // Stock Dashboard
+  STOCK_DASHBOARD: {
+    LIST: '/dashboards/stock/',
+  },
   // Production Execution
   PRODUCTION_EXECUTION: {
     // Production Lines
