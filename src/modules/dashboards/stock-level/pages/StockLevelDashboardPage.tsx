@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -14,7 +15,14 @@ function isSAPError(err: unknown): err is ApiError {
 }
 
 export default function StockLevelDashboardPage() {
-  const [filters, setFilters] = useState<StockDashboardFilters>({});
+  const [searchParams] = useSearchParams();
+
+  const initialFilters = useMemo<StockDashboardFilters>(() => {
+    const search = searchParams.get('search');
+    return search ? { search } : {};
+  }, []); // Only read URL params on mount
+
+  const [filters, setFilters] = useState<StockDashboardFilters>(initialFilters);
 
   const handleFiltersChange = useCallback((f: StockDashboardFilters) => setFilters(f), []);
 
@@ -27,7 +35,11 @@ export default function StockLevelDashboardPage() {
         description="Inventory items with minimum stock thresholds — monitor on-hand vs. minimum requirements"
       />
 
-      <StockLevelFilters onFiltersChange={handleFiltersChange} isFetching={query.isFetching} />
+      <StockLevelFilters
+        onFiltersChange={handleFiltersChange}
+        isFetching={query.isFetching}
+        defaultValues={initialFilters}
+      />
 
       {query.error && isSAPError(query.error) && (
         <SAPUnavailableBanner error={query.error as ApiError} onRetry={query.refetch} />

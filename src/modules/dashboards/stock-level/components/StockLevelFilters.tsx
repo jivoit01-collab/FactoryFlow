@@ -12,6 +12,7 @@ const TEXT_DEBOUNCE_MS = 500;
 interface StockLevelFiltersProps {
   onFiltersChange: (filters: StockDashboardFilters) => void;
   isFetching?: boolean;
+  defaultValues?: StockDashboardFilters;
 }
 
 interface FiltersForm {
@@ -28,12 +29,12 @@ function buildFilters(values: Partial<FiltersForm>): StockDashboardFilters {
   return filters;
 }
 
-export function StockLevelFilters({ onFiltersChange, isFetching }: StockLevelFiltersProps) {
+export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues }: StockLevelFiltersProps) {
   const { register, watch, reset } = useForm<FiltersForm>({
     defaultValues: {
-      search: '',
-      warehouse: '',
-      status: 'all',
+      search: defaultValues?.search ?? '',
+      warehouse: defaultValues?.warehouse ?? '',
+      status: (defaultValues?.status as FiltersForm['status']) ?? 'all',
     },
   });
 
