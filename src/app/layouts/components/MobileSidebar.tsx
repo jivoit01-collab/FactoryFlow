@@ -16,6 +16,8 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
+import { SettingsDialog } from './SettingsDialog';
+
 interface MobileSidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -193,6 +195,11 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             );
           })}
         </nav>
+
+        {/* Settings Button */}
+        <div className="border-t px-2 py-2">
+          <SettingsDialog isCollapsed={false} />
+        </div>
       </SheetContent>
     </Sheet>
   );
