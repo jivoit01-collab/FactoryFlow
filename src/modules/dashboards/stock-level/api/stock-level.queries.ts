@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { STOCK_LEVEL_STALE_TIME } from '../constants';
 import type { StockDashboardFilters } from '../types';
 import { stockLevelApi } from './stock-level.api';
+import { useAuth } from '@/core/auth';
 
 // ============================================================================
 // Query Keys
@@ -10,8 +11,9 @@ import { stockLevelApi } from './stock-level.api';
 
 export const STOCK_LEVEL_QUERY_KEYS = {
   all: ['stock-dashboard'] as const,
-  list: (filters?: StockDashboardFilters) =>
-    [...STOCK_LEVEL_QUERY_KEYS.all, 'list', filters] as const,
+
+  list: (filters?: StockDashboardFilters, companyId?: number | string) =>
+    [...STOCK_LEVEL_QUERY_KEYS.all, 'list', companyId, filters] as const,
 };
 
 // ============================================================================
@@ -29,8 +31,13 @@ function sapRetry(failureCount: number, error: unknown): boolean {
 // ============================================================================
 
 export function useStockLevels(filters?: StockDashboardFilters) {
+  const { currentCompany } = useAuth();
+
   return useQuery({
-    queryKey: STOCK_LEVEL_QUERY_KEYS.list(filters),
+    queryKey: STOCK_LEVEL_QUERY_KEYS.list(
+      filters,
+      currentCompany?.company_id
+    ),
     queryFn: () => stockLevelApi.getStockLevels(filters),
     staleTime: STOCK_LEVEL_STALE_TIME,
     retry: sapRetry,

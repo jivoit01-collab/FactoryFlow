@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui';
+import { queryClient } from '@/core/api';
 
 /**
  * CompanySelectionPage component
@@ -51,6 +52,8 @@ export default function CompanySelectionPage() {
 
       // Save company to IndexedDB
       await indexedDBService.updateCurrentCompany(selectedCompany);
+
+      await queryClient.invalidateQueries();
 
       // Update Redux state
       dispatch(switchCompany(selectedCompany));
