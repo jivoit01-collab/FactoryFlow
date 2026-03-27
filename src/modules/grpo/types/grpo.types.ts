@@ -105,7 +105,7 @@ export interface PostGRPOItemRequest {
 // Post request (POST /post/)
 export interface PostGRPORequest {
   vehicle_entry_id: number;
-  po_receipt_id: number;
+  po_receipt_ids: number[];
   items: PostGRPOItemRequest[];
   branch_id: number;
   warehouse_code?: string;
@@ -167,4 +167,24 @@ export interface GRPOHistoryEntry {
   updated_at?: string;
   lines: GRPOHistoryLine[];
   attachments: GRPOAttachment[];
+  // Merged GRPO fields
+  is_merged?: boolean;
+  po_numbers?: string[];
+  merged_po_receipts?: number[];
+}
+
+// Supplier group for pending entries (used for merge selection)
+export interface PendingSupplierGroup {
+  supplier_code: string;
+  supplier_name: string;
+  po_receipts: {
+    po_receipt_id: number;
+    po_number: string;
+    branch_id: number | null;
+  }[];
+}
+
+// Enhanced pending entry with supplier grouping
+export interface PendingGRPOEntryWithSuppliers extends PendingGRPOEntry {
+  suppliers?: PendingSupplierGroup[];
 }
