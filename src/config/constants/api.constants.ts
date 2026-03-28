@@ -210,7 +210,8 @@ export const API_ENDPOINTS = {
   },
   // Inventory Age & Value Dashboard
   INVENTORY_AGE_DASHBOARD: {
-    LIST: '/dashboards/inventory-age/',
+    FILTER_OPTIONS: '/dashboards/inventory-age/filter-options/',
+    REPORT: '/dashboards/inventory-age/report/',
   },
   // Production Execution
   PRODUCTION_EXECUTION: {

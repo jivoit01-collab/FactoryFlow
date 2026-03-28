@@ -5,15 +5,14 @@ import { useForm } from 'react-hook-form';
 import { Button, Input, Label, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
 
 import { AGE_FILTER_OPTIONS } from '../constants';
-import type { InventoryAgeFilterOptions, InventoryAgeFilters } from '../types';
+import type { InventoryAgeFilterOptions, InventoryAgeFilters as FiltersType } from '../types';
 
 const TEXT_DEBOUNCE_MS = 500;
 
 interface InventoryAgeFiltersProps {
-  onFiltersChange: (filters: InventoryAgeFilters) => void;
+  onFiltersChange: (filters: FiltersType) => void;
   isFetching?: boolean;
   filterOptions?: InventoryAgeFilterOptions;
-  defaultValues?: InventoryAgeFilters;
 }
 
 interface FiltersForm {
@@ -25,11 +24,11 @@ interface FiltersForm {
   min_age: string;
 }
 
-function buildFilters(values: Partial<FiltersForm>): InventoryAgeFilters {
-  const filters: InventoryAgeFilters = {};
+function buildFilters(values: Partial<FiltersForm>): FiltersType {
+  const filters: FiltersType = {};
+  if (values.item_group) filters.item_group = values.item_group;
   if (values.search) filters.search = values.search;
   if (values.warehouse) filters.warehouse = values.warehouse;
-  if (values.item_group) filters.item_group = values.item_group;
   if (values.sub_group) filters.sub_group = values.sub_group;
   if (values.variety) filters.variety = values.variety;
   if (values.min_age && values.min_age !== '0') filters.min_age = Number(values.min_age);
@@ -40,16 +39,15 @@ export function InventoryAgeFilters({
   onFiltersChange,
   isFetching,
   filterOptions,
-  defaultValues,
 }: InventoryAgeFiltersProps) {
   const { register, watch, reset } = useForm<FiltersForm>({
     defaultValues: {
-      search: defaultValues?.search ?? '',
-      warehouse: defaultValues?.warehouse ?? '',
-      item_group: defaultValues?.item_group ?? '',
-      sub_group: defaultValues?.sub_group ?? '',
-      variety: defaultValues?.variety ?? '',
-      min_age: defaultValues?.min_age ? String(defaultValues.min_age) : '0',
+      search: '',
+      warehouse: '',
+      item_group: '',
+      sub_group: '',
+      variety: '',
+      min_age: '0',
     },
   });
 
@@ -82,6 +80,21 @@ export function InventoryAgeFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
+      {/* Item Group — primary filter */}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="inv-age-item-group" className="text-xs font-semibold">
+          Item Group *
+        </Label>
+        <Select id="inv-age-item-group" className="w-52" {...register('item_group')}>
+          <SelectOption value="">-- Select Group --</SelectOption>
+          {filterOptions?.item_groups.map((g) => (
+            <SelectOption key={g.item_group_code} value={g.item_group_name}>
+              {g.item_group_name}
+            </SelectOption>
+          ))}
+        </Select>
+      </div>
+
       {/* Search */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="inv-age-search" className="text-xs">Search</Label>
@@ -101,17 +114,6 @@ export function InventoryAgeFilters({
           <SelectOption value="">All</SelectOption>
           {filterOptions?.warehouses.map((w) => (
             <SelectOption key={w} value={w}>{w}</SelectOption>
-          ))}
-        </Select>
-      </div>
-
-      {/* Item Group */}
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inv-age-item-group" className="text-xs">Item Group</Label>
-        <Select id="inv-age-item-group" className="w-48" {...register('item_group')}>
-          <SelectOption value="">All Groups</SelectOption>
-          {filterOptions?.item_groups.map((g) => (
-            <SelectOption key={g} value={g}>{g}</SelectOption>
           ))}
         </Select>
       </div>

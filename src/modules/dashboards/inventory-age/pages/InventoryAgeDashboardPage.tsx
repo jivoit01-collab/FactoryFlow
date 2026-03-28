@@ -1,10 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useState } from 'react';
 
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
-import { useInventoryAge } from '../api';
+import { useInventoryAgeFilterOptions, useInventoryAgeReport } from '../api';
 import {
   InventoryAgeFilters,
   InventoryAgeMetaCards,
@@ -20,21 +19,17 @@ function isSAPError(err: unknown): err is ApiError {
 }
 
 export default function InventoryAgeDashboardPage() {
-  const [searchParams] = useSearchParams();
-
-  const initialFilters = useMemo<InventoryAgeFiltersType>(() => {
-    const search = searchParams.get('search');
-    return search ? { search } : {};
-  }, []);
-
-  const [filters, setFilters] = useState<InventoryAgeFiltersType>(initialFilters);
+  const [filters, setFilters] = useState<InventoryAgeFiltersType>({});
 
   const handleFiltersChange = useCallback(
     (f: InventoryAgeFiltersType) => setFilters(f),
     [],
   );
 
-  const query = useInventoryAge(filters);
+  const optionsQuery = useInventoryAgeFilterOptions();
+  const reportQuery = useInventoryAgeReport(filters);
+
+  const sapError = reportQuery.error ?? optionsQuery.error;
 
   return (
     <div className="space-y-6 p-6">
@@ -45,22 +40,33 @@ export default function InventoryAgeDashboardPage() {
 
       <InventoryAgeFilters
         onFiltersChange={handleFiltersChange}
-        isFetching={query.isFetching}
-        filterOptions={query.data?.filter_options}
-        defaultValues={initialFilters}
+        isFetching={optionsQuery.isFetching || reportQuery.isFetching}
+        filterOptions={optionsQuery.data}
       />
 
-      {query.error && isSAPError(query.error) && (
-        <SAPUnavailableBanner error={query.error as ApiError} onRetry={query.refetch} />
+      {sapError && isSAPError(sapError) && (
+        <SAPUnavailableBanner
+          error={sapError as ApiError}
+          onRetry={reportQuery.refetch}
+        />
       )}
 
-      {!(query.error && isSAPError(query.error)) && (
+      {!filters.item_group && !reportQuery.data && (
+        <div className="rounded-lg border bg-card p-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            Select an <span className="font-medium text-foreground">Item Group</span> to
+            load inventory data.
+          </p>
+        </div>
+      )}
+
+      {filters.item_group && !(sapError && isSAPError(sapError)) && (
         <>
-          <InventoryAgeMetaCards meta={query.data?.meta} />
-          <InventoryAgeWarehouseSummary data={query.data?.warehouse_summary ?? []} />
+          <InventoryAgeMetaCards meta={reportQuery.data?.meta} />
+          <InventoryAgeWarehouseSummary data={reportQuery.data?.warehouse_summary ?? []} />
           <InventoryAgeTable
-            items={query.data?.data ?? []}
-            isLoading={query.isLoading || query.isFetching}
+            items={reportQuery.data?.data ?? []}
+            isLoading={reportQuery.isLoading || reportQuery.isFetching}
           />
         </>
       )}

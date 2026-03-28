@@ -49,8 +49,13 @@ export interface WarehouseSummary {
 // Filter Options (populated from API response)
 // ============================================================================
 
+export interface ItemGroupOption {
+  item_group_code: number;
+  item_group_name: string;
+}
+
 export interface InventoryAgeFilterOptions {
-  item_groups: string[];
+  item_groups: ItemGroupOption[];
   sub_groups: string[];
   warehouses: string[];
   varieties: string[];
@@ -77,5 +82,4 @@ export interface InventoryAgeResponse {
   data: InventoryAgeItem[];
   meta: InventoryAgeMeta;
   warehouse_summary: WarehouseSummary[];
-  filter_options: InventoryAgeFilterOptions;
 }

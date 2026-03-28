@@ -13,8 +13,11 @@ import { inventoryAgeApi } from './inventory-age.api';
 export const INVENTORY_AGE_QUERY_KEYS = {
   all: ['inventory-age-dashboard'] as const,
 
-  list: (filters?: InventoryAgeFilters, companyId?: number | string) =>
-    [...INVENTORY_AGE_QUERY_KEYS.all, 'list', companyId, filters] as const,
+  filterOptions: (companyId?: number | string) =>
+    [...INVENTORY_AGE_QUERY_KEYS.all, 'filter-options', companyId] as const,
+
+  report: (filters: InventoryAgeFilters, companyId?: number | string) =>
+    [...INVENTORY_AGE_QUERY_KEYS.all, 'report', companyId, filters] as const,
 };
 
 // ============================================================================
@@ -31,13 +34,27 @@ function sapRetry(failureCount: number, error: unknown): boolean {
 // Hooks
 // ============================================================================
 
-export function useInventoryAge(filters?: InventoryAgeFilters) {
+/** Lightweight query — returns dropdown options without calling the SP. */
+export function useInventoryAgeFilterOptions() {
   const { currentCompany } = useAuth();
 
   return useQuery({
-    queryKey: INVENTORY_AGE_QUERY_KEYS.list(filters, currentCompany?.company_id),
-    queryFn: () => inventoryAgeApi.getInventoryAge(filters),
+    queryKey: INVENTORY_AGE_QUERY_KEYS.filterOptions(currentCompany?.company_id),
+    queryFn: () => inventoryAgeApi.getFilterOptions(),
     staleTime: INVENTORY_AGE_STALE_TIME,
     retry: sapRetry,
+  });
+}
+
+/** Full report — only fires when item_group is selected. */
+export function useInventoryAgeReport(filters: InventoryAgeFilters) {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: INVENTORY_AGE_QUERY_KEYS.report(filters, currentCompany?.company_id),
+    queryFn: () => inventoryAgeApi.getReport(filters),
+    staleTime: INVENTORY_AGE_STALE_TIME,
+    retry: sapRetry,
+    enabled: !!filters.item_group,
   });
 }
