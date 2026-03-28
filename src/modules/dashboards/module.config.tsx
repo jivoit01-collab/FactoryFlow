@@ -11,6 +11,8 @@ const StockLevelDashboardPage = lazy(
 );
 const InventoryAgeDashboardPage = lazy(
   () => import('./inventory-age/pages/InventoryAgeDashboardPage'),
+const NonMovingDashboardPage = lazy(
+  () => import('./non-moving/pages/NonMovingDashboardPage'),
 );
 
 export const dashboardsModuleConfig: ModuleConfig = {
@@ -24,6 +26,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
+        DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
       ],
     },
     {
@@ -46,6 +49,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
       breadcrumb: { label: 'Inventory Age' },
+      path: '/dashboards/non-moving',
+      element: <NonMovingDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
+      breadcrumb: { label: 'Non-Moving RM' },
     },
   ],
   navigation: [
@@ -58,6 +66,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
+        DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
       ],
       hasSubmenu: true,
       children: [
@@ -75,6 +84,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/inventory-age',
           title: 'Inventory Age',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
+          path: '/dashboards/non-moving',
+          title: 'Non-Moving RM',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
         },
       ],
     },

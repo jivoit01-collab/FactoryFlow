@@ -212,6 +212,10 @@ export const API_ENDPOINTS = {
   INVENTORY_AGE_DASHBOARD: {
     FILTER_OPTIONS: '/dashboards/inventory-age/filter-options/',
     REPORT: '/dashboards/inventory-age/report/',
+  // Non-Moving RM Dashboard
+  NON_MOVING_RM: {
+    REPORT: '/non-moving-rm/report/',
+    ITEM_GROUPS: '/non-moving-rm/item-groups/',
   },
   // Production Execution
   PRODUCTION_EXECUTION: {
