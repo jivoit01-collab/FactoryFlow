@@ -9,6 +9,7 @@ import type { StockItem } from '../types';
 interface StockLevelTableProps {
   items: StockItem[];
   isLoading: boolean;
+  statusFilter?: string[];
 }
 
 type SortCol = keyof Pick<
@@ -34,20 +35,25 @@ function rowStatusClasses(status: StockItem['stock_status']): string {
   }
 }
 
-export function StockLevelTable({ items, isLoading }: StockLevelTableProps) {
+export function StockLevelTable({ items, isLoading, statusFilter }: StockLevelTableProps) {
   const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({
     col: 'health_ratio',
     dir: 'asc',
   });
 
+  const filtered = useMemo(() => {
+    if (!statusFilter?.length) return items;
+    return items.filter((item) => statusFilter.includes(item.stock_status));
+  }, [items, statusFilter]);
+
   const sorted = useMemo(() => {
-    return [...items].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const aVal = a[sort.col] ?? '';
       const bVal = b[sort.col] ?? '';
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sort.dir === 'asc' ? cmp : -cmp;
     });
-  }, [items, sort]);
+  }, [filtered, sort]);
 
   function toggleSort(col: SortCol) {
     setSort((prev) =>
@@ -84,7 +90,7 @@ export function StockLevelTable({ items, isLoading }: StockLevelTableProps) {
     );
   }
 
-  if (items.length === 0) {
+  if (sorted.length === 0) {
     return (
       <Card>
         <CardContent className="p-12 text-center">

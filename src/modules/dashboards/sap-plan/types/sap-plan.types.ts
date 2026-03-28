@@ -10,7 +10,7 @@ export type StockStatus = 'sufficient' | 'partial' | 'stockout';
 // ============================================================================
 
 export interface PlanDashboardFilters {
-  status?: ProductionOrderStatus | 'all';
+  status?: ProductionOrderStatus[];
   due_date_from?: string;
   due_date_to?: string;
   warehouse?: string;

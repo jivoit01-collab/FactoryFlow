@@ -4,10 +4,10 @@
 
 export interface InventoryAgeFilters {
   search?: string;
-  warehouse?: string;
+  warehouse?: string[];
   item_group?: string;
-  sub_group?: string;
-  variety?: string;
+  sub_group?: string[];
+  variety?: string[];
   min_age?: number;
 }
 

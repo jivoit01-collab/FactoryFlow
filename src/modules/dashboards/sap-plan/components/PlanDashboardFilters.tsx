@@ -1,8 +1,8 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
-import { Button, Checkbox, Input, Label, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
+import { Button, Checkbox, Input, Label, MultiSelect } from '@/shared/components/ui';
 
 import { STATUS_FILTER_OPTIONS } from '../constants';
 import type { PlanDashboardFilters } from '../types';
@@ -16,7 +16,7 @@ interface PlanDashboardFiltersProps {
 }
 
 interface FiltersForm {
-  status: 'all' | 'planned' | 'released';
+  status: string[];
   due_date_from: string;
   due_date_to: string;
   warehouse: string;
@@ -26,7 +26,7 @@ interface FiltersForm {
 
 function buildFilters(values: Partial<FiltersForm>): PlanDashboardFilters {
   const filters: PlanDashboardFilters = {};
-  if (values.status && values.status !== 'all') filters.status = values.status;
+  if (values.status?.length) filters.status = values.status as PlanDashboardFilters['status'];
   if (values.due_date_from) filters.due_date_from = values.due_date_from;
   if (values.due_date_to) filters.due_date_to = values.due_date_to;
   if (values.warehouse) filters.warehouse = values.warehouse;
@@ -36,9 +36,9 @@ function buildFilters(values: Partial<FiltersForm>): PlanDashboardFilters {
 }
 
 export function PlanDashboardFilters({ onFiltersChange, defaultValues, isFetching }: PlanDashboardFiltersProps) {
-  const { register, watch, reset, getValues } = useForm<FiltersForm>({
+  const { register, watch, reset, getValues, control } = useForm<FiltersForm>({
     defaultValues: {
-      status: defaultValues?.status ?? 'all',
+      status: defaultValues?.status ?? [],
       due_date_from: defaultValues?.due_date_from ?? '',
       due_date_to: defaultValues?.due_date_to ?? '',
       warehouse: defaultValues?.warehouse ?? '',
@@ -72,7 +72,7 @@ export function PlanDashboardFilters({ onFiltersChange, defaultValues, isFetchin
 
   function handleReset() {
     reset({
-      status: 'all',
+      status: [],
       due_date_from: '',
       due_date_to: '',
       warehouse: '',
@@ -89,13 +89,23 @@ export function PlanDashboardFilters({ onFiltersChange, defaultValues, isFetchin
       {/* Status */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="filter-status" className="text-xs">Status</Label>
-        <Select id="filter-status" className="w-36" {...register('status')}>
-          {STATUS_FILTER_OPTIONS.map((opt) => (
-            <SelectOption key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectOption>
-          ))}
-        </Select>
+        <Controller
+          name="status"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              id="filter-status"
+              options={STATUS_FILTER_OPTIONS.filter((o) => o.value !== 'all').map((o) => ({
+                label: o.label,
+                value: o.value,
+              }))}
+              selected={field.value}
+              onChange={field.onChange}
+              placeholder="All"
+              className="w-36"
+            />
+          )}
+        />
       </div>
 
       {/* Due Date From */}

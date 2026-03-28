@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -11,7 +11,7 @@ import {
   InventoryAgeWarehouseSummary,
 } from '../components';
 import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
-import type { InventoryAgeFilters as InventoryAgeFiltersType } from '../types';
+import type { InventoryAgeFilters as InventoryAgeFiltersType, InventoryAgeItem, InventoryAgeMeta, WarehouseSummary } from '../types';
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;
@@ -30,6 +30,55 @@ export default function InventoryAgeDashboardPage() {
   const reportQuery = useInventoryAgeReport(filters);
 
   const sapError = reportQuery.error ?? optionsQuery.error;
+
+  const filteredItems = useMemo(() => {
+    let result = reportQuery.data?.data ?? [];
+    if (filters.warehouse?.length) {
+      result = result.filter((item) => filters.warehouse!.includes(item.warehouse));
+    }
+    if (filters.sub_group?.length) {
+      result = result.filter((item) => filters.sub_group!.includes(item.sub_group));
+    }
+    if (filters.variety?.length) {
+      result = result.filter((item) => filters.variety!.includes(item.variety));
+    }
+    return result;
+  }, [reportQuery.data, filters.warehouse, filters.sub_group, filters.variety]);
+
+  const filteredMeta = useMemo((): InventoryAgeMeta | undefined => {
+    if (!reportQuery.data) return undefined;
+    const whsSet = new Set(filteredItems.map((i) => i.warehouse));
+    return {
+      total_items: filteredItems.length,
+      total_value: filteredItems.reduce((s, i) => s + i.in_stock_value, 0),
+      total_quantity: filteredItems.reduce((s, i) => s + i.on_hand, 0),
+      total_litres: filteredItems.reduce((s, i) => s + i.litres, 0),
+      warehouse_count: whsSet.size,
+      fetched_at: reportQuery.data.meta.fetched_at,
+    };
+  }, [reportQuery.data, filteredItems]);
+
+  const filteredWarehouseSummary = useMemo((): WarehouseSummary[] => {
+    const map = new Map<string, WarehouseSummary>();
+    for (const item of filteredItems) {
+      const existing = map.get(item.warehouse);
+      if (existing) {
+        existing.item_count += 1;
+        existing.total_value += item.in_stock_value;
+        existing.total_quantity += item.on_hand;
+        existing.total_litres += item.litres;
+      } else {
+        map.set(item.warehouse, {
+          warehouse: item.warehouse,
+          item_count: 1,
+          total_value: item.in_stock_value,
+          total_quantity: item.on_hand,
+          total_litres: item.litres,
+        });
+      }
+    }
+    return [...map.values()];
+  }, [filteredItems]);
 
   return (
     <div className="space-y-6 p-6">
@@ -62,10 +111,10 @@ export default function InventoryAgeDashboardPage() {
 
       {filters.item_group && !(sapError && isSAPError(sapError)) && (
         <>
-          <InventoryAgeMetaCards meta={reportQuery.data?.meta} />
-          <InventoryAgeWarehouseSummary data={reportQuery.data?.warehouse_summary ?? []} />
+          <InventoryAgeMetaCards meta={filteredMeta} />
+          <InventoryAgeWarehouseSummary data={filteredWarehouseSummary} />
           <InventoryAgeTable
-            items={reportQuery.data?.data ?? []}
+            items={filteredItems}
             isLoading={reportQuery.isLoading || reportQuery.isFetching}
           />
         </>

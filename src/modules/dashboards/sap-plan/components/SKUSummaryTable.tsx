@@ -11,6 +11,7 @@ import { SKUDetailPanel } from './SKUDetailPanel';
 interface SKUSummaryTableProps {
   orders: SummaryOrder[];
   isLoading: boolean;
+  statusFilter?: string[];
 }
 
 type SortCol = keyof Pick<
@@ -25,21 +26,26 @@ function formatDate(dateStr: string | null): string {
   return `${d} ${months[parseInt(m, 10) - 1]} ${y}`;
 }
 
-export function SKUSummaryTable({ orders, isLoading }: SKUSummaryTableProps) {
+export function SKUSummaryTable({ orders, isLoading, statusFilter }: SKUSummaryTableProps) {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({
     col: 'due_date',
     dir: 'asc',
   });
 
+  const filtered = useMemo(() => {
+    if (!statusFilter?.length) return orders;
+    return orders.filter((order) => statusFilter.includes(order.status));
+  }, [orders, statusFilter]);
+
   const sorted = useMemo(() => {
-    return [...orders].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const aVal = a[sort.col] ?? '';
       const bVal = b[sort.col] ?? '';
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sort.dir === 'asc' ? cmp : -cmp;
     });
-  }, [orders, sort]);
+  }, [filtered, sort]);
 
   function toggleSort(col: SortCol) {
     setSort((prev) =>
@@ -72,7 +78,7 @@ export function SKUSummaryTable({ orders, isLoading }: SKUSummaryTableProps) {
     );
   }
 
-  if (orders.length === 0) {
+  if (sorted.length === 0) {
     return (
       <Card>
         <CardContent className="p-12 text-center">

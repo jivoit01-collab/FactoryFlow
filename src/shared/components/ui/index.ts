@@ -36,6 +36,7 @@ export {
 } from './dropdown-menu';
 export { Input, type InputProps } from './input';
 export { Label } from './label';
+export { MultiSelect, type MultiSelectOption, type MultiSelectProps } from './multi-select';
 export { Popover, PopoverContent, PopoverTrigger } from './popover';
 export { Separator } from './separator';
 export {

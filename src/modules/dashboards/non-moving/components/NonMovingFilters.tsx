@@ -1,8 +1,8 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
-import { Button, Input, Label, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
+import { Button, Input, Label, MultiSelect, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
 
 import { NON_MOVING_AGE_OPTIONS } from '../constants';
 import type { ItemGroup, NonMovingFilters as NonMovingFiltersType } from '../types';
@@ -22,8 +22,8 @@ interface NonMovingFiltersProps {
 interface FiltersForm {
   age: string;
   item_group: string;
-  warehouse: string;
-  sub_group: string;
+  warehouse: string[];
+  sub_group: string[];
   search: string;
 }
 
@@ -31,8 +31,8 @@ function buildFilters(values: Partial<FiltersForm>): NonMovingFiltersType {
   return {
     age: Number(values.age) || 45,
     item_group: Number(values.item_group) || 0,
-    warehouse: values.warehouse || undefined,
-    sub_group: values.sub_group || undefined,
+    warehouse: values.warehouse?.length ? values.warehouse : undefined,
+    sub_group: values.sub_group?.length ? values.sub_group : undefined,
     search: values.search || undefined,
   };
 }
@@ -46,12 +46,12 @@ export function NonMovingFilters({
   warehouses = [],
   subGroups = [],
 }: NonMovingFiltersProps) {
-  const { register, watch, reset, setValue } = useForm<FiltersForm>({
+  const { register, watch, reset, setValue, control } = useForm<FiltersForm>({
     defaultValues: {
       age: String(defaultValues.age),
       item_group: String(defaultValues.item_group),
-      warehouse: defaultValues.warehouse ?? '',
-      sub_group: defaultValues.sub_group ?? '',
+      warehouse: defaultValues.warehouse ?? [],
+      sub_group: defaultValues.sub_group ?? [],
       search: defaultValues.search ?? '',
     },
   });
@@ -90,7 +90,7 @@ export function NonMovingFilters({
       (g) => g.item_group_name.toLowerCase() === 'raw material',
     );
     const defaultGroup = rawMaterial?.item_group_code ?? itemGroups[0]?.item_group_code ?? 0;
-    reset({ age: '45', item_group: String(defaultGroup), warehouse: '', sub_group: '', search: '' });
+    reset({ age: '45', item_group: String(defaultGroup), warehouse: [], sub_group: [], search: '' });
     onFiltersChange({ age: 45, item_group: defaultGroup });
   }
 
@@ -132,35 +132,39 @@ export function NonMovingFilters({
       {/* Warehouse */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="nm-filter-warehouse" className="text-xs">Warehouse</Label>
-        <Select
-          id="nm-filter-warehouse"
-          className="w-48"
-          {...register('warehouse')}
-        >
-          <SelectOption value="">All Warehouses</SelectOption>
-          {warehouses.map((whs) => (
-            <SelectOption key={whs} value={whs}>
-              {whs}
-            </SelectOption>
-          ))}
-        </Select>
+        <Controller
+          name="warehouse"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              id="nm-filter-warehouse"
+              options={warehouses.map((w) => ({ label: w, value: w }))}
+              selected={field.value}
+              onChange={field.onChange}
+              placeholder="All Warehouses"
+              className="w-48"
+            />
+          )}
+        />
       </div>
 
       {/* Sub Group */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="nm-filter-subgroup" className="text-xs">Sub Group</Label>
-        <Select
-          id="nm-filter-subgroup"
-          className="w-48"
-          {...register('sub_group')}
-        >
-          <SelectOption value="">All Sub Groups</SelectOption>
-          {subGroups.map((sg) => (
-            <SelectOption key={sg} value={sg}>
-              {sg}
-            </SelectOption>
-          ))}
-        </Select>
+        <Controller
+          name="sub_group"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              id="nm-filter-subgroup"
+              options={subGroups.map((sg) => ({ label: sg, value: sg }))}
+              selected={field.value}
+              onChange={field.onChange}
+              placeholder="All Sub Groups"
+              className="w-48"
+            />
+          )}
+        />
       </div>
 
       {/* Search */}

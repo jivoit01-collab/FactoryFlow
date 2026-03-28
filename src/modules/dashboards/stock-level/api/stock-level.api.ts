@@ -19,6 +19,6 @@ function buildParams(filters?: StockDashboardFilters): Record<string, string> {
   const p: Record<string, string> = {};
   if (filters.search) p.search = filters.search;
   if (filters.warehouse) p.warehouse = filters.warehouse;
-  if (filters.status && filters.status !== 'all') p.status = filters.status;
+  // status filtering is done client-side (multi-select)
   return p;
 }

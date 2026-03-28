@@ -79,6 +79,7 @@ export default function SAPPlanDashboardPage() {
           <SKUSummaryTable
             orders={summaryQuery.data?.data ?? []}
             isLoading={summaryQuery.isLoading || summaryQuery.isFetching}
+            statusFilter={filters.status}
           />
         </>
       )}

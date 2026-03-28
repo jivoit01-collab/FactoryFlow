@@ -17,7 +17,7 @@ export const INVENTORY_AGE_QUERY_KEYS = {
     [...INVENTORY_AGE_QUERY_KEYS.all, 'filter-options', companyId] as const,
 
   report: (filters: InventoryAgeFilters, companyId?: number | string) =>
-    [...INVENTORY_AGE_QUERY_KEYS.all, 'report', companyId, filters] as const,
+    [...INVENTORY_AGE_QUERY_KEYS.all, 'report', companyId, { item_group: filters.item_group, search: filters.search, min_age: filters.min_age }] as const,
 };
 
 // ============================================================================

@@ -11,7 +11,7 @@ import {
   NonMovingTable,
 } from '../components';
 import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
-import type { NonMovingFilters as NonMovingFiltersType } from '../types';
+import type { BranchSummary, NonMovingFilters as NonMovingFiltersType, ReportSummary } from '../types';
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;
@@ -53,6 +53,53 @@ export default function NonMovingDashboardPage() {
     return [...new Set(items.map((item) => item.sub_group).filter(Boolean))].sort();
   }, [reportQuery.data]);
 
+  const filteredItems = useMemo(() => {
+    let result = reportQuery.data?.data ?? [];
+    if (filters.warehouse?.length) {
+      result = result.filter((item) => filters.warehouse!.includes(item.warehouse));
+    }
+    if (filters.sub_group?.length) {
+      result = result.filter((item) => filters.sub_group!.includes(item.sub_group));
+    }
+    if (filters.search) {
+      const term = filters.search.toLowerCase();
+      result = result.filter(
+        (item) =>
+          item.item_code.toLowerCase().includes(term) ||
+          item.item_name.toLowerCase().includes(term) ||
+          item.branch.toLowerCase().includes(term) ||
+          item.warehouse.toLowerCase().includes(term),
+      );
+    }
+    return result;
+  }, [reportQuery.data, filters.warehouse, filters.sub_group, filters.search]);
+
+  const filteredSummary = useMemo((): ReportSummary | undefined => {
+    if (!reportQuery.data) return undefined;
+    const branchMap = new Map<string, BranchSummary>();
+    for (const item of filteredItems) {
+      const existing = branchMap.get(item.branch);
+      if (existing) {
+        existing.item_count += 1;
+        existing.total_value += item.value;
+        existing.total_quantity += item.quantity;
+      } else {
+        branchMap.set(item.branch, {
+          branch: item.branch,
+          item_count: 1,
+          total_value: item.value,
+          total_quantity: item.quantity,
+        });
+      }
+    }
+    return {
+      total_items: filteredItems.length,
+      total_value: filteredItems.reduce((s, i) => s + i.value, 0),
+      total_quantity: filteredItems.reduce((s, i) => s + i.quantity, 0),
+      by_branch: [...branchMap.values()],
+    };
+  }, [reportQuery.data, filteredItems]);
+
   const handleFiltersChange = useCallback((f: NonMovingFiltersType) => setFilters(f), []);
 
   return (
@@ -78,14 +125,11 @@ export default function NonMovingDashboardPage() {
 
       {!(reportQuery.error && isSAPError(reportQuery.error)) && hasValidFilters && (
         <>
-          <NonMovingMetaCards summary={reportQuery.data?.summary} />
-          <NonMovingBranchSummary branches={reportQuery.data?.summary?.by_branch ?? []} />
+          <NonMovingMetaCards summary={filteredSummary} />
+          <NonMovingBranchSummary branches={filteredSummary?.by_branch ?? []} />
           <NonMovingTable
-            items={reportQuery.data?.data ?? []}
+            items={filteredItems}
             isLoading={reportQuery.isLoading || reportQuery.isFetching}
-            searchTerm={filters.search}
-            warehouseFilter={filters.warehouse}
-            subGroupFilter={filters.sub_group}
           />
         </>
       )}

@@ -6,8 +6,8 @@ export interface NonMovingFilters {
   age: number;
   item_group: number;
   search?: string;
-  warehouse?: string;
-  sub_group?: string;
+  warehouse?: string[];
+  sub_group?: string[];
 }
 
 // ============================================================================

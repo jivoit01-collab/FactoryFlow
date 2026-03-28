@@ -11,7 +11,7 @@ export type StockHealthStatus = 'healthy' | 'low' | 'critical';
 export interface StockDashboardFilters {
   search?: string;
   warehouse?: string;
-  status?: StockHealthStatus | 'all';
+  status?: StockHealthStatus[];
 }
 
 // ============================================================================

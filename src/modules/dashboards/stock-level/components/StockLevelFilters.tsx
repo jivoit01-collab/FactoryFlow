@@ -1,8 +1,8 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
-import { Button, Input, Label, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
+import { Button, Input, Label, MultiSelect } from '@/shared/components/ui';
 
 import { STOCK_STATUS_FILTER_OPTIONS } from '../constants';
 import type { StockDashboardFilters } from '../types';
@@ -18,23 +18,23 @@ interface StockLevelFiltersProps {
 interface FiltersForm {
   search: string;
   warehouse: string;
-  status: 'all' | 'healthy' | 'low' | 'critical';
+  status: string[];
 }
 
 function buildFilters(values: Partial<FiltersForm>): StockDashboardFilters {
   const filters: StockDashboardFilters = {};
   if (values.search) filters.search = values.search;
   if (values.warehouse) filters.warehouse = values.warehouse;
-  if (values.status && values.status !== 'all') filters.status = values.status;
+  if (values.status?.length) filters.status = values.status as StockDashboardFilters['status'];
   return filters;
 }
 
 export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues }: StockLevelFiltersProps) {
-  const { register, watch, reset } = useForm<FiltersForm>({
+  const { register, watch, reset, control } = useForm<FiltersForm>({
     defaultValues: {
       search: defaultValues?.search ?? '',
       warehouse: defaultValues?.warehouse ?? '',
-      status: (defaultValues?.status as FiltersForm['status']) ?? 'all',
+      status: defaultValues?.status ?? [],
     },
   });
 
@@ -61,7 +61,7 @@ export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues }
   }, [watch, onFiltersChange]);
 
   function handleReset() {
-    reset({ search: '', warehouse: '', status: 'all' });
+    reset({ search: '', warehouse: '', status: [] });
     onFiltersChange({});
   }
 
@@ -94,13 +94,23 @@ export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues }
       {/* Status */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="stock-filter-status" className="text-xs">Status</Label>
-        <Select id="stock-filter-status" className="w-36" {...register('status')}>
-          {STOCK_STATUS_FILTER_OPTIONS.map((opt) => (
-            <SelectOption key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectOption>
-          ))}
-        </Select>
+        <Controller
+          name="status"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              id="stock-filter-status"
+              options={STOCK_STATUS_FILTER_OPTIONS.filter((o) => o.value !== 'all').map((o) => ({
+                label: o.label,
+                value: o.value,
+              }))}
+              selected={field.value}
+              onChange={field.onChange}
+              placeholder="All"
+              className="w-36"
+            />
+          )}
+        />
       </div>
 
       {/* Reset */}

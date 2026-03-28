@@ -1,8 +1,8 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
-import { Button, Input, Label, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
+import { Button, Input, Label, MultiSelect, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
 
 import { AGE_FILTER_OPTIONS } from '../constants';
 import type { InventoryAgeFilterOptions, InventoryAgeFilters as FiltersType } from '../types';
@@ -17,10 +17,10 @@ interface InventoryAgeFiltersProps {
 
 interface FiltersForm {
   search: string;
-  warehouse: string;
+  warehouse: string[];
   item_group: string;
-  sub_group: string;
-  variety: string;
+  sub_group: string[];
+  variety: string[];
   min_age: string;
 }
 
@@ -28,9 +28,9 @@ function buildFilters(values: Partial<FiltersForm>): FiltersType {
   const filters: FiltersType = {};
   if (values.item_group) filters.item_group = values.item_group;
   if (values.search) filters.search = values.search;
-  if (values.warehouse) filters.warehouse = values.warehouse;
-  if (values.sub_group) filters.sub_group = values.sub_group;
-  if (values.variety) filters.variety = values.variety;
+  if (values.warehouse?.length) filters.warehouse = values.warehouse;
+  if (values.sub_group?.length) filters.sub_group = values.sub_group;
+  if (values.variety?.length) filters.variety = values.variety;
   if (values.min_age && values.min_age !== '0') filters.min_age = Number(values.min_age);
   return filters;
 }
@@ -40,13 +40,13 @@ export function InventoryAgeFilters({
   isFetching,
   filterOptions,
 }: InventoryAgeFiltersProps) {
-  const { register, watch, reset } = useForm<FiltersForm>({
+  const { register, watch, reset, control } = useForm<FiltersForm>({
     defaultValues: {
       search: '',
-      warehouse: '',
+      warehouse: [],
       item_group: '',
-      sub_group: '',
-      variety: '',
+      sub_group: [],
+      variety: [],
       min_age: '0',
     },
   });
@@ -74,7 +74,7 @@ export function InventoryAgeFilters({
   }, [watch, onFiltersChange]);
 
   function handleReset() {
-    reset({ search: '', warehouse: '', item_group: '', sub_group: '', variety: '', min_age: '0' });
+    reset({ search: '', warehouse: [], item_group: '', sub_group: [], variety: [], min_age: '0' });
     onFiltersChange({});
   }
 
@@ -110,34 +110,58 @@ export function InventoryAgeFilters({
       {/* Warehouse */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="inv-age-warehouse" className="text-xs">Warehouse</Label>
-        <Select id="inv-age-warehouse" className="w-36" {...register('warehouse')}>
-          <SelectOption value="">All</SelectOption>
-          {filterOptions?.warehouses.map((w) => (
-            <SelectOption key={w} value={w}>{w}</SelectOption>
-          ))}
-        </Select>
+        <Controller
+          name="warehouse"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              id="inv-age-warehouse"
+              options={(filterOptions?.warehouses ?? []).map((w) => ({ label: w, value: w }))}
+              selected={field.value}
+              onChange={field.onChange}
+              placeholder="All"
+              className="w-36"
+            />
+          )}
+        />
       </div>
 
       {/* Sub Group */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="inv-age-sub-group" className="text-xs">Sub Group</Label>
-        <Select id="inv-age-sub-group" className="w-40" {...register('sub_group')}>
-          <SelectOption value="">All</SelectOption>
-          {filterOptions?.sub_groups.map((s) => (
-            <SelectOption key={s} value={s}>{s}</SelectOption>
-          ))}
-        </Select>
+        <Controller
+          name="sub_group"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              id="inv-age-sub-group"
+              options={(filterOptions?.sub_groups ?? []).map((s) => ({ label: s, value: s }))}
+              selected={field.value}
+              onChange={field.onChange}
+              placeholder="All"
+              className="w-40"
+            />
+          )}
+        />
       </div>
 
       {/* Variety */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="inv-age-variety" className="text-xs">Variety</Label>
-        <Select id="inv-age-variety" className="w-36" {...register('variety')}>
-          <SelectOption value="">All</SelectOption>
-          {filterOptions?.varieties.map((v) => (
-            <SelectOption key={v} value={v}>{v}</SelectOption>
-          ))}
-        </Select>
+        <Controller
+          name="variety"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              id="inv-age-variety"
+              options={(filterOptions?.varieties ?? []).map((v) => ({ label: v, value: v }))}
+              selected={field.value}
+              onChange={field.onChange}
+              placeholder="All"
+              className="w-36"
+            />
+          )}
+        />
       </div>
 
       {/* Age */}

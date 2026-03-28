@@ -10,12 +10,18 @@ import { sapPlanApi } from './sap-plan.api';
 
 export const SAP_PLAN_QUERY_KEYS = {
   all: ['sap-plan-dashboard'] as const,
-  summary: (filters?: PlanDashboardFilters) =>
-    [...SAP_PLAN_QUERY_KEYS.all, 'summary', filters] as const,
-  details: (filters?: PlanDashboardFilters) =>
-    [...SAP_PLAN_QUERY_KEYS.all, 'details', filters] as const,
-  procurement: (filters?: PlanDashboardFilters) =>
-    [...SAP_PLAN_QUERY_KEYS.all, 'procurement', filters] as const,
+  summary: (filters?: PlanDashboardFilters) => {
+    const { status, ...apiFilters } = filters ?? {};
+    return [...SAP_PLAN_QUERY_KEYS.all, 'summary', apiFilters] as const;
+  },
+  details: (filters?: PlanDashboardFilters) => {
+    const { status, ...apiFilters } = filters ?? {};
+    return [...SAP_PLAN_QUERY_KEYS.all, 'details', apiFilters] as const;
+  },
+  procurement: (filters?: PlanDashboardFilters) => {
+    const { status, ...apiFilters } = filters ?? {};
+    return [...SAP_PLAN_QUERY_KEYS.all, 'procurement', apiFilters] as const;
+  },
   skuDetail: (docEntry: number) =>
     [...SAP_PLAN_QUERY_KEYS.all, 'sku-detail', docEntry] as const,
 };

@@ -42,7 +42,7 @@ export const sapPlanApi = {
 function buildParams(filters?: PlanDashboardFilters): Record<string, string | boolean> {
   if (!filters) return {};
   const p: Record<string, string | boolean> = {};
-  if (filters.status && filters.status !== 'all') p.status = filters.status;
+  // status filtering is done client-side (multi-select)
   if (filters.due_date_from) p.due_date_from = filters.due_date_from;
   if (filters.due_date_to) p.due_date_to = filters.due_date_to;
   if (filters.warehouse) p.warehouse = filters.warehouse;

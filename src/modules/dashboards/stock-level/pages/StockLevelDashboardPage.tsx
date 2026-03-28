@@ -51,6 +51,7 @@ export default function StockLevelDashboardPage() {
           <StockLevelTable
             items={query.data?.data ?? []}
             isLoading={query.isLoading || query.isFetching}
+            statusFilter={filters.status}
           />
         </>
       )}

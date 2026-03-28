@@ -9,9 +9,6 @@ import type { NonMovingItem } from '../types';
 interface NonMovingTableProps {
   items: NonMovingItem[];
   isLoading: boolean;
-  searchTerm?: string;
-  warehouseFilter?: string;
-  subGroupFilter?: string;
 }
 
 type SortCol = keyof Pick<
@@ -33,41 +30,20 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function NonMovingTable({ items, isLoading, searchTerm, warehouseFilter, subGroupFilter }: NonMovingTableProps) {
+export function NonMovingTable({ items, isLoading }: NonMovingTableProps) {
   const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({
     col: 'days_since_last_movement',
     dir: 'desc',
   });
 
-  const filtered = useMemo(() => {
-    let result = items;
-    if (warehouseFilter) {
-      result = result.filter((item) => item.warehouse === warehouseFilter);
-    }
-    if (subGroupFilter) {
-      result = result.filter((item) => item.sub_group === subGroupFilter);
-    }
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.item_code.toLowerCase().includes(term) ||
-          item.item_name.toLowerCase().includes(term) ||
-          item.branch.toLowerCase().includes(term) ||
-          item.warehouse.toLowerCase().includes(term),
-      );
-    }
-    return result;
-  }, [items, searchTerm, warehouseFilter, subGroupFilter]);
-
   const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
+    return [...items].sort((a, b) => {
       const aVal = a[sort.col] ?? '';
       const bVal = b[sort.col] ?? '';
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sort.dir === 'asc' ? cmp : -cmp;
     });
-  }, [filtered, sort]);
+  }, [items, sort]);
 
   function toggleSort(col: SortCol) {
     setSort((prev) =>
@@ -182,7 +158,7 @@ export function NonMovingTable({ items, isLoading, searchTerm, warehouseFilter, 
             <tbody>
               {sorted.map((item) => (
                 <tr
-                  key={`${item.item_code}-${item.branch}`}
+                  key={`${item.item_code}-${item.branch}-${item.warehouse}`}
                   className={cn('border-b transition-colors', rowAgeClasses(item.days_since_last_movement))}
                 >
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
