@@ -34,7 +34,7 @@ export default function InventoryAgeDashboardPage() {
   return (
     <div className="space-y-6 p-6">
       <DashboardHeader
-        title="Inventory Age & Value"
+        title="Inventory"
         description="Stock present across warehouses — age, valuation, and group breakdown"
       />
 

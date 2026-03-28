@@ -33,7 +33,7 @@ const dashboardsModules: DashboardsModuleCard[] = [
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
   },
   {
-    title: 'Inventory Age & Value',
+    title: 'Inventory',
     description: 'Stock age, valuation, and group breakdown across all warehouses',
     icon: <CalendarClock className="h-5 w-5" />,
     route: '/dashboards/inventory-age',
