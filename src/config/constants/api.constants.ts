@@ -208,6 +208,11 @@ export const API_ENDPOINTS = {
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
   },
+  // Non-Moving RM Dashboard
+  NON_MOVING_RM: {
+    REPORT: '/non-moving-rm/report/',
+    ITEM_GROUPS: '/non-moving-rm/item-groups/',
+  },
   // Production Execution
   PRODUCTION_EXECUTION: {
     // Production Lines

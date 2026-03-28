@@ -9,6 +9,9 @@ const SAPPlanDashboardPage = lazy(() => import('./sap-plan/pages/SAPPlanDashboar
 const StockLevelDashboardPage = lazy(
   () => import('./stock-level/pages/StockLevelDashboardPage'),
 );
+const NonMovingDashboardPage = lazy(
+  () => import('./non-moving/pages/NonMovingDashboardPage'),
+);
 
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
@@ -20,6 +23,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [
         DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+        DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
       ],
     },
     {
@@ -36,6 +40,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
       breadcrumb: { label: 'Stock Levels' },
     },
+    {
+      path: '/dashboards/non-moving',
+      element: <NonMovingDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
+      breadcrumb: { label: 'Non-Moving RM' },
+    },
   ],
   navigation: [
     {
@@ -46,6 +57,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [
         DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+        DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
       ],
       hasSubmenu: true,
       children: [
@@ -58,6 +70,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/stock-levels',
           title: 'Stock Levels',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
+        },
+        {
+          path: '/dashboards/non-moving',
+          title: 'Non-Moving RM',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
         },
       ],
     },
