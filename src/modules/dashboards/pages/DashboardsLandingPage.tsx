@@ -1,4 +1,4 @@
-import { BarChart3, Package } from 'lucide-react';
+import { BarChart3, Package, PackageX } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,6 +31,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/stock-levels',
     color: 'text-emerald-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
+  },
+  {
+    title: 'Non-Moving RM',
+    description: 'Identify dead stock and slow-moving raw materials by age and item group',
+    icon: <PackageX className="h-5 w-5" />,
+    route: '/dashboards/non-moving',
+    color: 'text-amber-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
   },
 ];
 
