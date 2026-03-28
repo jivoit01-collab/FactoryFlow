@@ -66,6 +66,7 @@ export interface PreviewItem {
   tax_code: string | null;
   warehouse_code: string | null;
   gl_account: string | null;
+  variety: string | null;
   sap_line_num: number | null;
 }
 

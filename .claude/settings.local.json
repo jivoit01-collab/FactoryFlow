@@ -48,7 +48,13 @@
       "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/services/report_service.py'', doraise=True\\); py_compile.compile\\(''production_execution/views.py'', doraise=True\\); py_compile.compile\\(''production_execution/urls.py'', doraise=True\\); py_compile.compile\\(''production_execution/services/sap_reader.py'', doraise=True\\); print\\(''All OK''\\)\")",
       "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/services/report_service.py'', doraise=True\\); py_compile.compile\\(''production_execution/views.py'', doraise=True\\); py_compile.compile\\(''production_execution/urls.py'', doraise=True\\); print\\(''All OK''\\)\")",
       "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/views.py'', doraise=True\\); print\\(''OK''\\)\")",
-      "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/services/sap_reader.py'', doraise=True\\); print\\(''OK''\\)\")"
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''production_execution/services/sap_reader.py'', doraise=True\\); print\\(''OK''\\)\")",
+      "Bash(grep -r 'Please Select' /d/Test_CompanyJivo/factory_app_v2 --include=*.py --include=*.md --include=*.txt)",
+      "Bash(python manage.py makemigrations raw_material_gatein --name add_variety_to_po_item_receipt)",
+      "Bash(xargs head:*)",
+      "Bash(cat /d/Test_CompanyJivo/FactoryFlow/src/modules/gate/api/*.ts)",
+      "Bash(pip install:*)",
+      "Bash(python generate_ppt.py)"
     ]
   }
 }

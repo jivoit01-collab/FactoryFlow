@@ -79,7 +79,7 @@ export default function GRPOPreviewPage() {
             unit_price: item.unit_price ? parseFloat(item.unit_price) : undefined,
             tax_code: item.tax_code || undefined,
             gl_account: item.gl_account || undefined,
-            variety: undefined,
+            variety: item.variety || undefined,
           };
         });
         const entryDate = po.entry_date ? po.entry_date.slice(0, 10) : '';
