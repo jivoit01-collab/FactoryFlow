@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -43,6 +43,16 @@ export default function NonMovingDashboardPage() {
   const hasValidFilters = filters.item_group !== 0;
   const reportQuery = useNonMovingReport(filters);
 
+  const warehouses = useMemo(() => {
+    const items = reportQuery.data?.data ?? [];
+    return [...new Set(items.map((item) => item.warehouse).filter(Boolean))].sort();
+  }, [reportQuery.data]);
+
+  const subGroups = useMemo(() => {
+    const items = reportQuery.data?.data ?? [];
+    return [...new Set(items.map((item) => item.sub_group).filter(Boolean))].sort();
+  }, [reportQuery.data]);
+
   const handleFiltersChange = useCallback((f: NonMovingFiltersType) => setFilters(f), []);
 
   return (
@@ -58,6 +68,8 @@ export default function NonMovingDashboardPage() {
         defaultValues={filters}
         itemGroups={itemGroupsQuery.data?.data ?? []}
         isLoadingGroups={itemGroupsQuery.isLoading}
+        warehouses={warehouses}
+        subGroups={subGroups}
       />
 
       {reportQuery.error && isSAPError(reportQuery.error) && (
@@ -72,6 +84,8 @@ export default function NonMovingDashboardPage() {
             items={reportQuery.data?.data ?? []}
             isLoading={reportQuery.isLoading || reportQuery.isFetching}
             searchTerm={filters.search}
+            warehouseFilter={filters.warehouse}
+            subGroupFilter={filters.sub_group}
           />
         </>
       )}

@@ -6,6 +6,8 @@ export interface NonMovingFilters {
   age: number;
   item_group: number;
   search?: string;
+  warehouse?: string;
+  sub_group?: string;
 }
 
 // ============================================================================
@@ -17,9 +19,9 @@ export interface NonMovingItem {
   item_code: string;
   item_name: string;
   item_group_name: string;
-  quantity: number;
-  litres: number;
   sub_group: string;
+  warehouse: string;
+  quantity: number;
   value: number;
   last_movement_date: string | null;
   days_since_last_movement: number;

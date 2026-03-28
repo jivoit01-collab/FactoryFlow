@@ -15,11 +15,15 @@ interface NonMovingFiltersProps {
   defaultValues: NonMovingFiltersType;
   itemGroups: ItemGroup[];
   isLoadingGroups?: boolean;
+  warehouses?: string[];
+  subGroups?: string[];
 }
 
 interface FiltersForm {
   age: string;
   item_group: string;
+  warehouse: string;
+  sub_group: string;
   search: string;
 }
 
@@ -27,6 +31,8 @@ function buildFilters(values: Partial<FiltersForm>): NonMovingFiltersType {
   return {
     age: Number(values.age) || 45,
     item_group: Number(values.item_group) || 0,
+    warehouse: values.warehouse || undefined,
+    sub_group: values.sub_group || undefined,
     search: values.search || undefined,
   };
 }
@@ -37,11 +43,15 @@ export function NonMovingFilters({
   defaultValues,
   itemGroups,
   isLoadingGroups,
+  warehouses = [],
+  subGroups = [],
 }: NonMovingFiltersProps) {
   const { register, watch, reset, setValue } = useForm<FiltersForm>({
     defaultValues: {
       age: String(defaultValues.age),
       item_group: String(defaultValues.item_group),
+      warehouse: defaultValues.warehouse ?? '',
+      sub_group: defaultValues.sub_group ?? '',
       search: defaultValues.search ?? '',
     },
   });
@@ -80,7 +90,7 @@ export function NonMovingFilters({
       (g) => g.item_group_name.toLowerCase() === 'raw material',
     );
     const defaultGroup = rawMaterial?.item_group_code ?? itemGroups[0]?.item_group_code ?? 0;
-    reset({ age: '45', item_group: String(defaultGroup), search: '' });
+    reset({ age: '45', item_group: String(defaultGroup), warehouse: '', sub_group: '', search: '' });
     onFiltersChange({ age: 45, item_group: defaultGroup });
   }
 
@@ -116,6 +126,40 @@ export function NonMovingFilters({
               </SelectOption>
             ))
           )}
+        </Select>
+      </div>
+
+      {/* Warehouse */}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="nm-filter-warehouse" className="text-xs">Warehouse</Label>
+        <Select
+          id="nm-filter-warehouse"
+          className="w-48"
+          {...register('warehouse')}
+        >
+          <SelectOption value="">All Warehouses</SelectOption>
+          {warehouses.map((whs) => (
+            <SelectOption key={whs} value={whs}>
+              {whs}
+            </SelectOption>
+          ))}
+        </Select>
+      </div>
+
+      {/* Sub Group */}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="nm-filter-subgroup" className="text-xs">Sub Group</Label>
+        <Select
+          id="nm-filter-subgroup"
+          className="w-48"
+          {...register('sub_group')}
+        >
+          <SelectOption value="">All Sub Groups</SelectOption>
+          {subGroups.map((sg) => (
+            <SelectOption key={sg} value={sg}>
+              {sg}
+            </SelectOption>
+          ))}
         </Select>
       </div>
 

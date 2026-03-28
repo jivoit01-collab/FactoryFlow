@@ -10,11 +10,13 @@ interface NonMovingTableProps {
   items: NonMovingItem[];
   isLoading: boolean;
   searchTerm?: string;
+  warehouseFilter?: string;
+  subGroupFilter?: string;
 }
 
 type SortCol = keyof Pick<
   NonMovingItem,
-  'item_code' | 'item_name' | 'branch' | 'quantity' | 'value' | 'days_since_last_movement' | 'consumption_ratio'
+  'item_code' | 'item_name' | 'branch' | 'warehouse' | 'quantity' | 'value' | 'days_since_last_movement' | 'consumption_ratio'
 >;
 
 function rowAgeClasses(days: number): string {
@@ -31,22 +33,32 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function NonMovingTable({ items, isLoading, searchTerm }: NonMovingTableProps) {
+export function NonMovingTable({ items, isLoading, searchTerm, warehouseFilter, subGroupFilter }: NonMovingTableProps) {
   const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({
     col: 'days_since_last_movement',
     dir: 'desc',
   });
 
   const filtered = useMemo(() => {
-    if (!searchTerm) return items;
-    const term = searchTerm.toLowerCase();
-    return items.filter(
-      (item) =>
-        item.item_code.toLowerCase().includes(term) ||
-        item.item_name.toLowerCase().includes(term) ||
-        item.branch.toLowerCase().includes(term),
-    );
-  }, [items, searchTerm]);
+    let result = items;
+    if (warehouseFilter) {
+      result = result.filter((item) => item.warehouse === warehouseFilter);
+    }
+    if (subGroupFilter) {
+      result = result.filter((item) => item.sub_group === subGroupFilter);
+    }
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (item) =>
+          item.item_code.toLowerCase().includes(term) ||
+          item.item_name.toLowerCase().includes(term) ||
+          item.branch.toLowerCase().includes(term) ||
+          item.warehouse.toLowerCase().includes(term),
+      );
+    }
+    return result;
+  }, [items, searchTerm, warehouseFilter, subGroupFilter]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -129,6 +141,12 @@ export function NonMovingTable({ items, isLoading, searchTerm }: NonMovingTableP
                 >
                   Branch <SortIcon col="branch" />
                 </th>
+                <th
+                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+                  onClick={() => toggleSort('warehouse')}
+                >
+                  Warehouse <SortIcon col="warehouse" />
+                </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Sub Group
                 </th>
@@ -172,6 +190,7 @@ export function NonMovingTable({ items, isLoading, searchTerm }: NonMovingTableP
                   </td>
                   <td className="px-4 py-3 font-medium">{item.item_name}</td>
                   <td className="px-4 py-3">{item.branch}</td>
+                  <td className="px-4 py-3">{item.warehouse}</td>
                   <td className="px-4 py-3 text-muted-foreground">{item.sub_group}</td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {item.quantity.toLocaleString()}

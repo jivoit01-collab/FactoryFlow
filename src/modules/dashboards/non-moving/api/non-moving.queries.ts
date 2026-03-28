@@ -14,7 +14,7 @@ export const NON_MOVING_QUERY_KEYS = {
   all: ['non-moving-rm'] as const,
 
   report: (filters: NonMovingFilters, companyId?: number | string) =>
-    [...NON_MOVING_QUERY_KEYS.all, 'report', companyId, filters] as const,
+    [...NON_MOVING_QUERY_KEYS.all, 'report', companyId, { age: filters.age, item_group: filters.item_group }] as const,
 
   itemGroups: (companyId?: number | string) =>
     [...NON_MOVING_QUERY_KEYS.all, 'item-groups', companyId] as const,
