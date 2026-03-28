@@ -9,6 +9,9 @@ const SAPPlanDashboardPage = lazy(() => import('./sap-plan/pages/SAPPlanDashboar
 const StockLevelDashboardPage = lazy(
   () => import('./stock-level/pages/StockLevelDashboardPage'),
 );
+const InventoryAgeDashboardPage = lazy(
+  () => import('./inventory-age/pages/InventoryAgeDashboardPage'),
+);
 
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
@@ -20,6 +23,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [
         DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+        DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
       ],
     },
     {
@@ -36,6 +40,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
       breadcrumb: { label: 'Stock Levels' },
     },
+    {
+      path: '/dashboards/inventory-age',
+      element: <InventoryAgeDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
+      breadcrumb: { label: 'Inventory Age' },
+    },
   ],
   navigation: [
     {
@@ -46,6 +57,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [
         DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+        DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
       ],
       hasSubmenu: true,
       children: [
@@ -58,6 +70,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/stock-levels',
           title: 'Stock Levels',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
+        },
+        {
+          path: '/dashboards/inventory-age',
+          title: 'Inventory Age',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
         },
       ],
     },

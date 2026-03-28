@@ -1,4 +1,4 @@
-import { BarChart3, Package } from 'lucide-react';
+import { BarChart3, CalendarClock, Package } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,6 +31,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/stock-levels',
     color: 'text-emerald-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
+  },
+  {
+    title: 'Inventory Age & Value',
+    description: 'Stock age, valuation, and group breakdown across all warehouses',
+    icon: <CalendarClock className="h-5 w-5" />,
+    route: '/dashboards/inventory-age',
+    color: 'text-amber-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
   },
 ];
 

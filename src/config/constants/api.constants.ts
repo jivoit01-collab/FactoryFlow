@@ -208,6 +208,10 @@ export const API_ENDPOINTS = {
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
   },
+  // Inventory Age & Value Dashboard
+  INVENTORY_AGE_DASHBOARD: {
+    LIST: '/dashboards/inventory-age/',
+  },
   // Production Execution
   PRODUCTION_EXECUTION: {
     // Production Lines
