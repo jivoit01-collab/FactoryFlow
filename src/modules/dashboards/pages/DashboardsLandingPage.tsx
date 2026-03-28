@@ -39,6 +39,8 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/inventory-age',
     color: 'text-amber-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
+  },
+  {
     title: 'Non-Moving RM',
     description: 'Identify dead stock and slow-moving raw materials by age and item group',
     icon: <PackageX className="h-5 w-5" />,
