@@ -208,6 +208,10 @@ export const API_ENDPOINTS = {
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
   },
+  // Inventory Age & Value Dashboard
+  INVENTORY_AGE_DASHBOARD: {
+    FILTER_OPTIONS: '/dashboards/inventory-age/filter-options/',
+    REPORT: '/dashboards/inventory-age/report/',
   // Non-Moving RM Dashboard
   NON_MOVING_RM: {
     REPORT: '/non-moving-rm/report/',

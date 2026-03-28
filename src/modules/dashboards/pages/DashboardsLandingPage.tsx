@@ -1,4 +1,4 @@
-import { BarChart3, Package, PackageX } from 'lucide-react';
+import { BarChart3, CalendarClock, Package, PackageX } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -33,6 +33,12 @@ const dashboardsModules: DashboardsModuleCard[] = [
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
   },
   {
+    title: 'Inventory',
+    description: 'Stock age, valuation, and group breakdown across all warehouses',
+    icon: <CalendarClock className="h-5 w-5" />,
+    route: '/dashboards/inventory-age',
+    color: 'text-amber-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
     title: 'Non-Moving RM',
     description: 'Identify dead stock and slow-moving raw materials by age and item group',
     icon: <PackageX className="h-5 w-5" />,
