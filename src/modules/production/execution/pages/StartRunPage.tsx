@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Loader2, Plus, X } from 'lucide-react';
+import { ArrowLeft, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -23,9 +23,9 @@ import {
   SelectValue,
 } from '@/shared/components/ui';
 
-import { useCreateRun, useLines, useMachines, useSAPOrders, useSearchSAPItems } from '../api';
+import { useCreateRun, useLines, useMachines, useSAPOrders, useBOMPreview } from '../api';
 import { createRunSchema, type CreateRunFormData } from '../schemas';
-import type { SAPItem, SAPProductionOrder } from '../types';
+import type { SAPProductionOrder } from '../types';
 
 // ============================================================================
 // SAP Order Detail Popover Content
@@ -117,8 +117,8 @@ function StartRunPage() {
   const createRun = useCreateRun();
 
   const [selectedDocEntry, setSelectedDocEntry] = useState<number | null>(null);
-  const [materialSearch, setMaterialSearch] = useState('');
-  const { data: sapItems = [], isLoading: loadingItems } = useSearchSAPItems(materialSearch);
+  const [selectedItemCode, setSelectedItemCode] = useState<string | null>(null);
+  const { data: bomData, isLoading: loadingBOM } = useBOMPreview(selectedItemCode);
 
   const form = useForm<CreateRunFormData>({
     resolver: zodResolver(createRunSchema),
@@ -135,17 +135,31 @@ function StartRunPage() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, replace } = useFieldArray({
     control: form.control,
     name: 'materials',
   });
 
-  const addedCodes = useMemo(() => new Set(fields.map((f) => f.material_code)), [fields]);
-  const availableMaterials = useMemo(
-    () => sapItems.filter((item) => !addedCodes.has(item.ItemCode)),
-    [sapItems, addedCodes],
-  );
-  const handleMaterialSearch = useCallback((s: string) => setMaterialSearch(s), []);
+  // Auto-populate materials from BOM when a SAP order is selected
+  const lastPopulatedItemCode = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      bomData?.components?.length &&
+      selectedItemCode &&
+      lastPopulatedItemCode.current !== selectedItemCode
+    ) {
+      lastPopulatedItemCode.current = selectedItemCode;
+      replace(
+        bomData.components.map((c) => ({
+          material_code: c.ItemCode,
+          material_name: c.ItemName,
+          opening_qty: '0',
+          issued_qty: '0',
+          uom: c.UomCode ?? '',
+        })),
+      );
+    }
+  }, [bomData, selectedItemCode, replace]);
 
   const selectedMachineIds = form.watch('machine_ids') ?? [];
 
@@ -221,10 +235,14 @@ function StartRunPage() {
               onItemSelect={(order) => {
                 form.setValue('sap_doc_entry', order.DocEntry);
                 form.setValue('product', order.ProdName);
+                setSelectedItemCode(order.ItemCode);
               }}
               onClear={() => {
                 form.setValue('sap_doc_entry', undefined);
                 form.setValue('product', '');
+                setSelectedItemCode(null);
+                lastPopulatedItemCode.current = null;
+                replace([]);
               }}
               onSelectedKeyChange={(key) => setSelectedDocEntry(key as number | null)}
               renderPopoverContent={() => (
@@ -342,94 +360,72 @@ function StartRunPage() {
         {/* Raw Materials Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Raw Materials</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Search and add materials from SAP */}
-            <SearchableSelect<SAPItem>
-              items={availableMaterials}
-              isLoading={loadingItems && materialSearch.length >= 2}
-              getItemKey={(item) => item.ItemCode}
-              getItemLabel={(item) => `${item.ItemCode} - ${item.ItemName}`}
-              filterFn={() => true}
-              renderItem={(item) => (
-                <div className="flex items-center justify-between w-full">
-                  <div>
-                    <span className="font-mono text-xs">{item.ItemCode}</span>
-                    <span className="ml-2">{item.ItemName}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{item.UomCode}</span>
-                </div>
+            <CardTitle className="flex items-center gap-2">
+              Raw Materials
+              {loadingBOM && (
+                <span className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Loading BOM...
+                </span>
               )}
-              placeholder="Search raw materials by code or name..."
-              label="Add Material"
-              inputId="material-search"
-              loadingText="Searching..."
-              emptyText="Type at least 2 characters to search"
-              notFoundText="No materials found"
-              onSearchChange={handleMaterialSearch}
-              onItemSelect={(item) => {
-                append({
-                  material_code: item.ItemCode,
-                  material_name: item.ItemName,
-                  opening_qty: '0',
-                  issued_qty: '0',
-                  uom: item.UomCode ?? '',
-                });
-              }}
-              onClear={() => {}}
-            />
+              {bomData && fields.length > 0 && !loadingBOM && (
+                <Badge variant="secondary" className="text-xs font-normal">
+                  {bomData.component_count} from BOM
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {fields.length === 0 && !loadingBOM && (
+              <p className="text-sm text-muted-foreground">
+                {selectedItemCode
+                  ? 'No BOM components found for this item.'
+                  : 'Select a SAP order to auto-load BOM materials.'}
+              </p>
+            )}
 
-            {/* Selected materials */}
             {fields.length > 0 && (
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Selected Materials</Label>
-                <div className="border rounded-md overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left py-2 px-3">Code</th>
-                        <th className="text-left py-2 px-3">Name</th>
-                        <th className="text-left py-2 px-3">Opening Qty</th>
-                        <th className="text-left py-2 px-3">Issued Qty</th>
-                        <th className="text-left py-2 px-3">UoM</th>
-                        <th className="py-2 px-3 w-12" />
+              <div className="border rounded-md overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left py-2 px-3">Code</th>
+                      <th className="text-left py-2 px-3">Name</th>
+                      <th className="text-left py-2 px-3">Opening Qty</th>
+                      <th className="text-left py-2 px-3">Issued Qty</th>
+                      <th className="text-left py-2 px-3">UoM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fields.map((field, index) => (
+                      <tr key={field.id} className="border-b last:border-0">
+                        <td className="py-2 px-3 font-mono text-xs">
+                          {field.material_code}
+                        </td>
+                        <td className="py-2 px-3">{field.material_name}</td>
+                        <td className="py-2 px-3">
+                          <Input
+                            className="h-8 w-28"
+                            type="number"
+                            step="any"
+                            min="0"
+                            {...form.register(`materials.${index}.opening_qty`)}
+                          />
+                        </td>
+                        <td className="py-2 px-3">
+                          <Input
+                            className="h-8 w-28"
+                            type="number"
+                            step="any"
+                            min="0"
+                            {...form.register(`materials.${index}.issued_qty`)}
+                          />
+                        </td>
+                        <td className="py-2 px-3 text-muted-foreground">{field.uom}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {fields.map((field, index) => (
-                        <tr key={field.id} className="border-b last:border-0">
-                          <td className="py-2 px-3 font-mono text-xs">
-                            {field.material_code}
-                          </td>
-                          <td className="py-2 px-3">{field.material_name}</td>
-                          <td className="py-2 px-3">
-                            <Input
-                              className="h-8 w-24"
-                              {...form.register(`materials.${index}.opening_qty`)}
-                            />
-                          </td>
-                          <td className="py-2 px-3">
-                            <Input
-                              className="h-8 w-24"
-                              {...form.register(`materials.${index}.issued_qty`)}
-                            />
-                          </td>
-                          <td className="py-2 px-3 text-muted-foreground">{field.uom}</td>
-                          <td className="py-2 px-3">
-                            <button
-                              type="button"
-                              onClick={() => remove(index)}
-                              className="rounded-full p-1 hover:bg-muted-foreground/20"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>

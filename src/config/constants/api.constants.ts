@@ -308,11 +308,12 @@ export const API_ENDPOINTS = {
       `/production-execution/runs/${runId}/qc/inprocess/${checkId}/`,
     RUN_QC_FINAL: (runId: number) =>
       `/production-execution/runs/${runId}/qc/final/`,
-    // SAP Orders
+    // SAP Orders & BOM
     SAP_ORDERS: '/production-execution/sap/orders/',
     SAP_ORDER_DETAIL: (docEntry: number) =>
       `/production-execution/sap/orders/${docEntry}/`,
     SAP_ITEMS: '/production-execution/sap/items/',
+    SAP_BOM: '/production-execution/sap/bom/',
     // Reports
     REPORTS_DAILY: '/production-execution/reports/daily-production/',
     REPORTS_YIELD: (runId: number) => `/production-execution/reports/yield/${runId}/`,

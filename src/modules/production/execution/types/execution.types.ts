@@ -106,6 +106,20 @@ export interface SAPItem {
   UomCode: string;
 }
 
+export interface SAPBOMComponent {
+  ItemCode: string;
+  ItemName: string;
+  PlannedQty: number;
+  IssuedQty?: number;
+  UomCode: string;
+}
+
+export interface SAPBOMResponse {
+  item_code: string;
+  component_count: number;
+  components: SAPBOMComponent[];
+}
+
 // ============================================================================
 // Production Runs
 // ============================================================================
