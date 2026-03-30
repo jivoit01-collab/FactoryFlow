@@ -105,7 +105,7 @@ export default function NonMovingDashboardPage() {
   return (
     <div className="space-y-6 p-6">
       <DashboardHeader
-        title="Non-Moving Raw Materials"
+        title="Non-Moving"
         description="Raw materials with no movement beyond the specified age threshold — identify dead stock and slow-moving inventory"
       />
 

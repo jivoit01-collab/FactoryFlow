@@ -31,7 +31,7 @@ export default function StockLevelDashboardPage() {
   return (
     <div className="space-y-6 p-6">
       <DashboardHeader
-        title="Stock Levels"
+        title="Stock Benchmark"
         description="Inventory items with minimum stock thresholds — monitor on-hand vs. minimum requirements"
       />
 

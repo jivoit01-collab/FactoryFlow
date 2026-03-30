@@ -25,7 +25,7 @@ const dashboardsModules: DashboardsModuleCard[] = [
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
   },
   {
-    title: 'Stock Levels',
+    title: 'Stock Benchmark',
     description: 'Monitor on-hand inventory against minimum stock thresholds across warehouses',
     icon: <Package className="h-5 w-5" />,
     route: '/dashboards/stock-levels',
@@ -41,7 +41,7 @@ const dashboardsModules: DashboardsModuleCard[] = [
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
   },
   {
-    title: 'Non-Moving RM',
+    title: 'Non-Moving',
     description: 'Identify dead stock and slow-moving raw materials by age and item group',
     icon: <PackageX className="h-5 w-5" />,
     route: '/dashboards/non-moving',

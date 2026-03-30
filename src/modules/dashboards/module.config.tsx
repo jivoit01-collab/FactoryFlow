@@ -42,7 +42,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       element: <StockLevelDashboardPage />,
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
-      breadcrumb: { label: 'Stock Levels' },
+      breadcrumb: { label: 'Stock Benchmark' },
     },
     {
       path: '/dashboards/inventory-age',
@@ -56,7 +56,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       element: <NonMovingDashboardPage />,
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
-      breadcrumb: { label: 'Non-Moving RM' },
+      breadcrumb: { label: 'Non-Moving' },
     },
   ],
   navigation: [
@@ -80,7 +80,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         },
         {
           path: '/dashboards/stock-levels',
-          title: 'Stock Levels',
+          title: 'Stock Benchmark',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
         },
         {
@@ -90,7 +90,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         },
         {
           path: '/dashboards/non-moving',
-          title: 'Non-Moving RM',
+          title: 'Non-Moving',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
         },
       ],
