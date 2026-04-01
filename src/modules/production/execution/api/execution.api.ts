@@ -58,6 +58,7 @@ import type {
   ResourceMachineCost,
   ResourceOverhead,
   ResourceWater,
+  SAPBOMResponse,
   SAPItem,
   SAPOrderDetail,
   SAPProductionOrder,
@@ -178,6 +179,13 @@ export const executionApi = {
 
   async searchSAPItems(search: string): Promise<SAPItem[]> {
     const res = await apiClient.get<SAPItem[]>(EP.SAP_ITEMS, { params: { search } });
+    return res.data;
+  },
+
+  async getBOM(itemCode: string): Promise<SAPBOMResponse> {
+    const res = await apiClient.get<SAPBOMResponse>(EP.SAP_BOM, {
+      params: { item_code: itemCode },
+    });
     return res.data;
   },
 

@@ -272,6 +272,15 @@ export function useSearchSAPItems(search: string) {
   });
 }
 
+export function useBOMPreview(itemCode: string | null) {
+  return useQuery({
+    queryKey: [...EXECUTION_QUERY_KEYS.all, 'sap-bom', itemCode] as const,
+    queryFn: () => executionApi.getBOM(itemCode!),
+    enabled: !!itemCode,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 // ============================================================================
 // Production Runs
 // ============================================================================
