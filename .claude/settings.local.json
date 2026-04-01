@@ -54,7 +54,15 @@
       "Bash(xargs head:*)",
       "Bash(cat /d/Test_CompanyJivo/FactoryFlow/src/modules/gate/api/*.ts)",
       "Bash(pip install:*)",
-      "Bash(python generate_ppt.py)"
+      "Bash(python generate_ppt.py)",
+      "Bash(find D:Test_CompanyJivoFactoryFlow -type f \\\\\\(-name *route* -o -name *controller* \\\\\\) -iname *.js -o -iname *.ts)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(grep -r \"innerHTML\\\\|dangerouslySetInnerHTML\\\\|eval\\\\|Function\\(\" D:Test_CompanyJivoFactoryFlowsrc --include=*.ts --include=*.tsx)",
+      "Bash(grep -v \".tsx$\")",
+      "Bash(grep -v \".jsx$\")",
+      "Bash(grep -v \"^--$\")",
+      "Bash(grep -r \"setTimeout\\\\|setInterval\" \"/d/Test_CompanyJivo/FactoryFlow/src\" --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/__tests__/*\")",
+      "Bash(grep:*)"
     ]
   }
 }
