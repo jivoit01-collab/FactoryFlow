@@ -21,7 +21,7 @@ function DailyProductionReportPage() {
   const { data: runs, isLoading } = useDailyProductionReport(dateStr);
 
   const totalProduction = useMemo(
-    () => runs?.reduce((sum, r) => sum + parseFloat(r.total_production as unknown as string || '0'), 0) ?? 0,
+    () => runs?.reduce((sum, r) => sum + (Number(r.total_production) || 0), 0) ?? 0,
     [runs],
   );
   const totalBreakdown = useMemo(

@@ -1,6 +1,20 @@
 import type { ApiError } from '@/core/api/types';
 
 // ============================================================================
+// Type Guards
+// ============================================================================
+
+/**
+ * Type guard to check if an unknown value is an ApiError.
+ * Use this instead of unsafe `as unknown as ApiError` casts.
+ */
+export function isApiError(error: unknown): error is ApiError {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as Record<string, unknown>;
+  return typeof candidate.message === 'string' && typeof candidate.status === 'number';
+}
+
+// ============================================================================
 // Error Message Extraction
 // ============================================================================
 

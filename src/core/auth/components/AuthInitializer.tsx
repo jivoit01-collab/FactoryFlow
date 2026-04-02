@@ -141,7 +141,9 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
             // Guard against the race condition where LoginPage already navigated
             // here concurrently (e.g. user refreshes page with old valid tokens
             // and quickly submits the login form).
-            if (window.location.pathname !== ROUTES.COMPANY_SELECTION.path) {
+            // Use location ref captured at mount time to avoid reading stale window.location
+            // during async navigation.
+            if (intendedUrlRef.current !== ROUTES.COMPANY_SELECTION.path) {
               navigate(ROUTES.COMPANY_SELECTION.path, {
                 replace: true,
                 state: { from: intendedUrl },

@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@/config/routes.config';
@@ -25,6 +25,7 @@ import { queryClient } from '@/core/api';
 export default function CompanySelectionPage() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const submittingRef = useRef(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,7 +38,8 @@ export default function CompanySelectionPage() {
   const companies = user?.companies || [];
 
   const handleContinue = async () => {
-    if (!selectedCompanyId) return;
+    if (!selectedCompanyId || submittingRef.current) return;
+    submittingRef.current = true;
 
     setIsLoading(true);
 
@@ -64,6 +66,7 @@ export default function CompanySelectionPage() {
       console.error('Failed to select company:', error);
     } finally {
       setIsLoading(false);
+      submittingRef.current = false;
     }
   };
 
