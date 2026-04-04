@@ -545,32 +545,105 @@ warehouse.can_execute_putaway
 
 ---
 
-### 3.7 Picking (Outbound Preparation)
+### 3.7 Picking (Unified Picking Service)
 
-**Purpose:** Pick items from warehouse for outbound dispatch, production consumption, or other purposes.
+**Purpose:** Centralized picking service for all outbound operations — dispatch shipments, goods issues, and stock transfers.
 
-**This connects to the outbound_dispatch module** (already exists in backend) and the goods issue workflow.
+**This replaces the `outbound_dispatch` module's built-in `PickTask` model.** The warehouse module owns all picking logic. The dispatch module calls warehouse services to create and manage picks.
 
-**Workflow:**
+#### 3.7.1 Why Full Integration
+
+The `outbound_dispatch` module (on `dispatch` branch) currently has its own `PickTask` model with pick assignment, barcode scanning, short-pick handling, and quantity tracking. Rather than duplicating this for transfers and goods issues, we consolidate picking into the warehouse module so:
+- One UI for warehouse operators (they don't care if the pick is for dispatch vs. a transfer)
+- Consistent barcode scanning, short-pick handling, and quantity tracking across all pick sources
+- Single dashboard view of all active picks in the warehouse
+
+#### 3.7.2 Integration Architecture
+
+```
+┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
+│  outbound_dispatch   │     │  warehouse (transfers)│     │  warehouse (GI)      │
+│  ShipmentOrder       │     │  StockTransferRequest │     │  GoodsIssueRequest   │
+└─────────┬───────────┘     └─────────┬───────────┘     └─────────┬───────────┘
+          │                           │                           │
+          │  service call             │  service call             │  service call
+          ↓                           ↓                           ↓
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                     warehouse.services.PickingService                        │
+│                                                                              │
+│  create_pick_list(source_type, source_id, items, warehouse, company)        │
+│  start_pick(pick_list_id, user)                                              │
+│  record_pick(pick_line_id, actual_qty, barcode, user)                       │
+│  complete_pick(pick_list_id)                                                 │
+│  get_picks_for_source(source_type, source_id)                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Cross-module call pattern** (follows existing architecture — service-layer calls, same as `gate_completion` calling `quality_control.services.rules`):
+
+```python
+# outbound_dispatch/services/outbound_service.py (MODIFIED)
+from warehouse.services.picking_service import PickingService
+
+class OutboundService:
+    def generate_picks(self, shipment_id, user):
+        shipment = ShipmentOrder.objects.get(id=shipment_id)
+        items = [
+            {"item_code": i.item_code, "item_name": i.item_name,
+             "quantity": i.ordered_qty, "uom": i.uom,
+             "batch_number": i.batch_number,
+             "warehouse_code": i.warehouse_code,
+             "source_line_id": i.id}
+            for i in shipment.items.all()
+        ]
+        pick_list = PickingService.create_pick_list(
+            source_type="DISPATCH",
+            source_id=shipment.id,
+            items=items,
+            warehouse_code=shipment.items.first().warehouse_code,
+            company=shipment.company,
+            user=user,
+        )
+        shipment.status = "PICKING"
+        shipment.save()
+        return pick_list
+```
+
+**Notification via signals** (follows existing pattern — signals only for notifications):
+```python
+# warehouse/signals.py
+@receiver(post_save, sender=PickList)
+def notify_on_pick_complete(sender, instance, **kwargs):
+    if instance.status == "COMPLETED":
+        # Notify the source module that picking is done
+        NotificationService.send_notification_by_auth_group(...)
+```
+
+#### 3.7.3 Workflow
+
 ```
 ┌────────────┐     ┌──────────┐     ┌──────────┐     ┌───────────┐
-│ PICK LIST  │────→│ PICKING  │────→│ STAGED   │────→│ DISPATCHED│
-│ (Auto/Man) │     │(Operator)│     │(Ready)   │     │           │
+│ PICK LIST  │────→│ PICKING  │────→│ COMPLETED│────→│ Source     │
+│ (Created   │     │(Operator)│     │          │     │ continues │
+│  by source)│     │          │     │          │     │ workflow   │
 └────────────┘     └──────────┘     └──────────┘     └───────────┘
 ```
 
-**Statuses:** `PENDING` → `IN_PROGRESS` → `STAGED` → `DISPATCHED`
+**Statuses:** `PENDING` → `IN_PROGRESS` → `COMPLETED` → `CANCELLED`
 
-**Models (PostgreSQL):**
+Note: `STAGED` and `DISPATCHED` are **not** picking statuses — those belong to the dispatch module's `ShipmentOrder` status. Once picking is `COMPLETED`, control returns to the source module.
+
+#### 3.7.4 Models (PostgreSQL — owned by warehouse module)
+
 ```python
 class PickList(models.Model):
-    pick_number           # Auto-generated
+    pick_number           # Auto-generated (e.g., PL-2026-0001)
     source_type           # DISPATCH, GOODS_ISSUE, TRANSFER
-    source_id             # Generic FK to source document
+    source_id             # ID of the source document (ShipmentOrder, GoodsIssueRequest, etc.)
     warehouse_code
     warehouse_name
-    status
-    assigned_to           # FK → User
+    status                # PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+    assigned_to           # FK → User (nullable)
     priority              # HIGH, MEDIUM, LOW
     started_at
     completed_at
@@ -583,28 +656,53 @@ class PickLine(models.Model):
     item_code
     item_name
     requested_qty
-    picked_qty
+    picked_qty            # Actual qty picked (may be less = short pick)
     uom
-    picked                # Boolean
+    batch_number          # For batch-managed items (nullable)
+    warehouse_code        # Specific warehouse for this line
+    source_line_id        # ID of the source line (ShipmentOrderItem, GoodsIssueLine, etc.)
+    status                # PENDING, IN_PROGRESS, PICKED, SHORT
+    scanned_barcode       # Barcode recorded during pick (nullable)
+    picked_by             # FK → User (nullable)
     picked_at
     notes
 ```
 
-**API Endpoints:**
+#### 3.7.5 Changes to outbound_dispatch Module
+
+The following changes are needed on the `dispatch` branch:
+
+| Current (dispatch owns) | After integration (warehouse owns) |
+|---|---|
+| `outbound_dispatch.PickTask` model | **Removed** — replaced by `warehouse.PickList` + `warehouse.PickLine` |
+| `OutboundService.generate_pick_tasks()` | Calls `PickingService.create_pick_list(source_type="DISPATCH", ...)` |
+| `OutboundService.update_pick_task()` | Calls `PickingService.record_pick()` |
+| `OutboundService.record_scan()` | Calls `PickingService.record_scan()` |
+| `OutboundService.confirm_pack()` | Reads `PickList.status == COMPLETED`, then proceeds with pack |
+| Pick task API endpoints in dispatch | **Removed** — use `/api/v1/warehouse/picking/` endpoints instead |
+| `PickTaskList` frontend component | Rewritten as shared warehouse component, used by dispatch detail page |
+
+**Dispatch keeps ownership of:** ShipmentOrder statuses (RELEASED → PICKING → PACKED → STAGED → LOADING → DISPATCHED), dock assignment, vehicle linking, trailer inspection, loading, goods issue posting.
+
+#### 3.7.6 API Endpoints
+
 ```
-GET    /api/v1/warehouse/picking/                      # List pick lists
-GET    /api/v1/warehouse/picking/{id}/                 # Pick list detail
-POST   /api/v1/warehouse/picking/{id}/start/           # Start picking
-PATCH  /api/v1/warehouse/picking/{id}/lines/{line_id}/ # Record pick
-POST   /api/v1/warehouse/picking/{id}/complete/        # Complete picking
-POST   /api/v1/warehouse/picking/{id}/stage/           # Mark as staged
+GET    /api/v1/warehouse/picking/                      # List all pick lists (filterable by source_type)
+GET    /api/v1/warehouse/picking/{id}/                 # Pick list detail with lines
+POST   /api/v1/warehouse/picking/{id}/start/           # Start picking (assign user, PENDING → IN_PROGRESS)
+PATCH  /api/v1/warehouse/picking/{id}/lines/{line_id}/ # Record pick (qty, barcode, status)
+POST   /api/v1/warehouse/picking/{id}/lines/{line_id}/scan/ # Record barcode scan
+POST   /api/v1/warehouse/picking/{id}/complete/        # Complete picking (validates all lines picked/short)
+POST   /api/v1/warehouse/picking/{id}/cancel/          # Cancel pick list
+GET    /api/v1/warehouse/picking/by-source/            # Get picks by source_type + source_id
 ```
 
-**Permissions:**
+#### 3.7.7 Permissions
+
 ```python
 warehouse.can_view_picking
-warehouse.can_execute_picking
-warehouse.can_manage_picking
+warehouse.can_execute_picking       # Start, record picks, scan, complete
+warehouse.can_manage_picking        # Cancel, reassign
 ```
 
 ---
@@ -646,22 +744,28 @@ QC Module ────────→ Materials inspected & approved
 GRPO Module ──────→ Goods receipt posted to SAP
                         │
                         ↓
-┌───────────────────────────────────────────────┐
-│              WAREHOUSE MODULE                  │
-│                                                │
-│  Putaway ←── GRPO triggers putaway task        │
-│  Inventory ── View stock across warehouses     │
-│  Transfers ── Move stock between warehouses    │
-│  Goods Issue ── Issue to production/maint      │
-│  Counting ─── Verify physical vs system        │
-│  Picking ──── Prepare outbound orders          │
-│                                                │
-└───────────────────────────────────────────────┘
-                        │
-                        ↓
-Production Module ─→ Consumes issued materials
-Outbound Module ───→ Dispatches picked goods
-Dashboards ────────→ Displays warehouse analytics
+┌───────────────────────────────────────────────────────────┐
+│                    WAREHOUSE MODULE                        │
+│                                                            │
+│  Putaway ←────── GRPO triggers putaway task                │
+│  Inventory ───── View stock across warehouses              │
+│  Transfers ───── Move stock between warehouses             │
+│  Goods Issue ─── Issue to production/maint                 │
+│  Counting ────── Verify physical vs system                 │
+│  Picking ─────── Unified picking for ALL sources:          │
+│      ├── outbound_dispatch (shipment picks)                │
+│      ├── stock transfers (transfer picks)                  │
+│      └── goods issues (issue picks)                        │
+│                                                            │
+└───────────────────────────────────────────────────────────┘
+          │                              ↑
+          ↓                              │
+Production Module ─→ Consumes materials  │
+Dashboards ────────→ Warehouse analytics │
+                                         │
+Outbound Dispatch ───────────────────────┘
+  (calls PickingService to create picks,
+   owns shipment workflow after pick complete)
 ```
 
 ---
@@ -873,25 +977,30 @@ warehouse.can_view_warehouse_dashboard
 
 ## 8. Open Questions & Investigation Needed
 
-1. **SAP Bin Locations:** Are bin locations enabled in any SAP warehouse? If yes, the putaway and picking workflows need bin-level tracking.
+### Resolved (via HANA queries — 2026-04-04)
 
-2. **SAP Batch Management:** Are any items batch-managed? If yes, transfers, issues, and counts need batch selection.
+Queried production DB (`JIVO_OIL_HANADB`) and test DBs (`TEST_MART_15122025`, `TEST_BEVERAGES_15122025`).
 
-3. **SAP Serial Numbers:** Are serial numbers used for any items? Impacts counting and transfers.
+| # | Question | Finding | Design Decision |
+|---|---|---|---|
+| 1 | **SAP Bin Locations** | **Not enabled.** 0 of 100 warehouses across all 3 companies have bins activated (`OWHS.BinActivat`). | Skip bin-level logic entirely. No bin fields needed in models. |
+| 2 | **SAP Batch Management** | **Yes, heavily used.** ~27-32% of items are batch-managed (`OITM.ManBtchNum = 'Y'`). Jivo Oil: 570/2102, Mart: 406/1278, Beverages: 537/2135. | **Must include** `batch_number` on transfer/issue/count line models. Need batch selection UI when item is batch-managed (query `OIBT` for available batches). |
+| 3 | **SAP Serial Numbers** | **Not used.** 0 serial-managed items across all companies (`OITM.ManSerNum`). | Skip serial number logic entirely. |
+| 9 | **Minimum Stock Levels** | **Partially used.** Jivo Oil: 224 items, Mart: 0 items, Beverages: 95 items have `OITW.MinStock` set. | Add low-stock alerts widget on warehouse dashboard. Reuse pattern from existing `stock_dashboard` module. |
 
-4. **SAP Stock Transfer Request vs Transfer:** Does the factory use Stock Transfer Requests (approval in SAP) or direct Stock Transfers? This affects whether we post a request or a completed transfer.
+### Still Open (need factory team input)
 
-5. **Cost Centers:** Are cost centers required for goods issues? Need to know which cost centers map to which departments.
+4. **SAP Stock Transfer Request vs Transfer:** **Resolved.** FactoryFlow handles the full approval workflow internally. We post a direct `StockTransfer` to SAP only after all approvals are complete. No need for SAP-side `StockTransferRequests`.
 
-6. **Approval Hierarchy:** Who approves transfers and goods issues? Single approver or multi-level? Does it vary by value/quantity?
+5. **Cost Centers:** Are cost centers required for goods issues? Need to know which cost centers map to which departments. **Plan:** Add as optional field, query `OPRC` for dropdown, don't enforce until confirmed.
 
-7. **Outbound Integration:** How does the existing `outbound_dispatch` module work? Does it need to trigger pick lists?
+6. **Approval Hierarchy:** Who approves transfers and goods issues? Single approver or multi-level? Does it vary by value/quantity? **Plan:** Start with single-approver (anyone with `can_approve_*` permission), same as GRPO module pattern.
 
-8. **Warehouse Zones:** Are there logical zones within warehouses (e.g., raw material zone, finished goods zone, quarantine zone)?
+7. **Outbound Integration:** **Resolved.** The `outbound_dispatch` module (on `dispatch` branch) has its own `PickTask` model with full pick/scan/short-pick logic. **Decision: Full integration.** Warehouse module owns all picking via a unified `PickList`/`PickLine` model. Dispatch's `PickTask` model is removed and replaced with service calls to `warehouse.services.PickingService`. This gives warehouse operators a single UI for all picks regardless of source (dispatch, transfer, goods issue). See Section 3.7 for full design.
 
-9. **Minimum Stock Levels:** Are reorder points and minimum stock levels maintained in SAP? Should we surface alerts?
+8. **Warehouse Zones:** **Resolved.** No formal zone divisions exist. Even if informal zones are used, they change frequently — not worth modeling. Skip zone logic entirely.
 
-10. **Barcode/QR Scanning:** Will warehouse operators use barcode scanners for item identification? This affects the mobile UI design.
+10. **Barcode/QR Scanning:** **Partially resolved.** Factory already uses a separate barcoding software. Details of that software are unknown for now. **Plan:** Design putaway/picking UI with prominent search input (supports hardware scanners out of the box via keystroke input). Integration with their barcoding software to be explored later once we learn more about it.
 
 ---
 
