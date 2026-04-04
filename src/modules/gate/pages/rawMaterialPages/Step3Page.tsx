@@ -11,7 +11,6 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '@/core/api/types';
 import { RecordTimestamps } from '@/shared/components';
 import {
   Button,
@@ -28,6 +27,7 @@ import { cn } from '@/shared/utils';
 import {
   getErrorMessage,
   getServerErrorMessage,
+  isApiError,
   isNotFoundError as checkNotFoundError,
   isServerError as checkServerError,
 } from '@/shared/utils';
@@ -484,17 +484,16 @@ export default function Step3Page() {
         navigate(`/gate/raw-materials/new/step4?entryId=${entryId}`);
       }
     } catch (error) {
-      const apiError = error as ApiError;
-      if (apiError.errors) {
+      if (isApiError(error) && error.errors) {
         const fieldErrors: Record<string, string> = {};
-        Object.entries(apiError.errors).forEach(([field, messages]) => {
+        Object.entries(error.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
             fieldErrors[field] = messages[0];
           }
         });
         setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to save PO receipts' });
+        setApiErrors({ general: isApiError(error) ? error.message : 'Failed to save PO receipts' });
       }
     }
   };
@@ -673,13 +672,12 @@ function POCard({
   // Check if error is an API error that should show Fill Data button
   const isPOError = Boolean(
     poError &&
+    isApiError(poError) &&
     (() => {
-      const error = poError as unknown as ApiError;
-      const errorMessage = error.message?.toLowerCase() || '';
-      const errorDetail =
-        (error as unknown as ApiError).response?.data?.detail?.toLowerCase() || '';
+      const errorMessage = poError.message?.toLowerCase() || '';
+      const errorDetail = poError.response?.data?.detail?.toLowerCase() || '';
       return (
-        error.status === 400 ||
+        poError.status === 400 ||
         errorMessage.includes('required') ||
         errorMessage.includes('invalid') ||
         errorDetail.includes('required') ||
@@ -705,16 +703,16 @@ function POCard({
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!openPODropdown) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         onClosePODropdown();
       }
     };
 
-    if (openPODropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openPODropdown, onClosePODropdown]);
 
   return (
@@ -743,9 +741,11 @@ function POCard({
                   <AlertCircle className="h-4 w-4" />
                   <span>
                     {(() => {
-                      const error = poError as unknown as ApiError;
-                      const detail = (error as unknown as ApiError).response?.data?.detail;
-                      return detail || error.message || 'Error loading purchase orders';
+                      if (isApiError(poError)) {
+                        const detail = poError.response?.data?.detail;
+                        return detail || poError.message || 'Error loading purchase orders';
+                      }
+                      return 'Error loading purchase orders';
                     })()}
                   </span>
                 </div>

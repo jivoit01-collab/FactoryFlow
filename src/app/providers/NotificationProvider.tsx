@@ -82,7 +82,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
 
       // Short delay to allow backend to finish storing the notification
-      setTimeout(() => dispatch(fetchUnreadCount()), 200);
+      const UNREAD_COUNT_FETCH_DELAY_MS = 200;
+      setTimeout(() => dispatch(fetchUnreadCount()), UNREAD_COUNT_FETCH_DELAY_MS);
     },
     [dispatch],
   );

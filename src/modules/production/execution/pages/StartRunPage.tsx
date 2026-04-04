@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { useScrollToError } from '@/shared/hooks';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
   Badge,
@@ -134,6 +135,8 @@ function StartRunPage() {
       materials: [],
     },
   });
+
+  useScrollToError(form.formState.errors);
 
   const { fields, replace } = useFieldArray({
     control: form.control,

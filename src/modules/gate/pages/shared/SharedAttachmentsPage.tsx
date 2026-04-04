@@ -178,7 +178,7 @@ export default function SharedAttachmentsPage({ config }: SharedAttachmentsPageP
                                         'bg-muted',
                                       );
                                       const icon = document.createElement('div');
-                                      icon.innerHTML = '📄';
+                                      icon.textContent = '📄';
                                       icon.className = 'text-4xl';
                                       parent.appendChild(icon);
                                     }

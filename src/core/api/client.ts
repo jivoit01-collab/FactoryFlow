@@ -213,9 +213,7 @@ function createApiClient(): AxiosInstance {
         // Skip refresh for login and refresh endpoints (they don't use access token)
         // But still transform the error to ApiError format for consistent error handling
         if (shouldSkipToken(originalRequest.url)) {
-          const responseData = error.response?.data as unknown as
-            | Record<string, unknown>
-            | undefined;
+          const responseData = error.response?.data as Record<string, unknown> | undefined;
           const apiError: ApiError = {
             message: extractErrorMessage(responseData, error.message || 'Authentication failed'),
             code: error.code,
@@ -249,7 +247,7 @@ function createApiClient(): AxiosInstance {
       }
 
       // Transform error to ApiError format
-      const responseData = error.response?.data as unknown as Record<string, unknown> | undefined;
+      const responseData = error.response?.data as Record<string, unknown> | undefined;
       const errorMessage = extractErrorMessage(responseData, error.message);
 
       const apiError: ApiError = {

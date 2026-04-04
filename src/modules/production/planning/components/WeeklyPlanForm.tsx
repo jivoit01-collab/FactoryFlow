@@ -13,6 +13,7 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
 import type { CreateWeeklyPlanFormData } from '../schemas';
 import { createWeeklyPlanSchema } from '../schemas';
@@ -62,6 +63,8 @@ export function WeeklyPlanForm({
       target_qty: undefined,
     },
   });
+
+  useScrollToError(errors);
 
   useEffect(() => {
     if (!open) return;

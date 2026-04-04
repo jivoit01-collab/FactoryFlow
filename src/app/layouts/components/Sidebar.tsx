@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LayoutDashboard } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 
 import { getAllNavigation } from '@/app/registry';
@@ -73,30 +73,35 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
   const isSubmenuOpen = (routePath: string) => openSubmenus.has(routePath);
 
-  const isRouteActive = (item: ModuleNavItem) => {
+  const isRouteActive = useCallback((item: ModuleNavItem) => {
     if (location.pathname === item.path) return true;
     // Check if any child route is active
     if (item.children) {
       return item.children.some((child) => location.pathname === child.path);
     }
     return false;
-  };
+  }, [location.pathname]);
 
   // Auto-open submenu if current route is a child
   useEffect(() => {
-    navItems.forEach((item) => {
-      if (
-        item.showInSidebar &&
-        item.hasSubmenu &&
-        item.children &&
-        isRouteActive(item) &&
-        !isSubmenuOpen(item.path)
-      ) {
-        setOpenSubmenus((prev) => new Set([...prev, item.path]));
-      }
+    setOpenSubmenus((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      navItems.forEach((item) => {
+        if (
+          item.showInSidebar &&
+          item.hasSubmenu &&
+          item.children &&
+          isRouteActive(item) &&
+          !next.has(item.path)
+        ) {
+          next.add(item.path);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, navItems]);
+  }, [location.pathname, navItems, isRouteActive]);
 
   return (
     <aside

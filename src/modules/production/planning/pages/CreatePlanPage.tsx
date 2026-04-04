@@ -7,7 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { ApiError } from '@/core/api/types';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Separator, Textarea } from '@/shared/components/ui';
-import { useDebounce } from '@/shared/hooks';
+import { useDebounce, useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
 
 import { useBOMDropdown, useCreatePlan, useItemsDropdown, usePlanDetail, useUpdatePlan, useWarehousesDropdown } from '../api';
@@ -61,6 +61,8 @@ export default function CreatePlanPage() {
       materials: [],
     },
   });
+
+  useScrollToError(errors);
 
   const { fields, append, remove, replace } = useFieldArray({
     control,
