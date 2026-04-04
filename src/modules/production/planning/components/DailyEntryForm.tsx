@@ -13,6 +13,7 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
 import type { CreateDailyEntryFormData } from '../schemas';
 import { createDailyEntrySchema } from '../schemas';
@@ -63,6 +64,8 @@ export function DailyEntryForm({
       remarks: '',
     },
   });
+
+  useScrollToError(errors);
 
   useEffect(() => {
     if (!open) return;
