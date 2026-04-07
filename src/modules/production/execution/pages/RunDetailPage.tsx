@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, ClipboardCheck, FileText, Link, Play, Shield, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardCheck, FileText, Link, Loader2, Play, Send, Shield, Trash2, Warehouse } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,6 +34,24 @@ import {
   createMaterialSchema, type CreateMaterialFormData,
 } from '../schemas';
 import type { MachineBreakdown, ProductionSegment } from '../types';
+import { useCreateBOMRequest, useCreateFGReceipt } from '@/modules/warehouse/api';
+
+function WarehouseApprovalBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; cls: string }> = {
+    NOT_REQUESTED: { label: 'Not Requested', cls: 'bg-gray-100 text-gray-600' },
+    PENDING: { label: 'WH Pending', cls: 'bg-amber-100 text-amber-800' },
+    APPROVED: { label: 'WH Approved', cls: 'bg-green-100 text-green-800' },
+    PARTIALLY_APPROVED: { label: 'WH Partial', cls: 'bg-blue-100 text-blue-800' },
+    REJECTED: { label: 'WH Rejected', cls: 'bg-red-100 text-red-800' },
+  };
+  const c = config[status] ?? config.NOT_REQUESTED;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${c.cls}`}>
+      <Warehouse className="h-3 w-3" />
+      {c.label}
+    </span>
+  );
+}
 
 function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
@@ -66,6 +84,8 @@ function RunDetailPage() {
   const updateBreakdownRemarks = useUpdateBreakdownRemarks(numRunId);
   const createMaterial = useCreateMaterial(numRunId);
   const updateMaterial = useUpdateMaterial(numRunId);
+  const createBOMRequest = useCreateBOMRequest();
+  const createFGReceipt = useCreateFGReceipt();
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
@@ -213,15 +233,40 @@ function RunDetailPage() {
               run.status === 'IN_PROGRESS' ? 'STOPPED' :
               run.status
             } />
+            <WarehouseApprovalBadge status={run.warehouse_approval_status ?? 'NOT_REQUESTED'} />
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
           {run.date} &middot; {run.line_name} &middot; {run.product}
+          {run.required_qty && <> &middot; Qty: {run.required_qty}</>}
           {run.sap_doc_entry && <> &middot; SAP DocEntry: {run.sap_doc_entry}</>}
         </p>
         <div className="flex flex-wrap gap-2">
+          {!isCompleted && run.warehouse_approval_status === 'NOT_REQUESTED' && (
+            <Button
+              variant="outline" size="sm"
+              disabled={createBOMRequest.isPending}
+              onClick={async () => {
+                const qty = parseFloat(run.required_qty || '0');
+                if (!qty) {
+                  toast.error('Set required quantity on the run first');
+                  return;
+                }
+                try {
+                  await createBOMRequest.mutateAsync({
+                    production_run_id: run.id,
+                    required_qty: qty,
+                  });
+                  toast.success('BOM request submitted to warehouse');
+                } catch { /* interceptor handles */ }
+              }}
+            >
+              {createBOMRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+              Submit BOM to Warehouse
+            </Button>
+          )}
           {!isCompleted && !hasActiveSegment && !hasActiveBreakdown && (
-            <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700" onClick={handleStartProduction} disabled={startProduction.isPending}>
+            <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700" onClick={handleStartProduction} disabled={startProduction.isPending || run.warehouse_approval_status === 'PENDING' || run.warehouse_approval_status === 'REJECTED'}>
               <Play className="h-4 w-4 mr-1" /> Start Production
             </Button>
           )}
@@ -237,6 +282,24 @@ function RunDetailPage() {
           {!isCompleted && (
             <Button onClick={() => navigate(`/production/execution/runs/${run.id}/yield?complete=true`)} disabled={!canComplete} title={!canComplete ? 'Stop all running segments and resolve all breakdowns first' : undefined}>
               <CheckCircle2 className="h-4 w-4 mr-1" /> Complete Run
+            </Button>
+          )}
+          {isCompleted && (
+            <Button
+              variant="outline" size="sm"
+              disabled={createFGReceipt.isPending}
+              onClick={async () => {
+                try {
+                  await createFGReceipt.mutateAsync({
+                    production_run_id: run.id,
+                    posting_date: run.date,
+                  });
+                  toast.success('FG receipt created — warehouse notified');
+                } catch { /* interceptor handles */ }
+              }}
+            >
+              {createFGReceipt.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Warehouse className="h-4 w-4 mr-1" />}
+              Create FG Receipt
             </Button>
           )}
         </div>

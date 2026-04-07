@@ -121,11 +121,15 @@ function StartRunPage() {
   const [selectedItemCode, setSelectedItemCode] = useState<string | null>(null);
   const { data: bomData, isLoading: loadingBOM } = useBOMPreview(selectedItemCode);
 
+  // Store raw per-unit BOM for scaling
+  const [rawBOM, setRawBOM] = useState<{ code: string; name: string; perUnit: number; uom: string }[]>([]);
+
   const form = useForm<CreateRunFormData>({
     resolver: zodResolver(createRunSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       product: '',
+      required_qty: '',
       rated_speed: '',
       machine_ids: [],
       labour_count: 0,
@@ -143,7 +147,9 @@ function StartRunPage() {
     name: 'materials',
   });
 
-  // Auto-populate materials from BOM when a SAP order is selected
+  const watchedRequiredQty = form.watch('required_qty');
+
+  // Store raw BOM when SAP order changes
   const lastPopulatedItemCode = useRef<string | null>(null);
   useEffect(() => {
     if (
@@ -152,17 +158,44 @@ function StartRunPage() {
       lastPopulatedItemCode.current !== selectedItemCode
     ) {
       lastPopulatedItemCode.current = selectedItemCode;
+      const raw = bomData.components.map((c) => ({
+        code: c.ItemCode,
+        name: c.ItemName,
+        perUnit: c.PlannedQty,
+        uom: c.UomCode ?? '',
+      }));
+      setRawBOM(raw);
+
+      // Scale by required_qty if already filled, otherwise show per-unit
+      const qty = parseFloat(watchedRequiredQty || '0') || 1;
       replace(
-        bomData.components.map((c) => ({
-          material_code: c.ItemCode,
-          material_name: c.ItemName,
-          opening_qty: '0',
+        raw.map((c) => ({
+          material_code: c.code,
+          material_name: c.name,
+          opening_qty: (c.perUnit * qty).toFixed(3),
           issued_qty: '0',
-          uom: c.UomCode ?? '',
+          uom: c.uom,
         })),
       );
     }
-  }, [bomData, selectedItemCode, replace]);
+  }, [bomData, selectedItemCode, replace, watchedRequiredQty]);
+
+  // Re-scale BOM when required_qty changes
+  useEffect(() => {
+    if (rawBOM.length === 0) return;
+    const qty = parseFloat(watchedRequiredQty || '0');
+    if (!qty || qty <= 0) return;
+    replace(
+      rawBOM.map((c) => ({
+        material_code: c.code,
+        material_name: c.name,
+        opening_qty: (c.perUnit * qty).toFixed(3),
+        issued_qty: '0',
+        uom: c.uom,
+      })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedRequiredQty]);
 
   const selectedMachineIds = form.watch('machine_ids') ?? [];
 
@@ -308,6 +341,20 @@ function StartRunPage() {
                 )}
               </div>
               <div>
+                <Label>Required Quantity (units)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...form.register('required_qty')}
+                  placeholder="e.g., 500"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  BOM materials will scale based on this quantity
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
                 <Label>Rated Speed (cases/hr)</Label>
                 <Input {...form.register('rated_speed')} placeholder="e.g., 150" />
               </div>
@@ -364,7 +411,7 @@ function StartRunPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Raw Materials
+              Raw Materials (BOM)
               {loadingBOM && (
                 <span className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -374,6 +421,11 @@ function StartRunPage() {
               {bomData && fields.length > 0 && !loadingBOM && (
                 <Badge variant="secondary" className="text-xs font-normal">
                   {bomData.component_count} from BOM
+                </Badge>
+              )}
+              {rawBOM.length > 0 && parseFloat(watchedRequiredQty || '0') > 0 && (
+                <Badge className="bg-blue-100 text-blue-800 border-0 text-xs font-normal">
+                  Scaled for {watchedRequiredQty} units
                 </Badge>
               )}
             </CardTitle>
@@ -394,42 +446,45 @@ function StartRunPage() {
                     <tr className="border-b bg-muted/50">
                       <th className="text-left py-2 px-3">Code</th>
                       <th className="text-left py-2 px-3">Name</th>
-                      <th className="text-left py-2 px-3">Opening Qty</th>
-                      <th className="text-left py-2 px-3">Issued Qty</th>
+                      <th className="text-right py-2 px-3">Per Unit</th>
+                      <th className="text-left py-2 px-3">Required Qty</th>
                       <th className="text-left py-2 px-3">UoM</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {fields.map((field, index) => (
-                      <tr key={field.id} className="border-b last:border-0">
-                        <td className="py-2 px-3 font-mono text-xs">
-                          {field.material_code}
-                        </td>
-                        <td className="py-2 px-3">{field.material_name}</td>
-                        <td className="py-2 px-3">
-                          <Input
-                            className="h-8 w-28"
-                            type="number"
-                            step="any"
-                            min="0"
-                            {...form.register(`materials.${index}.opening_qty`)}
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          <Input
-                            className="h-8 w-28"
-                            type="number"
-                            step="any"
-                            min="0"
-                            {...form.register(`materials.${index}.issued_qty`)}
-                          />
-                        </td>
-                        <td className="py-2 px-3 text-muted-foreground">{field.uom}</td>
-                      </tr>
-                    ))}
+                    {fields.map((field, index) => {
+                      const perUnit = rawBOM[index]?.perUnit;
+                      return (
+                        <tr key={field.id} className="border-b last:border-0">
+                          <td className="py-2 px-3 font-mono text-xs">
+                            {field.material_code}
+                          </td>
+                          <td className="py-2 px-3">{field.material_name}</td>
+                          <td className="py-2 px-3 text-right text-muted-foreground text-xs">
+                            {perUnit !== undefined ? perUnit : '—'}
+                          </td>
+                          <td className="py-2 px-3">
+                            <Input
+                              className="h-8 w-28"
+                              type="number"
+                              step="any"
+                              min="0"
+                              {...form.register(`materials.${index}.opening_qty`)}
+                            />
+                          </td>
+                          <td className="py-2 px-3 text-muted-foreground">{field.uom}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {rawBOM.length > 0 && !parseFloat(watchedRequiredQty || '0') && (
+              <p className="text-xs text-amber-600 mt-2">
+                Enter "Required Quantity" above to auto-calculate scaled BOM quantities.
+              </p>
             )}
           </CardContent>
         </Card>

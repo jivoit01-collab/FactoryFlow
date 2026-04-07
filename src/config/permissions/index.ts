@@ -42,3 +42,10 @@ export {
   type NotificationDjangoPermission,
 } from './notification.permissions';
 
+// Warehouse Module
+export {
+  WAREHOUSE_MODULE_PREFIX,
+  WAREHOUSE_PERMISSIONS,
+  type WarehousePermission,
+} from './warehouse.permissions';
+

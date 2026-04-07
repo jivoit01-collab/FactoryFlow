@@ -124,6 +124,13 @@ export interface SAPBOMResponse {
 // Production Runs
 // ============================================================================
 
+export type WarehouseApprovalStatus =
+  | 'NOT_REQUESTED'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'PARTIALLY_APPROVED'
+  | 'REJECTED';
+
 export interface ProductionRun {
   id: number;
   sap_doc_entry: number | null;
@@ -132,12 +139,14 @@ export interface ProductionRun {
   line: number;
   line_name: string;
   product: string;
+  required_qty: string | null;
   rated_speed: string;
   total_production: string;
   total_running_minutes: number;
   total_breakdown_time: number;
   rejected_qty: string;
   reworked_qty: string;
+  warehouse_approval_status: WarehouseApprovalStatus;
   status: RunStatus;
   live_status: LiveStatus;
   created_by: number | null;
@@ -589,6 +598,7 @@ export interface CreateRunRequest {
   line_id: number;
   date: string;
   product?: string;
+  required_qty?: number | null;
   rated_speed?: string;
   machine_ids?: number[];
   labour_count?: number;

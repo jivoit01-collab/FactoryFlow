@@ -356,6 +356,24 @@ export const API_ENDPOINTS = {
     // Delete run
     RUN_DELETE: (runId: number) => `/production-execution/runs/${runId}/`,
   },
+  // Warehouse
+  WAREHOUSE: {
+    // BOM Requests
+    BOM_REQUESTS: '/warehouse/bom-requests/',
+    BOM_REQUEST_CREATE: '/warehouse/bom-requests/create/',
+    BOM_REQUEST_DETAIL: (requestId: number) => `/warehouse/bom-requests/${requestId}/`,
+    BOM_REQUEST_APPROVE: (requestId: number) => `/warehouse/bom-requests/${requestId}/approve/`,
+    BOM_REQUEST_REJECT: (requestId: number) => `/warehouse/bom-requests/${requestId}/reject/`,
+    BOM_REQUEST_ISSUE: (requestId: number) => `/warehouse/bom-requests/${requestId}/issue/`,
+    // Stock
+    STOCK_CHECK: '/warehouse/stock/check/',
+    // Finished Goods Receipts
+    FG_RECEIPTS: '/warehouse/fg-receipts/',
+    FG_RECEIPT_CREATE: '/warehouse/fg-receipts/create/',
+    FG_RECEIPT_DETAIL: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/`,
+    FG_RECEIPT_RECEIVE: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/receive/`,
+    FG_RECEIPT_POST_SAP: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/post-to-sap/`,
+  },
 } as const;
 
 export const HTTP_STATUS = {

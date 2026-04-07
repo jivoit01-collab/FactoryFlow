@@ -9,6 +9,7 @@ export const createRunSchema = z.object({
   line_id: z.number({ required_error: 'Production line is required' }),
   date: z.string().min(1, 'Date is required'),
   product: z.string().optional().default(''),
+  required_qty: z.string().optional(),
   rated_speed: z.string().optional(),
   machine_ids: z.array(z.number()).optional().default([]),
   labour_count: z.number().int().min(0).optional().default(0),
