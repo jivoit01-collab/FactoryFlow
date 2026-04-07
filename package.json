@@ -37,6 +37,7 @@
     "react-hook-form": "^7.71.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.12.0",
+    "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "xlsx": "^0.18.5",
     "zod": "^4.3.5"

@@ -367,6 +367,15 @@ export const API_ENDPOINTS = {
     BOM_REQUEST_ISSUE: (requestId: number) => `/warehouse/bom-requests/${requestId}/issue/`,
     // Stock
     STOCK_CHECK: '/warehouse/stock/check/',
+    // WMS
+    WMS_DASHBOARD: '/warehouse/wms/dashboard/',
+    WMS_STOCK_OVERVIEW: '/warehouse/wms/stock/overview/',
+    WMS_ITEM_DETAIL: (itemCode: string) => `/warehouse/wms/stock/items/${itemCode}/`,
+    WMS_STOCK_MOVEMENTS: '/warehouse/wms/stock/movements/',
+    WMS_WAREHOUSE_SUMMARY: '/warehouse/wms/warehouses/summary/',
+    WMS_WAREHOUSE_LIST: '/warehouse/wms/warehouses/',
+    WMS_BILLING_OVERVIEW: '/warehouse/wms/billing/overview/',
+    WMS_ITEM_GROUPS: '/warehouse/wms/item-groups/',
     // Finished Goods Receipts
     FG_RECEIPTS: '/warehouse/fg-receipts/',
     FG_RECEIPT_CREATE: '/warehouse/fg-receipts/create/',
