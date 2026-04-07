@@ -10,9 +10,16 @@ The Warehouse Management System is a new module for FactoryFlow that provides in
 - Enable stock transfer requests and execution between warehouses
 - Support goods issue workflows for production and other consumption
 - Enable stock counting (cycle counts & physical inventory)
-- Track inbound putaway after GRPO completion
+- Track inbound putaway after GRPO completion with location assignment (bins/aisles)
 - Support outbound picking and dispatch preparation
 - Maintain full audit trail of all warehouse movements
+- Enforce FIFO using batch codes
+- Track non-moving finished goods with company-specific expiry thresholds
+- Support returns workflow (gate returns + warehouse returns with return notes)
+- Enforce variety-wise capacity locking in FG warehouses
+- Capture transport/receiving images (driver, truck)
+- Integrate gatepass with weighbridge verification
+- Track dispatch status post-invoice (dispatched vs. not dispatched with reasons)
 - Integrate with SAP for authoritative stock data while enabling offline-capable operations
 
 ### 1.2 What SAP Already Manages
@@ -100,11 +107,14 @@ Frontend: src/modules/warehouse/  # NEW module
 └── pages/
     ├── dashboard/               # Warehouse overview dashboard
     ├── inventory/               # Stock visibility & search
+    ├── inward/                  # Inbound receiving (post-GRPO putaway + location assignment)
     ├── transfers/               # Stock transfer workflows
     ├── goods-issue/             # Goods issue workflows
-    ├── counting/                # Stock counting / cycle counts
-    ├── putaway/                 # Inbound putaway tasks
-    └── picking/                 # Outbound picking tasks
+    ├── counting/                # Stock counting / audit
+    ├── picking/                 # Outbound picking tasks (unified)
+    ├── dispatch-tracking/       # Post-invoice dispatch status tracking
+    ├── returns/                 # Returns workflow (gate + warehouse)
+    └── non-moving/              # Non-moving / expiry tracking (FG focus)
 ```
 
 ---
@@ -113,28 +123,32 @@ Frontend: src/modules/warehouse/  # NEW module
 
 ### 3.1 Warehouse Dashboard
 
-**Purpose:** Single-screen overview of warehouse health and activity.
+**Purpose:** Single-screen overview of warehouse health and activity. Key KPI cards as specified by factory team.
 
-**Data Sources:**
-- Stock levels → SAP HANA (OITW)
-- Pending tasks → PostgreSQL (FactoryFlow)
-- Recent movements → PostgreSQL + SAP HANA
+**Primary KPI Cards:**
+| Card | Description | Source |
+|---|---|---|
+| **Inward** | Today's/period inward receipts count & value | PostgreSQL (InwardReceipt) |
+| **Bill** | Invoices generated, pending dispatch | PostgreSQL (DispatchTracking) |
+| **Dispatched** | Completed dispatches | PostgreSQL (DispatchTracking) |
+| **Not Dispatched** | Invoiced but not yet dispatched (with reasons) | PostgreSQL (DispatchTracking) |
 
-**Components:**
+**Additional Components:**
 | Component | Description | Source |
 |---|---|---|
-| Warehouse selector | Switch between warehouses | SAP HANA (OITW → distinct warehouses) |
+| Warehouse selector | Switch between warehouses | SAP HANA (OWHS) |
 | Stock summary cards | Total items, total value, item count by group | SAP HANA |
 | Pending tasks widget | Open transfers, counts, putaways, picks | PostgreSQL |
-| Recent movements | Last N stock movements | PostgreSQL |
-| Alerts | Low stock, aging inventory, pending approvals | SAP HANA + PostgreSQL |
+| Non-moving FG alerts | Items approaching expiry thresholds | SAP HANA + config |
+| Low stock alerts | Items below MinStock level | SAP HANA (OITW) |
+| Capacity alerts | FG warehouses approaching variety-wise limits | PostgreSQL |
 | Quick actions | New transfer, new count, search inventory | Navigation |
 
 **API Endpoints:**
 ```
 GET /api/v1/warehouse/dashboard/summary/
     ?warehouse_code=WH01
-    Response: { stock_summary, pending_tasks, alerts, recent_movements }
+    Response: { kpi_cards, stock_summary, pending_tasks, alerts, non_moving_alerts }
 ```
 
 ---
@@ -707,20 +721,457 @@ warehouse.can_manage_picking        # Cancel, reassign
 
 ---
 
+### 3.8 Inward / Receiving (Enhanced Putaway)
+
+**Purpose:** After GRPO is posted, track the physical inward process — assign storage locations (bins/aisles), capture transport images, and confirm putaway. This replaces the simpler "Putaway" concept from the original design with a fuller inward workflow.
+
+**Unique Identifier:** Each inward receipt is tracked by **batch code** (printed on bottles/packages). Batch code is the primary identifier throughout the warehouse.
+
+**Workflow:**
+```
+┌────────────┐     ┌──────────────┐     ┌──────────────┐     ┌───────────┐
+│ GRPO Posted│────→│ ASSIGN       │────→│ PUTAWAY      │────→│ COMPLETED │
+│ (Auto)     │     │ LOCATION     │     │ (Operator)   │     │           │
+│            │     │(Bin/Aisle)   │     │              │     │           │
+└────────────┘     └──────────────┘     └──────────────┘     └───────────┘
+```
+
+**Statuses:** `PENDING` → `LOCATION_ASSIGNED` → `IN_PROGRESS` → `COMPLETED`
+
+**Models (PostgreSQL):**
+```python
+class InwardReceipt(models.Model):
+    receipt_number        # Auto-generated (e.g., INW-2026-0001)
+    grpo_posting          # FK → GRPOPosting (from grpo module)
+    warehouse_code        # Target warehouse
+    warehouse_name
+    status
+    assigned_to           # FK → User (nullable)
+    location_details      # Text — bin/aisle/isle description (free-text, no formal bin model)
+    driver_image          # ImageField — photo of driver (nullable)
+    truck_image           # ImageField — photo of truck (nullable)
+    started_at
+    completed_at
+    company               # FK → Company
+    created_at
+    updated_at
+
+class InwardReceiptLine(models.Model):
+    inward_receipt        # FK → InwardReceipt
+    item_code
+    item_name
+    quantity
+    batch_number          # Batch code from the item (key identifier)
+    uom
+    location_details      # Per-line location if different items go to different spots
+    put_away              # Boolean — has this line been put away?
+    put_away_at
+    notes
+```
+
+**Receiving Captures:**
+- Image of driver (uploaded via mobile/tablet)
+- Image of truck (uploaded via mobile/tablet)
+- These are stored on the InwardReceipt and serve as an audit trail for transport verification
+
+**API Endpoints:**
+```
+GET    /api/v1/warehouse/inward/                       # List inward receipts
+GET    /api/v1/warehouse/inward/{id}/                  # Detail
+POST   /api/v1/warehouse/inward/{id}/assign-location/  # Assign bin/aisle location
+POST   /api/v1/warehouse/inward/{id}/start/            # Start putaway
+PATCH  /api/v1/warehouse/inward/{id}/lines/{line_id}/  # Mark line as put away
+POST   /api/v1/warehouse/inward/{id}/complete/         # Complete inward
+POST   /api/v1/warehouse/inward/{id}/upload-images/    # Upload driver/truck images
+```
+
+**Permissions:**
+```python
+warehouse.can_view_inward
+warehouse.can_execute_inward
+```
+
+---
+
+### 3.9 Dispatch Tracking (Post-Invoice)
+
+**Purpose:** After an invoice/bill is generated (from SAP Sales Order flow), track whether the goods have actually been physically dispatched or not. This provides visibility into the gap between invoicing and physical dispatch.
+
+**Key requirement from factory team:** "After invoice, should be an option to show if dispatch is done or not."
+
+**Workflow:**
+```
+┌──────────────┐     ┌─────────────────┐     ┌────────────┐
+│ Invoice/Bill │────→│ PENDING         │────→│ DISPATCHED │
+│ (from SAP)   │     │ DISPATCH        │     │            │
+└──────────────┘     └────────┬────────┘     └────────────┘
+                              │
+                              │ (if blocked)
+                              ↓
+                     ┌─────────────────┐
+                     │ NOT DISPATCHED  │
+                     │ (with reason)   │
+                     └─────────────────┘
+```
+
+**Statuses:** `PENDING_DISPATCH` → `DISPATCHED` | `NOT_DISPATCHED`
+
+**Models (PostgreSQL):**
+```python
+class DispatchTracking(models.Model):
+    tracking_number       # Auto-generated
+    shipment_order        # FK → ShipmentOrder (from outbound_dispatch, nullable)
+    sap_invoice_doc_entry # SAP invoice reference
+    sap_invoice_doc_num
+    customer_code
+    customer_name
+    status                # PENDING_DISPATCH, DISPATCHED, NOT_DISPATCHED
+    dispatch_date         # When actually dispatched (nullable)
+    dispatched_by         # FK → User (nullable)
+    not_dispatched_reason # Text — reason if not dispatched (nullable)
+    gatepass_number       # Gatepass reference (nullable)
+    gatepass_weight       # Weight recorded at gatepass weighbridge
+    expected_weight       # Weight expected from bill
+    weight_variance       # gatepass_weight - expected_weight (computed)
+    company               # FK → Company
+    created_at
+    updated_at
+```
+
+**Gatepass-Weighbridge Verification:**
+- When a dispatch is marked as complete, the gatepass weight is compared against the expected weight from the bill
+- If variance exceeds a threshold, an alert is raised
+- "Gatepass weighbridge should match"
+
+**Dashboard Integration:**
+Dashboard KPI cards pull directly from this model:
+- **Inward** count
+- **Bill** count (total invoices)
+- **Dispatched** count
+- **Not Dispatched** count (with drill-down to see reasons)
+
+**API Endpoints:**
+```
+GET    /api/v1/warehouse/dispatch-tracking/                    # List with filters
+GET    /api/v1/warehouse/dispatch-tracking/{id}/               # Detail
+POST   /api/v1/warehouse/dispatch-tracking/{id}/mark-dispatched/  # Mark as dispatched
+POST   /api/v1/warehouse/dispatch-tracking/{id}/mark-not-dispatched/  # Mark with reason
+GET    /api/v1/warehouse/dispatch-tracking/summary/            # Dashboard KPI summary
+```
+
+**Permissions:**
+```python
+warehouse.can_view_dispatch_tracking
+warehouse.can_manage_dispatch_tracking
+```
+
+---
+
+### 3.10 Returns
+
+**Purpose:** Handle goods returned at the gate or from within the warehouse. Issue a return note when quantity received back is less than what's on the bill.
+
+**Two return types:**
+1. **Gate Return** — Customer/transport returns goods at the gate (connects to gate module)
+2. **Warehouse Return** — Internal return of issued materials back to warehouse
+
+**Workflow:**
+```
+┌──────────┐     ┌──────────┐     ┌──────────────┐     ┌───────────┐
+│ RETURN   │────→│ INSPECT  │────→│ RETURN NOTE  │────→│ RESTOCKED │
+│ RECEIVED │     │ & COUNT  │     │ (if short)   │     │ / SCRAPPED│
+└──────────┘     └──────────┘     └──────────────┘     └───────────┘
+```
+
+**Statuses:** `RECEIVED` → `INSPECTED` → `COMPLETED`
+
+**Models (PostgreSQL):**
+```python
+class ReturnOrder(models.Model):
+    return_number         # Auto-generated (e.g., RET-2026-0001)
+    return_type           # GATE_RETURN, WAREHOUSE_RETURN
+    original_doc_type     # DISPATCH, GOODS_ISSUE, TRANSFER
+    original_doc_id       # ID of the original document
+    original_doc_number   # Human-readable reference
+    warehouse_code
+    warehouse_name
+    status                # RECEIVED, INSPECTED, COMPLETED
+    received_by           # FK → User
+    inspected_by          # FK → User (nullable)
+    return_reason         # Text
+    has_shortage          # Boolean — true if return qty < original qty
+    company               # FK → Company
+    created_at
+    updated_at
+
+class ReturnLine(models.Model):
+    return_order          # FK → ReturnOrder
+    item_code
+    item_name
+    batch_number
+    original_qty          # Quantity on the original bill
+    returned_qty          # Quantity actually returned
+    shortage_qty          # original_qty - returned_qty (computed)
+    uom
+    condition             # GOOD, DAMAGED, EXPIRED
+    disposition           # RESTOCK, SCRAP, QUARANTINE
+    notes
+
+class ReturnNote(models.Model):
+    """Generated automatically when returned_qty < original_qty (issue return note)."""
+    return_order          # OneToOne → ReturnOrder
+    note_number           # Auto-generated
+    generated_at
+    generated_by          # FK → User
+    shortage_lines        # JSON or FK → ReturnLine (lines with shortage)
+    notes
+```
+
+**API Endpoints:**
+```
+GET    /api/v1/warehouse/returns/                      # List returns
+POST   /api/v1/warehouse/returns/                      # Create return
+GET    /api/v1/warehouse/returns/{id}/                 # Detail
+POST   /api/v1/warehouse/returns/{id}/inspect/         # Record inspection
+POST   /api/v1/warehouse/returns/{id}/complete/        # Complete return
+GET    /api/v1/warehouse/returns/{id}/return-note/     # Get return note (if shortage)
+```
+
+**Permissions:**
+```python
+warehouse.can_view_returns
+warehouse.can_create_return
+warehouse.can_inspect_return
+warehouse.can_complete_return
+```
+
+---
+
+### 3.11 Non-Moving / Expiry Tracking (Finished Goods)
+
+**Purpose:** Track finished goods that are approaching or past their expiry/critical age thresholds. Different companies have different thresholds.
+
+**Company-Specific Thresholds:**
+
+| Company | Item Type | Critical Age | Notes |
+|---|---|---|---|
+| Jivo Oil | Tin | 30 days | Show expiry date |
+| Jivo Oil | Box | 60 days | Show expiry date |
+| Jivo Beverages | Water | 60 days | Show expiry date |
+| Jivo Beverages | Others | 20 days | Show expiry date |
+
+**Key Features:**
+- Track days since batch was received in FG warehouse
+- Alert when approaching critical age threshold
+- Show expiry date (derived from manufacturing date + shelf life, or from SAP batch expiry)
+- Drill-down to see which batches are at risk
+- Extends existing `non_moving_rm` module pattern but focused on FG warehouses
+
+**Models (PostgreSQL):**
+```python
+class ExpiryThresholdConfig(models.Model):
+    """Configurable per-company, per-item-type thresholds."""
+    company               # FK → Company
+    item_type             # e.g., TIN, BOX, WATER, OTHER (or item group from SAP)
+    item_group_code       # SAP item group code (nullable, for matching)
+    critical_age_days     # Number of days before item is considered critical
+    warehouse_filter      # Optional — only apply to specific FG warehouses
+    is_active
+    created_at
+    updated_at
+```
+
+**Data Sources:**
+- Batch receipt dates from SAP HANA (`OIBT` table — batch details with admission date)
+- Item expiry dates from SAP (`OIBT.ExpDate` if populated, or computed from `MnfDate` + shelf life)
+- Current stock from OITW
+- Thresholds from PostgreSQL config
+
+**API Endpoints:**
+```
+GET    /api/v1/warehouse/non-moving/                   # Non-moving FG report
+GET    /api/v1/warehouse/non-moving/alerts/            # Items past critical threshold
+GET    /api/v1/warehouse/non-moving/config/            # Threshold config
+POST   /api/v1/warehouse/non-moving/config/            # Create/update threshold
+```
+
+**Permissions:**
+```python
+warehouse.can_view_non_moving
+warehouse.can_manage_non_moving_config
+```
+
+---
+
+### 3.12 Variety-Wise Capacity Locking (FG Warehouses)
+
+**Purpose:** Prevent receiving more than a configured maximum quantity of a specific variety/item in finished goods warehouses.
+
+**Key requirement from factory team:** "Locking variety wise — cannot receive more than a certain amount in FG."
+
+**How it works:**
+1. Admin configures max capacity per variety per FG warehouse
+2. When an inward receipt is being processed for an FG warehouse, the system checks current stock + incoming qty against the limit
+3. If it would exceed the limit, the inward is blocked with an alert
+
+**Models (PostgreSQL):**
+```python
+class VarietyCapacityLimit(models.Model):
+    warehouse_code        # SAP warehouse code (FG warehouse)
+    warehouse_name
+    item_code             # SAP item code (or item group for broader rules)
+    item_name
+    variety               # Variety identifier (from SAP U_Variety field)
+    max_quantity          # Maximum allowed quantity
+    uom
+    is_active
+    company               # FK → Company
+    created_at
+    updated_at
+```
+
+**Validation Logic (in InwardService):**
+```python
+def validate_capacity(self, warehouse_code, item_code, incoming_qty):
+    limit = VarietyCapacityLimit.objects.filter(
+        warehouse_code=warehouse_code, item_code=item_code, is_active=True
+    ).first()
+    if limit:
+        current_stock = self.hana_reader.get_item_stock_in_warehouse(item_code, warehouse_code)
+        if current_stock + incoming_qty > limit.max_quantity:
+            raise CapacityExceededError(...)
+```
+
+**API Endpoints:**
+```
+GET    /api/v1/warehouse/capacity-limits/              # List limits
+POST   /api/v1/warehouse/capacity-limits/              # Create limit
+PATCH  /api/v1/warehouse/capacity-limits/{id}/         # Update limit
+DELETE /api/v1/warehouse/capacity-limits/{id}/         # Remove limit
+GET    /api/v1/warehouse/capacity-limits/check/        # Check if a receipt would exceed limits
+```
+
+**Permissions:**
+```python
+warehouse.can_view_capacity_limits
+warehouse.can_manage_capacity_limits
+```
+
+---
+
+### 3.13 FIFO Enforcement
+
+**Purpose:** Ensure first-in-first-out is maintained using batch codes. Older batches should be picked/issued before newer ones.
+
+**How it works:**
+- Every item entering the warehouse has a **batch code** (the unique identifier mentioned on bottles)
+- Batch admission date is tracked in SAP (`OIBT.InDate`)
+- When generating pick lists or goods issues, the system **sorts available batches by admission date (oldest first)** and suggests/enforces picking the oldest batch
+- Operators can override with a reason (but it's logged)
+
+**Implementation:**
+- No separate model needed — FIFO is a **service-layer rule** applied during:
+  - Pick list generation (Section 3.7) — sort batches by `OIBT.InDate` ASC
+  - Goods issue item selection (Section 3.4) — suggest oldest batch first
+  - Stock transfer picking — same logic
+- HANA reader method: `get_available_batches(item_code, warehouse_code)` returns batches sorted by admission date
+- UI: When selecting items for picking/issuing, batch dropdown is ordered oldest-first with admission date shown
+
+**HANA Query:**
+```sql
+SELECT "ItemCode", "BatchNum", "Quantity", "InDate", "ExpDate"
+FROM "{schema}"."OIBT"
+WHERE "ItemCode" = :item_code
+  AND "WhsCode" = :warehouse_code
+  AND "Quantity" > 0
+ORDER BY "InDate" ASC
+```
+
+---
+
+### 3.14 Daily Audit (Stock Reconciliation)
+
+**Purpose:** Support daily physical audits — compare physical count with SAP and app records. Track stock vs. in/out movements.
+
+**Key requirement from factory team:** "Per day physical, compare with SAP and app. Stock vs in/out. (Until barcoding not present)"
+
+**This is a simplified daily version of the full stock counting (Section 3.5),** designed for quick daily checks rather than formal inventory counts.
+
+**Workflow:**
+```
+┌──────────┐     ┌──────────────┐     ┌──────────────┐
+│ START    │────→│ RECORD       │────→│ VARIANCE     │
+│ AUDIT    │     │ PHYSICAL     │     │ REPORT       │
+│          │     │ COUNTS       │     │              │
+└──────────┘     └──────────────┘     └──────────────┘
+```
+
+**Key difference from Section 3.5 (formal stock counting):**
+- Daily audit does NOT post to SAP — it's an internal reconciliation tool
+- Compares: physical count vs. SAP stock vs. app-tracked in/out for the day
+- Lighter workflow — no approval chain, just record and report
+
+**Models (PostgreSQL):**
+```python
+class DailyAudit(models.Model):
+    audit_date            # Date of audit
+    warehouse_code
+    warehouse_name
+    audited_by            # FK → User
+    status                # IN_PROGRESS, COMPLETED
+    notes
+    company               # FK → Company
+    created_at
+    updated_at
+
+class DailyAuditLine(models.Model):
+    daily_audit           # FK → DailyAudit
+    item_code
+    item_name
+    batch_number          # Nullable
+    sap_qty               # Quantity per SAP at audit time
+    app_inward_qty        # Total inward recorded in app for the day
+    app_outward_qty       # Total outward recorded in app for the day
+    expected_qty          # sap_qty + app_inward_qty - app_outward_qty
+    physical_qty          # Actual physical count
+    variance_qty          # physical_qty - expected_qty
+    notes
+```
+
+**API Endpoints:**
+```
+GET    /api/v1/warehouse/audit/                        # List audits
+POST   /api/v1/warehouse/audit/                        # Start new daily audit
+GET    /api/v1/warehouse/audit/{id}/                   # Detail
+PATCH  /api/v1/warehouse/audit/{id}/lines/{line_id}/   # Record physical count
+POST   /api/v1/warehouse/audit/{id}/complete/          # Complete audit
+GET    /api/v1/warehouse/audit/{id}/variance-report/   # Variance report
+```
+
+**Permissions:**
+```python
+warehouse.can_view_audit
+warehouse.can_execute_audit
+```
+
+---
+
 ## 4. SAP Integration Map
 
 ### 4.1 SAP HANA (Read-Only)
 
 | Feature | SAP Table/Procedure | Purpose |
 |---|---|---|
-| Warehouse list | OITW (distinct WhsCode) | Dropdown, filters |
-| Item master | OITM | Item search, details |
+| Warehouse list | OWHS | Dropdown, filters |
+| Item master | OITM | Item search, details, ManBtchNum flag |
 | Item groups | OITB | Filtering |
-| Stock by warehouse | OITW | On-hand, committed, ordered |
+| Stock by warehouse | OITW | On-hand, committed, ordered, MinStock |
 | Movement history | OINM | Inventory audit trail |
+| Batch details | OIBT | Batch stock, admission date (FIFO), expiry date |
 | Open POs | OPOR, POR1 | Expected inbound |
 | Production orders | OWOR, WOR1 | Expected consumption |
 | Inventory value | SP_INVENTORYAGEVALUE | Already used by inventory_age module |
+| Sales orders / invoices | ORDR, OINV | Dispatch tracking source |
 
 ### 4.2 SAP Service Layer (Write)
 
@@ -747,15 +1198,21 @@ GRPO Module ──────→ Goods receipt posted to SAP
 ┌───────────────────────────────────────────────────────────┐
 │                    WAREHOUSE MODULE                        │
 │                                                            │
-│  Putaway ←────── GRPO triggers putaway task                │
+│  Inward ←─────── GRPO triggers inward receipt + putaway    │
 │  Inventory ───── View stock across warehouses              │
 │  Transfers ───── Move stock between warehouses             │
 │  Goods Issue ─── Issue to production/maint                 │
 │  Counting ────── Verify physical vs system                 │
+│  Daily Audit ─── Quick daily physical reconciliation       │
 │  Picking ─────── Unified picking for ALL sources:          │
 │      ├── outbound_dispatch (shipment picks)                │
 │      ├── stock transfers (transfer picks)                  │
 │      └── goods issues (issue picks)                        │
+│  Dispatch Track ─ Post-invoice dispatch status             │
+│  Returns ──────── Gate + warehouse returns                 │
+│  Non-Moving ───── FG expiry/aging alerts                   │
+│  Capacity Lock ── Variety-wise FG limits                   │
+│  FIFO ─────────── Batch-based first-in-first-out           │
 │                                                            │
 └───────────────────────────────────────────────────────────┘
           │                              ↑
@@ -778,6 +1235,7 @@ Outbound Dispatch ────────────────────�
 Warehouse                          (icon: Warehouse)
 ├── Dashboard                      /warehouse
 ├── Inventory                      /warehouse/inventory
+├── Inward                         /warehouse/inward
 ├── Stock Transfers                /warehouse/transfers
 │   ├── All Transfers              /warehouse/transfers
 │   ├── Pending Approval           /warehouse/transfers?status=pending_approval
@@ -785,34 +1243,49 @@ Warehouse                          (icon: Warehouse)
 ├── Goods Issue                    /warehouse/goods-issue
 │   ├── All Issues                 /warehouse/goods-issue
 │   └── Create Issue               /warehouse/goods-issue/new
+├── Pick Lists                     /warehouse/picking
+├── Dispatch Tracking              /warehouse/dispatch-tracking
+├── Returns                        /warehouse/returns
 ├── Stock Counting                 /warehouse/counting
 │   ├── All Counts                 /warehouse/counting
 │   └── Plan Count                 /warehouse/counting/new
-├── Putaway Tasks                  /warehouse/putaway
-└── Pick Lists                     /warehouse/picking
+├── Daily Audit                    /warehouse/audit
+├── Non-Moving FG                  /warehouse/non-moving
+└── Settings                       /warehouse/settings
+    ├── Expiry Thresholds          /warehouse/settings/expiry-config
+    └── Capacity Limits            /warehouse/settings/capacity-limits
 ```
 
 ### 5.2 Page Inventory
 
 | Page | Route | Description |
 |---|---|---|
-| Warehouse Dashboard | `/warehouse` | Overview with KPIs, pending tasks, alerts |
-| Inventory Browser | `/warehouse/inventory` | Search & browse stock |
-| Item Detail | `/warehouse/inventory/:itemCode` | Item stock details & history |
+| Warehouse Dashboard | `/warehouse` | KPIs: Inward, Bill, Dispatched, Not Dispatched + alerts |
+| Inventory Browser | `/warehouse/inventory` | Search & browse stock by warehouse |
+| Item Detail | `/warehouse/inventory/:itemCode` | Stock breakdown, batches, movement history |
+| Inward List | `/warehouse/inward` | Pending & completed inward receipts |
+| Inward Detail | `/warehouse/inward/:id` | Line-by-line putaway with location assignment |
 | Transfer List | `/warehouse/transfers` | List with filters & status tabs |
 | Create Transfer | `/warehouse/transfers/new` | Multi-step form |
 | Transfer Detail | `/warehouse/transfers/:id` | View & action transfer |
 | Goods Issue List | `/warehouse/goods-issue` | List with filters & status tabs |
 | Create Goods Issue | `/warehouse/goods-issue/new` | Form with item selection |
 | Goods Issue Detail | `/warehouse/goods-issue/:id` | View & action issue |
-| Stock Count List | `/warehouse/counting` | List with filters |
+| Pick List | `/warehouse/picking` | All active pick lists (dispatch, transfer, GI) |
+| Pick Detail | `/warehouse/picking/:id` | Line-by-line picking with barcode scan |
+| Dispatch Tracking | `/warehouse/dispatch-tracking` | Post-invoice dispatch status list |
+| Dispatch Detail | `/warehouse/dispatch-tracking/:id` | Mark dispatched / not dispatched |
+| Returns List | `/warehouse/returns` | Gate + warehouse returns |
+| Return Detail | `/warehouse/returns/:id` | Inspect, count, generate return note |
+| Stock Count List | `/warehouse/counting` | Formal stock counts list |
 | Plan Stock Count | `/warehouse/counting/new` | Select warehouse, items, schedule |
 | Stock Count Detail | `/warehouse/counting/:id` | Count entry & variance review |
 | Variance Report | `/warehouse/counting/:id/variance` | Discrepancy analysis |
-| Putaway List | `/warehouse/putaway` | Pending & completed putaways |
-| Putaway Detail | `/warehouse/putaway/:id` | Line-by-line putaway |
-| Pick List | `/warehouse/picking` | Pending & active pick lists |
-| Pick Detail | `/warehouse/picking/:id` | Line-by-line picking |
+| Daily Audit List | `/warehouse/audit` | Daily physical reconciliation list |
+| Daily Audit Detail | `/warehouse/audit/:id` | Record counts, see variance |
+| Non-Moving FG | `/warehouse/non-moving` | Aging report with expiry alerts |
+| Expiry Config | `/warehouse/settings/expiry-config` | Company-specific thresholds |
+| Capacity Limits | `/warehouse/settings/capacity-limits` | Variety-wise FG limits |
 
 ---
 
@@ -846,14 +1319,36 @@ warehouse.can_execute_stock_count
 warehouse.can_review_stock_count
 warehouse.can_post_stock_count_to_sap
 
-# Putaway
-warehouse.can_view_putaway
-warehouse.can_execute_putaway
+# Inward / Putaway
+warehouse.can_view_inward
+warehouse.can_execute_inward
 
 # Picking
 warehouse.can_view_picking
 warehouse.can_execute_picking
 warehouse.can_manage_picking
+
+# Dispatch Tracking
+warehouse.can_view_dispatch_tracking
+warehouse.can_manage_dispatch_tracking
+
+# Returns
+warehouse.can_view_returns
+warehouse.can_create_return
+warehouse.can_inspect_return
+warehouse.can_complete_return
+
+# Non-Moving / Expiry
+warehouse.can_view_non_moving
+warehouse.can_manage_non_moving_config
+
+# Capacity Limits
+warehouse.can_view_capacity_limits
+warehouse.can_manage_capacity_limits
+
+# Daily Audit
+warehouse.can_view_audit
+warehouse.can_execute_audit
 
 # Dashboard
 warehouse.can_view_warehouse_dashboard
@@ -865,6 +1360,8 @@ warehouse.can_view_warehouse_dashboard
 |---|---|---|---|---|
 | view_inventory | x | x | x | x |
 | view_warehouse_dashboard | x | x | x | x |
+| view_inward | x | x | x | x |
+| execute_inward | x | | x | x |
 | request_transfer | x | x | | x |
 | approve_transfer | | x | | x |
 | pick_transfer | x | | x | x |
@@ -878,129 +1375,175 @@ warehouse.can_view_warehouse_dashboard
 | execute_stock_count | x | | x | x |
 | review_stock_count | | x | | x |
 | post_stock_count_to_sap | | x | | x |
-| execute_putaway | x | | x | x |
 | execute_picking | x | | x | x |
 | manage_picking | | x | | x |
+| view_dispatch_tracking | x | x | x | x |
+| manage_dispatch_tracking | | x | | x |
+| create_return | x | x | | x |
+| inspect_return | x | x | | x |
+| complete_return | | x | | x |
+| view_non_moving | x | x | | x |
+| manage_non_moving_config | | x | | x |
+| manage_capacity_limits | | x | | x |
+| execute_audit | x | | x | x |
 
 ---
 
 ## 7. Implementation Phases
 
-### Phase 1: Foundation (Week 1-2)
+### Phase 1: Foundation + Inventory (Week 1-2)
 
 **Backend:**
-- [ ] Create `warehouse` Django app with models, migrations
-- [ ] Implement HANA reader for stock queries (OITM, OITW, OINM)
-- [ ] Implement inventory list & detail API endpoints
-- [ ] Implement warehouse dashboard summary endpoint
-- [ ] Set up permissions
+- [ ] Create `warehouse` Django app with permission models, migrations
+- [ ] Implement HANA reader for stock queries (OITM, OITW, OINM, OIBT, OWHS)
+- [ ] Implement inventory list & detail API endpoints (with batch breakdown)
+- [ ] Implement filter options API (warehouses, item groups)
+- [ ] Implement dashboard summary endpoint
+- [ ] Set up all permissions
+- [ ] FIFO batch query: `get_available_batches()` from OIBT sorted by InDate
 
 **Frontend:**
 - [ ] Create warehouse module structure with module.config.tsx
-- [ ] Implement warehouse dashboard page
-- [ ] Implement inventory browser page with search & filters
-- [ ] Implement item detail page with warehouse breakdown
-- [ ] Register module in app registry
+- [ ] Register module in app registry, permissions config, API constants
+- [ ] Implement warehouse dashboard page (KPI cards: Inward, Bill, Dispatched, Not Dispatched)
+- [ ] Implement inventory browser page with search, warehouse & item group filters
+- [ ] Implement item detail page with warehouse breakdown & batch stock view
 
-### Phase 2: Stock Transfers (Week 3-4)
+### Phase 2: Inward + Picking (Week 3-4)
+
+**Backend:**
+- [ ] InwardReceipt models & migrations (replaces simpler Putaway concept)
+- [ ] Auto-creation hook on GRPO posting → creates InwardReceipt
+- [ ] Inward endpoints (assign location, start, mark lines, complete)
+- [ ] Image upload endpoints for driver/truck photos
+- [ ] PickList + PickLine models & migrations (unified picking)
+- [ ] PickingService: create_pick_list(), record_pick(), complete_pick()
+- [ ] FIFO enforcement in pick generation (oldest batch first from OIBT)
+- [ ] Barcode scan endpoint for pick lines
+
+**Frontend:**
+- [ ] Inward list & detail pages with location assignment
+- [ ] Image capture/upload UI for driver & truck
+- [ ] Pick list page (all sources: dispatch, transfer, GI)
+- [ ] Pick detail page with line-by-line picking, barcode scan input
+- [ ] Batch selection UI ordered by FIFO (oldest first, admission date shown)
+
+### Phase 3: Stock Transfers + Goods Issue (Week 5-6)
 
 **Backend:**
 - [ ] Stock transfer models & migrations
-- [ ] Transfer CRUD endpoints
-- [ ] Transfer workflow (submit → approve → pick → transit → receive)
+- [ ] Transfer CRUD + workflow endpoints (submit → approve → pick → transit → receive)
 - [ ] SAP Service Layer writer for StockTransfers
-- [ ] Post-to-SAP endpoint
-- [ ] Notification triggers (approval needed, transfer received)
-
-**Frontend:**
-- [ ] Transfer list page with status tabs
-- [ ] Create transfer form (multi-step: select warehouses → add items → review)
-- [ ] Transfer detail page with action buttons per status
-- [ ] Approval flow UI
-
-### Phase 3: Goods Issue (Week 5-6)
-
-**Backend:**
+- [ ] Transfer triggers PickingService for pick generation
 - [ ] Goods issue models & migrations
-- [ ] Goods issue CRUD endpoints
-- [ ] Issue workflow (submit → approve → issue)
+- [ ] Goods issue CRUD + workflow endpoints (submit → approve → issue)
 - [ ] SAP Service Layer writer for InventoryGenExits
 - [ ] Link to production_execution module (production issues)
+- [ ] Notification triggers for both workflows
+- [ ] Variety-wise capacity limit model + validation on inward
+
+**Frontend:**
+- [ ] Transfer list, create form (multi-step), detail page with status actions
+- [ ] Goods issue list, create form, detail page with actions
+- [ ] Capacity limit settings page
+
+### Phase 4: Dispatch Tracking + Returns (Week 7-8)
+
+**Backend:**
+- [ ] DispatchTracking model & migrations
+- [ ] Sync/create tracking records from SAP invoices or post-dispatch
+- [ ] Mark dispatched / not dispatched endpoints (with reason)
+- [ ] Gatepass weight verification logic
+- [ ] Dashboard KPI summary endpoint
+- [ ] ReturnOrder + ReturnLine + ReturnNote models & migrations
+- [ ] Return CRUD + workflow endpoints (receive → inspect → complete)
+- [ ] Auto-generate return note when returned_qty < original_qty
 - [ ] Notification triggers
 
 **Frontend:**
-- [ ] Goods issue list page
-- [ ] Create goods issue form (select type → warehouse → items → review)
-- [ ] Goods issue detail page with actions
-- [ ] Production issue shortcut from production module
+- [ ] Dispatch tracking list with status filters
+- [ ] Dispatch detail page (mark dispatched, record reason if not)
+- [ ] Weight variance display (gatepass vs bill)
+- [ ] Returns list, create form, detail page
+- [ ] Return note view/print
+- [ ] Dashboard KPI cards now fully wired
 
-### Phase 4: Stock Counting (Week 7-8)
+### Phase 5: Counting + Daily Audit + Non-Moving (Week 9-10)
 
 **Backend:**
-- [ ] Stock count models & migrations
+- [ ] StockCount models & migrations
 - [ ] Count planning endpoint (auto-populate items from HANA)
 - [ ] Count execution endpoints (record counts per line)
 - [ ] Variance calculation logic
 - [ ] SAP posting (InventoryCountings or InventoryPostings)
-- [ ] Variance report endpoint
+- [ ] DailyAudit models & migrations
+- [ ] Daily audit endpoints (lighter workflow, no SAP posting)
+- [ ] ExpiryThresholdConfig model & migrations
+- [ ] Non-moving FG report endpoint (batch age from OIBT vs thresholds)
+- [ ] Expiry alert endpoint for dashboard
 
 **Frontend:**
-- [ ] Stock count list page
-- [ ] Plan count form
-- [ ] Count execution page (mobile-friendly line-by-line entry)
+- [ ] Stock count list, plan form, count execution page (mobile-friendly)
 - [ ] Variance report page with discrepancy highlighting
+- [ ] Daily audit list & detail pages (record counts, see variance)
+- [ ] Non-moving FG report page with expiry alerts
+- [ ] Expiry threshold config page (per-company, per-item-type)
 
-### Phase 5: Putaway & Picking (Week 9-10)
+### Phase 6: Dispatch Integration + Polish (Week 11-12)
 
-**Backend:**
-- [ ] Putaway models & auto-creation hook on GRPO posting
-- [ ] Putaway task endpoints
-- [ ] Pick list models & creation from transfers/dispatch/goods-issue
-- [ ] Pick list execution endpoints
-
-**Frontend:**
-- [ ] Putaway task list & detail pages
-- [ ] Pick list & detail pages
-- [ ] Mobile-optimized interfaces for operators
-
-### Phase 6: Polish & Integration (Week 11-12)
-
+- [ ] Integrate warehouse PickingService with `outbound_dispatch` module
+- [ ] Remove dispatch's `PickTask` model, wire to warehouse `PickList`
 - [ ] End-to-end testing of all SAP integrations
 - [ ] Notification setup for all workflows
-- [ ] Dashboard refinement with real data
-- [ ] Cross-module navigation (GRPO → Putaway, Production → Goods Issue)
-- [ ] Excel export for inventory & reports
+- [ ] Cross-module navigation (GRPO → Inward, Production → Goods Issue, Dispatch → Picking)
+- [ ] Excel export for inventory, counts, audit, & reports
 - [ ] Error handling & edge cases
 - [ ] Permission testing
+- [ ] Mobile optimization for operator-facing pages (inward, picking, audit)
 
 ---
 
 ## 8. Open Questions & Investigation Needed
 
-### Resolved (via HANA queries — 2026-04-04)
+### Resolved
+
+**Via HANA queries (2026-04-04):**
 
 Queried production DB (`JIVO_OIL_HANADB`) and test DBs (`TEST_MART_15122025`, `TEST_BEVERAGES_15122025`).
 
 | # | Question | Finding | Design Decision |
 |---|---|---|---|
-| 1 | **SAP Bin Locations** | **Not enabled.** 0 of 100 warehouses across all 3 companies have bins activated (`OWHS.BinActivat`). | Skip bin-level logic entirely. No bin fields needed in models. |
-| 2 | **SAP Batch Management** | **Yes, heavily used.** ~27-32% of items are batch-managed (`OITM.ManBtchNum = 'Y'`). Jivo Oil: 570/2102, Mart: 406/1278, Beverages: 537/2135. | **Must include** `batch_number` on transfer/issue/count line models. Need batch selection UI when item is batch-managed (query `OIBT` for available batches). |
+| 1 | **SAP Bin Locations** | **Not enabled.** 0 of 100 warehouses across all 3 companies have bins activated (`OWHS.BinActivat`). | Skip SAP bin logic. Use free-text `location_details` field on inward receipts for bin/aisle tracking within our app. |
+| 2 | **SAP Batch Management** | **Yes, heavily used.** ~27-32% of items are batch-managed (`OITM.ManBtchNum = 'Y'`). Jivo Oil: 570/2102, Mart: 406/1278, Beverages: 537/2135. | **Must include** `batch_number` on all line models. Batch code is the unique identifier (mentioned on bottles). Query `OIBT` for available batches. FIFO enforced via batch admission date. |
 | 3 | **SAP Serial Numbers** | **Not used.** 0 serial-managed items across all companies (`OITM.ManSerNum`). | Skip serial number logic entirely. |
-| 9 | **Minimum Stock Levels** | **Partially used.** Jivo Oil: 224 items, Mart: 0 items, Beverages: 95 items have `OITW.MinStock` set. | Add low-stock alerts widget on warehouse dashboard. Reuse pattern from existing `stock_dashboard` module. |
+| 9 | **Minimum Stock Levels** | **Partially used.** Jivo Oil: 224 items, Mart: 0 items, Beverages: 95 items have `OITW.MinStock` set. | Add low-stock alerts widget on warehouse dashboard. |
 
-### Still Open (need factory team input)
+**Via factory team input (2026-04-04):**
 
-4. **SAP Stock Transfer Request vs Transfer:** **Resolved.** FactoryFlow handles the full approval workflow internally. We post a direct `StockTransfer` to SAP only after all approvals are complete. No need for SAP-side `StockTransferRequests`.
+| # | Question | Resolution | Design Decision |
+|---|---|---|---|
+| 4 | **SAP Transfer Request vs Transfer** | FactoryFlow handles all approvals internally. | Post direct `StockTransfer` to SAP after all approvals complete. |
+| 7 | **Outbound Integration** | Dispatch module has its own `PickTask`. Need unified picking. | Full integration — warehouse owns all picking via `PickList`/`PickLine`. Dispatch's `PickTask` removed, replaced with service calls to `PickingService`. See Section 3.7. |
+| 8 | **Warehouse Zones** | No formal zones. Informal zones change frequently. | Skip zone model. Use free-text location on inward receipts. |
+| 10 | **Barcode/QR Scanning** | Factory already has separate barcoding software (details unknown). Batch code on bottles is the key identifier. | Design all UIs with prominent search input (supports hardware scanners via keystroke). Integration with barcoding software TBD when we learn more about it. |
+| 11 | **FIFO** | Maintained using batch codes. | Enforce FIFO in pick generation and goods issue by sorting batches from `OIBT.InDate` ASC. See Section 3.13. |
+| 12 | **Non-Moving FG Thresholds** | Oil: 30 days tin, 60 days box. Beverages: 60 days water, 20 days others. Must show expiry date. | Configurable per-company thresholds via `ExpiryThresholdConfig`. See Section 3.11. |
+| 13 | **Capacity Locking** | Variety-wise locking in FG — cannot receive more than a certain amount. | `VarietyCapacityLimit` model with validation on inward. See Section 3.12. |
+| 14 | **Returns** | Gate returns + warehouse returns. Issue return note if qty < bill qty. | `ReturnOrder` + `ReturnNote` models. See Section 3.10. |
+| 15 | **Receiving Images** | Need driver and truck images on transport/receiving. | `driver_image` and `truck_image` fields on `InwardReceipt`. See Section 3.8. |
+| 16 | **Gatepass/Weighbridge** | Gatepass weighbridge weight should match bill weight. | Weight verification on `DispatchTracking` with variance alerting. See Section 3.9. |
+| 17 | **Daily Audit** | Per day physical audit, compare SAP vs app. Stock vs in/out. Until barcoding not present. | `DailyAudit` model — lightweight daily reconciliation without SAP posting. See Section 3.14. |
+| 18 | **Dispatch Tracking** | Dashboard needs: Inward, Bill, Dispatched, Not Dispatched, Reason. | `DispatchTracking` model with dashboard KPI cards. See Section 3.9. |
+
+### Still Open
 
 5. **Cost Centers:** Are cost centers required for goods issues? Need to know which cost centers map to which departments. **Plan:** Add as optional field, query `OPRC` for dropdown, don't enforce until confirmed.
 
 6. **Approval Hierarchy:** Who approves transfers and goods issues? Single approver or multi-level? Does it vary by value/quantity? **Plan:** Start with single-approver (anyone with `can_approve_*` permission), same as GRPO module pattern.
 
-7. **Outbound Integration:** **Resolved.** The `outbound_dispatch` module (on `dispatch` branch) has its own `PickTask` model with full pick/scan/short-pick logic. **Decision: Full integration.** Warehouse module owns all picking via a unified `PickList`/`PickLine` model. Dispatch's `PickTask` model is removed and replaced with service calls to `warehouse.services.PickingService`. This gives warehouse operators a single UI for all picks regardless of source (dispatch, transfer, goods issue). See Section 3.7 for full design.
+19. **Picklist Generation:** How are picklists currently generated in SAP? Who generates them? **Action:** Ask factory team members who handle picklist generation. This affects whether we generate picks from SAP Sales Orders or from our own internal logic.
 
-8. **Warehouse Zones:** **Resolved.** No formal zone divisions exist. Even if informal zones are used, they change frequently — not worth modeling. Skip zone logic entirely.
-
-10. **Barcode/QR Scanning:** **Partially resolved.** Factory already uses a separate barcoding software. Details of that software are unknown for now. **Plan:** Design putaway/picking UI with prominent search input (supports hardware scanners out of the box via keystroke input). Integration with their barcoding software to be explored later once we learn more about it.
+20. **Barcoding Software Details:** What barcoding software does the factory use? What data does it produce? Can we integrate via API or file export? **Action:** Learn more about the software in upcoming sessions.
 
 ---
 
@@ -1017,11 +1560,14 @@ Queried production DB (`JIVO_OIL_HANADB`) and test DBs (`TEST_MART_15122025`, `T
 
 ```python
 class HanaWarehouseReader:
-    def get_warehouses(self) -> list          # Already exists
-    def get_item_stock(self, filters) -> list  # New
-    def get_item_detail(self, item_code) -> dict  # New
-    def get_movement_history(self, item_code, filters) -> list  # New
-    def get_items_for_counting(self, warehouse, item_group) -> list  # New
+    def get_warehouses(self) -> list                    # Already exists (OWHS)
+    def get_item_stock(self, filters) -> list           # OITM + OITW with search/filters
+    def get_item_detail(self, item_code) -> dict        # OITM + OITW per warehouse
+    def get_movement_history(self, item_code, filters) -> list  # OINM
+    def get_items_for_counting(self, warehouse, item_group) -> list  # OITW + OITM
+    def get_available_batches(self, item_code, warehouse) -> list  # OIBT sorted by InDate (FIFO)
+    def get_batch_expiry_report(self, warehouse, thresholds) -> list  # OIBT with age calc
+    def get_item_min_stock_alerts(self, warehouse) -> list  # OITW where OnHand < MinStock
 ```
 
 ### 9.3 New SAP Service Layer Writers Needed
@@ -1045,7 +1591,33 @@ class InventoryPostingWriter:
 Leverage existing FCM infrastructure:
 - Transfer needs approval → notify manager
 - Transfer approved → notify requester
-- Putaway task created → notify warehouse operators
+- Inward receipt created (post-GRPO) → notify warehouse operators
 - Stock count planned → notify assigned counter
 - Goods issue approved → notify store keeper
 - SAP posting failed → notify manager + store keeper
+- Capacity limit approaching/exceeded → notify store manager
+- Non-moving FG past critical threshold → notify store manager
+- Return received → notify store keeper
+- Dispatch not completed (reason logged) → notify store manager
+
+### 9.5 Reference: OpenWMS (org.openwms)
+
+Explored the enterprise-grade OpenWMS codebase at `D:\Test_CompanyJivo\org.openwms` as reference. Key patterns and features considered:
+
+**Architecture patterns adopted:**
+- **Business-domain packaging** — our warehouse module groups by business capability (inward, picking, transfers), not technical layers. Matches OpenWMS approach.
+- **Service-layer orchestration** — domain logic in services, views stay thin. Same as our existing pattern.
+- **Event publishing after transaction** — OpenWMS uses `@FireAfterTransaction` for domain events. We use Django signals for notifications only (same principle: side-effects after commit).
+
+**Features inspired by OpenWMS that we included:**
+- **Capacity management per location** — OpenWMS tracks max weight/quantity per location with locking. We adopted this as variety-wise capacity locking for FG warehouses (Section 3.12).
+- **FIFO via batch tracking** — OpenWMS enforces FIFO at location level using receipt dates. We enforce via `OIBT.InDate` sorting (Section 3.13).
+- **Returns with disposition** — OpenWMS has return inspection with RESTOCK/SCRAP/QUARANTINE outcomes. We adopted this pattern (Section 3.10).
+- **Audit trail** — OpenWMS uses Hibernate Envers for full audit. We use Django's audit fields + daily audit model for reconciliation (Section 3.14).
+
+**Features NOT adopted (not applicable to our context):**
+- Microservice architecture — our backend is a Django monolith, appropriate for our scale.
+- TransportUnit / pallet hierarchy — factory doesn't track pallets as entities.
+- Automated material flow control (TMS) — no warehouse automation/PLCs.
+- RabbitMQ messaging — our modules communicate via service calls + Django signals.
+- Multi-tenant isolation — we handle multi-company via CompanyContext, not tenant isolation.
