@@ -76,6 +76,9 @@ import type {
   DowntimeParetoReport,
   CostAnalysisReport,
   WasteTrendReport,
+  LineSkuConfig,
+  CreateLineSkuConfigPayload,
+  UpdateLineSkuConfigPayload,
 } from '../types';
 
 const EP = API_ENDPOINTS.PRODUCTION_EXECUTION;
@@ -882,6 +885,44 @@ export const executionApi = {
 
   async getWasteTrendReport(params?: AnalyticsParams): Promise<WasteTrendReport> {
     const res = await apiClient.get<WasteTrendReport>(EP.REPORTS_WASTE_TREND, { params });
+    return res.data;
+  },
+
+  // =========================================================================
+  // Line SKU Config
+  // =========================================================================
+
+  async getLineConfigs(lineId?: number): Promise<LineSkuConfig[]> {
+    const res = await apiClient.get<LineSkuConfig[]>(EP.LINE_CONFIGS, {
+      params: lineId ? { line_id: lineId } : undefined,
+    });
+    return res.data;
+  },
+
+  async createLineConfig(data: CreateLineSkuConfigPayload): Promise<LineSkuConfig> {
+    const res = await apiClient.post<LineSkuConfig>(EP.LINE_CONFIGS, data);
+    return res.data;
+  },
+
+  async updateLineConfig(
+    configId: number,
+    data: UpdateLineSkuConfigPayload,
+  ): Promise<LineSkuConfig> {
+    const res = await apiClient.patch<LineSkuConfig>(EP.LINE_CONFIG_DETAIL(configId), data);
+    return res.data;
+  },
+
+  async deleteLineConfig(configId: number): Promise<void> {
+    await apiClient.delete(EP.LINE_CONFIG_DETAIL(configId));
+  },
+
+  async getAutoFillConfig(
+    lineId: number,
+    skuCode?: string,
+  ): Promise<{ config: LineSkuConfig | null }> {
+    const res = await apiClient.get<{ config: LineSkuConfig | null }>(EP.LINE_CONFIG_AUTO_FILL, {
+      params: { line_id: lineId, sku_code: skuCode || '' },
+    });
     return res.data;
   },
 };

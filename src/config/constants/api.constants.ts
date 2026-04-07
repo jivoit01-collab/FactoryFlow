@@ -355,6 +355,10 @@ export const API_ENDPOINTS = {
       `/production-execution/runs/${runId}/breakdowns/${breakdownId}/update/`,
     // Delete run
     RUN_DELETE: (runId: number) => `/production-execution/runs/${runId}/`,
+    // Line SKU Config
+    LINE_CONFIGS: '/production-execution/line-configs/',
+    LINE_CONFIG_DETAIL: (id: number) => `/production-execution/line-configs/${id}/`,
+    LINE_CONFIG_AUTO_FILL: '/production-execution/line-configs/auto-fill/',
   },
   // Warehouse
   WAREHOUSE: {

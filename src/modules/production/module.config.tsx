@@ -39,6 +39,7 @@ const WasteTrendReportPage = lazy(() => import('./execution/pages/WasteTrendRepo
 // QC moved to /qc/production module — redirect component
 const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
+const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
 
 export const productionModuleConfig: ModuleConfig = {
   name: 'production',
@@ -226,6 +227,12 @@ export const productionModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
     },
+    {
+      path: '/production/execution/line-management',
+      element: <LineManagementPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
+    },
   ],
   navigation: [
     {
@@ -255,6 +262,11 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/production/execution/reports',
           title: 'Reports',
           permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+        },
+        {
+          path: '/production/execution/line-management',
+          title: 'Line Management',
+          permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
         },
         {
           path: '/production/execution/master-data',

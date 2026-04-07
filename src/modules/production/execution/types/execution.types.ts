@@ -45,6 +45,46 @@ export interface ProductionLine {
   updated_at: string;
 }
 
+export interface LineSkuConfig {
+  id: number;
+  line: number;
+  line_name: string;
+  config_name: string;
+  sku_code: string;
+  sku_name: string;
+  rated_speed: string | null;
+  labour_count: number;
+  other_manpower_count: number;
+  supervisor: string;
+  operators: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateLineSkuConfigPayload {
+  line_id: number;
+  config_name: string;
+  sku_code?: string;
+  sku_name?: string;
+  rated_speed?: string | number | null;
+  labour_count?: number;
+  other_manpower_count?: number;
+  supervisor?: string;
+  operators?: string;
+}
+
+export interface UpdateLineSkuConfigPayload {
+  config_name?: string;
+  sku_code?: string;
+  sku_name?: string;
+  rated_speed?: string | number | null;
+  labour_count?: number;
+  other_manpower_count?: number;
+  supervisor?: string;
+  operators?: string;
+}
+
 export interface Machine {
   id: number;
   name: string;

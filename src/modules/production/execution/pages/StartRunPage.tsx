@@ -1,20 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { useScrollToError } from '@/shared/hooks';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
-  Badge,
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Badge,
   Input,
   Label,
   Select,
@@ -24,9 +24,9 @@ import {
   SelectValue,
 } from '@/shared/components/ui';
 
-import { useCreateRun, useLines, useMachines, useSAPOrders, useBOMPreview } from '../api';
+import { useCreateRun, useLines, useSAPOrders, useBOMPreview, useLineConfigs } from '../api';
 import { createRunSchema, type CreateRunFormData } from '../schemas';
-import type { SAPProductionOrder } from '../types';
+import type { SAPProductionOrder, LineSkuConfig } from '../types';
 
 // ============================================================================
 // SAP Order Detail Popover Content
@@ -114,12 +114,16 @@ function StartRunPage() {
   const navigate = useNavigate();
   const { data: sapOrders, isLoading: loadingSAP, isError: sapError } = useSAPOrders();
   const { data: lines } = useLines(true);
-  const { data: machines } = useMachines();
   const createRun = useCreateRun();
 
   const [selectedDocEntry, setSelectedDocEntry] = useState<number | null>(null);
   const [selectedItemCode, setSelectedItemCode] = useState<string | null>(null);
+  const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
   const { data: bomData, isLoading: loadingBOM } = useBOMPreview(selectedItemCode);
+
+  // Fetch all configs for the selected line
+  const { data: lineConfigs = [] } = useLineConfigs(selectedLineId ?? undefined);
+  const [selectedConfigId, setSelectedConfigId] = useState<string>('');
 
   // Store raw per-unit BOM for scaling
   const [rawBOM, setRawBOM] = useState<{ code: string; name: string; perUnit: number; uom: string }[]>([]);
@@ -132,8 +136,8 @@ function StartRunPage() {
       required_qty: '',
       rated_speed: '',
       machine_ids: [],
-      labour_count: 0,
-      other_manpower_count: 0,
+      labour_count: 0 as number,
+      other_manpower_count: 0 as number,
       supervisor: '',
       operators: '',
       materials: [],
@@ -197,20 +201,25 @@ function StartRunPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedRequiredQty]);
 
-  const selectedMachineIds = form.watch('machine_ids') ?? [];
+  // Reset config selection when line changes
+  useEffect(() => {
+    setSelectedConfigId('');
+  }, [selectedLineId]);
 
-  const handleAddMachine = (machineId: string) => {
-    const id = Number(machineId);
-    if (!selectedMachineIds.includes(id)) {
-      form.setValue('machine_ids', [...selectedMachineIds, id]);
-    }
-  };
+  // Apply selected config to form fields
+  const applyConfig = (configId: string) => {
+    setSelectedConfigId(configId);
+    if (!configId) return;
 
-  const handleRemoveMachine = (machineId: number) => {
-    form.setValue(
-      'machine_ids',
-      selectedMachineIds.filter((id) => id !== machineId),
-    );
+    const cfg = lineConfigs.find((c) => String(c.id) === configId);
+    if (!cfg) return;
+
+    if (cfg.rated_speed) form.setValue('rated_speed', cfg.rated_speed);
+    form.setValue('labour_count', cfg.labour_count);
+    form.setValue('other_manpower_count', cfg.other_manpower_count);
+    if (cfg.supervisor) form.setValue('supervisor', cfg.supervisor);
+    if (cfg.operators) form.setValue('operators', cfg.operators);
+    toast.success(`Applied config: ${cfg.config_name}`);
   };
 
   const onSubmit = async (data: CreateRunFormData) => {
@@ -222,6 +231,8 @@ function StartRunPage() {
       toast.error('Failed to create production run');
     }
   };
+
+  const selectedConfig = lineConfigs.find((c) => String(c.id) === selectedConfigId);
 
   return (
     <div className="space-y-6">
@@ -302,7 +313,11 @@ function StartRunPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Production Line</Label>
-                <Select onValueChange={(v) => form.setValue('line_id', Number(v))}>
+                <Select onValueChange={(v) => {
+                  const id = Number(v);
+                  form.setValue('line_id', id);
+                  setSelectedLineId(id);
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select line" />
                   </SelectTrigger>
@@ -362,50 +377,72 @@ function StartRunPage() {
           </CardContent>
         </Card>
 
-        {/* Machines Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Machines</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Add Machine</Label>
-              <Select onValueChange={handleAddMachine}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a machine to add" />
-                </SelectTrigger>
-                <SelectContent>
-                  {machines
-                    ?.filter((m) => !selectedMachineIds.includes(m.id))
-                    .map((machine) => (
-                      <SelectItem key={machine.id} value={String(machine.id)}>
-                        {machine.name} ({machine.machine_type})
+        {/* Line Configuration Card — only visible when a line is selected and has configs */}
+        {selectedLineId && lineConfigs.length > 0 && (
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Settings2 className="h-4 w-4 text-blue-600" />
+                Line Configuration
+                <Badge variant="secondary" className="text-xs font-normal">
+                  {lineConfigs.length} preset{lineConfigs.length > 1 ? 's' : ''} available
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label>Select a preset to auto-fill speed, labour & manpower</Label>
+                <Select value={selectedConfigId} onValueChange={applyConfig}>
+                  <SelectTrigger className="mt-1.5 bg-background">
+                    <SelectValue placeholder="Choose a line configuration..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lineConfigs.map((cfg) => (
+                      <SelectItem key={cfg.id} value={String(cfg.id)}>
+                        <span className="font-medium">{cfg.config_name}</span>
+                        <span className="text-muted-foreground ml-2">
+                          — {cfg.rated_speed || '?'} cases/hr, {cfg.labour_count} labour
+                        </span>
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedMachineIds.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedMachineIds.map((id) => {
-                  const machine = machines?.find((m) => m.id === id);
-                  return (
-                    <Badge key={id} variant="secondary" className="flex items-center gap-1 px-3 py-1">
-                      {machine?.name ?? `Machine #${id}`}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMachine(id)}
-                        className="ml-1 rounded-full hover:bg-muted-foreground/20"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {/* Show selected config summary */}
+              {selectedConfig && (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
+                  {[
+                    { label: 'Speed', value: `${selectedConfig.rated_speed || '-'} cases/hr` },
+                    { label: 'Labour', value: selectedConfig.labour_count },
+                    { label: 'Other', value: selectedConfig.other_manpower_count },
+                    { label: 'Supervisor', value: selectedConfig.supervisor || '-' },
+                    { label: 'Operators', value: selectedConfig.operators || '-' },
+                  ].map((item) => (
+                    <div key={item.label} className="bg-background rounded px-3 py-2 border">
+                      <p className="text-xs text-muted-foreground">{item.label}</p>
+                      <p className="text-sm font-medium truncate">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedLineId && lineConfigs.length === 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+            <Settings2 className="h-4 w-4" />
+            No presets for this line.{' '}
+            <button
+              type="button"
+              className="text-blue-600 hover:underline"
+              onClick={() => navigate('/production/execution/line-management')}
+            >
+              Configure in Line Management
+            </button>
+          </div>
+        )}
 
         {/* Raw Materials Card */}
         <Card>

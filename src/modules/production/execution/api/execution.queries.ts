@@ -32,6 +32,8 @@ import type {
   UpdateLineClearanceRequest,
   UpdateRunRequest,
   WasteApprovalRequest,
+  CreateLineSkuConfigPayload,
+  UpdateLineSkuConfigPayload,
 } from '../types';
 import { executionApi } from './execution.api';
 
@@ -1325,5 +1327,55 @@ export function useWasteTrendReport(params?: AnalyticsParams) {
     queryKey: EXECUTION_QUERY_KEYS.wasteTrend(params),
     queryFn: () => executionApi.getWasteTrendReport(params),
     staleTime: 60 * 1000,
+  });
+}
+
+// ============================================================================
+// Line SKU Config
+// ============================================================================
+
+export function useLineConfigs(lineId?: number) {
+  return useQuery({
+    queryKey: [...EXECUTION_QUERY_KEYS.all, 'line-configs', lineId],
+    queryFn: () => executionApi.getLineConfigs(lineId),
+  });
+}
+
+export function useCreateLineConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateLineSkuConfigPayload) => executionApi.createLineConfig(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'line-configs'] });
+    },
+  });
+}
+
+export function useUpdateLineConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ configId, data }: { configId: number; data: UpdateLineSkuConfigPayload }) =>
+      executionApi.updateLineConfig(configId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'line-configs'] });
+    },
+  });
+}
+
+export function useDeleteLineConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (configId: number) => executionApi.deleteLineConfig(configId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'line-configs'] });
+    },
+  });
+}
+
+export function useAutoFillConfig(lineId: number | null, skuCode?: string) {
+  return useQuery({
+    queryKey: [...EXECUTION_QUERY_KEYS.all, 'auto-fill', lineId, skuCode],
+    queryFn: () => executionApi.getAutoFillConfig(lineId!, skuCode),
+    enabled: !!lineId,
   });
 }
