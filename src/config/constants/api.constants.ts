@@ -356,6 +356,15 @@ export const API_ENDPOINTS = {
     // Delete run
     RUN_DELETE: (runId: number) => `/production-execution/runs/${runId}/`,
   },
+  // Warehouse Management
+  WAREHOUSE: {
+    FILTER_OPTIONS: '/warehouse/filter-options/',
+    INVENTORY: '/warehouse/inventory/',
+    INVENTORY_DETAIL: (itemCode: string) => `/warehouse/inventory/${itemCode}/`,
+    MOVEMENT_HISTORY: (itemCode: string) => `/warehouse/inventory/${itemCode}/movements/`,
+    DASHBOARD_SUMMARY: '/warehouse/dashboard/summary/',
+    BATCH_EXPIRY: '/warehouse/batch-expiry/',
+  },
 } as const;
 
 export const HTTP_STATUS = {
