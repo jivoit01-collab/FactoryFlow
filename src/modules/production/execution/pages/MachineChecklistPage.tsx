@@ -1,8 +1,9 @@
+import { Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
   Card,
@@ -17,13 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui';
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
 import {
-  useMachines,
+  useBulkCreateChecklists,
   useChecklistTemplates,
   useMachineChecklists,
-  useBulkCreateChecklists,
+  useMachines,
 } from '../api';
 import {
   CHECKLIST_STATUS_COLORS,
@@ -35,7 +35,7 @@ import type { ChecklistStatus } from '../types';
 const statusOptions: ChecklistStatus[] = ['OK', 'NOT_OK', 'NA'];
 
 function MachineChecklistPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   const [selectedMachineId, setSelectedMachineId] = useState<number | undefined>(
     searchParams.get('machine_id') ? Number(searchParams.get('machine_id')) : undefined,

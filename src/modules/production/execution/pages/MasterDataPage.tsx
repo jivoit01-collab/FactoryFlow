@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { Edit, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -10,10 +10,10 @@ import {
 } from '@/shared/components/ui';
 
 import {
-  useChecklistTemplates, useCreateChecklistTemplate, useUpdateChecklistTemplate, useDeleteChecklistTemplate,
-} from '../api';
-import { MACHINE_TYPE_LABELS, FREQUENCY_LABELS } from '../constants';
-import type { ChecklistTemplate, MachineType, ChecklistFrequency } from '../types';
+  useChecklistTemplates, useCreateChecklistTemplate, useDeleteChecklistTemplate,
+useUpdateChecklistTemplate, } from '../api';
+import { FREQUENCY_LABELS,MACHINE_TYPE_LABELS } from '../constants';
+import type { ChecklistFrequency,ChecklistTemplate, MachineType } from '../types';
 
 const machineTypes = Object.keys(MACHINE_TYPE_LABELS) as MachineType[];
 const frequencies = Object.keys(FREQUENCY_LABELS) as ChecklistFrequency[];

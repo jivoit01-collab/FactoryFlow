@@ -53,13 +53,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       dispatch(addNotification(notification));
 
       if (document.visibilityState === 'visible') {
+        const actionUrl = payload.data?.url;
         toast.info(notification.title, {
           description: notification.body,
-          action: payload.data?.url
+          action: actionUrl
             ? {
                 label: 'View',
                 onClick: () => {
-                  window.location.href = payload.data!.url!;
+                  window.location.href = actionUrl;
                 },
               }
             : undefined,

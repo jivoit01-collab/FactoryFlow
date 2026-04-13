@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
+import { ignoreStorageError } from '@/shared/utils/error';
 import { formatDateToISOString, getDefaultDateRange } from '@/shared/utils/format';
 
 const STORAGE_KEY = 'app_filters';
@@ -16,7 +17,7 @@ function loadFiltersFromStorage(): FiltersState | null {
       }
     }
   } catch {
-    // Invalid stored data, return null
+    ignoreStorageError();
   }
   return null;
 }
@@ -26,7 +27,7 @@ export function saveFiltersToStorage(state: FiltersState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
-    // Storage might be full or disabled
+    ignoreStorageError();
   }
 }
 

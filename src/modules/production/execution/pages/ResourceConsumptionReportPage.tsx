@@ -1,11 +1,11 @@
+import { ArrowLeft, Droplets, Flame, Trash2,Users, Wind, Zap } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Zap, Droplets, Flame, Wind, Users, Trash2 } from 'lucide-react';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
-import { DateRangePicker } from '@/modules/gate/components';
 
 import { useResourceConsumptionReport } from '../api';
 import type { AnalyticsParams } from '../types';

@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { describe, expect,it } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Card Component Family — File Content Verification
@@ -8,9 +11,7 @@ import { describe, it, expect } from 'vitest';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const readSource = () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  return fs.readFileSync(path.resolve(process.cwd(), 'src/shared/components/ui/card.tsx'), 'utf-8');
+      return fs.readFileSync(path.resolve(process.cwd(), 'src/shared/components/ui/card.tsx'), 'utf-8');
 };
 
 describe('shared/components/ui/card.tsx — file content verification', () => {

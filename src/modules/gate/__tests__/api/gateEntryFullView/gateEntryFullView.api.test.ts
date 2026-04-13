@@ -5,7 +5,7 @@
 // the expected method names for the PO gate entry full view.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {

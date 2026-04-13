@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Activity, AlertTriangle, Clock, Package } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
 import { Card, CardContent } from '@/shared/components/ui';
+
 import type { ProductionRunDetail } from '../types';
 
 interface RunSummaryCardsProps {

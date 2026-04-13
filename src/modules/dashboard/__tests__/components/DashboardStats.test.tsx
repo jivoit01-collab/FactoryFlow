@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { describe, expect,it } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // DashboardStats — File Content & Logic Verification
@@ -8,9 +11,7 @@ import { describe, it, expect } from 'vitest';
 // ═══════════════════════════════════════════════════════════════
 
 function readDashboardStats(): string {
-  const { readFileSync } = require('node:fs');
-  const { resolve } = require('node:path');
-  return readFileSync(
+      return readFileSync(
     resolve(process.cwd(), 'src/modules/dashboard/components/DashboardStats.tsx'),
     'utf-8',
   );

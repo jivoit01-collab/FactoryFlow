@@ -5,7 +5,7 @@
 // exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
@@ -21,7 +21,7 @@ vi.mock('../../../api/weighment/weighment.api', () => ({
   },
 }));
 
-import { useWeighment, useCreateWeighment } from '../../../api/weighment/weighment.queries';
+import { useCreateWeighment,useWeighment } from '../../../api/weighment/weighment.queries';
 
 // ═══════════════════════════════════════════════════════════════
 // Hook existence

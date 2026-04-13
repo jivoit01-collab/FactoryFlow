@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  changePasswordSchema,
   CHANGE_PASSWORD_FORM_DEFAULTS,
+  changePasswordSchema,
 } from '../../schemas/changePassword.schema';
 
 describe('Change Password Schema', () => {

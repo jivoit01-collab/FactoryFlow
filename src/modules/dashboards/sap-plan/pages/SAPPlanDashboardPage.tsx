@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 
 import type { ApiError } from '@/core/api';
-import { Badge } from '@/shared/components/ui';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { Badge } from '@/shared/components/ui';
 
 import { usePlanProcurement, usePlanSummary } from '../api';
 import {

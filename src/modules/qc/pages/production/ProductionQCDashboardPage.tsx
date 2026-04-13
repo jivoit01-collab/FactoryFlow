@@ -1,18 +1,8 @@
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Factory,
-  FileText,
-  FlaskConical,
-  Play,
-  Search,
-  XCircle,
-} from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Factory, FileText, FlaskConical, Play, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useRuns } from '@/modules/production/execution/api';
 import {
   Button,
   Card,
@@ -29,7 +19,6 @@ import {
   TabsTrigger,
 } from '@/shared/components/ui';
 
-import { useRuns } from '@/modules/production/execution/api';
 import { useProductionQCCounts, useProductionQCList } from '../../api/productionQC';
 import type { ProductionQCWorkflowStatus } from '../../types';
 

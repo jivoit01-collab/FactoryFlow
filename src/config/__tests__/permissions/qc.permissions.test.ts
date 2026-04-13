@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { QC_PERMISSIONS, QC_MODULE_PREFIX } from '@/config/permissions/qc.permissions';
+import { describe, expect,it } from 'vitest';
+
+import { QC_MODULE_PREFIX,QC_PERMISSIONS } from '@/config/permissions/qc.permissions';
 
 // ═══════════════════════════════════════════════════════════════
 // QC_PERMISSIONS — Structure

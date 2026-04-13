@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Button, Popover, PopoverContent, PopoverTrigger, Separator } from '@/shared/components/ui';
-import { cn } from '@/shared/utils';
+import { cn, logSwallowedError } from '@/shared/utils';
 
 import { useUnreadCount } from '../hooks';
 import { notificationService } from '../notification.service';
@@ -92,8 +92,9 @@ export function NotificationBell() {
           is_read: false,
         });
         setBellItems(response.results);
-      } catch {
-        // Silently fail — popover will show empty state
+      } catch (err) {
+        // Popover falls back to empty state; log so the error is visible in dev.
+        logSwallowedError(err, 'load bell notifications');
       } finally {
         setBellLoading(false);
       }
@@ -105,8 +106,8 @@ export function NotificationBell() {
       await notificationService.markAllAsRead();
       setBellItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
       refreshUnreadCount();
-    } catch {
-      // handled by apiClient
+    } catch (err) {
+      logSwallowedError(err, 'mark all notifications as read');
     }
   }, [refreshUnreadCount]);
 
@@ -119,8 +120,8 @@ export function NotificationBell() {
             prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)),
           );
           refreshUnreadCount();
-        } catch {
-          // handled by apiClient
+        } catch (err) {
+          logSwallowedError(err, 'mark notification as read');
         }
       }
       navigate(`/notifications/${notification.id}`);

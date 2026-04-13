@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // queryClient (src/core/api/queryClient.ts) — Direct Import + Mock
@@ -19,8 +19,8 @@ vi.mock('@/config/query.config', () => ({
   QUERY_CONFIG: { defaultOptions: { queries: { staleTime: 5000 } } },
 }));
 
-import { queryClient } from '@/core/api/queryClient';
 import { QUERY_CONFIG } from '@/config/query.config';
+import { queryClient } from '@/core/api/queryClient';
 
 describe('queryClient', () => {
   it('exports queryClient', () => {

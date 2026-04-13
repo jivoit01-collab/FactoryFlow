@@ -1,11 +1,10 @@
 import { Info } from 'lucide-react';
 
 import type { ApiError } from '@/core/api';
-import { Card, CardContent } from '@/shared/components/ui';
 
 import { useSKUDetail } from '../api';
-import { ShortfallCell } from './ShortfallCell';
 import { SAPUnavailableBanner } from './SAPUnavailableBanner';
+import { ShortfallCell } from './ShortfallCell';
 import { StockStatusBadge } from './StockStatusBadge';
 
 interface SKUDetailPanelProps {

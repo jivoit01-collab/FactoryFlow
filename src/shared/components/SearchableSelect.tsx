@@ -103,9 +103,13 @@ export function SearchableSelect<TItem>({
 
   const debouncedSearch = useDebounce(searchTerm, 100);
 
-  // Notify parent of debounced search changes (for server-side search)
+  // Notify parent of debounced search changes (for server-side search).
+  // Ref holds the latest callback so the notify-effect doesn't re-fire when the
+  // parent passes a new function reference — only when the debounced search changes.
   const onSearchChangeRef = useRef(onSearchChange);
-  onSearchChangeRef.current = onSearchChange;
+  useEffect(() => {
+    onSearchChangeRef.current = onSearchChange;
+  }, [onSearchChange]);
   useEffect(() => {
     onSearchChangeRef.current?.(debouncedSearch);
   }, [debouncedSearch]);
@@ -148,9 +152,13 @@ export function SearchableSelect<TItem>({
   }, [defaultDisplayText]);
 
   // Sync search term with value prop — uses refs for items to avoid
-  // re-running when items change (which would steal focus during server-side search)
+  // re-running when items change (which would steal focus during server-side search).
+  // Ref is initialized from the first render's items and updated via effect to
+  // keep the render phase pure.
   const itemsRef = useRef(items);
-  itemsRef.current = items;
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const syncWithValue = useCallback(() => {
     const currentItems = itemsRef.current;
@@ -184,7 +192,6 @@ export function SearchableSelect<TItem>({
   useEffect(() => {
     const shouldSync = value !== prevValueRef.current || (!hadItemsRef.current && items.length > 0);
     if (shouldSync) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with props
       syncWithValue();
       prevValueRef.current = value;
     }
@@ -245,6 +252,11 @@ export function SearchableSelect<TItem>({
   );
 
   const hasCreateDialog = addNewLabel && renderCreateDialog;
+  // In client-side mode (no onSearchChange), disable the input while items are
+  // loading so the user can't type/open the dropdown until data is available.
+  // In server-side mode, keep the input enabled — isLoading flips true on every
+  // keystroke and disabling would steal focus.
+  const isInputDisabled = disabled || (isLoading && !onSearchChange);
 
   return (
     <div className="space-y-2">
@@ -285,7 +297,7 @@ export function SearchableSelect<TItem>({
             onFocus={() => updateIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            disabled={disabled}
+            disabled={isInputDisabled}
             className={cn(
               'pr-10 cursor-text',
               inputClassName,

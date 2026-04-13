@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   CreateProductionQCSessionRequest,
-  UpdateProductionQCResultRequest,
-  ProductionQCSubmitRequest,
   ProductionQCListParams,
+  ProductionQCSubmitRequest,
+  UpdateProductionQCResultRequest,
 } from '../../types';
 import { productionQCApi } from './productionQC.api';
 
@@ -117,7 +117,9 @@ export function useUpdateProductionQCResults(sessionId: number, runId: number) {
   });
 }
 
-export function useSubmitProductionQCSession(runId: number) {
+// `_runId` is reserved for future targeted invalidation (e.g. invalidating
+// only the sessions belonging to this run). Current impl invalidates all.
+export function useSubmitProductionQCSession(_runId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ sessionId, data }: { sessionId: number; data: ProductionQCSubmitRequest }) =>

@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { Role, ROLE_LABELS, ROLE_HIERARCHY } from '@/core/auth/constants/roles';
+import { describe, expect,it } from 'vitest';
+
+import { Role, ROLE_HIERARCHY,ROLE_LABELS } from '@/core/auth/constants/roles';
 
 // ═══════════════════════════════════════════════════════════════
 // Roles Constants (src/core/auth/constants/roles.ts) — Direct Import

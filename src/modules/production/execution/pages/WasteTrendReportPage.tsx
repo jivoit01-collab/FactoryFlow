@@ -1,11 +1,11 @@
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2 } from 'lucide-react';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent, CardHeader, CardTitle, Badge } from '@/shared/components/ui';
 import { DateRangePicker } from '@/modules/gate/components';
+import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { Badge,Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { useWasteTrendReport } from '../api';
 import type { AnalyticsParams } from '../types';

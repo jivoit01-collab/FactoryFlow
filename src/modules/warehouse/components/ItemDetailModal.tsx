@@ -1,16 +1,16 @@
-import { X, Package, Warehouse } from 'lucide-react';
+import { Package, Warehouse,X } from 'lucide-react';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
 } from 'recharts';
 
-import { Card, CardContent } from '@/shared/components/ui';
 import { DashboardLoading } from '@/shared/components/dashboard/DashboardLoading';
+import { Card, CardContent } from '@/shared/components/ui';
 
 import { useItemDetail, useStockMovements } from '../api';
 

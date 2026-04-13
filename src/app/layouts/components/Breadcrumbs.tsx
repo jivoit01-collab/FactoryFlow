@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-
 import { ChevronRight, Home, MoreHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { getBreadcrumbMeta } from '@/app/registry';

@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { afterEach,beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { useScrollToError } from '../../hooks/useScrollToError';
 
 describe('useScrollToError', () => {
@@ -78,8 +79,6 @@ describe('useScrollToError', () => {
     const { result, rerender } = renderHook(({ errors }) => useScrollToError(errors), {
       initialProps: { errors: {} as Record<string, unknown> },
     });
-
-    const first = result.current.scrollToFirstError;
 
     rerender({ errors: { name: { message: 'Error', type: 'required' } } });
 

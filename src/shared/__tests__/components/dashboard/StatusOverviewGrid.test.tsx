@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent,render, screen } from '@testing-library/react';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
+
 import {
-  StatusOverviewGrid,
   type StatusItemConfig,
+  StatusOverviewGrid,
 } from '../../../components/dashboard/StatusOverviewGrid';
 
 // Mock react-router-dom

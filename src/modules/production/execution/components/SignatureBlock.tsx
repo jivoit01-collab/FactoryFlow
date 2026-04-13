@@ -1,5 +1,6 @@
-import { useState } from 'react';
 import { Check, Pencil } from 'lucide-react';
+import { useState } from 'react';
+
 import { Button, Input } from '@/shared/components/ui';
 
 interface SignatureBlockProps {

@@ -1,18 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import reducer, {
-  setLoading,
+  clearCurrentCompany,
   initializeAuth,
+  initializeComplete,
   loginSuccess,
+  logout,
+  setLoading,
+  setPermissionsLoading,
+  switchCompany,
+  updatePermissions,
   updateTokens,
   updateUser,
-  updatePermissions,
-  switchCompany,
-  clearCurrentCompany,
-  setPermissionsLoading,
-  logout,
-  initializeComplete,
 } from '@/core/auth/store/authSlice';
-import type { AuthState, User, UserCompany, LoginResponse } from '@/core/auth/types/auth.types';
+import type { AuthState, LoginResponse,User, UserCompany } from '@/core/auth/types/auth.types';
 
 // ═══════════════════════════════════════════════════════════════
 // Auth Slice (src/core/auth/store/authSlice.ts) — Direct Import

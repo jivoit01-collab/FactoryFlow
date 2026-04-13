@@ -4,9 +4,9 @@ import { useSearchParams } from 'react-router-dom';
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
+import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
 import { useStockLevels } from '../api';
 import { StockLevelFilters, StockLevelMetaCards, StockLevelTable } from '../components';
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
 import type { StockDashboardFilters } from '../types';
 
 function isSAPError(err: unknown): err is ApiError {

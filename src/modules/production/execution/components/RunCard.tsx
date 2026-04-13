@@ -1,5 +1,7 @@
-import { Calendar, Factory, Package, User } from 'lucide-react';
+import { Calendar, Factory, Package } from 'lucide-react';
+
 import { Card, CardContent } from '@/shared/components/ui';
+
 import type { ProductionRun } from '../types';
 import { ProductionStatusBadge } from './ProductionStatusBadge';
 

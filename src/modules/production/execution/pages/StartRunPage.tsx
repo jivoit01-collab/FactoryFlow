@@ -1,20 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Loader2, Settings2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useFieldArray,useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { useScrollToError } from '@/shared/hooks';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
+  Badge,
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Badge,
   Input,
   Label,
   Select,
@@ -23,10 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui';
+import { useScrollToError } from '@/shared/hooks';
 
-import { useCreateRun, useLines, useSAPOrders, useBOMPreview, useLineConfigs } from '../api';
-import { createRunSchema, type CreateRunFormData } from '../schemas';
-import type { SAPProductionOrder, LineSkuConfig } from '../types';
+import { useBOMPreview, useCreateRun, useLineConfigs,useLines, useSAPOrders } from '../api';
+import { type CreateRunFormData,createRunSchema } from '../schemas';
+import type { SAPProductionOrder } from '../types';
 
 // ============================================================================
 // SAP Order Detail Popover Content

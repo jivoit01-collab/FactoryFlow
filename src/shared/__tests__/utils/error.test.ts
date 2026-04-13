@@ -1,20 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
+import type { ApiError } from '@/core/api/types';
+
 import {
-  getErrorMessage,
   getErrorDetailLower,
+  getErrorMessage,
+  getFieldErrors,
+  getForbiddenErrorMessage,
+  getNotFoundErrorMessage,
+  getServerErrorMessage,
+  getSmartErrorMessage,
+  getUnauthorizedErrorMessage,
+  isForbiddenError,
   isNotFoundError,
   isServerError,
   isUnauthorizedError,
-  isForbiddenError,
   isValidationError,
-  getServerErrorMessage,
-  getUnauthorizedErrorMessage,
-  getForbiddenErrorMessage,
-  getNotFoundErrorMessage,
-  getFieldErrors,
-  getSmartErrorMessage,
 } from '../../utils/error';
-import type { ApiError } from '@/core/api/types';
 
 // Helper to create partial ApiError objects for testing
 function makeError(overrides: Partial<ApiError> & { response?: ApiError['response'] }): ApiError {

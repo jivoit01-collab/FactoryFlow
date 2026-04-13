@@ -1,5 +1,5 @@
+import { AlertTriangle, ClipboardList, Clock, PackageCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, PackageCheck, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Card, CardContent } from '@/shared/components/ui';

@@ -5,7 +5,7 @@
 // exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
@@ -28,7 +28,7 @@ vi.mock('../../../api/po/po.api', () => ({
   },
 }));
 
-import { usePOReceipts, useCreatePOReceipt } from '../../../api/po/poReceipt.queries';
+import { useCreatePOReceipt,usePOReceipts } from '../../../api/po/poReceipt.queries';
 
 // ═══════════════════════════════════════════════════════════════
 // Hook existence

@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  PAGINATION,
-  TABLE_CONFIG,
-  SIDEBAR_CONFIG,
-  TOAST_CONFIG,
   DEBOUNCE_DELAY,
+  PAGINATION,
+  SIDEBAR_CONFIG,
+  TABLE_CONFIG,
+  TOAST_CONFIG,
 } from '@/config/constants/ui.constants';
 
 // ═══════════════════════════════════════════════════════════════

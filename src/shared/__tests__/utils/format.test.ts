@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config/constants', () => ({
   APP_DEFAULTS: {
@@ -8,13 +8,13 @@ vi.mock('@/config/constants', () => ({
 }));
 
 import {
-  formatDate,
-  formatTime,
-  formatDateTime,
-  formatDateTimeShort,
-  formatDateTimeFull,
-  formatNumber,
   formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatDateTimeFull,
+  formatDateTimeShort,
+  formatNumber,
+  formatTime,
 } from '../../utils/format';
 
 describe('Format Utilities', () => {

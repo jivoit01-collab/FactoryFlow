@@ -1,5 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent } from '@/shared/components/ui';

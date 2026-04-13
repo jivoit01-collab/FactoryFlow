@@ -1,4 +1,4 @@
-import { Warehouse, LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard,Warehouse } from 'lucide-react';
 import { lazy } from 'react';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';

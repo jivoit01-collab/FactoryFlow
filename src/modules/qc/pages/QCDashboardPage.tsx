@@ -1,18 +1,4 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronRight,
-  ClipboardCheck,
-  Clock,
-  Factory,
-  FileText,
-  FlaskConical,
-  Package,
-  RefreshCw,
-  ShieldX,
-  UserCheck,
-  XCircle,
-} from 'lucide-react';
+import { AlertCircle, ChevronRight, ClipboardCheck, Factory, FlaskConical, Package, RefreshCw, ShieldX } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,18 +11,6 @@ import {
   useInspectionCounts,
 } from '../api/inspection/inspection.queries';
 import { useProductionQCCounts } from '../api/productionQC';
-import { WORKFLOW_STATUS_CONFIG } from '../constants';
-import type { InspectionListWorkflowStatus } from '../types';
-
-// Status badge styling for arrival slips
-const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
-  NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QA_CHEMIST_APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QAM_APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-};
 
 export default function QCDashboardPage() {
   const navigate = useNavigate();

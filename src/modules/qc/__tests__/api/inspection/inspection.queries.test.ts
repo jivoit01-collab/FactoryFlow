@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Mocks
@@ -40,19 +40,19 @@ vi.mock('../../../api/inspection/inspection.api', () => ({
 
 import {
   INSPECTION_QUERY_KEYS,
-  usePendingInspections,
   useActionableInspections,
-  useInspectionCounts,
-  useInspectionsByTab,
-  useInspection,
-  useInspectionForSlip,
-  useCreateInspection,
-  useUpdateInspection,
-  useUpdateParameterResults,
-  useSubmitInspection,
   useApproveAsChemist,
   useApproveAsQAM,
+  useCreateInspection,
+  useInspection,
+  useInspectionCounts,
+  useInspectionForSlip,
+  useInspectionsByTab,
+  usePendingInspections,
   useRejectInspection,
+  useSubmitInspection,
+  useUpdateInspection,
+  useUpdateParameterResults,
 } from '../../../api/inspection/inspection.queries';
 
 // ═══════════════════════════════════════════════════════════════

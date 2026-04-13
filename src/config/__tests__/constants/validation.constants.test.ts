@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  VALIDATION_PATTERNS,
   VALIDATION_LIMITS,
   VALIDATION_MESSAGES,
+  VALIDATION_PATTERNS,
 } from '@/config/constants/validation.constants';
 
 // ═══════════════════════════════════════════════════════════════

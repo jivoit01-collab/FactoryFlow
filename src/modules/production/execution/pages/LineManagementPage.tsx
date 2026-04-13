@@ -1,5 +1,5 @@
+import { Copy,Edit, Plus, Settings2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Edit, Plus, Trash2, Settings2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -24,11 +24,11 @@ import {
 } from '@/shared/components/ui';
 
 import {
-  useLines,
-  useLineConfigs,
   useCreateLineConfig,
-  useUpdateLineConfig,
   useDeleteLineConfig,
+  useLineConfigs,
+  useLines,
+  useUpdateLineConfig,
 } from '../api';
 import type { LineSkuConfig } from '../types';
 

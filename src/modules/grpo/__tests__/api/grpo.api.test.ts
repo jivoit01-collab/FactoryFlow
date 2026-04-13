@@ -5,7 +5,7 @@
 // expected method names for managing GRPO operations.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {

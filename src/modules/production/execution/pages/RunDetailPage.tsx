@@ -1,40 +1,35 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, ClipboardCheck, FileText, Link, Loader2, Play, Send, Shield, Trash2, Warehouse } from 'lucide-react';
-import { toast } from 'sonner';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft, CheckCircle2, ClipboardCheck, FileText, Link, Loader2, Play, Send, Shield, Trash2, Warehouse } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import {
-  Button, Card, CardContent, CardHeader, CardTitle,
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  Tabs, TabsContent, TabsList, TabsTrigger, Textarea,
-} from '@/shared/components/ui';
-
-import {
-  useRunDetail, useRunCost, useLabour,
-  useMaterials, useCreateMaterial, useUpdateMaterial,
-  useMachines,
-  useStartProduction, useStopProduction, useAddBreakdown, useResolveBreakdown,
-  useUpdateSegment, useUpdateBreakdownRemarks,
-  useBreakdownCategories,
-  useLineClearances, useWasteLogs, useMachineChecklists,
-} from '../api';
 import { useProductionQCRunSessions } from '@/modules/qc/api/productionQC';
-import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
-import { RunSummaryCards } from '../components/RunSummaryCards';
-import { ProductionTimeline } from '../components/ProductionTimeline';
-import { MaterialConsumptionTable } from '../components/MaterialConsumptionTable';
-import { MachineTimeTable } from '../components/MachineTimeTable';
-import {
-  addBreakdownSchema, type AddBreakdownFormData,
-  stopProductionSchema, type StopProductionFormData,
-  createMaterialSchema, type CreateMaterialFormData,
-} from '../schemas';
-import type { MachineBreakdown, ProductionSegment } from '../types';
 import { useCreateBOMRequest, useCreateFGReceipt } from '@/modules/warehouse/api';
+import { Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/shared/components/ui';
+import { logSwallowedError } from '@/shared/utils';
+
+import {
+useAddBreakdown,   useBreakdownCategories,
+useCreateMaterial, useLabour,
+  useLineClearances, useMachineChecklists,
+  useMachines,
+  useMaterials, useResolveBreakdown,
+useRunCost,   useRunDetail,   useStartProduction, useStopProduction, useUpdateBreakdownRemarks,
+useUpdateMaterial,
+  useUpdateSegment, useWasteLogs, } from '../api';
+import { MachineTimeTable } from '../components/MachineTimeTable';
+import { MaterialConsumptionTable } from '../components/MaterialConsumptionTable';
+import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
+import { ProductionTimeline } from '../components/ProductionTimeline';
+import { RunSummaryCards } from '../components/RunSummaryCards';
+import {
+type AddBreakdownFormData,
+  addBreakdownSchema, type CreateMaterialFormData,
+  createMaterialSchema, type StopProductionFormData,
+  stopProductionSchema, } from '../schemas';
+import type { MachineBreakdown, ProductionSegment } from '../types';
 
 function WarehouseApprovalBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; cls: string }> = {
@@ -93,7 +88,10 @@ function RunDetailPage() {
   const [selectedSegment, setSelectedSegment] = useState<ProductionSegment | null>(null);
   const [selectedBreakdown, setSelectedBreakdown] = useState<MachineBreakdown | null>(null);
   const [editRemarks, setEditRemarks] = useState('');
-  const [editProducedCases, setEditProducedCases] = useState('');
+  // `editProducedCases` value is currently only set (line 166) and never read
+  // — likely scaffolding for an in-progress edit dialog. Prefixed with _ until
+  // the consumer is wired up, to keep lint clean without deleting work-in-progress.
+  const [_editProducedCases, setEditProducedCases] = useState('');
   const isCompleted = run?.status === 'COMPLETED';
   const hasActiveSegment = run?.segments?.some((s) => s.is_active) ?? false;
   const hasActiveBreakdown = run?.breakdowns?.some((b) => b.is_active) ?? false;
@@ -258,7 +256,9 @@ function RunDetailPage() {
                     required_qty: qty,
                   });
                   toast.success('BOM request submitted to warehouse');
-                } catch { /* interceptor handles */ }
+                } catch (err) {
+                  logSwallowedError(err, 'submit BOM to warehouse');
+                }
               }}
             >
               {createBOMRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
@@ -295,7 +295,9 @@ function RunDetailPage() {
                     posting_date: run.date,
                   });
                   toast.success('FG receipt created — warehouse notified');
-                } catch { /* interceptor handles */ }
+                } catch (err) {
+                  logSwallowedError(err, 'create FG receipt');
+                }
               }}
             >
               {createFGReceipt.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Warehouse className="h-4 w-4 mr-1" />}

@@ -239,6 +239,58 @@ export function getFieldErrors(error: unknown): Record<string, string> {
 // ============================================================================
 
 /**
+ * Log an API error that was already handled globally (e.g. by the axios
+ * response interceptor, which shows the user-facing toast). Page-level catch
+ * blocks should call this instead of silently swallowing the rejection so that
+ * stack traces remain visible in development.
+ *
+ * No-op in production builds.
+ *
+ * @param error - The caught error value
+ * @param context - Short label identifying where the error was caught, e.g. "approve BOM request"
+ */
+export function logSwallowedError(error: unknown, context?: string): void {
+  if (import.meta.env.DEV) {
+    const label = context ? `[API error: ${context}]` : '[API error]';
+    console.warn(label, error);
+  }
+}
+
+/**
+ * Marker for intentional silent failure of a storage-like operation —
+ * `localStorage` disabled or full, IndexedDB rejected, config file absent, etc.
+ *
+ * Using this at a call site (`catch { ignoreStorageError() }`) signals intent
+ * clearly, vs. a bare `catch { }` which a reviewer might mistake for a
+ * swallowed bug. Implemented as a no-op so there's zero runtime cost.
+ */
+export function ignoreStorageError(): void {
+  // intentional no-op
+}
+
+/**
+ * Runs `fn` and returns its value; if it throws, returns `fallback`.
+ *
+ * Use for parse/format operations that have a clear default for invalid input
+ * — e.g. rendering the raw string when date parsing fails. Collapses the
+ * 5-line `try/catch/return fallback` pattern into a single expression that
+ * makes the fallback visible at the call site.
+ *
+ * @example
+ *   const display = fallbackOnParse(
+ *     () => new Date(isoString).toLocaleString(),
+ *     isoString, // show raw string if parsing fails
+ *   );
+ */
+export function fallbackOnParse<T>(fn: () => T, fallback: T): T {
+  try {
+    return fn();
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Gets the appropriate error message based on error type.
  * Provides different messages for different HTTP status codes.
  *

@@ -5,7 +5,7 @@
 // expected method names for managing person gate-in operations.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {
@@ -17,7 +17,7 @@ vi.mock('@/core/api', () => ({
   },
 }));
 
-import { personGateInApi, PERSON_TYPE_IDS } from '../../../api/personGateIn/personGateIn.api';
+import { PERSON_TYPE_IDS,personGateInApi } from '../../../api/personGateIn/personGateIn.api';
 
 // ═══════════════════════════════════════════════════════════════
 // Export existence

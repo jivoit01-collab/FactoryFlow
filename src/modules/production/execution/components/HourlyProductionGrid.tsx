@@ -1,5 +1,7 @@
 import { Plus } from 'lucide-react';
+
 import { Button } from '@/shared/components/ui';
+
 import type { ProductionLog } from '../types';
 import { MachineStatusDot } from './MachineStatusDot';
 

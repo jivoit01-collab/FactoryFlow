@@ -1,9 +1,9 @@
+import { ArrowLeft } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
 
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { DateRangePicker } from '@/modules/gate/components';
+import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { useDailyProductionReport } from '../api';

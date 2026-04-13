@@ -1,11 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  QC_PERMISSIONS,
-  QC_MODULE_PREFIX,
-  GRPO_PERMISSIONS,
   GRPO_MODULE_PREFIX,
-  NOTIFICATION_PERMISSIONS,
+  GRPO_PERMISSIONS,
   NOTIFICATION_MODULE_PREFIX,
+  NOTIFICATION_PERMISSIONS,
+  QC_MODULE_PREFIX,
+  QC_PERMISSIONS,
 } from '@/config/permissions';
 
 // ═══════════════════════════════════════════════════════════════

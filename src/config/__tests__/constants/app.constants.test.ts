@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
+  APP_DEFAULTS,
+  APP_DESCRIPTION,
   APP_NAME,
   APP_VERSION,
-  APP_DESCRIPTION,
-  APP_DEFAULTS,
   THEME_OPTIONS,
 } from '@/config/constants/app.constants';
 

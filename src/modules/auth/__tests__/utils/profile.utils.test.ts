@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  getInitials,
   formatDate,
-  groupPermissionsByApp,
   formatPermissionName,
+  getInitials,
+  groupPermissionsByApp,
 } from '../../utils/profile.utils';
 
 describe('Profile Utilities', () => {

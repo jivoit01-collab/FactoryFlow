@@ -5,7 +5,7 @@
 // are exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
@@ -23,9 +23,9 @@ vi.mock('../../../api/dailyNeed/dailyNeed.api', () => ({
 }));
 
 import {
-  useDailyNeedCategories,
-  useDailyNeed,
   useCreateDailyNeed,
+  useDailyNeed,
+  useDailyNeedCategories,
 } from '../../../api/dailyNeed/dailyNeed.queries';
 
 // ═══════════════════════════════════════════════════════════════

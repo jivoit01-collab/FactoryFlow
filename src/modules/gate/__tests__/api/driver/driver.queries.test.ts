@@ -5,7 +5,7 @@
 // as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
@@ -24,10 +24,10 @@ vi.mock('../../../api/driver/driver.api', () => ({
 }));
 
 import {
-  useDriverNames,
-  useDriverById,
-  useDrivers,
   useCreateDriver,
+  useDriverById,
+  useDriverNames,
+  useDrivers,
 } from '../../../api/driver/driver.queries';
 
 // ═══════════════════════════════════════════════════════════════

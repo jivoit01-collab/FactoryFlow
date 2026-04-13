@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
 
 describe('Auth Module Index Exports', () => {
   it('index.ts contains expected re-export statements', async () => {

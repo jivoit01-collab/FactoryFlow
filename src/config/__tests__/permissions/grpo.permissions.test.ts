@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { GRPO_PERMISSIONS, GRPO_MODULE_PREFIX } from '@/config/permissions/grpo.permissions';
+import { describe, expect,it } from 'vitest';
+
+import { GRPO_MODULE_PREFIX,GRPO_PERMISSIONS } from '@/config/permissions/grpo.permissions';
 
 // ═══════════════════════════════════════════════════════════════
 // GRPO_PERMISSIONS

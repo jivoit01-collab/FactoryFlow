@@ -15,8 +15,8 @@ import { toast } from 'sonner';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import { PERSON_TYPE_IDS } from '../../api/personGateIn/personGateIn.api';
 import type { ContractorLabourStatus, Gate } from '../../api/personGateIn/personGateIn.api';
+import { PERSON_TYPE_IDS } from '../../api/personGateIn/personGateIn.api';
 import {
   useBulkCreateEntry,
   useBulkExitEntry,

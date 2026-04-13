@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { describe, expect,it } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Calendar — File Content Verification Tests
@@ -9,9 +12,7 @@ import { describe, it, expect } from 'vitest';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const readSource = () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  return fs.readFileSync(
+      return fs.readFileSync(
     path.resolve(process.cwd(), 'src/shared/components/ui/calendar.tsx'),
     'utf-8',
   );

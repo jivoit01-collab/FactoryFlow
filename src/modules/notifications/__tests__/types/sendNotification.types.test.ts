@@ -5,9 +5,7 @@
 // and type aliases are correctly defined and usable.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect } from 'vitest';
-
-import { NOTIFICATION_TYPES } from '../../types/sendNotification.types';
+import { describe, expect,it } from 'vitest';
 
 import type {
   CompanyUser,
@@ -15,6 +13,7 @@ import type {
   SendNotificationRequest,
   SendNotificationResponse,
 } from '../../types/sendNotification.types';
+import { NOTIFICATION_TYPES } from '../../types/sendNotification.types';
 
 // ═══════════════════════════════════════════════════════════════
 // NOTIFICATION_TYPES constant

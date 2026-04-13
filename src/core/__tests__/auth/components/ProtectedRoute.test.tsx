@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { describe, expect,it } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // ProtectedRoute — File Content Verification
@@ -11,9 +14,7 @@ import { describe, it, expect } from 'vitest';
 // ═══════════════════════════════════════════════════════════════
 
 function readSource(): string {
-  const { readFileSync } = require('node:fs');
-  const { resolve } = require('node:path');
-  return readFileSync(
+      return readFileSync(
     resolve(process.cwd(), 'src/core/auth/components/ProtectedRoute.tsx'),
     'utf-8',
   );

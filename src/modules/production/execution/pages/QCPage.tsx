@@ -1,50 +1,28 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Textarea,
-} from '@/shared/components/ui';
+import { Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/shared/components/ui';
 
 import {
-  useInProcessQC,
+  useCreateFinalQC,
   useCreateInProcessQC,
   useDeleteInProcessQC,
   useFinalQC,
-  useCreateFinalQC,
-  useUpdateFinalQC,
+  useInProcessQC,
   useRunDetail,
+  useUpdateFinalQC,
 } from '../api';
-import { QC_RESULT_COLORS, QC_RESULT_LABELS, FINAL_QC_COLORS, FINAL_QC_LABELS } from '../constants';
+import { FINAL_QC_COLORS, FINAL_QC_LABELS,QC_RESULT_COLORS, QC_RESULT_LABELS } from '../constants';
 import {
-  createInProcessQCSchema,
-  type CreateInProcessQCFormData,
-  createFinalQCSchema,
   type CreateFinalQCFormData,
+  createFinalQCSchema,
+  type CreateInProcessQCFormData,
+  createInProcessQCSchema,
 } from '../schemas';
 import type { FinalQCResult, QCResult } from '../types';
 

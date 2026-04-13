@@ -1,13 +1,13 @@
+import { ChevronLeft, ChevronRight, Download, Eye,Search } from 'lucide-react';
 import { useState } from 'react';
-import { Search, Download, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { DashboardLoading } from '@/shared/components/dashboard/DashboardLoading';
 import { Card, CardContent } from '@/shared/components/ui';
 
-import { useStockOverview, useWMSWarehouses, useWMSItemGroups } from '../api';
-import type { StockStatus } from '../types';
+import { useStockOverview, useWMSItemGroups,useWMSWarehouses } from '../api';
 import ItemDetailModal from '../components/ItemDetailModal';
+import type { StockStatus } from '../types';
 
 const STATUS_BADGE: Record<StockStatus, string> = {
   NORMAL: 'bg-green-100 text-green-700',

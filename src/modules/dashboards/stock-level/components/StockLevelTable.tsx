@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
+import { ChevronDown, ChevronsUpDown,ChevronUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Card, CardContent } from '@/shared/components/ui';

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Mock external dependencies
@@ -18,10 +18,10 @@ vi.mock('@/config/constants', () => ({
 // ═══════════════════════════════════════════════════════════════
 
 import {
-  RAW_MATERIAL_FLOW,
   CONSTRUCTION_FLOW,
   DAILY_NEED_FLOW,
   MAINTENANCE_FLOW,
+  RAW_MATERIAL_FLOW,
 } from '../../constants/entryFlowConfig';
 
 // ═══════════════════════════════════════════════════════════════

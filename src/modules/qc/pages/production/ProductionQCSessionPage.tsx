@@ -1,6 +1,3 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -8,6 +5,9 @@ import {
   Send,
   XCircle,
 } from 'lucide-react';
+import { useEffect,useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import {
   Button,
@@ -31,13 +31,10 @@ import { cn } from '@/shared/utils';
 
 import {
   useProductionQCSession,
-  useUpdateProductionQCResults,
   useSubmitProductionQCSession,
+  useUpdateProductionQCResults,
 } from '../../api/productionQC';
-import type {
-  ProductionQCResult,
-  UpdateProductionQCResultRequest,
-} from '../../types';
+import type { UpdateProductionQCResultRequest } from '../../types';
 
 // ============================================================================
 // Types

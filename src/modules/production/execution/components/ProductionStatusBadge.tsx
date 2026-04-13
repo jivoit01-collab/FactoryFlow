@@ -1,4 +1,5 @@
-import { AlertTriangle, CheckCircle2, Circle, Clock, Play, Square } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, Play, Square } from 'lucide-react';
+
 import type { LiveStatus, RunStatus } from '../types';
 
 const LIVE_STATUS_CONFIG: Record<LiveStatus, { label: string; bg: string; text: string; darkBg: string; darkText: string; icon: typeof Circle }> = {

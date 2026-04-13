@@ -1,2 +1,2 @@
 export { useEntryId } from './useEntryId';
-export { useEntryStepTracker, getLastStep, clearEntryStep } from './useEntryStepTracker';
+export { clearEntryStep,getLastStep, useEntryStepTracker } from './useEntryStepTracker';

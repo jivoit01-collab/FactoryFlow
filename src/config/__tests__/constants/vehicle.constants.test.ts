@@ -1,13 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  ENTRY_TYPES,
   ENTRY_TYPE_LABELS,
-  VEHICLE_CONDITIONS,
-  TYRE_CONDITIONS,
-  getVehicleConditionLabel,
+  ENTRY_TYPES,
   getTyreConditionLabel,
-  WIZARD_CONFIGS,
+  getVehicleConditionLabel,
   getWizardConfig,
+  TYRE_CONDITIONS,
+  VEHICLE_CONDITIONS,
+  WIZARD_CONFIGS,
 } from '@/config/constants/vehicle.constants';
 
 // ═══════════════════════════════════════════════════════════════

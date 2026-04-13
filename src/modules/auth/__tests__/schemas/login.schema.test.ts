@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { loginSchema, LOGIN_FORM_DEFAULTS } from '../../schemas/login.schema';
+import { describe, expect,it } from 'vitest';
+
+import { LOGIN_FORM_DEFAULTS,loginSchema } from '../../schemas/login.schema';
 
 describe('Login Schema', () => {
   // ═══════════════════════════════════════════════════════════════

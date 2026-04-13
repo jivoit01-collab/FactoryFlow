@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
 
 describe('Types Index Exports', () => {
   it('types/index.ts re-exports from common.types', async () => {

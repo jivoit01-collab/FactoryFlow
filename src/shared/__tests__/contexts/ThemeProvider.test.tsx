@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { renderHook, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act,renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
 
 // Mock storage
 vi.mock('../../utils/storage', () => ({

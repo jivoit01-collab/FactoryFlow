@@ -1,13 +1,13 @@
+import { AlertTriangle, BarChart3, Calendar, Clock, DollarSign,Package, Target, Trash2, TrendingUp, Zap } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Calendar, Clock, Trash2, Zap, TrendingUp, Target, Package, AlertTriangle, DollarSign } from 'lucide-react';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
-import { DateRangePicker } from '@/modules/gate/components';
 
-import { useOEEAnalytics, useDowntimeAnalytics, useWasteAnalytics } from '../api';
+import { useDowntimeAnalytics, useOEEAnalytics, useWasteAnalytics } from '../api';
 import type { AnalyticsParams } from '../types';
 
 function ReportsPage() {

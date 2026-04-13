@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 /**
  * Formats a Date object to HH:mm format.
@@ -67,36 +67,44 @@ export interface UseCurrentTimeReturn {
  * })
  * ```
  */
+/**
+ * Compute the time that should be displayed given the current props.
+ * Returns '' when no initial time is available and auto-capture is off, which
+ * is a signal to leave any user-typed value alone.
+ */
+function computeTimeFromProps(autoCapture: boolean, initialTime?: string): string {
+  if (initialTime) {
+    const parsed = parseTimeFromDatetime(initialTime);
+    if (parsed) return parsed;
+  }
+  if (autoCapture) {
+    return formatTimeHHMM(new Date());
+  }
+  return '';
+}
+
 export function useCurrentTime({
   autoCapture,
   initialTime,
 }: UseCurrentTimeConfig): UseCurrentTimeReturn {
-  const [time, setTimeState] = useState<string>(() => {
-    // If we have an initial time from existing data, parse and use it
-    if (initialTime) {
-      const parsed = parseTimeFromDatetime(initialTime);
-      if (parsed) return parsed;
-    }
-    // If auto-capture is enabled, use current time
-    if (autoCapture) {
-      return formatTimeHHMM(new Date());
-    }
-    return '';
-  });
+  const [time, setTimeState] = useState<string>(() =>
+    computeTimeFromProps(autoCapture, initialTime),
+  );
 
-  // Update time when autoCapture or initialTime changes
-  useEffect(() => {
-    if (initialTime) {
-      const parsed = parseTimeFromDatetime(initialTime);
-      if (parsed) {
-        setTimeState(parsed);
-        return;
-      }
-    }
-    if (autoCapture) {
-      setTimeState(formatTimeHHMM(new Date()));
-    }
-  }, [autoCapture, initialTime]);
+  // Adjust state when inputs change. This is the React-recommended "state
+  // update during render" pattern for syncing state with props — cheaper than
+  // an effect because React re-renders with the new state in a single pass.
+  // See: https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [prevAutoCapture, setPrevAutoCapture] = useState(autoCapture);
+  const [prevInitialTime, setPrevInitialTime] = useState(initialTime);
+  if (prevAutoCapture !== autoCapture || prevInitialTime !== initialTime) {
+    setPrevAutoCapture(autoCapture);
+    setPrevInitialTime(initialTime);
+    const next = computeTimeFromProps(autoCapture, initialTime);
+    // Only overwrite when we actually have a new value — preserves user-typed
+    // empty state when inputs change to a "no auto-capture, no initial" state.
+    if (next) setTimeState(next);
+  }
 
   const setTime = useCallback((newTime: string) => {
     if (newTime === '' || /^([01]\d|2[0-3]):([0-5]\d)$/.test(newTime)) {

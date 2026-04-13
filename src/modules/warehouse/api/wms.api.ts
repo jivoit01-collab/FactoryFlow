@@ -2,14 +2,14 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
-  WMSDashboardData,
-  StockOverviewResponse,
-  ItemDetailResponse,
-  StockMovement,
-  WarehouseSummary,
   BillingOverviewResponse,
-  WarehouseOption,
+  ItemDetailResponse,
   ItemGroupOption,
+  StockMovement,
+  StockOverviewResponse,
+  WarehouseOption,
+  WarehouseSummary,
+  WMSDashboardData,
 } from '../types';
 
 const EP = API_ENDPOINTS.WAREHOUSE;

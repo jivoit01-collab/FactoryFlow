@@ -1,6 +1,6 @@
+import { ArrowLeft, Check, Loader2, Package, Send, X } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Loader2, Package, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import { logSwallowedError } from '@/shared/utils';
 
 import {
   useApproveBOMRequest,
@@ -164,8 +165,8 @@ export default function BOMRequestDetailPage() {
     try {
       await approveMut.mutateAsync({ requestId: detail.id, data: { lines } });
       toast.success('BOM request approved');
-    } catch {
-      // Error handled by interceptor
+    } catch (err) {
+      logSwallowedError(err, 'approve BOM request');
     }
   };
 
@@ -178,8 +179,8 @@ export default function BOMRequestDetailPage() {
       });
       toast.success('BOM request rejected');
       setRejectOpen(false);
-    } catch {
-      // Error handled by interceptor
+    } catch (err) {
+      logSwallowedError(err, 'reject BOM request');
     }
   };
 
@@ -189,8 +190,8 @@ export default function BOMRequestDetailPage() {
       await issueMut.mutateAsync({ requestId: detail.id });
       toast.success('Materials issued to SAP');
       setIssueOpen(false);
-    } catch {
-      // Error handled by interceptor
+    } catch (err) {
+      logSwallowedError(err, 'issue BOM materials');
     }
   };
 

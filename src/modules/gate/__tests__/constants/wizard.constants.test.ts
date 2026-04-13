@@ -1,10 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Imports
 // ═══════════════════════════════════════════════════════════════
-
-import { WIZARD_CONFIG, TABLE_CONFIG, DEBOUNCE_CONFIG } from '../../constants/wizard.constants';
+import { DEBOUNCE_CONFIG,TABLE_CONFIG, WIZARD_CONFIG } from '../../constants/wizard.constants';
 
 // ═══════════════════════════════════════════════════════════════
 // Tests — WIZARD_CONFIG

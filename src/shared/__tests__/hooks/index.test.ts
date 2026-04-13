@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config/constants', () => ({
   DEBOUNCE_DELAY: { search: 300, input: 150, resize: 100 },

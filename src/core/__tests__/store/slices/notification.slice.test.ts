@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Notification Slice (src/core/store/slices/notification.slice.ts)
@@ -31,29 +31,7 @@ vi.mock('@/core/notifications', () => ({
   notificationService: mockNotificationService,
 }));
 
-import reducer, {
-  setFCMToken,
-  setFCMPermission,
-  clearFCMError,
-  addNotification,
-  updateUnreadCount,
-  clearNotifications,
-  resetNotificationState,
-  setupPushNotifications,
-  cleanupPushNotifications,
-  fetchNotifications,
-  fetchUnreadCount,
-  markNotificationsAsRead,
-  markAllNotificationsAsRead,
-  fetchPreferences,
-  updatePreference,
-  selectFCMState,
-  selectNotificationsState,
-  selectPreferencesState,
-  selectUnreadCount,
-  selectIsFCMSupported,
-  selectFCMPermission,
-} from '@/core/store/slices/notification.slice';
+import reducer, { addNotification, cleanupPushNotifications, clearFCMError, clearNotifications, fetchNotifications, fetchPreferences, fetchUnreadCount, markNotificationsAsRead, resetNotificationState, selectFCMPermission, selectFCMState, selectIsFCMSupported, selectNotificationsState, selectPreferencesState, selectUnreadCount, setFCMPermission, setFCMToken, setupPushNotifications, updatePreference, updateUnreadCount } from '@/core/store/slices/notification.slice';
 
 const initialState = reducer(undefined, { type: '@@INIT' });
 

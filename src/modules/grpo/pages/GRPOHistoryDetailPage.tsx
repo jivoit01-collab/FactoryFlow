@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { GRPO_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
-import { RecordTimestamps } from '@/shared/components';
 import { useHasPermission } from '@/core/auth';
+import { RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useGRPODetail } from '../api';

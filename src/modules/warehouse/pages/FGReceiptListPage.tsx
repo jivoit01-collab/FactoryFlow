@@ -1,13 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  PackageCheck,
-  Clock,
-  CheckCircle2,
-  CloudUpload,
   AlertTriangle,
+  CheckCircle2,
+  Clock,
+  CloudUpload,
   Loader2,
+  PackageCheck,
 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -28,8 +27,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import { logSwallowedError } from '@/shared/utils';
 
-import { useFGReceipts, useReceiveFG, usePostFGToSAP } from '../api';
+import { useFGReceipts, usePostFGToSAP,useReceiveFG } from '../api';
 import type { FGReceipt, FGReceiptStatus } from '../types';
 
 function FGStatusBadge({ status }: { status: FGReceiptStatus }) {
@@ -50,7 +50,6 @@ function FGStatusBadge({ status }: { status: FGReceiptStatus }) {
 }
 
 export default function FGReceiptListPage() {
-  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [actionTarget, setActionTarget] = useState<FGReceipt | null>(null);
   const [actionType, setActionType] = useState<'receive' | 'post-sap' | null>(null);
@@ -73,8 +72,8 @@ export default function FGReceiptListPage() {
       }
       setActionTarget(null);
       setActionType(null);
-    } catch {
-      // Error handled by interceptor
+    } catch (err) {
+      logSwallowedError(err, `FG receipt ${actionType}`);
     }
   };
 

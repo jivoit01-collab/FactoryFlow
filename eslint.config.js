@@ -8,7 +8,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import eslintConfigPrettier from 'eslint-config-prettier'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'scripts']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -27,6 +27,20 @@ export default defineConfig([
     rules: {
       'simple-import-sort/imports': 'warn',
       'simple-import-sort/exports': 'warn',
+      // Treat `_`-prefixed names as intentionally unused — e.g. `const { foo: _, ...rest }`
+      // destructure-discards, `_arg` placeholder params, unused catch bindings.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          args: 'all',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
   eslintConfigPrettier,

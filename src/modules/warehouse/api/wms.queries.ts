@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 
 import { wmsApi } from './wms.api';
 
@@ -7,7 +7,7 @@ export const WMS_QUERY_KEYS = {
   dashboard: (wh?: string) => [...WMS_QUERY_KEYS.all, 'dashboard', wh] as const,
   stockOverview: (filters: Record<string, unknown>) =>
     [...WMS_QUERY_KEYS.all, 'stock-overview', filters] as const,
-  itemDetail: (code: string) => [...WMS_QUERY_KEYS.all, 'item', code] as const,
+  itemDetail: (code: string | null) => [...WMS_QUERY_KEYS.all, 'item', code] as const,
   movements: (filters: Record<string, unknown>) =>
     [...WMS_QUERY_KEYS.all, 'movements', filters] as const,
   warehouseSummary: () => [...WMS_QUERY_KEYS.all, 'warehouse-summary'] as const,
@@ -40,9 +40,8 @@ export function useStockOverview(params: {
 
 export function useItemDetail(itemCode: string | null) {
   return useQuery({
-    queryKey: WMS_QUERY_KEYS.itemDetail(itemCode!),
-    queryFn: () => wmsApi.getItemDetail(itemCode!),
-    enabled: !!itemCode,
+    queryKey: WMS_QUERY_KEYS.itemDetail(itemCode),
+    queryFn: itemCode ? () => wmsApi.getItemDetail(itemCode) : skipToken,
   });
 }
 

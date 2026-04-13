@@ -1,15 +1,14 @@
+import { ArrowLeft, CheckCircle2, Save, Send, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Save, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { EXECUTION_PERMISSIONS } from '@/config/permissions/production.permissions';
+import { useHasPermission } from '@/core/auth/hooks/usePermission';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
 
-import { useHasPermission } from '@/core/auth/hooks/usePermission';
-import { EXECUTION_PERMISSIONS } from '@/config/permissions/production.permissions';
-
-import { useCreateLineClearance, useLineClearanceDetail, useUpdateLineClearance, useSubmitLineClearance, useApproveLineClearance, useLines, useRunDetail } from '../api';
+import { useApproveLineClearance, useCreateLineClearance, useLineClearanceDetail, useLines, useRunDetail,useSubmitLineClearance, useUpdateLineClearance } from '../api';
 import { ClearanceChecklistTable } from '../components/ClearanceChecklistTable';
 import { ClearanceStatusBadge } from '../components/ClearanceStatusBadge';
 import { SignatureBlock } from '../components/SignatureBlock';

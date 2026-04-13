@@ -1,27 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
+import type { DeviceTokenRequest, DeviceTokenResponse, DeviceType, MarkReadRequest, MarkReadResponse, Notification, NotificationDetail, NotificationListParams, NotificationListResponse, NotificationPayload, NotificationPreference, NotificationPreferenceUpdate, NotificationStatus, NotificationTypeCodeType, PermissionState, Platform, TestNotificationRequest, TestNotificationResponse, UnreadCountResponse } from '@/core/notifications/types';
 import { NotificationTypeCode } from '@/core/notifications/types';
-import type {
-  Platform,
-  DeviceType,
-  NotificationStatus,
-  PermissionState,
-  DeviceTokenRequest,
-  DeviceTokenResponse,
-  NotificationType,
-  Notification,
-  NotificationDetail,
-  NotificationListResponse,
-  NotificationListParams,
-  NotificationPreference,
-  NotificationPreferenceUpdate,
-  MarkReadRequest,
-  MarkReadResponse,
-  UnreadCountResponse,
-  TestNotificationRequest,
-  TestNotificationResponse,
-  NotificationPayload,
-  NotificationTypeCodeType,
-} from '@/core/notifications/types';
 
 // ═══════════════════════════════════════════════════════════════
 // Notification Types (src/core/notifications/types.ts) — Direct Import

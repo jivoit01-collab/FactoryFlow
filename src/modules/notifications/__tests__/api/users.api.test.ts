@@ -5,7 +5,7 @@
 // endpoint, and return the expected data shape.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
 
 const mockGet = vi.fn();
 

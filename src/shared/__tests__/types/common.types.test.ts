@@ -1,12 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import type {
+  AsyncState,
+  AsyncStatus,
   BaseEntity,
-  SelectOption,
   PaginationState,
+  SelectOption,
   SortState,
   TableState,
-  AsyncStatus,
-  AsyncState,
 } from '../../types/common.types';
 
 describe('Common Types', () => {

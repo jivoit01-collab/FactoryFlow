@@ -5,7 +5,7 @@
 // method names for managing vehicles.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/core/api', () => ({
   apiClient: {

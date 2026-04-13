@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
+import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
 import { useItemGroups, useNonMovingReport } from '../api';
 import {
   NonMovingBranchSummary,
@@ -10,7 +11,6 @@ import {
   NonMovingMetaCards,
   NonMovingTable,
 } from '../components';
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
 import type { BranchSummary, NonMovingFilters as NonMovingFiltersType, ReportSummary } from '../types';
 
 function isSAPError(err: unknown): err is ApiError {

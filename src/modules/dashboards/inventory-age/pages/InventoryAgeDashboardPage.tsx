@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
+import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
 import { useInventoryAgeFilterOptions, useInventoryAgeReport } from '../api';
 import {
   InventoryAgeFilters,
@@ -10,8 +11,7 @@ import {
   InventoryAgeTable,
   InventoryAgeWarehouseSummary,
 } from '../components';
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
-import type { InventoryAgeFilters as InventoryAgeFiltersType, InventoryAgeItem, InventoryAgeMeta, WarehouseSummary } from '../types';
+import type { InventoryAgeFilters as InventoryAgeFiltersType, InventoryAgeMeta, WarehouseSummary } from '../types';
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;

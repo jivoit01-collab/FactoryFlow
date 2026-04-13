@@ -1,14 +1,7 @@
+import { ArrowLeft, CheckCircle2, ChevronRight, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import {
-  ArrowLeft,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  X,
-  XCircle,
-} from 'lucide-react';
 
 import {
   Button,
@@ -28,8 +21,8 @@ import {
 } from '@/shared/components/ui';
 
 import {
-  useProductionQCPending,
   useApproveProductionQCSession,
+  useProductionQCPending,
   useRejectProductionQCSession,
 } from '../../api/productionQC';
 

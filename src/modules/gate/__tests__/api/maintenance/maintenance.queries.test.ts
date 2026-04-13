@@ -5,7 +5,7 @@
 // are exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
@@ -27,13 +27,13 @@ vi.mock('../../../api/maintenance/maintenance.api', () => ({
 }));
 
 import {
-  useUnitChoices,
-  useMaintenanceTypes,
-  useMaintenanceEntry,
-  useCreateMaintenanceEntry,
-  useUpdateMaintenanceEntry,
-  useMaintenanceFullView,
   useCompleteMaintenanceEntry,
+  useCreateMaintenanceEntry,
+  useMaintenanceEntry,
+  useMaintenanceFullView,
+  useMaintenanceTypes,
+  useUnitChoices,
+  useUpdateMaintenanceEntry,
 } from '../../../api/maintenance/maintenance.queries';
 
 // ═══════════════════════════════════════════════════════════════

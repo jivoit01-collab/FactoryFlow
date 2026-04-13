@@ -1,6 +1,32 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 /**
+ * Get the first error field name from a (possibly nested) react-hook-form
+ * errors object. Hoisted out of the hook so recursion doesn't reference the
+ * in-flight `useCallback` binding.
+ */
+function getFirstErrorKey(errors: Record<string, unknown>): string | null {
+  const keys = Object.keys(errors);
+  if (keys.length === 0) return null;
+
+  for (const key of keys) {
+    const error = errors[key];
+    if (!error) continue;
+
+    // If it's a nested error (like array fields), recurse
+    if (typeof error === 'object' && !('message' in error) && !('type' in error)) {
+      const nestedKey = getFirstErrorKey(error as Record<string, unknown>);
+      if (nestedKey) return `${key}.${nestedKey}`;
+    }
+
+    // Found a direct error
+    return key;
+  }
+
+  return keys[0];
+}
+
+/**
  * Hook that automatically scrolls to the first form error when validation fails.
  * Works with react-hook-form by watching the errors object.
  *
@@ -37,30 +63,6 @@ export function useScrollToError(
 
   // Track the previous error count to detect when new errors appear
   const prevErrorCount = useRef(0);
-
-  /**
-   * Get the first error field name from nested errors object
-   */
-  const getFirstErrorKey = useCallback((errors: Record<string, unknown>): string | null => {
-    const keys = Object.keys(errors);
-    if (keys.length === 0) return null;
-
-    for (const key of keys) {
-      const error = errors[key];
-      if (!error) continue;
-
-      // If it's a nested error (like array fields), recurse
-      if (typeof error === 'object' && !('message' in error) && !('type' in error)) {
-        const nestedKey = getFirstErrorKey(error as Record<string, unknown>);
-        if (nestedKey) return `${key}.${nestedKey}`;
-      }
-
-      // Found a direct error
-      return key;
-    }
-
-    return keys[0];
-  }, []);
 
   /**
    * Scroll to the first error field in the form
@@ -125,7 +127,7 @@ export function useScrollToError(
         );
       }
     }
-  }, [errors, getFirstErrorKey, behavior, block, shouldFocus, offset]);
+  }, [errors, behavior, block, shouldFocus, offset]);
 
   // Auto-scroll when errors appear
   useEffect(() => {

@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@/config/routes.config';
+import { queryClient } from '@/core/api';
 import { switchCompany } from '@/core/auth';
 import { indexedDBService } from '@/core/auth/services/indexedDb.service';
 import { useAppDispatch, useAppSelector } from '@/core/store';
@@ -14,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui';
-import { queryClient } from '@/core/api';
 
 /**
  * CompanySelectionPage component

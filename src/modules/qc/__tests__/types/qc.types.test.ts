@@ -1,22 +1,23 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import type {
-  ArrivalSlipStatus,
-  InspectionWorkflowStatus,
-  InspectionListWorkflowStatus,
-  InspectionFinalStatus,
-  ParameterType,
-  MaterialType,
-  CreateMaterialTypeRequest,
-  QCParameter,
-  CreateQCParameterRequest,
-  ParameterResult,
-  UpdateParameterResultRequest,
-  ArrivalSlipForQC,
-  InspectionListItem,
-  InspectionCounts,
-  Inspection,
-  CreateInspectionRequest,
   ApprovalRequest,
+  ArrivalSlipForQC,
+  ArrivalSlipStatus,
+  CreateInspectionRequest,
+  CreateMaterialTypeRequest,
+  CreateQCParameterRequest,
+  Inspection,
+  InspectionCounts,
+  InspectionFinalStatus,
+  InspectionListItem,
+  InspectionListWorkflowStatus,
+  InspectionWorkflowStatus,
+  MaterialType,
+  ParameterResult,
+  ParameterType,
+  QCParameter,
+  UpdateParameterResultRequest,
 } from '../../types';
 
 // ═══════════════════════════════════════════════════════════════

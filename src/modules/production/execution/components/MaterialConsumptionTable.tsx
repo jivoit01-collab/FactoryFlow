@@ -1,6 +1,8 @@
-import { useState } from 'react';
 import { Pencil, Plus } from 'lucide-react';
+import { useState } from 'react';
+
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from '@/shared/components/ui';
+
 import type { MaterialUsage } from '../types';
 
 interface MaterialConsumptionTableProps {

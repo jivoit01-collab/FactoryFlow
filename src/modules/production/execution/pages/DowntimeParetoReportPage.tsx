@@ -1,11 +1,11 @@
+import { AlertTriangle,ArrowLeft } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
-import { DateRangePicker } from '@/modules/gate/components';
 
 import { useDowntimeParetoReport } from '../api';
 import type { AnalyticsParams } from '../types';

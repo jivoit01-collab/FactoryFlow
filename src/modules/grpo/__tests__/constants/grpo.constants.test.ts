@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Mock centralized constants
@@ -19,7 +19,7 @@ vi.mock('@/config/constants', () => ({
   },
 }));
 
-import { GRPO_STATUS_CONFIG, GRPO_STATUS, DEFAULT_BRANCH_ID } from '../../constants/grpo.constants';
+import { DEFAULT_BRANCH_ID,GRPO_STATUS, GRPO_STATUS_CONFIG } from '../../constants/grpo.constants';
 
 describe('GRPO Constants', () => {
   // ═══════════════════════════════════════════════════════════════

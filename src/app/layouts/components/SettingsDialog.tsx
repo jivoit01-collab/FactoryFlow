@@ -1,4 +1,4 @@
-import { LogOut, Settings, User, Shield, ChevronRight } from 'lucide-react';
+import { ChevronRight,LogOut, Settings, Shield, User } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 

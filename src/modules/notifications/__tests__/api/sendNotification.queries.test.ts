@@ -5,7 +5,7 @@
 // are exported as defined functions and wired correctly.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mockUseQuery = vi.fn(() => ({ data: undefined, isLoading: false }));
 const mockUseMutation = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));

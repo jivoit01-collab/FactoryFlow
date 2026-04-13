@@ -2,13 +2,13 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  CreateProductionQCSessionRequest,
+  ProductionQCCounts,
+  ProductionQCListParams,
   ProductionQCSession,
   ProductionQCSessionListItem,
-  ProductionQCCounts,
-  CreateProductionQCSessionRequest,
-  UpdateProductionQCResultRequest,
   ProductionQCSubmitRequest,
-  ProductionQCListParams,
+  UpdateProductionQCResultRequest,
 } from '../../types';
 
 const EP = API_ENDPOINTS.QUALITY_CONTROL_V2;

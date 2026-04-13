@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type CreateDriverRequest, type UpdateDriverRequest, driverApi } from './driver.api';
+import { type CreateDriverRequest, driverApi,type UpdateDriverRequest } from './driver.api';
 
 /**
  * Fetch lightweight driver names for dropdown

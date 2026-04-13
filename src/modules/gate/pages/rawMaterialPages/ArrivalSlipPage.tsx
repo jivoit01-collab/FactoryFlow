@@ -3,10 +3,9 @@ import { AlertCircle, Check, FileText, Paperclip, Upload, X } from 'lucide-react
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { env } from '@/config/env.config';
-
 import { VALIDATION_PATTERNS } from '@/config/constants';
 import { ARRIVAL_SLIP_STATUS } from '@/config/constants';
+import { env } from '@/config/env.config';
 import type { ApiError } from '@/core/api';
 import { RecordTimestamps } from '@/shared/components';
 import {

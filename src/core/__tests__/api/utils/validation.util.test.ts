@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  ValidationError,
   validateLoginResponse,
   validateRefreshTokenResponse,
   validateUserResponse,
+  ValidationError,
 } from '@/core/api/utils/validation.util';
 
 // ═══════════════════════════════════════════════════════════════

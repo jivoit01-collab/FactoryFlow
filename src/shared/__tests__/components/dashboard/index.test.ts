@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock dependencies to prevent resolution hangs
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));

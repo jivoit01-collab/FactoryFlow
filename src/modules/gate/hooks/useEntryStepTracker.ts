@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
+import { ignoreStorageError } from '@/shared/utils/error';
+
 import { useEntryId } from './useEntryId';
 
 const STORAGE_KEY = 'gate_entry_last_step';
@@ -32,6 +34,7 @@ function getStepMap(): Record<string, string> {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
+    ignoreStorageError();
     return {};
   }
 }
@@ -54,7 +57,7 @@ function saveStep(entryId: string, step: string): void {
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
-    // Ignore storage errors
+    ignoreStorageError();
   }
 }
 
@@ -67,7 +70,7 @@ export function clearEntryStep(entryId: string | number): void {
     delete map[String(entryId)];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
-    // Ignore storage errors
+    ignoreStorageError();
   }
 }
 

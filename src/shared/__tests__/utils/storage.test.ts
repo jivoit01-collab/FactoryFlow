@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { storage, sessionStorage as appSessionStorage } from '../../utils/storage';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
+
+import { sessionStorage as appSessionStorage,storage } from '../../utils/storage';
 
 describe('storage (localStorage wrapper)', () => {
   const mockLocalStorage = {

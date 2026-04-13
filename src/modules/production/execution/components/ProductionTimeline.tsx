@@ -1,7 +1,9 @@
+import { Clock,Play, Wrench } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Play, Wrench, Clock } from 'lucide-react';
+
 import { Button } from '@/shared/components/ui';
-import type { ProductionSegment, MachineBreakdown } from '../types';
+
+import type { MachineBreakdown,ProductionSegment } from '../types';
 
 // ============================================================================
 // Types

@@ -54,7 +54,24 @@
       "Bash(xargs head:*)",
       "Bash(cat /d/Test_CompanyJivo/FactoryFlow/src/modules/gate/api/*.ts)",
       "Bash(pip install:*)",
-      "Bash(python generate_ppt.py)"
+      "Bash(python generate_ppt.py)",
+      "Bash(grep -r \"isError\\\\|error:\" /d/Test_CompanyJivo/FactoryFlow/src/modules/warehouse/pages/*.tsx)",
+      "Bash(grep -v \"//\")",
+      "Bash(perl -pe 's/\\\\e\\\\[[0-9;]*m//g' \"C:/Users/gurpa/AppData/Local/Temp/claude/D--Test-CompanyJivo-FactoryFlow/a1b1e986-91ec-4de4-872d-103a56ba2bee/tasks/bsx0bk9jl.output\")",
+      "Bash(perl -ne 'if \\(/\\(\\\\S+\\\\/\\\\S+\\)\\\\s+\\\\S+/\\) { } elsif \\(/^\\\\s*\\\\S+\\\\s+\\(error|warning\\)\\\\s+.+\\\\s+\\(\\\\S+\\)\\\\s*$/\\) { $rules{$2}++ } END { for \\(sort { $rules{$b} <=> $rules{$a} } keys %rules\\) { print \"$rules{$_}\\\\t$_\\\\n\" } }' /tmp/eslint_after.log)",
+      "Bash(grep -oE \"D:\\\\\\\\\\\\\\\\[^[:space:]]+\\\\.\\(ts|tsx\\)\")",
+      "Bash(perl -ne 'BEGIN{$f=\"\"} if \\(/^\\(D:\\\\\\\\[^\\\\s]+\\\\.tsx?\\)/\\) { $f=$1 } elsif \\(/no-require-imports/\\) { print \"$f\\\\n\" }' /tmp/eslint_after.log)",
+      "Bash(grep -E \"^D:\\\\\\\\\\\\\\\\\" /tmp/eslint_after.log)",
+      "Bash(node scripts/fix-require.cjs)",
+      "Bash(perl -ne 'if \\(m!\\\\s+\\(\\\\S+\\(?:/|-\\)\\\\S+\\)\\\\s*$!\\) { $r{$1}++ } END { for \\(sort { $r{$b}<=>$r{$a} } keys %r\\) { print \"$r{$_}\\\\t$_\\\\n\" if $r{$_} > 1 } }' /tmp/eslint_now.log)",
+      "Bash(perl -ne 'BEGIN{$f=\"\"} if \\(/^\\(D:\\\\\\\\[^\\\\s]+\\\\.tsx?\\)/\\) { $f=$1 } elsif \\(/no-unused-vars/\\) { print \"$f\\\\n\" }' /tmp/eslint_now.log)",
+      "Bash(perl -ne 'BEGIN{$f=\"\"} if \\(/^\\(D:\\\\\\\\\\\\S+\\\\.tsx?\\)/\\) { $f=$1; } elsif \\(/no-unused-vars/\\) { print \"$f\\\\n\" }' /tmp/eslint_now.log)",
+      "Bash(awk '/^D:/ { f=$0 } /no-unused-vars/ { print f }' /tmp/eslint_now.log)",
+      "Bash(awk '/^D:/ { f=$0 } /no-unused-vars/ { c[f]++ } END { for \\(f in c\\) printf \"%d\\\\t%s\\\\n\", c[f], f }' /tmp/eslint_now.log)",
+      "Bash(awk '/^D:/ { f=$0; next } /no-unused-vars/ { print f \":\" $0 }' /tmp/eslint_now.log)",
+      "Bash(grep -E \"\\(QCDashboardPage|RunDetailPage|grpo\\\\\\\\.schema\\\\\\\\.test|Step3Page|sap-plan\\\\\\\\.queries|ProductionQCDashboardPage|ProductionQCApprovalPage|execution/pages/QCPage|stock-level\\\\\\\\.queries|SKUDetailPanel|validation\\\\\\\\.util\\\\\\\\.test\\)\\\\\\\\.\\(ts|tsx\\)\")",
+      "Bash(awk:*)",
+      "Bash(node scripts/drop-unused-imports.cjs)"
     ]
   }
 }

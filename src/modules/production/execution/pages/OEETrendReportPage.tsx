@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
+import { useMemo,useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button, Card, CardContent, CardHeader, CardTitle,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/shared/components/ui';
-import { DateRangePicker } from '@/modules/gate/components';
 
 import { useOEETrendReport } from '../api';
 import type { AnalyticsParams } from '../types';

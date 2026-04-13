@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
+
+import type { DateRange, FiltersState } from '@/core/store/filtersSlice';
 import reducer, {
-  setDateRange,
-  setDateRangeFromDates,
   resetDateRange,
   saveFiltersToStorage,
+  setDateRange,
+  setDateRangeFromDates,
 } from '@/core/store/filtersSlice';
-import type { DateRange, FiltersState } from '@/core/store/filtersSlice';
 
 // ═══════════════════════════════════════════════════════════════
 // Filters Slice (src/core/store/filtersSlice.ts) — Direct Import

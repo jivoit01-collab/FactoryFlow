@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   AddBreakdownRequest,
@@ -15,6 +15,7 @@ import type {
   CreateLabourRequest,
   CreateLineClearanceRequest,
   CreateLineRequest,
+  CreateLineSkuConfigPayload,
   CreateMachineCostRequest,
   CreateMachineRequest,
   CreateManpowerRequest,
@@ -28,12 +29,11 @@ import type {
   ResolveBreakdownRequest,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
-  UpdateSegmentRequest,
   UpdateLineClearanceRequest,
-  UpdateRunRequest,
-  WasteApprovalRequest,
-  CreateLineSkuConfigPayload,
   UpdateLineSkuConfigPayload,
+  UpdateRunRequest,
+  UpdateSegmentRequest,
+  WasteApprovalRequest,
 } from '../types';
 import { executionApi } from './execution.api';
 
@@ -51,12 +51,13 @@ export const EXECUTION_QUERY_KEYS = {
     [...EXECUTION_QUERY_KEYS.all, 'checklist-templates', { machineType }] as const,
   // SAP
   sapOrders: () => [...EXECUTION_QUERY_KEYS.all, 'sap-orders'] as const,
-  sapOrderDetail: (docEntry: number) =>
+  sapOrderDetail: (docEntry: number | null | undefined) =>
     [...EXECUTION_QUERY_KEYS.all, 'sap-order', docEntry] as const,
   // Runs
   runs: (status?: string, date?: string) =>
     [...EXECUTION_QUERY_KEYS.all, 'runs', { status, date }] as const,
-  runDetail: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'run', runId] as const,
+  runDetail: (runId: number | null | undefined) =>
+    [...EXECUTION_QUERY_KEYS.all, 'run', runId] as const,
   // Run sub-resources
   breakdowns: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'breakdowns', runId] as const,
   breakdownCategories: () => [...EXECUTION_QUERY_KEYS.all, 'breakdown-categories'] as const,
@@ -66,13 +67,15 @@ export const EXECUTION_QUERY_KEYS = {
   // Line Clearance
   clearances: (lineId?: number, status?: string) =>
     [...EXECUTION_QUERY_KEYS.all, 'clearances', { lineId, status }] as const,
-  clearanceDetail: (id: number) => [...EXECUTION_QUERY_KEYS.all, 'clearance', id] as const,
+  clearanceDetail: (id: number | null | undefined) =>
+    [...EXECUTION_QUERY_KEYS.all, 'clearance', id] as const,
   // Checklists
   checklists: (machineId?: number, date?: string, month?: number, year?: number) =>
     [...EXECUTION_QUERY_KEYS.all, 'checklists', { machineId, date, month, year }] as const,
   // Waste
   wasteLogs: (runId?: number) => [...EXECUTION_QUERY_KEYS.all, 'waste', { runId }] as const,
-  wasteDetail: (id: number) => [...EXECUTION_QUERY_KEYS.all, 'waste-detail', id] as const,
+  wasteDetail: (id: number | null | undefined) =>
+    [...EXECUTION_QUERY_KEYS.all, 'waste-detail', id] as const,
   // Resources
   electricity: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'electricity', runId] as const,
   water: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'water', runId] as const,
@@ -93,7 +96,7 @@ export const EXECUTION_QUERY_KEYS = {
   // Reports
   dailyReport: (date?: string) =>
     [...EXECUTION_QUERY_KEYS.all, 'daily-report', date] as const,
-  yieldReport: (runId: number) =>
+  yieldReport: (runId: number | null | undefined) =>
     [...EXECUTION_QUERY_KEYS.all, 'yield-report', runId] as const,
   oeeAnalytics: (params?: AnalyticsParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'oee', params] as const,
@@ -108,7 +111,7 @@ export const EXECUTION_QUERY_KEYS = {
     [...EXECUTION_QUERY_KEYS.all, 'monthly-summary', { year, line }] as const,
   planVsProduction: (params?: AnalyticsParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'plan-vs-production', params] as const,
-  procurementVsPlanned: (sapDocEntry: number) =>
+  procurementVsPlanned: (sapDocEntry: number | null | undefined) =>
     [...EXECUTION_QUERY_KEYS.all, 'procurement-vs-planned', sapDocEntry] as const,
   // Phase 2 Reports
   oeeTrend: (params?: AnalyticsParams & { group_by?: string }) =>
@@ -259,9 +262,8 @@ export function useSAPOrders() {
 
 export function useSAPOrderDetail(docEntry: number | null) {
   return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.sapOrderDetail(docEntry!),
-    queryFn: () => executionApi.getSAPOrderDetail(docEntry!),
-    enabled: !!docEntry,
+    queryKey: EXECUTION_QUERY_KEYS.sapOrderDetail(docEntry),
+    queryFn: docEntry != null ? () => executionApi.getSAPOrderDetail(docEntry) : skipToken,
   });
 }
 
@@ -277,8 +279,7 @@ export function useSearchSAPItems(search: string) {
 export function useBOMPreview(itemCode: string | null) {
   return useQuery({
     queryKey: [...EXECUTION_QUERY_KEYS.all, 'sap-bom', itemCode] as const,
-    queryFn: () => executionApi.getBOM(itemCode!),
-    enabled: !!itemCode,
+    queryFn: itemCode ? () => executionApi.getBOM(itemCode) : skipToken,
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -304,9 +305,8 @@ export function useRuns(filters?: {
 
 export function useRunDetail(runId: number | null) {
   return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.runDetail(runId!),
-    queryFn: () => executionApi.getRunDetail(runId!),
-    enabled: !!runId,
+    queryKey: EXECUTION_QUERY_KEYS.runDetail(runId),
+    queryFn: runId != null ? () => executionApi.getRunDetail(runId) : skipToken,
   });
 }
 
@@ -613,9 +613,9 @@ export function useLineClearances(lineId?: number, status?: string) {
 
 export function useLineClearanceDetail(clearanceId: number | null) {
   return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId!),
-    queryFn: () => executionApi.getLineClearanceDetail(clearanceId!),
-    enabled: !!clearanceId,
+    queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId),
+    queryFn:
+      clearanceId != null ? () => executionApi.getLineClearanceDetail(clearanceId) : skipToken,
   });
 }
 
@@ -731,9 +731,8 @@ export function useWasteLogs(runId?: number) {
 
 export function useWasteLogDetail(wasteId: number | null) {
   return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.wasteDetail(wasteId!),
-    queryFn: () => executionApi.getWasteLogDetail(wasteId!),
-    enabled: !!wasteId,
+    queryKey: EXECUTION_QUERY_KEYS.wasteDetail(wasteId),
+    queryFn: wasteId != null ? () => executionApi.getWasteLogDetail(wasteId) : skipToken,
   });
 }
 
@@ -1227,9 +1226,8 @@ export function useDailyProductionReport(date?: string) {
 
 export function useYieldReport(runId: number | null) {
   return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.yieldReport(runId!),
-    queryFn: () => executionApi.getYieldReport(runId!),
-    enabled: !!runId,
+    queryKey: EXECUTION_QUERY_KEYS.yieldReport(runId),
+    queryFn: runId != null ? () => executionApi.getYieldReport(runId) : skipToken,
   });
 }
 
@@ -1287,9 +1285,11 @@ export function usePlanVsProductionReport(params?: AnalyticsParams) {
 
 export function useProcurementVsPlannedReport(sapDocEntry: number | null) {
   return useQuery({
-    queryKey: EXECUTION_QUERY_KEYS.procurementVsPlanned(sapDocEntry!),
-    queryFn: () => executionApi.getProcurementVsPlannedReport({ sap_doc_entry: sapDocEntry! }),
-    enabled: !!sapDocEntry,
+    queryKey: EXECUTION_QUERY_KEYS.procurementVsPlanned(sapDocEntry),
+    queryFn:
+      sapDocEntry != null
+        ? () => executionApi.getProcurementVsPlannedReport({ sap_doc_entry: sapDocEntry })
+        : skipToken,
     staleTime: 60 * 1000,
   });
 }
@@ -1375,7 +1375,7 @@ export function useDeleteLineConfig() {
 export function useAutoFillConfig(lineId: number | null, skuCode?: string) {
   return useQuery({
     queryKey: [...EXECUTION_QUERY_KEYS.all, 'auto-fill', lineId, skuCode],
-    queryFn: () => executionApi.getAutoFillConfig(lineId!, skuCode),
-    enabled: !!lineId,
+    queryFn:
+      lineId != null ? () => executionApi.getAutoFillConfig(lineId, skuCode) : skipToken,
   });
 }

@@ -1,13 +1,13 @@
-import { Warehouse, AlertTriangle } from 'lucide-react';
+import { AlertTriangle,Warehouse } from 'lucide-react';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
 } from 'recharts';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';

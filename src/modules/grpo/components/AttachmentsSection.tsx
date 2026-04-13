@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 
 import type { ApiError } from '@/core/api/types';
 import { Button, Card, CardContent } from '@/shared/components/ui';
+import { fallbackOnParse } from '@/shared/utils/error';
 
 import { useDeleteGRPOAttachment, useRetryGRPOAttachment, useUploadGRPOAttachment } from '../api';
 import { ATTACHMENT_STATUS_CONFIG } from '../constants';
@@ -16,17 +17,16 @@ interface AttachmentsSectionProps {
 
 const formatDateTime = (dateTime?: string | null) => {
   if (!dateTime) return '-';
-  try {
-    const date = new Date(dateTime);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return dateTime;
-  }
+  return fallbackOnParse(
+    () =>
+      new Date(dateTime).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    dateTime,
+  );
 };
 
 export function AttachmentsSection({ postingId, attachments, canManage }: AttachmentsSectionProps) {

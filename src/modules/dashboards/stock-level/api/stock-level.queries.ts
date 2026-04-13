@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { useAuth } from '@/core/auth';
+
 import { STOCK_LEVEL_STALE_TIME } from '../constants';
 import type { StockDashboardFilters } from '../types';
 import { stockLevelApi } from './stock-level.api';
-import { useAuth } from '@/core/auth';
 
 // ============================================================================
 // Query Keys

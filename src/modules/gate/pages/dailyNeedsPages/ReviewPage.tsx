@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_STATUS, FINAL_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
-import { EntryTimeSummary, RecordTimestamps } from '@/shared/components';
+import { EntryTimeSummary } from '@/shared/components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';

@@ -1,30 +1,30 @@
-import { useState } from 'react';
 import {
-  Package,
-  Warehouse,
   AlertTriangle,
-  TrendingDown,
-  TrendingUp,
   ArrowUpDown,
   IndianRupee,
+  Package,
+  TrendingDown,
+  TrendingUp,
+  Warehouse,
 } from 'lucide-react';
+import { useState } from 'react';
 import {
-  BarChart,
   Bar,
-  XAxis,
-  YAxis,
+  BarChart,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
   Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
+import { DashboardError } from '@/shared/components/dashboard/DashboardError';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { DashboardLoading } from '@/shared/components/dashboard/DashboardLoading';
-import { DashboardError } from '@/shared/components/dashboard/DashboardError';
 import { Card, CardContent } from '@/shared/components/ui';
 
 import { useWMSDashboard, useWMSWarehouses } from '../api';

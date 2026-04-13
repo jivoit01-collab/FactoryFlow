@@ -1,4 +1,5 @@
 import { Camera, Truck, User } from 'lucide-react';
+import { useState } from 'react';
 
 import { ID_PROOF_TYPES } from '@/config/constants';
 import { env } from '@/config/env.config';
@@ -14,15 +15,14 @@ import {
 import { useScrollToError } from '@/shared/hooks';
 import { cn } from '@/shared/utils';
 
+import { CreateDriverDialog } from '../CreateDriverDialog';
+import { CreateTransporterDialog } from '../CreateTransporterDialog';
+import { CreateVehicleDialog } from '../CreateVehicleDialog';
 import { DriverSelect } from '../DriverSelect';
 import { StepFooter } from '../StepFooter';
 import { StepHeader } from '../StepHeader';
 import { TransporterSelect } from '../TransporterSelect';
 import { VehicleSelect } from '../VehicleSelect';
-import { useState } from 'react';
-import { CreateDriverDialog } from '../CreateDriverDialog';
-import { CreateTransporterDialog } from '../CreateTransporterDialog';
-import { CreateVehicleDialog } from '../CreateVehicleDialog';
 
 // Get the server base URL for media files (without /api/v1)
 const getMediaBaseUrl = () => {

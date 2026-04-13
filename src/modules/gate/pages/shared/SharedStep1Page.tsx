@@ -7,8 +7,6 @@ import type { ApiError } from '@/core/api/types';
 import { RecordTimestamps } from '@/shared/components';
 import { getServerErrorMessage, isServerError as checkServerError } from '@/shared/utils';
 
-import { useEntryStepTracker } from '../../hooks';
-
 import {
   useCreateVehicleEntry,
   useUpdateVehicleEntry,
@@ -21,6 +19,7 @@ import {
   type VehicleSelection,
 } from '../../components';
 import type { EntryFlowConfig } from '../../constants/entryFlowConfig';
+import { useEntryStepTracker } from '../../hooks';
 
 interface SharedStep1PageProps {
   config: EntryFlowConfig;

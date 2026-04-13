@@ -1,21 +1,22 @@
-import { describe, it, expect } from 'vitest';
-import {
-  getPermissions,
-  getDefaultCompany,
-  getActiveCompanies,
-  hasRoleInAnyCompany,
-  hasRoleInCompany,
-} from '@/core/auth/types/auth.types';
+import { describe, expect,it } from 'vitest';
+
 import type {
-  UserCompany,
-  User,
-  UserLogin,
   AuthState,
   LoginCredentials,
-  TokensExpiresIn,
   LoginResponse,
-  RefreshTokenResponse,
   MeResponse,
+  RefreshTokenResponse,
+  TokensExpiresIn,
+  User,
+  UserCompany,
+  UserLogin,
+} from '@/core/auth/types/auth.types';
+import {
+  getActiveCompanies,
+  getDefaultCompany,
+  getPermissions,
+  hasRoleInAnyCompany,
+  hasRoleInCompany,
 } from '@/core/auth/types/auth.types';
 
 // ═══════════════════════════════════════════════════════════════

@@ -1,23 +1,23 @@
-import { ChevronDown, ChevronUp, Shield, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { ChevronDown, ChevronUp, Shield, User } from 'lucide-react';
+import { useMemo,useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { getAllNavigation } from '@/app/registry';
 import { ROUTES } from '@/config/routes.config';
 import { useAuth } from '@/core/auth';
-import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
-import { Badge } from '@/shared/components/ui/badge';
-import { Button } from '@/shared/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Collapsible, CollapsibleContent } from '@/shared/components/ui';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { ChangePasswordDialog } from '@/modules/auth/components/ChangePasswordDialog';
 import {
   formatDate,
   getInitials,
   groupPermissionsByApp,
 } from '@/modules/auth/utils/profile.utils';
+import { Collapsible, CollapsibleContent } from '@/shared/components/ui';
+import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 
 /**
  * Build a map from permission app label to module icon.

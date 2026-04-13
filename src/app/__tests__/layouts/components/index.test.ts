@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { describe, expect,it } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Layout Components Barrel — File Content Verification
@@ -7,9 +10,7 @@ import { describe, it, expect } from 'vitest';
 // ═══════════════════════════════════════════════════════════════
 
 function readSource(): string {
-  const { readFileSync } = require('node:fs');
-  const { resolve } = require('node:path');
-  return readFileSync(resolve(process.cwd(), 'src/app/layouts/components/index.ts'), 'utf-8');
+      return readFileSync(resolve(process.cwd(), 'src/app/layouts/components/index.ts'), 'utf-8');
 }
 
 describe('Layout Components Index', () => {

@@ -1,9 +1,9 @@
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
+import { Card, CardContent, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
 
 import { useLineClearances } from '../api';
 import { ClearanceStatusBadge } from '../components/ClearanceStatusBadge';

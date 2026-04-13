@@ -5,7 +5,7 @@
 // exported as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
@@ -30,8 +30,8 @@ import {
   useArrivalSlipById,
   useArrivalSlips,
   useCreateArrivalSlip,
-  useUpdateArrivalSlip,
   useSubmitArrivalSlip,
+  useUpdateArrivalSlip,
 } from '../../../api/arrivalSlip/arrivalSlip.queries';
 
 // ═══════════════════════════════════════════════════════════════

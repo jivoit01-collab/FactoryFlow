@@ -16,8 +16,8 @@ import {
 } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 
-import type { Vehicle } from '../api/vehicle/vehicle.api';
 import { useTransporters } from '../api/transporter/transporter.queries';
+import type { Vehicle } from '../api/vehicle/vehicle.api';
 import { useCreateVehicle, useUpdateVehicle, useVehicleById } from '../api/vehicle/vehicle.queries';
 import { type VehicleFormData, vehicleSchema } from '../schemas/vehicle.schema';
 import { TransporterSelect } from './TransporterSelect';

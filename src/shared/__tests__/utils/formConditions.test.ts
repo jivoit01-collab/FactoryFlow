@@ -1,15 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  isReadOnly,
-  canPerformAction,
-  isEditingAllowed,
+  canEditEntry,
   canModifyItem,
+  canPerformAction,
+  hasDataAvailable,
+  hasNoData,
+  isEditingAllowed,
   isEntryCompleted,
   isEntryDraft,
   isEntryInProgress,
-  canEditEntry,
-  hasNoData,
-  hasDataAvailable,
+  isReadOnly,
 } from '../../utils/formConditions';
 
 describe('Form Condition Utilities', () => {

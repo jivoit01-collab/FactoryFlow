@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // usePermission (src/core/auth/hooks/usePermission.ts)
@@ -30,9 +30,9 @@ vi.mock('@/core/store', () => ({
 }));
 
 import {
-  usePermission,
-  useHasPermission,
   useCanPerformAction,
+  useHasPermission,
+  usePermission,
 } from '@/core/auth/hooks/usePermission';
 
 describe('usePermission', () => {

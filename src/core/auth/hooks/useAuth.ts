@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
+import { type MutableRefObject,useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { AUTH_CONFIG, AUTH_ROUTES } from '@/config/constants';

@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import {
-  NOTIFICATION_PERMISSIONS,
   NOTIFICATION_MODULE_PREFIX,
+  NOTIFICATION_PERMISSIONS,
 } from '@/config/permissions/notification.permissions';
 
 // ═══════════════════════════════════════════════════════════════

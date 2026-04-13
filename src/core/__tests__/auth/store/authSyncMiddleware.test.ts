@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Auth Sync Middleware (src/core/auth/store/authSyncMiddleware.ts)
@@ -25,15 +25,15 @@ vi.mock('@/config/constants', () => ({
   AUTH_CONFIG: { userKey: 'test-user-key' },
 }));
 
-import { authSyncMiddleware } from '@/core/auth/store/authSyncMiddleware';
 import {
+  clearCurrentCompany,
   loginSuccess,
-  updateTokens,
-  updateUser,
   logout,
   switchCompany,
-  clearCurrentCompany,
+  updateTokens,
+  updateUser,
 } from '@/core/auth/store/authSlice';
+import { authSyncMiddleware } from '@/core/auth/store/authSyncMiddleware';
 import type { User, UserCompany } from '@/core/auth/types/auth.types';
 
 function makeCompany(overrides: Partial<UserCompany> = {}): UserCompany {

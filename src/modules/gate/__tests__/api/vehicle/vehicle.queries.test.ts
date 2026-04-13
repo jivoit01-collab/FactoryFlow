@@ -5,7 +5,7 @@
 // as defined functions.
 // ═══════════════════════════════════════════════════════════════
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
@@ -25,11 +25,11 @@ vi.mock('../../../api/vehicle/vehicle.api', () => ({
 }));
 
 import {
-  useVehicleTypes,
-  useVehicleNames,
-  useVehicleById,
-  useVehicles,
   useCreateVehicle,
+  useVehicleById,
+  useVehicleNames,
+  useVehicles,
+  useVehicleTypes,
 } from '../../../api/vehicle/vehicle.queries';
 
 // ═══════════════════════════════════════════════════════════════

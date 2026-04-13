@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { act,renderHook } from '@testing-library/react';
+import { beforeEach,describe, expect, it, vi } from 'vitest';
+
 import { usePWAInstall } from '@/core/pwa/usePWAInstall';
 
 // ═══════════════════════════════════════════════════════════════
@@ -68,7 +69,6 @@ describe('usePWAInstall', () => {
   });
 
   it('listens for beforeinstallprompt event', () => {
-    const origAdd = window.addEventListener;
     const addSpy = vi.spyOn(window, 'addEventListener');
     renderHook(() => usePWAInstall());
     expect(addSpy).toHaveBeenCalledWith('beforeinstallprompt', expect.any(Function));
