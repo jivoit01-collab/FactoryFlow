@@ -30,9 +30,32 @@ class IndexedDBService {
   private db: IDBDatabase | null = null;
   private dbPromise: Promise<IDBDatabase> | null = null;
 
+  /**
+   * Check if the cached DB connection is still usable.
+   * iOS Safari aggressively closes IndexedDB connections during
+   * navigation or memory pressure, leaving a stale reference.
+   */
+  private isDBConnectionAlive(): boolean {
+    if (!this.db) return false;
+    try {
+      // Accessing objectStoreNames on a closed DB throws in Safari
+      this.db.objectStoreNames;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async getDB(): Promise<IDBDatabase> {
-    if (this.db) {
+    // If the cached connection is still alive, reuse it
+    if (this.db && this.isDBConnectionAlive()) {
       return this.db;
+    }
+
+    // Clear stale references so we open a fresh connection
+    if (this.db) {
+      this.db = null;
+      this.dbPromise = null;
     }
 
     if (this.dbPromise) {
@@ -44,11 +67,20 @@ class IndexedDBService {
 
       request.onerror = () => {
         console.error('Failed to open IndexedDB:', request.error);
+        this.dbPromise = null;
         reject(request.error);
       };
 
       request.onsuccess = () => {
         this.db = request.result;
+
+        // iOS Safari can close the connection without warning.
+        // Reset cached references so the next call re-opens.
+        this.db.onclose = () => {
+          this.db = null;
+          this.dbPromise = null;
+        };
+
         resolve(this.db);
       };
 
