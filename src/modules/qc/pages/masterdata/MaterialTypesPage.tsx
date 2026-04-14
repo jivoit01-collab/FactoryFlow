@@ -196,10 +196,10 @@ export default function MaterialTypesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium">Code</th>
-                      <th className="text-left p-3 font-medium">Name</th>
-                      <th className="text-left p-3 font-medium">Description</th>
-                      <th className="text-center p-3 font-medium">Actions</th>
+                      <th scope="col" className="text-left p-3 font-medium">Code</th>
+                      <th scope="col" className="text-left p-3 font-medium">Name</th>
+                      <th scope="col" className="text-left p-3 font-medium">Description</th>
+                      <th scope="col" className="text-center p-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

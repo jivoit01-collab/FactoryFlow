@@ -95,45 +95,45 @@ export function SKUSummaryTable({ orders, isLoading, statusFilter }: SKUSummaryT
             <thead className="border-b bg-muted/40">
               <tr>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('prod_order_num')}
                 >
                   Order <SortIcon col="prod_order_num" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('sku_code')}
                 >
                   SKU <SortIcon col="sku_code" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('planned_qty')}
                 >
                   Planned Qty <SortIcon col="planned_qty" />
                 </th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                   Completed
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Components
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('due_date')}
                 >
                   Due Date <SortIcon col="due_date" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('status')}
                 >
                   Status <SortIcon col="status" />
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Warehouse
                 </th>
-                <th className="w-10 px-4 py-3" />
+                <th scope="col" className="w-10 px-4 py-3" />
               </tr>
             </thead>
             <tbody>

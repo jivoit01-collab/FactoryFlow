@@ -193,6 +193,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                       e.stopPropagation();
                       toggleSubmenu(item.path);
                     }}
+                    aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.title} menu`}
+                    aria-expanded={isOpen}
                   >
                     {isOpen ? (
                       <ChevronUp className="h-4 w-4" />
@@ -263,6 +265,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         size="icon"
         onClick={onToggle}
         className="absolute -right-3 top-20 h-6 w-6 rounded-full border bg-background"
+        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-expanded={!isCollapsed}
       >
         {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </Button>

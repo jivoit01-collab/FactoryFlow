@@ -203,7 +203,12 @@ export default function NewEntryPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/gate/visitor-labour')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate('/gate/visitor-labour')}
+          aria-label="Back to visitor/labour"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>

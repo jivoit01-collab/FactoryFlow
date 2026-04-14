@@ -493,13 +493,13 @@ function RunDetailPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-2 font-medium">Round</th>
-                      <th className="text-left p-2 font-medium">Type</th>
-                      <th className="text-left p-2 font-medium">Material Type</th>
-                      <th className="text-left p-2 font-medium">Checked At</th>
-                      <th className="text-center p-2 font-medium">Parameters</th>
-                      <th className="text-left p-2 font-medium">Status</th>
-                      <th className="text-left p-2 font-medium">Result</th>
+                      <th scope="col" className="text-left p-2 font-medium">Round</th>
+                      <th scope="col" className="text-left p-2 font-medium">Type</th>
+                      <th scope="col" className="text-left p-2 font-medium">Material Type</th>
+                      <th scope="col" className="text-left p-2 font-medium">Checked At</th>
+                      <th scope="col" className="text-center p-2 font-medium">Parameters</th>
+                      <th scope="col" className="text-left p-2 font-medium">Status</th>
+                      <th scope="col" className="text-left p-2 font-medium">Result</th>
                     </tr>
                   </thead>
                   <tbody>

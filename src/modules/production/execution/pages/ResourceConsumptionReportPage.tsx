@@ -81,18 +81,18 @@ function ResourceConsumptionReportPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Date</th>
-                        <th className="text-right p-2 font-medium">Production</th>
-                        <th className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Zap className="h-3 w-3" /> Elec. (units)</span></th>
-                        <th className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Zap className="h-3 w-3" /> Elec. Cost</span></th>
-                        <th className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Droplets className="h-3 w-3" /> Water (L)</span></th>
-                        <th className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Droplets className="h-3 w-3" /> Water Cost</span></th>
-                        <th className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Flame className="h-3 w-3" /> Gas</span></th>
-                        <th className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Wind className="h-3 w-3" /> Air</span></th>
-                        <th className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> Labour</span></th>
-                        <th className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Trash2 className="h-3 w-3" /> Waste</span></th>
-                        <th className="text-right p-2 font-medium">Total Cost</th>
-                        <th className="text-right p-2 font-medium">Cost/Case</th>
+                        <th scope="col" className="text-left p-2 font-medium">Date</th>
+                        <th scope="col" className="text-right p-2 font-medium">Production</th>
+                        <th scope="col" className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Zap className="h-3 w-3" /> Elec. (units)</span></th>
+                        <th scope="col" className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Zap className="h-3 w-3" /> Elec. Cost</span></th>
+                        <th scope="col" className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Droplets className="h-3 w-3" /> Water (L)</span></th>
+                        <th scope="col" className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Droplets className="h-3 w-3" /> Water Cost</span></th>
+                        <th scope="col" className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Flame className="h-3 w-3" /> Gas</span></th>
+                        <th scope="col" className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Wind className="h-3 w-3" /> Air</span></th>
+                        <th scope="col" className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> Labour</span></th>
+                        <th scope="col" className="text-right p-2 font-medium"><span className="inline-flex items-center gap-1"><Trash2 className="h-3 w-3" /> Waste</span></th>
+                        <th scope="col" className="text-right p-2 font-medium">Total Cost</th>
+                        <th scope="col" className="text-right p-2 font-medium">Cost/Case</th>
                       </tr>
                     </thead>
                     <tbody>

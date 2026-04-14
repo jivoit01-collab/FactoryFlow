@@ -79,41 +79,41 @@ export function ProcurementTable({ items, isLoading }: ProcurementTableProps) {
             <thead className="border-b bg-muted/40">
               <tr>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('component_code')}
                 >
                   Code <SortIcon col="component_code" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('component_name')}
                 >
                   Component <SortIcon col="component_name" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('total_required_qty')}
                 >
                   Total Required <SortIcon col="total_required_qty" />
                 </th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                   Available
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('shortfall_qty')}
                 >
                   Shortfall <SortIcon col="shortfall_qty" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('suggested_purchase_qty')}
                 >
                   Suggested Purchase <SortIcon col="suggested_purchase_qty" />
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">UOM</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">UOM</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Related Orders
                 </th>
               </tr>

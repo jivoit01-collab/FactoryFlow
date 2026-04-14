@@ -47,6 +47,7 @@ export function SettingsDialog({ isCollapsed }: SettingsDialogProps) {
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-md transition-colors hover:bg-accent hover:text-accent-foreground"
+            aria-label="Settings"
           >
             <Settings className="h-5 w-5" />
           </Button>

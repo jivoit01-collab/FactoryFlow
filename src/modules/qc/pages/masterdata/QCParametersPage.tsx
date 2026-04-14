@@ -256,14 +256,14 @@ export default function QCParametersPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium">#</th>
-                      <th className="text-left p-3 font-medium">Code</th>
-                      <th className="text-left p-3 font-medium">Name</th>
-                      <th className="text-left p-3 font-medium">Standard Value</th>
-                      <th className="text-left p-3 font-medium">Type</th>
-                      <th className="text-left p-3 font-medium">UOM</th>
-                      <th className="text-center p-3 font-medium">Mandatory</th>
-                      <th className="text-center p-3 font-medium">Actions</th>
+                      <th scope="col" className="text-left p-3 font-medium">#</th>
+                      <th scope="col" className="text-left p-3 font-medium">Code</th>
+                      <th scope="col" className="text-left p-3 font-medium">Name</th>
+                      <th scope="col" className="text-left p-3 font-medium">Standard Value</th>
+                      <th scope="col" className="text-left p-3 font-medium">Type</th>
+                      <th scope="col" className="text-left p-3 font-medium">UOM</th>
+                      <th scope="col" className="text-center p-3 font-medium">Mandatory</th>
+                      <th scope="col" className="text-center p-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

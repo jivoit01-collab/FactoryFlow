@@ -2,9 +2,11 @@ import { AlertCircle,CheckCircle2, ClipboardList, Clock, XCircle } from 'lucide-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { statusBadgeClass, type StatusVariant } from '@/config/statusColors';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   Select,
@@ -18,16 +20,16 @@ import { useBOMRequests } from '../api';
 import type { BOMRequest, BOMRequestStatus } from '../types';
 
 function StatusBadge({ status }: { status: BOMRequestStatus }) {
-  const config: Record<BOMRequestStatus, { label: string; variant: string; icon: typeof Clock }> = {
-    PENDING: { label: 'Pending', variant: 'bg-amber-100 text-amber-800', icon: Clock },
-    APPROVED: { label: 'Approved', variant: 'bg-green-100 text-green-800', icon: CheckCircle2 },
-    PARTIALLY_APPROVED: { label: 'Partial', variant: 'bg-blue-100 text-blue-800', icon: AlertCircle },
-    REJECTED: { label: 'Rejected', variant: 'bg-red-100 text-red-800', icon: XCircle },
+  const config: Record<BOMRequestStatus, { label: string; variant: StatusVariant; icon: typeof Clock }> = {
+    PENDING: { label: 'Pending', variant: 'pending', icon: Clock },
+    APPROVED: { label: 'Approved', variant: 'approved', icon: CheckCircle2 },
+    PARTIALLY_APPROVED: { label: 'Partial', variant: 'inProgress', icon: AlertCircle },
+    REJECTED: { label: 'Rejected', variant: 'rejected', icon: XCircle },
   };
   const c = config[status];
   const Icon = c.icon;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${c.variant}`}>
+    <span className={statusBadgeClass(c.variant)}>
       <Icon className="h-3 w-3" />
       {c.label}
     </span>
@@ -37,8 +39,8 @@ function StatusBadge({ status }: { status: BOMRequestStatus }) {
 function IssueBadge({ status }: { status: string }) {
   if (status === 'NOT_ISSUED') return <Badge variant="outline">Not Issued</Badge>;
   if (status === 'PARTIALLY_ISSUED')
-    return <Badge className="bg-amber-100 text-amber-800 border-0">Partial</Badge>;
-  return <Badge className="bg-green-100 text-green-800 border-0">Fully Issued</Badge>;
+    return <span className={statusBadgeClass('pending')}>Partial</span>;
+  return <span className={statusBadgeClass('approved')}>Fully Issued</span>;
 }
 
 function BOMRequestCard({ request, onClick }: { request: BOMRequest; onClick: () => void }) {
@@ -101,7 +103,7 @@ export default function BOMRequestListPage() {
 
       <div className="flex flex-wrap gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
@@ -121,9 +123,32 @@ export default function BOMRequestListPage() {
         </div>
       ) : requests.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ClipboardList className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">No BOM requests found</p>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <ClipboardList className="h-12 w-12 text-muted-foreground mb-4" />
+            {statusFilter !== 'ALL' ? (
+              <>
+                <p className="font-medium">No {statusFilter.toLowerCase().replace('_', ' ')} BOM requests</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Try a different status filter to see more requests.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setStatusFilter('ALL')}
+                >
+                  Show all requests
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">No BOM requests yet</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                  Requests will appear here when production teams submit material
+                  requirements for a run. Nothing to approve right now.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (

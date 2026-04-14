@@ -141,6 +141,8 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                         e.stopPropagation();
                         toggleSubmenu(item.path);
                       }}
+                      aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.title} menu`}
+                      aria-expanded={isOpen}
                     >
                       {isOpen ? (
                         <ChevronUp className="h-4 w-4" />

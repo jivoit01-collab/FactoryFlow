@@ -30,9 +30,9 @@ export function ClearanceChecklistTable({ items, localItems, onLocalChange, read
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/50">
-            <th className="text-left p-2 font-medium w-8">#</th>
-            <th className="text-left p-2 font-medium">Checkpoint</th>
-            <th className="text-center p-2 font-medium w-32">Result</th>
+            <th scope="col" className="text-left p-2 font-medium w-8">#</th>
+            <th scope="col" className="text-left p-2 font-medium">Checkpoint</th>
+            <th scope="col" className="text-center p-2 font-medium w-32">Result</th>
           </tr>
         </thead>
         <tbody>

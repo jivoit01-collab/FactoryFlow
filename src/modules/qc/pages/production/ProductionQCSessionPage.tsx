@@ -338,11 +338,11 @@ export default function ProductionQCSessionPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 font-medium">Parameter</th>
-                  <th className="text-left p-3 font-medium">Standard Value</th>
-                  <th className="text-left p-3 font-medium">Result</th>
-                  <th className="text-center p-3 font-medium">Within Spec</th>
-                  <th className="text-left p-3 font-medium">Remarks</th>
+                  <th scope="col" className="text-left p-3 font-medium">Parameter</th>
+                  <th scope="col" className="text-left p-3 font-medium">Standard Value</th>
+                  <th scope="col" className="text-left p-3 font-medium">Result</th>
+                  <th scope="col" className="text-center p-3 font-medium">Within Spec</th>
+                  <th scope="col" className="text-left p-3 font-medium">Remarks</th>
                 </tr>
               </thead>
               <tbody>

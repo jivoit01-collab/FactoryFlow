@@ -210,9 +210,9 @@ function YieldReportPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-2 font-medium">Type</th>
-                      <th className="text-right p-2 font-medium">Count</th>
-                      <th className="text-right p-2 font-medium">Total Minutes</th>
+                      <th scope="col" className="text-left p-2 font-medium">Type</th>
+                      <th scope="col" className="text-right p-2 font-medium">Count</th>
+                      <th scope="col" className="text-right p-2 font-medium">Total Minutes</th>
                     </tr>
                   </thead>
                   <tbody>

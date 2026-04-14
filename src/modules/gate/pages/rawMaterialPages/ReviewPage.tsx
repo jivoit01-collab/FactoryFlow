@@ -535,12 +535,12 @@ export default function ReviewPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/50">
-                          <th className="text-left p-2">Item</th>
-                          <th className="text-right p-2">Ordered</th>
-                          <th className="text-right p-2">Received</th>
-                          <th className="text-right p-2">Remaining</th>
-                          <th className="text-center p-2">UOM</th>
-                          <th className="text-center p-2 min-w-[120px]">QC Status</th>
+                          <th scope="col" className="text-left p-2">Item</th>
+                          <th scope="col" className="text-right p-2">Ordered</th>
+                          <th scope="col" className="text-right p-2">Received</th>
+                          <th scope="col" className="text-right p-2">Remaining</th>
+                          <th scope="col" className="text-center p-2">UOM</th>
+                          <th scope="col" className="text-center p-2 min-w-[120px]">QC Status</th>
                         </tr>
                       </thead>
                       <tbody>

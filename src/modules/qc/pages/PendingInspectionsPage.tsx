@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
+import { statusColorClass, type StatusVariant } from '@/config/statusColors';
 import type { ApiError } from '@/core/api/types';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { DateRangePicker } from '@/modules/gate/components';
@@ -50,13 +51,13 @@ type StatusFilterKey = keyof typeof TAB_CONFIG;
 const TAB_KEYS = Object.keys(TAB_CONFIG) as StatusFilterKey[];
 
 // Status badge styling based on workflow_status
-const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
-  NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QA_CHEMIST_APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QAM_APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+const STATUS_BADGE_VARIANT: Record<InspectionListWorkflowStatus, StatusVariant> = {
+  NOT_STARTED: 'pending',
+  DRAFT: 'draft',
+  SUBMITTED: 'inProgress',
+  QA_CHEMIST_APPROVED: 'inProgress',
+  QAM_APPROVED: 'approved',
+  REJECTED: 'rejected',
 };
 
 function getNavigateTo(item: InspectionListItem): string {
@@ -306,20 +307,20 @@ export default function PendingInspectionsPage() {
               <table className="w-full min-w-[700px]">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="p-3 text-left text-sm font-medium">Gate Entry No.</th>
-                    <th className="p-3 text-left text-sm font-medium">Report No.</th>
-                    <th className="p-3 text-left text-sm font-medium">Internal Lot No.</th>
-                    <th className="p-3 text-left text-sm font-medium">Material Type</th>
-                    <th className="p-3 text-left text-sm font-medium">Status</th>
-                    <th className="p-3 text-left text-sm font-medium">Date/Time</th>
+                    <th scope="col" className="p-3 text-left text-sm font-medium">Gate Entry No.</th>
+                    <th scope="col" className="p-3 text-left text-sm font-medium">Report No.</th>
+                    <th scope="col" className="p-3 text-left text-sm font-medium">Internal Lot No.</th>
+                    <th scope="col" className="p-3 text-left text-sm font-medium">Material Type</th>
+                    <th scope="col" className="p-3 text-left text-sm font-medium">Status</th>
+                    <th scope="col" className="p-3 text-left text-sm font-medium">Date/Time</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => {
                     const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
-                    const badgeClass =
-                      STATUS_BADGE_CLASSES[item.workflow_status] ||
-                      'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+                    const badgeClass = statusColorClass(
+                      STATUS_BADGE_VARIANT[item.workflow_status] ?? 'neutral',
+                    );
 
                     return (
                       <tr

@@ -115,15 +115,15 @@ function ProcurementVsPlannedReportPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Item Code</th>
-                        <th className="text-left p-2 font-medium">Material</th>
-                        <th className="text-left p-2 font-medium">UoM</th>
-                        <th className="text-right p-2 font-medium">BOM Planned</th>
-                        <th className="text-right p-2 font-medium">Procured</th>
-                        <th className="text-right p-2 font-medium">Consumed</th>
-                        <th className="text-right p-2 font-medium">Procurement %</th>
-                        <th className="text-right p-2 font-medium">Excess / Shortage</th>
-                        <th className="text-center p-2 font-medium">Status</th>
+                        <th scope="col" className="text-left p-2 font-medium">Item Code</th>
+                        <th scope="col" className="text-left p-2 font-medium">Material</th>
+                        <th scope="col" className="text-left p-2 font-medium">UoM</th>
+                        <th scope="col" className="text-right p-2 font-medium">BOM Planned</th>
+                        <th scope="col" className="text-right p-2 font-medium">Procured</th>
+                        <th scope="col" className="text-right p-2 font-medium">Consumed</th>
+                        <th scope="col" className="text-right p-2 font-medium">Procurement %</th>
+                        <th scope="col" className="text-right p-2 font-medium">Excess / Shortage</th>
+                        <th scope="col" className="text-center p-2 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>

@@ -27,7 +27,7 @@ function LineClearanceListPage() {
 
       <div className="flex gap-4">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -47,11 +47,11 @@ function LineClearanceListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-3 font-medium">ID</th>
-                <th className="text-left p-3 font-medium">Run</th>
-                <th className="text-left p-3 font-medium">Date</th>
-                <th className="text-left p-3 font-medium">Line</th>
-                <th className="text-left p-3 font-medium">Status</th>
+                <th scope="col" className="text-left p-3 font-medium">ID</th>
+                <th scope="col" className="text-left p-3 font-medium">Run</th>
+                <th scope="col" className="text-left p-3 font-medium">Date</th>
+                <th scope="col" className="text-left p-3 font-medium">Line</th>
+                <th scope="col" className="text-left p-3 font-medium">Status</th>
               </tr>
             </thead>
             <tbody>

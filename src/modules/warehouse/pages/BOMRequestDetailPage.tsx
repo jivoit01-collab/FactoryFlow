@@ -263,22 +263,22 @@ export default function BOMRequestDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="py-2 px-2">Material</th>
-                  <th className="py-2 px-2 text-right">Required</th>
-                  <th className="py-2 px-2 text-right">In Stock</th>
+                  <th scope="col" className="py-2 px-2">Material</th>
+                  <th scope="col" className="py-2 px-2 text-right">Required</th>
+                  <th scope="col" className="py-2 px-2 text-right">In Stock</th>
                   {isPending ? (
                     <>
-                      <th className="py-2 px-2">Approve Qty</th>
-                      <th className="py-2 px-2">Action</th>
+                      <th scope="col" className="py-2 px-2">Approve Qty</th>
+                      <th scope="col" className="py-2 px-2">Action</th>
                     </>
                   ) : (
                     <>
-                      <th className="py-2 px-2 text-right">Approved</th>
-                      <th className="py-2 px-2 text-right">Issued</th>
-                      <th className="py-2 px-2">Status</th>
+                      <th scope="col" className="py-2 px-2 text-right">Approved</th>
+                      <th scope="col" className="py-2 px-2 text-right">Issued</th>
+                      <th scope="col" className="py-2 px-2">Status</th>
                     </>
                   )}
-                  <th className="py-2 px-2">Warehouse</th>
+                  <th scope="col" className="py-2 px-2">Warehouse</th>
                 </tr>
               </thead>
               <tbody>

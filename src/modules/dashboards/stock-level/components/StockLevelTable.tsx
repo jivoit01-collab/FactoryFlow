@@ -110,43 +110,43 @@ export function StockLevelTable({ items, isLoading, statusFilter }: StockLevelTa
             <thead className="border-b bg-muted/40">
               <tr>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('item_code')}
                 >
                   Item Code <SortIcon col="item_code" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('item_name')}
                 >
                   Item Name <SortIcon col="item_name" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('warehouse')}
                 >
                   Warehouse <SortIcon col="warehouse" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('on_hand')}
                 >
                   On Hand <SortIcon col="on_hand" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('min_stock')}
                 >
                   Min Stock <SortIcon col="min_stock" />
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">UOM</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">UOM</th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('health_ratio')}
                 >
                   Health <SortIcon col="health_ratio" />
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
               </tr>
             </thead>
             <tbody>

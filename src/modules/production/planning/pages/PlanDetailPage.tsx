@@ -220,11 +220,11 @@ function DailyEntriesTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
-                <th className="pb-2 pr-4">Date</th>
-                <th className="pb-2 pr-4">Produced Qty</th>
-                <th className="pb-2 pr-4">Shift</th>
-                <th className="pb-2 pr-4">Remarks</th>
-                {canAddEntry && <th className="pb-2">Actions</th>}
+                <th scope="col" className="pb-2 pr-4">Date</th>
+                <th scope="col" className="pb-2 pr-4">Produced Qty</th>
+                <th scope="col" className="pb-2 pr-4">Shift</th>
+                <th scope="col" className="pb-2 pr-4">Remarks</th>
+                {canAddEntry && <th scope="col" className="pb-2">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -241,6 +241,7 @@ function DailyEntriesTable({
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label="Edit production entry"
                         className="h-7 w-7"
                         onClick={() => {
                           setEditEntry(entry);
@@ -407,6 +408,7 @@ export default function PlanDetailPage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Go back"
             className="mt-1 flex-shrink-0"
             onClick={() => navigate('/production/planning')}
           >
@@ -565,12 +567,12 @@ export default function PlanDetailPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 pr-4">Component Code</th>
-                    <th className="pb-2 pr-4">Component Name</th>
-                    <th className="pb-2 pr-4">Required Qty</th>
-                    <th className="pb-2 pr-4">UoM</th>
-                    <th className="pb-2 pr-4">Warehouse</th>
-                    {isDraft && <th className="pb-2">Actions</th>}
+                    <th scope="col" className="pb-2 pr-4">Component Code</th>
+                    <th scope="col" className="pb-2 pr-4">Component Name</th>
+                    <th scope="col" className="pb-2 pr-4">Required Qty</th>
+                    <th scope="col" className="pb-2 pr-4">UoM</th>
+                    <th scope="col" className="pb-2 pr-4">Warehouse</th>
+                    {isDraft && <th scope="col" className="pb-2">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -586,6 +588,7 @@ export default function PlanDetailPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Delete material"
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             onClick={() => {
                               setConfirmPayload(mat.id);
@@ -698,6 +701,7 @@ export default function PlanDetailPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              aria-label="Edit week"
                               className="h-7 w-7"
                               onClick={() => {
                                 setEditWeek(week);
@@ -711,6 +715,7 @@ export default function PlanDetailPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              aria-label="Delete week"
                               className="h-7 w-7 text-destructive hover:text-destructive"
                               onClick={() => {
                                 setConfirmPayload(week.id);

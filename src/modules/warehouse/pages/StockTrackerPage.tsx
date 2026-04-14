@@ -204,16 +204,16 @@ export default function StockTrackerPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50 text-left text-muted-foreground">
-                    <th className="p-3">Item Code</th>
-                    <th className="p-3">Item Name</th>
-                    <th className="p-3">Group</th>
-                    <th className="p-3">Warehouse</th>
-                    <th className="p-3 text-right">On Hand</th>
-                    <th className="p-3 text-right">Committed</th>
-                    <th className="p-3 text-right">Available</th>
-                    <th className="p-3 text-right">Value</th>
-                    <th className="p-3 text-center">Status</th>
-                    <th className="p-3 text-center">Detail</th>
+                    <th scope="col" className="p-3">Item Code</th>
+                    <th scope="col" className="p-3">Item Name</th>
+                    <th scope="col" className="p-3">Group</th>
+                    <th scope="col" className="p-3">Warehouse</th>
+                    <th scope="col" className="p-3 text-right">On Hand</th>
+                    <th scope="col" className="p-3 text-right">Committed</th>
+                    <th scope="col" className="p-3 text-right">Available</th>
+                    <th scope="col" className="p-3 text-right">Value</th>
+                    <th scope="col" className="p-3 text-center">Status</th>
+                    <th scope="col" className="p-3 text-center">Detail</th>
                   </tr>
                 </thead>
                 <tbody>

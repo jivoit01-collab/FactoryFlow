@@ -100,55 +100,55 @@ export function NonMovingTable({ items, isLoading }: NonMovingTableProps) {
             <thead className="border-b bg-muted/40">
               <tr>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('item_code')}
                 >
                   Item Code <SortIcon col="item_code" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('item_name')}
                 >
                   Item Name <SortIcon col="item_name" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('branch')}
                 >
                   Branch <SortIcon col="branch" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('warehouse')}
                 >
                   Warehouse <SortIcon col="warehouse" />
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Sub Group
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('quantity')}
                 >
                   Quantity <SortIcon col="quantity" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('value')}
                 >
                   Value <SortIcon col="value" />
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('days_since_last_movement')}
                 >
                   Days Idle <SortIcon col="days_since_last_movement" />
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Last Movement
                 </th>
                 <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+scope="col" className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('consumption_ratio')}
                 >
                   Consumption <SortIcon col="consumption_ratio" />

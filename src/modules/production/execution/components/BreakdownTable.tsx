@@ -27,12 +27,12 @@ export function BreakdownTable({ breakdowns, onAdd, readOnly }: BreakdownTablePr
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-2 font-medium">Machine</th>
-              <th className="text-left p-2 font-medium">Type</th>
-              <th className="text-left p-2 font-medium">Start</th>
-              <th className="text-left p-2 font-medium">End</th>
-              <th className="text-right p-2 font-medium">Minutes</th>
-              <th className="text-left p-2 font-medium">Reason</th>
+              <th scope="col" className="text-left p-2 font-medium">Machine</th>
+              <th scope="col" className="text-left p-2 font-medium">Type</th>
+              <th scope="col" className="text-left p-2 font-medium">Start</th>
+              <th scope="col" className="text-left p-2 font-medium">End</th>
+              <th scope="col" className="text-right p-2 font-medium">Minutes</th>
+              <th scope="col" className="text-left p-2 font-medium">Reason</th>
             </tr>
           </thead>
           <tbody>

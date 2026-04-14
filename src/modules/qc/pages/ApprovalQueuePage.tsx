@@ -240,12 +240,12 @@ export default function ApprovalQueuePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium">Report No.</th>
-                    <th className="text-left p-3 font-medium">Particulars</th>
-                    <th className="text-left p-3 font-medium">Supplier</th>
-                    <th className="text-left p-3 font-medium">Inspection Date</th>
-                    <th className="text-center p-3 font-medium">Status</th>
-                    <th className="text-center p-3 font-medium">Action</th>
+                    <th scope="col" className="text-left p-3 font-medium">Report No.</th>
+                    <th scope="col" className="text-left p-3 font-medium">Particulars</th>
+                    <th scope="col" className="text-left p-3 font-medium">Supplier</th>
+                    <th scope="col" className="text-left p-3 font-medium">Inspection Date</th>
+                    <th scope="col" className="text-center p-3 font-medium">Status</th>
+                    <th scope="col" className="text-center p-3 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody>

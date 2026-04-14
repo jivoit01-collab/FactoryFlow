@@ -125,12 +125,12 @@ export function ManpowerSection({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-2 font-medium">Description</th>
-                <th className="text-right p-2 font-medium">Workers</th>
-                <th className="text-right p-2 font-medium">Hours</th>
-                <th className="text-right p-2 font-medium">Rate/hr</th>
-                <th className="text-right p-2 font-medium">Total</th>
-                {!readOnly && <th className="p-2 w-20" />}
+                <th scope="col" className="text-left p-2 font-medium">Description</th>
+                <th scope="col" className="text-right p-2 font-medium">Workers</th>
+                <th scope="col" className="text-right p-2 font-medium">Hours</th>
+                <th scope="col" className="text-right p-2 font-medium">Rate/hr</th>
+                <th scope="col" className="text-right p-2 font-medium">Total</th>
+                {!readOnly && <th scope="col" className="p-2 w-20" />}
               </tr>
             </thead>
             <tbody>

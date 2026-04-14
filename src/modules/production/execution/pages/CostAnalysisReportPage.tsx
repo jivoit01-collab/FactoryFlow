@@ -141,11 +141,11 @@ function CostAnalysisReportPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Line</th>
-                        <th className="text-right p-2 font-medium">Runs</th>
-                        <th className="text-right p-2 font-medium">Production</th>
-                        <th className="text-right p-2 font-medium">Total Cost</th>
-                        <th className="text-right p-2 font-medium">Avg/Unit</th>
+                        <th scope="col" className="text-left p-2 font-medium">Line</th>
+                        <th scope="col" className="text-right p-2 font-medium">Runs</th>
+                        <th scope="col" className="text-right p-2 font-medium">Production</th>
+                        <th scope="col" className="text-right p-2 font-medium">Total Cost</th>
+                        <th scope="col" className="text-right p-2 font-medium">Avg/Unit</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -175,11 +175,11 @@ function CostAnalysisReportPage() {
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-background">
                         <tr className="border-b bg-muted/50">
-                          <th className="text-left p-2 font-medium">Date</th>
-                          <th className="text-right p-2 font-medium">Runs</th>
-                          <th className="text-right p-2 font-medium">Production</th>
-                          <th className="text-right p-2 font-medium">Total Cost</th>
-                          <th className="text-right p-2 font-medium">Cost/Unit</th>
+                          <th scope="col" className="text-left p-2 font-medium">Date</th>
+                          <th scope="col" className="text-right p-2 font-medium">Runs</th>
+                          <th scope="col" className="text-right p-2 font-medium">Production</th>
+                          <th scope="col" className="text-right p-2 font-medium">Total Cost</th>
+                          <th scope="col" className="text-right p-2 font-medium">Cost/Unit</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -211,16 +211,16 @@ function CostAnalysisReportPage() {
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-background">
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Run #</th>
-                        <th className="text-left p-2 font-medium">Date</th>
-                        <th className="text-left p-2 font-medium">Line</th>
-                        <th className="text-left p-2 font-medium">Product</th>
-                        <th className="text-right p-2 font-medium">Qty</th>
-                        <th className="text-right p-2 font-medium">Material</th>
-                        <th className="text-right p-2 font-medium">Labour</th>
-                        <th className="text-right p-2 font-medium">Utilities</th>
-                        <th className="text-right p-2 font-medium">Total</th>
-                        <th className="text-right p-2 font-medium">Per Unit</th>
+                        <th scope="col" className="text-left p-2 font-medium">Run #</th>
+                        <th scope="col" className="text-left p-2 font-medium">Date</th>
+                        <th scope="col" className="text-left p-2 font-medium">Line</th>
+                        <th scope="col" className="text-left p-2 font-medium">Product</th>
+                        <th scope="col" className="text-right p-2 font-medium">Qty</th>
+                        <th scope="col" className="text-right p-2 font-medium">Material</th>
+                        <th scope="col" className="text-right p-2 font-medium">Labour</th>
+                        <th scope="col" className="text-right p-2 font-medium">Utilities</th>
+                        <th scope="col" className="text-right p-2 font-medium">Total</th>
+                        <th scope="col" className="text-right p-2 font-medium">Per Unit</th>
                       </tr>
                     </thead>
                     <tbody>

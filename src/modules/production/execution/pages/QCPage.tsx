@@ -136,14 +136,14 @@ function QCPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-2 font-medium">Time</th>
-                    <th className="text-left p-2 font-medium">Parameter</th>
-                    <th className="text-right p-2 font-medium">Min</th>
-                    <th className="text-right p-2 font-medium">Max</th>
-                    <th className="text-right p-2 font-medium">Actual</th>
-                    <th className="text-left p-2 font-medium">Result</th>
-                    <th className="text-left p-2 font-medium">Remarks</th>
-                    <th className="p-2" />
+                    <th scope="col" className="text-left p-2 font-medium">Time</th>
+                    <th scope="col" className="text-left p-2 font-medium">Parameter</th>
+                    <th scope="col" className="text-right p-2 font-medium">Min</th>
+                    <th scope="col" className="text-right p-2 font-medium">Max</th>
+                    <th scope="col" className="text-right p-2 font-medium">Actual</th>
+                    <th scope="col" className="text-left p-2 font-medium">Result</th>
+                    <th scope="col" className="text-left p-2 font-medium">Remarks</th>
+                    <th scope="col" className="p-2" />
                   </tr>
                 </thead>
                 <tbody>
@@ -208,10 +208,10 @@ function QCPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Parameter</th>
-                        <th className="text-left p-2 font-medium">Expected</th>
-                        <th className="text-left p-2 font-medium">Actual</th>
-                        <th className="text-left p-2 font-medium">Result</th>
+                        <th scope="col" className="text-left p-2 font-medium">Parameter</th>
+                        <th scope="col" className="text-left p-2 font-medium">Expected</th>
+                        <th scope="col" className="text-left p-2 font-medium">Actual</th>
+                        <th scope="col" className="text-left p-2 font-medium">Result</th>
                       </tr>
                     </thead>
                     <tbody>

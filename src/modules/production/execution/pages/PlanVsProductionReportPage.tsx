@@ -91,14 +91,14 @@ function PlanVsProductionReportPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">SAP Order</th>
-                        <th className="text-left p-2 font-medium">Item Code</th>
-                        <th className="text-left p-2 font-medium">Product</th>
-                        <th className="text-right p-2 font-medium">Planned</th>
-                        <th className="text-right p-2 font-medium">Actual</th>
-                        <th className="text-right p-2 font-medium">Variance</th>
-                        <th className="text-right p-2 font-medium">Achievement</th>
-                        <th className="text-center p-2 font-medium">Status</th>
+                        <th scope="col" className="text-left p-2 font-medium">SAP Order</th>
+                        <th scope="col" className="text-left p-2 font-medium">Item Code</th>
+                        <th scope="col" className="text-left p-2 font-medium">Product</th>
+                        <th scope="col" className="text-right p-2 font-medium">Planned</th>
+                        <th scope="col" className="text-right p-2 font-medium">Actual</th>
+                        <th scope="col" className="text-right p-2 font-medium">Variance</th>
+                        <th scope="col" className="text-right p-2 font-medium">Achievement</th>
+                        <th scope="col" className="text-center p-2 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>

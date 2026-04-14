@@ -30,11 +30,11 @@ export function HourlyProductionGrid({ logs, onAdd, onEdit, readOnly }: HourlyPr
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-2 font-medium">Time Slot</th>
-              <th className="text-right p-2 font-medium">Cases</th>
-              <th className="text-left p-2 font-medium">Status</th>
-              <th className="text-right p-2 font-medium">Minutes</th>
-              <th className="text-left p-2 font-medium">Remarks</th>
+              <th scope="col" className="text-left p-2 font-medium">Time Slot</th>
+              <th scope="col" className="text-right p-2 font-medium">Cases</th>
+              <th scope="col" className="text-left p-2 font-medium">Status</th>
+              <th scope="col" className="text-right p-2 font-medium">Minutes</th>
+              <th scope="col" className="text-left p-2 font-medium">Remarks</th>
             </tr>
           </thead>
           <tbody>

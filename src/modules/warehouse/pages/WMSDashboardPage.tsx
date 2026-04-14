@@ -307,11 +307,11 @@ export default function WMSDashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">Date</th>
-                  <th className="pb-2 pr-4">Item</th>
-                  <th className="pb-2 pr-4">Warehouse</th>
-                  <th className="pb-2 pr-4">Direction</th>
-                  <th className="pb-2 pr-4 text-right">Quantity</th>
+                  <th scope="col" className="pb-2 pr-4">Date</th>
+                  <th scope="col" className="pb-2 pr-4">Item</th>
+                  <th scope="col" className="pb-2 pr-4">Warehouse</th>
+                  <th scope="col" className="pb-2 pr-4">Direction</th>
+                  <th scope="col" className="pb-2 pr-4 text-right">Quantity</th>
                 </tr>
               </thead>
               <tbody>

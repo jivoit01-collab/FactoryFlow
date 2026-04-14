@@ -75,12 +75,12 @@ function DailyProductionReportPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-2 font-medium">Run #</th>
-                      <th className="text-left p-2 font-medium">Line</th>
-                      <th className="text-left p-2 font-medium">Brand</th>
-                      <th className="text-right p-2 font-medium">Production</th>
-                      <th className="text-right p-2 font-medium">Breakdown</th>
-                      <th className="text-left p-2 font-medium">Status</th>
+                      <th scope="col" className="text-left p-2 font-medium">Run #</th>
+                      <th scope="col" className="text-left p-2 font-medium">Line</th>
+                      <th scope="col" className="text-left p-2 font-medium">Brand</th>
+                      <th scope="col" className="text-right p-2 font-medium">Production</th>
+                      <th scope="col" className="text-right p-2 font-medium">Breakdown</th>
+                      <th scope="col" className="text-left p-2 font-medium">Status</th>
                     </tr>
                   </thead>
                   <tbody>

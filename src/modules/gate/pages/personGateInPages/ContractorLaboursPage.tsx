@@ -233,6 +233,7 @@ export default function ContractorLaboursPage() {
             variant="ghost"
             size="icon"
             onClick={() => navigate('/gate/visitor-labour/contractors')}
+            aria-label="Back to contractors"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -389,12 +390,12 @@ export default function ContractorLaboursPage() {
             <table className="w-full min-w-[700px]">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="p-3 text-left text-sm font-medium">Name</th>
-                  <th className="p-3 text-left text-sm font-medium">Mobile</th>
-                  <th className="p-3 text-left text-sm font-medium">Skill</th>
-                  <th className="p-3 text-left text-sm font-medium">Permit Valid Till</th>
-                  <th className="p-3 text-center text-sm font-medium">Status</th>
-                  <th className="p-3 text-right text-sm font-medium">Action</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Name</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Mobile</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Skill</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Permit Valid Till</th>
+                  <th scope="col" className="p-3 text-center text-sm font-medium">Status</th>
+                  <th scope="col" className="p-3 text-right text-sm font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>

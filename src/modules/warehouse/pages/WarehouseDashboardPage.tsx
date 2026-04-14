@@ -1,4 +1,4 @@
-import { AlertTriangle, ClipboardList, Clock, PackageCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardList, Clock, Loader2, PackageCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -8,10 +8,24 @@ import { useBOMRequests, useFGReceipts } from '../api';
 
 export default function WarehouseDashboardPage() {
   const navigate = useNavigate();
-  const { data: pendingBOM = [] } = useBOMRequests('PENDING');
-  const { data: allBOM = [] } = useBOMRequests();
-  const { data: pendingFG = [] } = useFGReceipts('PENDING');
-  const { data: receivedFG = [] } = useFGReceipts('RECEIVED');
+  const pendingBOMQ = useBOMRequests('PENDING');
+  const allBOMQ = useBOMRequests();
+  const pendingFGQ = useFGReceipts('PENDING');
+  const receivedFGQ = useFGReceipts('RECEIVED');
+
+  const pendingBOM = pendingBOMQ.data ?? [];
+  const allBOM = allBOMQ.data ?? [];
+  const pendingFG = pendingFGQ.data ?? [];
+  const receivedFG = receivedFGQ.data ?? [];
+
+  const isLoading =
+    pendingBOMQ.isLoading || allBOMQ.isLoading || pendingFGQ.isLoading || receivedFGQ.isLoading;
+  const allZero =
+    !isLoading &&
+    pendingBOM.length === 0 &&
+    allBOM.length === 0 &&
+    pendingFG.length === 0 &&
+    receivedFG.length === 0;
 
   const cards = [
     {
@@ -65,7 +79,14 @@ export default function WarehouseDashboardPage() {
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{card.value}</p>
+                  {isLoading ? (
+                    <Loader2
+                      className="h-5 w-5 animate-spin text-muted-foreground"
+                      aria-label="Loading"
+                    />
+                  ) : (
+                    <p className="text-2xl font-bold">{card.value}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">{card.title}</p>
                 </div>
               </CardContent>
@@ -73,6 +94,20 @@ export default function WarehouseDashboardPage() {
           );
         })}
       </div>
+
+      {/* All-clear state — nothing loaded, nothing pending */}
+      {allZero && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <CheckCircle2 className="h-12 w-12 text-green-600 mb-3" />
+            <p className="font-medium">All clear</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md">
+              No BOM requests or finished-goods receipts to action right now.
+              New items will appear here as production teams submit them.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick actions */}
       {pendingBOM.length > 0 && (

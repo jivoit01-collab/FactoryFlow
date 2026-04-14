@@ -71,7 +71,18 @@
       "Bash(awk '/^D:/ { f=$0; next } /no-unused-vars/ { print f \":\" $0 }' /tmp/eslint_now.log)",
       "Bash(grep -E \"\\(QCDashboardPage|RunDetailPage|grpo\\\\\\\\.schema\\\\\\\\.test|Step3Page|sap-plan\\\\\\\\.queries|ProductionQCDashboardPage|ProductionQCApprovalPage|execution/pages/QCPage|stock-level\\\\\\\\.queries|SKUDetailPanel|validation\\\\\\\\.util\\\\\\\\.test\\)\\\\\\\\.\\(ts|tsx\\)\")",
       "Bash(awk:*)",
-      "Bash(node scripts/drop-unused-imports.cjs)"
+      "Bash(node scripts/drop-unused-imports.cjs)",
+      "Bash(node scripts/find-unlabeled-icons.cjs)",
+      "Bash(node scripts/fix-select-widths.cjs)",
+      "Bash(node scripts/add-th-scope.cjs)",
+      "Bash(python -c \"import sys, json; c = json.load\\(sys.stdin\\); print\\('parser:', c.get\\('languageOptions', {}\\).get\\('parser', {}\\).get\\('meta', {}\\).get\\('name', '?'\\)\\); print\\('parserOptions:', c.get\\('languageOptions', {}\\).get\\('parserOptions', {}\\)\\)\")",
+      "Bash(perl -pe 's/\\\\e\\\\[[0-9;]*m//g' /tmp/ui_tests.log)",
+      "Bash(perl -ne 'print if /originated in/' /tmp/ui_tests.log)",
+      "Bash(perl -pe 's/\\\\e\\\\[[0-9;]*m//g')",
+      "Bash(perl -ne 'print if /\\\\.test\\\\.tsx?$/' /tmp/ui_tests.log)",
+      "Bash(perl -ne 'print if /FAIL.*\\\\.test\\\\./' /tmp/ui_baseline.log)",
+      "Bash(sort perl:*)",
+      "Bash(perl -pe 's/\\\\e\\\\[[0-9;]*m//g' /tmp/ui_baseline.log)"
     ]
   }
 }

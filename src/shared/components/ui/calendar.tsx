@@ -34,6 +34,7 @@ export function Calendar({
           variant="ghost"
           size="icon"
           onClick={() => goToMonth(new Date(date.getFullYear(), date.getMonth() - 1))}
+          aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -59,6 +60,7 @@ export function Calendar({
           variant="ghost"
           size="icon"
           onClick={() => goToMonth(new Date(date.getFullYear(), date.getMonth() + 1))}
+          aria-label="Next month"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

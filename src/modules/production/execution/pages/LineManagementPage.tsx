@@ -166,7 +166,7 @@ function LineManagementPage() {
               value={selectedLineId ? String(selectedLineId) : ''}
               onValueChange={(v) => setSelectedLineId(Number(v))}
             >
-              <SelectTrigger className="w-[280px]">
+              <SelectTrigger className="w-full sm:w-[280px]">
                 <SelectValue placeholder="Select a production line" />
               </SelectTrigger>
               <SelectContent>
@@ -214,14 +214,14 @@ function LineManagementPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium">Config Name</th>
-                      <th className="text-left p-3 font-medium">SKU</th>
-                      <th className="text-right p-3 font-medium">Speed (cases/hr)</th>
-                      <th className="text-right p-3 font-medium">Labour</th>
-                      <th className="text-right p-3 font-medium">Other Manpower</th>
-                      <th className="text-left p-3 font-medium">Supervisor</th>
-                      <th className="text-left p-3 font-medium">Operators</th>
-                      <th className="text-center p-3 font-medium">Actions</th>
+                      <th scope="col" className="text-left p-3 font-medium">Config Name</th>
+                      <th scope="col" className="text-left p-3 font-medium">SKU</th>
+                      <th scope="col" className="text-right p-3 font-medium">Speed (cases/hr)</th>
+                      <th scope="col" className="text-right p-3 font-medium">Labour</th>
+                      <th scope="col" className="text-right p-3 font-medium">Other Manpower</th>
+                      <th scope="col" className="text-left p-3 font-medium">Supervisor</th>
+                      <th scope="col" className="text-left p-3 font-medium">Operators</th>
+                      <th scope="col" className="text-center p-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

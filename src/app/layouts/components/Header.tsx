@@ -41,7 +41,13 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
     >
       <div className="flex items-center gap-4">
         {/* Mobile menu button */}
-        <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={onMenuClick}
+          aria-label="Open navigation menu"
+        >
           <Menu className="h-5 w-5" />
         </Button>
         {currentCompany && (
@@ -61,7 +67,7 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
         {/* Theme selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Change theme">
               {getThemeIcon()}
             </Button>
           </DropdownMenuTrigger>

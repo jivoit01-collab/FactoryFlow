@@ -885,14 +885,14 @@ function POCard({
                   <table className="w-full min-w-[800px]">
                     <thead className="bg-muted/50">
                       <tr>
-                        <th className="p-3 text-left text-sm font-medium">PO Item Code</th>
-                        <th className="p-3 text-left text-sm font-medium">Item Name</th>
-                        <th className="p-3 text-right text-sm font-medium">Rate</th>
-                        <th className="p-3 text-left text-sm font-medium">Ordered Qty</th>
-                        <th className="p-3 text-left text-sm font-medium">Received Qty</th>
-                        <th className="p-3 text-left text-sm font-medium">Received Now</th>
-                        <th className="p-3 text-left text-sm font-medium">Remaining Qty</th>
-                        <th className="p-3 text-left text-sm font-medium">Unit of Measurement</th>
+                        <th scope="col" className="p-3 text-left text-sm font-medium">PO Item Code</th>
+                        <th scope="col" className="p-3 text-left text-sm font-medium">Item Name</th>
+                        <th scope="col" className="p-3 text-right text-sm font-medium">Rate</th>
+                        <th scope="col" className="p-3 text-left text-sm font-medium">Ordered Qty</th>
+                        <th scope="col" className="p-3 text-left text-sm font-medium">Received Qty</th>
+                        <th scope="col" className="p-3 text-left text-sm font-medium">Received Now</th>
+                        <th scope="col" className="p-3 text-left text-sm font-medium">Remaining Qty</th>
+                        <th scope="col" className="p-3 text-left text-sm font-medium">Unit of Measurement</th>
                       </tr>
                     </thead>
                     <tbody>

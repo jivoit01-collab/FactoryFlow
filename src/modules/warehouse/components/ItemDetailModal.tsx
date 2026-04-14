@@ -122,11 +122,11 @@ export default function ItemDetailModal({ itemCode, onClose }: Props) {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-2 pr-3">Date</th>
-                        <th className="pb-2 pr-3">Type</th>
-                        <th className="pb-2 pr-3">Warehouse</th>
-                        <th className="pb-2 pr-3">Direction</th>
-                        <th className="pb-2 pr-3 text-right">Qty</th>
+                        <th scope="col" className="pb-2 pr-3">Date</th>
+                        <th scope="col" className="pb-2 pr-3">Type</th>
+                        <th scope="col" className="pb-2 pr-3">Warehouse</th>
+                        <th scope="col" className="pb-2 pr-3">Direction</th>
+                        <th scope="col" className="pb-2 pr-3 text-right">Qty</th>
                       </tr>
                     </thead>
                     <tbody>

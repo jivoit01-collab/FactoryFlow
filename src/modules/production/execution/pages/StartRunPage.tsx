@@ -83,10 +83,10 @@ function SAPOrderPopoverContent({ docEntry }: { docEntry: number | null }) {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b">
-                <th className="text-left py-1">Item Code</th>
-                <th className="text-left py-1">Item Name</th>
-                <th className="text-right py-1">Planned</th>
-                <th className="text-right py-1">Issued</th>
+                <th scope="col" className="text-left py-1">Item Code</th>
+                <th scope="col" className="text-left py-1">Item Name</th>
+                <th scope="col" className="text-right py-1">Planned</th>
+                <th scope="col" className="text-right py-1">Issued</th>
               </tr>
             </thead>
             <tbody>
@@ -481,11 +481,11 @@ function StartRunPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left py-2 px-3">Code</th>
-                      <th className="text-left py-2 px-3">Name</th>
-                      <th className="text-right py-2 px-3">Per Unit</th>
-                      <th className="text-left py-2 px-3">Required Qty</th>
-                      <th className="text-left py-2 px-3">UoM</th>
+                      <th scope="col" className="text-left py-2 px-3">Code</th>
+                      <th scope="col" className="text-left py-2 px-3">Name</th>
+                      <th scope="col" className="text-right py-2 px-3">Per Unit</th>
+                      <th scope="col" className="text-left py-2 px-3">Required Qty</th>
+                      <th scope="col" className="text-left py-2 px-3">UoM</th>
                     </tr>
                   </thead>
                   <tbody>

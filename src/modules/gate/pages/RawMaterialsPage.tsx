@@ -140,13 +140,13 @@ export default function RawMaterialsPage() {
             <table className="w-full min-w-[850px]">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="p-3 text-left text-sm font-medium">Entry No.</th>
-                  <th className="p-3 text-left text-sm font-medium">Vehicle</th>
-                  <th className="p-3 text-left text-sm font-medium">Supplier Name / Code</th>
-                  <th className="p-3 text-left text-sm font-medium">Driver</th>
-                  <th className="p-3 text-left text-sm font-medium">Entry Time</th>
-                  <th className="p-3 text-left text-sm font-medium">Status</th>
-                  <th className="p-3 text-left text-sm font-medium">Remarks</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Entry No.</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Vehicle</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Supplier Name / Code</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Driver</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Entry Time</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Status</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Remarks</th>
                 </tr>
               </thead>
               <tbody>

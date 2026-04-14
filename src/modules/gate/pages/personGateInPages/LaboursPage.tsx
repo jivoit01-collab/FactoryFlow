@@ -149,7 +149,12 @@ export default function LaboursPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/gate/visitor-labour')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/gate/visitor-labour')}
+            aria-label="Back to visitor/labour"
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -342,13 +347,13 @@ export default function LaboursPage() {
             <table className="w-full min-w-[700px]">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="p-3 text-left text-sm font-medium">Name</th>
-                  <th className="p-3 text-left text-sm font-medium">Contractor</th>
-                  <th className="p-3 text-left text-sm font-medium">Mobile</th>
-                  <th className="p-3 text-left text-sm font-medium">Skill</th>
-                  <th className="p-3 text-left text-sm font-medium">Permit Till</th>
-                  <th className="p-3 text-left text-sm font-medium">Status</th>
-                  <th className="p-3 text-right text-sm font-medium">Actions</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Name</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Contractor</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Mobile</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Skill</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Permit Till</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Status</th>
+                  <th scope="col" className="p-3 text-right text-sm font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>

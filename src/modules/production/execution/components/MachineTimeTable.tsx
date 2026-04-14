@@ -57,11 +57,11 @@ export function MachineTimeTable({ machines, segments, breakdowns }: MachineTime
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-2 font-medium">Machine</th>
-              <th className="text-left p-2 font-medium">Type</th>
-              <th className="text-right p-2 font-medium">Running (min)</th>
-              <th className="text-right p-2 font-medium">Breakdown (min)</th>
-              <th className="text-right p-2 font-medium">Breakdowns</th>
+              <th scope="col" className="text-left p-2 font-medium">Machine</th>
+              <th scope="col" className="text-left p-2 font-medium">Type</th>
+              <th scope="col" className="text-right p-2 font-medium">Running (min)</th>
+              <th scope="col" className="text-right p-2 font-medium">Breakdown (min)</th>
+              <th scope="col" className="text-right p-2 font-medium">Breakdowns</th>
             </tr>
           </thead>
           <tbody>

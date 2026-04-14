@@ -43,13 +43,13 @@ export function MaterialConsumptionTable({ materials, onAdd, onUpdateClosingQty,
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-2 font-medium">Code</th>
-              <th className="text-left p-2 font-medium">Material</th>
-              <th className="text-right p-2 font-medium">Opening</th>
-              <th className="text-right p-2 font-medium">Issued</th>
-              <th className="text-right p-2 font-medium">Closing</th>
-              <th className="text-left p-2 font-medium">UoM</th>
-              {!readOnly && onUpdateClosingQty && <th className="p-2 w-10" />}
+              <th scope="col" className="text-left p-2 font-medium">Code</th>
+              <th scope="col" className="text-left p-2 font-medium">Material</th>
+              <th scope="col" className="text-right p-2 font-medium">Opening</th>
+              <th scope="col" className="text-right p-2 font-medium">Issued</th>
+              <th scope="col" className="text-right p-2 font-medium">Closing</th>
+              <th scope="col" className="text-left p-2 font-medium">UoM</th>
+              {!readOnly && onUpdateClosingQty && <th scope="col" className="p-2 w-10" />}
             </tr>
           </thead>
           <tbody>

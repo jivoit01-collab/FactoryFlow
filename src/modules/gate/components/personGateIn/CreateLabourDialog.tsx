@@ -150,6 +150,9 @@ export function CreateLabourDialog({
               <Label htmlFor="mobile">Mobile</Label>
               <Input
                 id="mobile"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 placeholder="9876543210"
                 value={formData.mobile}
                 onChange={(e) => {

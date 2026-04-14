@@ -100,7 +100,12 @@ export default function PersonGateInAllPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/gate/visitor-labour')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/gate/visitor-labour')}
+            aria-label="Back to visitor/labour"
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -160,13 +165,13 @@ export default function PersonGateInAllPage() {
             <table className="w-full min-w-[800px]">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="p-3 text-left text-sm font-medium">Name</th>
-                  <th className="p-3 text-left text-sm font-medium">Type</th>
-                  <th className="p-3 text-left text-sm font-medium">Gate In</th>
-                  <th className="p-3 text-left text-sm font-medium">Entry Time</th>
-                  <th className="p-3 text-left text-sm font-medium">Exit Time</th>
-                  <th className="p-3 text-left text-sm font-medium">Status</th>
-                  <th className="p-3 text-left text-sm font-medium">Purpose</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Name</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Type</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Gate In</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Entry Time</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Exit Time</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Status</th>
+                  <th scope="col" className="p-3 text-left text-sm font-medium">Purpose</th>
                 </tr>
               </thead>
               <tbody>

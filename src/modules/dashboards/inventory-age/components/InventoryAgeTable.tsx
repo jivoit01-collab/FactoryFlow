@@ -118,34 +118,34 @@ export function InventoryAgeTable({ items, isLoading }: InventoryAgeTableProps) 
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
-                <th className={thClass} onClick={() => toggleSort('item_code')}>
+                <th scope="col" className={thClass} onClick={() => toggleSort('item_code')}>
                   Item Code <SortIcon col="item_code" />
                 </th>
-                <th className={thClass} onClick={() => toggleSort('item_name')}>
+                <th scope="col" className={thClass} onClick={() => toggleSort('item_name')}>
                   Item Name <SortIcon col="item_name" />
                 </th>
-                <th className={thClass} onClick={() => toggleSort('item_group')}>
+                <th scope="col" className={thClass} onClick={() => toggleSort('item_group')}>
                   Group <SortIcon col="item_group" />
                 </th>
-                <th className={thClass} onClick={() => toggleSort('sub_group')}>
+                <th scope="col" className={thClass} onClick={() => toggleSort('sub_group')}>
                   Sub Group <SortIcon col="sub_group" />
                 </th>
-                <th className={thClass} onClick={() => toggleSort('warehouse')}>
+                <th scope="col" className={thClass} onClick={() => toggleSort('warehouse')}>
                   Warehouse <SortIcon col="warehouse" />
                 </th>
-                <th className={thRightClass} onClick={() => toggleSort('on_hand')}>
+                <th scope="col" className={thRightClass} onClick={() => toggleSort('on_hand')}>
                   On Hand <SortIcon col="on_hand" />
                 </th>
-                <th className={thRightClass} onClick={() => toggleSort('litres')}>
+                <th scope="col" className={thRightClass} onClick={() => toggleSort('litres')}>
                   Litres <SortIcon col="litres" />
                 </th>
-                <th className={thRightClass} onClick={() => toggleSort('in_stock_value')}>
+                <th scope="col" className={thRightClass} onClick={() => toggleSort('in_stock_value')}>
                   Value (₹) <SortIcon col="in_stock_value" />
                 </th>
-                <th className={thRightClass} onClick={() => toggleSort('calc_price')}>
+                <th scope="col" className={thRightClass} onClick={() => toggleSort('calc_price')}>
                   Price <SortIcon col="calc_price" />
                 </th>
-                <th className={thRightClass} onClick={() => toggleSort('days_age')}>
+                <th scope="col" className={thRightClass} onClick={() => toggleSort('days_age')}>
                   Age (Days) <SortIcon col="days_age" />
                 </th>
               </tr>

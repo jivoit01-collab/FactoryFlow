@@ -148,7 +148,7 @@ function MachineChecklistPage() {
             value={selectedMachineId ? String(selectedMachineId) : ''}
             onValueChange={(v) => setSelectedMachineId(v ? Number(v) : undefined)}
           >
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-full sm:w-[220px]">
               <SelectValue placeholder="Select machine" />
             </SelectTrigger>
             <SelectContent>
@@ -194,10 +194,10 @@ function MachineChecklistPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="p-3 text-left font-medium w-10">#</th>
-                        <th className="p-3 text-left font-medium">Task</th>
-                        <th className="p-3 text-left font-medium w-24">Frequency</th>
-                        <th className="p-3 text-left font-medium w-52">Status</th>
+                        <th scope="col" className="p-3 text-left font-medium w-10">#</th>
+                        <th scope="col" className="p-3 text-left font-medium">Task</th>
+                        <th scope="col" className="p-3 text-left font-medium w-24">Frequency</th>
+                        <th scope="col" className="p-3 text-left font-medium w-52">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -273,11 +273,11 @@ function MachineChecklistPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="p-3 text-left font-medium">Date</th>
-                      <th className="p-3 text-left font-medium">Task</th>
-                      <th className="p-3 text-left font-medium">Frequency</th>
-                      <th className="p-3 text-left font-medium">Status</th>
-                      <th className="p-3 text-left font-medium">Operator</th>
+                      <th scope="col" className="p-3 text-left font-medium">Date</th>
+                      <th scope="col" className="p-3 text-left font-medium">Task</th>
+                      <th scope="col" className="p-3 text-left font-medium">Frequency</th>
+                      <th scope="col" className="p-3 text-left font-medium">Status</th>
+                      <th scope="col" className="p-3 text-left font-medium">Operator</th>
                     </tr>
                   </thead>
                   <tbody>

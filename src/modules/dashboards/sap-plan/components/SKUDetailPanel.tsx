@@ -62,15 +62,15 @@ export function SKUDetailPanel({ docEntry }: SKUDetailPanelProps) {
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b text-muted-foreground">
-            <th className="pb-2 pr-3 text-left font-medium">Code</th>
-            <th className="pb-2 pr-3 text-left font-medium">Component</th>
-            <th className="pb-2 pr-3 text-right font-medium">Required</th>
-            <th className="pb-2 pr-3 text-right font-medium">Issued</th>
-            <th className="pb-2 pr-3 text-right font-medium">Remaining</th>
-            <th className="pb-2 pr-3 text-right font-medium">Available</th>
-            <th className="pb-2 pr-3 text-right font-medium">Shortfall</th>
-            <th className="pb-2 pr-3 text-left font-medium">UOM</th>
-            <th className="pb-2 text-left font-medium">Status</th>
+            <th scope="col" className="pb-2 pr-3 text-left font-medium">Code</th>
+            <th scope="col" className="pb-2 pr-3 text-left font-medium">Component</th>
+            <th scope="col" className="pb-2 pr-3 text-right font-medium">Required</th>
+            <th scope="col" className="pb-2 pr-3 text-right font-medium">Issued</th>
+            <th scope="col" className="pb-2 pr-3 text-right font-medium">Remaining</th>
+            <th scope="col" className="pb-2 pr-3 text-right font-medium">Available</th>
+            <th scope="col" className="pb-2 pr-3 text-right font-medium">Shortfall</th>
+            <th scope="col" className="pb-2 pr-3 text-left font-medium">UOM</th>
+            <th scope="col" className="pb-2 text-left font-medium">Status</th>
           </tr>
         </thead>
         <tbody>

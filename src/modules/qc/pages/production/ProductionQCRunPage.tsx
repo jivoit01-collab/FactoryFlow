@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { statusBadgeClass, type StatusVariant } from '@/config/statusColors';
 // We need the run detail from production execution module
 import { useRunDetail } from '@/modules/production/execution/api';
 import {
@@ -39,12 +40,12 @@ import type { ProductionQCSessionType, ProductionQCWorkflowStatus } from '../../
 
 const WORKFLOW_BADGE: Record<
   ProductionQCWorkflowStatus,
-  { label: string; className: string }
+  { label: string; variant: StatusVariant }
 > = {
-  DRAFT: { label: 'Draft', className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
-  SUBMITTED: { label: 'Submitted', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-  APPROVED: { label: 'Approved', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  REJECTED: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  DRAFT: { label: 'Draft', variant: 'draft' },
+  SUBMITTED: { label: 'Submitted', variant: 'inProgress' },
+  APPROVED: { label: 'Approved', variant: 'approved' },
+  REJECTED: { label: 'Rejected', variant: 'rejected' },
 };
 
 export default function ProductionQCRunPage() {
@@ -167,7 +168,7 @@ export default function ProductionQCRunPage() {
                                 <span className="font-medium text-sm">
                                   Round {session.session_number}
                                 </span>
-                                <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}>
+                                <span className={statusBadgeClass(badge.variant)}>
                                   {badge.label}
                                 </span>
                               </div>
@@ -239,7 +240,7 @@ export default function ProductionQCRunPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">Final QC</span>
-                              <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}>
+                              <span className={statusBadgeClass(badge.variant)}>
                                 {badge.label}
                               </span>
                             </div>

@@ -258,11 +258,11 @@ export default function PlanningDashboardPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Month navigation */}
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={prevMonth}>
+              <Button variant="outline" size="icon" aria-label="Previous month" className="h-8 w-8" onClick={prevMonth}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm font-medium w-36 text-center">{monthLabel}</span>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={nextMonth}>
+              <Button variant="outline" size="icon" aria-label="Next month" className="h-8 w-8" onClick={nextMonth}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -365,30 +365,30 @@ export default function PlanningDashboardPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+                      <th scope="col" className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={draftPlans.length > 0 && selectedIds.size === draftPlans.length}
                           onCheckedChange={toggleSelectAll}
                         />
                       </th>
-                      <th className="text-left font-medium px-4 py-3">Item Code</th>
-                      <th className="text-left font-medium px-4 py-3">Item Name</th>
-                      <th className="text-left font-medium px-4 py-3 hidden lg:table-cell">
+                      <th scope="col" className="text-left font-medium px-4 py-3">Item Code</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3">Item Name</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden lg:table-cell">
                         Warehouse
                       </th>
-                      <th className="text-right font-medium px-4 py-3">Planned</th>
-                      <th className="text-right font-medium px-4 py-3 hidden sm:table-cell">
+                      <th scope="col" className="text-right font-medium px-4 py-3">Planned</th>
+                      <th scope="col" className="text-right font-medium px-4 py-3 hidden sm:table-cell">
                         Produced
                       </th>
-                      <th className="text-left font-medium px-4 py-3 hidden md:table-cell">
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden md:table-cell">
                         Progress
                       </th>
-                      <th className="text-left font-medium px-4 py-3">Status</th>
-                      <th className="text-left font-medium px-4 py-3 hidden md:table-cell">SAP</th>
-                      <th className="text-left font-medium px-4 py-3 hidden xl:table-cell">
+                      <th scope="col" className="text-left font-medium px-4 py-3">Status</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden md:table-cell">SAP</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden xl:table-cell">
                         Dates
                       </th>
-                      <th className="text-right font-medium px-4 py-3">Actions</th>
+                      <th scope="col" className="text-right font-medium px-4 py-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -465,6 +465,7 @@ export default function PlanningDashboardPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              aria-label="View plan"
                               className="h-8 w-8"
                               onClick={() => navigate(`/production/planning/${plan.id}`)}
                               title="View plan"
@@ -476,6 +477,7 @@ export default function PlanningDashboardPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  aria-label="Edit plan"
                                   className="h-8 w-8"
                                   onClick={() => navigate(`/production/planning/${plan.id}`)}
                                   title="Edit plan"
@@ -485,6 +487,7 @@ export default function PlanningDashboardPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  aria-label="Delete plan"
                                   className="h-8 w-8 text-destructive hover:text-destructive"
                                   onClick={() => setPlanToDelete(plan)}
                                   title="Delete plan"

@@ -49,11 +49,11 @@ function BreakdownLogPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-3 font-medium">Run</th>
-                <th className="text-left p-3 font-medium">Date</th>
-                <th className="text-left p-3 font-medium">Line</th>
-                <th className="text-right p-3 font-medium">Breakdown (min)</th>
-                <th className="text-left p-3 font-medium">Brand</th>
+                <th scope="col" className="text-left p-3 font-medium">Run</th>
+                <th scope="col" className="text-left p-3 font-medium">Date</th>
+                <th scope="col" className="text-left p-3 font-medium">Line</th>
+                <th scope="col" className="text-right p-3 font-medium">Breakdown (min)</th>
+                <th scope="col" className="text-left p-3 font-medium">Brand</th>
               </tr>
             </thead>
             <tbody>

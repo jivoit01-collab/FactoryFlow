@@ -1,4 +1,4 @@
-import { Plus, Search, X } from 'lucide-react';
+import { Factory, Loader2, Plus, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,7 +28,11 @@ function ExecutionDashboardPage() {
 
   const hasFilters = statusFilter !== 'ALL' || lineFilter !== 'ALL' || dateFrom || dateTo || search;
 
-  const { data: runs, isLoading } = useRuns(filters);
+  const { data: runs, isLoading, isFetching } = useRuns(filters);
+  // Distinguish "initial load" (show skeletons) from "re-fetching on filter/search
+  // change" (show an inline spinner so existing results don't flash away).
+  const isInitialLoad = isLoading && !runs;
+  const isRefetching = isFetching && !isInitialLoad;
 
   const clearFilters = () => {
     setStatusFilter('ALL');
@@ -62,7 +66,7 @@ function ExecutionDashboardPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -73,7 +77,7 @@ function ExecutionDashboardPage() {
           </SelectContent>
         </Select>
         <Select value={lineFilter} onValueChange={setLineFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Line" />
           </SelectTrigger>
           <SelectContent>
@@ -88,7 +92,7 @@ function ExecutionDashboardPage() {
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="w-[150px]"
+            className="w-full sm:w-[150px]"
             placeholder="From"
           />
           <span className="text-muted-foreground text-sm">to</span>
@@ -96,7 +100,7 @@ function ExecutionDashboardPage() {
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="w-[150px]"
+            className="w-full sm:w-[150px]"
             placeholder="To"
           />
         </div>
@@ -107,11 +111,25 @@ function ExecutionDashboardPage() {
         )}
       </div>
 
+      {/* Re-fetch indicator — visible when filters change, but keep old results in place */}
+      {isRefetching && (
+        <div
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {search ? 'Searching runs…' : 'Updating results…'}
+        </div>
+      )}
+
       {/* Results */}
-      {isLoading ? (
+      {isInitialLoad ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i}><CardContent className="p-4 h-32 animate-pulse bg-muted/50" /></Card>
+            <Card key={i}>
+              <CardContent className="p-4 h-32 animate-pulse bg-muted/50" />
+            </Card>
           ))}
         </div>
       ) : runs && runs.length > 0 ? (
@@ -126,8 +144,35 @@ function ExecutionDashboardPage() {
         </div>
       ) : (
         <Card>
-          <CardContent className="p-12 text-center text-muted-foreground">
-            {hasFilters ? 'No runs match your filters.' : 'No production runs found. Start a new run to begin.'}
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Factory className="h-12 w-12 text-muted-foreground mb-4" />
+            {hasFilters ? (
+              <>
+                <p className="font-medium">No runs match your filters</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                  Try widening the date range, clearing the search, or selecting a
+                  different line or status.
+                </p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
+                  <X className="h-4 w-4 mr-1" /> Clear filters
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">No production runs yet</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                  Start a new run to begin tracking production output, breakdowns,
+                  and resource consumption.
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => navigate('/production/execution/start-run')}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Start your first run
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

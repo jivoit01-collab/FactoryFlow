@@ -33,7 +33,7 @@ function MonthlySummaryReportPage() {
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -88,17 +88,17 @@ function MonthlySummaryReportPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-2 font-medium">Month</th>
-                      <th className="text-right p-2 font-medium">Runs</th>
-                      <th className="text-right p-2 font-medium">Production</th>
-                      <th className="text-right p-2 font-medium">OEE %</th>
-                      <th className="text-right p-2 font-medium">Total Cost</th>
-                      <th className="text-right p-2 font-medium">Cost/Unit</th>
-                      <th className="text-right p-2 font-medium">Waste</th>
-                      <th className="text-right p-2 font-medium">Electricity</th>
-                      <th className="text-right p-2 font-medium">Water</th>
-                      <th className="text-right p-2 font-medium">Labour</th>
-                      <th className="text-right p-2 font-medium">Breakdown (min)</th>
+                      <th scope="col" className="text-left p-2 font-medium">Month</th>
+                      <th scope="col" className="text-right p-2 font-medium">Runs</th>
+                      <th scope="col" className="text-right p-2 font-medium">Production</th>
+                      <th scope="col" className="text-right p-2 font-medium">OEE %</th>
+                      <th scope="col" className="text-right p-2 font-medium">Total Cost</th>
+                      <th scope="col" className="text-right p-2 font-medium">Cost/Unit</th>
+                      <th scope="col" className="text-right p-2 font-medium">Waste</th>
+                      <th scope="col" className="text-right p-2 font-medium">Electricity</th>
+                      <th scope="col" className="text-right p-2 font-medium">Water</th>
+                      <th scope="col" className="text-right p-2 font-medium">Labour</th>
+                      <th scope="col" className="text-right p-2 font-medium">Breakdown (min)</th>
                     </tr>
                   </thead>
                   <tbody>

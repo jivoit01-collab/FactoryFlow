@@ -238,7 +238,7 @@ export default function CreatePlanPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(backPath)}>
+        <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(backPath)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -533,6 +533,7 @@ export default function CreatePlanPage() {
                             type="button"
                             variant="ghost"
                             size="icon"
+                            aria-label="Delete plan line"
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => remove(index)}
                             disabled={mutation.isPending}

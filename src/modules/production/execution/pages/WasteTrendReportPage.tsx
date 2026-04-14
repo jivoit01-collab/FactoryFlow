@@ -95,10 +95,10 @@ function WasteTrendReportPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Material</th>
-                        <th className="text-left p-2 font-medium">UoM</th>
-                        <th className="text-right p-2 font-medium">Total Qty</th>
-                        <th className="text-right p-2 font-medium">Logs</th>
+                        <th scope="col" className="text-left p-2 font-medium">Material</th>
+                        <th scope="col" className="text-left p-2 font-medium">UoM</th>
+                        <th scope="col" className="text-right p-2 font-medium">Total Qty</th>
+                        <th scope="col" className="text-right p-2 font-medium">Logs</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -126,9 +126,9 @@ function WasteTrendReportPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Reason</th>
-                        <th className="text-right p-2 font-medium">Total Qty</th>
-                        <th className="text-right p-2 font-medium">Incidents</th>
+                        <th scope="col" className="text-left p-2 font-medium">Reason</th>
+                        <th scope="col" className="text-right p-2 font-medium">Total Qty</th>
+                        <th scope="col" className="text-right p-2 font-medium">Incidents</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -158,9 +158,9 @@ function WasteTrendReportPage() {
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-background">
                         <tr className="border-b bg-muted/50">
-                          <th className="text-left p-2 font-medium">Date</th>
-                          <th className="text-right p-2 font-medium">Waste Qty</th>
-                          <th className="text-right p-2 font-medium">Logs</th>
+                          <th scope="col" className="text-left p-2 font-medium">Date</th>
+                          <th scope="col" className="text-right p-2 font-medium">Waste Qty</th>
+                          <th scope="col" className="text-right p-2 font-medium">Logs</th>
                         </tr>
                       </thead>
                       <tbody>

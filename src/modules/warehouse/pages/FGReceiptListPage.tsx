@@ -9,6 +9,7 @@ import {
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { statusBadgeClass, type StatusVariant } from '@/config/statusColors';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
@@ -33,16 +34,16 @@ import { useFGReceipts, usePostFGToSAP,useReceiveFG } from '../api';
 import type { FGReceipt, FGReceiptStatus } from '../types';
 
 function FGStatusBadge({ status }: { status: FGReceiptStatus }) {
-  const config: Record<FGReceiptStatus, { label: string; cls: string; icon: typeof Clock }> = {
-    PENDING: { label: 'Pending', cls: 'bg-amber-100 text-amber-800', icon: Clock },
-    RECEIVED: { label: 'Received', cls: 'bg-blue-100 text-blue-800', icon: CheckCircle2 },
-    SAP_POSTED: { label: 'SAP Posted', cls: 'bg-green-100 text-green-800', icon: CloudUpload },
-    FAILED: { label: 'Failed', cls: 'bg-red-100 text-red-800', icon: AlertTriangle },
+  const config: Record<FGReceiptStatus, { label: string; variant: StatusVariant; icon: typeof Clock }> = {
+    PENDING: { label: 'Pending', variant: 'pending', icon: Clock },
+    RECEIVED: { label: 'Received', variant: 'inProgress', icon: CheckCircle2 },
+    SAP_POSTED: { label: 'SAP Posted', variant: 'approved', icon: CloudUpload },
+    FAILED: { label: 'Failed', variant: 'failed', icon: AlertTriangle },
   };
   const c = config[status];
   const Icon = c.icon;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${c.cls}`}>
+    <span className={statusBadgeClass(c.variant)}>
       <Icon className="h-3 w-3" />
       {c.label}
     </span>
@@ -88,7 +89,7 @@ export default function FGReceiptListPage() {
 
       <div className="flex flex-wrap gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
@@ -108,9 +109,32 @@ export default function FGReceiptListPage() {
         </div>
       ) : receipts.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <PackageCheck className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">No finished goods receipts</p>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <PackageCheck className="h-12 w-12 text-muted-foreground mb-4" />
+            {statusFilter !== 'ALL' ? (
+              <>
+                <p className="font-medium">No {statusFilter.toLowerCase().replace('_', ' ')} receipts</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Try a different status filter to see more receipts.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setStatusFilter('ALL')}
+                >
+                  Show all receipts
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">No finished-goods receipts yet</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                  Receipts appear here after a production run is completed and
+                  finished goods are submitted for warehouse check-in.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -118,15 +142,15 @@ export default function FGReceiptListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left">
-                <th className="py-2 px-3">ID</th>
-                <th className="py-2 px-3">Run</th>
-                <th className="py-2 px-3">Product</th>
-                <th className="py-2 px-3 text-right">Good Qty</th>
-                <th className="py-2 px-3 text-right">Rejected</th>
-                <th className="py-2 px-3">Warehouse</th>
-                <th className="py-2 px-3">Date</th>
-                <th className="py-2 px-3">Status</th>
-                <th className="py-2 px-3">Actions</th>
+                <th scope="col" className="py-2 px-3">ID</th>
+                <th scope="col" className="py-2 px-3">Run</th>
+                <th scope="col" className="py-2 px-3">Product</th>
+                <th scope="col" className="py-2 px-3 text-right">Good Qty</th>
+                <th scope="col" className="py-2 px-3 text-right">Rejected</th>
+                <th scope="col" className="py-2 px-3">Warehouse</th>
+                <th scope="col" className="py-2 px-3">Date</th>
+                <th scope="col" className="py-2 px-3">Status</th>
+                <th scope="col" className="py-2 px-3">Actions</th>
               </tr>
             </thead>
             <tbody>

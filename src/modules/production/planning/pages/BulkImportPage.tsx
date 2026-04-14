@@ -280,7 +280,7 @@ export default function BulkImportPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/production/planning')}>
+        <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate('/production/planning')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -382,12 +382,12 @@ export default function BulkImportPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 px-3 font-medium">#</th>
-                    <th className="text-left py-2 px-3 font-medium">Item Code</th>
-                    <th className="text-left py-2 px-3 font-medium">Item Name</th>
-                    <th className="text-right py-2 px-3 font-medium">Planned Qty</th>
-                    <th className="text-left py-2 px-3 font-medium">Status</th>
-                    <th className="text-left py-2 px-3 font-medium">Error</th>
+                    <th scope="col" className="text-left py-2 px-3 font-medium">#</th>
+                    <th scope="col" className="text-left py-2 px-3 font-medium">Item Code</th>
+                    <th scope="col" className="text-left py-2 px-3 font-medium">Item Name</th>
+                    <th scope="col" className="text-right py-2 px-3 font-medium">Planned Qty</th>
+                    <th scope="col" className="text-left py-2 px-3 font-medium">Status</th>
+                    <th scope="col" className="text-left py-2 px-3 font-medium">Error</th>
                   </tr>
                 </thead>
                 <tbody>

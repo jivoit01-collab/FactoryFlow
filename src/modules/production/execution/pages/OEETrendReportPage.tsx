@@ -45,7 +45,7 @@ function OEETrendReportPage() {
             />
             <div>
               <Select value={groupBy} onValueChange={setGroupBy}>
-                <SelectTrigger className="w-[130px]">
+                <SelectTrigger className="w-full sm:w-[130px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -98,12 +98,12 @@ function OEETrendReportPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Period</th>
-                        <th className="text-right p-2 font-medium">Runs</th>
-                        <th className="text-right p-2 font-medium">Availability %</th>
-                        <th className="text-right p-2 font-medium">Performance %</th>
-                        <th className="text-right p-2 font-medium">Quality %</th>
-                        <th className="text-right p-2 font-medium">OEE %</th>
+                        <th scope="col" className="text-left p-2 font-medium">Period</th>
+                        <th scope="col" className="text-right p-2 font-medium">Runs</th>
+                        <th scope="col" className="text-right p-2 font-medium">Availability %</th>
+                        <th scope="col" className="text-right p-2 font-medium">Performance %</th>
+                        <th scope="col" className="text-right p-2 font-medium">Quality %</th>
+                        <th scope="col" className="text-right p-2 font-medium">OEE %</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -135,11 +135,11 @@ function OEETrendReportPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Line</th>
-                        <th className="text-right p-2 font-medium">Runs</th>
-                        <th className="text-right p-2 font-medium">Min OEE</th>
-                        <th className="text-right p-2 font-medium">Avg OEE</th>
-                        <th className="text-right p-2 font-medium">Max OEE</th>
+                        <th scope="col" className="text-left p-2 font-medium">Line</th>
+                        <th scope="col" className="text-right p-2 font-medium">Runs</th>
+                        <th scope="col" className="text-right p-2 font-medium">Min OEE</th>
+                        <th scope="col" className="text-right p-2 font-medium">Avg OEE</th>
+                        <th scope="col" className="text-right p-2 font-medium">Max OEE</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -170,13 +170,13 @@ function OEETrendReportPage() {
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-background">
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Run #</th>
-                        <th className="text-left p-2 font-medium">Date</th>
-                        <th className="text-left p-2 font-medium">Line</th>
-                        <th className="text-right p-2 font-medium">Avail.</th>
-                        <th className="text-right p-2 font-medium">Perf.</th>
-                        <th className="text-right p-2 font-medium">Quality</th>
-                        <th className="text-right p-2 font-medium">OEE</th>
+                        <th scope="col" className="text-left p-2 font-medium">Run #</th>
+                        <th scope="col" className="text-left p-2 font-medium">Date</th>
+                        <th scope="col" className="text-left p-2 font-medium">Line</th>
+                        <th scope="col" className="text-right p-2 font-medium">Avail.</th>
+                        <th scope="col" className="text-right p-2 font-medium">Perf.</th>
+                        <th scope="col" className="text-right p-2 font-medium">Quality</th>
+                        <th scope="col" className="text-right p-2 font-medium">OEE</th>
                       </tr>
                     </thead>
                     <tbody>

@@ -284,14 +284,14 @@ export default function BillingTrackerPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50 text-left text-muted-foreground">
-                      <th className="p-3">Item Code</th>
-                      <th className="p-3">Item Name</th>
-                      <th className="p-3">Warehouse</th>
-                      <th className="p-3 text-right">Received Qty</th>
-                      <th className="p-3 text-right">Billed Qty</th>
-                      <th className="p-3 text-right">Unbilled Qty</th>
-                      <th className="p-3 text-right">Unbilled Value</th>
-                      <th className="p-3 text-center">Status</th>
+                      <th scope="col" className="p-3">Item Code</th>
+                      <th scope="col" className="p-3">Item Name</th>
+                      <th scope="col" className="p-3">Warehouse</th>
+                      <th scope="col" className="p-3 text-right">Received Qty</th>
+                      <th scope="col" className="p-3 text-right">Billed Qty</th>
+                      <th scope="col" className="p-3 text-right">Unbilled Qty</th>
+                      <th scope="col" className="p-3 text-right">Unbilled Value</th>
+                      <th scope="col" className="p-3 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody>

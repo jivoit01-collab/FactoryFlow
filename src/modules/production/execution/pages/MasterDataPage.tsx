@@ -81,7 +81,7 @@ function MasterDataPage() {
           <div className="flex items-center gap-4">
             <Label className="min-w-fit">Machine Type:</Label>
             <Select value={selectedMachineType || ''} onValueChange={(v) => setSelectedMachineType(v as MachineType)}>
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Select Machine Type" />
               </SelectTrigger>
               <SelectContent>
@@ -114,10 +114,10 @@ function MasterDataPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium">#</th>
-                      <th className="text-left p-3 font-medium">Task</th>
-                      <th className="text-left p-3 font-medium">Frequency</th>
-                      <th className="text-center p-3 font-medium">Actions</th>
+                      <th scope="col" className="text-left p-3 font-medium">#</th>
+                      <th scope="col" className="text-left p-3 font-medium">Task</th>
+                      <th scope="col" className="text-left p-3 font-medium">Frequency</th>
+                      <th scope="col" className="text-center p-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -193,6 +193,9 @@ export function CreateTransporterDialog({
             </Label>
             <Input
               id="mobile_no"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               placeholder="Enter mobile number"
               {...register('mobile_no')}
               disabled={mutation.isPending}

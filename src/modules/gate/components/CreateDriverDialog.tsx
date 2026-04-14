@@ -238,6 +238,9 @@ export function CreateDriverDialog({
             </Label>
             <Input
               id="mobile_no"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               placeholder="9876543210"
               {...register('mobile_no')}
               disabled={mutation.isPending}
@@ -375,6 +378,7 @@ export function CreateDriverDialog({
                     size="icon"
                     onClick={handleRemovePhoto}
                     disabled={mutation.isPending}
+                    aria-label="Remove photo"
                   >
                     <X className="h-4 w-4" />
                   </Button>

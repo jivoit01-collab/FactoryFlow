@@ -13,16 +13,16 @@ export function WasteLogTable({ wasteLogs, onView, showRunNumber = false }: Wast
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/50">
-            {showRunNumber && <th className="text-left p-2 font-medium">Run</th>}
-            <th className="text-left p-2 font-medium">Material</th>
-            <th className="text-right p-2 font-medium">Qty</th>
-            <th className="text-left p-2 font-medium">UoM</th>
-            <th className="text-left p-2 font-medium">Reason</th>
-            <th className="text-left p-2 font-medium">Status</th>
-            <th className="text-center p-2 font-medium">Engineer</th>
-            <th className="text-center p-2 font-medium">AM</th>
-            <th className="text-center p-2 font-medium">Store</th>
-            <th className="text-center p-2 font-medium">HOD</th>
+            {showRunNumber && <th scope="col" className="text-left p-2 font-medium">Run</th>}
+            <th scope="col" className="text-left p-2 font-medium">Material</th>
+            <th scope="col" className="text-right p-2 font-medium">Qty</th>
+            <th scope="col" className="text-left p-2 font-medium">UoM</th>
+            <th scope="col" className="text-left p-2 font-medium">Reason</th>
+            <th scope="col" className="text-left p-2 font-medium">Status</th>
+            <th scope="col" className="text-center p-2 font-medium">Engineer</th>
+            <th scope="col" className="text-center p-2 font-medium">AM</th>
+            <th scope="col" className="text-center p-2 font-medium">Store</th>
+            <th scope="col" className="text-center p-2 font-medium">HOD</th>
           </tr>
         </thead>
         <tbody>

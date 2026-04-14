@@ -23,19 +23,19 @@ export function InventoryAgeWarehouseSummary({ data }: InventoryAgeWarehouseSumm
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
-                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                   Warehouse
                 </th>
-                <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-2.5 text-right font-medium text-muted-foreground">
                   Items
                 </th>
-                <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-2.5 text-right font-medium text-muted-foreground">
                   Quantity
                 </th>
-                <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-2.5 text-right font-medium text-muted-foreground">
                   Litres
                 </th>
-                <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+                <th scope="col" className="px-4 py-2.5 text-right font-medium text-muted-foreground">
                   Value (₹)
                 </th>
               </tr>
