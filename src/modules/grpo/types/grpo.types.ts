@@ -177,10 +177,15 @@ export interface GRPOHistoryEntry {
 export interface PendingSupplierGroup {
   supplier_code: string;
   supplier_name: string;
+  po_count: number;
+  can_merge: boolean;
   po_receipts: {
     po_receipt_id: number;
     po_number: string;
+    supplier_code: string;
+    supplier_name: string;
     branch_id: number | null;
+    item_count: number;
   }[];
 }
 

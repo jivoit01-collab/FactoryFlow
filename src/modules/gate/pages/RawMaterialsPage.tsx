@@ -1,4 +1,4 @@
-import { Plus, Search } from 'lucide-react';
+import { ChevronRight, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -137,16 +137,17 @@ export default function RawMaterialsPage() {
       ) : (
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto max-w-full">
-            <table className="w-full min-w-[850px]">
+            <table className="w-full min-w-[950px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-3 text-left text-sm font-medium">Entry No.</th>
                   <th className="p-3 text-left text-sm font-medium">Vehicle</th>
-                  <th className="p-3 text-left text-sm font-medium">Supplier Name / Code</th>
+                  <th className="p-3 text-left text-sm font-medium">Supplier(s)</th>
                   <th className="p-3 text-left text-sm font-medium">Driver</th>
                   <th className="p-3 text-left text-sm font-medium">Entry Time</th>
                   <th className="p-3 text-left text-sm font-medium">Status</th>
                   <th className="p-3 text-left text-sm font-medium">Remarks</th>
+                  <th className="p-3 w-8" aria-hidden="true" />
                 </tr>
               </thead>
               <tbody>
@@ -159,20 +160,37 @@ export default function RawMaterialsPage() {
                       navigate(`/gate/raw-materials/edit/${entry.id}/${isCompleted ? 'review' : 'step1'}`);
                     }}
                   >
-                    <td className="p-3 text-sm font-medium">{entry.entry_no || '-'}</td>
-                    <td className="p-3 text-sm">{entry.vehicle?.vehicle_number || '-'}</td>
-                    <td className="p-3 text-sm">
-                      {entry.suppliers?.length > 0
-                        ? entry.suppliers.map((s: { supplier_name: string; supplier_code: string }) => `${s.supplier_name} / ${s.supplier_code}`).join(', ')
-                        : '-'}
+                    <td className="p-3 text-sm font-medium whitespace-nowrap">
+                      {entry.entry_no || '-'}
                     </td>
-                    <td className="p-3 text-sm">{entry.driver?.name || '-'}</td>
-                    <td className="p-3 text-sm text-muted-foreground">
+                    <td className="p-3 text-sm whitespace-nowrap">
+                      {entry.vehicle?.vehicle_number || '-'}
+                    </td>
+                    <td className="p-3 text-sm">
+                      {entry.suppliers?.length > 0 ? (
+                        <div className="flex flex-col gap-0.5">
+                          {entry.suppliers.map(
+                            (s: { supplier_name: string; supplier_code: string }) => (
+                              <span key={s.supplier_code} className="truncate">
+                                <span className="font-medium">{s.supplier_name}</span>
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  ({s.supplier_code})
+                                </span>
+                              </span>
+                            ),
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-sm whitespace-nowrap">{entry.driver?.name || '-'}</td>
+                    <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
                       {formatDateTime(entry.entry_time)}
                     </td>
                     <td className="p-3 text-sm">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getEntryStatusClasses(
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${getEntryStatusClasses(
                           entry.status || '',
                         )}`}
                       >
@@ -180,6 +198,9 @@ export default function RawMaterialsPage() {
                       </span>
                     </td>
                     <td className="p-3 text-sm text-muted-foreground">{entry.remarks || '-'}</td>
+                    <td className="p-3 text-right">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </td>
                   </tr>
                 ))}
               </tbody>

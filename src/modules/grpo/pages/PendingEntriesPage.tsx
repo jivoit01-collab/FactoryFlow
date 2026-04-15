@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import { getEntryStatusClasses } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
 import { Button } from '@/shared/components/ui';
 
@@ -99,7 +100,7 @@ export default function PendingEntriesPage() {
         </div>
       )}
 
-      {/* Entries List */}
+      {/* Entries Table */}
       {!isLoading && !error && pendingEntries.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -108,30 +109,93 @@ export default function PendingEntriesPage() {
             </h3>
           </div>
 
-          <div className="space-y-2">
-            {pendingEntries.map((entry) => (
-              <div
-                key={entry.vehicle_entry_id}
-                className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => navigate(`/grpo/preview/${entry.vehicle_entry_id}`)}
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <span className="font-medium text-sm">{entry.entry_no}</span>
-                  <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                    {entry.pending_po_count}/{entry.total_po_count} POs
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden md:inline">
-                    {entry.status}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">
-                    {formatDateTime(entry.entry_time)}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-            ))}
+          <div className="rounded-md border overflow-hidden">
+            <div className="overflow-x-auto max-w-full">
+              <table className="w-full min-w-[800px]">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="p-3 text-left text-sm font-medium">Entry No.</th>
+                    <th className="p-3 text-left text-sm font-medium">Supplier(s)</th>
+                    <th className="p-3 text-left text-sm font-medium">PO Numbers</th>
+                    <th className="p-3 text-left text-sm font-medium">POs</th>
+                    <th className="p-3 text-left text-sm font-medium">Status</th>
+                    <th className="p-3 text-left text-sm font-medium">Entry Time</th>
+                    <th className="p-3 w-8" aria-hidden="true" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingEntries.map((entry) => {
+                    const suppliers = entry.suppliers ?? [];
+                    const poNumbers = suppliers.flatMap((s) =>
+                      s.po_receipts.map((r) => r.po_number),
+                    );
+                    return (
+                      <tr
+                        key={entry.vehicle_entry_id}
+                        className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/grpo/preview/${entry.vehicle_entry_id}`)}
+                      >
+                        <td className="p-3 text-sm font-medium whitespace-nowrap">
+                          {entry.entry_no}
+                        </td>
+                        <td className="p-3 text-sm">
+                          {suppliers.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {suppliers.map((s) => (
+                                <span key={s.supplier_code} className="truncate">
+                                  <span className="font-medium">{s.supplier_name}</span>
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    ({s.supplier_code})
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground">
+                          {poNumbers.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {poNumbers.map((po) => (
+                                <span
+                                  key={po}
+                                  className="inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-mono bg-muted/40"
+                                >
+                                  {po}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                            {entry.pending_po_count}/{entry.total_po_count} POs
+                          </span>
+                        </td>
+                        <td className="p-3 text-sm">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getEntryStatusClasses(
+                              entry.status || '',
+                            )}`}
+                          >
+                            {entry.status || '-'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
+                          {formatDateTime(entry.entry_time)}
+                        </td>
+                        <td className="p-3 text-right">
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

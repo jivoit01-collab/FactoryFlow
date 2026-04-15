@@ -4,7 +4,7 @@ import { apiClient } from '@/core/api';
 import type {
   GRPOAttachment,
   GRPOHistoryEntry,
-  PendingGRPOEntry,
+  PendingGRPOEntryWithSuppliers,
   PostGRPORequest,
   PostGRPOResponse,
   PreviewPOReceipt,
@@ -13,8 +13,10 @@ import type {
 
 export const grpoApi = {
   // Get list of pending gate entries for GRPO posting
-  async getPendingEntries(): Promise<PendingGRPOEntry[]> {
-    const response = await apiClient.get<PendingGRPOEntry[]>(API_ENDPOINTS.GRPO.PENDING);
+  async getPendingEntries(): Promise<PendingGRPOEntryWithSuppliers[]> {
+    const response = await apiClient.get<PendingGRPOEntryWithSuppliers[]>(
+      API_ENDPOINTS.GRPO.PENDING,
+    );
     return response.data;
   },
 

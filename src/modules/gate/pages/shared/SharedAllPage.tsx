@@ -1,4 +1,4 @@
-import { Plus, Search } from 'lucide-react';
+import { ChevronRight, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -122,7 +122,7 @@ export default function SharedAllPage({ config }: SharedAllPageProps) {
       ) : (
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto max-w-full">
-            <table className="w-full min-w-[700px]">
+            <table className="w-full min-w-[800px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-3 text-left text-sm font-medium">Entry No.</th>
@@ -131,6 +131,7 @@ export default function SharedAllPage({ config }: SharedAllPageProps) {
                   <th className="p-3 text-left text-sm font-medium">Entry Time</th>
                   <th className="p-3 text-left text-sm font-medium">Status</th>
                   <th className="p-3 text-left text-sm font-medium">Remarks</th>
+                  <th className="p-3 w-8" aria-hidden="true" />
                 </tr>
               </thead>
               <tbody>
@@ -144,15 +145,19 @@ export default function SharedAllPage({ config }: SharedAllPageProps) {
                       navigate(`${config.routePrefix}/edit/${entry.id}/${step}`);
                     }}
                   >
-                    <td className="p-3 text-sm font-medium">{entry.entry_no || '-'}</td>
-                    <td className="p-3 text-sm">{entry.vehicle?.vehicle_number || '-'}</td>
-                    <td className="p-3 text-sm">{entry.driver?.name || '-'}</td>
-                    <td className="p-3 text-sm text-muted-foreground">
+                    <td className="p-3 text-sm font-medium whitespace-nowrap">
+                      {entry.entry_no || '-'}
+                    </td>
+                    <td className="p-3 text-sm whitespace-nowrap">
+                      {entry.vehicle?.vehicle_number || '-'}
+                    </td>
+                    <td className="p-3 text-sm whitespace-nowrap">{entry.driver?.name || '-'}</td>
+                    <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
                       {formatDateTime(entry.entry_time)}
                     </td>
                     <td className="p-3 text-sm">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getEntryStatusClasses(
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${getEntryStatusClasses(
                           entry.status || '',
                         )}`}
                       >
@@ -160,6 +165,9 @@ export default function SharedAllPage({ config }: SharedAllPageProps) {
                       </span>
                     </td>
                     <td className="p-3 text-sm text-muted-foreground">{entry.remarks || '-'}</td>
+                    <td className="p-3 text-right">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </td>
                   </tr>
                 ))}
               </tbody>
