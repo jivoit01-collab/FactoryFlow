@@ -12,6 +12,7 @@ export interface POReceipt {
   updated_at?: string;
   items: Array<{
     id?: number; // PO item ID for API calls
+    sap_line_num: number; // SAP PO LineNum — unique identifier for this row
     po_item_code: string;
     item_name: string;
     ordered_qty: number;

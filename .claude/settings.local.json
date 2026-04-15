@@ -54,7 +54,8 @@
       "Bash(xargs head:*)",
       "Bash(cat /d/Test_CompanyJivo/FactoryFlow/src/modules/gate/api/*.ts)",
       "Bash(pip install:*)",
-      "Bash(python generate_ppt.py)"
+      "Bash(python generate_ppt.py)",
+      "Bash(grep -E \"\\\\.py$\")"
     ]
   }
 }

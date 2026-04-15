@@ -9,6 +9,7 @@ export interface POItem {
   remaining_qty: string;
   uom: string;
   rate: string;
+  line_num: number;
 }
 
 export interface PurchaseOrder {
@@ -24,6 +25,7 @@ export interface POReceiptItem {
   ordered_qty: number;
   received_qty: number;
   uom: string;
+  line_num: number;
 }
 
 export interface CreatePOReceiptRequest {

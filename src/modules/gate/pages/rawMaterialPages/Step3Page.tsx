@@ -40,6 +40,7 @@ import { WIZARD_CONFIG } from '../../constants';
 import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 interface POItemFormData {
+  line_num: number; // SAP PO LineNum (POR1.LineNum) — unique identifier for this row
   po_item_code: string;
   item_name: string;
   ordered_qty: number;
@@ -192,6 +193,7 @@ export default function Step3Page() {
               const receivedQty = parseFloat(item.received_qty || '0'); // Previously received
               const remainingQtyFromPO = parseFloat(item.remaining_qty); // Remaining from PO
               return {
+                line_num: item.line_num,
                 po_item_code: item.po_item_code,
                 item_name: item.item_name,
                 ordered_qty: orderedQty,
@@ -212,7 +214,7 @@ export default function Step3Page() {
     setPOSearchTerms((prev) => ({ ...prev, [poFormId]: '' }));
   };
 
-  const handleReceivedQtyChange = (poFormId: string, itemCode: string, value: string) => {
+  const handleReceivedQtyChange = (poFormId: string, lineNum: number, value: string) => {
     if (effectiveEditMode && !fillDataModeForPO[poFormId] && !updateMode) return;
 
     const receivedQtyNow = parseFloat(value) || 0;
@@ -222,7 +224,7 @@ export default function Step3Page() {
           return {
             ...form,
             items: form.items.map((item) => {
-              if (item.po_item_code === itemCode) {
+              if (item.line_num === lineNum) {
                 // Calculate remaining: remaining_qty_initial - received_qty_now
                 const newRemainingQty = Math.max(0, item.remaining_qty_initial - receivedQtyNow);
                 return {
@@ -242,14 +244,14 @@ export default function Step3Page() {
     if (receivedQtyNow > 0) {
       setApiErrors((prev) => {
         const newErrors = { ...prev };
-        delete newErrors[`${poFormId}_item_${itemCode}`];
+        delete newErrors[`${poFormId}_item_${lineNum}`];
         delete newErrors[`${poFormId}_received`];
         return newErrors;
       });
-    } else if (apiErrors[`${poFormId}_item_${itemCode}`]) {
+    } else if (apiErrors[`${poFormId}_item_${lineNum}`]) {
       setApiErrors((prev) => {
         const newErrors = { ...prev };
-        delete newErrors[`${poFormId}_item_${itemCode}`];
+        delete newErrors[`${poFormId}_item_${lineNum}`];
         return newErrors;
       });
     }
@@ -363,6 +365,7 @@ export default function Step3Page() {
           const orderedQty = item.ordered_qty;
           const receivedQtyNow = item.received_qty;
           return {
+            line_num: item.sap_line_num,
             po_item_code: item.po_item_code,
             item_name: item.item_name,
             ordered_qty: orderedQty,
@@ -433,7 +436,7 @@ export default function Step3Page() {
         };
         form.items.forEach((item) => {
           if (!item.received_qty_now || item.received_qty_now <= 0) {
-            itemErrors[`${form.id}_item_${item.po_item_code}`] = 'Please enter received quantity';
+            itemErrors[`${form.id}_item_${item.line_num}`] = 'Please enter received quantity';
           }
         });
         setApiErrors(itemErrors);
@@ -447,7 +450,7 @@ export default function Step3Page() {
         const itemErrors: Record<string, string> = {};
         overReceivedItems.forEach((item) => {
           const maxAllowed = (item.ordered_qty * 1.1 - item.received_qty).toFixed(3);
-          itemErrors[`${form.id}_item_${item.po_item_code}`] =
+          itemErrors[`${form.id}_item_${item.line_num}`] =
             `Cannot exceed ${maxAllowed} ${item.uom} (remaining + 10% tolerance)`;
         });
         setApiErrors(itemErrors);
@@ -467,6 +470,7 @@ export default function Step3Page() {
           items: poForm.items
             .filter((item) => item.received_qty_now > 0)
             .map((item) => ({
+              line_num: item.line_num,
               po_item_code: item.po_item_code,
               item_name: item.item_name,
               ordered_qty: item.ordered_qty,
@@ -560,8 +564,8 @@ export default function Step3Page() {
             onVendorSelect={(vendor) => handleVendorSelect(poForm.id, vendor)}
             onPOFocus={() => handlePOFocus(poForm.id)}
             onPOSelect={(po) => handlePOSelect(poForm.id, po)}
-            onReceivedQtyChange={(itemCode, value) =>
-              handleReceivedQtyChange(poForm.id, itemCode, value)
+            onReceivedQtyChange={(lineNum, value) =>
+              handleReceivedQtyChange(poForm.id, lineNum, value)
             }
             onRemove={() => handleRemovePO(poForm.id)}
             canRemove={poForms.length > 1}
@@ -628,7 +632,7 @@ interface POCardProps {
   onVendorSelect: (vendor: Vendor | null) => void;
   onPOFocus: () => void;
   onPOSelect: (po: PurchaseOrder) => void;
-  onReceivedQtyChange: (itemCode: string, value: string) => void;
+  onReceivedQtyChange: (lineNum: number, value: string) => void;
   onRemove: () => void;
   canRemove: boolean;
   apiErrors: Record<string, string>;
@@ -897,7 +901,7 @@ function POCard({
                     </thead>
                     <tbody>
                       {poForm.items.map((item) => (
-                        <tr key={item.po_item_code} className="border-t">
+                        <tr key={item.line_num} className="border-t">
                           <td className="p-3 text-sm">{item.po_item_code}</td>
                           <td className="p-3 text-sm">{item.item_name}</td>
                           <td className="p-3 text-sm text-right">{item.rate > 0 ? item.rate.toFixed(2) : '-'}</td>
@@ -914,19 +918,19 @@ function POCard({
                               placeholder="0.000"
                               value={item.received_qty_now || ''}
                               onChange={(e) =>
-                                onReceivedQtyChange(item.po_item_code, e.target.value)
+                                onReceivedQtyChange(item.line_num, e.target.value)
                               }
                               disabled={effectiveReadOnly}
                               className={cn(
                                 'w-24',
-                                apiErrors[`${poForm.id}_item_${item.po_item_code}`] &&
+                                apiErrors[`${poForm.id}_item_${item.line_num}`] &&
                                   'border-destructive',
                                 effectiveReadOnly && 'cursor-not-allowed opacity-50',
                               )}
                             />
-                            {apiErrors[`${poForm.id}_item_${item.po_item_code}`] && (
+                            {apiErrors[`${poForm.id}_item_${item.line_num}`] && (
                               <p className="text-xs text-destructive mt-1">
-                                {apiErrors[`${poForm.id}_item_${item.po_item_code}`]}
+                                {apiErrors[`${poForm.id}_item_${item.line_num}`]}
                               </p>
                             )}
                           </td>
