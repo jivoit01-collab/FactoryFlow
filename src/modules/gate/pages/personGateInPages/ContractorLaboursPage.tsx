@@ -217,7 +217,7 @@ export default function ContractorLaboursPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
         <p>Invalid contractor ID</p>
-        <Button variant="link" onClick={() => navigate('/gate/visitor-labour/contractors')}>
+        <Button variant="link" onClick={() => navigate('/gate/labour/contractors')}>
           Back to contractors
         </Button>
       </div>
@@ -232,7 +232,7 @@ export default function ContractorLaboursPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/gate/visitor-labour/contractors')}
+            onClick={() => navigate('/gate/labour/contractors')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>

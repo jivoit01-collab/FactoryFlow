@@ -1,4 +1,4 @@
-import { Building2, HardHat, Package, UtensilsCrossed, Wrench } from 'lucide-react';
+import { Building2, HardHat, Package, User, UtensilsCrossed, Wrench } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -45,10 +45,17 @@ const gateModules: GateModuleCard[] = [
     permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
   },
   {
-    title: 'Visitor/Labour',
+    title: 'Visitor Gate-In',
+    icon: <User className="h-5 w-5" />,
+    route: ROUTES.GATE.children?.VISITOR.path || '/gate/visitor',
+    color: 'text-purple-600',
+    permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+  },
+  {
+    title: 'Labour Gate-In',
     icon: <HardHat className="h-5 w-5" />,
-    route: ROUTES.GATE.children?.CONTRACTOR_LABOR.path || '/gate/visitor-labour',
-    color: 'text-red-600',
+    route: ROUTES.GATE.children?.LABOUR.path || '/gate/labour',
+    color: 'text-orange-600',
     permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
   },
 ];

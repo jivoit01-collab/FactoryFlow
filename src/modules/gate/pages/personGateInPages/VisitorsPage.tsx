@@ -148,7 +148,7 @@ export default function VisitorsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/gate/visitor-labour')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/gate/visitor')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

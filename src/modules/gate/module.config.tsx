@@ -44,18 +44,31 @@ const COStep3Page = lazy(() => import('./pages/constructionPages/Step3Page'));
 const COAttachmentsPage = lazy(() => import('./pages/constructionPages/AttachmentsPage'));
 const COReviewPage = lazy(() => import('./pages/constructionPages/ReviewPage'));
 
-// Person Gate-In pages (Visitor/Labour)
-const PersonGateInDashboard = lazy(() => import('./pages/personGateInPages/PersonGateInDashboard'));
-const PersonGateInAllPage = lazy(() => import('./pages/personGateInPages/PersonGateInAllPage'));
-const InsideListPage = lazy(() => import('./pages/personGateInPages/InsideListPage'));
-const NewEntryPage = lazy(() => import('./pages/personGateInPages/NewEntryPage'));
-const EntryDetailPage = lazy(() => import('./pages/personGateInPages/EntryDetailPage'));
+// Visitor pages
+const VisitorDashboard = lazy(() => import('./pages/visitorPages/VisitorDashboard'));
+const VisitorAllPage = lazy(() => import('./pages/visitorPages/VisitorAllPage'));
+const VisitorInsidePage = lazy(() => import('./pages/visitorPages/VisitorInsidePage'));
+const NewVisitorEntryPage = lazy(() => import('./pages/visitorPages/NewVisitorEntryPage'));
 const VisitorsPage = lazy(() => import('./pages/personGateInPages/VisitorsPage'));
+
+// Labour pages
+const LabourDashboard = lazy(() => import('./pages/labourPages/LabourDashboard'));
+const LabourAllPage = lazy(() => import('./pages/labourPages/LabourAllPage'));
+const LabourInsidePage = lazy(() => import('./pages/labourPages/LabourInsidePage'));
+const NewLabourEntryPage = lazy(() => import('./pages/labourPages/NewLabourEntryPage'));
 const LaboursPage = lazy(() => import('./pages/personGateInPages/LaboursPage'));
 const ContractorsPage = lazy(() => import('./pages/personGateInPages/ContractorsPage'));
 const ContractorLaboursPage = lazy(
   () => import('./pages/personGateInPages/ContractorLaboursPage'),
 );
+
+// Shared entry detail (works for both visitor and labour)
+const EntryDetailPage = lazy(() => import('./pages/personGateInPages/EntryDetailPage'));
+
+// Labour Verification pages
+const LabourVerificationDashboard = lazy(() => import('./pages/labourVerificationPages/LabourVerificationDashboard'));
+const LabourVerificationDetailPage = lazy(() => import('./pages/labourVerificationPages/LabourVerificationDetailPage'));
+const DepartmentResponsePage = lazy(() => import('./pages/labourVerificationPages/DepartmentResponsePage'));
 
 // Other gate entry type pages
 const DailyNeedsPage = lazy(() => import('./pages/DailyNeedsPage'));
@@ -407,61 +420,118 @@ export const gateModuleConfig: ModuleConfig = {
       permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
     },
 
-    // ── Person Gate-In (Visitor/Labour) ──────────────────────────
+    // ── Visitor Gate-In ────────────────────────────────────────
     {
-      path: '/gate/visitor-labour',
-      element: <PersonGateInDashboard />,
+      path: '/gate/visitor',
+      element: <VisitorDashboard />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
       breadcrumb: { label: 'Visitors' },
     },
     {
-      path: '/gate/visitor-labour/all',
-      element: <PersonGateInAllPage />,
+      path: '/gate/visitor/all',
+      element: <VisitorAllPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
     },
     {
-      path: '/gate/visitor-labour/inside',
-      element: <InsideListPage />,
+      path: '/gate/visitor/inside',
+      element: <VisitorInsidePage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
     },
     {
-      path: '/gate/visitor-labour/new',
-      element: <NewEntryPage />,
+      path: '/gate/visitor/new',
+      element: <NewVisitorEntryPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.CREATE],
     },
     {
-      path: '/gate/visitor-labour/entry/:entryId',
+      path: '/gate/visitor/entry/:entryId',
       element: <EntryDetailPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
     },
     {
-      path: '/gate/visitor-labour/visitors',
+      path: '/gate/visitor/master',
       element: <VisitorsPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
     },
+
+    // ── Labour Gate-In ──────────────────────────────────────────
     {
-      path: '/gate/visitor-labour/labours',
+      path: '/gate/labour',
+      element: <LabourDashboard />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+      breadcrumb: { label: 'Labour' },
+    },
+    {
+      path: '/gate/labour/all',
+      element: <LabourAllPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+    },
+    {
+      path: '/gate/labour/inside',
+      element: <LabourInsidePage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+    },
+    {
+      path: '/gate/labour/new',
+      element: <NewLabourEntryPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.CREATE],
+    },
+    {
+      path: '/gate/labour/entry/:entryId',
+      element: <EntryDetailPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+    },
+    {
+      path: '/gate/labour/master',
       element: <LaboursPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
     },
     {
-      path: '/gate/visitor-labour/contractors',
+      path: '/gate/labour/contractors',
       element: <ContractorsPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
     },
     {
-      path: '/gate/visitor-labour/contractor/:contractorId/labours',
+      path: '/gate/labour/contractor/:contractorId/labours',
       element: <ContractorLaboursPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+    },
+
+    // ── Labour Verification ─────────────────────────────────────
+    {
+      path: '/gate/labour/verification',
+      element: <LabourVerificationDashboard />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.LABOUR_VERIFICATION.VIEW_REQUEST,
+        GATE_PERMISSIONS.LABOUR_VERIFICATION.CREATE_REQUEST,
+        GATE_PERMISSIONS.LABOUR_VERIFICATION.SUBMIT_RESPONSE,
+      ],
+    },
+    {
+      path: '/gate/labour/verification/respond/:requestId',
+      element: <DepartmentResponsePage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_VERIFICATION.SUBMIT_RESPONSE],
+    },
+    {
+      path: '/gate/labour/verification/:requestId',
+      element: <LabourVerificationDetailPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_VERIFICATION.VIEW_REQUEST],
     },
   ],
   navigation: [
@@ -470,7 +540,11 @@ export const gateModuleConfig: ModuleConfig = {
       title: 'Gate',
       icon: Truck,
       showInSidebar: true,
-      permissions: [GATE_PERMISSIONS.DASHBOARD.VIEW, GATE_PERMISSIONS.GATE_ENTRY.VIEW],
+      permissions: [
+        GATE_PERMISSIONS.DASHBOARD.VIEW,
+        GATE_PERMISSIONS.GATE_ENTRY.VIEW,
+        GATE_PERMISSIONS.LABOUR_VERIFICATION.SUBMIT_RESPONSE,
+      ],
       hasSubmenu: true,
       children: [
         {
@@ -494,9 +568,23 @@ export const gateModuleConfig: ModuleConfig = {
           permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
         },
         {
-          path: '/gate/visitor-labour',
-          title: 'Visitor/Labour',
+          path: '/gate/visitor',
+          title: 'Visitor Gate-In',
           permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+        },
+        {
+          path: '/gate/labour',
+          title: 'Labour Gate-In',
+          permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+        },
+        {
+          path: '/gate/labour/verification',
+          title: 'Labour Verification',
+          permissions: [
+            GATE_PERMISSIONS.LABOUR_VERIFICATION.VIEW_REQUEST,
+            GATE_PERMISSIONS.LABOUR_VERIFICATION.CREATE_REQUEST,
+            GATE_PERMISSIONS.LABOUR_VERIFICATION.SUBMIT_RESPONSE,
+          ],
         },
       ],
     },

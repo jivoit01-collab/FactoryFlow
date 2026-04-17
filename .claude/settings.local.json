@@ -55,7 +55,9 @@
       "Bash(cat /d/Test_CompanyJivo/FactoryFlow/src/modules/gate/api/*.ts)",
       "Bash(pip install:*)",
       "Bash(python generate_ppt.py)",
-      "Bash(grep -E \"\\\\.py$\")"
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(python manage.py makemigrations accounts --name add_department_to_user)",
+      "Bash(python manage.py makemigrations labour_verification --name initial)"
     ]
   }
 }

@@ -123,6 +123,20 @@ export const GATE_PERMISSIONS = {
     /** Search entries */
     SEARCH: 'person_gatein.can_search_entry',
   },
+
+  // ============================================
+  // LABOUR VERIFICATION PERMISSIONS
+  // ============================================
+  LABOUR_VERIFICATION: {
+    /** Create labour verification requests */
+    CREATE_REQUEST: 'labour_verification.can_create_verification_request',
+    /** View labour verification requests */
+    VIEW_REQUEST: 'labour_verification.can_view_verification_request',
+    /** Close labour verification requests */
+    CLOSE_REQUEST: 'labour_verification.can_close_verification_request',
+    /** Submit department labour count */
+    SUBMIT_RESPONSE: 'labour_verification.can_submit_department_labour',
+  },
 } as const;
 
 /**
@@ -136,6 +150,7 @@ export const GATE_MODULE_PREFIX = [
   'daily_needs_gatein',
   'maintenance_gatein',
   'construction_gatein',
+  'labour_verification',
 ] as const;
 
 /**
@@ -148,4 +163,5 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.DAILY_NEEDS)[keyof typeof GATE_PERMISSIONS.DAILY_NEEDS]
   | (typeof GATE_PERMISSIONS.MAINTENANCE)[keyof typeof GATE_PERMISSIONS.MAINTENANCE]
   | (typeof GATE_PERMISSIONS.CONSTRUCTION)[keyof typeof GATE_PERMISSIONS.CONSTRUCTION]
-  | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN];
+  | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN]
+  | (typeof GATE_PERMISSIONS.LABOUR_VERIFICATION)[keyof typeof GATE_PERMISSIONS.LABOUR_VERIFICATION];

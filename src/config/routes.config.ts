@@ -132,9 +132,13 @@ export const ROUTES = {
         path: '/gate/construction',
         title: 'Construction (Civil/Building Work)',
       },
-      CONTRACTOR_LABOR: {
-        path: '/gate/visitor-labour',
-        title: 'Visitor/Labour',
+      VISITOR: {
+        path: '/gate/visitor',
+        title: 'Visitor Gate-In',
+      },
+      LABOUR: {
+        path: '/gate/labour',
+        title: 'Labour Gate-In',
       },
     },
   },

@@ -148,7 +148,7 @@ export default function EntryDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
         <p className="text-lg">Entry not found</p>
-        <Button variant="link" onClick={() => navigate('/gate/visitor-labour')}>
+        <Button variant="link" onClick={() => navigate(-1)}>
           Go back
         </Button>
       </div>
