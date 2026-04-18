@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Card, CardContent } from '@/shared/components/ui';
@@ -10,6 +10,10 @@ interface StockLevelTableProps {
   items: StockItem[];
   isLoading: boolean;
   statusFilter?: string[];
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
 }
 
 type SortCol = keyof Pick<
@@ -35,7 +39,15 @@ function rowStatusClasses(status: StockItem['stock_status']): string {
   }
 }
 
-export function StockLevelTable({ items, isLoading, statusFilter }: StockLevelTableProps) {
+export function StockLevelTable({
+  items,
+  isLoading,
+  statusFilter,
+  page,
+  totalPages,
+  totalItems,
+  onPageChange,
+}: StockLevelTableProps) {
   const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({
     col: 'health_ratio',
     dir: 'asc',
@@ -94,9 +106,7 @@ export function StockLevelTable({ items, isLoading, statusFilter }: StockLevelTa
     return (
       <Card>
         <CardContent className="p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            No items with minimum stock thresholds found.
-          </p>
+          <p className="text-sm text-muted-foreground">No matching items found.</p>
         </CardContent>
       </Card>
     );
@@ -178,6 +188,32 @@ export function StockLevelTable({ items, isLoading, statusFilter }: StockLevelTa
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              {totalItems.toLocaleString()} items &mdash; page {page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

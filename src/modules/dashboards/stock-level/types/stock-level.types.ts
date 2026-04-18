@@ -12,6 +12,7 @@ export interface StockDashboardFilters {
   search?: string;
   warehouse?: string;
   status?: StockHealthStatus[];
+  page?: number;
 }
 
 // ============================================================================
@@ -38,6 +39,9 @@ export interface StockDashboardMeta {
   low_stock_count: number;
   critical_stock_count: number;
   fetched_at: string;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 export interface StockDashboardResponse {

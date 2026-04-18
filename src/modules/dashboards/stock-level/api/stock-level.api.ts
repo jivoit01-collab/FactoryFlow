@@ -14,11 +14,12 @@ export const stockLevelApi = {
   },
 };
 
-function buildParams(filters?: StockDashboardFilters): Record<string, string> {
+function buildParams(filters?: StockDashboardFilters): Record<string, string | number> {
   if (!filters) return {};
-  const p: Record<string, string> = {};
+  const p: Record<string, string | number> = {};
   if (filters.search) p.search = filters.search;
   if (filters.warehouse) p.warehouse = filters.warehouse;
+  if (filters.page) p.page = filters.page;
   // status filtering is done client-side (multi-select)
   return p;
 }
