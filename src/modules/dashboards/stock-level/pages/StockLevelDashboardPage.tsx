@@ -23,10 +23,15 @@ export default function StockLevelDashboardPage() {
   }, []); // Only read URL params on mount
 
   const [filters, setFilters] = useState<StockDashboardFilters>(initialFilters);
+  const [page, setPage] = useState(1);
 
-  const handleFiltersChange = useCallback((f: StockDashboardFilters) => setFilters(f), []);
+  const handleFiltersChange = useCallback((f: StockDashboardFilters) => {
+    setFilters(f);
+    setPage(1);
+  }, []);
 
-  const query = useStockLevels(filters);
+  const query = useStockLevels({ ...filters, page });
+  const meta = query.data?.meta;
 
   return (
     <div className="space-y-6 p-6">
@@ -41,17 +46,21 @@ export default function StockLevelDashboardPage() {
         defaultValues={initialFilters}
       />
 
-      {query.error && isSAPError(query.error) && (
+      {query.isError && isSAPError(query.error) && (
         <SAPUnavailableBanner error={query.error as ApiError} onRetry={query.refetch} />
       )}
 
-      {!(query.error && isSAPError(query.error)) && (
+      {!(query.isError && isSAPError(query.error)) && (
         <>
-          <StockLevelMetaCards meta={query.data?.meta} />
+          <StockLevelMetaCards meta={meta} />
           <StockLevelTable
             items={query.data?.data ?? []}
             isLoading={query.isLoading || query.isFetching}
             statusFilter={filters.status}
+            page={page}
+            totalPages={meta?.total_pages ?? 1}
+            totalItems={meta?.total_items ?? 0}
+            onPageChange={setPage}
           />
         </>
       )}
