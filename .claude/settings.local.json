@@ -57,7 +57,11 @@
       "Bash(python generate_ppt.py)",
       "Bash(grep -E \"\\\\.py$\")",
       "Bash(pip list:*)",
-      "Bash(awk '{print $NF}')"
+      "Bash(awk '{print $NF}')",
+      "Bash(python manage.py makemigrations barcode)",
+      "Bash(python manage.py migrate barcode)",
+      "Bash(npm ls:*)",
+      "Bash(python -c ':*)"
     ]
   }
 }

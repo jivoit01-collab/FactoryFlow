@@ -49,3 +49,10 @@ export {
   type WarehousePermission,
 } from './warehouse.permissions';
 
+// Barcode Module
+export {
+  BARCODE_MODULE_PREFIX,
+  BARCODE_PERMISSIONS,
+  type BarcodePermission,
+} from './barcode.permissions';
+

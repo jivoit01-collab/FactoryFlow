@@ -387,6 +387,37 @@ export const API_ENDPOINTS = {
     FG_RECEIPT_RECEIVE: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/receive/`,
     FG_RECEIPT_POST_SAP: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/post-to-sap/`,
   },
+
+  BARCODE: {
+    // Boxes
+    BOXES_GENERATE: '/barcode/boxes/generate/',
+    BOXES: '/barcode/boxes/',
+    BOX_DETAIL: (boxId: number) => `/barcode/boxes/${boxId}/`,
+    BOX_VOID: (boxId: number) => `/barcode/boxes/${boxId}/void/`,
+    // Pallets
+    PALLET_CREATE: '/barcode/pallets/create/',
+    PALLETS: '/barcode/pallets/',
+    PALLET_DETAIL: (palletId: number) => `/barcode/pallets/${palletId}/`,
+    PALLET_VOID: (palletId: number) => `/barcode/pallets/${palletId}/void/`,
+    PALLET_MOVE: (palletId: number) => `/barcode/pallets/${palletId}/move/`,
+    PALLET_CLEAR: (palletId: number) => `/barcode/pallets/${palletId}/clear/`,
+    PALLET_SPLIT: (palletId: number) => `/barcode/pallets/${palletId}/split/`,
+    PALLET_ADD_BOXES: (palletId: number) => `/barcode/pallets/${palletId}/add-boxes/`,
+    PALLET_REMOVE_BOXES: (palletId: number) => `/barcode/pallets/${palletId}/remove-boxes/`,
+    TRANSFER_BOX: '/barcode/transfers/box/',
+    // Print
+    PRINT_BOX: (boxId: number) => `/barcode/print/box/${boxId}/`,
+    PRINT_PALLET: (palletId: number) => `/barcode/print/pallet/${palletId}/`,
+    PRINT_BULK: '/barcode/print/bulk/',
+    PRINT_HISTORY: '/barcode/print/history/',
+    // Dismantle & Repack
+    DISMANTLE_PALLET: (palletId: number) => `/barcode/pallets/${palletId}/dismantle/`,
+    DISMANTLE_BOX: (boxId: number) => `/barcode/boxes/${boxId}/dismantle/`,
+    REPACK: '/barcode/repack/',
+    // Loose Stock
+    LOOSE: '/barcode/loose/',
+    LOOSE_DETAIL: (looseId: number) => `/barcode/loose/${looseId}/`,
+  },
 } as const;
 
 export const HTTP_STATUS = {

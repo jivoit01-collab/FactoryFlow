@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Edit, Plus, Trash2, Settings2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
   Button,
   Card,
@@ -29,8 +30,9 @@ import {
   useCreateLineConfig,
   useUpdateLineConfig,
   useDeleteLineConfig,
+  useSearchSAPItems,
 } from '../api';
-import type { LineSkuConfig } from '../types';
+import type { LineSkuConfig, SAPItem } from '../types';
 
 const EMPTY_FORM = {
   config_name: '',
@@ -56,6 +58,11 @@ function LineManagementPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LineSkuConfig | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+
+  // SAP Item search for SKU Code
+  const [skuSearch, setSkuSearch] = useState('');
+  const { data: sapItems = [], isLoading: loadingItems } = useSearchSAPItems(skuSearch);
+  const handleSkuSearch = useCallback((s: string) => setSkuSearch(s), []);
 
   const openDialog = (config?: LineSkuConfig) => {
     if (config) {
@@ -305,24 +312,38 @@ function LineManagementPage() {
                 This name appears in the dropdown when starting a run
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>SKU Code</Label>
-                <Input
-                  value={form.sku_code}
-                  onChange={(e) => setForm({ ...form, sku_code: e.target.value })}
-                  placeholder="e.g., FG0000001"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>SKU / Product Name</Label>
-                <Input
-                  value={form.sku_name}
-                  onChange={(e) => setForm({ ...form, sku_name: e.target.value })}
-                  placeholder="e.g., Olive Oil 1L"
-                />
-              </div>
-            </div>
+            <SearchableSelect<SAPItem>
+              key={editing?.id ?? 'new'}
+              items={sapItems}
+              isLoading={loadingItems && skuSearch.length >= 2}
+              getItemKey={(item) => item.ItemCode}
+              getItemLabel={(item) => `${item.ItemCode} — ${item.ItemName}`}
+              filterFn={() => true}
+              renderItem={(item) => (
+                <div className="flex items-center justify-between w-full">
+                  <div>
+                    <span className="font-mono text-xs">{item.ItemCode}</span>
+                    <span className="ml-2 text-sm">{item.ItemName}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{item.UomCode}</span>
+                </div>
+              )}
+              placeholder="Search SAP item by code or name..."
+              label="SKU / Product"
+              inputId="line-config-sku"
+              loadingText="Searching SAP..."
+              emptyText="Type at least 2 characters to search"
+              notFoundText="No items found"
+              value={form.sku_code ? `${form.sku_code} — ${form.sku_name}` : ''}
+              defaultDisplayText={form.sku_code ? `${form.sku_code} — ${form.sku_name}` : ''}
+              onSearchChange={handleSkuSearch}
+              onItemSelect={(item) => {
+                setForm({ ...form, sku_code: item.ItemCode, sku_name: item.ItemName });
+              }}
+              onClear={() => {
+                setForm({ ...form, sku_code: '', sku_name: '' });
+              }}
+            />
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Rated Speed (cases/hr)</Label>
