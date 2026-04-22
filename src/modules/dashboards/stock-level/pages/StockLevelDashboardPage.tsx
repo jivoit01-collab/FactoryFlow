@@ -61,6 +61,7 @@ export default function StockLevelDashboardPage() {
             totalPages={meta?.total_pages ?? 1}
             totalItems={meta?.total_items ?? 0}
             onPageChange={setPage}
+            selectedWarehouses={filters.warehouse}
           />
         </>
       )}

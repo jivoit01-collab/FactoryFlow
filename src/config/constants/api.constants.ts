@@ -207,6 +207,7 @@ export const API_ENDPOINTS = {
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
+    ITEM_DETAIL: (itemCode: string) => `/dashboards/stock/${itemCode}/warehouses/`,
   },
   // Inventory Age & Value Dashboard
   INVENTORY_AGE_DASHBOARD: {

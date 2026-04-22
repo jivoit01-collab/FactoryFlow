@@ -28,6 +28,10 @@ export interface StockItem {
   uom: string;
   stock_status: StockHealthStatus;
   health_ratio: number;
+  /** Number of warehouses in this group (>1 = grouped row) */
+  warehouse_count?: number;
+  /** True when any child warehouse has a worse status than the aggregate */
+  has_warning?: boolean;
 }
 
 // ============================================================================
@@ -49,4 +53,12 @@ export interface StockDashboardMeta {
 export interface StockDashboardResponse {
   data: StockItem[];
   meta: StockDashboardMeta;
+}
+
+// ============================================================================
+// Item Detail (expand)
+// ============================================================================
+
+export interface StockItemDetailResponse {
+  data: StockItem[];
 }

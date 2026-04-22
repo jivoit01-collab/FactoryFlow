@@ -1,10 +1,11 @@
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react';
+import { Fragment, useMemo, useState } from 'react';
 
 import { Card, CardContent } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import type { StockItem } from '../types';
+import { StockItemDetailPanel } from './StockItemDetailPanel';
 
 interface StockLevelTableProps {
   items: StockItem[];
@@ -13,6 +14,8 @@ interface StockLevelTableProps {
   totalPages: number;
   totalItems: number;
   onPageChange: (page: number) => void;
+  /** Selected warehouse codes — needed for expand detail queries */
+  selectedWarehouses?: string[];
 }
 
 type SortCol = keyof Pick<
@@ -40,11 +43,16 @@ export function StockLevelTable({
   totalPages,
   totalItems,
   onPageChange,
+  selectedWarehouses = [],
 }: StockLevelTableProps) {
   const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({
     col: 'health_ratio',
     dir: 'asc',
   });
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+
+  const isGrouped = selectedWarehouses.length >= 2;
+  const colCount = isGrouped ? 9 : 8;
 
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -145,34 +153,71 @@ export function StockLevelTable({
                   Health <SortIcon col="health_ratio" />
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                {isGrouped && <th className="w-10 px-4 py-3" />}
               </tr>
             </thead>
             <tbody>
-              {sorted.map((item) => (
-                <tr
-                  key={`${item.item_code}-${item.warehouse}`}
-                  className={cn('border-b transition-colors', rowStatusClasses(item.stock_status))}
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {item.item_code}
-                  </td>
-                  <td className="px-4 py-3 font-medium">{item.item_name}</td>
-                  <td className="px-4 py-3">{item.warehouse}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {item.on_hand.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {item.min_stock.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{item.uom}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {(item.health_ratio * 100).toFixed(0)}%
-                  </td>
-                  <td className="px-4 py-3">
-                    <StockHealthBadge status={item.stock_status} />
-                  </td>
-                </tr>
-              ))}
+              {sorted.map((item) => {
+                const canExpand = isGrouped && (item.warehouse_count ?? 1) > 1;
+                const isExpanded = canExpand && expandedItem === item.item_code;
+
+                return (
+                  <Fragment key={`${item.item_code}-${item.warehouse}`}>
+                    <tr className={cn('border-b transition-colors', rowStatusClasses(item.stock_status))}>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {item.item_code}
+                      </td>
+                      <td className="px-4 py-3 font-medium">{item.item_name}</td>
+                      <td className="px-4 py-3">{item.warehouse}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {item.on_hand.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {item.min_stock.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{item.uom}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {(item.health_ratio * 100).toFixed(0)}%
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1">
+                          <StockHealthBadge status={item.stock_status} />
+                          {item.has_warning && (
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                          )}
+                        </span>
+                      </td>
+                      {isGrouped && (
+                        <td className="px-4 py-3">
+                          {canExpand && (
+                            <button
+                              className="rounded p-1 hover:bg-muted"
+                              onClick={() => setExpandedItem(isExpanded ? null : item.item_code)}
+                              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-muted/20">
+                        <td colSpan={colCount} className="px-2 py-1">
+                          <StockItemDetailPanel
+                            itemCode={item.item_code}
+                            warehouses={selectedWarehouses}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
