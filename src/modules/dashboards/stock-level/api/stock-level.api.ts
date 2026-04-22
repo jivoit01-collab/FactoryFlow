@@ -18,8 +18,8 @@ function buildParams(filters?: StockDashboardFilters): Record<string, string | n
   if (!filters) return {};
   const p: Record<string, string | number> = {};
   if (filters.search) p.search = filters.search;
-  if (filters.warehouse) p.warehouse = filters.warehouse;
+  if (filters.warehouse?.length) p.warehouse = filters.warehouse.join(',');
   if (filters.page) p.page = filters.page;
-  // status filtering is done client-side (multi-select)
+  if (filters.status?.length) p.status = filters.status.join(',');
   return p;
 }

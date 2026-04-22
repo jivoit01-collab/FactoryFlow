@@ -13,27 +13,28 @@ interface StockLevelFiltersProps {
   onFiltersChange: (filters: StockDashboardFilters) => void;
   isFetching?: boolean;
   defaultValues?: StockDashboardFilters;
+  warehouses?: string[];
 }
 
 interface FiltersForm {
   search: string;
-  warehouse: string;
+  warehouse: string[];
   status: string[];
 }
 
 function buildFilters(values: Partial<FiltersForm>): StockDashboardFilters {
   const filters: StockDashboardFilters = {};
   if (values.search) filters.search = values.search;
-  if (values.warehouse) filters.warehouse = values.warehouse;
+  if (values.warehouse?.length) filters.warehouse = values.warehouse;
   if (values.status?.length) filters.status = values.status as StockDashboardFilters['status'];
   return filters;
 }
 
-export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues }: StockLevelFiltersProps) {
+export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues, warehouses = [] }: StockLevelFiltersProps) {
   const { register, watch, reset, control } = useForm<FiltersForm>({
     defaultValues: {
       search: defaultValues?.search ?? '',
-      warehouse: defaultValues?.warehouse ?? '',
+      warehouse: defaultValues?.warehouse ?? [],
       status: defaultValues?.status ?? [],
     },
   });
@@ -42,7 +43,7 @@ export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues }
 
   useEffect(() => {
     const subscription = watch((values, { name }) => {
-      const isTextField = name === 'search' || name === 'warehouse';
+      const isTextField = name === 'search';
 
       if (isTextField) {
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -61,7 +62,7 @@ export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues }
   }, [watch, onFiltersChange]);
 
   function handleReset() {
-    reset({ search: '', warehouse: '', status: [] });
+    reset({ search: '', warehouse: [], status: [] });
     onFiltersChange({});
   }
 
@@ -82,12 +83,19 @@ export function StockLevelFilters({ onFiltersChange, isFetching, defaultValues }
       {/* Warehouse */}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="stock-filter-warehouse" className="text-xs">Warehouse</Label>
-        <Input
-          id="stock-filter-warehouse"
-          type="text"
-          placeholder="e.g. WH-01"
-          className="w-28"
-          {...register('warehouse')}
+        <Controller
+          name="warehouse"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              id="stock-filter-warehouse"
+              options={warehouses.map((w) => ({ label: w, value: w }))}
+              selected={field.value}
+              onChange={field.onChange}
+              placeholder="All"
+              className="w-44"
+            />
+          )}
         />
       </div>
 

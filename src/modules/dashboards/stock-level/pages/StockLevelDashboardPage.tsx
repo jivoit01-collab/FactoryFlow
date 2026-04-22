@@ -44,6 +44,7 @@ export default function StockLevelDashboardPage() {
         onFiltersChange={handleFiltersChange}
         isFetching={query.isFetching}
         defaultValues={initialFilters}
+        warehouses={meta?.warehouses ?? []}
       />
 
       {query.isError && isSAPError(query.error) && (
@@ -56,7 +57,6 @@ export default function StockLevelDashboardPage() {
           <StockLevelTable
             items={query.data?.data ?? []}
             isLoading={query.isLoading || query.isFetching}
-            statusFilter={filters.status}
             page={page}
             totalPages={meta?.total_pages ?? 1}
             totalItems={meta?.total_items ?? 0}

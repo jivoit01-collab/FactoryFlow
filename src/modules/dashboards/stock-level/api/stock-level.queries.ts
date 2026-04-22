@@ -13,9 +13,7 @@ export const STOCK_LEVEL_QUERY_KEYS = {
   all: ['stock-dashboard'] as const,
 
   list: (filters?: StockDashboardFilters, companyId?: number | string) => {
-    // Omit status from the query key — status filtering is client-side
-    const { status, ...apiFilters } = filters ?? {};
-    return [...STOCK_LEVEL_QUERY_KEYS.all, 'list', companyId, apiFilters] as const;
+    return [...STOCK_LEVEL_QUERY_KEYS.all, 'list', companyId, filters ?? {}] as const;
   },
 };
 
@@ -41,11 +39,7 @@ export function useStockLevels(filters?: StockDashboardFilters) {
       filters,
       currentCompany?.company_id
     ),
-    queryFn: () => {
-      // Omit status — filtering is done client-side
-      const { status, ...apiFilters } = filters ?? {};
-      return stockLevelApi.getStockLevels(apiFilters);
-    },
+    queryFn: () => stockLevelApi.getStockLevels(filters),
     staleTime: STOCK_LEVEL_STALE_TIME,
     retry: sapRetry,
   });

@@ -9,7 +9,6 @@ import type { StockItem } from '../types';
 interface StockLevelTableProps {
   items: StockItem[];
   isLoading: boolean;
-  statusFilter?: string[];
   page: number;
   totalPages: number;
   totalItems: number;
@@ -21,19 +20,14 @@ type SortCol = keyof Pick<
   'item_code' | 'item_name' | 'warehouse' | 'on_hand' | 'min_stock' | 'health_ratio'
 >;
 
-/**
- * Returns row background classes based on stock health status.
- *
- * - healthy:  no highlight
- * - low:      soft red (below min stock)
- * - critical: intense red (below 60% of min stock — "about to die")
- */
 function rowStatusClasses(status: StockItem['stock_status']): string {
   switch (status) {
     case 'critical':
       return 'bg-red-100 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-950/80';
     case 'low':
       return 'bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50';
+    case 'unset':
+      return 'bg-muted/20 hover:bg-muted/40 dark:bg-muted/10 dark:hover:bg-muted/20';
     default:
       return 'hover:bg-muted/30';
   }
@@ -42,7 +36,6 @@ function rowStatusClasses(status: StockItem['stock_status']): string {
 export function StockLevelTable({
   items,
   isLoading,
-  statusFilter,
   page,
   totalPages,
   totalItems,
@@ -53,19 +46,14 @@ export function StockLevelTable({
     dir: 'asc',
   });
 
-  const filtered = useMemo(() => {
-    if (!statusFilter?.length) return items;
-    return items.filter((item) => statusFilter.includes(item.stock_status));
-  }, [items, statusFilter]);
-
   const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
+    return [...items].sort((a, b) => {
       const aVal = a[sort.col] ?? '';
       const bVal = b[sort.col] ?? '';
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sort.dir === 'asc' ? cmp : -cmp;
     });
-  }, [filtered, sort]);
+  }, [items, sort]);
 
   function toggleSort(col: SortCol) {
     setSort((prev) =>
@@ -232,6 +220,10 @@ function StockHealthBadge({ status }: { status: StockItem['stock_status'] }) {
     critical: {
       label: 'Critical',
       classes: 'bg-red-200 text-red-900 font-semibold dark:bg-red-900/60 dark:text-red-300',
+    },
+    unset: {
+      label: 'No Minimum',
+      classes: 'bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400',
     },
   } as const;
 

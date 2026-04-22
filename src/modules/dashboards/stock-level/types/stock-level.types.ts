@@ -2,7 +2,7 @@
 // Stock Status
 // ============================================================================
 
-export type StockHealthStatus = 'healthy' | 'low' | 'critical';
+export type StockHealthStatus = 'healthy' | 'low' | 'critical' | 'unset';
 
 // ============================================================================
 // Filters
@@ -10,7 +10,7 @@ export type StockHealthStatus = 'healthy' | 'low' | 'critical';
 
 export interface StockDashboardFilters {
   search?: string;
-  warehouse?: string;
+  warehouse?: string[];
   status?: StockHealthStatus[];
   page?: number;
 }
@@ -36,8 +36,10 @@ export interface StockItem {
 
 export interface StockDashboardMeta {
   total_items: number;
+  healthy_count: number;
   low_stock_count: number;
   critical_stock_count: number;
+  warehouses: string[];
   fetched_at: string;
   page: number;
   page_size: number;

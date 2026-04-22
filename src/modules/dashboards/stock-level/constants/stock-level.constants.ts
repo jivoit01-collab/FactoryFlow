@@ -7,6 +7,7 @@ export const STOCK_STATUS_FILTER_OPTIONS = [
   { value: 'healthy', label: 'Healthy' },
   { value: 'low', label: 'Low' },
   { value: 'critical', label: 'Critical' },
+  { value: 'unset', label: 'No Minimum' },
 ] as const;
 
 // ============================================================================
