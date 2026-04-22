@@ -1,10 +1,10 @@
 import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useState } from 'react';
 
 import { Card, CardContent } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import type { StockItem } from '../types';
+import type { StockItem, StockSortCol } from '../types';
 import { StockItemDetailPanel } from './StockItemDetailPanel';
 
 interface StockLevelTableProps {
@@ -14,14 +14,11 @@ interface StockLevelTableProps {
   totalPages: number;
   totalItems: number;
   onPageChange: (page: number) => void;
-  /** Selected warehouse codes — needed for expand detail queries */
   selectedWarehouses?: string[];
+  sortCol: StockSortCol;
+  sortDir: 'asc' | 'desc';
+  onSortChange: (col: StockSortCol, dir: 'asc' | 'desc') => void;
 }
-
-type SortCol = keyof Pick<
-  StockItem,
-  'item_code' | 'item_name' | 'warehouse' | 'on_hand' | 'min_stock' | 'health_ratio'
->;
 
 function rowStatusClasses(status: StockItem['stock_status']): string {
   switch (status) {
@@ -44,37 +41,27 @@ export function StockLevelTable({
   totalItems,
   onPageChange,
   selectedWarehouses = [],
+  sortCol,
+  sortDir,
+  onSortChange,
 }: StockLevelTableProps) {
-  const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({
-    col: 'health_ratio',
-    dir: 'asc',
-  });
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   const isGrouped = selectedWarehouses.length >= 2;
   const colCount = isGrouped ? 9 : 8;
 
-  const sorted = useMemo(() => {
-    return [...items].sort((a, b) => {
-      const aVal = a[sort.col] ?? '';
-      const bVal = b[sort.col] ?? '';
-      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-      return sort.dir === 'asc' ? cmp : -cmp;
-    });
-  }, [items, sort]);
-
-  function toggleSort(col: SortCol) {
-    setSort((prev) =>
-      prev.col === col
-        ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
-        : { col, dir: 'asc' },
-    );
+  function toggleSort(col: StockSortCol) {
+    if (sortCol === col) {
+      onSortChange(col, sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      onSortChange(col, 'asc');
+    }
   }
 
-  function SortIcon({ col }: { col: SortCol }) {
-    if (sort.col !== col)
+  function SortIcon({ col }: { col: StockSortCol }) {
+    if (sortCol !== col)
       return <ChevronsUpDown className="ml-1 inline h-3 w-3 text-muted-foreground/50" />;
-    return sort.dir === 'asc' ? (
+    return sortDir === 'asc' ? (
       <ChevronUp className="ml-1 inline h-3 w-3" />
     ) : (
       <ChevronDown className="ml-1 inline h-3 w-3" />
@@ -98,7 +85,7 @@ export function StockLevelTable({
     );
   }
 
-  if (sorted.length === 0) {
+  if (items.length === 0) {
     return (
       <Card>
         <CardContent className="p-12 text-center">
@@ -157,7 +144,7 @@ export function StockLevelTable({
               </tr>
             </thead>
             <tbody>
-              {sorted.map((item) => {
+              {items.map((item) => {
                 const canExpand = isGrouped && (item.warehouse_count ?? 1) > 1;
                 const isExpanded = canExpand && expandedItem === item.item_code;
 

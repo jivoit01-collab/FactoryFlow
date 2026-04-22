@@ -7,7 +7,7 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { useStockLevels } from '../api';
 import { StockLevelFilters, StockLevelMetaCards, StockLevelTable } from '../components';
 import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
-import type { StockDashboardFilters } from '../types';
+import type { StockDashboardFilters, StockSortCol } from '../types';
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;
@@ -24,13 +24,22 @@ export default function StockLevelDashboardPage() {
 
   const [filters, setFilters] = useState<StockDashboardFilters>(initialFilters);
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<{ col: StockSortCol; dir: 'asc' | 'desc' }>({
+    col: 'health_ratio',
+    dir: 'asc',
+  });
 
   const handleFiltersChange = useCallback((f: StockDashboardFilters) => {
     setFilters(f);
     setPage(1);
   }, []);
 
-  const query = useStockLevels({ ...filters, page });
+  const handleSortChange = useCallback((col: StockSortCol, dir: 'asc' | 'desc') => {
+    setSort({ col, dir });
+    setPage(1);
+  }, []);
+
+  const query = useStockLevels({ ...filters, sort_by: sort.col, sort_dir: sort.dir, page });
   const meta = query.data?.meta;
 
   return (
@@ -62,6 +71,9 @@ export default function StockLevelDashboardPage() {
             totalItems={meta?.total_items ?? 0}
             onPageChange={setPage}
             selectedWarehouses={filters.warehouse}
+            sortCol={sort.col}
+            sortDir={sort.dir}
+            onSortChange={handleSortChange}
           />
         </>
       )}

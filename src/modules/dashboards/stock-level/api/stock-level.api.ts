@@ -26,6 +26,8 @@ function buildParams(filters?: StockDashboardFilters): Record<string, string | n
   const p: Record<string, string | number> = {};
   if (filters.search) p.search = filters.search;
   if (filters.warehouse?.length) p.warehouse = filters.warehouse.join(',');
+  if (filters.sort_by) p.sort_by = filters.sort_by;
+  if (filters.sort_dir) p.sort_dir = filters.sort_dir;
   if (filters.page) p.page = filters.page;
   if (filters.status?.length) p.status = filters.status.join(',');
   return p;

@@ -8,10 +8,14 @@ export type StockHealthStatus = 'healthy' | 'low' | 'critical' | 'unset';
 // Filters
 // ============================================================================
 
+export type StockSortCol = 'item_code' | 'item_name' | 'warehouse' | 'on_hand' | 'min_stock' | 'health_ratio';
+
 export interface StockDashboardFilters {
   search?: string;
   warehouse?: string[];
   status?: StockHealthStatus[];
+  sort_by?: StockSortCol;
+  sort_dir?: 'asc' | 'desc';
   page?: number;
 }
 
