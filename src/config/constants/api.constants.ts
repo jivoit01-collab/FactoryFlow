@@ -417,6 +417,13 @@ export const API_ENDPOINTS = {
     // Loose Stock
     LOOSE: '/barcode/loose/',
     LOOSE_DETAIL: (looseId: number) => `/barcode/loose/${looseId}/`,
+    // Scan
+    SCAN: '/barcode/scan/',
+    SCAN_HISTORY: '/barcode/scan/history/',
+    LOOKUP: (barcode: string) => `/barcode/lookup/${encodeURIComponent(barcode)}/`,
+    // Production Integration
+    PRODUCTION_LABELS: (runId: number) => `/barcode/production/${runId}/generate-labels/`,
+    PRODUCTION_PALLET: (runId: number) => `/barcode/production/${runId}/create-pallet/`,
   },
 } as const;
 

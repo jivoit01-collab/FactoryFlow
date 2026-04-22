@@ -61,7 +61,8 @@
       "Bash(python manage.py makemigrations barcode)",
       "Bash(python manage.py migrate barcode)",
       "Bash(npm ls:*)",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

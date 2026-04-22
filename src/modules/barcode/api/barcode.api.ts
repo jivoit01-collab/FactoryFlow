@@ -26,6 +26,9 @@ import type {
   PrintHistoryFilters,
   PrintRequestPayload,
   RepackPayload,
+  ScanRequestPayload,
+  ScanResponse,
+  LookupResponse,
   VoidPayload,
 } from '../types';
 
@@ -164,6 +167,20 @@ export const barcodeApi = {
 
   async getLooseStockDetail(looseId: number): Promise<LooseStock> {
     const res = await apiClient.get<LooseStock>(EP.LOOSE_DETAIL(looseId));
+    return res.data;
+  },
+
+  // =========================================================================
+  // Scan
+  // =========================================================================
+
+  async processScan(data: ScanRequestPayload): Promise<ScanResponse> {
+    const res = await apiClient.post<ScanResponse>(EP.SCAN, data);
+    return res.data;
+  },
+
+  async lookupBarcode(barcode: string): Promise<LookupResponse> {
+    const res = await apiClient.get<LookupResponse>(EP.LOOKUP(barcode));
     return res.data;
   },
 };

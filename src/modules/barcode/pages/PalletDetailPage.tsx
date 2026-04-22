@@ -39,7 +39,6 @@ export default function PalletDetailPage() {
   const { data: pallet, isLoading } = usePalletDetail(palletId ? Number(palletId) : null);
   const voidMutation = useVoidPallet();
   const addBoxesMutation = useAddBoxesToPallet();
-
   // Add boxes dialog
   const [addBoxesOpen, setAddBoxesOpen] = useState(false);
   const [selectedAddBoxIds, setSelectedAddBoxIds] = useState<number[]>([]);

@@ -137,8 +137,10 @@ export interface GenerateBoxesPayload {
   qty: number;
   box_count: number;
   uom?: string;
+  g_weight?: number;
+  n_weight?: number;
   mfg_date: string;
-  exp_date: string;
+  exp_date?: string;
   warehouse: string;
   production_line?: string;
   production_run_id?: number;
@@ -314,4 +316,34 @@ export interface LooseStockFilters {
   warehouse?: string;
   reason?: string;
   search?: string;
+}
+
+// ============================================================================
+// Scan
+// ============================================================================
+
+export type ScanType = 'RECEIVE' | 'PUTAWAY' | 'PICK' | 'COUNT' | 'TRANSFER' | 'SHIP' | 'RETURN' | 'LOOKUP';
+
+export interface ScanRequestPayload {
+  barcode_raw: string;
+  scan_type?: ScanType;
+  context_ref_type?: string;
+  context_ref_id?: number | null;
+  device_info?: string;
+}
+
+export interface ScanResponse {
+  scan_id: number;
+  result: 'SUCCESS' | 'NOT_FOUND' | 'DUPLICATE' | 'ERROR';
+  entity_type: string;
+  entity_id: string | null;
+  entity_data: Record<string, unknown> | null;
+  barcode_raw: string;
+  barcode_parsed: Record<string, unknown>;
+}
+
+export interface LookupResponse {
+  entity_type: string;
+  entity_id: number | null;
+  entity_data: Record<string, unknown> | null;
 }

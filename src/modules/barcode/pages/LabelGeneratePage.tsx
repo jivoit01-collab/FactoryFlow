@@ -48,6 +48,8 @@ export default function LabelGeneratePage() {
     exp_date: '',
     warehouse: '',
     production_line: '',
+    g_weight: '',
+    n_weight: '',
   });
 
   const updateForm = (field: string, value: string) =>
@@ -75,7 +77,9 @@ export default function LabelGeneratePage() {
         box_count: Number(form.box_count),
         uom: form.uom,
         mfg_date: form.mfg_date,
-        exp_date: form.exp_date,
+        ...(form.exp_date ? { exp_date: form.exp_date } : {}),
+        ...(form.g_weight ? { g_weight: Number(form.g_weight) } : {}),
+        ...(form.n_weight ? { n_weight: Number(form.n_weight) } : {}),
         warehouse: form.warehouse,
         production_line: form.production_line,
       });
@@ -210,8 +214,16 @@ export default function LabelGeneratePage() {
               <input type="date" className="w-full border rounded px-3 py-2 text-sm mt-1" value={form.mfg_date} onChange={(e) => updateForm('mfg_date', e.target.value)} />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Exp Date *</label>
+              <label className="text-xs font-medium text-muted-foreground">Exp Date</label>
               <input type="date" className="w-full border rounded px-3 py-2 text-sm mt-1" value={form.exp_date} onChange={(e) => updateForm('exp_date', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">G.Weight</label>
+              <input type="number" step="0.01" className="w-full border rounded px-3 py-2 text-sm mt-1" value={form.g_weight} onChange={(e) => updateForm('g_weight', e.target.value)} placeholder="Gross weight" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">N.Weight</label>
+              <input type="number" step="0.01" className="w-full border rounded px-3 py-2 text-sm mt-1" value={form.n_weight} onChange={(e) => updateForm('n_weight', e.target.value)} placeholder="Net weight" />
             </div>
             <div>
               <SearchableSelect<WarehouseOption>
@@ -245,7 +257,7 @@ export default function LabelGeneratePage() {
           </div>
 
           <div className="flex gap-2 mt-4">
-            <Button onClick={handleGenerate} disabled={generateMutation.isPending || !form.item_code || !form.batch_number || !form.qty || !form.box_count || !form.mfg_date || !form.exp_date || !form.warehouse}>
+            <Button onClick={handleGenerate} disabled={generateMutation.isPending || !form.item_code || !form.batch_number || !form.qty || !form.box_count || !form.mfg_date || !form.warehouse}>
               <Plus className="h-4 w-4 mr-1" />
               {generateMutation.isPending ? 'Generating...' : 'Generate Boxes'}
             </Button>

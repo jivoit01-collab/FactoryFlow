@@ -1,17 +1,14 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useReactToPrint } from 'react-to-print';
-import { ArrowLeft, Package, Clock, XCircle, Link2, Plus, Printer } from 'lucide-react';
+import { ArrowLeft, Package, Clock, XCircle, Link2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Card, CardContent, Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui';
 
-import { useBoxDetail, useVoidBox, usePallets, useAddBoxesToPallet, useCreatePallet, usePrintBoxLabel } from '../api';
-import BoxLabel from '../components/BoxLabel';
-import type { BoxMovementType, Pallet, LabelData } from '../types';
-import type { BoxLabelData } from '../components/BoxLabel';
+import { useBoxDetail, useVoidBox, usePallets, useAddBoxesToPallet, useCreatePallet } from '../api';
+import type { BoxMovementType, Pallet } from '../types';
 
 const MOVEMENT_COLORS: Record<BoxMovementType, string> = {
   CREATE: 'text-green-600',
@@ -29,32 +26,11 @@ export default function BoxDetailPage() {
   const voidMutation = useVoidBox();
   const addBoxesMutation = useAddBoxesToPallet();
   const createPalletMutation = useCreatePallet();
-  const printMutation = usePrintBoxLabel();
-
-  // Print label
-  const [printLabelData, setPrintLabelData] = useState<LabelData | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
-  const triggerPrint = useReactToPrint({ contentRef: printRef, documentTitle: 'Box Label' });
-
-  const handlePrintLabel = async () => {
-    if (!box) return;
-    try {
-      const label = await printMutation.mutateAsync({
-        boxId: box.id,
-        data: { print_type: 'ORIGINAL' },
-      });
-      setPrintLabelData(label);
-      toast.success('Label ready — printing...');
-      setTimeout(() => triggerPrint(), 300);
-    } catch (err: unknown) {
-      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to print');
-    }
-  };
-
   // Link to pallet dialog
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [palletSearch, setPalletSearch] = useState('');
   const [selectedPalletId, setSelectedPalletId] = useState<number | null>(null);
+  const handlePalletSearch = useCallback((s: string) => setPalletSearch(s), []);
 
   const { data: searchPallets = [], isLoading: loadingPallets } = usePallets(
     linkDialogOpen && palletSearch.length >= 2 ? { search: palletSearch, status: 'ACTIVE' } : undefined
@@ -171,9 +147,6 @@ export default function BoxDetailPage() {
       {/* Actions */}
       {(box.status === 'ACTIVE' || box.status === 'PARTIAL') && (
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={handlePrintLabel} disabled={printMutation.isPending}>
-            <Printer className="h-4 w-4 mr-1" /> {printMutation.isPending ? 'Printing...' : 'Print Label'}
-          </Button>
           {!box.pallet && (
             <Button size="sm" onClick={() => { setLinkDialogOpen(true); setSelectedPalletId(null); }}>
               <Link2 className="h-4 w-4 mr-1" /> Link to Pallet
@@ -184,13 +157,6 @@ export default function BoxDetailPage() {
           </Button>
         </div>
       )}
-
-      {/* Hidden print area */}
-      <div className="hidden">
-        <div ref={printRef}>
-          {printLabelData?.type === 'BOX' && <BoxLabel data={printLabelData as BoxLabelData} />}
-        </div>
-      </div>
 
       {/* Traceability: Dismantled Into */}
       {box.dismantled_into && box.dismantled_into.length > 0 && (
@@ -328,7 +294,7 @@ export default function BoxDetailPage() {
               loadingText="Searching..."
               emptyText="Type at least 2 characters"
               notFoundText="No active pallets found"
-              onSearchChange={useCallback((s: string) => setPalletSearch(s), [])}
+              onSearchChange={handlePalletSearch}
               onItemSelect={(p) => setSelectedPalletId(p.id)}
               onClear={() => setSelectedPalletId(null)}
             />

@@ -18,6 +18,7 @@ import type {
   PrintHistoryFilters,
   PrintRequestPayload,
   RepackPayload,
+  ScanRequestPayload,
   VoidPayload,
 } from '../types';
 import { barcodeApi } from './barcode.api';
@@ -285,5 +286,23 @@ export function useLooseStockDetail(looseId: number | null) {
     queryKey: BARCODE_QUERY_KEYS.looseStockDetail(looseId!),
     queryFn: () => barcodeApi.getLooseStockDetail(looseId!),
     enabled: looseId !== null,
+  });
+}
+
+// ============================================================================
+// Scan
+// ============================================================================
+
+export function useProcessScan() {
+  return useMutation({
+    mutationFn: (data: ScanRequestPayload) => barcodeApi.processScan(data),
+  });
+}
+
+export function useBarcodeLookup(barcode: string | null) {
+  return useQuery({
+    queryKey: [...BARCODE_QUERY_KEYS.all, 'lookup', barcode] as const,
+    queryFn: () => barcodeApi.lookupBarcode(barcode!),
+    enabled: !!barcode,
   });
 }

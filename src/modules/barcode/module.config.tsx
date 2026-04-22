@@ -15,6 +15,9 @@ const LabelGeneratePage = lazy(() => import('./pages/LabelGeneratePage'));
 const ReprintPage = lazy(() => import('./pages/ReprintPage'));
 const PrintHistoryPage = lazy(() => import('./pages/PrintHistoryPage'));
 
+// Scan
+const ScanPage = lazy(() => import('./pages/ScanPage'));
+
 // Pallet Operations
 const PalletMovePage = lazy(() => import('./pages/PalletMovePage'));
 const PalletTransferPage = lazy(() => import('./pages/PalletTransferPage'));
@@ -74,6 +77,13 @@ export const barcodeModuleConfig: ModuleConfig = {
     {
       path: '/barcode/print-history',
       element: <PrintHistoryPage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
+    },
+    // Scan
+    {
+      path: '/barcode/scan',
+      element: <ScanPage />,
       layout: 'main',
       permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
     },
@@ -138,6 +148,11 @@ export const barcodeModuleConfig: ModuleConfig = {
         {
           path: '/barcode/boxes',
           title: 'Boxes',
+          permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
+        },
+        {
+          path: '/barcode/scan',
+          title: 'Scan',
           permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
         },
         {
