@@ -27,7 +27,9 @@ export function ManpowerSection({
 }: ManpowerSectionProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ResourceLabour | null>(null);
-  const totalManpower = run.labour_count + run.other_manpower_count;
+  const actualLabourCount = labourEntries.reduce((sum, e) => sum + e.worker_count, 0);
+  const labourCount = actualLabourCount > 0 ? actualLabourCount : run.labour_count;
+  const totalManpower = labourCount + run.other_manpower_count;
   const totalLabourCost = labourEntries.reduce((sum, e) => sum + parseFloat(e.total_cost || '0'), 0);
   const totalHours = (totalRunningMinutes / 60).toFixed(1);
 
@@ -80,7 +82,10 @@ export function ManpowerSection({
         <Card>
           <CardContent className="p-3">
             <div className="text-xs text-muted-foreground mb-1">Labour</div>
-            <p className="text-xl font-bold">{run.labour_count}</p>
+            <p className="text-xl font-bold">{labourCount}</p>
+            {actualLabourCount > 0 && run.labour_count > 0 && (
+              <p className="text-xs text-muted-foreground">planned: {run.labour_count}</p>
+            )}
           </CardContent>
         </Card>
         <Card>

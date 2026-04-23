@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui';
 
-import { useMaterials, useUpdateMaterial, useRunDetail, useRunCost, useCompleteRun } from '../api';
+import { useMaterials, useUpdateMaterial, useRunDetail, useRunCost, useCompleteRun, useLabour } from '../api';
 import { MaterialConsumptionTable } from '../components/MaterialConsumptionTable';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 
@@ -20,6 +20,7 @@ function YieldReportPage() {
   const { data: run } = useRunDetail(numRunId || null);
   const { data: materials = [] } = useMaterials(numRunId);
   const { data: cost } = useRunCost(numRunId);
+  const { data: labourEntries = [] } = useLabour(numRunId);
   const completeRun = useCompleteRun(numRunId);
   const updateMaterial = useUpdateMaterial(numRunId);
 
@@ -288,17 +289,35 @@ function YieldReportPage() {
       )}
 
       {/* Manpower */}
-      <Card>
-        <CardHeader><CardTitle>Manpower</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div><p className="text-muted-foreground">Total Manpower</p><p className="font-bold text-lg">{run.labour_count + run.other_manpower_count}</p></div>
-            <div><p className="text-muted-foreground">Labour</p><p className="font-bold text-lg">{run.labour_count}</p></div>
-            <div><p className="text-muted-foreground">Supervisor</p><p className="font-medium">{run.supervisor || '-'}</p></div>
-            <div><p className="text-muted-foreground">Operators</p><p className="font-medium">{run.operators || '-'}</p></div>
-          </div>
-        </CardContent>
-      </Card>
+      {(() => {
+        const actualLabourCount = labourEntries.reduce((sum, e) => sum + e.worker_count, 0);
+        const labourCount = actualLabourCount > 0 ? actualLabourCount : run.labour_count;
+        return (
+          <Card>
+            <CardHeader><CardTitle>Manpower</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Total Manpower</p>
+                  <p className="font-bold text-lg">{labourCount + run.other_manpower_count}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Labour</p>
+                  <p className="font-bold text-lg">{labourCount}</p>
+                  {actualLabourCount > 0 && run.labour_count > 0 && (
+                    <p className="text-xs text-muted-foreground">planned: {run.labour_count}</p>
+                  )}
+                  {actualLabourCount === 0 && run.labour_count > 0 && (
+                    <p className="text-xs text-muted-foreground">planned</p>
+                  )}
+                </div>
+                <div><p className="text-muted-foreground">Supervisor</p><p className="font-medium">{run.supervisor || '-'}</p></div>
+                <div><p className="text-muted-foreground">Operators</p><p className="font-medium">{run.operators || '-'}</p></div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Complete Run Section */}
       {isCompleteMode && !isCompleted && (
