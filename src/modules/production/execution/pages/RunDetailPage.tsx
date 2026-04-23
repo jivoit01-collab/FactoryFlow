@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, ClipboardCheck, FileText, Link, Loader2, Play, Send, Shield, Trash2, Warehouse } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileText, Link, Loader2, Pencil, Play, Plus, Send, Shield, Trash2, Warehouse } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,26 +14,25 @@ import {
 } from '@/shared/components/ui';
 
 import {
-  useRunDetail, useRunCost, useLabour,
+  useRunDetail, useRunCost, useLabour, useCreateLabour, useUpdateLabour, useDeleteLabour,
   useMaterials, useCreateMaterial, useUpdateMaterial,
-  useMachines,
   useStartProduction, useStopProduction, useAddBreakdown, useResolveBreakdown,
   useUpdateSegment, useUpdateBreakdownRemarks,
   useBreakdownCategories,
-  useLineClearances, useWasteLogs, useMachineChecklists,
+  useLineClearances, useWasteLogs,
 } from '../api';
 import { useProductionQCRunSessions } from '@/modules/qc/api/productionQC';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 import { RunSummaryCards } from '../components/RunSummaryCards';
 import { ProductionTimeline } from '../components/ProductionTimeline';
 import { MaterialConsumptionTable } from '../components/MaterialConsumptionTable';
-import { MachineTimeTable } from '../components/MachineTimeTable';
 import {
   addBreakdownSchema, type AddBreakdownFormData,
   stopProductionSchema, type StopProductionFormData,
   createMaterialSchema, type CreateMaterialFormData,
+  createLabourSchema, type CreateLabourFormData,
 } from '../schemas';
-import type { MachineBreakdown, ProductionSegment } from '../types';
+import type { MachineBreakdown, ProductionSegment, ResourceLabour } from '../types';
 import { useCreateBOMRequest, useCreateFGReceipt } from '@/modules/warehouse/api';
 
 function WarehouseApprovalBadge({ status }: { status: string }) {
@@ -65,12 +64,10 @@ function RunDetailPage() {
   const { data: materials = [] } = useMaterials(numRunId);
   const { data: cost } = useRunCost(numRunId);
   const { data: labourEntries = [] } = useLabour(numRunId);
-  const { data: allMachines = [] } = useMachines();
-  const runMachines = allMachines.filter((m) => run?.machine_ids?.includes(m.id));
   const { data: breakdownCategories = [] } = useBreakdownCategories();
   const { data: clearances = [] } = useLineClearances(run?.line);
   const { data: wasteLogs = [] } = useWasteLogs(numRunId);
-  const { data: machineChecklists = [] } = useMachineChecklists(undefined, run?.date);
+
   const { data: qcSessions = [] } = useProductionQCRunSessions(numRunId || null);
 
   // ---------------------------------------------------------------------------
@@ -84,12 +81,16 @@ function RunDetailPage() {
   const updateBreakdownRemarks = useUpdateBreakdownRemarks(numRunId);
   const createMaterial = useCreateMaterial(numRunId);
   const updateMaterial = useUpdateMaterial(numRunId);
+  const addLabour = useCreateLabour(numRunId);
+  const updateLabourMut = useUpdateLabour(numRunId);
+  const removeLabour = useDeleteLabour(numRunId);
   const createBOMRequest = useCreateBOMRequest();
   const createFGReceipt = useCreateFGReceipt();
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
-  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | null>(null);
+  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | 'labour' | null>(null);
+  const [editingLabour, setEditingLabour] = useState<ResourceLabour | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<ProductionSegment | null>(null);
   const [selectedBreakdown, setSelectedBreakdown] = useState<MachineBreakdown | null>(null);
   const [editRemarks, setEditRemarks] = useState('');
@@ -144,6 +145,20 @@ function RunDetailPage() {
   };
 
   // ---------------------------------------------------------------------------
+  // Labour form
+  // ---------------------------------------------------------------------------
+  const labourForm = useForm<CreateLabourFormData>({ resolver: zodResolver(createLabourSchema), defaultValues: { worker_count: 1 } });
+  const openLabourDialog = () => { setEditingLabour(null); labourForm.reset({ worker_count: 1 }); setDialog('labour'); };
+  const openEditLabour = (entry: ResourceLabour) => {
+    setEditingLabour(entry);
+    labourForm.reset({ description: entry.description, worker_count: entry.worker_count, hours_worked: entry.hours_worked, rate_per_hour: entry.rate_per_hour });
+    setDialog('labour');
+  };
+  const handleDeleteLabour = async (id: number) => {
+    if (!confirm('Delete this labour entry?')) return;
+    try { await removeLabour.mutateAsync(id); toast.success('Deleted'); } catch { toast.error('Delete failed'); }
+  };
+
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
@@ -315,9 +330,12 @@ function RunDetailPage() {
         const c = cost ? { labour: parseFloat(cost.labour_cost), total: parseFloat(cost.total_cost), perUnit: parseFloat(cost.per_unit_cost) } : null;
         return (
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-            <Card>
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={openLabourDialog}>
               <CardContent className="p-3">
-                <div className="text-xs text-muted-foreground mb-1">Labour</div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground">Labour</span>
+                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
                 {actualLabourCount > 0 ? (
                   <>
                     <p className="text-lg font-bold">{actualLabourCount}</p>
@@ -406,29 +424,6 @@ function RunDetailPage() {
           </Button>
         </div>
 
-        {/* Machine Checklists */}
-        {(() => {
-          const runMachineIds = run.machine_ids || [];
-          const checkedMachineIds = new Set(machineChecklists.filter((c) => runMachineIds.includes(c.machine)).map((c) => c.machine));
-          const checkedCount = checkedMachineIds.size;
-          const totalMachines = runMachineIds.length;
-          const allDone = totalMachines > 0 && checkedCount >= totalMachines;
-          const firstUnfilledId = runMachineIds.find((id) => !checkedMachineIds.has(id));
-          const fillLink = firstUnfilledId
-            ? `/production/execution/machine-checklists?machine_id=${firstUnfilledId}&date=${run.date}`
-            : `/production/execution/machine-checklists?machine_id=${runMachineIds[0]}&date=${run.date}`;
-          return (
-            <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${allDone ? 'border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800' : 'border-gray-200'}`}>
-              <ClipboardCheck className={`h-4 w-4 ${allDone ? 'text-green-600' : 'text-muted-foreground'}`} />
-              <span>Machine Checklists: <span className="font-medium">{checkedCount}/{totalMachines}</span></span>
-              {totalMachines > 0 && (
-                <Button variant="link" size="sm" className="h-auto p-0" onClick={() => navigate(fillLink)}>
-                  {allDone ? 'View' : 'Fill'}
-                </Button>
-              )}
-            </div>
-          );
-        })()}
       </div>
 
       {/* Tabs */}
@@ -436,7 +431,6 @@ function RunDetailPage() {
         <TabsList>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="materials">Materials ({materials.length})</TabsTrigger>
-          <TabsTrigger value="runtime">Machine Runtime ({runMachines.length})</TabsTrigger>
           <TabsTrigger value="qc">QC ({qcSessions.length})</TabsTrigger>
         </TabsList>
 
@@ -461,15 +455,7 @@ function RunDetailPage() {
         <TabsContent value="materials">
           <Card>
             <CardContent className="p-4">
-              <MaterialConsumptionTable materials={materials} onAdd={() => setDialog('material')} onUpdateClosingQty={handleUpdateClosingQty} readOnly={isCompleted} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="runtime">
-          <Card>
-            <CardContent className="p-4">
-              <MachineTimeTable machines={runMachines} segments={run.segments} breakdowns={run.breakdowns} />
+              <MaterialConsumptionTable materials={materials} onUpdateClosingQty={handleUpdateClosingQty} readOnly={isCompleted} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -571,19 +557,6 @@ function RunDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Machine</Label>
-              <Select onValueChange={(v) => breakdownForm.setValue('machine_id', Number(v))}>
-                <SelectTrigger><SelectValue placeholder="Select machine" /></SelectTrigger>
-                <SelectContent>
-                  {runMachines.length === 0 ? (
-                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">No machines assigned to this run.</div>
-                  ) : (
-                    runMachines.map((m) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
             <div><Label>Reason</Label><Input {...breakdownForm.register('reason')} /></div>
             <div><Label>Cases Produced</Label><Input type="number" {...breakdownForm.register('produced_cases')} /></div>
             <div><Label>Remarks</Label><Textarea {...breakdownForm.register('remarks')} /></div>
@@ -672,10 +645,6 @@ function RunDetailPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Machine</span>
-                  <p className="font-medium">{selectedBreakdown.machine_name || `#${selectedBreakdown.machine}`}</p>
-                </div>
-                <div>
                   <span className="text-muted-foreground">Type</span>
                   <p className="font-medium">{selectedBreakdown.breakdown_category_name}</p>
                 </div>
@@ -733,6 +702,86 @@ function RunDetailPage() {
               <Button type="submit" disabled={createMaterial.isPending}>{createMaterial.isPending ? 'Saving...' : 'Add Material'}</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Labour Dialog */}
+      <Dialog open={dialog === 'labour'} onOpenChange={(open) => { if (!open) { setDialog(null); setEditingLabour(null); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>{editingLabour ? 'Edit Labour' : 'Labour'}</DialogTitle></DialogHeader>
+          {!editingLabour && (
+            <>
+              {labourEntries.length > 0 && (
+                <div className="overflow-x-auto max-h-60 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-2 font-medium">Description</th>
+                        <th className="text-right p-2 font-medium">Workers</th>
+                        <th className="text-right p-2 font-medium">Hours</th>
+                        <th className="text-right p-2 font-medium">Rate/hr</th>
+                        <th className="text-right p-2 font-medium">Total</th>
+                        {!isCompleted && <th className="p-2 w-20" />}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {labourEntries.map((e) => (
+                        <tr key={e.id} className="border-b">
+                          <td className="p-2">{e.description || 'Workers'}</td>
+                          <td className="p-2 text-right">{e.worker_count}</td>
+                          <td className="p-2 text-right">{e.hours_worked}</td>
+                          <td className="p-2 text-right">₹{e.rate_per_hour}</td>
+                          <td className="p-2 text-right font-medium">₹{parseFloat(e.total_cost).toLocaleString()}</td>
+                          {!isCompleted && (
+                            <td className="p-2">
+                              <div className="flex items-center gap-1 justify-end">
+                                <Button variant="ghost" size="sm" onClick={() => openEditLabour(e)}><Pencil className="h-3.5 w-3.5" /></Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleDeleteLabour(e.id)}><Trash2 className="h-3.5 w-3.5 text-red-500" /></Button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {!isCompleted && (
+                <Button size="sm" onClick={() => { setEditingLabour(null); labourForm.reset({ worker_count: 1, description: '', hours_worked: '', rate_per_hour: '' }); setEditingLabour({ id: -1 } as ResourceLabour); }}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Labour Entry
+                </Button>
+              )}
+              {labourEntries.length === 0 && isCompleted && (
+                <p className="text-sm text-muted-foreground text-center py-4">No labour entries</p>
+              )}
+            </>
+          )}
+          {editingLabour && (
+            <form onSubmit={labourForm.handleSubmit(async (d) => {
+              try {
+                if (editingLabour.id !== -1) {
+                  await updateLabourMut.mutateAsync({ entryId: editingLabour.id, data: d });
+                  toast.success('Updated');
+                } else {
+                  await addLabour.mutateAsync(d);
+                  toast.success('Added');
+                }
+                setEditingLabour(null);
+                labourForm.reset({ worker_count: 1 });
+              } catch { toast.error('Failed'); }
+            })} className="space-y-4">
+              <div><Label>Description</Label><Input {...labourForm.register('description')} placeholder="e.g., Skilled labourers, Helpers" /></div>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>Workers</Label><Input type="number" {...labourForm.register('worker_count', { valueAsNumber: true })} /></div>
+                <div><Label>Hours Worked</Label><Input {...labourForm.register('hours_worked')} /></div>
+                <div><Label>Rate/hr (₹)</Label><Input {...labourForm.register('rate_per_hour')} /></div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setEditingLabour(null)}>Cancel</Button>
+                <Button type="submit">{editingLabour.id !== -1 ? 'Save' : 'Add'}</Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 

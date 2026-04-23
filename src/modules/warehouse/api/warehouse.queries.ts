@@ -87,6 +87,7 @@ export function useIssueMaterials() {
       warehouseApi.issueMaterials(requestId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: WAREHOUSE_QUERY_KEYS.all });
+      qc.invalidateQueries({ queryKey: ['production-execution'] });
     },
   });
 }
@@ -132,6 +133,7 @@ export function useCreateFGReceipt() {
     mutationFn: (data: CreateFGReceiptPayload) => warehouseApi.createFGReceipt(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: WAREHOUSE_QUERY_KEYS.all });
+      qc.invalidateQueries({ queryKey: ['production-execution'] });
     },
   });
 }
@@ -142,6 +144,7 @@ export function useReceiveFG() {
     mutationFn: (receiptId: number) => warehouseApi.receiveFG(receiptId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: WAREHOUSE_QUERY_KEYS.all });
+      qc.invalidateQueries({ queryKey: ['production-execution'] });
     },
   });
 }
