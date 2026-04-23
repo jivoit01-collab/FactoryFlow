@@ -99,6 +99,7 @@ function RunDetailPage() {
   const hasActiveSegment = run?.segments?.some((s) => s.is_active) ?? false;
   const hasActiveBreakdown = run?.breakdowns?.some((b) => b.is_active) ?? false;
   const canComplete = !hasActiveSegment && !hasActiveBreakdown && run?.status === 'IN_PROGRESS';
+  const hasClearedClearance = clearances.some((c) => c.production_run === run?.id && c.status === 'CLEARED');
 
   // ---------------------------------------------------------------------------
   // Breakdown form
@@ -163,6 +164,10 @@ function RunDetailPage() {
   // Handlers
   // ---------------------------------------------------------------------------
   const handleStartProduction = async () => {
+    if (!hasClearedClearance) {
+      toast.error('Cannot start production — line clearance has not been approved by QA.');
+      return;
+    }
     try {
       await startProduction.mutateAsync();
       toast.success('Production started');
@@ -455,7 +460,13 @@ function RunDetailPage() {
         <TabsContent value="materials">
           <Card>
             <CardContent className="p-4">
-              <MaterialConsumptionTable materials={materials} onUpdateClosingQty={handleUpdateClosingQty} readOnly={isCompleted} />
+              <MaterialConsumptionTable
+                materials={materials}
+                onUpdateClosingQty={handleUpdateClosingQty}
+                readOnly={isCompleted}
+                actualProduction={isCompleted ? parseFloat(run.total_production || '0') : run.segments.reduce((sum, s) => sum + parseFloat(s.produced_cases || '0'), 0)}
+                requiredQty={run.required_qty ? parseFloat(run.required_qty) : undefined}
+              />
             </CardContent>
           </Card>
         </TabsContent>

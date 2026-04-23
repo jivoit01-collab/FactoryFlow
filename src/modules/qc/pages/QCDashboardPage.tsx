@@ -25,6 +25,7 @@ import {
   useInspectionCounts,
 } from '../api/inspection/inspection.queries';
 import { useProductionQCCounts } from '../api/productionQC';
+import { useLineClearances } from '@/modules/production/execution/api';
 import { WORKFLOW_STATUS_CONFIG } from '../constants';
 import type { InspectionListWorkflowStatus } from '../types';
 
@@ -61,6 +62,8 @@ export default function QCDashboardPage() {
     data: prodQCCounts,
     isLoading: prodQCLoading,
   } = useProductionQCCounts();
+
+  const { data: submittedClearances = [] } = useLineClearances(undefined, 'SUBMITTED');
 
   const isLoading = countsLoading || prodQCLoading;
   const error = countsError;
@@ -223,6 +226,35 @@ export default function QCDashboardPage() {
                       {prodRejected}
                     </p>
                     <p className="text-[10px] text-muted-foreground">Rejected</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            {/* Line Clearance QA Card */}
+            <Card
+              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-amber-500"
+              onClick={() => navigate('/qc/line-clearance')}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                      <ClipboardCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Line Clearance QA</h3>
+                      <p className="text-xs text-muted-foreground">Pre-production clearance approvals</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="text-center p-2 rounded-md bg-amber-50 dark:bg-amber-900/10">
+                    <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                      {submittedClearances.length}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Pending Approval</p>
                   </div>
                 </div>
               </CardContent>

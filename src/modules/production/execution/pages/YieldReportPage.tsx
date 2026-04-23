@@ -75,6 +75,7 @@ function YieldReportPage() {
     : '-';
 
   // Material metrics
+  const requiredQty = parseFloat(run.required_qty || '0');
   const totalMaterialInput = materials.reduce(
     (sum, m) => sum + parseFloat(m.opening_qty || '0') + parseFloat(m.issued_qty || '0'), 0
   );
@@ -82,9 +83,17 @@ function YieldReportPage() {
     (sum, m) => sum + parseFloat(m.closing_qty || '0'), 0
   );
   const totalMaterialConsumed = totalMaterialInput - totalMaterialClosing;
-  const totalWastage = materials.reduce(
-    (sum, m) => sum + parseFloat(m.wastage_qty || '0'), 0
-  );
+  // Expected consumed based on BOM ratio and actual production
+  const totalExpectedConsumed = requiredQty > 0
+    ? materials.reduce((sum, m) => {
+        const opening = parseFloat(m.opening_qty || '0');
+        return sum + (actualProduction / requiredQty) * opening;
+      }, 0)
+    : 0;
+  // Wastage = consumed beyond what was expected
+  const totalWastage = requiredQty > 0
+    ? totalMaterialConsumed - totalExpectedConsumed
+    : 0;
 
   // Breakdown summary
   const breakdownsByCategory: Record<string, { count: number; minutes: number }> = {};
@@ -232,36 +241,6 @@ function YieldReportPage() {
         </CardContent>
       </Card>
 
-      {/* Material Consumption */}
-      <Card className={isCompleteMode && hasMissingClosingQty ? 'border-amber-300 dark:border-amber-800' : ''}>
-        <CardHeader><CardTitle>Material Consumption {isCompleteMode && hasMissingClosingQty && <span className="text-sm font-normal text-amber-600 ml-2">— closing qty required</span>}</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Total Input (Opening + Issued)</p>
-              <p className="text-xl font-bold">{totalMaterialInput.toFixed(3)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total Closing</p>
-              <p className="text-xl font-bold">{totalMaterialClosing.toFixed(3)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total Consumed</p>
-              <p className="text-xl font-bold">{totalMaterialConsumed.toFixed(3)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total Wastage</p>
-              <p className="text-xl font-bold text-red-600">{totalWastage.toFixed(3)}</p>
-            </div>
-          </div>
-          <MaterialConsumptionTable
-            materials={materials}
-            onUpdateClosingQty={isCompleteMode && !isCompleted ? handleUpdateClosingQty : undefined}
-            readOnly={!isCompleteMode || isCompleted}
-          />
-        </CardContent>
-      </Card>
-
       {/* Cost Summary */}
       {cost && (
         <Card>
@@ -318,6 +297,38 @@ function YieldReportPage() {
           </Card>
         );
       })()}
+
+      {/* Material Consumption */}
+      <Card className={isCompleteMode && hasMissingClosingQty ? 'border-amber-300 dark:border-amber-800' : ''}>
+        <CardHeader><CardTitle>Material Consumption {isCompleteMode && hasMissingClosingQty && <span className="text-sm font-normal text-amber-600 ml-2">— closing qty required</span>}</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Total Input (Opening + Issued)</p>
+              <p className="text-xl font-bold">{totalMaterialInput.toFixed(3)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Closing</p>
+              <p className="text-xl font-bold">{totalMaterialClosing.toFixed(3)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Consumed</p>
+              <p className="text-xl font-bold">{totalMaterialConsumed.toFixed(3)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Wastage</p>
+              <p className="text-xl font-bold text-red-600">{totalWastage.toFixed(3)}</p>
+            </div>
+          </div>
+          <MaterialConsumptionTable
+            materials={materials}
+            onUpdateClosingQty={isCompleteMode && !isCompleted ? handleUpdateClosingQty : undefined}
+            readOnly={!isCompleteMode || isCompleted}
+            actualProduction={actualProduction}
+            requiredQty={run.required_qty ? parseFloat(run.required_qty) : undefined}
+          />
+        </CardContent>
+      </Card>
 
       {/* Complete Run Section */}
       {isCompleteMode && !isCompleted && (

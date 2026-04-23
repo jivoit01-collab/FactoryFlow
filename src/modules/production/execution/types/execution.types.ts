@@ -334,6 +334,9 @@ export interface LineClearance {
   line_name?: string;
   document_id: string;
   status: ClearanceStatus;
+  qa_approved: boolean;
+  all_checks_passed: boolean;
+  production_supervisor_sign: string;
   created_by: number | null;
   created_at: string;
   updated_at: string;
@@ -341,11 +344,8 @@ export interface LineClearance {
 
 export interface LineClearanceDetail extends LineClearance {
   verified_by: number | null;
-  qa_approved: boolean;
   qa_approved_by: number | null;
   qa_approved_at: string | null;
-  production_supervisor_sign: string;
-  production_incharge_sign: string;
   items: LineClearanceItem[];
 }
 
@@ -723,9 +723,8 @@ export interface CreateLineClearanceRequest {
 }
 
 export interface UpdateLineClearanceRequest {
-  items?: { id: number; result: ClearanceResult; remarks?: string }[];
+  all_checks_passed?: boolean;
   production_supervisor_sign?: string;
-  production_incharge_sign?: string;
 }
 
 export interface CreateChecklistEntryRequest {

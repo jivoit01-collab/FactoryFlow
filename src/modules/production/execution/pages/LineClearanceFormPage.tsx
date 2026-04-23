@@ -1,19 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Save, Send, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
+import {
+  Button, Card, CardContent, CardHeader, CardTitle,
+  Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Switch,
+} from '@/shared/components/ui';
 
 import { useHasPermission } from '@/core/auth/hooks/usePermission';
 import { EXECUTION_PERMISSIONS } from '@/config/permissions/production.permissions';
 
-import { useCreateLineClearance, useLineClearanceDetail, useUpdateLineClearance, useSubmitLineClearance, useApproveLineClearance, useLines, useRunDetail } from '../api';
-import { ClearanceChecklistTable } from '../components/ClearanceChecklistTable';
+import {
+  useCreateLineClearance, useLineClearanceDetail, useUpdateLineClearance,
+  useSubmitLineClearance, useApproveLineClearance, useLines, useRunDetail,
+} from '../api';
 import { ClearanceStatusBadge } from '../components/ClearanceStatusBadge';
-import { SignatureBlock } from '../components/SignatureBlock';
-import type { ClearanceResult } from '../types';
 
 function LineClearanceFormPage() {
   const { clearanceId } = useParams<{ clearanceId: string }>();
@@ -37,20 +41,10 @@ function LineClearanceFormPage() {
   const [lineId, setLineId] = useState<number>(0);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Local state for checklist items (only saved on "Save")
-  const [localItems, setLocalItems] = useState<{ id: number; result: ClearanceResult; remarks: string }[]>([]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  // Initialize local items from server data
-  useEffect(() => {
-    if (clearance?.items) {
-      setLocalItems(clearance.items.map((i) => ({ id: i.id, result: i.result, remarks: i.remarks })));
-      setHasUnsavedChanges(false);
-    }
-  }, [clearance?.items]);
-
   const effectiveLineId = linkedRun ? linkedRun.line : lineId;
   const effectiveDate = linkedRun ? linkedRun.date : date;
+
+  const isDraft = clearance?.status === 'DRAFT';
 
   const handleCreate = async () => {
     try {
@@ -64,26 +58,26 @@ function LineClearanceFormPage() {
     } catch { toast.error('Failed to create clearance'); }
   };
 
-  const handleLocalItemChange = (itemId: number, result: ClearanceResult) => {
-    setLocalItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, result } : i))
-    );
-    setHasUnsavedChanges(true);
+  const handleToggleChecks = async (checked: boolean) => {
+    try {
+      await updateClearance.mutateAsync({ all_checks_passed: checked });
+      toast.success(checked ? 'All checks marked as passed' : 'Checks marked as not passed');
+    } catch { toast.error('Failed to update'); }
   };
 
-  const handleSave = async () => {
+  const handleSupervisorChange = async (name: string) => {
     try {
-      await updateClearance.mutateAsync({ items: localItems });
-      toast.success('Clearance saved');
-      setHasUnsavedChanges(false);
-    } catch { toast.error('Failed to save'); }
+      await updateClearance.mutateAsync({ production_supervisor_sign: name });
+    } catch { toast.error('Failed to save supervisor name'); }
   };
 
   const handleSubmit = async () => {
     try {
       await submitClearance.mutateAsync();
-      toast.success('Submitted for QA review');
-    } catch { toast.error('Failed to submit'); }
+      toast.success('Submitted for QA approval');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to submit');
+    }
   };
 
   const handleApprove = async (approved: boolean) => {
@@ -94,9 +88,6 @@ function LineClearanceFormPage() {
   };
 
   if (!isNew && isLoading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
-
-  // Check if all items are filled (not NA)
-  const allItemsFilled = localItems.length > 0 && localItems.every((i) => i.result !== 'NA');
 
   return (
     <div className="space-y-6">
@@ -162,71 +153,73 @@ function LineClearanceFormPage() {
             <ClearanceStatusBadge status={clearance.status} />
           </div>
 
+          {/* Checklist — read-only reference list */}
           <Card>
-            <CardHeader><CardTitle>Checklist</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Checklist Items</CardTitle></CardHeader>
             <CardContent>
-              <ClearanceChecklistTable
-                items={clearance.items}
-                localItems={clearance.status === 'DRAFT' ? localItems : undefined}
-                onLocalChange={clearance.status === 'DRAFT' ? handleLocalItemChange : undefined}
-                readOnly={clearance.status !== 'DRAFT'}
-              />
+              <ul className="space-y-2">
+                {clearance.items.map((item, idx) => (
+                  <li key={item.id} className="flex items-start gap-2 text-sm">
+                    <span className="text-muted-foreground font-medium min-w-[1.5rem]">{idx + 1}.</span>
+                    <span>{item.checkpoint}</span>
+                  </li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
 
+          {/* Single toggle + supervisor */}
           <Card>
-            <CardHeader><CardTitle>Signatures</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <SignatureBlock
-                  label="Production Supervisor"
-                  sign={clearance.production_supervisor_sign}
-                  signedAt={null}
-                  editable={clearance.status === 'DRAFT'}
-                  onSign={async (sign) => {
-                    try {
-                      await updateClearance.mutateAsync({ production_supervisor_sign: sign });
-                      toast.success('Supervisor signature saved');
-                    } catch { toast.error('Failed to save signature'); }
-                  }}
-                />
-                <SignatureBlock
-                  label="Production Incharge"
-                  sign={clearance.production_incharge_sign}
-                  signedAt={null}
-                  editable={clearance.status === 'DRAFT'}
-                  onSign={async (sign) => {
-                    try {
-                      await updateClearance.mutateAsync({ production_incharge_sign: sign });
-                      toast.success('Incharge signature saved');
-                    } catch { toast.error('Failed to save signature'); }
-                  }}
-                />
-                <SignatureBlock label="QA Approved By" sign={clearance.qa_approved ? 'Approved' : ''} signedAt={clearance.qa_approved_at} />
+            <CardHeader><CardTitle>Verification</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">All checks passed</p>
+                  <p className="text-sm text-muted-foreground">Confirm that all the above checklist items have been verified</p>
+                </div>
+                {isDraft ? (
+                  <Switch
+                    checked={clearance.all_checks_passed}
+                    onChange={handleToggleChecks}
+                    disabled={updateClearance.isPending}
+                  />
+                ) : (
+                  <span className={`text-sm font-medium ${clearance.all_checks_passed ? 'text-green-600' : 'text-red-600'}`}>
+                    {clearance.all_checks_passed ? 'Yes' : 'No'}
+                  </span>
+                )}
+              </div>
+
+              <div className="max-w-sm">
+                <Label>Supervisor</Label>
+                {isDraft ? (
+                  <Input
+                    defaultValue={clearance.production_supervisor_sign}
+                    placeholder="Enter supervisor name"
+                    onBlur={(e) => {
+                      if (e.target.value !== clearance.production_supervisor_sign) {
+                        handleSupervisorChange(e.target.value);
+                      }
+                    }}
+                  />
+                ) : (
+                  <p className="font-medium mt-1">{clearance.production_supervisor_sign || '-'}</p>
+                )}
               </div>
             </CardContent>
           </Card>
 
+          {/* Actions */}
           <div className="flex justify-end gap-2">
-            {clearance.status === 'DRAFT' && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={!hasUnsavedChanges || updateClearance.isPending}
-                >
-                  <Save className="h-4 w-4 mr-1" />
-                  {updateClearance.isPending ? 'Saving...' : 'Save'}
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={hasUnsavedChanges || !allItemsFilled || submitClearance.isPending}
-                  title={hasUnsavedChanges ? 'Save changes first' : !allItemsFilled ? 'Fill all checklist items first' : undefined}
-                >
-                  <Send className="h-4 w-4 mr-1" />
-                  {submitClearance.isPending ? 'Submitting...' : 'Submit for QA'}
-                </Button>
-              </>
+            {isDraft && (
+              <Button
+                onClick={handleSubmit}
+                disabled={!clearance.all_checks_passed || !clearance.production_supervisor_sign || submitClearance.isPending}
+                title={!clearance.all_checks_passed ? 'Mark all checks as passed first' : !clearance.production_supervisor_sign ? 'Enter supervisor name first' : undefined}
+              >
+                <Send className="h-4 w-4 mr-1" />
+                {submitClearance.isPending ? 'Submitting...' : 'Submit for QA Approval'}
+              </Button>
             )}
             {clearance.status === 'SUBMITTED' && canApproveQA && (
               <>
@@ -240,6 +233,12 @@ function LineClearanceFormPage() {
             )}
             {clearance.status === 'SUBMITTED' && !canApproveQA && (
               <p className="text-sm text-muted-foreground italic">Waiting for QA approval</p>
+            )}
+            {clearance.status === 'CLEARED' && (
+              <p className="text-sm text-green-600 font-medium">Approved by QA</p>
+            )}
+            {clearance.status === 'NOT_CLEARED' && (
+              <p className="text-sm text-red-600 font-medium">Rejected by QA</p>
             )}
           </div>
         </>

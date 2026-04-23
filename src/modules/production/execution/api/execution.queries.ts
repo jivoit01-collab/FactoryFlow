@@ -307,6 +307,7 @@ export function useRunDetail(runId: number | null) {
     queryKey: EXECUTION_QUERY_KEYS.runDetail(runId!),
     queryFn: () => executionApi.getRunDetail(runId!),
     enabled: !!runId,
+    staleTime: 0,
   });
 }
 

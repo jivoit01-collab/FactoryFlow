@@ -2,6 +2,7 @@ import { FlaskConical } from 'lucide-react';
 import { lazy } from 'react';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
+import { EXECUTION_PERMISSIONS } from '@/config/permissions/production.permissions';
 import type { ModuleConfig } from '@/core/types';
 
 // Lazy load QC pages
@@ -15,6 +16,9 @@ const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'));
 // Master Data (shared)
 const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'));
 const QCParametersPage = lazy(() => import('./pages/masterdata/QCParametersPage'));
+
+// Line Clearance QA submodule
+const LineClearanceQAPage = lazy(() => import('./pages/LineClearanceQAPage'));
 
 // Production QC submodule
 const ProductionQCDashboardPage = lazy(() => import('./pages/production/ProductionQCDashboardPage'));
@@ -92,6 +96,14 @@ export const qcModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
     },
+    // ==================== Line Clearance QA Submodule ====================
+    {
+      path: '/qc/line-clearance',
+      element: <LineClearanceQAPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_CLEARANCE, EXECUTION_PERMISSIONS.APPROVE_CLEARANCE_QA],
+    },
+
     // ==================== Shared Master Data ====================
     {
       path: '/qc/master/material-types',
@@ -177,6 +189,11 @@ export const qcModuleConfig: ModuleConfig = {
           path: '/qc/production',
           title: 'Production QC',
           permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
+        },
+        {
+          path: '/qc/line-clearance',
+          title: 'Line Clearance QA',
+          permissions: [EXECUTION_PERMISSIONS.VIEW_CLEARANCE, EXECUTION_PERMISSIONS.APPROVE_CLEARANCE_QA],
         },
         {
           path: '/qc/master/material-types',
