@@ -62,6 +62,21 @@ const formatDateTime = (dateTime?: string) => {
   }
 };
 
+// Format date-only (PO posting date, no time component)
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return null;
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
 export default function GRPODashboardPage() {
   const navigate = useNavigate();
 
@@ -186,26 +201,30 @@ export default function GRPODashboardPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {pendingEntries.slice(0, 5).map((entry) => (
-                  <div
-                    key={entry.vehicle_entry_id}
-                    className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/grpo/preview/${entry.vehicle_entry_id}`)}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-medium text-sm">{entry.entry_no}</span>
-                      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                        {entry.pending_po_count} PO{entry.pending_po_count !== 1 ? 's' : ''} pending
-                      </span>
+                {pendingEntries.slice(0, 5).map((entry) => {
+                  const poDate = formatDate(entry.po_date);
+                  return (
+                    <div
+                      key={entry.vehicle_entry_id}
+                      className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/grpo/preview/${entry.vehicle_entry_id}`)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="font-medium text-sm">{entry.entry_no}</span>
+                        <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                          {entry.pending_po_count} PO{entry.pending_po_count !== 1 ? 's' : ''} pending
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end text-xs text-muted-foreground">
+                          <span>Entry: {formatDateTime(entry.entry_time)}</span>
+                          {poDate && <span>PO: {poDate}</span>}
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(entry.entry_time)}
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

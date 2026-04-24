@@ -45,6 +45,7 @@ export interface PendingGRPOEntry {
   entry_no: string;
   status: string;
   entry_time: string;
+  po_date: string | null;
   total_po_count: number;
   posted_po_count: number;
   pending_po_count: number;
@@ -186,6 +187,7 @@ export interface PendingSupplierGroup {
     supplier_name: string;
     branch_id: number | null;
     item_count: number;
+    po_date: string | null;
   }[];
 }
 

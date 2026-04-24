@@ -23,6 +23,21 @@ const formatDateTime = (dateTime?: string) => {
   }
 };
 
+// Format date-only (PO posting date, no time component)
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
 export default function PendingEntriesPage() {
   const navigate = useNavigate();
   const { data: pendingEntries = [], isLoading, refetch, error } = usePendingGRPOEntries();
@@ -119,6 +134,7 @@ export default function PendingEntriesPage() {
                     <th className="p-3 text-left text-sm font-medium">PO Numbers</th>
                     <th className="p-3 text-left text-sm font-medium">POs</th>
                     <th className="p-3 text-left text-sm font-medium">Status</th>
+                    <th className="p-3 text-left text-sm font-medium">PO Date</th>
                     <th className="p-3 text-left text-sm font-medium">Entry Time</th>
                     <th className="p-3 w-8" aria-hidden="true" />
                   </tr>
@@ -183,6 +199,9 @@ export default function PendingEntriesPage() {
                           >
                             {entry.status || '-'}
                           </span>
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
+                          {formatDate(entry.po_date)}
                         </td>
                         <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
                           {formatDateTime(entry.entry_time)}
