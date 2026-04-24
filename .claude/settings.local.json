@@ -55,7 +55,8 @@
       "Bash(cat /d/Test_CompanyJivo/FactoryFlow/src/modules/gate/api/*.ts)",
       "Bash(pip install:*)",
       "Bash(python generate_ppt.py)",
-      "Bash(grep -E \"\\\\.py$\")"
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(git -C d:/Test_CompanyJivo/FactoryFlow log --oneline -5 -- src/modules/grpo/pages/GRPOPreviewPage.tsx)"
     ]
   }
 }
