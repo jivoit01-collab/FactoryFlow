@@ -168,7 +168,6 @@ describe('GRPOPreviewPage — Validation & Posting', () => {
     const content = readSource();
     expect(content).toContain('validatePO');
     expect(content).toContain('Cannot be negative');
-    expect(content).toContain('Cannot exceed received qty');
     expect(content).toContain('At least one item must have accepted quantity greater than 0');
   });
 

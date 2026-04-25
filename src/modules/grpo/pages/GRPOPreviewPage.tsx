@@ -346,10 +346,6 @@ export default function GRPOPreviewPage() {
         if (accepted < 0) {
           errors[`item_${item.po_item_receipt_id}`] = 'Cannot be negative';
         }
-        if (accepted > item.received_qty) {
-          errors[`item_${item.po_item_receipt_id}`] =
-            `Cannot exceed received qty (${item.received_qty})`;
-        }
       });
     });
 
@@ -758,7 +754,6 @@ export default function GRPOPreviewPage() {
                             <Input
                               type="number"
                               min={0}
-                              max={item.received_qty}
                               step="any"
                               value={acceptedQty}
                               onChange={(e) =>
