@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  AllGRPOEntry,
   GRPOAttachment,
   GRPOHistoryEntry,
   PendingGRPOEntryWithSuppliers,
@@ -17,6 +18,12 @@ export const grpoApi = {
     const response = await apiClient.get<PendingGRPOEntryWithSuppliers[]>(
       API_ENDPOINTS.GRPO.PENDING,
     );
+    return response.data;
+  },
+
+  // Get all gate entries visible to GRPO (gate, QC, done)
+  async getAllEntries(): Promise<AllGRPOEntry[]> {
+    const response = await apiClient.get<AllGRPOEntry[]>(API_ENDPOINTS.GRPO.ALL_ENTRIES);
     return response.data;
   },
 

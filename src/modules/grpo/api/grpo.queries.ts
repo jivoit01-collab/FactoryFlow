@@ -7,6 +7,7 @@ import { grpoApi } from './grpo.api';
 export const GRPO_QUERY_KEYS = {
   all: ['grpo'] as const,
   pending: () => [...GRPO_QUERY_KEYS.all, 'pending'] as const,
+  allEntries: () => [...GRPO_QUERY_KEYS.all, 'all-entries'] as const,
   preview: (vehicleEntryId: number) =>
     [...GRPO_QUERY_KEYS.all, 'preview', vehicleEntryId] as const,
   history: (vehicleEntryId?: number) =>
@@ -22,6 +23,16 @@ export function usePendingGRPOEntries() {
   return useQuery({
     queryKey: GRPO_QUERY_KEYS.pending(),
     queryFn: () => grpoApi.getPendingEntries(),
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
+
+// Get all gate entries visible to GRPO (gate / QC / done)
+export function useAllGRPOEntries() {
+  return useQuery({
+    queryKey: GRPO_QUERY_KEYS.allEntries(),
+    queryFn: () => grpoApi.getAllEntries(),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
   });

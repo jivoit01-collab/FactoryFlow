@@ -7,6 +7,7 @@ import type { ModuleConfig } from '@/core/types';
 // Lazy load GRPO pages
 const GRPODashboardPage = lazy(() => import('./pages/GRPODashboardPage'));
 const PendingEntriesPage = lazy(() => import('./pages/PendingEntriesPage'));
+const AllEntriesPage = lazy(() => import('./pages/AllEntriesPage'));
 const GRPOPreviewPage = lazy(() => import('./pages/GRPOPreviewPage'));
 const GRPOHistoryPage = lazy(() => import('./pages/GRPOHistoryPage'));
 const GRPOHistoryDetailPage = lazy(() => import('./pages/GRPOHistoryDetailPage'));
@@ -32,6 +33,13 @@ export const grpoModuleConfig: ModuleConfig = {
     {
       path: '/grpo/pending',
       element: <PendingEntriesPage />,
+      layout: 'main',
+      permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
+    },
+    // All entries list (gate / QC / done)
+    {
+      path: '/grpo/all-entries',
+      element: <AllEntriesPage />,
       layout: 'main',
       permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
     },
@@ -74,6 +82,11 @@ export const grpoModuleConfig: ModuleConfig = {
         {
           path: '/grpo/pending',
           title: 'Pending Entries',
+          permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
+        },
+        {
+          path: '/grpo/all-entries',
+          title: 'All Entries',
           permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
         },
         {

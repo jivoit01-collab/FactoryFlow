@@ -162,6 +162,7 @@ export const API_ENDPOINTS = {
   },
   // GRPO (Goods Receipt Purchase Order)
   GRPO: {
+    ALL_ENTRIES: '/grpo/all-entries/',
     PENDING: '/grpo/pending/',
     PREVIEW: (vehicleEntryId: number) => `/grpo/preview/${vehicleEntryId}/`,
     POST: '/grpo/post/',

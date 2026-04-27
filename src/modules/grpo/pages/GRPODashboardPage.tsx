@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Clock,
   History,
+  Layers,
   List,
   PackageCheck,
   RefreshCw,
@@ -260,7 +261,7 @@ export default function GRPODashboardPage() {
           {/* Quick Actions */}
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Button
                 variant="outline"
                 className="h-auto py-3 flex flex-col items-center gap-1"
@@ -268,6 +269,14 @@ export default function GRPODashboardPage() {
               >
                 <List className="h-5 w-5" />
                 <span className="text-xs">Pending Entries</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-3 flex flex-col items-center gap-1"
+                onClick={() => navigate('/grpo/all-entries')}
+              >
+                <Layers className="h-5 w-5" />
+                <span className="text-xs">All Entries</span>
               </Button>
               <Button
                 variant="outline"

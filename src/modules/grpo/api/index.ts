@@ -1,6 +1,7 @@
 export { grpoApi } from './grpo.api';
 export {
   GRPO_QUERY_KEYS,
+  useAllGRPOEntries,
   useDeleteGRPOAttachment,
   useGRPOAttachments,
   useGRPODetail,

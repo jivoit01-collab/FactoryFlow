@@ -1,5 +1,8 @@
 export type {
+  AllGRPOEntry,
+  AllGRPOEntrySupplier,
   AttachmentStatus,
+  EntryPhase,
   ExtraCharge,
   GRPOAttachment,
   GRPOHistoryEntry,

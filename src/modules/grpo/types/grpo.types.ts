@@ -195,3 +195,30 @@ export interface PendingSupplierGroup {
 export interface PendingGRPOEntryWithSuppliers extends PendingGRPOEntry {
   suppliers?: PendingSupplierGroup[];
 }
+
+// Phase of a gate entry as surfaced to the GRPO operator
+export type EntryPhase = 'GATE' | 'QC' | 'DONE' | 'CANCELLED';
+
+// Compact supplier summary used in the All Entries view
+export interface AllGRPOEntrySupplier {
+  supplier_code: string;
+  supplier_name: string;
+  po_count: number;
+}
+
+// All-entries row (GET /grpo/all-entries/)
+export interface AllGRPOEntry {
+  vehicle_entry_id: number;
+  entry_no: string;
+  status: string;
+  status_label: string;
+  phase: EntryPhase;
+  is_ready_for_grpo: boolean;
+  is_fully_posted: boolean;
+  entry_time: string | null;
+  total_po_count: number;
+  posted_po_count: number;
+  pending_po_count: number;
+  suppliers: AllGRPOEntrySupplier[];
+  po_numbers: string[];
+}
