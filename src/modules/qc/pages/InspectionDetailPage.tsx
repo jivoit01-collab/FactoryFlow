@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { usePermission } from '@/core/auth';
 import { RecordTimestamps } from '@/shared/components';
 import {
   Button,
@@ -37,6 +38,7 @@ import {
   useApproveAsQAM,
   useCreateInspection,
   useInspectionForSlip,
+  useRecordFactoryHeadDecision,
   useRejectInspection,
   useSubmitInspection,
   useUpdateInspection,
@@ -57,6 +59,15 @@ import type {
   ParameterResult,
   UpdateParameterResultRequest,
 } from '../types';
+import {
+  FACTORY_HEAD_DECISION_LABELS,
+  FACTORY_HEAD_DECISION_OPTIONS,
+  FACTORY_HEAD_DECISIONS,
+  isAcceptedQcOverride,
+  readFactoryHeadDecision,
+  writeFactoryHeadDecision,
+  type FactoryHeadDecision,
+} from '../utils/factoryHeadDecision';
 
 export default function InspectionDetailPage() {
   const navigate = useNavigate();
@@ -102,6 +113,13 @@ export default function InspectionDetailPage() {
   // Approval remarks
   const [approvalRemarks, setApprovalRemarks] = useState('');
   const [finalStatus, setFinalStatus] = useState<InspectionFinalStatus>(FINAL_STATUS.ACCEPTED);
+  const [factoryHeadDecision, setFactoryHeadDecision] = useState<FactoryHeadDecision>(
+    FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE,
+  );
+  const [savedFactoryHeadDecision, setSavedFactoryHeadDecision] =
+    useState<FactoryHeadDecision | null>(null);
+  const [factoryHeadRemarks, setFactoryHeadRemarks] = useState('');
+  const [factoryHeadSavedAt, setFactoryHeadSavedAt] = useState('');
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
   const [successAction, setSuccessAction] = useState<'chemist' | 'manager' | null>(null);
@@ -123,7 +141,9 @@ export default function InspectionDetailPage() {
   const approveAsChemist = useApproveAsChemist();
   const approveAsQAM = useApproveAsQAM();
   const rejectInspection = useRejectInspection();
+  const recordFactoryHeadDecision = useRecordFactoryHeadDecision();
   const sendBackArrivalSlip = useSendBackArrivalSlip();
+  const { currentCompany } = usePermission();
 
   // Send-back state
   const [sendBackRemarks, setSendBackRemarks] = useState('');
@@ -162,6 +182,39 @@ export default function InspectionDetailPage() {
       });
       setParameterResults(resultsMap);
     }
+  }, [inspection]);
+
+  useEffect(() => {
+    if (!inspection) return;
+
+    if (inspection.factory_head_decision) {
+      setFactoryHeadDecision(inspection.factory_head_decision);
+      setSavedFactoryHeadDecision(inspection.factory_head_decision);
+      setFactoryHeadRemarks(inspection.factory_head_remarks || '');
+      setFactoryHeadSavedAt(
+        inspection.factory_head_decided_at
+          ? new Date(inspection.factory_head_decided_at).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '',
+      );
+      return;
+    }
+
+    const savedDecision = readFactoryHeadDecision(inspection.id);
+    if (!savedDecision) {
+      setFactoryHeadDecision(FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE);
+      setSavedFactoryHeadDecision(null);
+      setFactoryHeadRemarks('');
+      setFactoryHeadSavedAt('');
+      return;
+    }
+
+    setFactoryHeadDecision(savedDecision.decision);
+    setSavedFactoryHeadDecision(savedDecision.decision);
+    setFactoryHeadRemarks(savedDecision.remarks || '');
+    setFactoryHeadSavedAt(savedDecision.savedAt || '');
   }, [inspection]);
 
   // Prefill form from arrival slip data when creating new inspection
@@ -495,6 +548,28 @@ export default function InspectionDetailPage() {
   const canApproveChemist = showChemistApproval;
   const canApproveQAM = showQAMApproval;
   const canReject = showRejectButton;
+  const showFactoryHeadDecision =
+    currentCompany?.role === 'Factory Head' &&
+    inspection?.workflow_status === WORKFLOW_STATUS.REJECTED &&
+    inspection?.final_status === FINAL_STATUS.REJECTED;
+  const isRejectedQCReturned = Boolean(inspection?.rejected_qc_return_entry_id);
+  const hasAcceptedOverride = isAcceptedQcOverride(
+    inspection?.factory_head_decision
+      ? {
+          inspectionId: inspection.id,
+          decision: inspection.factory_head_decision,
+          remarks: inspection.factory_head_remarks || '',
+          savedAt: inspection.factory_head_decided_at || '',
+        }
+      : inspection && savedFactoryHeadDecision
+      ? {
+          inspectionId: inspection.id,
+          decision: savedFactoryHeadDecision,
+          remarks: factoryHeadRemarks,
+          savedAt: factoryHeadSavedAt,
+        }
+      : null,
+  );
 
   const isSaving =
     createInspection.isPending ||
@@ -504,7 +579,50 @@ export default function InspectionDetailPage() {
     approveAsChemist.isPending ||
     approveAsQAM.isPending ||
     rejectInspection.isPending ||
+    recordFactoryHeadDecision.isPending ||
     sendBackArrivalSlip.isPending;
+
+  const handleFactoryHeadDecisionSave = async () => {
+    if (!inspection) return;
+    if (inspection.rejected_qc_return_entry_id) {
+      setApiErrors((current) => ({
+        ...current,
+        general: 'Factory Head decision is locked because this material is already out',
+      }));
+      return;
+    }
+
+    try {
+      const result = await recordFactoryHeadDecision.mutateAsync({
+        id: inspection.id,
+        data: { decision: factoryHeadDecision, remarks: factoryHeadRemarks },
+      });
+      const savedAt = result.factory_head_decided_at
+        ? new Date(result.factory_head_decided_at).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      writeFactoryHeadDecision({
+        inspectionId: inspection.id,
+        decision: factoryHeadDecision,
+        remarks: factoryHeadRemarks,
+        savedAt,
+      });
+      setSavedFactoryHeadDecision(factoryHeadDecision);
+      setFactoryHeadSavedAt(savedAt);
+    } catch (error) {
+      const detail =
+        error && typeof error === 'object' && 'data' in error
+          ? (error as { data?: { detail?: string } }).data?.detail
+          : undefined;
+      setApiErrors((current) => ({
+        ...current,
+        general: detail || 'Could not save factory head decision',
+      }));
+    }
+  };
 
   // Show animated success screen after approval
   if (successAction) {
@@ -542,25 +660,39 @@ export default function InspectionDetailPage() {
           {inspection && (
             <div className="flex items-center gap-4 ml-10">
               <span className="text-muted-foreground">Report No: {inspection.report_no}</span>
-              <span
-                className={cn(
-                  'px-2 py-1 rounded-full text-xs font-medium',
-                  WORKFLOW_STATUS_CONFIG[inspection.workflow_status].bgColor,
-                  WORKFLOW_STATUS_CONFIG[inspection.workflow_status].color,
-                )}
-              >
-                {WORKFLOW_STATUS_CONFIG[inspection.workflow_status].label}
-              </span>
-              {inspection.final_status !== FINAL_STATUS.PENDING && (
+              {hasAcceptedOverride ? (
                 <span
                   className={cn(
                     'px-2 py-1 rounded-full text-xs font-medium',
-                    FINAL_STATUS_CONFIG[inspection.final_status].bgColor,
-                    FINAL_STATUS_CONFIG[inspection.final_status].color,
+                    FINAL_STATUS_CONFIG.ACCEPTED.bgColor,
+                    FINAL_STATUS_CONFIG.ACCEPTED.color,
                   )}
                 >
-                  {FINAL_STATUS_CONFIG[inspection.final_status].label}
+                  Accepted Override
                 </span>
+              ) : (
+                <>
+                  <span
+                    className={cn(
+                      'px-2 py-1 rounded-full text-xs font-medium',
+                      WORKFLOW_STATUS_CONFIG[inspection.workflow_status].bgColor,
+                      WORKFLOW_STATUS_CONFIG[inspection.workflow_status].color,
+                    )}
+                  >
+                    {WORKFLOW_STATUS_CONFIG[inspection.workflow_status].label}
+                  </span>
+                  {inspection.final_status !== FINAL_STATUS.PENDING && (
+                    <span
+                      className={cn(
+                        'px-2 py-1 rounded-full text-xs font-medium',
+                        FINAL_STATUS_CONFIG[inspection.final_status].bgColor,
+                        FINAL_STATUS_CONFIG[inspection.final_status].color,
+                      )}
+                    >
+                      {FINAL_STATUS_CONFIG[inspection.final_status].label}
+                    </span>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -1079,6 +1211,64 @@ export default function InspectionDetailPage() {
                 </Button>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Factory Head Decision */}
+      {showFactoryHeadDecision && (
+        <Card className="border-amber-500/50">
+          <CardHeader>
+            <CardTitle>Factory Head Decision</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {isRejectedQCReturned
+                ? `This material is already out through ${inspection?.rejected_qc_return_entry_no || 'Rejected QC Return'}. The factory head decision is locked.`
+                : 'QA Manager has rejected this inspection. Accept QC Override marks the QC as accepted for app flow. Return to Vendor makes it available in gate-out return. Other decisions are recorded only for now.'}
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Decision</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={factoryHeadDecision}
+                  onChange={(e) => setFactoryHeadDecision(e.target.value as FactoryHeadDecision)}
+                  disabled={isRejectedQCReturned}
+                >
+                  {FACTORY_HEAD_DECISION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Remarks</Label>
+                <Textarea
+                  value={factoryHeadRemarks}
+                  onChange={(e) => setFactoryHeadRemarks(e.target.value)}
+                  placeholder="Factory head decision remarks"
+                  rows={3}
+                  disabled={isRejectedQCReturned}
+                />
+              </div>
+            </div>
+            {factoryHeadSavedAt && (
+              <p className="text-sm font-medium text-emerald-700">
+                Factory head decision saved as{' '}
+                {FACTORY_HEAD_DECISION_LABELS[savedFactoryHeadDecision || factoryHeadDecision]} at{' '}
+                {factoryHeadSavedAt}
+              </p>
+            )}
+            <Button
+              type="button"
+              onClick={handleFactoryHeadDecisionSave}
+              disabled={recordFactoryHeadDecision.isPending || isRejectedQCReturned}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Decision
+            </Button>
           </CardContent>
         </Card>
       )}

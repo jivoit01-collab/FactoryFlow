@@ -72,6 +72,8 @@ export const API_ENDPOINTS = {
   GATE_CORE: {
     FULL_VIEW: (entryId: number) => `/gate-core/raw-material-gate-entry/${entryId}/`,
     COMPLETE: (entryId: number) => `/raw-material-gatein/gate-entries/${entryId}/complete/`,
+    REJECTED_QC_RETURNS: '/gate-core/rejected-qc-returns/',
+    REJECTED_QC_RETURN_BY_ID: (id: number) => `/gate-core/rejected-qc-returns/${id}/`,
   },
   // Daily Needs Gate In
   DAILY_NEEDS_GATEIN: {
@@ -131,6 +133,7 @@ export const API_ENDPOINTS = {
     AWAITING_QAM: '/quality-control/inspections/awaiting-qam/',
     COMPLETED_INSPECTIONS: '/quality-control/inspections/completed/',
     REJECTED_INSPECTIONS: '/quality-control/inspections/rejected/',
+    RETURN_TO_VENDOR_INSPECTIONS: '/quality-control/inspections/return-to-vendor/',
     INSPECTION_COUNTS: '/quality-control/inspections/counts/',
     INSPECTION_BY_ID: (id: number) => `/quality-control/inspections/${id}/`,
     INSPECTION_FOR_SLIP: (slipId: number) => `/quality-control/arrival-slips/${slipId}/inspection/`,
@@ -142,6 +145,8 @@ export const API_ENDPOINTS = {
     APPROVE_CHEMIST: (id: number) => `/quality-control/inspections/${id}/approve/chemist/`,
     APPROVE_QAM: (id: number) => `/quality-control/inspections/${id}/approve/qam/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
+    FACTORY_HEAD_DECISION: (id: number) =>
+      `/quality-control/inspections/${id}/factory-head-decision/`,
 
     // Production QC
     PRODUCTION_QC_LIST: '/quality-control/production-qc/',

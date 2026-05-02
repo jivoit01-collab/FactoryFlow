@@ -11,6 +11,10 @@ import { Button, Input } from '@/shared/components/ui';
 import { useInspectionsByTab } from '../api/inspection/inspection.queries';
 import { WORKFLOW_STATUS_CONFIG } from '../constants';
 import type { InspectionListItem, InspectionListWorkflowStatus } from '../types';
+import {
+  FACTORY_HEAD_DECISIONS,
+  readFactoryHeadDecision,
+} from '../utils/factoryHeadDecision';
 
 // Tab metadata
 const TAB_CONFIG = {
@@ -65,6 +69,27 @@ function getNavigateTo(item: InspectionListItem): string {
     : `/qc/inspections/${item.arrival_slip_id}/new`;
 }
 
+function getEffectiveStatusBadge(item: InspectionListItem) {
+  const factoryHeadDecision = readFactoryHeadDecision(item.inspection_id);
+
+  if (
+    item.factory_head_decision === FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE ||
+    factoryHeadDecision?.decision === FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE
+  ) {
+    return {
+      label: 'Accepted Override',
+      className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    };
+  }
+
+  return {
+    label: WORKFLOW_STATUS_CONFIG[item.workflow_status]?.label || item.workflow_status,
+    className:
+      STATUS_BADGE_CLASSES[item.workflow_status] ||
+      'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  };
+}
+
 export default function PendingInspectionsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -95,7 +120,7 @@ export default function PendingInspectionsPage() {
         item.entry_no?.toLowerCase().includes(searchLower) ||
         item.report_no?.toLowerCase().includes(searchLower) ||
         item.internal_lot_no?.toLowerCase().includes(searchLower) ||
-        WORKFLOW_STATUS_CONFIG[item.workflow_status]?.label?.toLowerCase().includes(searchLower),
+        getEffectiveStatusBadge(item).label.toLowerCase().includes(searchLower),
     );
   }, [items, search]);
 
@@ -121,7 +146,7 @@ export default function PendingInspectionsPage() {
       'Report No.': item.report_no || '-',
       'Internal Lot No.': item.internal_lot_no || '-',
       'Material Type': item.material_type_name || '-',
-      'Status': WORKFLOW_STATUS_CONFIG[item.workflow_status]?.label || item.workflow_status,
+      'Status': getEffectiveStatusBadge(item).label,
       'Date/Time': item.submitted_at || item.created_at
         ? new Date(item.submitted_at || item.created_at).toLocaleString('en-US', {
             month: 'short',
@@ -316,10 +341,7 @@ export default function PendingInspectionsPage() {
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => {
-                    const statusConfig = WORKFLOW_STATUS_CONFIG[item.workflow_status];
-                    const badgeClass =
-                      STATUS_BADGE_CLASSES[item.workflow_status] ||
-                      'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+                    const statusBadge = getEffectiveStatusBadge(item);
 
                     return (
                       <tr
@@ -333,9 +355,9 @@ export default function PendingInspectionsPage() {
                         <td className="p-3 text-sm">{item.material_type_name || '-'}</td>
                         <td className="p-3 text-sm">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass}`}
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadge.className}`}
                           >
-                            {statusConfig?.label || item.workflow_status}
+                            {statusBadge.label}
                           </span>
                         </td>
                         <td className="p-3 text-sm text-muted-foreground">

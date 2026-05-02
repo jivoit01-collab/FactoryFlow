@@ -188,8 +188,23 @@ function createApiClient(): AxiosInstance {
           }
         }
 
-        // Add company code header if available
-        const currentCompany = await indexedDBService.getCurrentCompany();
+        // Add company code header if available. If the company selection cache is missing
+        // but user data is present, restore the default active company so company-scoped
+        // endpoints do not fail with "Company-Code header is missing".
+        let currentCompany = await indexedDBService.getCurrentCompany();
+        if (!currentCompany) {
+          const user = await indexedDBService.getUser();
+          currentCompany =
+            user?.companies?.find((company) => company.is_default && company.is_active) ||
+            user?.companies?.find((company) => company.is_active) ||
+            user?.companies?.[0] ||
+            null;
+
+          if (currentCompany) {
+            await indexedDBService.updateCurrentCompany(currentCompany);
+          }
+        }
+
         if (currentCompany?.company_code) {
           config.headers['Company-Code'] = currentCompany.company_code;
         }

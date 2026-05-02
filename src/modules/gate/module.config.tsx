@@ -57,6 +57,22 @@ const ContractorLaboursPage = lazy(
   () => import('./pages/personGateInPages/ContractorLaboursPage'),
 );
 
+// Standalone gate form pages
+const RejectedQCReturnDashboardPage = lazy(
+  () => import('./pages/rejectedMaterialPages/RejectedQCReturnDashboardPage'),
+);
+const RejectedQCReturnVehiclePage = lazy(
+  () => import('./pages/rejectedMaterialPages/RejectedQCReturnVehiclePage'),
+);
+const RejectedQCReturnItemsPage = lazy(
+  () => import('./pages/rejectedMaterialPages/RejectedQCReturnItemsPage'),
+);
+const ReturnsFormPage = lazy(() => import('./pages/returnsPages/ReturnsFormPage'));
+const RepairMovementFormPage = lazy(
+  () => import('./pages/repairMovementPages/RepairMovementFormPage'),
+);
+const JobWorkFormPage = lazy(() => import('./pages/jobWorkPages/JobWorkFormPage'));
+
 // Other gate entry type pages
 const DailyNeedsPage = lazy(() => import('./pages/DailyNeedsPage'));
 const DailyNeedsAllPage = lazy(() => import('./pages/dailyNeedsPages/DailyNeedsAllPage'));
@@ -463,6 +479,90 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
     },
+
+    // New standalone gate submodule forms
+    {
+      path: '/gate/rejected-qc-return',
+      element: <RejectedQCReturnDashboardPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW],
+      breadcrumb: { label: 'Rejected QC' },
+    },
+    {
+      path: '/gate/rejected-qc-return/new',
+      element: <RejectedQCReturnVehiclePage />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW,
+        GATE_PERMISSIONS.REJECTED_QC_RETURN.CREATE,
+      ],
+      breadcrumb: { label: 'Rejected QC' },
+    },
+    {
+      path: '/gate/rejected-qc-return/new/items',
+      element: <RejectedQCReturnItemsPage />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW,
+        GATE_PERMISSIONS.REJECTED_QC_RETURN.CREATE,
+      ],
+      breadcrumb: { label: 'Rejected QC Items' },
+    },
+    {
+      path: '/gate/rejected-materials',
+      element: <RejectedQCReturnDashboardPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW],
+      breadcrumb: { label: 'Rejected QC' },
+    },
+    {
+      path: '/gate/rejected-materials/new',
+      element: <RejectedQCReturnVehiclePage />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW,
+        GATE_PERMISSIONS.REJECTED_QC_RETURN.CREATE,
+      ],
+      breadcrumb: { label: 'Rejected QC' },
+    },
+    {
+      path: '/gate/rejected-materials/new/items',
+      element: <RejectedQCReturnItemsPage />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW,
+        GATE_PERMISSIONS.REJECTED_QC_RETURN.CREATE,
+      ],
+      breadcrumb: { label: 'Rejected QC Items' },
+    },
+    {
+      path: '/gate/returns',
+      element: <ReturnsFormPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.RETURNS.VIEW, GATE_PERMISSIONS.RETURNS.CREATE],
+      breadcrumb: { label: 'Returns' },
+    },
+    {
+      path: '/gate/repair-movement',
+      element: <RepairMovementFormPage />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.REPAIR_MOVEMENT.VIEW,
+        GATE_PERMISSIONS.REPAIR_MOVEMENT.CREATE,
+      ],
+      breadcrumb: { label: 'Repair' },
+    },
+    {
+      path: '/gate/job-work',
+      element: <JobWorkFormPage />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.DASHBOARD.VIEW,
+        GATE_PERMISSIONS.JOB_WORK.VIEW,
+        GATE_PERMISSIONS.JOB_WORK.CREATE,
+      ],
+      breadcrumb: { label: 'Job Work' },
+    },
   ],
   navigation: [
     {
@@ -497,6 +597,36 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/visitor-labour',
           title: 'Visitor/Labour',
           permissions: [GATE_PERMISSIONS.PERSON_GATE_IN.VIEW],
+        },
+        {
+          path: '/gate/rejected-qc-return',
+          title: 'Rejected QC Return',
+          permissions: [
+            GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW,
+            GATE_PERMISSIONS.REJECTED_QC_RETURN.CREATE,
+          ],
+        },
+        {
+          path: '/gate/returns',
+          title: 'BST / Returns',
+          permissions: [GATE_PERMISSIONS.RETURNS.VIEW, GATE_PERMISSIONS.RETURNS.CREATE],
+        },
+        {
+          path: '/gate/repair-movement',
+          title: 'Repair Movement',
+          permissions: [
+            GATE_PERMISSIONS.REPAIR_MOVEMENT.VIEW,
+            GATE_PERMISSIONS.REPAIR_MOVEMENT.CREATE,
+          ],
+        },
+        {
+          path: '/gate/job-work',
+          title: 'Job Work / Oil Refining',
+          permissions: [
+            GATE_PERMISSIONS.DASHBOARD.VIEW,
+            GATE_PERMISSIONS.JOB_WORK.VIEW,
+            GATE_PERMISSIONS.JOB_WORK.CREATE,
+          ],
         },
       ],
     },

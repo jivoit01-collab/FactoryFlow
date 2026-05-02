@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ApprovalRequest,
   CreateInspectionRequest,
+  FactoryHeadDecisionRequest,
   InspectionListItem,
   InspectionListParams,
   UpdateParameterResultRequest,
@@ -28,6 +29,8 @@ export const INSPECTION_QUERY_KEYS = {
     [...INSPECTION_QUERY_KEYS.all, 'completed', ...(params ? [params] : [])] as const,
   rejected: (params?: InspectionListParams) =>
     [...INSPECTION_QUERY_KEYS.all, 'rejected', ...(params ? [params] : [])] as const,
+  returnToVendor: (params?: InspectionListParams) =>
+    [...INSPECTION_QUERY_KEYS.all, 'returnToVendor', ...(params ? [params] : [])] as const,
   counts: (params?: InspectionListParams) =>
     [...INSPECTION_QUERY_KEYS.all, 'counts', ...(params ? [params] : [])] as const,
   detail: (id: number) => [...INSPECTION_QUERY_KEYS.all, 'detail', id] as const,
@@ -126,6 +129,14 @@ export function useRejectedInspections(params?: InspectionListParams) {
   return useQuery({
     queryKey: INSPECTION_QUERY_KEYS.rejected(params),
     queryFn: () => inspectionApi.getRejectedList(params),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useReturnToVendorInspections(params?: InspectionListParams) {
+  return useQuery({
+    queryKey: INSPECTION_QUERY_KEYS.returnToVendor(params),
+    queryFn: () => inspectionApi.getReturnToVendorList(params),
     staleTime: 30 * 1000,
   });
 }
@@ -245,6 +256,19 @@ export function useRejectInspection() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.detail(result.id) });
+    },
+  });
+}
+
+export function useRecordFactoryHeadDecision() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: FactoryHeadDecisionRequest }) =>
+      inspectionApi.recordFactoryHeadDecision(id, data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.detail(result.id) });
+      queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.forSlip(result.arrival_slip_id) });
     },
   });
 }

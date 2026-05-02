@@ -136,6 +136,22 @@ export const ROUTES = {
         path: '/gate/visitor-labour',
         title: 'Visitor/Labour',
       },
+      REJECTED_QC_RETURN: {
+        path: '/gate/rejected-qc-return',
+        title: 'Rejected QC Return',
+      },
+      RETURNS: {
+        path: '/gate/returns',
+        title: 'BST / Returns',
+      },
+      REPAIR_MOVEMENT: {
+        path: '/gate/repair-movement',
+        title: 'Repair Movement',
+      },
+      JOB_WORK: {
+        path: '/gate/job-work',
+        title: 'Job Work / Oil Refining',
+      },
     },
   },
 

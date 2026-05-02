@@ -51,6 +51,16 @@ export const GATE_PERMISSIONS = {
   },
 
   // ============================================
+  // REJECTED QC RETURN
+  // ============================================
+  REJECTED_QC_RETURN: {
+    /** View rejected QC return cases */
+    VIEW: 'raw_material_gatein.view_poreceipt',
+    /** Create rejected QC return cases */
+    CREATE: 'raw_material_gatein.add_poreceipt',
+  },
+
+  // ============================================
   // DAILY NEEDS GATE-IN PERMISSIONS
   // ============================================
   DAILY_NEEDS: {
@@ -84,6 +94,16 @@ export const GATE_PERMISSIONS = {
     DELETE: 'maintenance_gatein.delete_maintenancegateentry',
     /** Complete maintenance entry */
     COMPLETE: 'maintenance_gatein.can_complete_maintenance_entry',
+  },
+
+  // ============================================
+  // REPAIR / RETURNABLE PART MOVEMENT
+  // ============================================
+  REPAIR_MOVEMENT: {
+    /** View repair movements */
+    VIEW: 'maintenance_gatein.view_maintenancegateentry',
+    /** Create repair movements */
+    CREATE: 'maintenance_gatein.add_maintenancegateentry',
   },
 
   // ============================================
@@ -123,6 +143,23 @@ export const GATE_PERMISSIONS = {
     /** Search entries */
     SEARCH: 'person_gatein.can_search_entry',
   },
+
+  // ============================================
+  // RETURNS AND JOB WORK FORM PAGES
+  // ============================================
+  RETURNS: {
+    /** View gate returns */
+    VIEW: 'person_gatein.can_view_dashboard',
+    /** Create gate returns */
+    CREATE: 'person_gatein.can_view_dashboard',
+  },
+
+  JOB_WORK: {
+    /** View job-work gate entries */
+    VIEW: 'production_execution.view_productionrun',
+    /** Create job-work gate entries */
+    CREATE: 'production_execution.add_productionrun',
+  },
 } as const;
 
 /**
@@ -145,7 +182,11 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.DASHBOARD)[keyof typeof GATE_PERMISSIONS.DASHBOARD]
   | (typeof GATE_PERMISSIONS.GATE_ENTRY)[keyof typeof GATE_PERMISSIONS.GATE_ENTRY]
   | (typeof GATE_PERMISSIONS.RAW_MATERIAL)[keyof typeof GATE_PERMISSIONS.RAW_MATERIAL]
+  | (typeof GATE_PERMISSIONS.REJECTED_QC_RETURN)[keyof typeof GATE_PERMISSIONS.REJECTED_QC_RETURN]
   | (typeof GATE_PERMISSIONS.DAILY_NEEDS)[keyof typeof GATE_PERMISSIONS.DAILY_NEEDS]
   | (typeof GATE_PERMISSIONS.MAINTENANCE)[keyof typeof GATE_PERMISSIONS.MAINTENANCE]
+  | (typeof GATE_PERMISSIONS.REPAIR_MOVEMENT)[keyof typeof GATE_PERMISSIONS.REPAIR_MOVEMENT]
   | (typeof GATE_PERMISSIONS.CONSTRUCTION)[keyof typeof GATE_PERMISSIONS.CONSTRUCTION]
-  | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN];
+  | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN]
+  | (typeof GATE_PERMISSIONS.RETURNS)[keyof typeof GATE_PERMISSIONS.RETURNS]
+  | (typeof GATE_PERMISSIONS.JOB_WORK)[keyof typeof GATE_PERMISSIONS.JOB_WORK];

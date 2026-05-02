@@ -15,6 +15,13 @@ export type InspectionListWorkflowStatus = 'NOT_STARTED' | InspectionWorkflowSta
 // Inspection final status
 export type InspectionFinalStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'HOLD';
 
+export type FactoryHeadDecision =
+  | 'ACCEPT_QC_OVERRIDE'
+  | 'RETURN_TO_VENDOR'
+  | 'HOLD_FOR_REVIEW'
+  | 'SEND_FOR_RECHECK'
+  | 'SCRAP';
+
 // Query params for inspection list endpoints
 export interface InspectionListParams {
   from_date?: string;
@@ -147,6 +154,11 @@ export interface InspectionListItem {
   billing_uom: string;
   workflow_status: InspectionListWorkflowStatus;
   final_status: InspectionFinalStatus | null;
+  effective_final_status?: InspectionFinalStatus | null;
+  factory_head_decision?: FactoryHeadDecision | '';
+  factory_head_decided_at?: string | null;
+  rejected_qc_return_entry_id?: number | null;
+  rejected_qc_return_entry_no?: string | null;
   material_type_name: string | null;
   created_at: string;
   submitted_at: string | null;
@@ -199,6 +211,17 @@ export interface Inspection {
   qam_name: string | null;
   qam_approved_at: string | null;
   qam_remarks: string;
+  rejected_by?: number | null;
+  rejected_by_name?: string | null;
+  rejected_at?: string | null;
+  factory_head?: number | null;
+  factory_head_name?: string | null;
+  factory_head_decision?: FactoryHeadDecision | '';
+  factory_head_remarks?: string;
+  factory_head_decided_at?: string | null;
+  effective_final_status?: InspectionFinalStatus;
+  rejected_qc_return_entry_id?: number | null;
+  rejected_qc_return_entry_no?: string | null;
   workflow_status: InspectionWorkflowStatus;
   is_locked: boolean;
   remarks: string;
@@ -227,6 +250,11 @@ export interface CreateInspectionRequest {
 export interface ApprovalRequest {
   remarks?: string;
   final_status?: InspectionFinalStatus;
+}
+
+export interface FactoryHeadDecisionRequest {
+  decision: FactoryHeadDecision;
+  remarks?: string;
 }
 
 
@@ -341,4 +369,3 @@ export interface ProductionQCListParams {
   date_from?: string;
   date_to?: string;
 }
-

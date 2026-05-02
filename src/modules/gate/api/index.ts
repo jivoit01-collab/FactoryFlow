@@ -46,6 +46,10 @@ export * from './po/po.api';
 export * from './po/po.queries';
 export * from './po/poReceipt.queries';
 
+// Rejected QC Return
+export * from './rejectedQcReturn/rejectedQcReturn.api';
+export * from './rejectedQcReturn/rejectedQcReturn.queries';
+
 // Security Check
 export * from './securityCheck/securityCheck.api';
 export * from './securityCheck/securityCheck.queries';
