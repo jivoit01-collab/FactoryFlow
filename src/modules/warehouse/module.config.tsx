@@ -14,6 +14,9 @@ const WMSDashboardPage = lazy(() => import('./pages/WMSDashboardPage'));
 const StockTrackerPage = lazy(() => import('./pages/StockTrackerPage'));
 const BillingTrackerPage = lazy(() => import('./pages/BillingTrackerPage'));
 const WarehouseComparisonPage = lazy(() => import('./pages/WarehouseComparisonPage'));
+const TransferActivityPage = lazy(() => import('./pages/TransferActivityPage'));
+const BatchExpiryPage = lazy(() => import('./pages/BatchExpiryPage'));
+const SalesOrderBacklogPage = lazy(() => import('./pages/SalesOrderBacklogPage'));
 
 export const warehouseModuleConfig: ModuleConfig = {
   name: 'warehouse',
@@ -58,6 +61,24 @@ export const warehouseModuleConfig: ModuleConfig = {
     {
       path: '/wms/billing',
       element: <BillingTrackerPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+    },
+    {
+      path: '/wms/transfers',
+      element: <TransferActivityPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+    },
+    {
+      path: '/wms/batches',
+      element: <BatchExpiryPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+    },
+    {
+      path: '/wms/orders',
+      element: <SalesOrderBacklogPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
     },
@@ -110,6 +131,21 @@ export const warehouseModuleConfig: ModuleConfig = {
         {
           path: '/wms/billing',
           title: 'Billing Tracker',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+        },
+        {
+          path: '/wms/transfers',
+          title: 'Transfers',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+        },
+        {
+          path: '/wms/batches',
+          title: 'Batch Expiry',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+        },
+        {
+          path: '/wms/orders',
+          title: 'Order Backlog',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
         },
         {

@@ -157,6 +157,120 @@ export interface StockMovement {
 }
 
 // ============================================================================
+// Stock Transfers
+// ============================================================================
+
+export interface WMSTransferSummary {
+  transfer_count: number;
+  line_count: number;
+  total_quantity: number;
+  route_count: number;
+}
+
+export interface WMSTransferRoute {
+  from_warehouse: string;
+  to_warehouse: string;
+  transfer_count: number;
+  line_count: number;
+  quantity: number;
+}
+
+export interface WMSTransferLine {
+  doc_entry: number;
+  doc_num: number;
+  doc_date: string;
+  header_from_warehouse: string;
+  header_to_warehouse: string;
+  comments: string;
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  quantity: number;
+  from_warehouse: string;
+  to_warehouse: string;
+}
+
+export interface WMSTransferOverviewResponse {
+  summary: WMSTransferSummary;
+  routes: WMSTransferRoute[];
+  transfers: WMSTransferLine[];
+}
+
+// ============================================================================
+// Batch Expiry / FEFO
+// ============================================================================
+
+export type BatchExpiryStatus = 'EXPIRED' | 'CRITICAL' | 'WARNING' | 'OK' | 'NO_EXPIRY';
+
+export interface WMSBatchExpirySummary {
+  batch_count: number;
+  expired_count: number;
+  critical_count: number;
+  warning_count: number;
+  ok_count: number;
+  total_quantity: number;
+}
+
+export interface WMSBatchExpiryItem {
+  item_code: string;
+  item_name: string;
+  batch_number: string;
+  expiry_date: string;
+  manufacturing_date: string;
+  sap_status: string;
+  warehouse_code: string;
+  quantity: number;
+  days_to_expiry: number | null;
+  expiry_status: BatchExpiryStatus;
+}
+
+export interface WMSBatchExpiryResponse {
+  summary: WMSBatchExpirySummary;
+  batches: WMSBatchExpiryItem[];
+}
+
+// ============================================================================
+// Sales Order Backlog
+// ============================================================================
+
+export interface WMSSalesOrderBacklogSummary {
+  order_count: number;
+  line_count: number;
+  open_quantity: number;
+  warehouse_count: number;
+}
+
+export interface WMSSalesOrderWarehouseSummary {
+  warehouse_code: string;
+  order_count: number;
+  line_count: number;
+  open_quantity: number;
+}
+
+export interface WMSSalesOrderBacklogLine {
+  doc_entry: number;
+  doc_num: number;
+  doc_date: string;
+  due_date: string;
+  customer_code: string;
+  customer_name: string;
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  warehouse_code: string;
+  ordered_qty: number;
+  open_qty: number;
+  delivered_qty: number;
+  fulfillment_pct: number;
+}
+
+export interface WMSSalesOrderBacklogResponse {
+  summary: WMSSalesOrderBacklogSummary;
+  warehouses: WMSSalesOrderWarehouseSummary[];
+  lines: WMSSalesOrderBacklogLine[];
+}
+
+// ============================================================================
 // Warehouse Summary
 // ============================================================================
 
