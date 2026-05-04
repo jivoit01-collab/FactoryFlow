@@ -1,7 +1,12 @@
 import { Factory } from 'lucide-react';
 import { lazy } from 'react';
 
-import { EXECUTION_PERMISSIONS, PRODUCTION_PERMISSIONS } from '@/config/permissions';
+import {
+  EXECUTION_MODULE_PREFIX,
+  EXECUTION_PERMISSIONS,
+  PRODUCTION_MODULE_PREFIX,
+  PRODUCTION_PERMISSIONS,
+} from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 // Lazy load Production Dashboard
@@ -41,6 +46,16 @@ const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
 
+const PRODUCTION_DASHBOARD_PERMISSIONS = [
+  PRODUCTION_PERMISSIONS.VIEW_PLAN,
+  EXECUTION_PERMISSIONS.VIEW_RUN,
+  EXECUTION_PERMISSIONS.VIEW_CLEARANCE,
+  EXECUTION_PERMISSIONS.VIEW_CHECKLIST,
+  EXECUTION_PERMISSIONS.VIEW_WASTE,
+  EXECUTION_PERMISSIONS.VIEW_REPORTS,
+  EXECUTION_PERMISSIONS.MANAGE_LINES,
+] as const;
+
 export const productionModuleConfig: ModuleConfig = {
   name: 'production',
   routes: [
@@ -49,7 +64,7 @@ export const productionModuleConfig: ModuleConfig = {
       path: '/production',
       element: <ProductionDashboardPage />,
       layout: 'main',
-      permissions: [PRODUCTION_PERMISSIONS.VIEW_PLAN],
+      permissions: PRODUCTION_DASHBOARD_PERMISSIONS,
     },
     // ---- Planning ----
     {
@@ -240,7 +255,8 @@ export const productionModuleConfig: ModuleConfig = {
       title: 'Production',
       icon: Factory,
       showInSidebar: true,
-      permissions: [PRODUCTION_PERMISSIONS.VIEW_PLAN],
+      modulePrefix: [PRODUCTION_MODULE_PREFIX, EXECUTION_MODULE_PREFIX],
+      permissions: PRODUCTION_DASHBOARD_PERMISSIONS,
       hasSubmenu: true,
       children: [
         {
