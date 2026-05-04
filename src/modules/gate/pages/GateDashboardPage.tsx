@@ -2,6 +2,7 @@ import {
   Building2,
   Factory,
   HardHat,
+  LogOut,
   Package,
   PackageX,
   RotateCcw,
@@ -74,6 +75,17 @@ const gateModules: GateModuleCard[] = [
     permissions: [
       GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW,
       GATE_PERMISSIONS.REJECTED_QC_RETURN.CREATE,
+    ],
+    section: 'out',
+  },
+  {
+    title: 'Empty Vehicle Out',
+    icon: <LogOut className="h-5 w-5" />,
+    route: ROUTES.GATE.children?.EMPTY_VEHICLE_OUT.path || '/gate/empty-vehicle-out',
+    color: 'text-blue-700',
+    permissions: [
+      GATE_PERMISSIONS.EMPTY_VEHICLE_OUT.VIEW,
+      GATE_PERMISSIONS.EMPTY_VEHICLE_OUT.CREATE,
     ],
     section: 'out',
   },

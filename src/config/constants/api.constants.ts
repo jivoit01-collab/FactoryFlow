@@ -74,6 +74,9 @@ export const API_ENDPOINTS = {
     COMPLETE: (entryId: number) => `/raw-material-gatein/gate-entries/${entryId}/complete/`,
     REJECTED_QC_RETURNS: '/gate-core/rejected-qc-returns/',
     REJECTED_QC_RETURN_BY_ID: (id: number) => `/gate-core/rejected-qc-returns/${id}/`,
+    EMPTY_VEHICLE_ELIGIBLE_ENTRIES: '/gate-core/empty-vehicle-outs/eligible-entries/',
+    EMPTY_VEHICLE_OUTS: '/gate-core/empty-vehicle-outs/',
+    EMPTY_VEHICLE_OUT_BY_ID: (id: number) => `/gate-core/empty-vehicle-outs/${id}/`,
   },
   // Daily Needs Gate In
   DAILY_NEEDS_GATEIN: {

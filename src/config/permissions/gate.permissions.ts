@@ -61,6 +61,16 @@ export const GATE_PERMISSIONS = {
   },
 
   // ============================================
+  // EMPTY VEHICLE GATE OUT
+  // ============================================
+  EMPTY_VEHICLE_OUT: {
+    /** View empty vehicle gate-out entries */
+    VIEW: 'person_gatein.can_view_dashboard',
+    /** Mark an inward vehicle out empty */
+    CREATE: 'person_gatein.can_view_dashboard',
+  },
+
+  // ============================================
   // DAILY NEEDS GATE-IN PERMISSIONS
   // ============================================
   DAILY_NEEDS: {
@@ -183,6 +193,7 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.GATE_ENTRY)[keyof typeof GATE_PERMISSIONS.GATE_ENTRY]
   | (typeof GATE_PERMISSIONS.RAW_MATERIAL)[keyof typeof GATE_PERMISSIONS.RAW_MATERIAL]
   | (typeof GATE_PERMISSIONS.REJECTED_QC_RETURN)[keyof typeof GATE_PERMISSIONS.REJECTED_QC_RETURN]
+  | (typeof GATE_PERMISSIONS.EMPTY_VEHICLE_OUT)[keyof typeof GATE_PERMISSIONS.EMPTY_VEHICLE_OUT]
   | (typeof GATE_PERMISSIONS.DAILY_NEEDS)[keyof typeof GATE_PERMISSIONS.DAILY_NEEDS]
   | (typeof GATE_PERMISSIONS.MAINTENANCE)[keyof typeof GATE_PERMISSIONS.MAINTENANCE]
   | (typeof GATE_PERMISSIONS.REPAIR_MOVEMENT)[keyof typeof GATE_PERMISSIONS.REPAIR_MOVEMENT]

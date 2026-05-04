@@ -29,6 +29,10 @@ export * from './department/department.queries';
 export * from './driver/driver.api';
 export * from './driver/driver.queries';
 
+// Empty Vehicle Out
+export * from './emptyVehicleOut/emptyVehicleOut.api';
+export * from './emptyVehicleOut/emptyVehicleOut.queries';
+
 // Gate Entry Full View
 export * from './gateEntryFullView/gateEntryFullView.api';
 export * from './gateEntryFullView/gateEntryFullView.queries';

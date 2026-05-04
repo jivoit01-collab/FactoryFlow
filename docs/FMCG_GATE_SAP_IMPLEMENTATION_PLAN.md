@@ -28,7 +28,7 @@ The implementation order should be barcode-led:
 2. Build full WMS on top of barcode in `feature/wms2`.
 3. Add dispatch and gate-out flows on top of WMS/barcode movements.
 4. Add production-module integration points where production consumes or produces barcode-tracked goods.
-5. Add gate-in reverse/exception flows such as rejected material, repair movement, and job-work arrivals.
+5. Add gate-in/out reverse and exception flows such as rejected material, empty vehicle out, labour in/out, repair movement, finished goods out, BST, and job-work arrivals.
 6. Add SAP write integrations only where the owning operational module needs them and the SAP process is confirmed.
 
 This means gate should not become the stock ledger. Gate records physical arrival/departure; barcode/WMS records the controlled stock identity and movement.
@@ -167,7 +167,7 @@ Current gate already covers the inward raw material path:
 - Accepted/rejected quantity fields on `POItemReceipt`.
 - GRPO posting through the separate GRPO feature.
 
-Main gap: the app does not yet fully model the post-QC and post-GRPO reverse flows from the FMCG reference guide: vendor rejection, quarantine, vendor-refused returns, debit notes, scrapping, BST/customer returns, repair parts, and outsourced refining/job work gate entry.
+Main gap: the app does not yet fully model the post-QC, post-GRPO, and outbound gate flows from the FMCG reference guide: vendor rejection, quarantine, vendor-refused returns, debit notes, scrapping, empty vehicle exit, labour in/out, finished goods out, BST/customer returns, repair parts, and outsourced refining/job work gate entry.
 
 ## Gate Submodules To Add
 
@@ -225,6 +225,7 @@ Purpose:
 
 - Track goods coming back from customer, retailer, distributor, branch, or store.
 - Distinguish customer return, branch transfer, delivery-note return, and internal stock movement.
+- Treat outbound BST as a finished-goods-out subtype, not as a disconnected gate module. Returns are inbound; BST dispatch is outbound.
 
 Required backend additions:
 
@@ -249,6 +250,7 @@ Frontend additions:
 
 - Return entry wizard: source party, reference document, vehicle/challan, item lines, condition/QC, target warehouse, review.
 - Dashboard statuses: draft, received, WMS received, transfer posted where approved, manual SAP return referenced, credit pending, closed.
+- If the movement is outbound BST, redirect/link the user into the Finished Goods Out flow with `movement_type=BST`.
 
 ### 3. Repair / Returnable Parts Movement
 
@@ -261,11 +263,14 @@ Purpose:
 
 - Track company-owned parts going out for repair and coming back.
 - Preserve audit trail while the material is outside the factory.
+- Link repair-out movements back to the maintenance gate-in entry when the part/tool/spare originally entered through maintenance gate-in.
 
 Required backend additions:
 
 - Add repair movement model under `maintenance_gatein`, for example `RepairMovement`.
 - Track part/item, serial/batch if applicable, asset/cost center, vendor/workshop, out date, expected return, in date, repair status, repair cost reference, and movement documents.
+- Add nullable `source_maintenance_gate_entry` / `source_maintenance_item` fields so repair movement out can be created from an existing maintenance gate-in record.
+- If a repair movement is created without a source maintenance entry, require manual item/asset details and mark it as `standalone_repair_movement`.
 
 SAP document points:
 
@@ -287,6 +292,7 @@ Frontend additions:
 - Return confirmation form.
 - Open repair list and overdue list.
 - Links to maintenance entry and warehouse movement history.
+- "Create Repair Out" action from maintenance gate-in detail for eligible items.
 
 ### 4. Job Work / Oil Refining Gate Entry
 
@@ -364,6 +370,153 @@ Frontend additions:
 - Weighment and arrival slip style fields.
 - QC decision page with accepted, partial, rejected handling.
 - Links to production order and finished goods/warehouse receipt status.
+
+### 5. Empty Vehicle Gate Out
+
+Route idea:
+
+- Frontend: `/gate/empty-vehicle-out`
+- Backend owner: `gate_core` using existing vehicle/driver/gate-entry data
+
+Purpose:
+
+- Mark a vehicle as out when it brought material/persons into the factory but leaves without outbound goods.
+- Covers RM/PM/assets, daily needs, maintenance, construction, job-work, and any future inward gate module.
+- Keeps the physical vehicle lifecycle complete without forcing a fake dispatch or WMS movement.
+
+Required backend additions:
+
+- Add an empty vehicle gate-out model or a generic `GateExitEvent` linked to the original inward `VehicleEntry`.
+- Store `company`, `vehicle_entry`, `vehicle`, `driver`, `out_time`, `security_name`, `remarks`, and `exit_type=EMPTY`.
+- Prevent duplicate exit events for the same vehicle entry unless the original entry type explicitly supports multiple trips.
+- Validate that the selected vehicle entry is not already closed/out and has no pending mandatory gate/QC steps that block exit.
+
+SAP document points:
+
+- No SAP posting. This is only physical gate control.
+- If the same vehicle later carries outbound goods, that must be a separate finished goods/dispatch/repair/BST gate-out record.
+
+Frontend additions:
+
+- Dashboard/list of inward vehicles not yet marked out.
+- User selects the inward vehicle, enters/selects out time, optional security name/remarks, and clicks `Mark Out`.
+- Show `Out` status and out timestamp on the original gate entry detail.
+
+### 6. Maintenance Gate In Department Link
+
+Route idea:
+
+- Frontend: existing `/gate/maintenance`
+- Backend owner: `maintenance_gatein` plus shared department master
+
+Purpose:
+
+- Route maintenance spare parts/tools/consumables to the responsible factory department.
+- Support later cost-center reporting and repair movement linkage.
+
+Implementation options:
+
+- Start with existing app department master as a required/optional `receiving_department` FK on maintenance gate-in.
+- Add optional `requested_by`, `maintenance_ticket_no`, `machine/asset`, and `cost_center_code` fields.
+- Later map factory departments to SAP cost centers if SAP-level cost reporting is required.
+
+Open implementation question:
+
+- Confirm whether the company wants department as an operational app department, an SAP cost center, or both. Recommended first step is app department FK plus optional SAP cost center text/reference.
+
+SAP document points:
+
+- No finance posting from gate.
+- If a warehouse stock movement is later posted for maintenance consumption, the warehouse/maintenance module should own the SAP goods issue and use the department/cost-center reference.
+
+### 7. Labour In / Labour Out
+
+Route idea:
+
+- Frontend: `/gate/labour`
+- Backend owner: `person_gatein` or a focused `labour_gate` area under gate/person movement
+
+Purpose:
+
+- Track labour movement separately from visitor movement.
+- Support contractor labour, daily labour count, individual worker details where needed, department/work area, in time, and out time.
+
+Implementation options:
+
+- Simple phase: one labour entry per contractor/department/day with `labour_count`, supervisor, work area, in time, out time, and remarks.
+- Stronger control phase: individual labour lines with worker name/ID proof/pass number/photo and individual in/out timestamps.
+- If biometric/attendance integration is expected later, keep gate labour as movement/security log and do not make it the payroll source of truth.
+
+Frontend additions:
+
+- Separate Labour In form.
+- Labour Out screen listing currently inside labour entries.
+- Dashboard cards for inside count, pending out, contractor-wise count, and department-wise count.
+
+SAP document points:
+
+- No SAP posting.
+- Finance/payroll remains outside this flow unless a later HR/payroll module is approved.
+
+### 8. Finished Goods Out
+
+Route idea:
+
+- Frontend: `/gate/finished-goods-out`
+- Backend owner: dispatch/WMS plus `gate_core`
+
+Purpose:
+
+- Gate verification for finished goods leaving the factory.
+- Link outbound vehicle exit to WMS/barcode picking/staging and dispatch documents.
+- Avoid letting gate become the stock ledger; WMS/dispatch remains responsible for goods identity and quantities.
+
+Required backend additions:
+
+- Add finished goods gate-out record linked to dispatch/shipment/load plan, WMS staged goods, vehicle, driver, transporter, challan/invoice/e-way bill, gate-out time, and security verification.
+- Store movement type: customer dispatch, branch transfer, BST, sample, replacement, or other approved outbound reason.
+- Require WMS/dispatch status to be ready before final gate out.
+
+SAP document points:
+
+- Delivery, invoice, and finance documents remain SAP GUI/manual unless separately approved.
+- Stock transfer for branch/BST can be posted by WMS/dispatch where approved, not directly by gate.
+- Gate stores manual SAP delivery/invoice/transfer references when those are created outside the app.
+
+Frontend additions:
+
+- Select staged dispatch/load or scan vehicle/load barcode.
+- Verify vehicle, driver, documents, item/pallet summary, and seal number.
+- Mark gate-out with timestamp/security name.
+- Dashboard statuses: ready at gate, out, blocked, document pending.
+
+### 9. BST Linked With Finished Goods Out
+
+Route idea:
+
+- Frontend: `/gate/finished-goods-out?movement_type=BST` or a BST shortcut card that opens FG Out in BST mode.
+- Backend owner: dispatch/WMS plus `gate_core`
+
+Purpose:
+
+- Handle Back Store Transfer as a finished-goods outbound movement.
+- Ensure BST does not duplicate dispatch/gate-out logic.
+
+Required backend additions:
+
+- Add `bst_request` / `stock_transfer_request` reference on finished goods gate-out.
+- Store from warehouse, to branch/store/warehouse, WMS picked/staged goods, vehicle, documents, and SAP stock transfer reference where app posting is approved.
+- Final gate out closes the physical movement; WMS/dispatch closes the stock movement.
+
+SAP document points:
+
+- Internal branch/store transfer: `StockTransfers`, owned by WMS/dispatch service where approved.
+- If SAP transfer is done manually, store manual transfer document reference.
+
+Frontend additions:
+
+- BST dashboard/list can exist, but its `Send Out` action should open Finished Goods Out with BST prefilled.
+- Finished Goods Out should display BST-specific source/destination warehouse and transfer status.
 
 ## Other Modules To Change
 
@@ -545,7 +698,11 @@ Owner: `maintenance_gatein`
 Core fields:
 
 - `company`
+- `source_maintenance_gate_entry` nullable
+- `source_maintenance_item` nullable
+- `is_standalone_repair_movement`
 - item/asset identifiers
+- department / cost center reference
 - vendor/workshop
 - movement type: external repair, internal repair
 - out quantity/date
@@ -577,6 +734,82 @@ Core fields:
 - SAP production receipt reference if app posting is approved
 - manual service invoice / finance references
 
+### EmptyVehicleGateOut / GateExitEvent
+
+Owner: `gate_core`
+
+Core fields:
+
+- `company`
+- `vehicle_entry`
+- `vehicle`
+- `driver`
+- `exit_type`: empty, dispatch, repair, BST, visitor/labour, other
+- `out_time`
+- `security_name`
+- `remarks`
+- `created_by`
+- uniqueness rule for one active empty exit per inward gate entry
+
+### MaintenanceGateEntry Additions
+
+Owner: `maintenance_gatein`
+
+Core fields to add or confirm:
+
+- `receiving_department`
+- `requested_by`
+- `maintenance_ticket_no`
+- `machine_or_asset`
+- `cost_center_code` optional/manual until SAP mapping is confirmed
+- linkable item lines so repair movement out can reference the exact spare/tool/asset
+
+### LabourGateMovement
+
+Owner: `person_gatein` or gate/person area
+
+Core fields:
+
+- `company`
+- contractor/vendor
+- department/work area
+- movement date
+- in time
+- out time
+- labour count for simple phase
+- optional worker lines: name, phone, ID proof, pass number, photo, individual in/out time
+- supervisor/security names
+- status: inside, partly out, completed, cancelled
+
+### FinishedGoodsGateOut
+
+Owner: dispatch/WMS plus `gate_core`
+
+Core fields:
+
+- `company`
+- dispatch/load/staging reference
+- movement type: customer dispatch, branch transfer, BST, sample, replacement
+- vehicle, driver, transporter
+- challan/invoice/e-way bill/seal number
+- WMS/barcode picked/staged item or pallet summary
+- gate out time/security name
+- manual SAP delivery/invoice/transfer references
+- status: ready, blocked, out, cancelled
+
+### BSTGateOut Link
+
+Owner: dispatch/WMS plus `gate_core`
+
+Core fields:
+
+- `finished_goods_gate_out`
+- BST/stock transfer request reference
+- from warehouse
+- to branch/store/warehouse
+- SAP stock transfer doc reference where app posting is approved
+- manual SAP transfer reference if posted in SAP GUI
+
 ## API Plan
 
 Keep endpoints under feature modules.
@@ -596,9 +829,21 @@ Examples:
 - `GET /gate/returns/`
 - `POST /gate/returns/`
 - `POST /gate/returns/{id}/record-manual-sap-return/`
+- `GET /gate-core/empty-vehicle-outs/eligible-entries/`
+- `POST /gate-core/empty-vehicle-outs/`
+- `POST /gate-core/empty-vehicle-outs/{id}/mark-out/`
 - `POST /maintenance-gatein/repair-movements/`
+- `POST /maintenance-gatein/maintenance-entries/{id}/create-repair-movement/`
 - `POST /maintenance-gatein/repair-movements/{id}/send-out/`
 - `POST /maintenance-gatein/repair-movements/{id}/receive-back/`
+- `POST /person-gatein/labour/in/`
+- `GET /person-gatein/labour/inside/`
+- `POST /person-gatein/labour/{id}/out/`
+- `GET /dispatch/finished-goods-gate-outs/`
+- `POST /dispatch/finished-goods-gate-outs/`
+- `POST /dispatch/finished-goods-gate-outs/{id}/mark-out/`
+- `GET /dispatch/bst/`
+- `POST /dispatch/bst/{id}/create-finished-goods-out/`
 - `GET /production-execution/sap/orders/`
 - `POST /gate/job-work/`
 - `POST /gate/job-work/{id}/validate-tolerance/`
@@ -614,6 +859,10 @@ Add routes in `src/modules/gate/module.config.tsx`:
 - `/gate/returns`
 - `/gate/repair-movement`
 - `/gate/job-work`
+- `/gate/empty-vehicle-out`
+- `/gate/labour`
+- `/gate/finished-goods-out`
+- `/gate/bst` as a shortcut/list only; final send-out should use Finished Goods Out in BST mode
 
 Add navigation cards in `GateDashboardPage.tsx`.
 
@@ -631,9 +880,13 @@ Add API clients under the owning frontend modules:
 - `src/modules/gate/api/returns`
 - `src/modules/gate/api/jobWork`
 - `src/modules/gate/api/repairMovement`
+- `src/modules/gate/api/emptyVehicleOut`
+- `src/modules/gate/api/labour`
+- `src/modules/gate/api/finishedGoodsOut`
 - extend `src/modules/warehouse/api` for stock transfers, goods receipts, goods issues
 - extend `src/modules/grpo/api` only for GRPO downstream references
 - extend `src/modules/production/...` only for production order/job-work lookups if not already exposed
+- extend dispatch/WMS frontend APIs for finished goods out and BST source documents once dispatch/WMS is built
 
 ## Implementation Phases
 
@@ -656,6 +909,9 @@ Add API clients under the owning frontend modules:
 
 - Build dispatch on WMS/barcode picking and staging.
 - Build gate-out on dispatch handoff, vehicle verification, document checks, and final exit.
+- Add empty vehicle gate-out for inward vehicles leaving without outbound goods.
+- Add finished goods gate-out as the physical exit layer for staged dispatch loads.
+- Add BST as a finished-goods-out movement type so branch/store transfers reuse the same gate-out controls.
 - Keep SAP delivery/invoice/finance posting outside scope unless separately approved.
 
 ### Phase 3: Production Integration Points
@@ -694,13 +950,22 @@ Add API clients under the owning frontend modules:
 - Add gate return entry workflow.
 - Implement WMS/barcode return receiving and stock transfer posting where approved.
 - Store manual SAP sales return / AR credit memo references if sales/finance completes those in SAP GUI.
+- Keep outbound BST linked to Finished Goods Out. The BST page can manage/prepare transfers, but the vehicle exit should happen through the finished goods gate-out flow.
 
 ### Phase 8: Repair Movement
 
 - Add maintenance repair outward/return flow.
+- Link repair outward movement to the maintenance gate-in entry/item when the item entered through maintenance gate-in.
 - Post warehouse movement documents as needed.
 - Track open, overdue, repaired, unrepaired, and scrapped statuses.
 - Keep service PO/AP invoice in SAP GUI and store manual references only.
+
+### Phase 8A: Labour Movement
+
+- Add separate labour in/out screens apart from visitor movement.
+- Start with contractor/department/count-level tracking if individual labour identity is not finalized.
+- Add individual labour pass/ID tracking later if required by security or compliance.
+- Keep labour movement separate from payroll/finance.
 
 ### Phase 9: Job Work / Refining
 
@@ -728,5 +993,9 @@ Add API clients under the owning frontend modules:
 - Production orders are read-only from SAP in this phase.
 - Every SAP write must have a local tracking record before or during posting.
 - Every SAP write must store success doc references or failure error.
+- Empty vehicle out should never create stock movement or SAP documents.
+- Repair movement out should link to maintenance gate-in whenever the source item came through maintenance gate-in.
+- Finished Goods Out is the gate exit for dispatch/BST; BST should not create a parallel vehicle-exit flow.
+- Labour movement is a gate/security attendance log, not payroll or finance source of truth unless a later module explicitly adopts it.
 - Every failed SAP write must be retryable or explicitly cancellable.
 - Do not post finance documents from this app. AP Credit Memo, AR Credit Memo, AP Invoice, and Journal Entry remain SAP GUI processes.

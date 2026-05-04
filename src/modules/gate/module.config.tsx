@@ -67,6 +67,9 @@ const RejectedQCReturnVehiclePage = lazy(
 const RejectedQCReturnItemsPage = lazy(
   () => import('./pages/rejectedMaterialPages/RejectedQCReturnItemsPage'),
 );
+const EmptyVehicleOutPage = lazy(
+  () => import('./pages/emptyVehicleOutPages/EmptyVehicleOutPage'),
+);
 const ReturnsFormPage = lazy(() => import('./pages/returnsPages/ReturnsFormPage'));
 const RepairMovementFormPage = lazy(
   () => import('./pages/repairMovementPages/RepairMovementFormPage'),
@@ -536,6 +539,16 @@ export const gateModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Rejected QC Items' },
     },
     {
+      path: '/gate/empty-vehicle-out',
+      element: <EmptyVehicleOutPage />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.EMPTY_VEHICLE_OUT.VIEW,
+        GATE_PERMISSIONS.EMPTY_VEHICLE_OUT.CREATE,
+      ],
+      breadcrumb: { label: 'Empty Vehicle Out' },
+    },
+    {
       path: '/gate/returns',
       element: <ReturnsFormPage />,
       layout: 'main',
@@ -604,6 +617,14 @@ export const gateModuleConfig: ModuleConfig = {
           permissions: [
             GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW,
             GATE_PERMISSIONS.REJECTED_QC_RETURN.CREATE,
+          ],
+        },
+        {
+          path: '/gate/empty-vehicle-out',
+          title: 'Empty Vehicle Out',
+          permissions: [
+            GATE_PERMISSIONS.EMPTY_VEHICLE_OUT.VIEW,
+            GATE_PERMISSIONS.EMPTY_VEHICLE_OUT.CREATE,
           ],
         },
         {

@@ -140,6 +140,10 @@ export const ROUTES = {
         path: '/gate/rejected-qc-return',
         title: 'Rejected QC Return',
       },
+      EMPTY_VEHICLE_OUT: {
+        path: '/gate/empty-vehicle-out',
+        title: 'Empty Vehicle Out',
+      },
       RETURNS: {
         path: '/gate/returns',
         title: 'BST / Returns',
