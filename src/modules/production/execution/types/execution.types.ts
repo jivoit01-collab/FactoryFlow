@@ -745,13 +745,22 @@ export interface BulkChecklistRequest {
   entries: CreateChecklistEntryRequest[];
 }
 
-export interface CreateWasteLogRequest {
-  production_run_id: number;
+export interface CreateWasteItemRequest {
   material_code: string;
   material_name: string;
   wastage_qty: string;
   uom: string;
-  reason: string;
+  reason?: string;
+}
+
+export interface CreateWasteLogRequest {
+  production_run_id: number;
+  material_code?: string;
+  material_name?: string;
+  wastage_qty?: string;
+  uom?: string;
+  reason?: string;
+  items?: CreateWasteItemRequest[];
 }
 
 export interface WasteApprovalRequest {

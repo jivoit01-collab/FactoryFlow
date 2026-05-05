@@ -1,23 +1,75 @@
+import { Loader2, Plus, Search, Trash2, X } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
-import { DateRangePicker } from '@/modules/gate/components';
-import { Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/shared/components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from '@/shared/components/ui';
 
-import { useWasteLogs, useCreateWasteLog, useApproveWasteEngineer, useApproveWasteAM, useApproveWasteStore, useApproveWasteHOD, useRuns, useSearchSAPItems } from '../api';
-import type { SAPItem } from '../types';
-import { WasteLogTable } from '../components/WasteLogTable';
+import {
+  useApproveWasteAM,
+  useApproveWasteEngineer,
+  useApproveWasteHOD,
+  useApproveWasteStore,
+  useCreateWasteLog,
+  useMaterials,
+  useRuns,
+  useSearchSAPItems,
+  useWasteLogs,
+} from '../api';
 import { SignatureBlock } from '../components/SignatureBlock';
 import { WasteApprovalBadge } from '../components/WasteApprovalBadge';
-import { createWasteSchema, type CreateWasteFormData } from '../schemas';
-import type { WasteLog } from '../types';
+import { WasteLogTable } from '../components/WasteLogTable';
+import type { CreateWasteItemRequest, MaterialUsage, SAPItem, WasteLog } from '../types';
+
+type WasteDraftSource = 'bom' | 'manual';
+
+interface WasteDraftRow {
+  key: string;
+  source: WasteDraftSource;
+  material_code: string;
+  material_name: string;
+  uom: string;
+  bom_qty: string;
+  wastage_qty: string;
+}
+
+function toBomWasteRow(material: MaterialUsage): WasteDraftRow {
+  return {
+    key: `bom-${material.id}`,
+    source: 'bom',
+    material_code: material.material_code,
+    material_name: material.material_name,
+    uom: material.uom,
+    bom_qty: material.opening_qty || '0',
+    wastage_qty: '',
+  };
+}
+
+function getEnteredQty(value: string) {
+  const qty = Number(value);
+  return Number.isFinite(qty) ? qty : 0;
+}
 
 function WasteManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,13 +84,33 @@ function WasteManagementPage() {
   const approveHOD = useApproveWasteHOD();
 
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedRunId, setSelectedRunId] = useState<number | undefined>(runIdFilter);
+  const [manualRows, setManualRows] = useState<WasteDraftRow[]>([]);
+  const [wasteQtyByKey, setWasteQtyByKey] = useState<Record<string, string>>({});
+  const [commonReason, setCommonReason] = useState('');
+  const [showManualPicker, setShowManualPicker] = useState(false);
   const [selectedWaste, setSelectedWaste] = useState<WasteLog | null>(null);
   const [signName, setSignName] = useState('');
 
-  // Filters (client-side)
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
+  const { dateRange, dateRangeAsDateObjects, setDateRange, resetDateRange } = useGlobalDateRange();
+
+  const selectedRun = selectedRunId ? runs.find((r) => r.id === selectedRunId) : undefined;
+  const filteredRun = runIdFilter ? runs.find((r) => r.id === runIdFilter) : null;
+  const { data: bomMaterials = [], isLoading: loadingBOMItems } = useMaterials(selectedRunId ?? 0);
+
+  const [materialSearch, setMaterialSearch] = useState('');
+  const { data: sapItems = [], isLoading: loadingItems } = useSearchSAPItems(materialSearch);
+  const handleMaterialSearch = useCallback((s: string) => setMaterialSearch(s), []);
+
+  const wasteRows = useMemo(() => {
+    const bomRows = selectedRunId ? bomMaterials.map(toBomWasteRow) : [];
+    return [...bomRows, ...manualRows].map((row) => ({
+      ...row,
+      wastage_qty: wasteQtyByKey[row.key] ?? '',
+    }));
+  }, [bomMaterials, manualRows, selectedRunId, wasteQtyByKey]);
 
   const filteredWasteLogs = useMemo(() => {
     let result = wasteLogs;
@@ -64,33 +136,105 @@ function WasteManagementPage() {
     return result;
   }, [wasteLogs, searchText, statusFilter, dateRange]);
 
+  const enteredRows = useMemo(
+    () => wasteRows.filter((row) => getEnteredQty(row.wastage_qty) > 0),
+    [wasteRows],
+  );
   const hasFilters = searchText || statusFilter !== 'ALL';
-  const [materialSearch, setMaterialSearch] = useState('');
-  const { data: sapItems = [], isLoading: loadingItems } = useSearchSAPItems(materialSearch);
-  const handleMaterialSearch = useCallback((s: string) => setMaterialSearch(s), []);
 
-  const form = useForm<CreateWasteFormData>({
-    resolver: zodResolver(createWasteSchema),
-    defaultValues: runIdFilter ? { production_run_id: runIdFilter } : undefined,
-  });
+  const resetCreateState = () => {
+    setSelectedRunId(runIdFilter);
+    setManualRows([]);
+    setWasteQtyByKey({});
+    setCommonReason('');
+    setShowManualPicker(false);
+    setMaterialSearch('');
+  };
 
   const openCreate = () => {
-    if (runIdFilter) {
-      form.reset({ production_run_id: runIdFilter });
-    } else {
-      form.reset();
-    }
+    resetCreateState();
     setShowCreate(true);
   };
 
-  const onSubmit = async (data: CreateWasteFormData) => {
+  const handleCreateOpenChange = (open: boolean) => {
+    setShowCreate(open);
+    if (!open) resetCreateState();
+  };
+
+  const handleRunChange = (runId: number) => {
+    setSelectedRunId(runId);
+    setManualRows([]);
+    setWasteQtyByKey({});
+    setShowManualPicker(false);
+    setMaterialSearch('');
+  };
+
+  const updateWasteQty = (rowKey: string, wastageQty: string) => {
+    setWasteQtyByKey((qtyByKey) => ({ ...qtyByKey, [rowKey]: wastageQty }));
+  };
+
+  const addManualItem = (item: SAPItem) => {
+    if (wasteRows.some((row) => row.material_code === item.ItemCode)) {
+      toast.error('Item already added');
+      return;
+    }
+
+    setManualRows((rows) => [
+      ...rows,
+      {
+        key: `manual-${item.ItemCode}-${Date.now()}`,
+        source: 'manual',
+        material_code: item.ItemCode,
+        material_name: item.ItemName,
+        uom: item.UomCode || '',
+        bom_qty: '',
+        wastage_qty: '',
+      },
+    ]);
+    setShowManualPicker(false);
+    setMaterialSearch('');
+  };
+
+  const removeManualItem = (rowKey: string) => {
+    setManualRows((rows) => rows.filter((row) => row.key !== rowKey));
+    setWasteQtyByKey((qtyByKey) => {
+      const next = { ...qtyByKey };
+      delete next[rowKey];
+      return next;
+    });
+  };
+
+  const onSubmit = async () => {
+    if (!selectedRunId) {
+      toast.error('Select a production run');
+      return;
+    }
+
+    const items: CreateWasteItemRequest[] = enteredRows.map((row) => ({
+      material_code: row.material_code,
+      material_name: row.material_name,
+      wastage_qty: row.wastage_qty,
+      uom: row.uom,
+      reason: commonReason.trim(),
+    }));
+
+    if (items.length === 0) {
+      toast.error('Enter waste quantity for at least one item');
+      return;
+    }
+
     try {
-      await createWaste.mutateAsync(data);
-      toast.success('Waste log created');
-      setShowCreate(false);
-      form.reset();
+      await createWaste.mutateAsync({
+        production_run_id: selectedRunId,
+        reason: commonReason.trim(),
+        items,
+      });
+      toast.success(`${items.length} waste item${items.length === 1 ? '' : 's'} created`);
+      handleCreateOpenChange(false);
       refetchWaste();
-    } catch { toast.error('Failed to create waste log'); }
+    } catch {
+      toast.error('Failed to create waste logs');
+    }
   };
 
   const handleApprove = async (wasteId: number, level: 'engineer' | 'am' | 'store' | 'hod') => {
@@ -116,13 +260,11 @@ function WasteManagementPage() {
     return null;
   };
 
-  const filteredRun = runIdFilter ? runs.find((r) => r.id === runIdFilter) : null;
-
   return (
     <div className="space-y-6">
       <DashboardHeader
         title="Waste Management"
-        description={filteredRun ? `Run #${filteredRun.run_number} — ${filteredRun.product} (${filteredRun.date})` : 'Waste logs and multi-level approval workflow'}
+        description={filteredRun ? `Run #${filteredRun.run_number} - ${filteredRun.product} (${filteredRun.date})` : 'Waste logs and multi-level approval workflow'}
         primaryAction={{
           label: 'Log Waste',
           icon: <Plus className="h-4 w-4 mr-2" />,
@@ -130,7 +272,6 @@ function WasteManagementPage() {
         }}
       />
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -168,7 +309,15 @@ function WasteManagementPage() {
           </div>
         )}
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { setSearchText(''); setStatusFilter('ALL'); setDateFrom(''); setDateTo(''); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchText('');
+              setStatusFilter('ALL');
+              resetDateRange();
+            }}
+          >
             <X className="h-4 w-4 mr-1" /> Clear
           </Button>
         )}
@@ -184,70 +333,163 @@ function WasteManagementPage() {
         </Card>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
+      <Dialog open={showCreate} onOpenChange={handleCreateOpenChange}>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Log Waste</DialogTitle></DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <Label>Production Run</Label>
-              {runIdFilter && filteredRun ? (
-                <p className="text-sm font-medium mt-1">Run #{filteredRun.run_number} — {filteredRun.product}</p>
-              ) : (
-                <Select onValueChange={(v) => form.setValue('production_run_id', Number(v))}>
-                  <SelectTrigger><SelectValue placeholder="Select run" /></SelectTrigger>
-                  <SelectContent>{runs.map((r) => (<SelectItem key={r.id} value={String(r.id)}>#{r.run_number} - {r.product} ({r.date})</SelectItem>))}</SelectContent>
-                </Select>
-              )}
-            </div>
-            <SearchableSelect<SAPItem>
-              items={sapItems}
-              isLoading={loadingItems && materialSearch.length >= 2}
-              getItemKey={(item) => item.ItemCode}
-              getItemLabel={(item) => `${item.ItemCode} - ${item.ItemName}`}
-              filterFn={() => true}
-              renderItem={(item) => (
-                <div className="flex items-center justify-between w-full">
-                  <div>
-                    <span className="font-mono text-xs">{item.ItemCode}</span>
-                    <span className="ml-2">{item.ItemName}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{item.UomCode}</span>
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
+              <div>
+                <Label>BOM / Production Run</Label>
+                {runIdFilter && filteredRun ? (
+                  <p className="text-sm font-medium mt-2">Run #{filteredRun.run_number} - {filteredRun.product}</p>
+                ) : (
+                  <Select
+                    value={selectedRunId ? String(selectedRunId) : undefined}
+                    onValueChange={(value) => handleRunChange(Number(value))}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select run" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {runs.map((run) => (
+                        <SelectItem key={run.id} value={String(run.id)}>
+                          #{run.run_number} - {run.product} ({run.date})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div>
+                <Label>Rows With Waste Qty</Label>
+                <div className="mt-2 h-10 rounded-md border bg-muted/40 px-3 flex items-center text-sm font-medium">
+                  {enteredRows.length} of {wasteRows.length}
                 </div>
-              )}
-              placeholder="Search material by code or name..."
-              label="Material"
-              required
-              inputId="waste-material"
-              loadingText="Searching..."
-              emptyText="Type at least 2 characters to search"
-              notFoundText="No materials found"
-              onSearchChange={handleMaterialSearch}
-              onItemSelect={(item) => {
-                form.setValue('material_code', item.ItemCode);
-                form.setValue('material_name', item.ItemName);
-                form.setValue('uom', item.UomCode || '');
-              }}
-              onClear={() => {
-                form.setValue('material_code', '');
-                form.setValue('material_name', '');
-                form.setValue('uom', '');
-              }}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Wastage Qty</Label><Input {...form.register('wastage_qty')} /></div>
-              <div><Label>UoM</Label><Input {...form.register('uom')} readOnly className="bg-muted" /></div>
+              </div>
             </div>
-            <div><Label>Reason</Label><Textarea {...form.register('reason')} /></div>
+
+            <div>
+              <Label>Reason</Label>
+              <Textarea
+                value={commonReason}
+                onChange={(e) => setCommonReason(e.target.value)}
+                placeholder="Reason for waste"
+                className="mt-2"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">
+                  {selectedRun ? `BOM Items - Run #${selectedRun.run_number}` : 'BOM Items'}
+                </p>
+                {loadingBOMItems && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading BOM items
+                  </p>
+                )}
+              </div>
+              <Button type="button" variant="outline" onClick={() => setShowManualPicker((open) => !open)}>
+                <Plus className="h-4 w-4 mr-2" /> Add Item Manually
+              </Button>
+            </div>
+
+            {showManualPicker && (
+              <SearchableSelect<SAPItem>
+                items={sapItems}
+                isLoading={loadingItems && materialSearch.length >= 2}
+                getItemKey={(item) => item.ItemCode}
+                getItemLabel={(item) => `${item.ItemCode} - ${item.ItemName}`}
+                filterFn={() => true}
+                renderItem={(item) => (
+                  <div className="flex items-center justify-between w-full gap-3">
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs">{item.ItemCode}</span>
+                      <span className="ml-2">{item.ItemName}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">{item.UomCode}</span>
+                  </div>
+                )}
+                placeholder="Search material by code or name..."
+                label="Manual Item"
+                inputId="manual-waste-material"
+                loadingText="Searching..."
+                emptyText="Type at least 2 characters to search"
+                notFoundText="No materials found"
+                onSearchChange={handleMaterialSearch}
+                onItemSelect={addManualItem}
+                onClear={() => setMaterialSearch('')}
+              />
+            )}
+
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-muted/60 text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Source</th>
+                    <th className="px-3 py-2 text-left font-medium">Item Code</th>
+                    <th className="px-3 py-2 text-left font-medium">Item Name</th>
+                    <th className="px-3 py-2 text-left font-medium">Unit</th>
+                    <th className="px-3 py-2 text-right font-medium">BOM Qty</th>
+                    <th className="px-3 py-2 text-right font-medium">Waste Qty</th>
+                    <th className="px-3 py-2 text-right font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wasteRows.map((row) => (
+                    <tr key={row.key} className="border-t">
+                      <td className="px-3 py-2">
+                        <Badge variant={row.source === 'bom' ? 'secondary' : 'outline'}>
+                          {row.source === 'bom' ? 'BOM' : 'Manual'}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs">{row.material_code || '-'}</td>
+                      <td className="px-3 py-2">{row.material_name}</td>
+                      <td className="px-3 py-2">{row.uom || '-'}</td>
+                      <td className="px-3 py-2 text-right">{row.bom_qty || '-'}</td>
+                      <td className="px-3 py-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.001"
+                          inputMode="decimal"
+                          value={row.wastage_qty}
+                          onChange={(e) => updateWasteQty(row.key, e.target.value)}
+                          className="ml-auto w-32 text-right"
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {row.source === 'manual' ? (
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeManualItem(row.key)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {!loadingBOMItems && wasteRows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                        {selectedRunId ? 'No BOM items found for this run' : 'Select a run to load BOM items'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button type="submit" disabled={createWaste.isPending}>{createWaste.isPending ? 'Saving...' : 'Create'}</Button>
+              <Button type="button" variant="outline" onClick={() => handleCreateOpenChange(false)}>Cancel</Button>
+              <Button type="button" onClick={onSubmit} disabled={createWaste.isPending || enteredRows.length === 0}>
+                {createWaste.isPending ? 'Saving...' : 'Submit'}
+              </Button>
             </div>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Detail/Approve Dialog */}
       <Dialog open={!!selectedWaste} onOpenChange={() => setSelectedWaste(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Waste Log Detail</DialogTitle></DialogHeader>
