@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  salesDispatchApi,
   type SalesDispatchAttachmentUploadRequest,
   type SalesDispatchBoxScanRequest,
+  type SalesDispatchChallanWeightRequest,
   type SalesDispatchCreateRequest,
   type SalesDispatchDocumentParams,
   type SalesDispatchDocumentType,
@@ -14,7 +16,6 @@ import {
   type SalesDispatchReasonRequest,
   type SalesDispatchReportParams,
   type SalesDispatchUpdateRequest,
-  salesDispatchApi,
 } from './salesDispatch.api';
 
 export const SALES_DISPATCH_QUERY_KEYS = {
@@ -238,6 +239,16 @@ export function useSalesDispatchGatepassPrintHistory(id?: number | null) {
     queryKey: SALES_DISPATCH_QUERY_KEYS.gatepassPrintHistory(id),
     queryFn: () => salesDispatchApi.gatepassPrintHistory(id as number),
     enabled: Boolean(id),
+  });
+}
+
+export function useSetSalesDispatchChallanWeight() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SalesDispatchChallanWeightRequest }) =>
+      salesDispatchApi.setChallanWeight(id, data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
   });
 }
 

@@ -10,6 +10,7 @@ import {
   type SalesDispatchItem,
   useCreateWeighment,
   useSalesDispatchByVehicleEntry,
+  useSetSalesDispatchChallanWeight,
   useWeighment,
   type Weighment,
 } from '@/modules/gate/api';
@@ -25,7 +26,15 @@ import {
   EMPTY_REQUIRED_WEIGHMENT,
   type RequiredWeighmentValues,
 } from '@/modules/gate/utils';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { getExpectedDispatchBoxes, parsePositiveNumber } from './salesDispatchBoxCounts';
@@ -73,6 +82,7 @@ export default function SalesDispatchGateOutWeighmentPage() {
   const routes = getSalesDispatchRoutes(location.pathname);
   const { entryId, entryIdNumber } = useEntryId();
   const [values, setValues] = useState<RequiredWeighmentValues>(EMPTY_REQUIRED_WEIGHMENT);
+  const [challanWeight, setChallanWeightValue] = useState('');
   const [error, setError] = useState('');
 
   const {
@@ -88,6 +98,7 @@ export default function SalesDispatchGateOutWeighmentPage() {
     error: weighmentError,
   } = useWeighment(vehicleEntryId);
   const saveWeighment = useCreateWeighment(vehicleEntryId || 0);
+  const saveChallanWeight = useSetSalesDispatchChallanWeight();
 
   useEffect(() => {
     if (!weighment) return;
@@ -98,6 +109,15 @@ export default function SalesDispatchGateOutWeighmentPage() {
 
     return () => window.clearTimeout(timerId);
   }, [weighment]);
+
+  // Seed the input from any previously stored manual challan weight. Left blank when none,
+  // so an untouched field falls back to the SAP invoice weight rather than persisting a value.
+  useEffect(() => {
+    const stored = entry?.challan_weight;
+    const next = stored !== null && stored !== undefined && stored !== '' ? String(stored) : '';
+    const timerId = window.setTimeout(() => setChallanWeightValue(next), 0);
+    return () => window.clearTimeout(timerId);
+  }, [entry?.id, entry?.challan_weight]);
 
   const handleValueChange = (field: keyof RequiredWeighmentValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -120,6 +140,14 @@ export default function SalesDispatchGateOutWeighmentPage() {
       return;
     }
 
+    if (challanWeight.trim() !== '') {
+      const challanNum = Number(challanWeight);
+      if (!Number.isFinite(challanNum) || challanNum < 0) {
+        setError('Enter a valid challan weight, or leave it blank to use the SAP invoice weight.');
+        return;
+      }
+    }
+
     const payload: CreateWeighmentRequest = {
       gross_weight: Number(values.grossWeight),
       tare_weight: Number(values.tareWeight),
@@ -133,6 +161,18 @@ export default function SalesDispatchGateOutWeighmentPage() {
     }
 
     try {
+      const desiredChallan = challanWeight.trim() === '' ? null : Number(challanWeight);
+      const storedChallan = toFiniteNumber(entry.challan_weight);
+      const challanChanged =
+        desiredChallan === null
+          ? storedChallan !== null
+          : storedChallan === null || Math.abs(desiredChallan - storedChallan) > 1e-9;
+      if (challanChanged) {
+        await saveChallanWeight.mutateAsync({
+          id: entry.id,
+          data: { challan_weight: desiredChallan },
+        });
+      }
       await saveWeighment.mutateAsync(payload);
       await refetchEntry();
       toast.success('Gross weight saved');
@@ -184,13 +224,20 @@ export default function SalesDispatchGateOutWeighmentPage() {
   );
   const expectedBoxes = getExpectedDispatchBoxes(entry);
   const invoiceItems = getInvoiceItems(entry);
-  const invoiceWeight = parsePositiveNumber(entry.total_weight);
+  const sapInvoiceWeight = parsePositiveNumber(entry.total_weight);
   const invoiceBoxes = parsePositiveNumber(entry.total_boxes);
   const scanSkipApproved = Boolean(entry.gatepass_readiness?.scan_skip_approved);
+
+  const enteredChallanWeight = toFiniteNumber(challanWeight);
+  const isManualChallanWeight = enteredChallanWeight !== null && enteredChallanWeight > 0;
+  // The operator-entered challan weight wins; fall back to the SAP invoice weight when blank.
+  const effectiveChallanWeight = isManualChallanWeight ? enteredChallanWeight : sapInvoiceWeight;
 
   const grossNum = toFiniteNumber(values.grossWeight);
   const tareNum = toFiniteNumber(values.tareWeight);
   const netWeight = grossNum !== null && tareNum !== null ? grossNum - tareNum : null;
+
+  const isSaving = saveWeighment.isPending || saveChallanWeight.isPending;
 
   return (
     <div className="space-y-6 pb-6">
@@ -242,12 +289,25 @@ export default function SalesDispatchGateOutWeighmentPage() {
       <RequiredWeighmentForm
         values={values}
         onChange={handleValueChange}
-        disabled={saveWeighment.isPending}
+        disabled={isSaving}
         requiredFields={{ grossWeight: true, tareWeight: true }}
       />
 
+      <ChallanWeightCard
+        value={challanWeight}
+        onChange={(next) => {
+          setChallanWeightValue(next);
+          setError('');
+        }}
+        sapInvoiceWeight={sapInvoiceWeight}
+        enteredBy={entry.challan_weight_by_name}
+        enteredAt={entry.challan_weight_at}
+        disabled={isSaving}
+      />
+
       <WeightCheckCard
-        invoiceWeight={invoiceWeight}
+        challanWeight={effectiveChallanWeight}
+        isManual={isManualChallanWeight}
         gross={grossNum}
         tare={tareNum}
         net={netWeight}
@@ -260,7 +320,7 @@ export default function SalesDispatchGateOutWeighmentPage() {
         scannedNetWeight={scannedNetWeight}
         expectedBoxes={expectedBoxes}
         invoiceItems={invoiceItems}
-        invoiceWeight={invoiceWeight}
+        invoiceWeight={sapInvoiceWeight}
         invoiceBoxes={invoiceBoxes}
         scanSkipApproved={scanSkipApproved}
       />
@@ -269,8 +329,8 @@ export default function SalesDispatchGateOutWeighmentPage() {
         onPrevious={() => navigate(routes.detail(entry.id))}
         onCancel={() => navigate(routes.dashboard)}
         onNext={handleNext}
-        isSaving={saveWeighment.isPending}
-        nextLabel={saveWeighment.isPending ? 'Saving...' : 'Save and Continue to Gate Out'}
+        isSaving={isSaving}
+        nextLabel={isSaving ? 'Saving...' : 'Save and Continue to Gate Out'}
       />
     </div>
   );
@@ -303,21 +363,81 @@ function getVarianceTone(pct: number | null): keyof typeof VARIANCE_TONE {
   return 'bad';
 }
 
+function ChallanWeightCard({
+  value,
+  onChange,
+  sapInvoiceWeight,
+  enteredBy,
+  enteredAt,
+  disabled,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  sapInvoiceWeight: number;
+  enteredBy?: string | null;
+  enteredAt?: string | null;
+  disabled?: boolean;
+}) {
+  const hasSapWeight = sapInvoiceWeight > 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileText className="h-5 w-5" />
+          Challan Weight
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Enter the weight from the delivery challan to check the loaded net weight against it. Use
+          this when the SAP invoice weight is missing or wrong. Leave it blank to compare against the
+          SAP invoice weight.
+        </p>
+        <div className="grid gap-2 sm:max-w-xs">
+          <Label htmlFor="challan-weight">Challan Weight (kg)</Label>
+          <Input
+            id="challan-weight"
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="any"
+            value={value}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={hasSapWeight ? `SAP invoice: ${formatNumber(sapInvoiceWeight)}` : 'e.g. 2450'}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {hasSapWeight
+            ? `SAP invoice weight: ${formatKg(sapInvoiceWeight)}.`
+            : 'This SAP invoice has no weight.'}
+          {enteredBy
+            ? ` Last set by ${enteredBy}${enteredAt ? ` on ${formatTimestamp(enteredAt)}` : ''}.`
+            : ''}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function WeightCheckCard({
-  invoiceWeight,
+  challanWeight,
+  isManual,
   gross,
   tare,
   net,
 }: {
-  invoiceWeight: number;
+  challanWeight: number;
+  isManual: boolean;
   gross: number | null;
   tare: number | null;
   net: number | null;
 }) {
-  const hasInvoiceWeight = invoiceWeight > 0;
-  const variance = net !== null && hasInvoiceWeight ? net - invoiceWeight : null;
+  const hasChallanWeight = challanWeight > 0;
+  const variance = net !== null && hasChallanWeight ? net - challanWeight : null;
   const variancePct =
-    variance !== null && hasInvoiceWeight ? (variance / invoiceWeight) * 100 : null;
+    variance !== null && hasChallanWeight ? (variance / challanWeight) * 100 : null;
   const tone = getVarianceTone(variancePct);
 
   return (
@@ -325,15 +445,15 @@ function WeightCheckCard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Scale className="h-5 w-5" />
-          Invoice vs Loaded Weight
+          Challan vs Loaded Weight
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MetricTile
-            label="Invoice Weight"
-            value={hasInvoiceWeight ? formatKg(invoiceWeight) : 'Not on invoice'}
-            hint="Expected product weight"
+            label="Challan Weight"
+            value={hasChallanWeight ? formatKg(challanWeight) : 'Not set'}
+            hint={isManual ? 'Manually entered' : 'From SAP invoice'}
           />
           <MetricTile
             label="Gross Weight"
@@ -355,11 +475,12 @@ function WeightCheckCard({
 
         {net === null ? (
           <p className="text-sm text-muted-foreground">
-            Enter gross and tare weight to compare the loaded net weight against the invoice.
+            Enter gross and tare weight to compare the loaded net weight against the challan.
           </p>
-        ) : !hasInvoiceWeight ? (
+        ) : !hasChallanWeight ? (
           <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-            This invoice has no weight to compare against. Net loaded weight is {formatKg(net)}.
+            No challan or invoice weight to compare against. Enter a challan weight above. Net loaded
+            weight is {formatKg(net)}.
           </div>
         ) : (
           <div
@@ -370,7 +491,7 @@ function WeightCheckCard({
           >
             <span className="font-medium">{VARIANCE_TONE[tone].label}</span>
             <span>
-              Net {formatKg(net)} vs Invoice {formatKg(invoiceWeight)} ·{' '}
+              Net {formatKg(net)} vs Challan {formatKg(challanWeight)} ·{' '}
               <span className="font-semibold">
                 {variance !== null && variance >= 0 ? '+' : ''}
                 {variance !== null ? formatKg(variance) : '—'}

@@ -118,6 +118,8 @@ export const API_ENDPOINTS = {
       `/gate-core/sales-dispatch/${id}/gatepass/reprint/`,
     SALES_DISPATCH_GATEPASS_PRINTS: (id: number) =>
       `/gate-core/sales-dispatch/${id}/gatepass/prints/`,
+    SALES_DISPATCH_CHALLAN_WEIGHT: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/challan-weight/`,
     SALES_DISPATCH_COMMIT_PRINT: (id: number) => `/gate-core/sales-dispatch/${id}/commit-print/`,
     SALES_DISPATCH_MARK_DISPATCHED: (id: number) => `/gate-core/sales-dispatch/${id}/dispatch/`,
     SALES_DISPATCH_REJECT: (id: number) => `/gate-core/sales-dispatch/${id}/reject/`,
