@@ -415,6 +415,7 @@ function DockingOverviewCard({
           <InfoItem label="Vehicle Entry" value={entry.vehicle_entry_no} />
           <InfoItem label="Docked At" value={formatTimestamp(entry.docked_at)} />
           <InfoItem label="Box Scan Progress" value={formatScanProgress(entry)} />
+          <InfoItem label="Invoice Weight" value={formatInvoiceWeightValue(entry.total_weight)} />
           <InfoItem label="Tare Weight" value={formatWeightValue(entry.tare_weight)} />
           {hasDisplayValue(entry.gross_weight) ? (
             <InfoItem label="Gross Weight" value={formatWeightValue(entry.gross_weight)} />
@@ -966,6 +967,12 @@ function formatWeightValue(value?: string | number | null) {
   if (!hasDisplayValue(value)) return '';
   const text = String(value);
   return /\b(kg|mt|ton|tons)\b/i.test(text) ? text : `${text} kg`;
+}
+
+function formatInvoiceWeightValue(value?: string | number | null) {
+  const numeric = toFiniteNumber(value);
+  if (numeric === null || numeric <= 0) return 'Not on invoice';
+  return formatWeightValue(numeric);
 }
 
 function formatItemWarehouse(item: SalesDispatchItem) {
