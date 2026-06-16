@@ -125,15 +125,25 @@ export default function GRPOPreviewPage() {
     () => previewData.filter((po) => po.grpo_status !== GRPO_STATUS.POSTED),
     [previewData],
   );
+  // GRPO is bill-based: only bills (POs) whose items have all passed QC can be
+  // posted. A rejected/held bill is shown separately and never blocks the rest.
+  const readyPOs = useMemo(
+    () => unpostedPOs.filter((po) => po.is_ready_for_grpo),
+    [unpostedPOs],
+  );
+  const blockedPOs = useMemo(
+    () => unpostedPOs.filter((po) => !po.is_ready_for_grpo),
+    [unpostedPOs],
+  );
   const postedPOs = useMemo(
     () => previewData.filter((po) => po.grpo_status === GRPO_STATUS.POSTED),
     [previewData],
   );
 
-  // Group unposted POs by supplier
+  // Group ready (postable) POs by supplier
   const supplierGroups = useMemo((): SupplierGroup[] => {
     const map = new Map<string, SupplierGroup>();
-    unpostedPOs.forEach((po) => {
+    readyPOs.forEach((po) => {
       const key = po.supplier_code;
       if (!map.has(key)) {
         map.set(key, {
@@ -145,12 +155,12 @@ export default function GRPOPreviewPage() {
       map.get(key)!.pos.push(po);
     });
     return Array.from(map.values());
-  }, [unpostedPOs]);
+  }, [readyPOs]);
 
-  // Selected POs (resolved from IDs)
+  // Selected POs (resolved from IDs) — only ready bills are selectable
   const selectedPOs = useMemo(
-    () => unpostedPOs.filter((po) => selectedPOIds.has(po.po_receipt_id)),
-    [unpostedPOs, selectedPOIds],
+    () => readyPOs.filter((po) => selectedPOIds.has(po.po_receipt_id)),
+    [readyPOs, selectedPOIds],
   );
 
   // Check if all selected POs share the same supplier
@@ -297,7 +307,7 @@ export default function GRPOPreviewPage() {
       } else {
         // Select all in group (and deselect POs from other suppliers)
         // Clear any POs from different suppliers
-        const otherSupplierIds = unpostedPOs
+        const otherSupplierIds = readyPOs
           .filter((po) => po.supplier_code !== group.supplier_code)
           .map((po) => po.po_receipt_id);
         otherSupplierIds.forEach((id) => next.delete(id));
@@ -767,6 +777,75 @@ export default function GRPOPreviewPage() {
             </div>
           );
         })}
+
+      {/* Blocked POs — bills still awaiting QC, not postable */}
+      {!isLoading && !error && blockedPOs.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <ShieldX className="h-4 w-4 text-amber-600" />
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Awaiting QC — not ready to post
+            </h3>
+          </div>
+          <p className="px-1 text-xs text-muted-foreground">
+            These bills can be posted once every item passes QC. Rejected or held items must be
+            resolved first.
+          </p>
+          {blockedPOs.map((po) => (
+            <Card
+              key={po.po_receipt_id}
+              className="border-amber-300/60 bg-amber-50/40 dark:bg-amber-900/10"
+            >
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-sm">{po.po_number}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {po.items.length} item{po.items.length > 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {po.supplier_name} &middot; Invoice: {po.invoice_no || '-'} | Challan:{' '}
+                      {po.challan_no || '-'}
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
+                    <AlertCircle className="h-3 w-3" />
+                    QC not passed
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {po.items.map((item) => (
+                    <div
+                      key={item.po_item_receipt_id}
+                      className="flex flex-col gap-2 rounded-md border bg-background/60 p-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {item.item_code} - {item.item_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Received: {item.received_qty} {item.uom}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <QCStatusBadge status={item.qc_status} />
+                        <QCReportButton
+                          item={item}
+                          onPrint={printQCReport}
+                          printingArrivalSlipId={printingArrivalSlipId}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Posted POs */}
       {postedPOs.length > 0 && (
