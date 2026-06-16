@@ -66,7 +66,6 @@ describe('InspectionDetailPage — Exports', () => {
     expect(content).toContain('useSubmitInspection');
     expect(content).toContain('useApproveAsChemist');
     expect(content).toContain('useApproveAsQAM');
-    expect(content).toContain('useRejectInspection');
   });
 
   it('imports useArrivalSlipById', () => {
@@ -79,9 +78,9 @@ describe('InspectionDetailPage — Exports', () => {
     expect(content).toContain('useQCParametersByMaterialType');
   });
 
-  it('imports MaterialTypeSelect component', () => {
+  it('resolves material type from SAP item', () => {
     const content = readSource();
-    expect(content).toContain("import { MaterialTypeSelect } from '../components'");
+    expect(content).toContain('useMaterialTypeBySapItem');
   });
 });
 
@@ -132,10 +131,12 @@ describe('InspectionDetailPage — Form', () => {
     expect(content).toContain('setApprovalRemarks');
   });
 
-  it('has final status state', () => {
+  it('has actor decision handling', () => {
     const content = readSource();
-    expect(content).toContain('finalStatus');
-    expect(content).toContain('setFinalStatus');
+    expect(content).toContain('handleApprovalDecision');
+    expect(content).toContain("'APPROVED'");
+    expect(content).toContain("'HOLD'");
+    expect(content).toContain("'REJECTED'");
   });
 
   it('has edit mode toggle', () => {

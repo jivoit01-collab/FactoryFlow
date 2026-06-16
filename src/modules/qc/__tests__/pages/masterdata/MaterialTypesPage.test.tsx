@@ -103,6 +103,10 @@ describe('MaterialTypesPage — CRUD', () => {
     expect(content).toContain('Copy QC Parameters From');
     expect(content).toContain('createCopySourceMaterialTypeId');
     expect(content).toContain('Save & Copy Parameters');
+    expect(content).toContain('SearchableSelect<MaterialType>');
+    expect(content).toContain('qc-copy-parameters-from-material-type');
+    expect(content).toContain('No matching material type');
+    expect(content).not.toContain('<select');
   });
 
   it('has material type search by code, name, or SAP item', () => {
@@ -116,7 +120,9 @@ describe('MaterialTypesPage — CRUD', () => {
     expect(content).toContain('table-fixed');
     expect(content).toContain('inputMode="search"');
     expect(content).toContain('isSearchUpdating');
-    expect(content).toContain('pointer-events-none absolute right-10 top-0 flex h-full items-center');
+    expect(content).toContain(
+      'pointer-events-none absolute right-10 top-0 flex h-full items-center',
+    );
     expect(content).toContain('Clear material type search');
     expect(content).toContain('No material types match your search.');
   });

@@ -9,12 +9,9 @@ import { DateRangePicker } from '@/modules/gate/components';
 import { Button, Input } from '@/shared/components/ui';
 
 import { useInspectionsByTab } from '../api/inspection/inspection.queries';
-import { WORKFLOW_STATUS_CONFIG } from '../constants';
-import type { InspectionListItem, InspectionListWorkflowStatus } from '../types';
-import {
-  FACTORY_HEAD_DECISIONS,
-  readFactoryHeadDecision,
-} from '../utils/factoryHeadDecision';
+import { DECISION_STATUS_CONFIG, WORKFLOW_STATUS_CONFIG } from '../constants';
+import type { InspectionDecisionInfo, InspectionListItem, InspectionListWorkflowStatus } from '../types';
+import { FACTORY_HEAD_DECISIONS, readFactoryHeadDecision } from '../utils/factoryHeadDecision';
 
 // Tab metadata
 const TAB_CONFIG = {
@@ -90,6 +87,16 @@ function getEffectiveStatusBadge(item: InspectionListItem) {
   };
 }
 
+function getDecisionBadge(decision?: InspectionDecisionInfo | null) {
+  const decisionKey = decision?.decision ?? 'PENDING';
+  const config = DECISION_STATUS_CONFIG[decisionKey];
+
+  return {
+    label: decision?.label || config.label,
+    className: `${config.bgColor} ${config.color}`,
+  };
+}
+
 export default function PendingInspectionsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,7 +116,12 @@ export default function PendingInspectionsPage() {
   const currentTab = TAB_CONFIG[statusFilter] || TAB_CONFIG.all;
 
   // Single hook — fetches the correct endpoint based on active tab
-  const { data: items = [], isLoading, error, refetch } = useInspectionsByTab(statusFilter, dateParams);
+  const {
+    data: items = [],
+    isLoading,
+    error,
+    refetch,
+  } = useInspectionsByTab(statusFilter, dateParams);
 
   // Filter items based on search query
   const filteredItems = useMemo(() => {
@@ -118,8 +130,14 @@ export default function PendingInspectionsPage() {
     return items.filter(
       (item) =>
         item.entry_no?.toLowerCase().includes(searchLower) ||
+        item.party_name?.toLowerCase().includes(searchLower) ||
+        item.po_item_code?.toLowerCase().includes(searchLower) ||
+        item.item_name?.toLowerCase().includes(searchLower) ||
         item.report_no?.toLowerCase().includes(searchLower) ||
         item.internal_lot_no?.toLowerCase().includes(searchLower) ||
+        item.material_type_name?.toLowerCase().includes(searchLower) ||
+        item.chemist_decision?.label?.toLowerCase().includes(searchLower) ||
+        item.manager_decision?.label?.toLowerCase().includes(searchLower) ||
         getEffectiveStatusBadge(item).label.toLowerCase().includes(searchLower),
     );
   }, [items, search]);
@@ -143,18 +161,24 @@ export default function PendingInspectionsPage() {
 
     const rows = filteredItems.map((item) => ({
       'Gate Entry No.': item.entry_no || '-',
+      Vendor: item.party_name || '-',
+      'SAP Material Code': item.po_item_code || '-',
+      'SAP Material': item.item_name || '-',
       'Report No.': item.report_no || '-',
       'Internal Lot No.': item.internal_lot_no || '-',
       'Material Type': item.material_type_name || '-',
-      'Status': getEffectiveStatusBadge(item).label,
-      'Date/Time': item.submitted_at || item.created_at
-        ? new Date(item.submitted_at || item.created_at).toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        : '-',
+      Stage: getEffectiveStatusBadge(item).label,
+      'Chemist Decision': item.chemist_decision?.label || 'Pending',
+      'Manager Decision': item.manager_decision?.label || 'Pending',
+      'Date/Time':
+        item.submitted_at || item.created_at
+          ? new Date(item.submitted_at || item.created_at).toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '-',
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -244,10 +268,10 @@ export default function PendingInspectionsPage() {
       </div>
 
       {/* Search Field */}
-      <div className="relative max-w-sm">
+      <div className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search by entry no., report no., lot no., or status..."
+          placeholder="Search entry, vendor, SAP material, report, lot, or status..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -328,20 +352,24 @@ export default function PendingInspectionsPage() {
 
           <div className="rounded-md border overflow-hidden">
             <div className="overflow-x-auto max-w-full">
-              <table className="w-full min-w-[700px]">
+              <table className="w-full min-w-[1200px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium">Gate Entry No.</th>
+                    <th className="p-3 text-left text-sm font-medium">Vendor</th>
+                    <th className="p-3 text-left text-sm font-medium">SAP Material</th>
                     <th className="p-3 text-left text-sm font-medium">Report No.</th>
                     <th className="p-3 text-left text-sm font-medium">Internal Lot No.</th>
                     <th className="p-3 text-left text-sm font-medium">Material Type</th>
-                    <th className="p-3 text-left text-sm font-medium">Status</th>
+                    <th className="p-3 text-left text-sm font-medium">Chemist</th>
+                    <th className="p-3 text-left text-sm font-medium">Manager</th>
                     <th className="p-3 text-left text-sm font-medium">Date/Time</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => {
-                    const statusBadge = getEffectiveStatusBadge(item);
+                    const chemistBadge = getDecisionBadge(item.chemist_decision);
+                    const managerBadge = getDecisionBadge(item.manager_decision);
 
                     return (
                       <tr
@@ -350,14 +378,39 @@ export default function PendingInspectionsPage() {
                         onClick={() => navigate(getNavigateTo(item))}
                       >
                         <td className="p-3 text-sm font-medium">{item.entry_no || '-'}</td>
+                        <td className="p-3 text-sm">
+                          <div className="max-w-[220px] truncate" title={item.party_name || '-'}>
+                            {item.party_name || '-'}
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm">
+                          <div className="max-w-[260px]">
+                            <div
+                              className="truncate font-mono text-xs font-medium text-muted-foreground"
+                              title={item.po_item_code || '-'}
+                            >
+                              {item.po_item_code || '-'}
+                            </div>
+                            <div className="truncate" title={item.item_name || '-'}>
+                              {item.item_name || '-'}
+                            </div>
+                          </div>
+                        </td>
                         <td className="p-3 text-sm">{item.report_no || '-'}</td>
                         <td className="p-3 text-sm">{item.internal_lot_no || '-'}</td>
                         <td className="p-3 text-sm">{item.material_type_name || '-'}</td>
                         <td className="p-3 text-sm">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadge.className}`}
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${chemistBadge.className}`}
                           >
-                            {statusBadge.label}
+                            {chemistBadge.label}
+                          </span>
+                        </td>
+                        <td className="p-3 text-sm">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${managerBadge.className}`}
+                          >
+                            {managerBadge.label}
                           </span>
                         </td>
                         <td className="p-3 text-sm text-muted-foreground">

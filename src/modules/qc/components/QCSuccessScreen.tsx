@@ -1,30 +1,33 @@
 import { FlaskConical, Home } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui';
+import type { InspectionDecision } from '../types';
 
 interface QCSuccessScreenProps {
   type: 'chemist' | 'manager';
+  decision: InspectionDecision;
   onNavigateToDashboard: () => void;
   onNavigateToHome: () => void;
 }
 
-const SUCCESS_CONFIG = {
-  chemist: {
-    title: 'Approved by QC Chemist',
-    subtitle: 'Inspection has been approved and forwarded to QC Manager',
-  },
-  manager: {
-    title: 'Approved by QC Manager',
-    subtitle: 'Quality control inspection is now complete',
-  },
-} as const;
+const DECISION_LABELS: Record<InspectionDecision, string> = {
+  APPROVED: 'Approved',
+  HOLD: 'Held',
+  REJECTED: 'Rejected',
+};
 
 export function QCSuccessScreen({
   type,
+  decision,
   onNavigateToDashboard,
   onNavigateToHome,
 }: QCSuccessScreenProps) {
-  const config = SUCCESS_CONFIG[type];
+  const actorLabel = type === 'chemist' ? 'QC Chemist' : 'QC Manager';
+  const decisionLabel = DECISION_LABELS[decision];
+  const subtitle =
+    type === 'chemist'
+      ? 'Inspection has been forwarded to QC Manager'
+      : 'Quality control inspection is now complete';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
@@ -55,10 +58,10 @@ export function QCSuccessScreen({
       </div>
 
       <h1 className="mb-2 text-3xl font-bold text-foreground opacity-0 animate-fade-in-delay-1">
-        {config.title}
+        {decisionLabel} by {actorLabel}
       </h1>
       <p className="mb-12 text-muted-foreground opacity-0 animate-fade-in-delay-2">
-        {config.subtitle}
+        {subtitle}
       </p>
 
       <div className="flex flex-col gap-4 sm:flex-row opacity-0 animate-fade-in-delay-3">

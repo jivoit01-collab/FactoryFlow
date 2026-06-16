@@ -205,6 +205,7 @@ export const API_ENDPOINTS = {
     MATERIAL_TYPE_BY_ID: (id: number) => `/quality-control/material-types/${id}/`,
     MATERIAL_TYPE_BY_SAP_ITEM: (itemCode: string) =>
       `/quality-control/material-types/by-sap-item/${encodeURIComponent(itemCode)}/`,
+    MATERIAL_TYPE_LINK_SAP_ITEM: '/quality-control/material-types/link-sap-item/',
     MATERIAL_TYPE_PARAMETERS: (materialTypeId: number) =>
       `/quality-control/material-types/${materialTypeId}/parameters/`,
     SAP_ITEMS: '/quality-control/sap-items/',
@@ -236,6 +237,8 @@ export const API_ENDPOINTS = {
     // Approvals
     APPROVE_CHEMIST: (id: number) => `/quality-control/inspections/${id}/approve/chemist/`,
     APPROVE_QAM: (id: number) => `/quality-control/inspections/${id}/approve/qam/`,
+    CHEMIST_DECISION: (id: number) => `/quality-control/inspections/${id}/chemist-decision/`,
+    MANAGER_DECISION: (id: number) => `/quality-control/inspections/${id}/manager-decision/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
     FACTORY_HEAD_DECISION: (id: number) =>
       `/quality-control/inspections/${id}/factory-head-decision/`,
