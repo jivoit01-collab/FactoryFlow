@@ -103,6 +103,10 @@ export default function SalesDispatchBarcodeScanPage() {
     GATE_PERMISSIONS.SALES_DISPATCH.EDIT,
   ]);
   const canRequestScanSkip = hasPermission(ADMIN_PERMISSIONS.DOCKING.REQUEST_SCAN_SKIP);
+  // Some companies (e.g. Jivo Beverages) don't scan boxes at the factory at all, so box
+  // scanning is optional for them: operators can continue without scanning and without
+  // the admin scan-skip approval flow. Driven by the backend per the entry's company.
+  const isBoxScanOptional = entry?.gatepass_readiness?.box_scan_optional ?? false;
   const skipStatus = skipRequest?.status ?? null;
   const isSkipApproved = skipStatus === 'APPROVED';
   const isSkipPending = skipStatus === 'PENDING';
@@ -203,7 +207,7 @@ export default function SalesDispatchBarcodeScanPage() {
       setError('Docking details not found.');
       return;
     }
-    if (scans.length === 0 && !isSkipApproved) {
+    if (scans.length === 0 && !isSkipApproved && !isBoxScanOptional) {
       if (isSkipPending) {
         setError(
           'Box scanning skip is awaiting admin approval. You can continue once it is approved.',
@@ -281,17 +285,21 @@ export default function SalesDispatchBarcodeScanPage() {
         itemSummary={entry.item_summary}
       />
 
-      <ScanSkipPanel
-        skipRequest={skipRequest}
-        canRequest={canRequestScanSkip && !isReadOnly && canEditDocking}
-        hasScans={scans.length > 0}
-        isSubmitting={createSkipRequest.isPending}
-        onRequest={() => {
-          setSkipReason('');
-          setSkipError('');
-          setIsSkipDialogOpen(true);
-        }}
-      />
+      {isBoxScanOptional ? (
+        <ScanOptionalPanel />
+      ) : (
+        <ScanSkipPanel
+          skipRequest={skipRequest}
+          canRequest={canRequestScanSkip && !isReadOnly && canEditDocking}
+          hasScans={scans.length > 0}
+          isSubmitting={createSkipRequest.isPending}
+          onRequest={() => {
+            setSkipReason('');
+            setSkipError('');
+            setIsSkipDialogOpen(true);
+          }}
+        />
+      )}
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <Card className="overflow-hidden">
@@ -701,6 +709,21 @@ function ScanMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border bg-muted/20 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function ScanOptionalPanel() {
+  return (
+    <div className="flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 p-4 text-sky-900">
+      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
+      <div className="space-y-1">
+        <p className="font-medium">Box scanning is optional</p>
+        <p className="text-sm">
+          Boxes are not scanned at the factory for this company. You can continue to attachments
+          without scanning. You may still scan boxes below if you want to record them.
+        </p>
+      </div>
     </div>
   );
 }

@@ -63,6 +63,12 @@ export interface SalesDispatchGatepassReadiness {
   has_box_scans: boolean;
   /** True when an admin-approved scan-skip request satisfies the box-scan requirement. */
   scan_skip_approved?: boolean;
+  /**
+   * True when box scanning is optional for this entry's company (e.g. Jivo Beverages).
+   * Operators can continue past the scan step and print the gatepass without scanning
+   * any box and without an admin scan-skip approval.
+   */
+  box_scan_optional?: boolean;
   has_weighment: boolean;
   has_items: boolean;
   has_bilty_details?: boolean;
