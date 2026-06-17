@@ -56,6 +56,8 @@ export const API_ENDPOINTS = {
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/`,
     PO_RECEIPT_REPLACE: (entryId: number, poReceiptId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/replace/`,
+    GATE_ENTRY_DELETE: (entryId: number) =>
+      `/raw-material-gatein/gate-entries/${entryId}/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
   },
