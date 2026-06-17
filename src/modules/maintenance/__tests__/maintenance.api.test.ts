@@ -48,6 +48,7 @@ vi.mock('@/config/constants', () => ({
       WORK_ORDER_SET_STATUS: (workOrderId: number) =>
         `/maintenance/work-orders/${workOrderId}/set-status/`,
       WORK_ORDER_PHOTOS: '/maintenance/work-order-photos/',
+      SPARE_ADJUST_STOCK: (spareId: number) => `/maintenance/spares/${spareId}/adjust-stock/`,
     },
   },
 }));
@@ -334,6 +335,15 @@ describe('maintenanceApi', () => {
     expect(formData.get('photo')).toBe(file);
     expect(formData.get('photo_type')).toBe('BEFORE');
     expect(formData.get('caption')).toBe('Before repair');
+  });
+
+  it('adjusts spare stock through the adjust-stock endpoint', async () => {
+    await maintenanceApi.adjustSpareStock(15, { new_stock: '8.000', reason: 'Cycle count' });
+
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/spares/15/adjust-stock/', {
+      new_stock: '8.000',
+      reason: 'Cycle count',
+    });
   });
 
   it('creates maintenance master records', async () => {

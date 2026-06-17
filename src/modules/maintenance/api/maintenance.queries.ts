@@ -39,6 +39,7 @@ import type {
   SpareRequestActionPayload,
   SpareRequestFilters,
   SpareRequestPayload,
+  SpareStockAdjustPayload,
   WorkOrderSpareRequestPayload,
 } from '../types';
 import { maintenanceApi } from './maintenance.api';
@@ -609,6 +610,18 @@ export function useUpdateMaintenanceSpare() {
   return useMutation({
     mutationFn: ({ spareId, payload }: { spareId: number; payload: MaintenanceSparePayload }) =>
       maintenanceApi.updateSpare(spareId, payload),
+    onSuccess: (_spare, variables) => {
+      invalidateMaintenance(queryClient);
+      queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.spare(variables.spareId) });
+    },
+  });
+}
+
+export function useAdjustSpareStock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spareId, payload }: { spareId: number; payload: SpareStockAdjustPayload }) =>
+      maintenanceApi.adjustSpareStock(spareId, payload),
     onSuccess: (_spare, variables) => {
       invalidateMaintenance(queryClient);
       queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.spare(variables.spareId) });

@@ -66,6 +66,7 @@ import type {
   SpareRequestActionPayload,
   SpareRequestFilters,
   SpareRequestPayload,
+  SpareStockAdjustPayload,
   WorkOrderSpareRequestPayload,
 } from '../types';
 
@@ -490,6 +491,17 @@ export const maintenanceApi = {
 
   async updateSpare(spareId: number, payload: MaintenanceSparePayload): Promise<MaintenanceSpare> {
     const response = await apiClient.put<MaintenanceSpare>(EP.SPARE_DETAIL(spareId), payload);
+    return response.data;
+  },
+
+  async adjustSpareStock(
+    spareId: number,
+    payload: SpareStockAdjustPayload,
+  ): Promise<MaintenanceSpare> {
+    const response = await apiClient.post<MaintenanceSpare>(
+      EP.SPARE_ADJUST_STOCK(spareId),
+      payload,
+    );
     return response.data;
   },
 
