@@ -162,3 +162,46 @@ export interface CreateFGReceiptPayload {
   uom?: string;
   posting_date?: string;
 }
+
+// ============================================================================
+// Dispatch Schedule (read-only warehouse view)
+// ============================================================================
+
+export type DispatchScheduleStatus = 'PENDING' | 'BOOKED' | 'DISPATCHED' | 'CANCELLED';
+
+export interface DispatchSchedulePlan {
+  id: number;
+  dispatch_date: string | null;
+  booking_status: DispatchScheduleStatus;
+  priority?: string;
+  sap_invoice_doc_num?: string;
+  invoice_number?: string;
+  place_of_supply?: string;
+  budget_delivery_point?: string;
+  product_variety?: string;
+  vehicle_no?: string;
+  transporter_name?: string;
+  driver_name?: string;
+  driver_mobile_no?: string;
+  total_litres?: string | null;
+  invoice_weight?: string | null;
+  kanta_weight?: string | null;
+  remarks?: string;
+}
+
+export interface DispatchScheduleResponse {
+  data: DispatchSchedulePlan[];
+  meta: {
+    total: number;
+    today: string;
+    today_count: number;
+    fetched_at: string;
+  };
+}
+
+export interface DispatchScheduleParams {
+  date_from?: string;
+  date_to?: string;
+  booking_status?: string;
+  search?: string;
+}

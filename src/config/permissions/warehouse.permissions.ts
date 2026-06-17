@@ -20,6 +20,8 @@ export const WAREHOUSE_PERMISSIONS = {
   VIEW_FG_RECEIPT: 'production_execution.can_view_production_run',
   /** Create / receive finished goods */
   RECEIVE_FG: 'production_execution.can_complete_production_run',
+  /** View the read-only dispatch schedule (what is going out today / tomorrow) */
+  VIEW_DISPATCH_SCHEDULE: 'dispatch_plans.can_view_dispatch_schedule',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'production_execution';

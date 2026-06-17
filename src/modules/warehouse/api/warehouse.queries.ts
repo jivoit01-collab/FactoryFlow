@@ -4,6 +4,7 @@ import type {
   ApproveBOMRequestPayload,
   CreateBOMRequestPayload,
   CreateFGReceiptPayload,
+  DispatchScheduleParams,
   MaterialIssuePayload,
   RejectBOMRequestPayload,
 } from '../types';
@@ -19,6 +20,8 @@ export const WAREHOUSE_QUERY_KEYS = {
   bomRequestDetail: (id: number) => [...WAREHOUSE_QUERY_KEYS.all, 'bom-request', id] as const,
   fgReceipts: (status?: string, productionRunId?: number) => [...WAREHOUSE_QUERY_KEYS.all, 'fg-receipts', { status, productionRunId }] as const,
   fgReceiptDetail: (id: number) => [...WAREHOUSE_QUERY_KEYS.all, 'fg-receipt', id] as const,
+  dispatchSchedule: (params?: DispatchScheduleParams) =>
+    [...WAREHOUSE_QUERY_KEYS.all, 'dispatch-schedule', params ?? {}] as const,
 };
 
 // ============================================================================
@@ -101,6 +104,18 @@ export function useStockCheck(itemCodes: string[], enabled = false) {
     queryKey: [...WAREHOUSE_QUERY_KEYS.all, 'stock', itemCodes],
     queryFn: () => warehouseApi.checkStock(itemCodes),
     enabled: enabled && itemCodes.length > 0,
+  });
+}
+
+// ============================================================================
+// Dispatch Schedule (read-only)
+// ============================================================================
+
+export function useDispatchSchedule(params?: DispatchScheduleParams) {
+  return useQuery({
+    queryKey: WAREHOUSE_QUERY_KEYS.dispatchSchedule(params),
+    queryFn: () => warehouseApi.getDispatchSchedule(params),
+    staleTime: 60 * 1000,
   });
 }
 

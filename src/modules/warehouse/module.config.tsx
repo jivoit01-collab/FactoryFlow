@@ -1,4 +1,4 @@
-import { Warehouse, LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard,Warehouse } from 'lucide-react';
 import { lazy } from 'react';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
@@ -8,6 +8,7 @@ const WarehouseDashboardPage = lazy(() => import('./pages/WarehouseDashboardPage
 const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
 const BOMRequestDetailPage = lazy(() => import('./pages/BOMRequestDetailPage'));
 const FGReceiptListPage = lazy(() => import('./pages/FGReceiptListPage'));
+const DispatchSchedulePage = lazy(() => import('./pages/DispatchSchedulePage'));
 
 // WMS Pages
 const WMSDashboardPage = lazy(() => import('./pages/WMSDashboardPage'));
@@ -44,6 +45,12 @@ export const warehouseModuleConfig: ModuleConfig = {
       element: <FGReceiptListPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
+    },
+    {
+      path: '/warehouse/dispatch-schedule',
+      element: <DispatchSchedulePage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_DISPATCH_SCHEDULE],
     },
     // WMS Routes
     {
@@ -95,7 +102,10 @@ export const warehouseModuleConfig: ModuleConfig = {
       title: 'Warehouse',
       icon: Warehouse,
       showInSidebar: true,
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+      permissions: [
+        WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
+        WAREHOUSE_PERMISSIONS.VIEW_DISPATCH_SCHEDULE,
+      ],
       hasSubmenu: true,
       children: [
         {
@@ -107,6 +117,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/fg-receipts',
           title: 'FG Receipts',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
+        },
+        {
+          path: '/warehouse/dispatch-schedule',
+          title: 'Dispatch Schedule',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_DISPATCH_SCHEDULE],
         },
       ],
     },
