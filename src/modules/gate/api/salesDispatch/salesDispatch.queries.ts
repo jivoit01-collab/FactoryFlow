@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  type SalesDispatchAdditionalWeightsRequest,
   salesDispatchApi,
   type SalesDispatchAttachmentUploadRequest,
   type SalesDispatchBoxScanRequest,
@@ -262,6 +263,16 @@ export function useSetSalesDispatchChallanWeight() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: SalesDispatchChallanWeightRequest }) =>
       salesDispatchApi.setChallanWeight(id, data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
+export function useSetSalesDispatchAdditionalWeights() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SalesDispatchAdditionalWeightsRequest }) =>
+      salesDispatchApi.setAdditionalWeights(id, data),
     onSuccess: () => invalidateSalesDispatch(queryClient),
   });
 }

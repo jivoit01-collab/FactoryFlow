@@ -122,6 +122,8 @@ export const API_ENDPOINTS = {
       `/gate-core/sales-dispatch/${id}/gatepass/prints/`,
     SALES_DISPATCH_CHALLAN_WEIGHT: (id: number) =>
       `/gate-core/sales-dispatch/${id}/challan-weight/`,
+    SALES_DISPATCH_ADDITIONAL_WEIGHTS: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/additional-weights/`,
     SALES_DISPATCH_COMMIT_PRINT: (id: number) => `/gate-core/sales-dispatch/${id}/commit-print/`,
     SALES_DISPATCH_MARK_DISPATCHED: (id: number) => `/gate-core/sales-dispatch/${id}/dispatch/`,
     SALES_DISPATCH_REJECT: (id: number) => `/gate-core/sales-dispatch/${id}/reject/`,
@@ -345,6 +347,7 @@ export const API_ENDPOINTS = {
       `/dispatch-plans/bills/by-number/${encodeURIComponent(invoiceNumber)}/`,
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,
     SCHEDULE: '/dispatch-plans/schedule/',
+    SCHEDULE_ITEMS: (docEntry: number) => `/dispatch-plans/schedule/${docEntry}/items/`,
   },
   // Dispatch
   DISPATCH: {

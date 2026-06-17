@@ -280,6 +280,7 @@ export interface SalesDispatchGateOut {
   items: SalesDispatchItem[];
   attachments: SalesDispatchAttachment[];
   box_scans?: SalesDispatchBoxScan[];
+  additional_weights?: SalesDispatchAdditionalWeight[];
   gatepass_print_logs?: SalesDispatchGatepassPrintLog[];
   created_at: string;
   updated_at: string;
@@ -528,6 +529,20 @@ export interface SalesDispatchChallanWeightRequest {
   challan_weight: number | null;
 }
 
+/** A named weight of non-goods items (packaging, dunnage, securing material). */
+export interface SalesDispatchAdditionalWeight {
+  id: number;
+  sales_dispatch: number;
+  name: string;
+  weight: string;
+  recorded_by_name?: string | null;
+  created_at: string;
+}
+
+export interface SalesDispatchAdditionalWeightsRequest {
+  items: { name: string; weight: number }[];
+}
+
 function buildQuery(params?: Record<string, string | number | undefined>) {
   const queryParams = new URLSearchParams();
 
@@ -734,6 +749,17 @@ export const salesDispatchApi = {
   ): Promise<SalesDispatchGateOut> {
     const response = await apiClient.post<SalesDispatchGateOut>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_CHALLAN_WEIGHT(id),
+      data,
+    );
+    return response.data;
+  },
+
+  async setAdditionalWeights(
+    id: number,
+    data: SalesDispatchAdditionalWeightsRequest,
+  ): Promise<SalesDispatchAdditionalWeight[]> {
+    const response = await apiClient.put<SalesDispatchAdditionalWeight[]>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ADDITIONAL_WEIGHTS(id),
       data,
     );
     return response.data;

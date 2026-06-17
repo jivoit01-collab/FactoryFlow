@@ -1,5 +1,16 @@
-import { AlertCircle, Boxes, ClipboardList, FileText, PackageCheck, Scale, Truck } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {
+  AlertCircle,
+  Boxes,
+  ClipboardList,
+  FileText,
+  PackageCheck,
+  PackagePlus,
+  Plus,
+  Scale,
+  Trash2,
+  Truck,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -10,6 +21,7 @@ import {
   type SalesDispatchItem,
   useCreateWeighment,
   useSalesDispatchByVehicleEntry,
+  useSetSalesDispatchAdditionalWeights,
   useSetSalesDispatchChallanWeight,
   useWeighment,
   type Weighment,
@@ -83,7 +95,9 @@ export default function SalesDispatchGateOutWeighmentPage() {
   const { entryId, entryIdNumber } = useEntryId();
   const [values, setValues] = useState<RequiredWeighmentValues>(EMPTY_REQUIRED_WEIGHMENT);
   const [challanWeight, setChallanWeightValue] = useState('');
+  const [additionalRows, setAdditionalRows] = useState<AdditionalWeightRow[]>([]);
   const [error, setError] = useState('');
+  const rowKeyRef = useRef(0);
 
   const {
     data: entry,
@@ -99,6 +113,7 @@ export default function SalesDispatchGateOutWeighmentPage() {
   } = useWeighment(vehicleEntryId);
   const saveWeighment = useCreateWeighment(vehicleEntryId || 0);
   const saveChallanWeight = useSetSalesDispatchChallanWeight();
+  const saveAdditionalWeights = useSetSalesDispatchAdditionalWeights();
 
   useEffect(() => {
     if (!weighment) return;
@@ -119,8 +134,42 @@ export default function SalesDispatchGateOutWeighmentPage() {
     return () => window.clearTimeout(timerId);
   }, [entry?.id, entry?.challan_weight]);
 
+  // Seed the additional-weight rows from any previously saved line items, once per entry.
+  useEffect(() => {
+    const items = entry?.additional_weights ?? [];
+    const timerId = window.setTimeout(() => {
+      setAdditionalRows(
+        items.map((item) => ({
+          key: `existing-${item.id}`,
+          name: item.name,
+          weight: String(item.weight ?? ''),
+        })),
+      );
+    }, 0);
+    return () => window.clearTimeout(timerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entry?.id]);
+
   const handleValueChange = (field: keyof RequiredWeighmentValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
+    setError('');
+  };
+
+  const handleAddAdditionalRow = () => {
+    rowKeyRef.current += 1;
+    setAdditionalRows((rows) => [...rows, { key: `new-${rowKeyRef.current}`, name: '', weight: '' }]);
+    setError('');
+  };
+
+  const handleAdditionalRowChange = (key: string, field: 'name' | 'weight', value: string) => {
+    setAdditionalRows((rows) =>
+      rows.map((row) => (row.key === key ? { ...row, [field]: value } : row)),
+    );
+    setError('');
+  };
+
+  const handleRemoveAdditionalRow = (key: string) => {
+    setAdditionalRows((rows) => rows.filter((row) => row.key !== key));
     setError('');
   };
 
@@ -148,6 +197,12 @@ export default function SalesDispatchGateOutWeighmentPage() {
       }
     }
 
+    const additionalItems = buildAdditionalWeightItems(additionalRows);
+    if (additionalItems === null) {
+      setError('Each additional weight needs a name and a valid weight (0 or more).');
+      return;
+    }
+
     const payload: CreateWeighmentRequest = {
       gross_weight: Number(values.grossWeight),
       tare_weight: Number(values.tareWeight),
@@ -171,6 +226,13 @@ export default function SalesDispatchGateOutWeighmentPage() {
         await saveChallanWeight.mutateAsync({
           id: entry.id,
           data: { challan_weight: desiredChallan },
+        });
+      }
+      const hadAdditional = (entry.additional_weights?.length ?? 0) > 0;
+      if (additionalItems.length > 0 || hadAdditional) {
+        await saveAdditionalWeights.mutateAsync({
+          id: entry.id,
+          data: { items: additionalItems },
         });
       }
       await saveWeighment.mutateAsync(payload);
@@ -237,7 +299,8 @@ export default function SalesDispatchGateOutWeighmentPage() {
   const tareNum = toFiniteNumber(values.tareWeight);
   const netWeight = grossNum !== null && tareNum !== null ? grossNum - tareNum : null;
 
-  const isSaving = saveWeighment.isPending || saveChallanWeight.isPending;
+  const isSaving =
+    saveWeighment.isPending || saveChallanWeight.isPending || saveAdditionalWeights.isPending;
 
   return (
     <div className="space-y-6 pb-6">
@@ -323,6 +386,17 @@ export default function SalesDispatchGateOutWeighmentPage() {
         invoiceWeight={sapInvoiceWeight}
         invoiceBoxes={invoiceBoxes}
         scanSkipApproved={scanSkipApproved}
+      />
+
+      <AdditionalWeightCard
+        rows={additionalRows}
+        net={netWeight}
+        invoiceWeight={sapInvoiceWeight}
+        challanWeight={effectiveChallanWeight}
+        disabled={isSaving}
+        onAdd={handleAddAdditionalRow}
+        onChange={handleAdditionalRowChange}
+        onRemove={handleRemoveAdditionalRow}
       />
 
       <StepFooter
@@ -687,4 +761,151 @@ function toFiniteNumber(value?: string | number | null) {
   if (value === null || value === undefined || value === '') return null;
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+interface AdditionalWeightRow {
+  key: string;
+  name: string;
+  weight: string;
+}
+
+/**
+ * Validates and normalises the additional-weight rows for saving. Drops fully
+ * blank rows; returns null if any row is partially filled or has an invalid
+ * weight, so the caller can show a validation error.
+ */
+function buildAdditionalWeightItems(
+  rows: AdditionalWeightRow[],
+): { name: string; weight: number }[] | null {
+  const items: { name: string; weight: number }[] = [];
+  for (const row of rows) {
+    const name = row.name.trim();
+    const weightStr = row.weight.trim();
+    if (name === '' && weightStr === '') continue;
+    const weight = Number(weightStr);
+    if (name === '' || weightStr === '' || !Number.isFinite(weight) || weight < 0) {
+      return null;
+    }
+    items.push({ name, weight });
+  }
+  return items;
+}
+
+function AdditionalWeightCard({
+  rows,
+  net,
+  invoiceWeight,
+  challanWeight,
+  disabled,
+  onAdd,
+  onChange,
+  onRemove,
+}: {
+  rows: AdditionalWeightRow[];
+  net: number | null;
+  invoiceWeight: number;
+  challanWeight: number;
+  disabled?: boolean;
+  onAdd: () => void;
+  onChange: (key: string, field: 'name' | 'weight', value: string) => void;
+  onRemove: (key: string) => void;
+}) {
+  const additionalTotal = rows.reduce((sum, row) => sum + (toFiniteNumber(row.weight) ?? 0), 0);
+  const goodsWeight = net !== null ? net - additionalTotal : null;
+  const reference = challanWeight > 0 ? challanWeight : invoiceWeight;
+  const hasReference = reference > 0;
+  const variance = goodsWeight !== null && hasReference ? goodsWeight - reference : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <PackagePlus className="h-5 w-5" />
+          Additional Weight
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Record the weight of non-goods items loaded to secure the shipment (cardboard, pallets,
+          straps, dunnage). These are subtracted from the net loaded weight to estimate the actual
+          goods weight, making it easier to match against the invoice weight. This does not change
+          the gross, tare, or net weighbridge weights.
+        </p>
+
+        {rows.length > 0 ? (
+          <div className="space-y-2">
+            {rows.map((row) => (
+              <div key={row.key} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  className="sm:flex-1"
+                  placeholder="Item name (e.g. Cardboard, Pallet)"
+                  value={row.name}
+                  disabled={disabled}
+                  onChange={(event) => onChange(row.key, 'name', event.target.value)}
+                />
+                <Input
+                  className="sm:w-40"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  placeholder="Weight (kg)"
+                  value={row.weight}
+                  disabled={disabled}
+                  onChange={(event) => onChange(row.key, 'weight', event.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={disabled}
+                  onClick={() => onRemove(row.key)}
+                  title="Remove"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No additional weights added.</p>
+        )}
+
+        <Button type="button" variant="outline" disabled={disabled} onClick={onAdd}>
+          <Plus className="h-4 w-4" />
+          Add Additional Weight
+        </Button>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <MetricTile
+            label="Net Loaded Weight"
+            value={net !== null ? formatKg(net) : '—'}
+            hint="Gross − Tare"
+          />
+          <MetricTile
+            label="Additional Weight"
+            value={additionalTotal > 0 ? formatKg(additionalTotal) : '—'}
+            hint="Sum of items above"
+          />
+          <MetricTile
+            label="Estimated Goods Weight"
+            value={goodsWeight !== null ? formatKg(goodsWeight) : '—'}
+            hint="Net − Additional"
+            emphasis
+          />
+        </div>
+
+        {goodsWeight !== null && hasReference ? (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            Estimated goods {formatKg(goodsWeight)} vs {challanWeight > 0 ? 'challan' : 'invoice'}{' '}
+            {formatKg(reference)} ·{' '}
+            <span className="font-semibold">
+              {variance !== null && variance >= 0 ? '+' : ''}
+              {variance !== null ? formatKg(variance) : '—'}
+            </span>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 }
