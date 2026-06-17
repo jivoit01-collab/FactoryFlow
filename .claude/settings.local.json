@@ -70,7 +70,22 @@
       "Bash(rm -f /tmp/inspect_grpo.py /tmp/inspect2.py /tmp/inspect3.py)",
       "Bash(python3 -m py_compile grpo/services.py)",
       "Bash(node node_modules/typescript/bin/tsc --noEmit -p tsconfig.app.json)",
-      "Bash(python3 -m py_compile production_execution/services/production_movement_reader.py)"
+      "Bash(python3 -m py_compile production_execution/services/production_movement_reader.py)",
+      "Bash(cd ../factory_app && ls -d */ | grep -iE \"venv|env\" ; ls -la | grep -iE \"venv|env|\\\\.python\"; echo \"---\"; ls ../ | grep -iE \"venv|env\")",
+      "Read(//c/Users/gurpa/dev/**)",
+      "Bash(./.venv/Scripts/python.exe manage.py shell)",
+      "Bash(./.venv/Scripts/python.exe manage.py shell -c ' *)",
+      "Bash(./.venv/Scripts/python.exe manage.py showmigrations)",
+      "Bash(./.venv/Scripts/python.exe manage.py showmigrations gate_core)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate gate_core 0033)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate gate_core 0034)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate gate_core 0035)",
+      "Bash(./.venv/Scripts/python.exe manage.py check)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/eslint src/modules/gate/pages/customerSalesFlow/SalesDispatchBarcodeScanPage.tsx src/modules/gate/api/salesDispatch/salesDispatch.api.ts src/modules/gate/api/salesDispatch/salesDispatch.queries.ts src/config/constants/api.constants.ts)",
+      "PowerShell(npx eslint src/modules/gate/pages/customerSalesFlow/SalesDispatchBarcodeScanPage.tsx src/modules/gate/api/salesDispatch/salesDispatch.api.ts src/modules/gate/api/salesDispatch/salesDispatch.queries.ts 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" node_modules/eslint/bin/eslint.js src/modules/gate/pages/customerSalesFlow/SalesDispatchBarcodeScanPage.tsx src/modules/gate/api/salesDispatch/salesDispatch.api.ts src/modules/gate/api/salesDispatch/salesDispatch.queries.ts 2>&1)",
+      "Bash(git config *)"
     ],
     "additionalDirectories": [
       "/tmp"

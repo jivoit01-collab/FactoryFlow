@@ -37,6 +37,8 @@ export const SALES_DISPATCH_QUERY_KEYS = {
   attachments: (id?: number | null) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'attachments', id] as const,
   boxScans: (id?: number | null) => [...SALES_DISPATCH_QUERY_KEYS.all, 'boxScans', id] as const,
+  barcodeScans: (id?: number | null) =>
+    [...SALES_DISPATCH_QUERY_KEYS.all, 'barcodeScans', id] as const,
   gatepassPrintHistory: (id?: number | null) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'gatepassPrintHistory', id] as const,
 };
@@ -144,6 +146,18 @@ export function useSalesDispatchBoxScans(id?: number | null) {
     queryKey: SALES_DISPATCH_QUERY_KEYS.boxScans(id),
     queryFn: () => salesDispatchApi.boxScans(id!),
     enabled: !!id,
+  });
+}
+
+export function useSalesDispatchBarcodeScans(
+  id?: number | null,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: SALES_DISPATCH_QUERY_KEYS.barcodeScans(id),
+    queryFn: () => salesDispatchApi.barcodeScans(id!),
+    enabled: !!id && (options?.enabled ?? true),
+    staleTime: 30 * 1000,
   });
 }
 

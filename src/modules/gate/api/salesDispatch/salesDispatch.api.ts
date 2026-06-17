@@ -470,6 +470,41 @@ export interface SalesDispatchBoxScanRequest {
   barcode_raw: string;
 }
 
+/** A box already scanned in the old barcode-module dispatch flow for this SAP bill. */
+export interface BarcodeDispatchScan {
+  id: number;
+  barcode: string;
+  entity_type: string;
+  item_code?: string;
+  item_name?: string;
+  batch_number?: string;
+  quantity?: string | null;
+  uom?: string;
+  scan_status?: string;
+  box_status?: string;
+  scanned_at: string;
+}
+
+export interface BarcodeDispatchSession {
+  session_id: number;
+  bill_number: string;
+  sap_doc_num: string;
+  status: string;
+  customer_code?: string;
+  customer_name?: string;
+  total_scanned_qty?: string | null;
+  scanned_at: string;
+  box_count: number;
+  boxes: BarcodeDispatchScan[];
+}
+
+export interface BarcodeDispatchScansResult {
+  matched: boolean;
+  session_count: number;
+  box_count: number;
+  sessions: BarcodeDispatchSession[];
+}
+
 export interface SalesDispatchGatepassPrintRequest {
   uom?: string;
   physical_quantity?: string | number | null;
@@ -648,6 +683,13 @@ export const salesDispatchApi = {
 
   async removeBoxScan(id: number, scanId: number): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BOX_SCAN(id, scanId));
+  },
+
+  async barcodeScans(id: number): Promise<BarcodeDispatchScansResult> {
+    const response = await apiClient.get<BarcodeDispatchScansResult>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BARCODE_SCANS(id),
+    );
+    return response.data;
   },
 
   async previewGatepass(id: number): Promise<SalesDispatchGateOut> {

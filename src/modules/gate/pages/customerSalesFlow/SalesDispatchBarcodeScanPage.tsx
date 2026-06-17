@@ -7,6 +7,7 @@ import {
   Clock3,
   Loader2,
   PackageCheck,
+  PackageSearch,
   ScanLine,
   ShieldCheck,
   Trash2,
@@ -25,10 +26,12 @@ import {
 } from '@/modules/admin/api';
 import { useScanner } from '@/modules/barcode/hooks/useScanner';
 import {
+  type BarcodeDispatchSession,
   type SalesDispatchBoxScan,
   type SalesDispatchGateOut,
   type SalesDispatchItem,
   useRemoveSalesDispatchBoxScan,
+  useSalesDispatchBarcodeScans,
   useSalesDispatchBoxScans,
   useSalesDispatchByVehicleEntry,
   useScanSalesDispatchBox,
@@ -82,6 +85,7 @@ export default function SalesDispatchBarcodeScanPage() {
   const [isSkipDialogOpen, setIsSkipDialogOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [skipError, setSkipError] = useState('');
+  const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
   const manualInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -92,6 +96,11 @@ export default function SalesDispatchBarcodeScanPage() {
   } = useSalesDispatchByVehicleEntry(entryIdNumber);
   const { data: scans = [], isLoading: isScansLoading } = useSalesDispatchBoxScans(entry?.id);
   const { data: skipRequest } = useDockingScanSkipRequestByDispatch(entry?.id);
+  const {
+    data: barcodeScans,
+    isFetching: isBarcodeScansLoading,
+    error: barcodeScansError,
+  } = useSalesDispatchBarcodeScans(entry?.id, { enabled: isBarcodeDialogOpen });
   const scanBox = useScanSalesDispatchBox();
   const removeScan = useRemoveSalesDispatchBoxScan();
   const createSkipRequest = useCreateDockingScanSkipRequest();
@@ -314,9 +323,20 @@ export default function SalesDispatchBarcodeScanPage() {
                   Capture each loaded box against this Docking entry.
                 </CardDescription>
               </div>
-              <Badge variant={scans.length > 0 ? 'success' : 'outline'}>
-                {scans.length} scanned
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBarcodeDialogOpen(true)}
+                >
+                  <PackageSearch className="h-4 w-4" />
+                  Check Barcode Scans
+                </Button>
+                <Badge variant={scans.length > 0 ? 'success' : 'outline'}>
+                  {scans.length} scanned
+                </Badge>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-5 pt-6">
@@ -559,7 +579,146 @@ export default function SalesDispatchBarcodeScanPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BarcodeScansDialog
+        open={isBarcodeDialogOpen}
+        onOpenChange={setIsBarcodeDialogOpen}
+        isLoading={isBarcodeScansLoading}
+        sessions={barcodeScans?.sessions ?? []}
+        errorMessage={
+          barcodeScansError
+            ? getErrorMessage(barcodeScansError, 'Unable to load barcode scans')
+            : null
+        }
+        sapDocNum={entry.sap_doc_num}
+      />
     </div>
+  );
+}
+
+function BarcodeScansDialog({
+  open,
+  onOpenChange,
+  isLoading,
+  sessions,
+  errorMessage,
+  sapDocNum,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  isLoading: boolean;
+  sessions: BarcodeDispatchSession[];
+  errorMessage: string | null;
+  sapDocNum?: string | null;
+}) {
+  const totalBoxes = sessions.reduce((sum, session) => sum + session.box_count, 0);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PackageSearch className="h-5 w-5" />
+            Boxes Scanned in Barcode Module
+          </DialogTitle>
+          <DialogDescription>
+            Boxes already scanned in the barcode module for SAP invoice{' '}
+            <span className="font-medium">{formatValue(sapDocNum)}</span>. These are shown for
+            reference — they are not added to this Docking entry automatically.
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Checking barcode module...
+          </div>
+        ) : errorMessage ? (
+          <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <p className="text-sm">{errorMessage}</p>
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-muted-foreground">
+            <PackageSearch className="h-8 w-8 text-muted-foreground/60" />
+            <p className="font-medium">No barcode scans found for this invoice.</p>
+            <p>This dispatch was not scanned in the barcode module, or used a different bill.</p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="text-sm text-muted-foreground">
+              Found <span className="font-medium text-foreground">{totalBoxes}</span> box
+              {totalBoxes === 1 ? '' : 'es'} across{' '}
+              <span className="font-medium text-foreground">{sessions.length}</span> barcode session
+              {sessions.length === 1 ? '' : 's'}.
+            </div>
+            {sessions.map((session) => (
+              <div key={session.session_id} className="overflow-hidden rounded-md border">
+                <div className="flex flex-col gap-1 border-b bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm">
+                    <span className="font-medium">Bill {formatValue(session.bill_number)}</span>
+                    {session.customer_name ? (
+                      <span className="text-muted-foreground"> · {session.customer_name}</span>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{session.status}</Badge>
+                    <Badge variant={session.box_count > 0 ? 'success' : 'outline'}>
+                      {session.box_count} box{session.box_count === 1 ? '' : 'es'}
+                    </Badge>
+                  </div>
+                </div>
+                {session.boxes.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">
+                    No active box scans on this session.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="border-b bg-muted/30">
+                        <tr>
+                          <th className="p-3 text-left font-medium">Barcode</th>
+                          <th className="p-3 text-left font-medium">Item</th>
+                          <th className="p-3 text-left font-medium">Batch</th>
+                          <th className="p-3 text-left font-medium">Qty</th>
+                          <th className="p-3 text-left font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {session.boxes.map((box) => (
+                          <tr key={box.id} className="border-b last:border-b-0">
+                            <td className="p-3 font-mono text-xs font-medium">{box.barcode}</td>
+                            <td className="p-3">
+                              <div className="font-medium">{box.item_code || '-'}</div>
+                              <div className="max-w-[220px] truncate text-xs text-muted-foreground">
+                                {box.item_name || '-'}
+                              </div>
+                            </td>
+                            <td className="p-3">{formatValue(box.batch_number)}</td>
+                            <td className="p-3">
+                              {[box.quantity, box.uom].filter(Boolean).join(' ') || '-'}
+                            </td>
+                            <td className="p-3">
+                              <Badge variant="outline">{box.scan_status || box.box_status || '-'}</Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
