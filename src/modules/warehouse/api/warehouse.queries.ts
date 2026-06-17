@@ -22,6 +22,8 @@ export const WAREHOUSE_QUERY_KEYS = {
   fgReceiptDetail: (id: number) => [...WAREHOUSE_QUERY_KEYS.all, 'fg-receipt', id] as const,
   dispatchSchedule: (params?: DispatchScheduleParams) =>
     [...WAREHOUSE_QUERY_KEYS.all, 'dispatch-schedule', params ?? {}] as const,
+  dispatchScheduleItems: (docEntry: number) =>
+    [...WAREHOUSE_QUERY_KEYS.all, 'dispatch-schedule-items', docEntry] as const,
 };
 
 // ============================================================================
@@ -115,6 +117,15 @@ export function useDispatchSchedule(params?: DispatchScheduleParams) {
   return useQuery({
     queryKey: WAREHOUSE_QUERY_KEYS.dispatchSchedule(params),
     queryFn: () => warehouseApi.getDispatchSchedule(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useDispatchScheduleItems(docEntry?: number | null, enabled = false) {
+  return useQuery({
+    queryKey: WAREHOUSE_QUERY_KEYS.dispatchScheduleItems(docEntry ?? 0),
+    queryFn: () => warehouseApi.getDispatchScheduleItems(docEntry!),
+    enabled: enabled && !!docEntry,
     staleTime: 60 * 1000,
   });
 }

@@ -7,6 +7,7 @@ import type {
   BOMRequestDetail,
   CreateBOMRequestPayload,
   CreateFGReceiptPayload,
+  DispatchScheduleLineItem,
   DispatchScheduleParams,
   DispatchScheduleResponse,
   FGReceipt,
@@ -115,6 +116,13 @@ export const warehouseApi = {
     const res = await apiClient.get<DispatchScheduleResponse>(
       API_ENDPOINTS.DISPATCH_PLANS.SCHEDULE,
       { params },
+    );
+    return res.data;
+  },
+
+  async getDispatchScheduleItems(docEntry: number): Promise<DispatchScheduleLineItem[]> {
+    const res = await apiClient.get<DispatchScheduleLineItem[]>(
+      API_ENDPOINTS.DISPATCH_PLANS.SCHEDULE_ITEMS(docEntry),
     );
     return res.data;
   },

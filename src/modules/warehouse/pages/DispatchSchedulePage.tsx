@@ -1,4 +1,14 @@
-import { AlertTriangle, CalendarClock, PackageCheck, RefreshCw, Truck } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarClock,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  PackageCheck,
+  RefreshCw,
+  Truck,
+  Warehouse,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -17,8 +27,10 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import { useDispatchSchedule } from '../api';
+import { useDispatchSchedule, useDispatchScheduleItems } from '../api';
 import type { DispatchSchedulePlan, DispatchScheduleStatus } from '../types';
+
+const SCHEDULE_COLUMN_COUNT = 9;
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: 'all', label: 'All statuses' },
@@ -44,22 +56,19 @@ interface ScheduleGroup {
 export default function DispatchSchedulePage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    isError,
-    refetch,
-  } = useDispatchSchedule(statusFilter === 'all' ? undefined : { booking_status: statusFilter });
+  const { data, isLoading, isFetching, isError, refetch } = useDispatchSchedule(
+    statusFilter === 'all' ? undefined : { booking_status: statusFilter },
+  );
 
   const today = data?.meta.today ?? '';
+  const sapAvailable = data?.meta.sap_available ?? true;
   const groups = useMemo(() => buildGroups(data?.data ?? [], today), [data, today]);
 
   return (
     <div className="space-y-6">
       <DashboardHeader
         title="Dispatch Schedule"
-        description="Dispatch plans scheduled to go out — today, tomorrow and the days ahead."
+        description="What is going out today, tomorrow and the days ahead — and the items to issue to the dock."
       >
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
@@ -83,6 +92,16 @@ export default function DispatchSchedulePage() {
           <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
         </Button>
       </DashboardHeader>
+
+      {!isLoading && !isError && !sapAvailable ? (
+        <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+          <p className="text-sm">
+            SAP is currently offline, so item and warehouse details are unavailable. The schedule and
+            invoice details below are still accurate; try refreshing to load the items.
+          </p>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
@@ -110,7 +129,7 @@ export default function DispatchSchedulePage() {
       ) : (
         <div className="space-y-6">
           {groups.map((group) => (
-            <ScheduleGroupCard key={group.key} group={group} />
+            <ScheduleGroupCard key={group.key} group={group} sapAvailable={sapAvailable} />
           ))}
         </div>
       )}
@@ -118,14 +137,20 @@ export default function DispatchSchedulePage() {
   );
 }
 
-function ScheduleGroupCard({ group }: { group: ScheduleGroup }) {
+function ScheduleGroupCard({
+  group,
+  sapAvailable,
+}: {
+  group: ScheduleGroup;
+  sapAvailable: boolean;
+}) {
   const toneStyles: Record<ScheduleGroup['tone'], string> = {
     overdue: 'border-red-200',
     today: 'border-emerald-300',
     tomorrow: 'border-sky-200',
     upcoming: '',
   };
-  const totalLitres = group.plans.reduce((sum, plan) => sum + toNumber(plan.total_litres), 0);
+  const totalBoxes = group.plans.reduce((sum, plan) => sum + (plan.total_boxes ?? 0), 0);
 
   return (
     <Card className={cn('overflow-hidden', toneStyles[group.tone])}>
@@ -135,13 +160,13 @@ function ScheduleGroupCard({ group }: { group: ScheduleGroup }) {
             {group.tone === 'overdue' ? (
               <AlertTriangle className="h-5 w-5 text-red-500" />
             ) : (
-              <Truck className="h-5 w-5" />
+              <CalendarClock className="h-5 w-5" />
             )}
             {group.label}
           </CardTitle>
           <div className="flex items-center gap-2">
-            {totalLitres > 0 ? (
-              <span className="text-xs text-muted-foreground">{formatNumber(totalLitres)} L</span>
+            {totalBoxes > 0 ? (
+              <span className="text-xs text-muted-foreground">{formatNumber(totalBoxes)} boxes</span>
             ) : null}
             <Badge variant={group.tone === 'overdue' ? 'destructive' : 'secondary'}>
               {group.plans.length} plan{group.plans.length === 1 ? '' : 's'}
@@ -151,43 +176,160 @@ function ScheduleGroupCard({ group }: { group: ScheduleGroup }) {
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[920px] text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
+                <th className="w-8 p-3" />
+                <th className="p-3 text-left font-medium">Dispatch Date</th>
                 <th className="p-3 text-left font-medium">Invoice</th>
                 <th className="p-3 text-left font-medium">Destination</th>
-                <th className="p-3 text-left font-medium">Product</th>
-                <th className="p-3 text-left font-medium">Vehicle</th>
-                <th className="p-3 text-left font-medium">Transporter</th>
-                <th className="p-3 text-right font-medium">Litres</th>
+                <th className="p-3 text-left font-medium">Items to Issue</th>
+                <th className="p-3 text-left font-medium">Warehouse</th>
+                <th className="p-3 text-right font-medium">Boxes</th>
                 <th className="p-3 text-right font-medium">Weight</th>
                 <th className="p-3 text-left font-medium">Status</th>
               </tr>
             </thead>
             <tbody>
               {group.plans.map((plan) => (
-                <tr key={plan.id} className="border-b last:border-b-0">
-                  <td className="p-3 font-medium">
-                    {plan.sap_invoice_doc_num || plan.invoice_number || '-'}
-                  </td>
-                  <td className="p-3">{plan.place_of_supply || plan.budget_delivery_point || '-'}</td>
-                  <td className="p-3">{plan.product_variety || '-'}</td>
-                  <td className="p-3 font-mono text-xs">{plan.vehicle_no || '-'}</td>
-                  <td className="p-3">{plan.transporter_name || '-'}</td>
-                  <td className="p-3 text-right tabular-nums">{formatMaybeNumber(plan.total_litres)}</td>
-                  <td className="p-3 text-right tabular-nums">
-                    {formatMaybeNumber(plan.kanta_weight ?? plan.invoice_weight)}
-                  </td>
-                  <td className="p-3">
-                    <StatusBadge status={plan.booking_status} />
-                  </td>
-                </tr>
+                <ScheduleRow key={plan.id} plan={plan} sapAvailable={sapAvailable} />
               ))}
             </tbody>
           </table>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ScheduleRow({
+  plan,
+  sapAvailable,
+}: {
+  plan: DispatchSchedulePlan;
+  sapAvailable: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const docEntry = plan.sap_invoice_doc_entry;
+  const canExpand = sapAvailable && !!docEntry;
+  const {
+    data: items,
+    isLoading: itemsLoading,
+    isError: itemsError,
+  } = useDispatchScheduleItems(docEntry, open && canExpand);
+
+  const weight = plan.sap_total_weight || toNumber(plan.invoice_weight);
+  const vehicleLine = [plan.vehicle_no, plan.transporter_name].filter(Boolean).join(' · ');
+
+  return (
+    <>
+      <tr
+        className={cn('border-b last:border-b-0', canExpand && 'cursor-pointer hover:bg-muted/40')}
+        onClick={canExpand ? () => setOpen((value) => !value) : undefined}
+      >
+        <td className="p-3 align-top text-muted-foreground">
+          {canExpand ? (
+            open ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )
+          ) : null}
+        </td>
+        <td className="p-3 align-top whitespace-nowrap font-medium">
+          {plan.dispatch_date ? formatDateLabel(plan.dispatch_date) : '-'}
+        </td>
+        <td className="p-3 align-top">
+          <div className="font-medium">{plan.sap_invoice_doc_num || plan.invoice_number || '-'}</div>
+          {vehicleLine ? (
+            <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <Truck className="h-3 w-3" />
+              {vehicleLine}
+            </div>
+          ) : null}
+        </td>
+        <td className="p-3 align-top">{plan.place_of_supply || plan.budget_delivery_point || '-'}</td>
+        <td className="p-3 align-top">
+          {plan.item_summary ? (
+            <span className="line-clamp-2 max-w-[320px]">{plan.item_summary}</span>
+          ) : plan.line_count ? (
+            <span className="text-muted-foreground">{plan.line_count} item lines</span>
+          ) : (
+            <span className="text-muted-foreground">{sapAvailable ? '-' : 'SAP offline'}</span>
+          )}
+        </td>
+        <td className="p-3 align-top">
+          {plan.warehouses ? (
+            <span className="inline-flex items-center gap-1">
+              <Warehouse className="h-3 w-3 text-muted-foreground" />
+              {plan.warehouses}
+            </span>
+          ) : (
+            '-'
+          )}
+        </td>
+        <td className="p-3 text-right align-top tabular-nums">
+          {plan.total_boxes ? formatNumber(plan.total_boxes) : '-'}
+        </td>
+        <td className="p-3 text-right align-top tabular-nums">{weight > 0 ? formatKg(weight) : '-'}</td>
+        <td className="p-3 align-top">
+          <StatusBadge status={plan.booking_status} />
+        </td>
+      </tr>
+      {open && canExpand ? (
+        <tr className="border-b last:border-b-0 bg-muted/20">
+          <td colSpan={SCHEDULE_COLUMN_COUNT} className="p-3">
+            {itemsLoading ? (
+              <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading items from SAP...
+              </div>
+            ) : itemsError ? (
+              <p className="py-3 text-sm text-amber-700">
+                Could not load items for this invoice. SAP may be busy — try again shortly.
+              </p>
+            ) : !items || items.length === 0 ? (
+              <p className="py-3 text-sm text-muted-foreground">No item lines found for this invoice.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-md border bg-background">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead className="border-b bg-muted/40">
+                    <tr>
+                      <th className="p-2 text-left font-medium">Item Code</th>
+                      <th className="p-2 text-left font-medium">Item</th>
+                      <th className="p-2 text-right font-medium">Qty</th>
+                      <th className="p-2 text-left font-medium">Warehouse</th>
+                      <th className="p-2 text-right font-medium">Boxes</th>
+                      <th className="p-2 text-right font-medium">Weight</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => (
+                      <tr key={`${item.line_num}-${item.item_code}`} className="border-b last:border-b-0">
+                        <td className="p-2 font-mono text-xs font-medium">{item.item_code || '-'}</td>
+                        <td className="p-2">
+                          <span className="line-clamp-1 max-w-[260px]">{item.item_name || '-'}</span>
+                        </td>
+                        <td className="p-2 text-right tabular-nums">
+                          {[formatNumber(item.quantity), item.uom].filter(Boolean).join(' ')}
+                        </td>
+                        <td className="p-2">{item.warehouse_code || '-'}</td>
+                        <td className="p-2 text-right tabular-nums">
+                          {item.total_boxes > 0 ? formatNumber(item.total_boxes) : '-'}
+                        </td>
+                        <td className="p-2 text-right tabular-nums">
+                          {item.total_weight > 0 ? formatKg(item.total_weight) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 
@@ -263,14 +405,13 @@ function formatDateLabel(iso: string): string {
   });
 }
 
-function toNumber(value?: string | null): number {
-  const parsed = Number.parseFloat(value ?? '');
+function toNumber(value?: string | number | null): number {
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(value ?? '');
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function formatMaybeNumber(value?: string | null): string {
-  const parsed = toNumber(value);
-  return parsed > 0 ? formatNumber(parsed) : '-';
+function formatKg(value: number): string {
+  return `${formatNumber(value)} kg`;
 }
 
 function formatNumber(value: number): string {

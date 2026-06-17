@@ -171,6 +171,7 @@ export type DispatchScheduleStatus = 'PENDING' | 'BOOKED' | 'DISPATCHED' | 'CANC
 
 export interface DispatchSchedulePlan {
   id: number;
+  sap_invoice_doc_entry?: number;
   dispatch_date: string | null;
   booking_status: DispatchScheduleStatus;
   priority?: string;
@@ -187,6 +188,13 @@ export interface DispatchSchedulePlan {
   invoice_weight?: string | null;
   kanta_weight?: string | null;
   remarks?: string;
+  // SAP-enriched: what to issue + from where (blank when SAP is unavailable).
+  item_summary?: string;
+  warehouses?: string;
+  line_count?: number;
+  total_boxes?: number;
+  sap_total_litres?: number;
+  sap_total_weight?: number;
 }
 
 export interface DispatchScheduleResponse {
@@ -195,8 +203,22 @@ export interface DispatchScheduleResponse {
     total: number;
     today: string;
     today_count: number;
+    sap_available: boolean;
     fetched_at: string;
   };
+}
+
+/** A full SAP line item for a scheduled invoice (loaded on demand). */
+export interface DispatchScheduleLineItem {
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  quantity: number;
+  uom: string;
+  warehouse_code: string;
+  total_boxes: number;
+  total_weight: number;
+  total_litres: number;
 }
 
 export interface DispatchScheduleParams {
