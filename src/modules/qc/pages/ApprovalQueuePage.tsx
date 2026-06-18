@@ -13,10 +13,23 @@ import {
   useAwaitingChemistInspections,
   useAwaitingQAMInspections,
 } from '../api/inspection/inspection.queries';
-import { WORKFLOW_STATUS_CONFIG } from '../constants';
-import type { Inspection, InspectionWorkflowStatus } from '../types';
+import { DECISION_STATUS_CONFIG, WORKFLOW_STATUS_CONFIG } from '../constants';
+import type { Inspection, InspectionDecisionInfo, InspectionWorkflowStatus } from '../types';
 
 type TabType = 'chemist' | 'manager';
+
+function DecisionBadge({ decision }: { decision?: InspectionDecisionInfo | null }) {
+  const decisionKey = decision?.decision ?? 'PENDING';
+  const config = DECISION_STATUS_CONFIG[decisionKey];
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.color}`}
+    >
+      {decision?.label || config.label}
+    </span>
+  );
+}
 
 export default function ApprovalQueuePage() {
   const navigate = useNavigate();
@@ -244,7 +257,9 @@ export default function ApprovalQueuePage() {
                     <th className="text-left p-3 font-medium">Particulars</th>
                     <th className="text-left p-3 font-medium">Supplier</th>
                     <th className="text-left p-3 font-medium">Inspection Date</th>
-                    <th className="text-center p-3 font-medium">Status</th>
+                    <th className="text-center p-3 font-medium">
+                      {effectiveTab === 'manager' ? 'Chemist Decision' : 'Status'}
+                    </th>
                     <th className="text-center p-3 font-medium">Action</th>
                   </tr>
                 </thead>
@@ -271,11 +286,15 @@ export default function ApprovalQueuePage() {
                           {item.inspection_date ? formatDateTime(item.inspection_date) : '-'}
                         </td>
                         <td className="p-3 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
-                          >
-                            {statusConfig.label}
-                          </span>
+                          {effectiveTab === 'manager' ? (
+                            <DecisionBadge decision={item.chemist_decision} />
+                          ) : (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
+                            >
+                              {statusConfig.label}
+                            </span>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           <Button

@@ -28,7 +28,8 @@ describe('PendingInspectionsPage — Exports', () => {
     expect(content).toContain("from 'lucide-react'");
     expect(content).toContain('ArrowLeft');
     expect(content).toContain('RefreshCw');
-    expect(content).toContain('ChevronRight');
+    expect(content).toContain('Download');
+    expect(content).toContain('Search');
   });
 
   it('imports useSearchParams from react-router-dom', () => {
@@ -102,5 +103,16 @@ describe('PendingInspectionsPage — States', () => {
     const content = readSource();
     expect(content).toContain('arrival_slip_id');
     expect(content).toContain('/qc/inspections/');
+  });
+
+  it('shows and searches vendor and SAP material details', () => {
+    const content = readSource();
+    expect(content).toContain('Vendor');
+    expect(content).toContain('SAP Material');
+    expect(content).toContain('SAP Material Code');
+    expect(content).toContain('item.party_name?.toLowerCase().includes(searchLower)');
+    expect(content).toContain('item.po_item_code?.toLowerCase().includes(searchLower)');
+    expect(content).toContain('item.item_name?.toLowerCase().includes(searchLower)');
+    expect(content).toContain('Search entry, vendor, SAP material, report, lot, or status...');
   });
 });

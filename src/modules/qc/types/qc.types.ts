@@ -16,6 +16,23 @@ export type InspectionListWorkflowStatus = 'NOT_STARTED' | InspectionWorkflowSta
 // Inspection final status
 export type InspectionFinalStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'HOLD';
 
+export type InspectionDecision = 'APPROVED' | 'HOLD' | 'REJECTED';
+
+export type QCStage =
+  | 'NOT_STARTED'
+  | 'DRAFT'
+  | 'AWAITING_CHEMIST'
+  | 'AWAITING_MANAGER'
+  | 'DECIDED';
+
+export interface InspectionDecisionInfo {
+  decision: InspectionDecision | null;
+  label: string;
+  by: string | null;
+  decided_at: string | null;
+  remarks: string;
+}
+
 export type FactoryHeadDecision =
   | 'ACCEPT_QC_OVERRIDE'
   | 'RETURN_TO_VENDOR'
@@ -61,6 +78,12 @@ export interface CreateMaterialTypeRequest {
   description?: string;
   sap_items?: MaterialTypeSAPItem[];
   copy_parameters_from_material_type_id?: number | null;
+}
+
+export interface LinkMaterialTypeSAPItemRequest {
+  material_type_id: number;
+  item_code: string;
+  item_name?: string;
 }
 
 // QC Print Documents
@@ -194,6 +217,7 @@ export interface InspectionListItem {
   entry_no: string;
   report_no: string | null;
   internal_lot_no: string | null;
+  po_item_code: string;
   item_name: string;
   party_name: string;
   billing_qty: string;
@@ -201,6 +225,10 @@ export interface InspectionListItem {
   workflow_status: InspectionListWorkflowStatus;
   final_status: InspectionFinalStatus | null;
   effective_final_status?: InspectionFinalStatus | null;
+  chemist_decision: InspectionDecisionInfo;
+  manager_decision: InspectionDecisionInfo;
+  qc_stage: QCStage;
+  qc_decision: InspectionDecision | null;
   factory_head_decision?: FactoryHeadDecision | '';
   factory_head_decided_at?: string | null;
   rejected_qc_return_entry_id?: number | null;
@@ -252,11 +280,17 @@ export interface Inspection {
   qa_chemist: number | null;
   qa_chemist_name: string | null;
   qa_chemist_approved_at: string | null;
+  qa_chemist_decision?: InspectionDecision | '';
   qa_chemist_remarks: string;
   qam: number | null;
   qam_name: string | null;
   qam_approved_at: string | null;
+  qam_decision?: InspectionDecision | '';
   qam_remarks: string;
+  chemist_decision: InspectionDecisionInfo;
+  manager_decision: InspectionDecisionInfo;
+  qc_stage: QCStage;
+  qc_decision: InspectionDecision | null;
   rejected_by?: number | null;
   rejected_by_name?: string | null;
   rejected_at?: string | null;
@@ -300,6 +334,7 @@ export type InspectionSavePayload = CreateInspectionRequest | FormData;
 
 export interface ApprovalRequest {
   remarks?: string;
+  decision?: InspectionDecision;
   final_status?: InspectionFinalStatus;
 }
 

@@ -113,9 +113,9 @@ describe('qc.constants — FINAL_STATUS_CONFIG', () => {
   it('has entries for all 4 final statuses', () => {
     const content = readSource();
     expect(content).toContain("label: 'Pending'");
-    expect(content).toContain("label: 'Accepted'");
+    expect(content).toContain("label: 'Approved'");
     expect(content).toContain("label: 'Rejected'");
-    expect(content).toContain("label: 'On Hold'");
+    expect(content).toContain("label: 'Hold'");
   });
 });
 

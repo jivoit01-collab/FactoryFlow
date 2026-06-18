@@ -9,7 +9,7 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import type { InspectionFinalStatus, InspectionListWorkflowStatus } from '../types';
+import type { InspectionDecision, InspectionFinalStatus, InspectionListWorkflowStatus } from '../types';
 
 // ============================================================================
 // Workflow Status Constants
@@ -88,7 +88,7 @@ export const FINAL_STATUS_CONFIG: Record<InspectionFinalStatus, StatusConfig> = 
     icon: Clock,
   },
   ACCEPTED: {
-    label: 'Accepted',
+    label: 'Approved',
     color: 'text-green-600',
     bgColor: 'bg-green-50',
     icon: CheckCircle2,
@@ -100,10 +100,37 @@ export const FINAL_STATUS_CONFIG: Record<InspectionFinalStatus, StatusConfig> = 
     icon: XCircle,
   },
   HOLD: {
-    label: 'On Hold',
+    label: 'Hold',
     color: 'text-orange-600',
     bgColor: 'bg-orange-50',
     icon: AlertCircle,
+  },
+};
+
+export const DECISION_STATUS_CONFIG: Record<InspectionDecision | 'PENDING', StatusConfig> = {
+  PENDING: {
+    label: 'Pending',
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-50',
+    icon: Clock,
+  },
+  APPROVED: {
+    label: 'Approved',
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    icon: CheckCircle2,
+  },
+  HOLD: {
+    label: 'Hold',
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50',
+    icon: AlertCircle,
+  },
+  REJECTED: {
+    label: 'Rejected',
+    color: 'text-red-600',
+    bgColor: 'bg-red-50',
+    icon: XCircle,
   },
 };
 

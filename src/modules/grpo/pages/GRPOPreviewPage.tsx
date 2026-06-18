@@ -759,7 +759,7 @@ export default function GRPOPreviewPage() {
                                 </p>
                               </div>
                               <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center">
-                                <QCStatusBadge status={item.qc_status} />
+                                <QCStatusBadge status={item.qc_status} decision={item.qc_decision} />
                                 <QCReportButton
                                   item={item}
                                   onPrint={printQCReport}
@@ -880,7 +880,7 @@ export default function GRPOPreviewPage() {
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <QCStatusBadge status={item.qc_status} />
+                        <QCStatusBadge status={item.qc_status} decision={item.qc_decision} />
                         <QCReportButton
                           item={item}
                           onPrint={printQCReport}
@@ -942,7 +942,7 @@ export default function GRPOPreviewPage() {
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center">
-                            <QCStatusBadge status={item.qc_status} />
+                            <QCStatusBadge status={item.qc_status} decision={item.qc_decision} />
                             <QCReportButton
                               item={item}
                               onPrint={printQCReport}
@@ -1499,17 +1499,27 @@ export default function GRPOPreviewPage() {
   );
 }
 
-function QCStatusBadge({ status }: { status: PreviewItem['qc_status'] }) {
+function QCStatusBadge({
+  status,
+  decision,
+}: {
+  status: PreviewItem['qc_status'];
+  decision?: PreviewItem['qc_decision'];
+}) {
+  const displayStatus = decision || status;
   const statusClass =
-    status === FINAL_STATUS.ACCEPTED
+    displayStatus === 'APPROVED' || displayStatus === FINAL_STATUS.ACCEPTED
       ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-      : status === FINAL_STATUS.REJECTED
+      : displayStatus === FINAL_STATUS.REJECTED
         ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+        : displayStatus === FINAL_STATUS.HOLD
+          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
         : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+  const label = displayStatus === 'APPROVED' ? 'Approved' : displayStatus;
 
   return (
     <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusClass}`}>
-      {status}
+      {label}
     </span>
   );
 }

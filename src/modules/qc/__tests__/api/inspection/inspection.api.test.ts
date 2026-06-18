@@ -34,6 +34,8 @@ vi.mock('@/config/constants', () => ({
       INSPECTION_SUBMIT: (id: number) => `/api/v2/qc/inspections/${id}/submit/`,
       APPROVE_CHEMIST: (id: number) => `/api/v2/qc/inspections/${id}/approve-chemist/`,
       APPROVE_QAM: (id: number) => `/api/v2/qc/inspections/${id}/approve-qam/`,
+      CHEMIST_DECISION: (id: number) => `/api/v2/qc/inspections/${id}/chemist-decision/`,
+      MANAGER_DECISION: (id: number) => `/api/v2/qc/inspections/${id}/manager-decision/`,
       REJECT_INSPECTION: (id: number) => `/api/v2/qc/inspections/${id}/reject/`,
     },
   },
@@ -157,17 +159,17 @@ describe('inspectionApi', () => {
   // ─── approveAsChemist ─────────────────────────────────────────
 
   it('approveAsChemist calls apiClient.post with chemist endpoint and data', async () => {
-    const data = { remarks: 'OK', final_status: 'ACCEPTED' as const };
+    const data = { remarks: 'OK', decision: 'APPROVED' as const };
     await inspectionApi.approveAsChemist(5, data);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/qc/inspections/5/approve-chemist/', data);
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/qc/inspections/5/chemist-decision/', data);
   });
 
   // ─── approveAsQAM ────────────────────────────────────────────
 
   it('approveAsQAM calls apiClient.post with QAM endpoint', async () => {
-    const data = { remarks: 'Approved' };
+    const data = { remarks: 'Hold for review', decision: 'HOLD' as const };
     await inspectionApi.approveAsQAM(5, data);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/qc/inspections/5/approve-qam/', data);
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/qc/inspections/5/manager-decision/', data);
   });
 
   // ─── reject ───────────────────────────────────────────────────
