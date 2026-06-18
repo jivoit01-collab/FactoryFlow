@@ -3,18 +3,21 @@ import {
   Ban,
   Camera,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   Clock3,
   Loader2,
   PackageCheck,
   PackageSearch,
+  Plus,
   ScanLine,
   ShieldCheck,
   Trash2,
   Truck,
 } from 'lucide-react';
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { ADMIN_PERMISSIONS, GATE_PERMISSIONS } from '@/config/permissions';
@@ -30,6 +33,7 @@ import {
   type SalesDispatchBoxScan,
   type SalesDispatchGateOut,
   type SalesDispatchItem,
+  useImportSalesDispatchBarcodeScans,
   useRemoveSalesDispatchBoxScan,
   useSalesDispatchBarcodeScans,
   useSalesDispatchBoxScans,
@@ -58,6 +62,7 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
+import { ReviewModeBanner } from './ReviewModeBanner';
 import {
   getExpectedDispatchBoxes,
   getExpectedItemBoxes,
@@ -80,6 +85,8 @@ export default function SalesDispatchBarcodeScanPage() {
   const navigate = useNavigate();
   const { hasAnyPermission, hasPermission } = usePermission();
   const { entryId, entryIdNumber } = useEntryId();
+  const [searchParams] = useSearchParams();
+  const isReview = searchParams.get('review') === '1';
   const [manualBarcode, setManualBarcode] = useState('');
   const [error, setError] = useState('');
   const [isSkipDialogOpen, setIsSkipDialogOpen] = useState(false);
@@ -106,7 +113,8 @@ export default function SalesDispatchBarcodeScanPage() {
   const createSkipRequest = useCreateDockingScanSkipRequest();
 
   const isReadOnly = entry ? SCAN_CLOSED_STATUSES.includes(entry.status) : false;
-  const closedScanRedirectPath = getClosedScanRedirectPath(entry);
+  // In review mode we deliberately stay on the page to walk a closed entry.
+  const closedScanRedirectPath = isReview ? '' : getClosedScanRedirectPath(entry);
   const canEditDocking = hasAnyPermission([
     GATE_PERMISSIONS.SALES_DISPATCH.CREATE,
     GATE_PERMISSIONS.SALES_DISPATCH.EDIT,
@@ -287,6 +295,8 @@ export default function SalesDispatchBarcodeScanPage() {
         title="Docking"
         error={error || scanner.error || null}
       />
+
+      {isReview ? <ReviewModeBanner /> : null}
 
       <ItemsToScanCard
         items={itemScanSummary.items}
@@ -523,12 +533,18 @@ export default function SalesDispatchBarcodeScanPage() {
 
       <StepFooter
         onPrevious={() =>
-          navigate(`${DOCKING_ROUTES.newEntry}?entryId=${entryId || entry.vehicle_entry}`)
+          isReview
+            ? navigate(DOCKING_ROUTES.detail(entry.id))
+            : navigate(`${DOCKING_ROUTES.newEntry}?entryId=${entryId || entry.vehicle_entry}`)
         }
         onCancel={() => navigate(DOCKING_ROUTES.dashboard)}
-        onNext={handleNext}
+        onNext={
+          isReview
+            ? () => navigate(DOCKING_ROUTES.attachments(entry.vehicle_entry, true))
+            : handleNext
+        }
         isSaving={isSaving}
-        nextLabel="Continue to Attachments"
+        nextLabel={isReview ? 'Next →' : 'Continue to Attachments'}
       />
 
       <Dialog
@@ -591,6 +607,9 @@ export default function SalesDispatchBarcodeScanPage() {
             : null
         }
         sapDocNum={entry.sap_doc_num}
+        entryId={entry.id}
+        canEdit={canEditDocking && !isReadOnly}
+        onImported={() => void refetchEntry()}
       />
     </div>
   );
@@ -603,6 +622,9 @@ function BarcodeScansDialog({
   sessions,
   errorMessage,
   sapDocNum,
+  entryId,
+  canEdit,
+  onImported,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -610,8 +632,45 @@ function BarcodeScansDialog({
   sessions: BarcodeDispatchSession[];
   errorMessage: string | null;
   sapDocNum?: string | null;
+  entryId: number;
+  canEdit: boolean;
+  onImported: () => void;
 }) {
   const totalBoxes = sessions.reduce((sum, session) => sum + session.box_count, 0);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const importScans = useImportSalesDispatchBarcodeScans();
+
+  const toggle = (set: Set<number>, id: number) => {
+    const next = new Set(set);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  };
+
+  const selectedCount = selected.size;
+  const selectedBoxCount = sessions
+    .filter((session) => selected.has(session.session_id))
+    .reduce((sum, session) => sum + session.box_count, 0);
+
+  const handleAdd = async () => {
+    if (selectedCount === 0) return;
+    try {
+      const result = await importScans.mutateAsync({
+        id: entryId,
+        data: { session_ids: Array.from(selected) },
+      });
+      toast.success(
+        `Added ${result.imported} box${result.imported === 1 ? '' : 'es'} to docking` +
+          (result.skipped ? ` (${result.skipped} skipped)` : ''),
+      );
+      setSelected(new Set());
+      onImported();
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to add boxes to docking'));
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -622,9 +681,9 @@ function BarcodeScansDialog({
             Boxes Scanned in Barcode Module
           </DialogTitle>
           <DialogDescription>
-            Boxes already scanned in the barcode module for SAP invoice{' '}
-            <span className="font-medium">{formatValue(sapDocNum)}</span>. These are shown for
-            reference — they are not added to this Docking entry automatically.
+            Sessions scanned in the barcode module for SAP invoice{' '}
+            <span className="font-medium">{formatValue(sapDocNum)}</span>. Select one or more
+            sessions and add their boxes to this Docking entry.
           </DialogDescription>
         </DialogHeader>
 
@@ -645,77 +704,143 @@ function BarcodeScansDialog({
             <p>This dispatch was not scanned in the barcode module, or used a different bill.</p>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-3">
             <div className="text-sm text-muted-foreground">
               Found <span className="font-medium text-foreground">{totalBoxes}</span> box
               {totalBoxes === 1 ? '' : 'es'} across{' '}
               <span className="font-medium text-foreground">{sessions.length}</span> barcode session
               {sessions.length === 1 ? '' : 's'}.
             </div>
-            {sessions.map((session) => (
-              <div key={session.session_id} className="overflow-hidden rounded-md border">
-                <div className="flex flex-col gap-1 border-b bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm">
-                    <span className="font-medium">Bill {formatValue(session.bill_number)}</span>
-                    {session.customer_name ? (
-                      <span className="text-muted-foreground"> · {session.customer_name}</span>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-2">
+            {sessions.map((session) => {
+              const isOpen = expanded.has(session.session_id);
+              const isSelected = selected.has(session.session_id);
+              return (
+                <div key={session.session_id} className="overflow-hidden rounded-md border">
+                  <div className="flex items-center gap-3 bg-muted/40 p-3">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 shrink-0 cursor-pointer accent-primary disabled:cursor-not-allowed"
+                      checked={isSelected}
+                      disabled={!canEdit || session.box_count === 0}
+                      onChange={() => setSelected((prev) => toggle(prev, session.session_id))}
+                      title={
+                        session.box_count === 0
+                          ? 'No boxes to add'
+                          : canEdit
+                            ? 'Select to add to docking'
+                            : 'You cannot edit this Docking entry'
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      onClick={() => setExpanded((prev) => toggle(prev, session.session_id))}
+                    >
+                      {isOpen ? (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">
+                          Bill {formatValue(session.bill_number)}
+                          {session.customer_name ? (
+                            <span className="font-normal text-muted-foreground">
+                              {' '}
+                              · {session.customer_name}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Scanned {formatTimestamp(session.scanned_at)}
+                        </div>
+                      </div>
+                    </button>
                     <Badge variant="outline">{session.status}</Badge>
                     <Badge variant={session.box_count > 0 ? 'success' : 'outline'}>
                       {session.box_count} box{session.box_count === 1 ? '' : 'es'}
                     </Badge>
                   </div>
+
+                  {isOpen ? (
+                    <div className="border-t">
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
+                        Scanned at {formatTimestamp(session.scanned_at)}
+                      </div>
+                      {session.boxes.length === 0 ? (
+                        <div className="p-4 pt-0 text-sm text-muted-foreground">
+                          No active box scans on this session.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto border-t">
+                          <table className="w-full text-sm">
+                            <thead className="border-b bg-muted/30">
+                              <tr>
+                                <th className="p-3 text-left font-medium">Barcode</th>
+                                <th className="p-3 text-left font-medium">Item</th>
+                                <th className="p-3 text-left font-medium">Batch</th>
+                                <th className="p-3 text-left font-medium">Qty</th>
+                                <th className="p-3 text-left font-medium">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {session.boxes.map((box) => (
+                                <tr key={box.id} className="border-b last:border-b-0">
+                                  <td className="p-3 font-mono text-xs font-medium">{box.barcode}</td>
+                                  <td className="p-3">
+                                    <div className="font-medium">{box.item_code || '-'}</div>
+                                    <div className="max-w-[220px] truncate text-xs text-muted-foreground">
+                                      {box.item_name || '-'}
+                                    </div>
+                                  </td>
+                                  <td className="p-3">{formatValue(box.batch_number)}</td>
+                                  <td className="p-3">
+                                    {[box.quantity, box.uom].filter(Boolean).join(' ') || '-'}
+                                  </td>
+                                  <td className="p-3">
+                                    <Badge variant="outline">
+                                      {box.scan_status || box.box_status || '-'}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
-                {session.boxes.length === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground">
-                    No active box scans on this session.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="border-b bg-muted/30">
-                        <tr>
-                          <th className="p-3 text-left font-medium">Barcode</th>
-                          <th className="p-3 text-left font-medium">Item</th>
-                          <th className="p-3 text-left font-medium">Batch</th>
-                          <th className="p-3 text-left font-medium">Qty</th>
-                          <th className="p-3 text-left font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {session.boxes.map((box) => (
-                          <tr key={box.id} className="border-b last:border-b-0">
-                            <td className="p-3 font-mono text-xs font-medium">{box.barcode}</td>
-                            <td className="p-3">
-                              <div className="font-medium">{box.item_code || '-'}</div>
-                              <div className="max-w-[220px] truncate text-xs text-muted-foreground">
-                                {box.item_name || '-'}
-                              </div>
-                            </td>
-                            <td className="p-3">{formatValue(box.batch_number)}</td>
-                            <td className="p-3">
-                              {[box.quantity, box.uom].filter(Boolean).join(' ') || '-'}
-                            </td>
-                            <td className="p-3">
-                              <Badge variant="outline">{box.scan_status || box.box_status || '-'}</Badge>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={importScans.isPending}
+          >
             Close
           </Button>
+          {sessions.length > 0 ? (
+            <Button
+              type="button"
+              onClick={() => void handleAdd()}
+              disabled={!canEdit || selectedCount === 0 || importScans.isPending}
+            >
+              {importScans.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="mr-2 h-4 w-4" />
+              )}
+              {selectedCount > 0
+                ? `Add ${selectedCount} session${selectedCount === 1 ? '' : 's'} (${selectedBoxCount} box${selectedBoxCount === 1 ? '' : 'es'})`
+                : 'Add to docking'}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -162,6 +162,16 @@ export function useSalesDispatchBarcodeScans(
   });
 }
 
+export function useImportSalesDispatchBarcodeScans() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { session_ids: number[] } }) =>
+      salesDispatchApi.importBarcodeScans(id, data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
 export function useCreateSalesDispatch() {
   const queryClient = useQueryClient();
 

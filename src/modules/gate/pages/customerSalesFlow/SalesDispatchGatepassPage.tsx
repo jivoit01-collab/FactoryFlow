@@ -10,16 +10,16 @@ import {
   Truck,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import {
+  type SalesDispatchBoxScan,
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
-  type SalesDispatchBoxScan,
   type SalesDispatchItem,
   useCommitSalesDispatchPrint,
   useMarkSalesDispatchDispatched,
@@ -46,6 +46,7 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
+import { ReviewModeBanner } from './ReviewModeBanner';
 import {
   DOCKING_TOTAL_STEPS,
   formatDateTime,
@@ -55,8 +56,8 @@ import {
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 import {
-  SAP_GATEPASS_PRINT_PAGE_STYLE,
   SalesDispatchSapGatepassPrint,
+  SAP_GATEPASS_PRINT_PAGE_STYLE,
 } from './SalesDispatchSapGatepassPrint';
 
 interface GatepassDraft {
@@ -104,6 +105,8 @@ export default function SalesDispatchGatepassPage() {
   const routes = getSalesDispatchRoutes(location.pathname);
   const isGateOutMode = isSalesDispatchOutPath(location.pathname);
   const { entryId, entryIdNumber } = useEntryId();
+  const [searchParams] = useSearchParams();
+  const isReview = searchParams.get('review') === '1';
   const [draft, setDraft] = useState<GatepassDraft>(() => buildDraft());
   const [error, setError] = useState('');
   const sapPrintRef = useRef<HTMLDivElement>(null);
@@ -140,6 +143,7 @@ export default function SalesDispatchGatepassPage() {
   useEffect(() => {
     if (!pendingFrontendPrint || !entryToPrint) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot reset of the print trigger flag
     setPendingFrontendPrint(false);
     window.setTimeout(() => {
       printFrontendGatepass();
@@ -335,6 +339,7 @@ export default function SalesDispatchGatepassPage() {
             title={pageTitle}
             error={error || null}
           />
+          {isReview ? <ReviewModeBanner /> : null}
         </div>
 
         {!isGateOutMode && isGatepassPrintLocked ? (
@@ -575,18 +580,26 @@ export default function SalesDispatchGatepassPage() {
 
         <div className="print-hide">
           <StepFooter
-            onPrevious={() => navigate(routes.attachments(entryId || entry.vehicle_entry))}
+            onPrevious={() =>
+              navigate(routes.attachments(entryId || entry.vehicle_entry, isReview))
+            }
             onCancel={() => navigate(routes.dashboard)}
-            onNext={handleNextAction}
+            onNext={isReview ? () => navigate(routes.detail(entry.id)) : handleNextAction}
             showPrevious={!isGateOutMode}
             isSaving={isSaving}
             isNextDisabled={
-              isGateOutMode && action !== 'weighment' && action !== 'dispatch' && action !== 'done'
+              !isReview &&
+              isGateOutMode &&
+              action !== 'weighment' &&
+              action !== 'dispatch' &&
+              action !== 'done'
             }
             nextLabel={
-              isGateOutMode
-                ? getGateOutActionLabel(entry, isSaving)
-                : getNextActionLabel(entry, isSaving)
+              isReview
+                ? 'Done'
+                : isGateOutMode
+                  ? getGateOutActionLabel(entry, isSaving)
+                  : getNextActionLabel(entry, isSaving)
             }
           />
         </div>

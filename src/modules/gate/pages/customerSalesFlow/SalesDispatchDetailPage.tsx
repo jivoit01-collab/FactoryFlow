@@ -852,7 +852,8 @@ function getPrimaryActionLabel(entry: SalesDispatchGateOut, isGateOutMode: boole
   if (entry.status === 'GATEPASS_PRINTED') return 'Commit Gatepass Print';
   if (entry.status === 'PRINT_COMMITTED') return 'Dispatch Vehicle';
 
-  return 'Resume Flow';
+  // Terminal entries (dispatched / rejected / cancelled): read-only step walk.
+  return 'View Steps';
 }
 
 function getPrimaryActionPath(
@@ -872,7 +873,8 @@ function getPrimaryActionPath(
   if (entry.status === 'GATEPASS_PRINTED' || entry.status === 'PRINT_COMMITTED') {
     return routes.gatepass(entry.vehicle_entry);
   }
-  return `${routes.newEntry}?entryId=${entry.vehicle_entry}`;
+  // Terminal entries: walk the flow read-only (review mode).
+  return routes.barcodeScan(entry.vehicle_entry, true);
 }
 
 function hasCompleteGateOutWeighment(entry: SalesDispatchGateOut) {

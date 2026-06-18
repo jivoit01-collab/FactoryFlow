@@ -9,7 +9,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { type ChangeEvent, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { GATE_PERMISSIONS } from '@/config/permissions';
@@ -37,6 +37,7 @@ import {
 } from '@/shared/components/ui';
 import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
+import { ReviewModeBanner } from './ReviewModeBanner';
 import { DOCKING_TOTAL_STEPS, formatValue } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 
@@ -107,6 +108,8 @@ export default function SalesDispatchAttachmentsPage() {
   const navigate = useNavigate();
   const { hasPermission } = usePermission();
   const { entryId, entryIdNumber } = useEntryId();
+  const [searchParams] = useSearchParams();
+  const isReview = searchParams.get('review') === '1';
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [uploadingType, setUploadingType] = useState<SalesDispatchAttachmentType | null>(null);
@@ -343,6 +346,8 @@ export default function SalesDispatchAttachmentsPage() {
     <div className="space-y-6 pb-6">
       <StepHeader currentStep={3} totalSteps={DOCKING_TOTAL_STEPS} title="Docking" error={error} />
 
+      {isReview ? <ReviewModeBanner /> : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -531,11 +536,17 @@ export default function SalesDispatchAttachmentsPage() {
       </Card>
 
       <StepFooter
-        onPrevious={() => navigate(DOCKING_ROUTES.barcodeScan(entryId || entry.vehicle_entry))}
+        onPrevious={() =>
+          navigate(DOCKING_ROUTES.barcodeScan(entryId || entry.vehicle_entry, isReview))
+        }
         onCancel={() => navigate(DOCKING_ROUTES.dashboard)}
-        onNext={handleNext}
+        onNext={
+          isReview
+            ? () => navigate(DOCKING_ROUTES.gatepass(entry.vehicle_entry, true))
+            : handleNext
+        }
         isSaving={previewGatepass.isPending}
-        nextLabel={previewGatepass.isPending ? 'Preparing...' : 'Prepare Gatepass'}
+        nextLabel={isReview ? 'Next →' : previewGatepass.isPending ? 'Preparing...' : 'Prepare Gatepass'}
       />
     </div>
   );

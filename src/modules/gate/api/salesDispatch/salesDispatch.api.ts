@@ -506,6 +506,12 @@ export interface BarcodeDispatchScansResult {
   sessions: BarcodeDispatchSession[];
 }
 
+export interface BarcodeDispatchImportResult {
+  imported: number;
+  skipped: number;
+  total: number;
+}
+
 export interface SalesDispatchGatepassPrintRequest {
   uom?: string;
   physical_quantity?: string | number | null;
@@ -703,6 +709,17 @@ export const salesDispatchApi = {
   async barcodeScans(id: number): Promise<BarcodeDispatchScansResult> {
     const response = await apiClient.get<BarcodeDispatchScansResult>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BARCODE_SCANS(id),
+    );
+    return response.data;
+  },
+
+  async importBarcodeScans(
+    id: number,
+    data: { session_ids: number[] },
+  ): Promise<BarcodeDispatchImportResult> {
+    const response = await apiClient.post<BarcodeDispatchImportResult>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BARCODE_SCANS_IMPORT(id),
+      data,
     );
     return response.data;
   },
