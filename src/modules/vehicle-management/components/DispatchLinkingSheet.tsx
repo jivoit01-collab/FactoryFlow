@@ -102,11 +102,24 @@ function numberToString(value: number | null | undefined): string {
   return value === null || value === undefined ? '' : String(value);
 }
 
+// Backend caps invoice_weight precision (DecimalField). Round to 3 decimals to
+// match the displayed Load and stay safely within the allowed decimal places.
+const INVOICE_WEIGHT_DECIMALS = 3;
+
+function roundWeight(value: number): number {
+  const factor = 10 ** INVOICE_WEIGHT_DECIMALS;
+  return Math.round(value * factor) / factor;
+}
+
 function invoiceWeightForPayload(bill: DispatchBill): string | null {
-  if (bill.plan.invoice_weight !== null && bill.plan.invoice_weight !== undefined) {
-    return bill.plan.invoice_weight;
+  const raw =
+    bill.plan.invoice_weight !== null && bill.plan.invoice_weight !== undefined
+      ? Number(bill.plan.invoice_weight)
+      : bill.total_weight;
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return null;
   }
-  return bill.total_weight > 0 ? numberToString(bill.total_weight) : null;
+  return numberToString(roundWeight(raw));
 }
 
 function inferProductVariety(itemSummary: string): string {
