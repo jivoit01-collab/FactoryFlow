@@ -1,4 +1,4 @@
-import { Link2, Loader2 } from 'lucide-react';
+import { Link2, Loader2, Lock } from 'lucide-react';
 
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
@@ -88,6 +88,7 @@ export function DispatchLinkingTable({
           <tbody>
             {bills.map((bill) => {
               const selected = selectedDocEntries.has(bill.doc_entry);
+              const linkLocked = bill.plan.is_vehicle_link_locked;
               return (
                 <tr
                   key={bill.doc_entry}
@@ -101,7 +102,7 @@ export function DispatchLinkingTable({
                   <td className="px-4 py-3 align-top">
                     <Checkbox
                       checked={selected}
-                      disabled={!canEdit}
+                      disabled={!canEdit || linkLocked}
                       aria-label={`Select invoice ${bill.doc_num}`}
                       onCheckedChange={() => onToggleSelection(bill)}
                     />
@@ -172,15 +173,26 @@ export function DispatchLinkingTable({
                       type="button"
                       variant={bill.plan.vehicle_id ? 'outline' : 'default'}
                       size="sm"
-                      disabled={!canEdit}
+                      disabled={!canEdit || linkLocked}
+                      title={
+                        linkLocked
+                          ? 'Empty vehicle gate-in is complete. To re-plan, complete an empty-vehicle-out for this vehicle first.'
+                          : undefined
+                      }
                       onClick={() => onLink(bill)}
                     >
-                      <Link2 className="mr-2 h-4 w-4" />
-                      {selectedDocEntries.size > 1 && selected
-                        ? 'Link Selected'
-                        : bill.plan.vehicle_id
-                          ? 'Edit Link'
-                          : 'Link'}
+                      {linkLocked ? (
+                        <Lock className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Link2 className="mr-2 h-4 w-4" />
+                      )}
+                      {linkLocked
+                        ? 'Locked'
+                        : selectedDocEntries.size > 1 && selected
+                          ? 'Link Selected'
+                          : bill.plan.vehicle_id
+                            ? 'Edit Link'
+                            : 'Link'}
                     </Button>
                   </td>
                 </tr>

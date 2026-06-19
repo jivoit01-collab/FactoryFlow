@@ -17,7 +17,11 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import { useDispatchLinkingPlans, useLinkDispatchVehicle } from '../api';
+import {
+  useDispatchLinkingPlans,
+  useLinkDispatchVehicle,
+  useUnlinkDispatchVehicle,
+} from '../api';
 import { DispatchLinkingSheet, DispatchLinkingTable } from '../components';
 import type {
   DispatchLinkingBucket,
@@ -62,6 +66,7 @@ export default function DispatchVehicleLinkingPage() {
 
   const plansQuery = useDispatchLinkingPlans(effectiveFilters, currentCompany?.company_id);
   const linkMutation = useLinkDispatchVehicle();
+  const unlinkMutation = useUnlinkDispatchVehicle();
 
   const handleLink = (bill: DispatchBill) => {
     setSelectedBill(bill);
@@ -93,6 +98,18 @@ export default function DispatchVehicleLinkingPage() {
       setSelectedDocEntries(new Set());
     } catch {
       toast.error('Failed to link vehicle');
+    }
+  };
+
+  const handleUnlink = async (docEntry: number) => {
+    try {
+      await unlinkMutation.mutateAsync({ docEntry });
+      toast.success('Vehicle unlinked. The booking is back to Pending.');
+      setIsSheetOpen(false);
+      setSelectedBill(null);
+      setSelectedDocEntries(new Set());
+    } catch {
+      toast.error('Failed to unlink vehicle');
     }
   };
 
@@ -250,8 +267,10 @@ export default function DispatchVehicleLinkingPage() {
         selectedBills={selectedBills}
         open={isSheetOpen}
         isSaving={linkMutation.isPending}
+        isUnlinking={unlinkMutation.isPending}
         onOpenChange={setIsSheetOpen}
         onSave={handleSave}
+        onUnlink={handleUnlink}
       />
     </div>
   );

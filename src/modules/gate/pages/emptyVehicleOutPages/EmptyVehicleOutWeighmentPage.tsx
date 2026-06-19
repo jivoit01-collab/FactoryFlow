@@ -27,6 +27,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/compo
 import { getErrorMessage, isNotFoundError as checkNotFoundError } from '@/shared/utils';
 
 import {
+  buildEmptyOutSideEffectMessage,
   clearEmptyVehicleOutDraft,
   type EmptyVehicleOutDraft,
   readEmptyVehicleOutDraft,
@@ -160,6 +161,11 @@ export default function EmptyVehicleOutWeighmentPage() {
       ? 'No existing weighment found. Fill it before completing gate out.'
       : '';
 
+  const sideEffectMessage = buildEmptyOutSideEffectMessage(
+    draft.releaseInvoiceCount ?? 0,
+    draft.releaseCancelsDocking ?? false,
+  );
+
   return (
     <div className="space-y-6 pb-6">
       <StepHeader
@@ -250,6 +256,15 @@ export default function EmptyVehicleOutWeighmentPage() {
           )}
         </CardContent>
       </Card>
+
+      {sideEffectMessage && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <span>
+            {sideEffectMessage} This happens when you complete the gate out.
+          </span>
+        </div>
+      )}
 
       <StepFooter
         onPrevious={() => navigate('/gate/empty-vehicle-out/new')}
