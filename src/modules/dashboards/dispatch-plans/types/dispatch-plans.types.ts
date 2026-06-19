@@ -31,6 +31,7 @@ export interface DispatchPlan {
   transporter_id: number | null;
   driver_id: number | null;
   linked_vehicle_entry_id: number | null;
+  is_vehicle_link_locked: boolean;
   booking_status: DispatchPlanStatus;
   dispatch_date: string | null;
   priority: string;

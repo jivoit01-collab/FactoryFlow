@@ -14,6 +14,9 @@ export interface EmptyVehicleEligibleEntry {
   driver_name: string;
   driver_mobile: string;
   remarks?: string;
+  // Side effects of marking this vehicle out empty.
+  release_invoice_count: number;
+  release_cancels_docking: boolean;
 }
 
 export interface EmptyVehicleGateOutEntry {
