@@ -358,6 +358,10 @@ export const API_ENDPOINTS = {
     SCHEDULE: '/dispatch-plans/schedule/',
     SCHEDULE_ITEMS: (docEntry: number) => `/dispatch-plans/schedule/${docEntry}/items/`,
   },
+  // Dispatch Pipeline Dashboard (vehicle stage board)
+  DISPATCH_PIPELINE: {
+    BOARD: '/dispatch-plans/pipeline/',
+  },
   // Dispatch
   DISPATCH: {
     OPEN_BILTIES: '/dispatch/open-bilties/',
