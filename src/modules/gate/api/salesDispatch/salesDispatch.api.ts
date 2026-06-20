@@ -789,6 +789,14 @@ export const salesDispatchApi = {
     return response.data;
   },
 
+  async addDocument(id: number, dispatchPlanId: number): Promise<SalesDispatchGateOut> {
+    const response = await apiClient.post<SalesDispatchGateOut>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ADD_DOCUMENT(id),
+      { dispatch_plan_id: dispatchPlanId },
+    );
+    return response.data;
+  },
+
   async markDispatched(id: number): Promise<SalesDispatchGateOut> {
     const response = await apiClient.post<SalesDispatchGateOut>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_MARK_DISPATCHED(id),

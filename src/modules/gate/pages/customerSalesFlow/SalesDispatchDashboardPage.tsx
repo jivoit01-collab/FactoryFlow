@@ -26,6 +26,8 @@ import {
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
   type SalesDispatchLock,
+  type SalesDispatchPendingBooking,
+  useAddDocumentToDocking,
   useSalesDispatchEntries,
   useSalesDispatchLock,
   useSalesDispatchPendingBookings,
@@ -107,11 +109,28 @@ export default function SalesDispatchDashboardPage() {
   } = useSalesDispatchPendingBookings(listParams, { enabled: !isGateOutMode });
   const { data: dispatchLock } = useSalesDispatchLock();
   const updateLock = useUpdateSalesDispatchLock();
+  const addToDocking = useAddDocumentToDocking();
   const isDashboardFetching = isFetching || isPendingBookingsFetching;
   const canCreateDocking = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.CREATE);
   const canManageDockingLock = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.MANAGE_LOCK);
   const canReprintGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.REPRINT_GATEPASS);
   const canViewDockingReports = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.VIEW_REPORTS);
+
+  const handleAddToDocking = async (
+    booking: SalesDispatchPendingBooking,
+    docking: SalesDispatchGateOut,
+  ) => {
+    const dispatchPlanId = booking.dispatch_plan_ids?.[0];
+    if (!dispatchPlanId) return;
+    try {
+      await addToDocking.mutateAsync({ id: docking.id, dispatchPlanId });
+      toast.success(`Bill added to ${docking.entry_no}`);
+      void refetch();
+      void refetchPendingBookings();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to add the bill to the docking'));
+    }
+  };
 
   const displayEntries = useMemo(() => {
     if (isGateOutMode) return entries.slice().sort(sortSalesDispatchOutEntries);
@@ -365,6 +384,8 @@ export default function SalesDispatchDashboardPage() {
             weighmentPath={routes.weighment}
             gatepassPath={routes.gatepass}
             isGateOutMode={isGateOutMode}
+            onAddToDocking={handleAddToDocking}
+            isAddingToDocking={addToDocking.isPending}
           />
         )}
       </section>
@@ -379,6 +400,8 @@ function DispatchTable({
   weighmentPath,
   gatepassPath,
   isGateOutMode,
+  onAddToDocking,
+  isAddingToDocking,
 }: {
   entries: SalesDispatchDashboardEntry[];
   newEntryPath: string;
@@ -386,8 +409,29 @@ function DispatchTable({
   weighmentPath: (entryId: string | number) => string;
   gatepassPath: (entryId: string | number) => string;
   isGateOutMode: boolean;
+  onAddToDocking?: (booking: SalesDispatchPendingBooking, docking: SalesDispatchGateOut) => void;
+  isAddingToDocking?: boolean;
 }) {
   const navigate = useNavigate();
+
+  // A pending bill whose truck already has an open (pre-photo-lock) docking can be
+  // folded into it instead of standing as its own row. Index those dockings by
+  // vehicle so each pending row can offer an "Add to docking" shortcut; the
+  // backend still enforces the same-truck / not-locked rules.
+  const openDockingByVehicle = useMemo(() => {
+    const map = new Map<string, SalesDispatchGateOut>();
+    for (const entry of entries) {
+      if (isPendingBookingEntry(entry) || entry.status !== 'DOCKED') continue;
+      const key = entry.vehicle != null ? `id:${entry.vehicle}` : `no:${entry.vehicle_no}`;
+      if (!map.has(key)) map.set(key, entry);
+    }
+    return map;
+  }, [entries]);
+
+  const findOpenDocking = (booking: SalesDispatchPendingBooking) => {
+    const byId = booking.vehicle != null ? openDockingByVehicle.get(`id:${booking.vehicle}`) : undefined;
+    return byId ?? openDockingByVehicle.get(`no:${booking.vehicle_no}`);
+  };
 
   return (
     <div className="overflow-hidden rounded-md border">
@@ -424,6 +468,8 @@ function DispatchTable({
               const itemSummary = entry.item_summary || summarizeItems(getEntryItems(entry));
               const plannedDispatchDate = getPlannedDispatchDate(entry);
               const actualGateOut = getActualGateOut(entry);
+              const openDocking =
+                onAddToDocking && isPendingBookingEntry(entry) ? findOpenDocking(entry) : undefined;
 
               return (
                 <tr
@@ -446,7 +492,25 @@ function DispatchTable({
                   }}
                 >
                   <td className="whitespace-nowrap p-3 text-sm font-medium">
-                    {isPendingBookingEntry(entry) ? 'Pending' : entry.entry_no}
+                    <div className="space-y-1">
+                      <span>{isPendingBookingEntry(entry) ? 'Pending' : entry.entry_no}</span>
+                      {openDocking ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-full whitespace-nowrap px-2 text-xs font-normal"
+                          disabled={isAddingToDocking}
+                          title={`This bill's truck is already docked as ${openDocking.entry_no}. Add it to that load.`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onAddToDocking?.(entry as SalesDispatchPendingBooking, openDocking);
+                          }}
+                        >
+                          + Add to {openDocking.entry_no}
+                        </Button>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="p-3 text-sm" title={formatDocumentNumbers(entry)}>
                     <div className="flex flex-wrap items-center gap-2">

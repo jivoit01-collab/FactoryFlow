@@ -138,6 +138,8 @@ export const API_ENDPOINTS = {
     SALES_DISPATCH_MARK_DISPATCHED: (id: number) => `/gate-core/sales-dispatch/${id}/dispatch/`,
     SALES_DISPATCH_REJECT: (id: number) => `/gate-core/sales-dispatch/${id}/reject/`,
     SALES_DISPATCH_CANCEL: (id: number) => `/gate-core/sales-dispatch/${id}/cancel/`,
+    SALES_DISPATCH_ADD_DOCUMENT: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/documents/add/`,
     SALES_DISPATCH_REMOVE_DOCUMENT: (id: number, documentId: number) =>
       `/gate-core/sales-dispatch/${id}/documents/${documentId}/remove/`,
     SALES_DISPATCH_PARTIAL_APPROVAL: (id: number) =>
