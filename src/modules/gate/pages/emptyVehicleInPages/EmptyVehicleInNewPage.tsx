@@ -381,6 +381,22 @@ export default function EmptyVehicleInNewPage() {
 
     try {
       if (isEditing && existingEntry) {
+        // Step 1 is re-entered with an already-saved entry; only persist (and
+        // toast) when a step-1 field actually changed, so clicking "Save and Next"
+        // through doesn't fire a redundant update. For DISPATCH the reference/notes
+        // are read-only/derived, so only security/remarks can change. BST keeps its
+        // always-save behaviour (its doc/line edits are harder to diff cheaply).
+        const stepOneUnchanged =
+          !isBstReason &&
+          securityName === (existingEntry.security_name ?? '') &&
+          remarks === (existingEntry.remarks ?? '') &&
+          (isDispatchReason ||
+            (documentReference === (existingEntry.document_reference ?? '') &&
+              documentNotes === (existingEntry.document_notes ?? '')));
+        if (stepOneUnchanged) {
+          navigate(EMPTY_VEHICLE_IN_ROUTES.weighment(existingEntry.id));
+          return;
+        }
         await updateEmptyGateIn.mutateAsync({
           id: existingEntry.id,
           data: {
