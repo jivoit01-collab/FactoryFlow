@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
+import type { PipelineStatus } from '@/modules/dashboards/dispatch-pipeline/types';
 
 export type EmptyVehicleGateInReasonValue =
   | 'BST'
@@ -59,6 +60,7 @@ export interface EmptyVehicleGateInEntry {
   sap_total_quantity?: number | string;
   document_reference?: string;
   document_notes?: string;
+  pipeline_status?: PipelineStatus | null;
   items: EmptyVehicleGateInItem[];
   bst_gate_out_id?: number | null;
   bst_gate_out_entry_no?: string;

@@ -1,3 +1,5 @@
+import type { PipelineStatus } from '@/modules/dashboards/dispatch-pipeline/types';
+
 export type DispatchPlanStatus = 'PENDING' | 'BOOKED' | 'DISPATCHED' | 'CANCELLED';
 
 export interface DispatchPlanFilters {
@@ -32,6 +34,7 @@ export interface DispatchPlan {
   driver_id: number | null;
   linked_vehicle_entry_id: number | null;
   is_vehicle_link_locked: boolean;
+  pipeline_status: PipelineStatus | null;
   booking_status: DispatchPlanStatus;
   dispatch_date: string | null;
   priority: string;

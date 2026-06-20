@@ -12,6 +12,7 @@ function buildParams(filters: DispatchPipelineFilters): Record<string, string> {
   };
   if (filters.search) params.search = filters.search;
   if (filters.stage) params.stage = filters.stage;
+  if (filters.stages?.length) params.stages = filters.stages.join(',');
   return params;
 }
 

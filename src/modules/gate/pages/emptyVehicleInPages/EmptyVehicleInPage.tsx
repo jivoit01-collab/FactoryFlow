@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
 import { useDispatchBills } from '@/modules/dashboards/dispatch-plans/api';
 import {
   type EmptyVehicleGateInEntry,
@@ -346,7 +347,11 @@ export default function EmptyVehicleInPage() {
                         {entry.in_time}
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
-                        <GateStatusBadge status={entry.vehicle_entry_status} />
+                        {entry.pipeline_status ? (
+                          <PipelineStatusBadge status={entry.pipeline_status} />
+                        ) : (
+                          <GateStatusBadge status={entry.vehicle_entry_status} />
+                        )}
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
                         {entry.security_name || '-'}

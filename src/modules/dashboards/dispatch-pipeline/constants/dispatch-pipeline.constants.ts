@@ -26,6 +26,34 @@ export const PIPELINE_STAGE_META: Record<PipelineStage, StageMeta> = {
   REJECTED: { dot: 'bg-red-400', headerBg: 'bg-red-50' },
 };
 
+/** Left-to-right pipeline order (mirrors the backend PIPELINE_STAGE_ORDER). */
+export const PIPELINE_STAGE_ORDER: PipelineStage[] = [
+  'BOOKED',
+  'EMPTY_IN',
+  'READY_TO_DOCK',
+  'DOCKED',
+  'PHOTO_ATTACHED',
+  'READY_FOR_GATEPASS',
+  'GATEPASS_PRINTED',
+  'PRINT_COMMITTED',
+  'DISPATCHED',
+  'REJECTED',
+];
+
+/** Full badge classes (bg + text + border) per stage for the status badge. */
+export const PIPELINE_STAGE_BADGE_CLASSES: Record<PipelineStage, string> = {
+  BOOKED: 'border-slate-200 bg-slate-50 text-slate-600',
+  EMPTY_IN: 'border-blue-200 bg-blue-50 text-blue-700',
+  READY_TO_DOCK: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+  DOCKED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+  PHOTO_ATTACHED: 'border-violet-200 bg-violet-50 text-violet-700',
+  READY_FOR_GATEPASS: 'border-purple-200 bg-purple-50 text-purple-700',
+  GATEPASS_PRINTED: 'border-amber-200 bg-amber-50 text-amber-700',
+  PRINT_COMMITTED: 'border-orange-200 bg-orange-50 text-orange-700',
+  DISPATCHED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  REJECTED: 'border-red-200 bg-red-50 text-red-700',
+};
+
 function toISODate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

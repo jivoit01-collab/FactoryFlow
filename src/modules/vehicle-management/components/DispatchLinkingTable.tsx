@@ -1,5 +1,6 @@
 import { Link2, Loader2, Lock } from 'lucide-react';
 
+import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
 import { Button, Checkbox } from '@/shared/components/ui';
@@ -82,6 +83,9 @@ export function DispatchLinkingTable({
                 Linked Vehicle
               </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                Vehicle Status
+              </th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Action</th>
             </tr>
           </thead>
@@ -167,6 +171,9 @@ export function DispatchLinkingTable({
                   </td>
                   <td className="px-4 py-3 align-top">
                     <StatusBadge status={bill.plan.booking_status} />
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <PipelineStatusBadge status={bill.plan.pipeline_status} />
                   </td>
                   <td className="px-4 py-3 text-right align-top">
                     <Button

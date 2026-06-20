@@ -15,6 +15,24 @@ export interface DispatchPipelineFilters {
   date_to: string;
   search?: string;
   stage?: PipelineStage | '';
+  /** Multi-stage filter for the per-module "expected vehicles" lists. */
+  stages?: PipelineStage[];
+}
+
+export interface PipelineStatusCounts {
+  total: number;
+  rejected: number;
+}
+
+/** Shared "<status> at <module>" status surfaced across the gate flow. */
+export interface PipelineStatus {
+  stage: PipelineStage;
+  stage_label: string;
+  stage_at: string | null;
+  module: string;
+  module_status: string;
+  module_label: string;
+  counts?: PipelineStatusCounts;
 }
 
 export interface PipelineColumn {
@@ -28,6 +46,9 @@ export interface PipelineCard {
   stage: PipelineStage;
   stage_label: string;
   stage_at: string | null;
+  module: string;
+  module_status: string;
+  module_label: string;
 
   sap_invoice_doc_entry: number | null;
   sap_doc_num: string;

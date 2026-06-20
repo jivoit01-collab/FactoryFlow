@@ -17,7 +17,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
-import { GATE_PERMISSIONS } from '@/config/permissions';
+import { DASHBOARDS_PERMISSIONS, GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import {
@@ -37,6 +37,7 @@ import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
 import { Button, Card, CardContent, Input } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
+import { ExpectedVehiclesSection } from './ExpectedVehiclesSection';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 
 const GATE_OUT_PENDING_STATUS = 'PRINT_COMMITTED';
@@ -115,6 +116,7 @@ export default function SalesDispatchDashboardPage() {
   const canManageDockingLock = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.MANAGE_LOCK);
   const canReprintGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.REPRINT_GATEPASS);
   const canViewDockingReports = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.VIEW_REPORTS);
+  const canViewExpectedVehicles = hasPermission(DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE);
 
   const handleAddToDocking = async (
     booking: SalesDispatchPendingBooking,
@@ -336,6 +338,14 @@ export default function SalesDispatchDashboardPage() {
           selectedBucket={selectedDockingBucket}
           counts={dockingBucketCounts}
           onChange={setSelectedDockingBucket}
+        />
+      )}
+
+      {canViewExpectedVehicles && (
+        <ExpectedVehiclesSection
+          isGateOutMode={isGateOutMode}
+          dateFrom={dateRange.from}
+          dateTo={dateRange.to}
         />
       )}
 
