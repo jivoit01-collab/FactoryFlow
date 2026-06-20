@@ -109,6 +109,15 @@ export default function EmptyVehicleInWeighmentPage() {
       return;
     }
 
+    // Already saved and unchanged -> just advance; no redundant save + toast.
+    if (
+      weighment &&
+      JSON.stringify(values) === JSON.stringify(buildValuesFromWeighment(weighment))
+    ) {
+      navigate(EMPTY_VEHICLE_IN_ROUTES.attachments(gateInId));
+      return;
+    }
+
     const payload: CreateWeighmentRequest = {
       tare_weight: Number(values.tareWeight),
       weighbridge_slip_no: values.weighbridgeSlipNo,
