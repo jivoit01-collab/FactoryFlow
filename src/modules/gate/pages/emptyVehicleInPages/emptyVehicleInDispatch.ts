@@ -12,6 +12,8 @@ export interface ExpectedDispatchVehicle {
   customers: string[];
   totalWeight: number;
   totalBoxes: number;
+  alreadyInside: boolean;
+  insideEntryNo: string | null;
 }
 
 function compactText(value: string | null | undefined, fallback = '-') {
@@ -22,24 +24,24 @@ export function buildExpectedDispatchVehicles(
   bills: DispatchBill[],
   entries: EmptyVehicleGateInEntry[] = [],
 ): ExpectedDispatchVehicle[] {
-  const activeDispatchVehicleIds = new Set(
-    entries
-      .filter(
-        (entry) =>
-          entry.reason === 'DISPATCH' &&
-          !['COMPLETED', 'CANCELLED'].includes(entry.vehicle_entry_status),
-      )
-      .map((entry) => entry.vehicle),
-  );
+  // `entries` are the vehicle's live (inside) DISPATCH gate-ins, fetched with
+  // inside_only=true. Index them by vehicle so a truck that is still inside is
+  // *flagged* rather than silently dropped -- the gate user can see it and is
+  // stopped from starting a second gate-in for the same physical truck.
+  const insideEntryByVehicle = new Map<number, EmptyVehicleGateInEntry>();
+  for (const entry of entries) {
+    if (entry.reason !== 'DISPATCH') continue;
+    if (!insideEntryByVehicle.has(entry.vehicle)) insideEntryByVehicle.set(entry.vehicle, entry);
+  }
   const grouped = new Map<number, ExpectedDispatchVehicle>();
 
   bills.forEach((bill) => {
     const vehicleId = bill.plan.vehicle_id;
     if (!vehicleId || bill.plan.booking_status !== 'BOOKED') return;
     if (bill.plan.linked_vehicle_entry_id) return;
-    if (activeDispatchVehicleIds.has(vehicleId)) return;
 
     const current = grouped.get(vehicleId);
+    const insideEntry = insideEntryByVehicle.get(vehicleId);
     const vehicleNo = compactText(
       bill.plan.vehicle_no || bill.sap_vehicle_no || bill.gst_vehicle_no,
       `Vehicle #${vehicleId}`,
@@ -61,6 +63,8 @@ export function buildExpectedDispatchVehicles(
         customers: [compactText(bill.card_name, '')].filter(Boolean),
         totalWeight: bill.total_weight || 0,
         totalBoxes: bill.total_boxes || 0,
+        alreadyInside: Boolean(insideEntry),
+        insideEntryNo: insideEntry?.entry_no ?? null,
       });
       return;
     }

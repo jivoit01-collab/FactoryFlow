@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { useDispatchBills } from '@/modules/dashboards/dispatch-plans/api';
@@ -203,10 +204,28 @@ export default function EmptyVehicleInPage() {
                       <tr
                         key={vehicle.vehicleId}
                         className="cursor-pointer border-t hover:bg-muted/40"
-                        onClick={() => navigate(href)}
+                        onClick={() => {
+                          if (vehicle.alreadyInside) {
+                            toast.error(
+                              `${vehicle.vehicleNo} is already inside under gate entry ` +
+                                `${vehicle.insideEntryNo ?? ''}`.trim() +
+                                ' and has not left yet. Finish its dispatch, or do an ' +
+                                'empty-vehicle-out, before starting a new entry.',
+                            );
+                            return;
+                          }
+                          navigate(href);
+                        }}
                       >
                         <td className="whitespace-nowrap p-3 text-sm font-medium">
-                          {vehicle.vehicleNo}
+                          <div className="flex items-center gap-2">
+                            {vehicle.vehicleNo}
+                            {vehicle.alreadyInside ? (
+                              <Badge variant="outline" className="border-amber-300 text-amber-700">
+                                Already inside
+                              </Badge>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="p-3 text-sm">
                           <div className="max-w-[260px] truncate">
@@ -236,9 +255,15 @@ export default function EmptyVehicleInPage() {
                           {vehicle.biltyNo || '-'}
                         </td>
                         <td className="p-3 text-right text-sm">
-                          <Button type="button" size="sm" variant="outline">
-                            Start Entry
-                          </Button>
+                          {vehicle.alreadyInside ? (
+                            <span className="text-xs font-medium text-amber-700">
+                              Inside — can't start
+                            </span>
+                          ) : (
+                            <Button type="button" size="sm" variant="outline">
+                              Start Entry
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );
