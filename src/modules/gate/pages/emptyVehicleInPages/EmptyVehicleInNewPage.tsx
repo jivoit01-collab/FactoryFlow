@@ -137,6 +137,9 @@ export default function EmptyVehicleInNewPage() {
   const [remarks, setRemarks] = useState('');
   const [formError, setFormError] = useState('');
   const isBstReason = reason === 'BST';
+  // DISPATCH reference/notes are auto-derived from the linked bills and not stored,
+  // so they are shown read-only rather than as editable inputs.
+  const isDispatchReason = reason === 'DISPATCH';
 
   const { data: reasons = [], isLoading: isReasonsLoading } = useEmptyVehicleGateInReasons();
   const { data: existingEntry, isLoading: isExistingLoading } = useEmptyVehicleGateIn(gateInId);
@@ -682,8 +685,15 @@ export default function EmptyVehicleInNewPage() {
                     id="document-reference"
                     value={documentReference}
                     onChange={(event) => setDocumentReference(event.target.value)}
+                    readOnly={isDispatchReason}
+                    className={isDispatchReason ? lockedInputClassName : undefined}
                     placeholder="Invoice, delivery note, job card, or other reference"
                   />
+                  {isDispatchReason && (
+                    <p className="text-xs text-muted-foreground">
+                      Auto-filled from the linked bills.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -695,6 +705,8 @@ export default function EmptyVehicleInNewPage() {
                 value={documentNotes}
                 onChange={(event) => setDocumentNotes(event.target.value)}
                 disabled={isBstDocumentLocked}
+                readOnly={isDispatchReason}
+                className={isDispatchReason ? lockedInputClassName : undefined}
                 placeholder="Optional document notes"
               />
             </div>
