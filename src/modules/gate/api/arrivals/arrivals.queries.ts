@@ -1,0 +1,65 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { type ArrivalCreateRequest, arrivalsApi } from './arrivals.api';
+
+export const ARRIVALS_QUERY_KEYS = {
+  all: ['arrivals'] as const,
+  expected: (vehicleId?: number | null) =>
+    [...ARRIVALS_QUERY_KEYS.all, 'expected', vehicleId] as const,
+  list: (openOnly?: boolean) => [...ARRIVALS_QUERY_KEYS.all, 'list', openOnly] as const,
+};
+
+/** Bills booked to a vehicle across the user's companies, grouped by company. */
+export function useArrivalExpected(vehicleId?: number | null) {
+  return useQuery({
+    queryKey: ARRIVALS_QUERY_KEYS.expected(vehicleId),
+    queryFn: () => arrivalsApi.expected(vehicleId!),
+    enabled: !!vehicleId,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useArrivals(openOnly = false, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ARRIVALS_QUERY_KEYS.list(openOnly),
+    queryFn: () => arrivalsApi.list(openOnly),
+    staleTime: 30 * 1000,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/** Invalidate everything an arrival mutation can touch. */
+function invalidateArrivalRelated(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ARRIVALS_QUERY_KEYS.all });
+  queryClient.invalidateQueries({ queryKey: ['emptyVehicleIn'] });
+  queryClient.invalidateQueries({ queryKey: ['salesDispatch'] });
+  queryClient.invalidateQueries({ queryKey: ['dispatch-plans'] });
+  queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+  queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
+}
+
+export function useCreateArrival() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ArrivalCreateRequest) => arrivalsApi.create(data),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
+export function useDepartArrival() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, securityName }: { id: number; securityName?: string }) =>
+      arrivalsApi.depart(id, securityName),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
+export function useEmptyOutArrival() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      arrivalsApi.emptyOut(id, reason),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}

@@ -90,6 +90,10 @@ export const API_ENDPOINTS = {
     EMPTY_VEHICLE_OUTS: '/gate-core/empty-vehicle-outs/',
     EMPTY_VEHICLE_OUT_BY_ID: (id: number) => `/gate-core/empty-vehicle-outs/${id}/`,
     EMPTY_VEHICLE_OUT_CANCEL_BY_ID: (id: number) => `/gate-core/empty-vehicle-outs/${id}/cancel/`,
+    ARRIVALS_EXPECTED: '/gate-core/arrivals/expected/',
+    ARRIVALS: '/gate-core/arrivals/',
+    ARRIVAL_DEPART_BY_ID: (id: number) => `/gate-core/arrivals/${id}/depart/`,
+    ARRIVAL_EMPTY_OUT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/empty-out/`,
     BST_OUT_SAP_TRANSFERS: '/gate-core/bst-outs/sap-transfers/',
     BST_OUT_SAP_TRANSFER_BY_DOC_ENTRY: (docEntry: number) =>
       `/gate-core/bst-outs/sap-transfers/${docEntry}/`,

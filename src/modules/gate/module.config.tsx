@@ -85,6 +85,9 @@ const EmptyVehicleOutDetailPage = lazy(
   () => import('./pages/emptyVehicleOutPages/EmptyVehicleOutDetailPage'),
 );
 const EmptyVehicleInPage = lazy(() => import('./pages/emptyVehicleInPages/EmptyVehicleInPage'));
+const CrossCompanyArrivalPage = lazy(
+  () => import('./pages/emptyVehicleInPages/CrossCompanyArrivalPage'),
+);
 const EmptyVehicleInNewPage = lazy(
   () => import('./pages/emptyVehicleInPages/EmptyVehicleInNewPage'),
 );
@@ -681,6 +684,13 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
       breadcrumb: { label: 'New Empty Vehicle In' },
+    },
+    {
+      path: '/gate/arrivals',
+      element: <CrossCompanyArrivalPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
+      breadcrumb: { label: 'Cross-Company Arrival' },
     },
     {
       path: '/gate/empty-vehicle-in/new/weighment',
