@@ -228,16 +228,29 @@ export default function SalesDispatchGateOutWeighmentPage() {
           data: { challan_weight: desiredChallan },
         });
       }
-      const hadAdditional = (entry.additional_weights?.length ?? 0) > 0;
-      if (additionalItems.length > 0 || hadAdditional) {
+      const storedAdditional = (entry.additional_weights ?? []).map((item) => ({
+        name: item.name,
+        weight: Number(item.weight),
+      }));
+      const additionalChanged =
+        JSON.stringify(additionalItems) !== JSON.stringify(storedAdditional);
+      if (additionalChanged) {
         await saveAdditionalWeights.mutateAsync({
           id: entry.id,
           data: { items: additionalItems },
         });
       }
-      await saveWeighment.mutateAsync(payload);
-      await refetchEntry();
-      toast.success('Gross weight saved');
+      // Gross weighment already saved and unchanged -> skip the redundant save + toast.
+      const weighmentChanged =
+        !weighment ||
+        JSON.stringify(values) !== JSON.stringify(buildValuesFromWeighment(weighment));
+      if (weighmentChanged) {
+        await saveWeighment.mutateAsync(payload);
+      }
+      if (challanChanged || additionalChanged || weighmentChanged) {
+        await refetchEntry();
+        toast.success('Gross weight saved');
+      }
       navigate(routes.gatepass(entry.vehicle_entry));
     } catch (saveError) {
       setError(getErrorMessage(saveError, 'Failed to save gross weight'));

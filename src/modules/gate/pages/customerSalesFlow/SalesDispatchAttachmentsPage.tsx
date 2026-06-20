@@ -301,8 +301,19 @@ export default function SalesDispatchAttachmentsPage() {
     if (!validateTransportDocuments(true)) return;
 
     try {
-      const saved = await saveTransportDocuments();
-      if (!saved) return;
+      // Transport docs already saved and unchanged -> skip the redundant PATCH + toast.
+      const seededTransport = {
+        eway_bill: entry.eway_bill || '',
+        bilty_no: entry.bilty_no || '',
+        bilty_date: entry.bilty_date || '',
+        freight: entry.freight ?? '',
+        total_freight: entry.total_freight ?? '',
+      };
+      const transportChanged = JSON.stringify(transportForm) !== JSON.stringify(seededTransport);
+      if (transportChanged) {
+        const saved = await saveTransportDocuments();
+        if (!saved) return;
+      }
       const preview = await previewGatepass.mutateAsync(entry.id);
       if (!preview.gatepass_readiness.ready) {
         setError(formatReadinessError(preview.gatepass_readiness.missing));
