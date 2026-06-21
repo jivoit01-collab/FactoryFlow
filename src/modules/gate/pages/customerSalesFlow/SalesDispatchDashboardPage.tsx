@@ -452,11 +452,11 @@ function DispatchTable({
   return (
     <div className="overflow-hidden rounded-md border">
       <div className="max-h-[520px] overflow-auto">
-        <table className="w-full min-w-[1905px] table-fixed">
+        <table className="w-full min-w-[2030px] table-fixed">
           <colgroup>
             <col className="w-[180px]" />
             <col className="w-[130px]" />
-            <col className="w-[145px]" />
+            <col className="w-[260px]" />
             <col className="w-[280px]" />
             <col className="w-[240px]" />
             <col className="w-[320px]" />
