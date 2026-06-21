@@ -309,11 +309,11 @@ export default function EmptyVehicleInPage() {
                     <th className="p-3 text-left text-sm font-medium">Entry No.</th>
                     <th className="p-3 text-left text-sm font-medium">Vehicle</th>
                     <th className="p-3 text-left text-sm font-medium">Driver</th>
+                    <th className="p-3 text-left text-sm font-medium">Status</th>
                     <th className="p-3 text-left text-sm font-medium">Reason</th>
                     <th className="p-3 text-left text-sm font-medium">Document</th>
                     <th className="p-3 text-left text-sm font-medium">In Date</th>
                     <th className="p-3 text-left text-sm font-medium">In Time</th>
-                    <th className="p-3 text-left text-sm font-medium">Status</th>
                     <th className="p-3 text-left text-sm font-medium">Security</th>
                   </tr>
                 </thead>
@@ -340,6 +340,13 @@ export default function EmptyVehicleInPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
+                        {entry.pipeline_status ? (
+                          <PipelineStatusBadge status={entry.pipeline_status} />
+                        ) : (
+                          <GateStatusBadge status={entry.vehicle_entry_status} />
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap p-3 text-sm">
                         <Badge variant="outline">{entry.reason_display}</Badge>
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
@@ -350,13 +357,6 @@ export default function EmptyVehicleInPage() {
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
                         {entry.in_time}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {entry.pipeline_status ? (
-                          <PipelineStatusBadge status={entry.pipeline_status} />
-                        ) : (
-                          <GateStatusBadge status={entry.vehicle_entry_status} />
-                        )}
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
                         {entry.security_name || '-'}
