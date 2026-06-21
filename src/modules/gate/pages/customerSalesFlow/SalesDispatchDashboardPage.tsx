@@ -456,18 +456,19 @@ function DispatchTable({
           <colgroup>
             <col className="w-[180px]" />
             <col className="w-[130px]" />
+            <col className="w-[145px]" />
             <col className="w-[280px]" />
             <col className="w-[240px]" />
             <col className="w-[320px]" />
             <col className="w-[165px]" />
             <col className="w-[165px]" />
             <col className="w-[280px]" />
-            <col className="w-[145px]" />
           </colgroup>
           <thead className="bg-muted/50">
             <tr>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Entry No.</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Vehicle</th>
+              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Status</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">SAP Document</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Customer</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Items</th>
@@ -476,7 +477,6 @@ function DispatchTable({
                 Actual Gate Out
               </th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Gatepass</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -529,6 +529,13 @@ function DispatchTable({
                     </div>
                   </td>
                   <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
+                  <td className="whitespace-nowrap p-3 text-sm">
+                    <PipelineStatusBadge
+                      status={buildPipelineStatusFromStage(
+                        getSalesDispatchDashboardEntryStage(entry),
+                      )}
+                    />
+                  </td>
                   <td className="p-3 text-sm" title={formatDocumentNumbers(entry)}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium leading-5">{formatDocumentNumbers(entry)}</span>
@@ -561,13 +568,6 @@ function DispatchTable({
                     <GateStatusBadge
                       status={entry.gatepass_no ? 'PRINTED' : 'PENDING'}
                       label={entry.gatepass_no || 'Pending'}
-                    />
-                  </td>
-                  <td className="whitespace-nowrap p-3 text-sm">
-                    <PipelineStatusBadge
-                      status={buildPipelineStatusFromStage(
-                        getSalesDispatchDashboardEntryStage(entry),
-                      )}
                     />
                   </td>
                 </tr>
