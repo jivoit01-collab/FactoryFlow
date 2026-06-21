@@ -373,8 +373,6 @@ export const API_ENDPOINTS = {
     BILL_BY_NUMBER: (invoiceNumber: string) =>
       `/dispatch-plans/bills/by-number/${encodeURIComponent(invoiceNumber)}/`,
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,
-    SCHEDULE: '/dispatch-plans/schedule/',
-    SCHEDULE_ITEMS: (docEntry: number) => `/dispatch-plans/schedule/${docEntry}/items/`,
   },
   // Dispatch Pipeline Dashboard (vehicle stage board)
   DISPATCH_PIPELINE: {
