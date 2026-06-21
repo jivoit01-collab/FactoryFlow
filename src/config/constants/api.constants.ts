@@ -94,6 +94,12 @@ export const API_ENDPOINTS = {
     ARRIVALS: '/gate-core/arrivals/',
     ARRIVAL_DEPART_BY_ID: (id: number) => `/gate-core/arrivals/${id}/depart/`,
     ARRIVAL_EMPTY_OUT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/empty-out/`,
+    ARRIVAL_DISPATCH_BY_ID: (id: number) => `/gate-core/arrivals/${id}/dispatch/`,
+    ARRIVAL_GATEPASS_READINESS_BY_ID: (id: number) =>
+      `/gate-core/arrivals/${id}/gatepass/readiness/`,
+    ARRIVAL_GATEPASS_PRINT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/print/`,
+    ARRIVAL_GATEPASS_COMMIT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/commit/`,
+    ARRIVAL_GATEPASS_REPRINT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/reprint/`,
     BST_OUT_SAP_TRANSFERS: '/gate-core/bst-outs/sap-transfers/',
     BST_OUT_SAP_TRANSFER_BY_DOC_ENTRY: (docEntry: number) =>
       `/gate-core/bst-outs/sap-transfers/${docEntry}/`,

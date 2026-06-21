@@ -36,6 +36,17 @@ export interface VehicleArrivalGateIn {
   cover_count: number;
 }
 
+export interface VehicleArrivalGateOut {
+  id: number;
+  entry_no: string;
+  company_id: number;
+  company_code: string;
+  company_name: string;
+  status: string;
+  gatepass_no: string | null;
+  sap_doc_num: string;
+}
+
 export interface VehicleArrival {
   id: number;
   arrival_no: string;
@@ -53,7 +64,29 @@ export interface VehicleArrival {
   gate_out_date: string | null;
   out_time: string | null;
   departed_at: string | null;
+  gatepass_no: string | null;
+  gatepass_printed_at: string | null;
+  gatepass_committed_at: string | null;
   gate_ins: VehicleArrivalGateIn[];
+  gate_outs: VehicleArrivalGateOut[];
+}
+
+export interface ArrivalGatepassCompany {
+  docking_id: number;
+  entry_no: string;
+  company_code: string;
+  company_name: string;
+  status: string;
+  ready: boolean;
+  missing: string[];
+  gatepass_no: string | null;
+}
+
+export interface ArrivalGatepassReadiness {
+  ready: boolean;
+  companies: ArrivalGatepassCompany[];
+  locked_companies: string[];
+  arrival_gatepass_no: string | null;
 }
 
 export interface ArrivalCreateRequest {
@@ -100,6 +133,47 @@ export const arrivalsApi = {
     const response = await apiClient.post<VehicleArrival>(
       API_ENDPOINTS.GATE_CORE.ARRIVAL_EMPTY_OUT_BY_ID(id),
       { reason: reason ?? '' },
+    );
+    return response.data;
+  },
+
+  async dispatch(id: number): Promise<VehicleArrival> {
+    const response = await apiClient.post<VehicleArrival>(
+      API_ENDPOINTS.GATE_CORE.ARRIVAL_DISPATCH_BY_ID(id),
+    );
+    return response.data;
+  },
+
+  async gatepassReadiness(id: number): Promise<ArrivalGatepassReadiness> {
+    const response = await apiClient.get<ArrivalGatepassReadiness>(
+      API_ENDPOINTS.GATE_CORE.ARRIVAL_GATEPASS_READINESS_BY_ID(id),
+    );
+    return response.data;
+  },
+
+  async gatepassPrint(id: number, printerName?: string): Promise<VehicleArrival> {
+    const response = await apiClient.post<VehicleArrival>(
+      API_ENDPOINTS.GATE_CORE.ARRIVAL_GATEPASS_PRINT_BY_ID(id),
+      { printer_name: printerName ?? '' },
+    );
+    return response.data;
+  },
+
+  async gatepassCommit(id: number): Promise<VehicleArrival> {
+    const response = await apiClient.post<VehicleArrival>(
+      API_ENDPOINTS.GATE_CORE.ARRIVAL_GATEPASS_COMMIT_BY_ID(id),
+    );
+    return response.data;
+  },
+
+  async gatepassReprint(
+    id: number,
+    reprintReason: string,
+    printerName?: string,
+  ): Promise<VehicleArrival> {
+    const response = await apiClient.post<VehicleArrival>(
+      API_ENDPOINTS.GATE_CORE.ARRIVAL_GATEPASS_REPRINT_BY_ID(id),
+      { reprint_reason: reprintReason, printer_name: printerName ?? '' },
     );
     return response.data;
   },

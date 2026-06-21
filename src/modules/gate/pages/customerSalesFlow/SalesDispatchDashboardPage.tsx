@@ -104,6 +104,10 @@ export default function SalesDispatchDashboardPage() {
       to_date: dateRange.to,
       search: searchTerm.trim() || undefined,
       document_type: isGateOutMode ? ('INVOICE' as const) : undefined,
+      // The factory handles all three companies as one physical flow, so the
+      // docking / dispatch-out board always aggregates across the user's companies
+      // regardless of the active Company-Code. Each row is tagged with its company.
+      all_companies: 1,
     }),
     [dateRange.from, dateRange.to, searchTerm, isGateOutMode],
   );
@@ -452,9 +456,10 @@ function DispatchTable({
   return (
     <div className="overflow-hidden rounded-md border">
       <div className="max-h-[520px] overflow-auto">
-        <table className="w-full min-w-[2030px] table-fixed">
+        <table className="w-full min-w-[2180px] table-fixed">
           <colgroup>
             <col className="w-[180px]" />
+            <col className="w-[150px]" />
             <col className="w-[130px]" />
             <col className="w-[260px]" />
             <col className="w-[280px]" />
@@ -467,6 +472,7 @@ function DispatchTable({
           <thead className="bg-muted/50">
             <tr>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Entry No.</th>
+              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Company</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Vehicle</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Status</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">SAP Document</th>
@@ -527,6 +533,15 @@ function DispatchTable({
                         </Button>
                       ) : null}
                     </div>
+                  </td>
+                  <td className="whitespace-nowrap p-3 text-sm">
+                    {entry.company_name || entry.company_code ? (
+                      <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                        {entry.company_name || entry.company_code}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
                   <td className="whitespace-nowrap p-3 text-sm">
@@ -845,6 +860,7 @@ function buildDashboardEntryExportRow(
 
   return {
     'Entry No.': isPending ? 'Pending' : exportValue(entry.entry_no),
+    Company: exportValue(entry.company_name || entry.company_code),
     'Pending Booking': isPending ? 'Yes' : 'No',
     'Dispatch Plan IDs': isPending
       ? entry.dispatch_plan_ids.join(', ')

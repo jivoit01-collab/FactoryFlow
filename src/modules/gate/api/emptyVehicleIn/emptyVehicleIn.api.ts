@@ -34,6 +34,8 @@ export interface EmptyVehicleGateInItemRequest {
 export interface EmptyVehicleGateInEntry {
   id: number;
   entry_no: string;
+  company_code?: string;
+  company_name?: string;
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;
@@ -77,6 +79,8 @@ export interface EmptyVehicleGateInParams {
   to_date?: string;
   reason?: EmptyVehicleGateInReasonValue | string;
   inside_only?: boolean;
+  /** 1 = aggregate across every company the user belongs to (cross-company view). */
+  all_companies?: number;
 }
 
 export interface EmptyVehicleGateInCreateRequest {
@@ -109,6 +113,7 @@ function buildQuery(params?: EmptyVehicleGateInParams) {
   if (params?.to_date) queryParams.append('to_date', params.to_date);
   if (params?.reason) queryParams.append('reason', params.reason);
   if (params?.inside_only) queryParams.append('inside_only', 'true');
+  if (params?.all_companies) queryParams.append('all_companies', '1');
 
   return queryParams.toString();
 }

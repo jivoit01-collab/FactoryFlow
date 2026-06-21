@@ -44,6 +44,10 @@ export default function EmptyVehicleInPage() {
     () => ({
       from_date: dateRange.from,
       to_date: dateRange.to,
+      // The factory is one physical place for all three companies, so the
+      // empty-vehicle-in board always aggregates across the user's companies
+      // regardless of the active Company-Code. Each row is tagged with its company.
+      all_companies: 1,
     }),
     [dateRange.from, dateRange.to],
   );
@@ -65,7 +69,11 @@ export default function EmptyVehicleInPage() {
   const {
     data: activeDispatchEntries = [],
     refetch: refetchActiveDispatchEntries,
-  } = useEmptyVehicleGateInEntries({ reason: 'DISPATCH', inside_only: true });
+  } = useEmptyVehicleGateInEntries({
+    reason: 'DISPATCH',
+    inside_only: true,
+    all_companies: 1,
+  });
   const {
     data: expectedDispatchResponse,
     isLoading: isExpectedDispatchLoading,
@@ -307,6 +315,7 @@ export default function EmptyVehicleInPage() {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium">Entry No.</th>
+                    <th className="p-3 text-left text-sm font-medium">Company</th>
                     <th className="p-3 text-left text-sm font-medium">Vehicle</th>
                     <th className="p-3 text-left text-sm font-medium">Driver</th>
                     <th className="p-3 text-left text-sm font-medium">Status</th>
@@ -329,6 +338,15 @@ export default function EmptyVehicleInPage() {
                     >
                       <td className="whitespace-nowrap p-3 text-sm font-medium">
                         {entry.entry_no}
+                      </td>
+                      <td className="whitespace-nowrap p-3 text-sm">
+                        {entry.company_name || entry.company_code ? (
+                          <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                            {entry.company_name || entry.company_code}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
                         {entry.vehicle_number}

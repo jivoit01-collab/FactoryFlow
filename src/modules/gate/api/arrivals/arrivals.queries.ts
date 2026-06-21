@@ -7,6 +7,8 @@ export const ARRIVALS_QUERY_KEYS = {
   expected: (vehicleId?: number | null) =>
     [...ARRIVALS_QUERY_KEYS.all, 'expected', vehicleId] as const,
   list: (openOnly?: boolean) => [...ARRIVALS_QUERY_KEYS.all, 'list', openOnly] as const,
+  gatepassReadiness: (id?: number | null) =>
+    [...ARRIVALS_QUERY_KEYS.all, 'gatepassReadiness', id] as const,
 };
 
 /** Bills booked to a vehicle across the user's companies, grouped by company. */
@@ -60,6 +62,57 @@ export function useEmptyOutArrival() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
       arrivalsApi.emptyOut(id, reason),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
+/** Per-company readiness for the one combined ARV/... gatepass on a truck. */
+export function useArrivalGatepassReadiness(id?: number | null, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ARRIVALS_QUERY_KEYS.gatepassReadiness(id),
+    queryFn: () => arrivalsApi.gatepassReadiness(id!),
+    enabled: (options?.enabled ?? true) && !!id,
+    staleTime: 15 * 1000,
+  });
+}
+
+export function usePrintArrivalGatepass() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, printerName }: { id: number; printerName?: string }) =>
+      arrivalsApi.gatepassPrint(id, printerName),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
+export function useCommitArrivalGatepass() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => arrivalsApi.gatepassCommit(id),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
+export function useReprintArrivalGatepass() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      reprintReason,
+      printerName,
+    }: {
+      id: number;
+      reprintReason: string;
+      printerName?: string;
+    }) => arrivalsApi.gatepassReprint(id, reprintReason, printerName),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
+export function useDispatchArrival() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => arrivalsApi.dispatch(id),
     onSuccess: () => invalidateArrivalRelated(queryClient),
   });
 }

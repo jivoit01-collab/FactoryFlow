@@ -88,6 +88,9 @@ const EmptyVehicleInPage = lazy(() => import('./pages/emptyVehicleInPages/EmptyV
 const CrossCompanyArrivalPage = lazy(
   () => import('./pages/emptyVehicleInPages/CrossCompanyArrivalPage'),
 );
+const ArrivalGatepassPage = lazy(
+  () => import('./pages/emptyVehicleInPages/ArrivalGatepassPage'),
+);
 const EmptyVehicleInNewPage = lazy(
   () => import('./pages/emptyVehicleInPages/EmptyVehicleInNewPage'),
 );
@@ -693,6 +696,13 @@ export const gateModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Cross-Company Arrival' },
     },
     {
+      path: '/gate/arrivals/:arrivalId/gatepass',
+      element: <ArrivalGatepassPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
+      breadcrumb: { label: 'Combined Gatepass' },
+    },
+    {
       path: '/gate/empty-vehicle-in/new/weighment',
       element: <EmptyVehicleInWeighmentPage />,
       layout: 'main',
@@ -1055,6 +1065,11 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/new',
           title: 'New Entry',
           permissions: GATE_ENTRY_CREATE_PERMISSIONS,
+        },
+        {
+          path: '/gate/arrivals',
+          title: 'Cross-Company Arrivals',
+          permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
         },
         {
           path: '/gate/sales-dispatch/barcode-reports',

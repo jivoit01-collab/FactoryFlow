@@ -177,6 +177,8 @@ export interface SalesDispatchGateOut {
   id: number;
   entry_no: string;
   company: number;
+  company_code?: string;
+  company_name?: string;
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;
@@ -289,6 +291,9 @@ export interface SalesDispatchGateOut {
 export interface SalesDispatchPendingBooking {
   row_type: 'PENDING_BOOKING';
   id: string;
+  company?: number;
+  company_code?: string;
+  company_name?: string;
   entry_no?: string;
   dispatch_plan_ids: number[];
   document_count: number;
@@ -410,6 +415,8 @@ export interface SalesDispatchListParams {
   from_date?: string;
   to_date?: string;
   search?: string;
+  /** 1 = aggregate across every company the user belongs to (cross-company view). */
+  all_companies?: number;
 }
 
 export interface SalesDispatchPendingBookingParams {
@@ -418,6 +425,8 @@ export interface SalesDispatchPendingBookingParams {
   search?: string;
   dispatch_plan_ids?: string;
   limit?: number;
+  /** 1 = aggregate across every company the user belongs to (cross-company view). */
+  all_companies?: number;
 }
 
 export type SalesDispatchReportParams = SalesDispatchListParams & {
