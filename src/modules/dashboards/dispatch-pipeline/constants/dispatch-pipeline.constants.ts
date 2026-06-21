@@ -54,6 +54,34 @@ export const PIPELINE_STAGE_BADGE_CLASSES: Record<PipelineStage, string> = {
   REJECTED: 'border-red-200 bg-red-50 text-red-700',
 };
 
+/** "<status> at <module>" label per stage (mirrors the backend mapping). */
+export const PIPELINE_STAGE_LABEL: Record<PipelineStage, string> = {
+  BOOKED: 'not entered',
+  EMPTY_IN: 'pending at gate',
+  READY_TO_DOCK: 'pending at dock',
+  DOCKED: 'docked at dock',
+  PHOTO_ATTACHED: 'photo attached at dock',
+  READY_FOR_GATEPASS: 'ready for gatepass at dock',
+  GATEPASS_PRINTED: 'gatepass printed at dock',
+  PRINT_COMMITTED: 'pending at sales dispatch out',
+  DISPATCHED: 'dispatched at sales dispatch out',
+  REJECTED: 'rejected / cancelled',
+};
+
+/** Whole-row tint per stage — strong enough to read in daylight. */
+export const PIPELINE_STAGE_ROW_CLASSES: Record<PipelineStage, string> = {
+  BOOKED: 'bg-slate-200 hover:bg-slate-300/70',
+  EMPTY_IN: 'bg-blue-200 hover:bg-blue-300/70',
+  READY_TO_DOCK: 'bg-cyan-200 hover:bg-cyan-300/70',
+  DOCKED: 'bg-indigo-200 hover:bg-indigo-300/70',
+  PHOTO_ATTACHED: 'bg-violet-200 hover:bg-violet-300/70',
+  READY_FOR_GATEPASS: 'bg-purple-200 hover:bg-purple-300/70',
+  GATEPASS_PRINTED: 'bg-amber-200 hover:bg-amber-300/70',
+  PRINT_COMMITTED: 'bg-orange-200 hover:bg-orange-300/70',
+  DISPATCHED: 'bg-emerald-200 hover:bg-emerald-300/70',
+  REJECTED: 'bg-red-200 hover:bg-red-300/70',
+};
+
 function toISODate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

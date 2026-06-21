@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
+import { getPipelineStageRowClass } from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import { useDispatchBills } from '@/modules/dashboards/dispatch-plans/api';
 import {
   type EmptyVehicleGateInEntry,
@@ -27,6 +28,7 @@ import {
   CardContent,
   Input,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import {
   buildExpectedDispatchVehicles,
@@ -319,7 +321,10 @@ export default function EmptyVehicleInPage() {
                   {filteredEntries.map((entry) => (
                     <tr
                       key={entry.id}
-                      className="cursor-pointer border-t hover:bg-muted/40"
+                      className={cn(
+                        'cursor-pointer border-t',
+                        getPipelineStageRowClass(entry.pipeline_status?.stage) || 'hover:bg-muted/40',
+                      )}
                       onClick={() => navigate(`/gate/empty-vehicle-in/new?gateInId=${entry.id}`)}
                     >
                       <td className="whitespace-nowrap p-3 text-sm font-medium">

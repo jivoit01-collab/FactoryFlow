@@ -20,6 +20,12 @@ import * as XLSX from 'xlsx';
 import { DASHBOARDS_PERMISSIONS, GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
+import type { PipelineStage } from '@/modules/dashboards/dispatch-pipeline/types';
+import {
+  buildPipelineStatusFromStage,
+  getPipelineStageRowClass,
+} from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import {
   type SalesDispatchDashboardEntry,
   type SalesDispatchDocument,
@@ -449,10 +455,10 @@ function DispatchTable({
         <table className="w-full min-w-[1905px] table-fixed">
           <colgroup>
             <col className="w-[180px]" />
+            <col className="w-[130px]" />
             <col className="w-[280px]" />
             <col className="w-[240px]" />
             <col className="w-[320px]" />
-            <col className="w-[130px]" />
             <col className="w-[165px]" />
             <col className="w-[165px]" />
             <col className="w-[280px]" />
@@ -461,10 +467,10 @@ function DispatchTable({
           <thead className="bg-muted/50">
             <tr>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Entry No.</th>
+              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Vehicle</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">SAP Document</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Customer</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Items</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Vehicle</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Dispatch Date</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">
                 Actual Gate Out
@@ -522,6 +528,7 @@ function DispatchTable({
                       ) : null}
                     </div>
                   </td>
+                  <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
                   <td className="p-3 text-sm" title={formatDocumentNumbers(entry)}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium leading-5">{formatDocumentNumbers(entry)}</span>
@@ -546,7 +553,6 @@ function DispatchTable({
                   <td className="p-3 text-sm" title={itemSummary}>
                     <div className="truncate whitespace-nowrap">{itemSummary}</div>
                   </td>
-                  <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
                   <td className="whitespace-nowrap p-3 text-sm">
                     {formatDate(plannedDispatchDate)}
                   </td>
@@ -558,9 +564,10 @@ function DispatchTable({
                     />
                   </td>
                   <td className="whitespace-nowrap p-3 text-sm">
-                    <GateStatusBadge
-                      status={entry.status}
-                      label={getSalesDispatchDashboardStatusLabel(entry.status, isGateOutMode)}
+                    <PipelineStatusBadge
+                      status={buildPipelineStatusFromStage(
+                        getSalesDispatchDashboardEntryStage(entry),
+                      )}
                     />
                   </td>
                 </tr>
@@ -573,30 +580,17 @@ function DispatchTable({
   );
 }
 
-function getSalesDispatchDashboardRowClassName(entry: SalesDispatchDashboardEntry) {
-  if (isPendingBookingEntry(entry)) {
-    return 'bg-slate-50 hover:bg-slate-100/80';
-  }
+function getSalesDispatchDashboardEntryStage(entry: SalesDispatchDashboardEntry): PipelineStage {
+  if (isPendingBookingEntry(entry)) return 'READY_TO_DOCK';
+  if (entry.status === 'CANCELLED') return 'REJECTED';
+  if (entry.status === 'PENDING_DOCKING') return 'READY_TO_DOCK';
+  return entry.status as PipelineStage;
+}
 
-  switch (entry.status) {
-    case 'PENDING_DOCKING':
-    case 'DOCKED':
-      return 'bg-blue-50/70 hover:bg-blue-100/80';
-    case 'PHOTO_ATTACHED':
-    case 'READY_FOR_GATEPASS':
-      return 'bg-violet-50/70 hover:bg-violet-100/80';
-    case 'GATEPASS_PRINTED':
-      return 'bg-amber-50/80 hover:bg-amber-100/80';
-    case 'PRINT_COMMITTED':
-      return 'bg-sky-50/80 hover:bg-sky-100/80';
-    case 'DISPATCHED':
-      return 'bg-emerald-50/75 hover:bg-emerald-100/80';
-    case 'REJECTED':
-    case 'CANCELLED':
-      return 'bg-red-50/75 hover:bg-red-100/80';
-    default:
-      return 'hover:bg-muted/50';
-  }
+function getSalesDispatchDashboardRowClassName(entry: SalesDispatchDashboardEntry) {
+  return (
+    getPipelineStageRowClass(getSalesDispatchDashboardEntryStage(entry)) || 'hover:bg-muted/50'
+  );
 }
 
 function DockingLockPanel({
