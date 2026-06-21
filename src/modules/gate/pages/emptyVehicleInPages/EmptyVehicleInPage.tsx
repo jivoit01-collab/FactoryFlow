@@ -8,7 +8,7 @@ import {
   Truck,
   User,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { type KeyboardEvent, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -39,6 +39,20 @@ export default function EmptyVehicleInPage() {
   const navigate = useNavigate();
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'inside'>('all');
+  const expectedDispatchRef = useRef<HTMLElement>(null);
+
+  const showInsideOnly = () =>
+    setStatusFilter((current) => (current === 'inside' ? 'all' : 'inside'));
+  const showAllEntries = () => setStatusFilter('all');
+  const scrollToExpectedDispatch = () =>
+    expectedDispatchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const activateOnKey = (handler: () => void) => (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handler();
+    }
+  };
 
   const queryParams = useMemo(
     () => ({
@@ -88,10 +102,16 @@ export default function EmptyVehicleInPage() {
     [activeDispatchEntries, expectedDispatchResponse?.data],
   );
   const filteredEntries = useMemo(() => {
+    const base =
+      statusFilter === 'inside'
+        ? entries.filter(
+            (entry) => !['COMPLETED', 'CANCELLED'].includes(entry.vehicle_entry_status),
+          )
+        : entries;
     const query = searchTerm.trim().toLowerCase();
-    if (!query) return entries;
+    if (!query) return base;
 
-    return entries.filter((entry) => (
+    return base.filter((entry) => (
       [
         entry.entry_no,
         entry.vehicle_number,
@@ -112,7 +132,7 @@ export default function EmptyVehicleInPage() {
         entry.security_name,
       ].some((value) => String(value || '').toLowerCase().includes(query))
     ));
-  }, [entries, searchTerm]);
+  }, [entries, searchTerm, statusFilter]);
 
   return (
     <div className="space-y-6">
@@ -153,7 +173,17 @@ export default function EmptyVehicleInPage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
+        <Card
+          role="button"
+          tabIndex={0}
+          onClick={showInsideOnly}
+          onKeyDown={activateOnKey(showInsideOnly)}
+          title="Show only vehicles still inside"
+          className={cn(
+            'cursor-pointer transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            statusFilter === 'inside' && 'ring-2 ring-blue-600',
+          )}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <Truck className="h-5 w-5 text-blue-600" />
@@ -162,7 +192,17 @@ export default function EmptyVehicleInPage() {
             <p className="mt-2 text-sm font-medium text-muted-foreground">Inside</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          role="button"
+          tabIndex={0}
+          onClick={showAllEntries}
+          onKeyDown={activateOnKey(showAllEntries)}
+          title="Show all entries"
+          className={cn(
+            'cursor-pointer transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            statusFilter === 'all' && 'ring-2 ring-green-600',
+          )}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -171,7 +211,19 @@ export default function EmptyVehicleInPage() {
             <p className="mt-2 text-sm font-medium text-muted-foreground">Total Entries</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          role="button"
+          tabIndex={0}
+          onClick={scrollToExpectedDispatch}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              scrollToExpectedDispatch();
+            }
+          }}
+          title="Jump to expected dispatch vehicles"
+          className="cursor-pointer transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <Clock className="h-5 w-5 text-amber-600" />
@@ -182,7 +234,7 @@ export default function EmptyVehicleInPage() {
         </Card>
       </div>
 
-      <section>
+      <section ref={expectedDispatchRef}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Truck className="h-4 w-4" />
