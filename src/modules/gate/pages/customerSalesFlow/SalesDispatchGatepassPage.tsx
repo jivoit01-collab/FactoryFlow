@@ -157,6 +157,10 @@ export default function SalesDispatchGatepassPage() {
     markDispatched.isPending;
   const readiness = entry?.gatepass_readiness;
   const action = useMemo(() => getNextAction(entry, isGateOutMode), [entry, isGateOutMode]);
+  // A multi-company truck must be dispatched collectively from its arrival (all
+  // companies at once), never one company here -- the backend rejects per-company
+  // dispatch for it. Steer the user to the Arrivals page instead.
+  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1;
   const isGatepassPrintLocked = Boolean(dispatchLock?.is_locked);
   const canPrintGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.PRINT_GATEPASS);
   const canCommitGatepassPrint = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.COMMIT_PRINT);
@@ -247,6 +251,11 @@ export default function SalesDispatchGatepassPage() {
 
   const handleMarkDispatched = async () => {
     if (!entry) return;
+    if (isMultiCompanyArrival && entry.arrival) {
+      // One truck, one exit: send the user to the collective arrival dispatch.
+      navigate(`/gate/arrivals/${entry.arrival}/gatepass`);
+      return;
+    }
     if (!isGateOutMode) {
       setError('Dispatch can only be marked from the Gate module.');
       return;
@@ -566,14 +575,25 @@ export default function SalesDispatchGatepassPage() {
                   {hasCompleteGateOutWeighment(entry) ? 'Edit Weighment' : 'Record Weighment'}
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                onClick={handleMarkDispatched}
-                disabled={isSaving || action !== 'dispatch' || !canDispatchGatepass}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Mark Dispatched
-              </Button>
+              {isMultiCompanyArrival ? (
+                <Button
+                  type="button"
+                  onClick={() => navigate(`/gate/arrivals/${entry.arrival}/gatepass`)}
+                  disabled={isSaving}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Dispatch from Arrivals
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleMarkDispatched}
+                  disabled={isSaving || action !== 'dispatch' || !canDispatchGatepass}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Mark Dispatched
+                </Button>
+              )}
             </>
           )}
         </div>

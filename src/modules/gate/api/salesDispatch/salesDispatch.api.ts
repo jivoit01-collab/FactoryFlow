@@ -179,6 +179,12 @@ export interface SalesDispatchGateOut {
   company: number;
   company_code?: string;
   company_name?: string;
+  /** Cross-company arrival this docking shares (the physical truck trip). */
+  arrival?: number | null;
+  /** The truck's real in/out state (INSIDE / LOADING / DEPARTED), not the docking's. */
+  arrival_status?: string | null;
+  /** >1 = a multi-company truck: dispatch collectively from the arrival, not here. */
+  arrival_company_count?: number;
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;
