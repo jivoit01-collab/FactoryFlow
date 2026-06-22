@@ -234,6 +234,10 @@ export interface GRPOHistoryLine {
   quantity_posted: string;
   base_entry: number | null;
   base_line: number | null;
+  // QC traceability — used to reprint the QC inspection report from history
+  arrival_slip_id: number | null;
+  inspection_id: number | null;
+  inspection_report_no: string;
 }
 
 // History entry (GET /history/ and GET /{posting_id}/)
