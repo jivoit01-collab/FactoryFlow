@@ -260,7 +260,10 @@ export default function SalesDispatchNewPage() {
     useSalesDispatchByVehicleEntry(existingVehicleEntryId);
   const { data: pendingBookings = [], isLoading: isPendingBookingLoading } =
     useSalesDispatchPendingBookings(
-      { dispatch_plan_ids: pendingDispatchPlanIds },
+      // all_companies: the docking board is cross-company, so a pending row may
+      // belong to a sibling company; resolve the booking regardless of the
+      // active Company-Code (the backend keys the create off the plan's company).
+      { dispatch_plan_ids: pendingDispatchPlanIds, all_companies: 1 },
       { enabled: isPendingBookingMode },
     );
   const {
