@@ -6,5 +6,6 @@ export {
 } from './QCInspectionReportPrint';
 export type { QCReportButtonItem } from './QCReportButton';
 export { QCReportButton } from './QCReportButton';
+export { QCStatusBadge } from './QCStatusBadge';
 export { useQCReportPrint } from './useQCReportPrint';
 export { WarehouseSelect } from './WarehouseSelect';

@@ -15,7 +15,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { FINAL_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
 import {
   Badge,
@@ -37,16 +36,12 @@ import { useGRPOPreview, usePostGRPO } from '../api';
 import {
   ExtraChargesSection,
   QCReportButton,
+  QCStatusBadge,
   useQCReportPrint,
   WarehouseSelect,
 } from '../components';
 import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants';
-import type {
-  ExtraCharge,
-  PostGRPOResponse,
-  PreviewItem,
-  PreviewPOReceipt,
-} from '../types';
+import type { ExtraCharge, PostGRPOResponse, PreviewPOReceipt } from '../types';
 
 // Per-item form state
 interface ItemFormState {
@@ -86,6 +81,20 @@ interface PrintableQCReportItem {
   inspection_report_no: string | null;
 }
 
+// Format the PO creation date (date-only, no time component)
+const formatPODate = (dateStr?: string | null) => {
+  if (!dateStr) return null;
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
 export default function GRPOPreviewPage() {
   const navigate = useNavigate();
   const { vehicleEntryId } = useParams<{ vehicleEntryId: string }>();
@@ -118,10 +127,7 @@ export default function GRPOPreviewPage() {
   );
   // GRPO is bill-based: only bills (POs) whose items have all passed QC can be
   // posted. A rejected/held bill is shown separately and never blocks the rest.
-  const readyPOs = useMemo(
-    () => unpostedPOs.filter((po) => po.is_ready_for_grpo),
-    [unpostedPOs],
-  );
+  const readyPOs = useMemo(() => unpostedPOs.filter((po) => po.is_ready_for_grpo), [unpostedPOs]);
   const blockedPOs = useMemo(
     () => unpostedPOs.filter((po) => !po.is_ready_for_grpo),
     [unpostedPOs],
@@ -651,7 +657,8 @@ export default function GRPOPreviewPage() {
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Invoice: {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
+                            PO Date: {formatPODate(po.po_date) || '-'} | Invoice:{' '}
+                            {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
                             {po.branch_id != null && ` | Branch: ${po.branch_id}`}
                           </p>
                         </div>
@@ -702,7 +709,10 @@ export default function GRPOPreviewPage() {
                                 </p>
                               </div>
                               <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center">
-                                <QCStatusBadge status={item.qc_status} decision={item.qc_decision} />
+                                <QCStatusBadge
+                                  status={item.qc_status}
+                                  decision={item.qc_decision}
+                                />
                                 <QCReportButton
                                   item={item}
                                   onPrint={printQCReport}
@@ -750,8 +760,8 @@ export default function GRPOPreviewPage() {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {po.supplier_name} &middot; Invoice: {po.invoice_no || '-'} | Challan:{' '}
-                      {po.challan_no || '-'}
+                      {po.supplier_name} &middot; PO Date: {formatPODate(po.po_date) || '-'} |
+                      Invoice: {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
@@ -806,7 +816,10 @@ export default function GRPOPreviewPage() {
                       Posted (SAP #{po.sap_doc_num})
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{po.supplier_name}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {po.supplier_name}
+                    {formatPODate(po.po_date) && ` · PO Date: ${formatPODate(po.po_date)}`}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   {po.items.map((item) => (
@@ -1439,30 +1452,5 @@ export default function GRPOPreviewPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function QCStatusBadge({
-  status,
-  decision,
-}: {
-  status: PreviewItem['qc_status'];
-  decision?: PreviewItem['qc_decision'];
-}) {
-  const displayStatus = decision || status;
-  const statusClass =
-    displayStatus === 'APPROVED' || displayStatus === FINAL_STATUS.ACCEPTED
-      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-      : displayStatus === FINAL_STATUS.REJECTED
-        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-        : displayStatus === FINAL_STATUS.HOLD
-          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
-        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-  const label = displayStatus === 'APPROVED' ? 'Approved' : displayStatus;
-
-  return (
-    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusClass}`}>
-      {label}
-    </span>
   );
 }

@@ -1,12 +1,21 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Package,
+  RefreshCw,
+  ShieldX,
+} from 'lucide-react';
+import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { Button } from '@/shared/components/ui';
 
 import { useAllGRPOEntries } from '../api';
-import type { AllGRPOEntry, EntryPhase } from '../types';
+import { QCStatusBadge } from '../components';
+import type { AllGRPOEntry, AllGRPOEntryPOQC, EntryPhase } from '../types';
 
 const formatDateTime = (dateTime?: string | null) => {
   if (!dateTime) return '-';
@@ -20,6 +29,13 @@ const formatDateTime = (dateTime?: string | null) => {
   } catch {
     return dateTime;
   }
+};
+
+const formatQuantity = (value: string) => {
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? amount.toLocaleString('en-IN', { maximumFractionDigits: 3 })
+    : value;
 };
 
 const PHASE_FILTERS = ['ALL', 'GATE', 'QC', 'DONE'] as const;
@@ -51,6 +67,15 @@ export default function AllEntriesPage() {
   const navigate = useNavigate();
   const { data: entries = [], isLoading, refetch, error } = useAllGRPOEntries();
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('ALL');
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const toggleExpanded = (entryId: number) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
@@ -169,82 +194,98 @@ export default function AllEntriesPage() {
                   </thead>
                   <tbody>
                     {filtered.map((entry) => {
-                      const canPreview = entry.is_ready_for_grpo && entry.pending_po_count > 0;
+                      const hasDetail = entry.po_receipts.length > 0;
+                      const isExpanded = expanded.has(entry.vehicle_entry_id);
                       return (
-                        <tr
-                          key={entry.vehicle_entry_id}
-                          className={`border-t transition-colors ${
-                            canPreview
-                              ? 'hover:bg-muted/50 cursor-pointer'
-                              : 'opacity-90 cursor-default'
-                          }`}
-                          onClick={() => {
-                            if (canPreview) {
-                              navigate(`/grpo/material/preview/${entry.vehicle_entry_id}`);
-                            }
-                          }}
-                        >
-                          <td className="p-3 text-sm font-medium whitespace-nowrap">
-                            {entry.entry_no}
-                          </td>
-                          <td className="p-3 text-sm whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PHASE_PILL_CLASSES[entry.phase]}`}
-                            >
-                              {PHASE_LABEL[entry.phase]}
-                            </span>
-                          </td>
-                          <td className="p-3 text-sm">{compactStatusLabel(entry)}</td>
-                          <td className="p-3 text-sm">
-                            {entry.suppliers.length > 0 ? (
-                              <div className="flex flex-col gap-0.5">
-                                {entry.suppliers.map((s) => (
-                                  <span key={s.supplier_code} className="truncate">
-                                    <span className="font-medium">{s.supplier_name}</span>
-                                    <span className="text-xs text-muted-foreground ml-1">
-                                      ({s.supplier_code})
-                                    </span>
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </td>
-                          <td className="p-3 text-sm text-muted-foreground">
-                            {entry.po_numbers.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {entry.po_numbers.map((po) => (
-                                  <span
-                                    key={po}
-                                    className="inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-mono bg-muted/40"
-                                  >
-                                    {po}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              '-'
-                            )}
-                          </td>
-                          <td className="p-3 text-sm whitespace-nowrap">
-                            {entry.total_po_count === 0 ? (
-                              <span className="text-muted-foreground">-</span>
-                            ) : (
-                              <span className="text-xs">
-                                {entry.posted_po_count}/{entry.total_po_count} posted
+                        <Fragment key={entry.vehicle_entry_id}>
+                          <tr
+                            className={`border-t transition-colors ${
+                              hasDetail ? 'cursor-pointer hover:bg-muted/50' : 'cursor-default'
+                            } ${isExpanded ? 'bg-muted/30' : ''}`}
+                            onClick={() => hasDetail && toggleExpanded(entry.vehicle_entry_id)}
+                          >
+                            <td className="p-3 text-sm font-medium whitespace-nowrap">
+                              {entry.entry_no}
+                            </td>
+                            <td className="p-3 text-sm whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PHASE_PILL_CLASSES[entry.phase]}`}
+                              >
+                                {PHASE_LABEL[entry.phase]}
                               </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
-                            {formatDateTime(entry.entry_time)}
-                          </td>
-                          <td className="p-3 text-right">
-                            {canPreview && (
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="p-3 text-sm">{compactStatusLabel(entry)}</td>
+                            <td className="p-3 text-sm">
+                              {entry.suppliers.length > 0 ? (
+                                <div className="flex flex-col gap-0.5">
+                                  {entry.suppliers.map((s) => (
+                                    <span key={s.supplier_code} className="truncate">
+                                      <span className="font-medium">{s.supplier_name}</span>
+                                      <span className="text-xs text-muted-foreground ml-1">
+                                        ({s.supplier_code})
+                                      </span>
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground">
+                              {entry.po_numbers.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {entry.po_numbers.map((po) => (
+                                    <span
+                                      key={po}
+                                      className="inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-mono bg-muted/40"
+                                    >
+                                      {po}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                            <td className="p-3 text-sm whitespace-nowrap">
+                              {entry.total_po_count === 0 ? (
+                                <span className="text-muted-foreground">-</span>
+                              ) : (
+                                <span className="text-xs">
+                                  {entry.posted_po_count}/{entry.total_po_count} posted
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
+                              {formatDateTime(entry.entry_time)}
+                            </td>
+                            <td className="p-3 text-right">
+                              {hasDetail &&
+                                (isExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                ))}
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="border-t bg-muted/20">
+                              <td colSpan={8} className="p-0">
+                                <div className="space-y-3 p-4">
+                                  {entry.po_receipts.map((po) => (
+                                    <BillQCCard
+                                      key={po.po_receipt_id}
+                                      po={po}
+                                      onPost={() =>
+                                        navigate(`/grpo/material/preview/${entry.vehicle_entry_id}`)
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -254,6 +295,76 @@ export default function AllEntriesPage() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Read-only per-bill QC card shown when an All Entries row is expanded.
+function BillQCCard({ po, onPost }: { po: AllGRPOEntryPOQC; onPost: () => void }) {
+  const billStatus = po.is_posted
+    ? {
+        label: 'Posted',
+        cls: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+      }
+    : po.is_ready_for_grpo
+      ? { label: 'Ready to post', cls: 'bg-primary/10 text-primary' }
+      : {
+          label: 'Awaiting QC',
+          cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+        };
+
+  return (
+    <div className="rounded-md border bg-background">
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+        <Package className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium">{po.po_number}</span>
+        <span className="text-xs text-muted-foreground">{po.supplier_name}</span>
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${billStatus.cls}`}
+        >
+          {billStatus.label}
+        </span>
+        {po.is_ready_for_grpo && !po.is_posted && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto h-7 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPost();
+            }}
+          >
+            Post GRPO
+          </Button>
+        )}
+      </div>
+      <div className="divide-y">
+        {po.items.length === 0 ? (
+          <p className="px-3 py-2 text-xs text-muted-foreground">No items on this bill.</p>
+        ) : (
+          po.items.map((item) => {
+            const rejected = Number(item.rejected_qty);
+            return (
+              <div
+                key={item.po_item_receipt_id}
+                className="flex items-center justify-between gap-2 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {item.item_code} — {item.item_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Received: {formatQuantity(item.received_qty)} {item.uom}
+                    {rejected > 0 &&
+                      ` · Rejected: ${formatQuantity(item.rejected_qty)} ${item.uom}`}
+                  </p>
+                </div>
+                <QCStatusBadge status={item.qc_status} className="flex-shrink-0" />
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

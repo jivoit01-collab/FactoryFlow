@@ -167,6 +167,7 @@ export interface PreviewPOReceipt {
   po_number: string;
   supplier_code: string;
   supplier_name: string;
+  po_date: string | null;
   invoice_no: string;
   invoice_date: string;
   challan_no: string;
@@ -296,6 +297,29 @@ export interface AllGRPOEntrySupplier {
   po_count: number;
 }
 
+// Per-item QC verdict for the All Entries read-only drill-down
+export interface AllGRPOEntryItemQC {
+  po_item_receipt_id: number;
+  item_code: string;
+  item_name: string;
+  received_qty: string;
+  accepted_qty: string;
+  rejected_qty: string;
+  uom: string;
+  qc_status: QCStatus;
+}
+
+// Per-PO (bill) QC summary for the All Entries read-only drill-down
+export interface AllGRPOEntryPOQC {
+  po_receipt_id: number;
+  po_number: string;
+  supplier_code: string;
+  supplier_name: string;
+  is_ready_for_grpo: boolean;
+  is_posted: boolean;
+  items: AllGRPOEntryItemQC[];
+}
+
 // All-entries row (GET /grpo/all-entries/)
 export interface AllGRPOEntry {
   vehicle_entry_id: number;
@@ -311,6 +335,7 @@ export interface AllGRPOEntry {
   pending_po_count: number;
   suppliers: AllGRPOEntrySupplier[];
   po_numbers: string[];
+  po_receipts: AllGRPOEntryPOQC[];
 }
 
 // Booked dispatch plan shown in Service GRPO pending queue
