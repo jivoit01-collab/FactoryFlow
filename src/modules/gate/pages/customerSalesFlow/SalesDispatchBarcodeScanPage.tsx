@@ -23,8 +23,11 @@ import { toast } from 'sonner';
 import { ADMIN_PERMISSIONS, GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import {
+  type DockingPartialScanRequest,
   type DockingScanSkipRequest,
+  useCreateDockingPartialScanRequest,
   useCreateDockingScanSkipRequest,
+  useDockingPartialScanRequestByDispatch,
   useDockingScanSkipRequestByDispatch,
 } from '@/modules/admin/api';
 import { useScanner } from '@/modules/barcode/hooks/useScanner';
@@ -92,6 +95,9 @@ export default function SalesDispatchBarcodeScanPage() {
   const [isSkipDialogOpen, setIsSkipDialogOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [skipError, setSkipError] = useState('');
+  const [isPartialDialogOpen, setIsPartialDialogOpen] = useState(false);
+  const [partialReason, setPartialReason] = useState('');
+  const [partialError, setPartialError] = useState('');
   const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
   const manualInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,6 +109,7 @@ export default function SalesDispatchBarcodeScanPage() {
   } = useSalesDispatchByVehicleEntry(entryIdNumber);
   const { data: scans = [], isLoading: isScansLoading } = useSalesDispatchBoxScans(entry?.id);
   const { data: skipRequest } = useDockingScanSkipRequestByDispatch(entry?.id);
+  const { data: partialRequest } = useDockingPartialScanRequestByDispatch(entry?.id);
   const {
     data: barcodeScans,
     isFetching: isBarcodeScansLoading,
@@ -111,6 +118,7 @@ export default function SalesDispatchBarcodeScanPage() {
   const scanBox = useScanSalesDispatchBox();
   const removeScan = useRemoveSalesDispatchBoxScan();
   const createSkipRequest = useCreateDockingScanSkipRequest();
+  const createPartialRequest = useCreateDockingPartialScanRequest();
 
   const isReadOnly = entry ? SCAN_CLOSED_STATUSES.includes(entry.status) : false;
   // In review mode we deliberately stay on the page to walk a closed entry.
@@ -120,6 +128,7 @@ export default function SalesDispatchBarcodeScanPage() {
     GATE_PERMISSIONS.SALES_DISPATCH.EDIT,
   ]);
   const canRequestScanSkip = hasPermission(ADMIN_PERMISSIONS.DOCKING.REQUEST_SCAN_SKIP);
+  const canRequestPartial = hasPermission(ADMIN_PERMISSIONS.DOCKING.REQUEST_PARTIAL_SCAN);
   // Some companies (e.g. Jivo Beverages) don't scan boxes at the factory at all, so box
   // scanning is optional for them: operators can continue without scanning and without
   // the admin scan-skip approval flow. Driven by the backend per the entry's company.
@@ -127,9 +136,15 @@ export default function SalesDispatchBarcodeScanPage() {
   const skipStatus = skipRequest?.status ?? null;
   const isSkipApproved = skipStatus === 'APPROVED';
   const isSkipPending = skipStatus === 'PENDING';
+  const partialStatus = partialRequest?.status ?? null;
+  const isPartialApproved = partialStatus === 'APPROVED';
+  const isPartialPending = partialStatus === 'PENDING';
   const isSaving = scanBox.isPending || removeScan.isPending;
 
   const expectedBoxes = getExpectedDispatchBoxes(entry);
+  // Partial = at least one box scanned but fewer than expected. Such a load needs a
+  // partial-dispatch approval (the zero-scan case still uses the scan-skip flow).
+  const isPartialScan = scans.length > 0 && expectedBoxes > 0 && scans.length < expectedBoxes;
   const scannedQuantity = useMemo(
     () => scans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
     [scans],
@@ -224,15 +239,23 @@ export default function SalesDispatchBarcodeScanPage() {
       setError('Docking details not found.');
       return;
     }
-    if (scans.length === 0 && !isSkipApproved && !isBoxScanOptional) {
-      if (isSkipPending) {
+    if (!isBoxScanOptional) {
+      if (scans.length === 0 && !isSkipApproved) {
         setError(
-          'Box scanning skip is awaiting admin approval. You can continue once it is approved.',
+          isSkipPending
+            ? 'Box scanning skip is awaiting admin approval. You can continue once it is approved.'
+            : 'Scan at least one box, or request approval to skip scanning.',
         );
-      } else {
-        setError('Scan at least one box, or request approval to skip scanning.');
+        return;
       }
-      return;
+      if (isPartialScan && !isPartialApproved) {
+        setError(
+          isPartialPending
+            ? 'Partial dispatch is awaiting admin approval. You can continue once it is approved.'
+            : 'Scan all boxes, or request partial dispatch approval to continue.',
+        );
+        return;
+      }
     }
     navigate(DOCKING_ROUTES.attachments(entry.vehicle_entry));
   };
@@ -252,6 +275,24 @@ export default function SalesDispatchBarcodeScanPage() {
       toast.success('Scan skip request sent for admin approval');
     } catch (submitError) {
       setSkipError(getErrorMessage(submitError, 'Unable to submit the skip request'));
+    }
+  };
+
+  const handleSubmitPartialRequest = async () => {
+    if (!entry) return;
+    const trimmedReason = partialReason.trim();
+    if (!trimmedReason) {
+      setPartialError('Enter a reason for dispatching with a partial scan.');
+      return;
+    }
+    setPartialError('');
+    try {
+      await createPartialRequest.mutateAsync({ sales_dispatch: entry.id, reason: trimmedReason });
+      setIsPartialDialogOpen(false);
+      setPartialReason('');
+      toast.success('Partial dispatch request sent for admin approval');
+    } catch (submitError) {
+      setPartialError(getErrorMessage(submitError, 'Unable to submit the partial dispatch request'));
     }
   };
 
@@ -306,11 +347,11 @@ export default function SalesDispatchBarcodeScanPage() {
 
       {isBoxScanOptional ? (
         <ScanOptionalPanel />
-      ) : (
+      ) : scans.length === 0 ? (
         <ScanSkipPanel
           skipRequest={skipRequest}
           canRequest={canRequestScanSkip && !isReadOnly && canEditDocking}
-          hasScans={scans.length > 0}
+          hasScans={false}
           isSubmitting={createSkipRequest.isPending}
           onRequest={() => {
             setSkipReason('');
@@ -318,7 +359,20 @@ export default function SalesDispatchBarcodeScanPage() {
             setIsSkipDialogOpen(true);
           }}
         />
-      )}
+      ) : isPartialScan ? (
+        <PartialScanPanel
+          partialRequest={partialRequest}
+          canRequest={canRequestPartial && !isReadOnly && canEditDocking}
+          scanned={scans.length}
+          expected={expectedBoxes}
+          isSubmitting={createPartialRequest.isPending}
+          onRequest={() => {
+            setPartialReason('');
+            setPartialError('');
+            setIsPartialDialogOpen(true);
+          }}
+        />
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <Card className="overflow-hidden">
@@ -590,6 +644,56 @@ export default function SalesDispatchBarcodeScanPage() {
               disabled={createSkipRequest.isPending || !skipReason.trim()}
             >
               {createSkipRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Send for Approval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isPartialDialogOpen}
+        onOpenChange={(open) => {
+          if (createPartialRequest.isPending) return;
+          setIsPartialDialogOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Partial Dispatch Approval</DialogTitle>
+            <DialogDescription>
+              Only {scans.length} of {expectedBoxes} boxes are scanned. Send this Docking entry to
+              Admin for approval to dispatch with a partial scan. You cannot continue until an admin
+              approves the request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="docking-partial-scan-reason">Reason</Label>
+            <Textarea
+              id="docking-partial-scan-reason"
+              value={partialReason}
+              onChange={(event) => {
+                setPartialReason(event.target.value);
+                setPartialError('');
+              }}
+              placeholder="Why is this Docking entry dispatched with a partial box scan?"
+            />
+            {partialError ? <p className="text-sm text-destructive">{partialError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsPartialDialogOpen(false)}
+              disabled={createPartialRequest.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleSubmitPartialRequest()}
+              disabled={createPartialRequest.isPending || !partialReason.trim()}
+            >
+              {createPartialRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Send for Approval
             </Button>
           </DialogFooter>
@@ -1099,6 +1203,92 @@ function ScanSkipPanel({
           title={hasScans ? 'Remove scans before requesting a skip' : undefined}
         >
           {wasRejected ? 'Request Again' : 'Request to Skip Scanning'}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function PartialScanPanel({
+  partialRequest,
+  canRequest,
+  scanned,
+  expected,
+  isSubmitting,
+  onRequest,
+}: {
+  partialRequest?: DockingPartialScanRequest | null;
+  canRequest: boolean;
+  scanned: number;
+  expected: number;
+  isSubmitting: boolean;
+  onRequest: () => void;
+}) {
+  const status = partialRequest?.status ?? null;
+
+  if (status === 'APPROVED') {
+    return (
+      <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
+        <div className="space-y-1">
+          <p className="font-medium">Partial dispatch approved</p>
+          <p className="text-sm">
+            {partialRequest?.reviewed_by_name ? `Approved by ${partialRequest.reviewed_by_name}. ` : ''}
+            You can continue to attachments with the boxes scanned so far.
+          </p>
+          {partialRequest?.review_notes ? (
+            <p className="text-sm text-emerald-800">Note: {partialRequest.review_notes}</p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'PENDING') {
+    return (
+      <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <Clock3 className="mt-0.5 h-5 w-5 shrink-0" />
+        <div className="space-y-1">
+          <p className="font-medium">Partial dispatch pending approval</p>
+          <p className="text-sm">
+            An admin must approve this request before you can continue with a partial scan. You can
+            still scan the remaining boxes to proceed normally.
+          </p>
+          {partialRequest?.reason ? (
+            <p className="text-sm text-amber-800">Reason: {partialRequest.reason}</p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  const wasRejected = status === 'REJECTED';
+
+  if (!wasRejected && !canRequest) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-3">
+        <Ban className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+        <div className="space-y-1">
+          <p className="font-medium">
+            {wasRejected ? 'Partial dispatch rejected' : 'Dispatching with a partial scan?'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {wasRejected
+              ? 'Please scan the remaining boxes to continue, or raise a new request.'
+              : `Only ${scanned} of ${expected} boxes are scanned. Request admin approval to dispatch this Docking entry with a partial scan.`}
+          </p>
+          {wasRejected && partialRequest?.review_notes ? (
+            <p className="text-sm text-red-700">Reason: {partialRequest.review_notes}</p>
+          ) : null}
+        </div>
+      </div>
+      {canRequest ? (
+        <Button type="button" variant="outline" onClick={onRequest} disabled={isSubmitting}>
+          {wasRejected ? 'Request Again' : 'Request Partial Dispatch Approval'}
         </Button>
       ) : null}
     </div>

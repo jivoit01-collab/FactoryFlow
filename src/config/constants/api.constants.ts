@@ -207,7 +207,7 @@ export const API_ENDPOINTS = {
       UNREGISTER: '/notifications/devices/unregister/',
     },
   },
-  // Admin - Docking (scan skip approvals)
+  // Admin - Docking (scan skip + partial-dispatch approvals)
   DOCKING_ADMIN: {
     SCAN_SKIP_REQUESTS: '/docking-admin/scan-skip-requests/',
     SCAN_SKIP_REQUEST_BY_DISPATCH: (entryId: number) =>
@@ -216,6 +216,13 @@ export const API_ENDPOINTS = {
       `/docking-admin/scan-skip-requests/${id}/approve/`,
     SCAN_SKIP_REQUEST_REJECT: (id: number) =>
       `/docking-admin/scan-skip-requests/${id}/reject/`,
+    PARTIAL_SCAN_REQUESTS: '/docking-admin/partial-scan-requests/',
+    PARTIAL_SCAN_REQUEST_BY_DISPATCH: (entryId: number) =>
+      `/docking-admin/partial-scan-requests/by-sales-dispatch/${entryId}/`,
+    PARTIAL_SCAN_REQUEST_APPROVE: (id: number) =>
+      `/docking-admin/partial-scan-requests/${id}/approve/`,
+    PARTIAL_SCAN_REQUEST_REJECT: (id: number) =>
+      `/docking-admin/partial-scan-requests/${id}/reject/`,
   },
   // Quality Control V2 (New QC Module)
   QUALITY_CONTROL_V2: {

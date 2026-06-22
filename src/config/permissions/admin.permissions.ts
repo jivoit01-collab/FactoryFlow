@@ -13,6 +13,12 @@ export const ADMIN_PERMISSIONS = {
     VIEW_SCAN_SKIP: 'docking_admin.can_view_docking_scan_skip',
     /** Approve or reject docking scan skip requests */
     APPROVE_SCAN_SKIP: 'docking_admin.can_approve_docking_scan_skip',
+    /** Operator can request to dispatch with only some boxes scanned */
+    REQUEST_PARTIAL_SCAN: 'docking_admin.can_request_docking_partial_scan',
+    /** View docking partial-dispatch (partial scan) requests (admin queue) */
+    VIEW_PARTIAL_SCAN: 'docking_admin.can_view_docking_partial_scan',
+    /** Approve or reject docking partial-dispatch requests */
+    APPROVE_PARTIAL_SCAN: 'docking_admin.can_approve_docking_partial_scan',
   },
 } as const;
 
