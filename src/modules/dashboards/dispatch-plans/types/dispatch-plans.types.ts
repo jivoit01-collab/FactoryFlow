@@ -10,6 +10,8 @@ export interface DispatchPlanFilters {
   branch?: string;
   limit?: number;
   exclude_jivo_mart_transfer?: boolean;
+  /** Window on the plan's scheduled dispatch_date instead of the SAP invoice date. */
+  by_dispatch_date?: boolean;
 }
 
 export interface DispatchPlan {

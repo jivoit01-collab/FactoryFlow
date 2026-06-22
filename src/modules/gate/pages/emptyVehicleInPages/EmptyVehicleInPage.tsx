@@ -71,6 +71,10 @@ export default function EmptyVehicleInPage() {
       date_to: dateRange.to,
       booking_status: 'BOOKED' as const,
       limit: 200,
+      // The gate expects vehicles by their scheduled dispatch date, not the SAP
+      // invoice date — a bill invoiced earlier but scheduled to leave in this window
+      // must show.
+      by_dispatch_date: true,
     }),
     [dateRange.from, dateRange.to],
   );
