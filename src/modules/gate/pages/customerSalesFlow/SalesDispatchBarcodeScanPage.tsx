@@ -1336,19 +1336,53 @@ function buildItemScanSummary(
   scans: SalesDispatchBoxScan[],
 ) {
   const expectedItems = getExpectedItems(entry);
-  const scansByItem = scans.reduce((map, scan) => {
-    const key = normalizeItemCode(scan.item_code);
-    if (!key) return map;
-    const current = map.get(key) || { count: 0, quantity: 0 };
-    current.count += 1;
-    current.quantity += parsePositiveNumber(scan.quantity);
-    map.set(key, current);
-    return map;
-  }, new Map<string, { count: number; quantity: number }>());
+
+  // A docking can carry several bills that share the same item, so a scan must be
+  // attributed to the one bill it belongs to — not every bill with that item.
+  // The backend stamps each scan's bill (scan.document); we honour it, then fall
+  // back to greedily filling the first bill that still needs the item (legacy
+  // scans without a document), so a box never counts toward more than one bill.
+  const stats = expectedItems.map(() => ({ count: 0, quantity: 0 }));
+  const candidatesByCode = new Map<string, number[]>();
+  expectedItems.forEach((item, index) => {
+    const code = normalizeItemCode(item.item_code);
+    if (!code) return;
+    const list = candidatesByCode.get(code);
+    if (list) list.push(index);
+    else candidatesByCode.set(code, [index]);
+  });
+
+  let unplannedScanCount = 0;
+  for (const scan of scans) {
+    const code = normalizeItemCode(scan.item_code);
+    const candidates = code ? candidatesByCode.get(code) : undefined;
+    if (!candidates || candidates.length === 0) {
+      unplannedScanCount += 1;
+      continue;
+    }
+
+    let targetIndex = -1;
+    // 1) The exact bill the backend attributed this scan to.
+    if (scan.document != null) {
+      const matched = candidates.find((index) => expectedItems[index].document === scan.document);
+      if (matched !== undefined) targetIndex = matched;
+    }
+    // 2) Greedy fill: the first bill that still has un-scanned boxes for the item.
+    if (targetIndex === -1) {
+      const open = candidates.find((index) => {
+        const expectedBoxes = getExpectedItemBoxes(expectedItems[index]);
+        return expectedBoxes <= 0 || stats[index].count < expectedBoxes;
+      });
+      targetIndex = open !== undefined ? open : candidates[0];
+    }
+
+    stats[targetIndex].count += 1;
+    stats[targetIndex].quantity += parsePositiveNumber(scan.quantity);
+  }
 
   const items = expectedItems.map((item, index) => {
     const itemCode = item.item_code || '';
-    const scanStats = scansByItem.get(normalizeItemCode(itemCode)) || { count: 0, quantity: 0 };
+    const scanStats = stats[index];
     const expectedQuantity = parsePositiveNumber(item.quantity);
     const progressPercent =
       expectedQuantity > 0
@@ -1370,12 +1404,6 @@ function buildItemScanSummary(
       isComplete: expectedQuantity > 0 ? scanStats.quantity >= expectedQuantity : false,
     };
   });
-
-  const plannedItemCodes = new Set(items.map((item) => normalizeItemCode(item.itemCode)));
-  const unplannedScanCount = scans.filter((scan) => {
-    const key = normalizeItemCode(scan.item_code);
-    return key && !plannedItemCodes.has(key);
-  }).length;
 
   return { items, unplannedScanCount };
 }

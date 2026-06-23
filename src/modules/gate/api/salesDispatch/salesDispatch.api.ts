@@ -151,6 +151,9 @@ export interface SalesDispatchAttachment {
 export interface SalesDispatchBoxScan {
   id: number;
   sales_dispatch: number;
+  /** The specific bill (document) this box is dispatched against; null = unattributed. */
+  document?: number | null;
+  document_sap_doc_num?: string;
   box?: number | null;
   scan_log?: number | null;
   box_barcode: string;
