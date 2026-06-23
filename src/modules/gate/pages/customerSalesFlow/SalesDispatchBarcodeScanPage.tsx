@@ -84,6 +84,20 @@ const SCAN_CLOSED_STATUSES = [
   'CANCELLED',
 ] as const;
 
+// A connected hardware scanner behaves like a keyboard, so it needs the box-barcode
+// field kept focused to receive each scan. But on touch devices, programmatically
+// focusing a text field pops the on-screen keyboard, which covers the camera and
+// knocks it out of place. So we only auto-focus on devices with a fine pointer
+// (desktop/laptop with a mouse or trackpad) — where hardware scanners are actually
+// used — and never on phones/tablets, where camera scanning is the workflow. Mobile
+// users can still tap the field to type manually; the keyboard just won't pop on its own.
+function detectFinePointer() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return true;
+  }
+  return window.matchMedia('(pointer: fine)').matches;
+}
+
 export default function SalesDispatchBarcodeScanPage() {
   const navigate = useNavigate();
   const { hasAnyPermission, hasPermission } = usePermission();
@@ -100,6 +114,9 @@ export default function SalesDispatchBarcodeScanPage() {
   const [partialError, setPartialError] = useState('');
   const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
   const manualInputRef = useRef<HTMLInputElement>(null);
+  // Computed once per device — auto-focus the barcode field only where a hardware
+  // scanner is used (fine pointer), so we never pop the soft keyboard on mobile.
+  const [autoFocusBarcode] = useState(detectFinePointer);
 
   const {
     data: entry,
@@ -145,12 +162,13 @@ export default function SalesDispatchBarcodeScanPage() {
   // box after another without the user clicking back into it. This re-focuses on
   // load and after every scan: the field is disabled while a scan saves
   // (isSaving), so when isSaving flips back to false and the field re-enables,
-  // focus returns to it automatically.
+  // focus returns to it automatically. Skipped on touch devices (autoFocusBarcode)
+  // so the soft keyboard never pops over the camera — see detectFinePointer.
   useEffect(() => {
-    if (entry && !isReadOnly && canEditDocking && !isSaving) {
+    if (autoFocusBarcode && entry && !isReadOnly && canEditDocking && !isSaving) {
       manualInputRef.current?.focus();
     }
-  }, [entry, isReadOnly, canEditDocking, isSaving]);
+  }, [autoFocusBarcode, entry, isReadOnly, canEditDocking, isSaving]);
 
   const expectedBoxes = getExpectedDispatchBoxes(entry);
   // Partial = at least one box scanned but fewer than expected. Such a load needs a
@@ -211,12 +229,12 @@ export default function SalesDispatchBarcodeScanPage() {
         } else {
           toast.success(source === 'camera' ? 'Camera scan added' : 'Box scan added');
         }
-        manualInputRef.current?.focus();
+        if (autoFocusBarcode) manualInputRef.current?.focus();
       } catch (scanError) {
         setError(getErrorMessage(scanError, 'Unable to save this box scan'));
       }
     },
-    [canEditDocking, entry, isReadOnly, refetchEntry, scanBox, scans],
+    [autoFocusBarcode, canEditDocking, entry, isReadOnly, refetchEntry, scanBox, scans],
   );
 
   const handleCameraScan = useCallback(
@@ -452,7 +470,7 @@ export default function SalesDispatchBarcodeScanPage() {
                     <Input
                       ref={manualInputRef}
                       id="sales-dispatch-box-barcode"
-                      autoFocus
+                      autoFocus={autoFocusBarcode}
                       value={manualBarcode}
                       disabled={isReadOnly || !canEditDocking || isSaving}
                       onChange={(event) => {
