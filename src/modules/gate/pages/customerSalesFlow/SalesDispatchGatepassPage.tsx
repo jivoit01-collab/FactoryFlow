@@ -28,6 +28,7 @@ import {
   useSalesDispatchByVehicleEntry,
   useSalesDispatchLock,
 } from '@/modules/gate/api';
+import { useDepartArrival } from '@/modules/gate/api/arrivals/arrivals.queries';
 import {
   GateStatusBadge,
   StepFooter,
@@ -124,6 +125,7 @@ export default function SalesDispatchGatepassPage() {
   const printGatepass = usePrintSalesDispatchGatepass();
   const commitPrint = useCommitSalesDispatchPrint();
   const markDispatched = useMarkSalesDispatchDispatched();
+  const departArrival = useDepartArrival();
   const printFrontendGatepass = useReactToPrint({
     contentRef: sapPrintRef,
     documentTitle: buildFrontendGatepassDocumentTitle(entryToPrint || entry),
@@ -154,12 +156,13 @@ export default function SalesDispatchGatepassPage() {
     previewGatepass.isPending ||
     printGatepass.isPending ||
     commitPrint.isPending ||
-    markDispatched.isPending;
+    markDispatched.isPending ||
+    departArrival.isPending;
   const readiness = entry?.gatepass_readiness;
   const action = useMemo(() => getNextAction(entry, isGateOutMode), [entry, isGateOutMode]);
-  // A multi-company truck must be dispatched collectively from its arrival (all
-  // companies at once), never one company here -- the backend rejects per-company
-  // dispatch for it. Steer the user to the Arrivals page instead.
+  // A multi-company truck dispatches as one unit: dispatching here dispatches every
+  // company's docking together (the backend does it atomically). Used only to label
+  // the action and confirm the whole-truck dispatch -- no separate page.
   const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1;
   const isGatepassPrintLocked = Boolean(dispatchLock?.is_locked);
   const canPrintGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.PRINT_GATEPASS);
@@ -251,11 +254,6 @@ export default function SalesDispatchGatepassPage() {
 
   const handleMarkDispatched = async () => {
     if (!entry) return;
-    if (isMultiCompanyArrival && entry.arrival) {
-      // One truck, one exit: send the user to the collective arrival dispatch.
-      navigate(`/gate/arrivals/${entry.arrival}/gatepass`);
-      return;
-    }
     if (!isGateOutMode) {
       setError('Dispatch can only be marked from the Gate module.');
       return;
@@ -267,11 +265,32 @@ export default function SalesDispatchGatepassPage() {
     }
 
     try {
+      // For a multi-company truck the backend dispatches every company's docking
+      // in one atomic step (one truck, one exit) -- in place, no separate page.
       await markDispatched.mutateAsync(entry.id);
-      toast.success('Entry marked as dispatched');
-      navigate(routes.dashboard);
+      toast.success(
+        isMultiCompanyArrival
+          ? 'All companies on this truck dispatched'
+          : 'Entry marked as dispatched',
+      );
+      // Arrival-backed trucks get an inline Depart step (the single physical exit);
+      // stay so the Depart button appears once every gate-in is retired.
+      if (!entry.arrival) {
+        navigate(routes.dashboard);
+      }
     } catch (dispatchError) {
       setError(getErrorMessage(dispatchError, 'Failed to mark entry as dispatched'));
+    }
+  };
+
+  const handleDepart = async () => {
+    if (!entry?.arrival) return;
+    try {
+      await departArrival.mutateAsync({ id: entry.arrival });
+      toast.success('Truck departed');
+      navigate(routes.dashboard);
+    } catch (departError) {
+      setError(getErrorMessage(departError, 'Failed to depart the truck'));
     }
   };
 
@@ -575,14 +594,10 @@ export default function SalesDispatchGatepassPage() {
                   {hasCompleteGateOutWeighment(entry) ? 'Edit Weighment' : 'Record Weighment'}
                 </Button>
               ) : null}
-              {isMultiCompanyArrival ? (
-                <Button
-                  type="button"
-                  onClick={() => navigate(`/gate/arrivals/${entry.arrival}/gatepass`)}
-                  disabled={isSaving}
-                >
+              {entry.arrival_can_depart ? (
+                <Button type="button" onClick={handleDepart} disabled={isSaving}>
                   <Send className="mr-2 h-4 w-4" />
-                  Dispatch from Arrivals
+                  Depart Truck
                 </Button>
               ) : (
                 <Button
@@ -591,7 +606,7 @@ export default function SalesDispatchGatepassPage() {
                   disabled={isSaving || action !== 'dispatch' || !canDispatchGatepass}
                 >
                   <Send className="mr-2 h-4 w-4" />
-                  Mark Dispatched
+                  {isMultiCompanyArrival ? 'Dispatch Truck (all companies)' : 'Mark Dispatched'}
                 </Button>
               )}
             </>

@@ -183,8 +183,10 @@ export interface SalesDispatchGateOut {
   arrival?: number | null;
   /** The truck's real in/out state (INSIDE / LOADING / DEPARTED), not the docking's. */
   arrival_status?: string | null;
-  /** >1 = a multi-company truck: dispatch collectively from the arrival, not here. */
+  /** >1 = a multi-company truck: dispatching one docking dispatches the whole truck. */
   arrival_company_count?: number;
+  /** true once every company on the truck is dispatched and it can make its single exit. */
+  arrival_can_depart?: boolean;
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;
