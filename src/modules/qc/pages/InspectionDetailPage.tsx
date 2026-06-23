@@ -20,6 +20,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { ApiError } from '@/core/api/types';
 import { usePermission } from '@/core/auth';
 import { RecordTimestamps, SearchableSelect } from '@/shared/components';
+import { useInspectionReportPrint } from '@/shared/components/print';
 import {
   Badge,
   Button,
@@ -229,18 +230,12 @@ export default function InspectionDetailPage() {
   const linkMaterialTypeSAPItem = useLinkMaterialTypeSAPItem();
   const { currentCompany } = usePermission();
 
-  useEffect(() => {
-    const documentId = inspection?.print_document_id?.trim();
-    if (!documentId) {
-      delete document.body.dataset.qcPrintDocumentId;
-      return undefined;
-    }
-
-    document.body.dataset.qcPrintDocumentId = documentId;
-    return () => {
-      delete document.body.dataset.qcPrintDocumentId;
-    };
-  }, [inspection?.print_document_id]);
+  // Print the QC inspection report through the shared print module — the exact
+  // same component and endpoint the GRPO screens use, with the print-settings
+  // modal for COA/COQ/QC attachments.
+  const { printQCReport, printingArrivalSlipId, printPortal } = useInspectionReportPrint({
+    onError: (message) => setApiErrors((prev) => ({ ...prev, general: message })),
+  });
 
   // Send-back state
   const [sendBackRemarks, setSendBackRemarks] = useState('');
@@ -1860,9 +1855,13 @@ export default function InspectionDetailPage() {
         </Button>
         <div className="flex gap-4">
           {inspection && (
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button
+              variant="outline"
+              onClick={() => arrivalSlipId != null && printQCReport(arrivalSlipId)}
+              disabled={printingArrivalSlipId != null}
+            >
               <Printer className="h-4 w-4 mr-2" />
-              Print
+              {printingArrivalSlipId != null ? 'Preparing...' : 'Print'}
             </Button>
           )}
           {canUpdate && (
@@ -1888,6 +1887,8 @@ export default function InspectionDetailPage() {
           )}
         </div>
       </div>
+
+      {printPortal}
     </div>
   );
 }

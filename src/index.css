@@ -382,27 +382,6 @@
     width: 111.11%; /* compensate for 0.9 scale: 100/0.9 */
   }
 
-  body[data-qc-print-document-id] main {
-    padding-bottom: 12mm !important;
-  }
-
-  body[data-qc-print-document-id]::after {
-    content: 'Document ID: ' attr(data-qc-print-document-id);
-    position: fixed;
-    right: 10mm;
-    bottom: 4mm;
-    left: 10mm;
-    z-index: 9999;
-    border-top: 1px solid black;
-    padding-top: 2mm;
-    background: white !important;
-    color: black !important;
-    font-size: 9px;
-    font-weight: 600;
-    line-height: 1.2;
-    text-align: right;
-  }
-
   /* Remove shadows and decorative borders */
   .border,
   [class*='shadow'] {

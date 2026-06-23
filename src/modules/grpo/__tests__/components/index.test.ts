@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+import { describe, expect,it } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // Tests — components/index.ts barrel re-exports
@@ -17,12 +18,12 @@ describe('GRPO Components Index (barrel re-exports)', () => {
     expect(content).toContain('./WarehouseSelect');
   });
 
-  it('re-exports the shared QC report print pieces', () => {
+  it('re-exports the shared inspection report print pieces', () => {
     expect(content).toContain('QCReportButton');
     expect(content).toContain('./QCReportButton');
-    expect(content).toContain('useQCReportPrint');
-    expect(content).toContain('./useQCReportPrint');
-    expect(content).toContain('GRPOInspectionReportPrintView');
-    expect(content).toContain('./QCInspectionReportPrint');
+    // Printing moved to the shared module; the legacy alias is preserved.
+    expect(content).toContain('useInspectionReportPrint as useQCReportPrint');
+    expect(content).toContain('InspectionReportPrintView');
+    expect(content).toContain('@/shared/components/print');
   });
 });

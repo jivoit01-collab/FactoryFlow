@@ -189,3 +189,28 @@ describe('InspectionDetailPage — Error Handling', () => {
     expect(content).toContain('useScrollToError(apiErrors)');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Printing — shared inspection report print module
+// ═══════════════════════════════════════════════════════════════
+
+describe('InspectionDetailPage — Printing', () => {
+  it('uses the shared inspection report print hook', () => {
+    const content = readSource();
+    expect(content).toContain("from '@/shared/components/print'");
+    expect(content).toContain('useInspectionReportPrint');
+    expect(content).toContain('printQCReport');
+    expect(content).toContain('{printPortal}');
+  });
+
+  it('prints via the shared hook, not a raw window.print()', () => {
+    const content = readSource();
+    expect(content).not.toContain('window.print()');
+    expect(content).toContain('printQCReport(arrivalSlipId)');
+  });
+
+  it('no longer stamps the legacy QC document-id print footer', () => {
+    const content = readSource();
+    expect(content).not.toContain('qcPrintDocumentId');
+  });
+});

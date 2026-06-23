@@ -1,16 +1,19 @@
 import { Printer } from 'lucide-react';
 
-import type { GRPOInspectionReport } from '../types';
+import type { GRPOInspectionReport } from '@/modules/grpo/types';
 
-// Print-only styles for the QC inspection report. The report markup is hidden on
-// screen and only revealed by the browser print dialog (which `useQCReportPrint`
-// triggers). Shared by the GRPO preview screen and the posting history detail.
-export function GRPOInspectionReportPrintStyles() {
+import type { InspectionReportPrintSettings } from './printSettings';
+
+// Print-only styles for the inspection report. The report markup is hidden on
+// screen and only revealed by the browser print dialog (which
+// `useInspectionReportPrint` triggers). Shared by the GRPO preview screen, the
+// GRPO posting history detail, and the QC inspection detail page.
+export function InspectionReportPrintStyles() {
   return (
     <style>
       {`
         @media screen {
-          .grpo-inspection-report-print {
+          .inspection-report-print {
             display: none;
           }
         }
@@ -28,11 +31,11 @@ export function GRPOInspectionReportPrintStyles() {
             overflow: visible !important;
           }
 
-          body.grpo-inspection-report-printing #root {
+          body.inspection-report-printing #root {
             display: none !important;
           }
 
-          .grpo-inspection-report-print {
+          .inspection-report-print {
             display: block !important;
             position: static !important;
             width: 100%;
@@ -44,11 +47,11 @@ export function GRPOInspectionReportPrintStyles() {
             line-height: 1.45;
           }
 
-          .grpo-inspection-report-page {
+          .inspection-report-page {
             break-after: auto;
           }
 
-          .grpo-inspection-report-card {
+          .inspection-report-card {
             border: 1px solid #e5e7eb;
             border-radius: 4px;
             padding: 14px;
@@ -56,26 +59,26 @@ export function GRPOInspectionReportPrintStyles() {
             break-inside: avoid;
           }
 
-          .grpo-inspection-report-grid {
+          .inspection-report-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 14px 18px;
           }
 
-          .grpo-inspection-report-table {
+          .inspection-report-table {
             width: 100%;
             border-collapse: collapse;
           }
 
-          .grpo-inspection-report-table th,
-          .grpo-inspection-report-table td {
+          .inspection-report-table th,
+          .inspection-report-table td {
             border-bottom: 1px solid #e5e7eb;
             padding: 7px 8px;
             text-align: left;
             vertical-align: top;
           }
 
-          .grpo-inspection-report-table th {
+          .inspection-report-table th {
             background: #f9fafb !important;
             font-weight: 700;
           }
@@ -85,7 +88,13 @@ export function GRPOInspectionReportPrintStyles() {
   );
 }
 
-export function GRPOInspectionReportPrintView({ report }: { report: GRPOInspectionReport }) {
+export function InspectionReportPrintView({
+  report,
+  settings,
+}: {
+  report: GRPOInspectionReport;
+  settings: InspectionReportPrintSettings;
+}) {
   const infoFields: Array<[string, string | number | null | undefined]> = [
     ['Description of Material', report.description_of_material],
     ['SAP Code', report.sap_code],
@@ -106,10 +115,11 @@ export function GRPOInspectionReportPrintView({ report }: { report: GRPOInspecti
   const certificateOfQuantity = report.attachments.filter(
     (attachment) => attachment.attachment_type === 'CERTIFICATE_OF_QUANTITY',
   );
+  const qcAttachments = report.qc_attachments ?? [];
 
   return (
-    <div className="grpo-inspection-report-print" aria-hidden="true">
-      <div className="grpo-inspection-report-page">
+    <div className="inspection-report-print" aria-hidden="true">
+      <div className="inspection-report-page">
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
           <span>{formatPrintDateTime(new Date().toISOString())}</span>
           <span>JI</span>
@@ -127,9 +137,9 @@ export function GRPOInspectionReportPrintView({ report }: { report: GRPOInspecti
           </div>
         </div>
 
-        <div className="grpo-inspection-report-card">
+        <div className="inspection-report-card">
           <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>Inspection Information</h2>
-          <div className="grpo-inspection-report-grid">
+          <div className="inspection-report-grid">
             {infoFields.map(([label, value]) => (
               <div key={label}>
                 <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>{label}</div>
@@ -145,9 +155,9 @@ export function GRPOInspectionReportPrintView({ report }: { report: GRPOInspecti
           )}
         </div>
 
-        <div className="grpo-inspection-report-card">
+        <div className="inspection-report-card">
           <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>QC Parameters</h2>
-          <table className="grpo-inspection-report-table">
+          <table className="inspection-report-table">
             <thead>
               <tr>
                 <th>Parameter</th>
@@ -185,17 +195,36 @@ export function GRPOInspectionReportPrintView({ report }: { report: GRPOInspecti
           </table>
         </div>
 
-        {certificateOfAnalysis.length > 0 && (
-          <GRPOInspectionReportAttachmentSection
+        {settings.printCOA && certificateOfAnalysis.length > 0 && (
+          <InspectionReportAttachmentSection
             title="Certificate of Analysis (COA)"
-            attachments={certificateOfAnalysis}
+            items={certificateOfAnalysis.map((a) => ({
+              id: a.id,
+              file: a.file,
+              label: 'Certificate of Analysis (COA)',
+            }))}
           />
         )}
 
-        {certificateOfQuantity.length > 0 && (
-          <GRPOInspectionReportAttachmentSection
+        {settings.printCOQ && certificateOfQuantity.length > 0 && (
+          <InspectionReportAttachmentSection
             title="Certificate of Quantity (COQ)"
-            attachments={certificateOfQuantity}
+            items={certificateOfQuantity.map((a) => ({
+              id: a.id,
+              file: a.file,
+              label: 'Certificate of Quantity (COQ)',
+            }))}
+          />
+        )}
+
+        {settings.printQCAttachments && qcAttachments.length > 0 && (
+          <InspectionReportAttachmentSection
+            title="QC Attachments"
+            items={qcAttachments.map((a) => ({
+              id: a.id,
+              file: a.file,
+              label: a.original_name || 'Attached file',
+            }))}
           />
         )}
 
@@ -203,9 +232,9 @@ export function GRPOInspectionReportPrintView({ report }: { report: GRPOInspecti
           report.qam_name ||
           report.qa_chemist_remarks ||
           report.qam_remarks) && (
-          <div className="grpo-inspection-report-card">
+          <div className="inspection-report-card">
             <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>Approval Details</h2>
-            <div className="grpo-inspection-report-grid">
+            <div className="inspection-report-grid">
               <div>
                 <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Chemist</div>
                 <div>{formatPrintValue(report.qa_chemist_name)}</div>
@@ -244,29 +273,29 @@ export function GRPOInspectionReportPrintView({ report }: { report: GRPOInspecti
   );
 }
 
-function GRPOInspectionReportAttachmentSection({
+function InspectionReportAttachmentSection({
   title,
-  attachments,
+  items,
 }: {
   title: string;
-  attachments: GRPOInspectionReport['attachments'];
+  items: Array<{ id: number; file: string; label: string }>;
 }) {
   return (
-    <div className="grpo-inspection-report-card">
+    <div className="inspection-report-card">
       <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>{title}</h2>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {attachments.map((attachment) => (
-          <div key={attachment.id} style={{ border: '1px solid #e5e7eb', padding: 8 }}>
-            {isPrintableImage(attachment.file) ? (
+        {items.map((item) => (
+          <div key={item.id} style={{ border: '1px solid #e5e7eb', padding: 8 }}>
+            {isPrintableImage(item.file) ? (
               <img
-                src={attachment.file}
-                alt={title}
+                src={item.file}
+                alt={item.label}
                 style={{ display: 'block', width: '100%', maxHeight: 520, objectFit: 'contain' }}
               />
             ) : (
               <div style={{ minHeight: 80 }}>
-                <div style={{ fontWeight: 700 }}>Attached file</div>
-                <div style={{ marginTop: 6, wordBreak: 'break-all' }}>{attachment.file}</div>
+                <div style={{ fontWeight: 700 }}>{item.label}</div>
+                <div style={{ marginTop: 6, wordBreak: 'break-all' }}>{item.file}</div>
               </div>
             )}
           </div>

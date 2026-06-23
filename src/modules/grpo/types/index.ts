@@ -13,6 +13,7 @@ export type {
   GRPOInspectionReport,
   GRPOInspectionReportAttachment,
   GRPOInspectionReportParameter,
+  GRPOInspectionReportQcAttachment,
   GRPOStatus,
   PendingGRPOEntry,
   PendingGRPOEntryWithSuppliers,

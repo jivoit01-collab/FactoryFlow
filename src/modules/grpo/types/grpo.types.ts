@@ -69,6 +69,17 @@ export interface GRPOInspectionReportAttachment {
   uploaded_at: string;
 }
 
+// General inspection-level attachments (lab photos, supporting docs) — distinct
+// from the COA/COQ arrival-slip attachments above. Shape mirrors the backend
+// InspectionAttachmentSerializer (qc_attachments).
+export interface GRPOInspectionReportQcAttachment {
+  id: number;
+  file: string;
+  original_name: string;
+  uploaded_by_name: string | null;
+  uploaded_at: string;
+}
+
 export interface GRPOInspectionReport {
   id: number;
   arrival_slip_id: number;
@@ -108,6 +119,7 @@ export interface GRPOInspectionReport {
   qam_remarks: string;
   parameter_results: GRPOInspectionReportParameter[];
   attachments: GRPOInspectionReportAttachment[];
+  qc_attachments: GRPOInspectionReportQcAttachment[];
   created_at: string;
   updated_at: string;
 }
