@@ -22,6 +22,7 @@ export const DISPATCH_PLANS_QUERY_KEYS = {
         limit: filters.limit,
         exclude_jivo_mart_transfer: filters.exclude_jivo_mart_transfer,
         by_dispatch_date: filters.by_dispatch_date,
+        all_companies: filters.all_companies,
       },
     ] as const,
 };

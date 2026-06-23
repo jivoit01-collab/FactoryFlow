@@ -75,6 +75,9 @@ export default function EmptyVehicleInPage() {
       // invoice date — a bill invoiced earlier but scheduled to leave in this window
       // must show.
       by_dispatch_date: true,
+      // The gate is one place for all the user's companies: show expected vehicles
+      // across every company (the company selector is a decorator here too).
+      all_companies: true,
     }),
     [dateRange.from, dateRange.to],
   );

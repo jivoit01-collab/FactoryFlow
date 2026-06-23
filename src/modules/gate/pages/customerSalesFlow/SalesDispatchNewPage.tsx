@@ -276,6 +276,9 @@ export default function SalesDispatchNewPage() {
       document_type: draft.documentType,
       search: submittedSearch,
       limit: 50,
+      // Manual SAP search spans every company the user belongs to (decorator);
+      // a booked invoice still docks under its own company via its plan.
+      all_companies: 1,
     },
     { enabled: !isPendingBookingMode && !existingVehicleEntryId },
   );

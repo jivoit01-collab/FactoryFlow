@@ -415,6 +415,8 @@ export interface SalesDispatchDocumentParams {
   branch?: string;
   booking_status?: string;
   limit?: number;
+  /** 1 = search SAP invoices across every company the user belongs to (cross-company). */
+  all_companies?: number;
 }
 
 export interface SalesDispatchListParams {

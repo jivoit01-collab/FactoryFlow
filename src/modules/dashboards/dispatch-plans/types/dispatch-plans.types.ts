@@ -12,6 +12,8 @@ export interface DispatchPlanFilters {
   exclude_jivo_mart_transfer?: boolean;
   /** Window on the plan's scheduled dispatch_date instead of the SAP invoice date. */
   by_dispatch_date?: boolean;
+  /** 1 = aggregate SAP bills across every company the user belongs to (cross-company). */
+  all_companies?: boolean;
 }
 
 export interface DispatchPlan {
