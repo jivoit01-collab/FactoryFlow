@@ -187,6 +187,9 @@ export interface SalesDispatchGateOut {
   arrival_company_count?: number;
   /** true once every company on the truck is dispatched and it can make its single exit. */
   arrival_can_depart?: boolean;
+  /** Gatepass-print lock of THIS docking's company (not the active selector). */
+  gatepass_print_locked?: boolean;
+  gatepass_lock_reason?: string;
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;

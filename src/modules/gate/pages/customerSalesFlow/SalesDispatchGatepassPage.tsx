@@ -26,7 +26,6 @@ import {
   usePreviewSalesDispatchGatepass,
   usePrintSalesDispatchGatepass,
   useSalesDispatchByVehicleEntry,
-  useSalesDispatchLock,
 } from '@/modules/gate/api';
 import { useDepartArrival } from '@/modules/gate/api/arrivals/arrivals.queries';
 import {
@@ -120,7 +119,6 @@ export default function SalesDispatchGatepassPage() {
     error: entryError,
     refetch,
   } = useSalesDispatchByVehicleEntry(entryIdNumber);
-  const { data: dispatchLock } = useSalesDispatchLock();
   const previewGatepass = usePreviewSalesDispatchGatepass();
   const printGatepass = usePrintSalesDispatchGatepass();
   const commitPrint = useCommitSalesDispatchPrint();
@@ -164,7 +162,9 @@ export default function SalesDispatchGatepassPage() {
   // company's docking together (the backend does it atomically). Used only to label
   // the action and confirm the whole-truck dispatch -- no separate page.
   const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1;
-  const isGatepassPrintLocked = Boolean(dispatchLock?.is_locked);
+  // The lock that matters is THIS docking's company's, not the active selector's
+  // (the backend enforces the record's lock); resolved from the entry, cross-company.
+  const isGatepassPrintLocked = Boolean(entry?.gatepass_print_locked);
   const canPrintGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.PRINT_GATEPASS);
   const canCommitGatepassPrint = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.COMMIT_PRINT);
   const canDispatchGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.DISPATCH);
@@ -196,7 +196,7 @@ export default function SalesDispatchGatepassPage() {
     if (!entry) return;
 
     if (isGatepassPrintLocked) {
-      setError(buildLockError(dispatchLock?.reason));
+      setError(buildLockError(entry?.gatepass_lock_reason));
       return;
     }
 
@@ -234,7 +234,7 @@ export default function SalesDispatchGatepassPage() {
     if (!entry) return;
 
     if (isGatepassPrintLocked) {
-      setError(buildLockError(dispatchLock?.reason));
+      setError(buildLockError(entry?.gatepass_lock_reason));
       return;
     }
 
@@ -376,7 +376,7 @@ export default function SalesDispatchGatepassPage() {
             <div>
               <p className="font-medium">Gate pass printing is locked</p>
               <p className="mt-1">
-                {dispatchLock?.reason || 'Gatepass print and commit are temporarily held.'}
+                {entry?.gatepass_lock_reason || 'Gatepass print and commit are temporarily held.'}
               </p>
             </div>
           </div>
