@@ -357,6 +357,9 @@ function SalesDispatchReprintSearchPage() {
     shouldSearch
       ? {
           search: trimmedSearch,
+          // Reprint searches across every company the user belongs to (the
+          // company selector is a decorator); reprint-by-id is record-resolved.
+          all_companies: 1,
         }
       : undefined,
     { enabled: shouldSearch },
