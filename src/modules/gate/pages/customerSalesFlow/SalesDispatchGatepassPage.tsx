@@ -46,6 +46,7 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
+import { ArrivalCombinedGatepassPanel } from './ArrivalCombinedGatepassPanel';
 import { ReviewModeBanner } from './ReviewModeBanner';
 import {
   DOCKING_TOTAL_STEPS,
@@ -551,8 +552,16 @@ export default function SalesDispatchGatepassPage() {
           </Card>
         </div>
 
+        {isMultiCompanyArrival && entry.arrival ? (
+          // Multi-company truck: print ONE combined gatepass for the whole truck,
+          // inline -- the per-company print/commit below is hidden in favour of this.
+          <div className="print-hide">
+            <ArrivalCombinedGatepassPanel arrivalId={entry.arrival} />
+          </div>
+        ) : null}
+
         <div className="print-hide flex flex-wrap justify-end gap-3">
-          {!isGateOutMode && (
+          {!isGateOutMode && !isMultiCompanyArrival && (
             <>
               <Button
                 type="button"
