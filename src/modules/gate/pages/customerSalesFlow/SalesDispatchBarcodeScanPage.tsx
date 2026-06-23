@@ -141,6 +141,17 @@ export default function SalesDispatchBarcodeScanPage() {
   const isPartialPending = partialStatus === 'PENDING';
   const isSaving = scanBox.isPending || removeScan.isPending;
 
+  // Keep the barcode field focused so a connected hardware scanner can fire one
+  // box after another without the user clicking back into it. This re-focuses on
+  // load and after every scan: the field is disabled while a scan saves
+  // (isSaving), so when isSaving flips back to false and the field re-enables,
+  // focus returns to it automatically.
+  useEffect(() => {
+    if (entry && !isReadOnly && canEditDocking && !isSaving) {
+      manualInputRef.current?.focus();
+    }
+  }, [entry, isReadOnly, canEditDocking, isSaving]);
+
   const expectedBoxes = getExpectedDispatchBoxes(entry);
   // Partial = at least one box scanned but fewer than expected. Such a load needs a
   // partial-dispatch approval (the zero-scan case still uses the scan-skip flow).
@@ -441,6 +452,7 @@ export default function SalesDispatchBarcodeScanPage() {
                     <Input
                       ref={manualInputRef}
                       id="sales-dispatch-box-barcode"
+                      autoFocus
                       value={manualBarcode}
                       disabled={isReadOnly || !canEditDocking || isSaving}
                       onChange={(event) => {
