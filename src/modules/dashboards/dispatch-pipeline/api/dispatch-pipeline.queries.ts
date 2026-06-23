@@ -21,6 +21,8 @@ export const DISPATCH_PIPELINE_QUERY_KEYS = {
         date_to: filters.date_to,
         search: filters.search,
         stage: filters.stage,
+        stages: filters.stages,
+        all_companies: filters.all_companies,
       },
     ] as const,
 };

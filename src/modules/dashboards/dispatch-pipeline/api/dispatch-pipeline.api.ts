@@ -13,6 +13,7 @@ function buildParams(filters: DispatchPipelineFilters): Record<string, string> {
   if (filters.search) params.search = filters.search;
   if (filters.stage) params.stage = filters.stage;
   if (filters.stages?.length) params.stages = filters.stages.join(',');
+  if (filters.all_companies) params.all_companies = '1';
   return params;
 }
 

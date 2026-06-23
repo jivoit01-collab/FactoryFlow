@@ -17,6 +17,8 @@ export interface DispatchPipelineFilters {
   stage?: PipelineStage | '';
   /** Multi-stage filter for the per-module "expected vehicles" lists. */
   stages?: PipelineStage[];
+  /** 1 = aggregate across every company the user belongs to (cross-company board). */
+  all_companies?: boolean;
 }
 
 export interface PipelineStatusCounts {

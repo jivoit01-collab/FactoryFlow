@@ -351,8 +351,13 @@ export default function SalesDispatchGatepassPage() {
     );
   }
 
+  // Print under the DOCKING's own company (cross-company), not the active selector,
+  // so a sibling-company gatepass never prints under the wrong company name.
   const companyName =
-    currentCompany?.company_name || entry.sap_branch_name || String(entry.company);
+    entry.company_name ||
+    entry.sap_branch_name ||
+    currentCompany?.company_name ||
+    String(entry.company);
   const gatepassDocuments = getGatepassDocuments(entry);
   const gatepassReferenceFields = buildGatepassReferenceFields(entry, draft);
   const gatepassSummaryFields = buildGatepassSummaryFields(entry);

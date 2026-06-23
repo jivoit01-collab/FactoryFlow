@@ -100,7 +100,10 @@ export default function SalesDispatchReprintPage() {
   });
 
   const companyName = entry
-    ? currentCompany?.company_name || entry.sap_branch_name || String(entry.company)
+    ? entry.company_name ||
+      entry.sap_branch_name ||
+      currentCompany?.company_name ||
+      String(entry.company)
     : currentCompany?.company_name || 'Jivo Oil';
   const currentPrintLog = useMemo(
     () =>
@@ -382,7 +385,10 @@ function SalesDispatchReprintSearchPage() {
     [entries],
   );
   const companyName = selectedEntry
-    ? currentCompany?.company_name || selectedEntry.sap_branch_name || String(selectedEntry.company)
+    ? selectedEntry.company_name ||
+      selectedEntry.sap_branch_name ||
+      currentCompany?.company_name ||
+      String(selectedEntry.company)
     : currentCompany?.company_name || 'Jivo Oil';
   const currentPrintLog = useMemo(
     () =>

@@ -27,7 +27,14 @@ export function ExpectedVehiclesSection({
   dateTo: string;
 }) {
   const stages = isGateOutMode ? OUT_UPSTREAM : DOCK_UPSTREAM;
-  const { data } = useDispatchPipelineBoard({ date_from: dateFrom, date_to: dateTo, stages });
+  // This section sits on the cross-company docking / dispatch-out board, so it
+  // aggregates expected vehicles across every company the user belongs to.
+  const { data } = useDispatchPipelineBoard({
+    date_from: dateFrom,
+    date_to: dateTo,
+    stages,
+    all_companies: true,
+  });
   const vehicles = useMemo(() => buildExpectedVehicles(data?.cards ?? [], []), [data?.cards]);
 
   if (!vehicles.length) return null;
