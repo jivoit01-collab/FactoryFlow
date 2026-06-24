@@ -55,6 +55,21 @@ function compactText(value: string | null | undefined, fallback = '-') {
   return value?.trim() || fallback;
 }
 
+function formatLitres(value: number | null | undefined): string {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return '-';
+  return `${num.toLocaleString('en-IN', { maximumFractionDigits: 2 })} L`;
+}
+
+function locationText(bill: DispatchBill): string {
+  return (
+    [bill.city, bill.state]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join(', ') || '-'
+  );
+}
+
 export function DispatchPlanEditSheet({
   bill,
   open,
@@ -114,6 +129,8 @@ export function DispatchPlanEditSheet({
               label="Transporter"
               value={bill.plan.transporter_name || bill.sap_transporter_name}
             />
+            <InfoItem label="Location" value={locationText(bill)} />
+            <InfoItem label="Total Litres" value={formatLitres(bill.total_litres)} />
           </div>
         )}
 
@@ -147,6 +164,9 @@ export function DispatchPlanEditSheet({
               value={form.remarks}
               onChange={(event) => updateField('remarks', event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              If the Total Litres above looks wrong, note the correct litres here.
+            </p>
           </div>
 
           <SheetFooter className="mt-auto border-t pt-4">

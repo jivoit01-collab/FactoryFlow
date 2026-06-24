@@ -316,11 +316,21 @@ export function DispatchLinkingSheet({
           <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4 text-sm sm:grid-cols-3">
             <InfoItem label="Dispatch Date" value={bill.plan.dispatch_date} />
             <InfoItem
-              label="Ship To"
+              label="Location"
               value={
                 isBatchLink
                   ? 'Multiple invoices'
                   : `${compactText(bill.city)} ${compactText(bill.state)}`
+              }
+            />
+            <InfoItem
+              label="Total Litres"
+              value={
+                isBatchLink
+                  ? `${formatNumber(selectedTotals.litres, 2)} L`
+                  : bill.total_litres > 0
+                    ? `${formatNumber(bill.total_litres, 2)} L`
+                    : '-'
               }
             />
             <InfoItem
@@ -354,6 +364,7 @@ export function DispatchLinkingSheet({
                     <th className="px-2 py-1 text-left font-medium">Customer</th>
                     <th className="px-2 py-1 text-left font-medium">State</th>
                     <th className="px-2 py-1 text-left font-medium">Delivery Point</th>
+                    <th className="px-2 py-1 text-right font-medium">Litres</th>
                     <th className="px-2 py-1 text-right font-medium">Weight</th>
                     <th className="px-2 py-1 text-right font-medium">Amount</th>
                   </tr>
@@ -365,6 +376,11 @@ export function DispatchLinkingSheet({
                       <td className="px-2 py-1">{selected.card_name}</td>
                       <td className="px-2 py-1 whitespace-nowrap">{compactText(selected.state)}</td>
                       <td className="px-2 py-1 whitespace-nowrap">{compactText(selected.city)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">
+                        {selected.total_litres > 0
+                          ? `${formatNumber(selected.total_litres, 2)} L`
+                          : '-'}
+                      </td>
                       <td className="px-2 py-1 text-right tabular-nums">
                         {formatNumber(selected.total_weight, 3)} kg
                       </td>
@@ -449,6 +465,9 @@ export function DispatchLinkingSheet({
               value={form.remarks}
               onChange={(event) => updateField('remarks', event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              If the Total Litres above looks wrong, note the correct litres here.
+            </p>
           </div>
 
           <SheetFooter className="mt-auto flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">

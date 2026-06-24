@@ -70,13 +70,14 @@ export function DispatchLinkingTable({
   return (
     <div className="overflow-x-auto rounded-md border">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1180px] text-sm">
+        <table className="w-full min-w-[1380px] text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
               <th className="w-10 px-4 py-3 text-left font-medium text-muted-foreground"></th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dispatch</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bill</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Customer</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Location</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Load</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">SAP Hints</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -86,6 +87,7 @@ export function DispatchLinkingTable({
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Vehicle Status
               </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Remarks</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Action</th>
             </tr>
           </thead>
@@ -131,11 +133,16 @@ export function DispatchLinkingTable({
                       {compactText(bill.card_name)}
                     </div>
                     <div className="font-mono text-xs text-muted-foreground">{bill.card_code}</div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="max-w-[200px] truncate" title={bill.ship_to_address}>
+                      {compactText(bill.city)} {compactText(bill.state)}
+                    </div>
                     <div
-                      className="max-w-[230px] truncate text-xs text-muted-foreground"
+                      className="max-w-[200px] truncate text-xs text-muted-foreground"
                       title={bill.ship_to_address}
                     >
-                      {compactText(bill.city)} {compactText(bill.state)}
+                      {compactText(bill.ship_to_address)}
                     </div>
                   </td>
                   <td className="px-4 py-3 align-top tabular-nums">
@@ -174,6 +181,14 @@ export function DispatchLinkingTable({
                   </td>
                   <td className="px-4 py-3 align-top">
                     <PipelineStatusBadge status={bill.plan.pipeline_status} />
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div
+                      className="max-w-[220px] truncate text-xs text-muted-foreground"
+                      title={bill.plan.remarks ?? undefined}
+                    >
+                      {compactText(bill.plan.remarks)}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right align-top">
                     <Button
