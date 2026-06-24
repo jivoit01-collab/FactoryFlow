@@ -480,6 +480,34 @@ export interface SalesDispatchBoxScanRequest {
   barcode_raw: string;
 }
 
+/** Submit a batch of locally-scanned barcodes in one request. */
+export interface SalesDispatchBoxScanBatchRequest {
+  barcodes: string[];
+}
+
+export type SalesDispatchBoxScanFailureReason =
+  | 'EMPTY'
+  | 'UNKNOWN_BARCODE'
+  | 'NOT_A_BOX'
+  | 'INVALID_STATUS'
+  | 'DUPLICATE';
+
+/** A barcode the backend could not save, with the reason it was rejected. */
+export interface SalesDispatchBoxScanFailure {
+  barcode_raw: string;
+  reason: SalesDispatchBoxScanFailureReason;
+  detail: string;
+}
+
+/** Partial-success result of a batch box-scan submit. */
+export interface SalesDispatchBoxScanBatchResult {
+  saved: SalesDispatchBoxScan[];
+  saved_count: number;
+  failed: SalesDispatchBoxScanFailure[];
+  failed_count: number;
+  total: number;
+}
+
 /** A box already scanned in the old barcode-module dispatch flow for this SAP bill. */
 export interface BarcodeDispatchScan {
   id: number;
@@ -706,6 +734,17 @@ export const salesDispatchApi = {
   async scanBox(id: number, data: SalesDispatchBoxScanRequest): Promise<SalesDispatchBoxScan> {
     const response = await apiClient.post<SalesDispatchBoxScan>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BOX_SCANS(id),
+      data,
+    );
+    return response.data;
+  },
+
+  async batchScanBoxes(
+    id: number,
+    data: SalesDispatchBoxScanBatchRequest,
+  ): Promise<SalesDispatchBoxScanBatchResult> {
+    const response = await apiClient.post<SalesDispatchBoxScanBatchResult>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BOX_SCANS_BATCH(id),
       data,
     );
     return response.data;

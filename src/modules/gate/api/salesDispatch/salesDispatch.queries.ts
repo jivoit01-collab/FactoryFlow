@@ -4,6 +4,7 @@ import {
   type SalesDispatchAdditionalWeightsRequest,
   salesDispatchApi,
   type SalesDispatchAttachmentUploadRequest,
+  type SalesDispatchBoxScanBatchRequest,
   type SalesDispatchBoxScanRequest,
   type SalesDispatchChallanWeightRequest,
   type SalesDispatchCreateRequest,
@@ -216,6 +217,16 @@ export function useScanSalesDispatchBox() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: SalesDispatchBoxScanRequest }) =>
       salesDispatchApi.scanBox(id, data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
+export function useBatchScanSalesDispatchBoxes() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SalesDispatchBoxScanBatchRequest }) =>
+      salesDispatchApi.batchScanBoxes(id, data),
     onSuccess: () => invalidateSalesDispatch(queryClient),
   });
 }
