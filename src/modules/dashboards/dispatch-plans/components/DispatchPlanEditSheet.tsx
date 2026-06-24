@@ -27,12 +27,14 @@ interface DispatchPlanEditSheetProps {
 interface FormState {
   dispatch_date: string;
   priority: string;
+  location: string;
   remarks: string;
 }
 
 const EMPTY_FORM: FormState = {
   dispatch_date: '',
   priority: '',
+  location: '',
   remarks: '',
 };
 
@@ -42,6 +44,7 @@ function formFromBill(bill: DispatchBill | null): FormState {
   return {
     dispatch_date: bill.plan.dispatch_date ?? '',
     priority: bill.plan.priority ?? '',
+    location: bill.plan.location ?? '',
     remarks: bill.plan.remarks ?? '',
   };
 }
@@ -97,6 +100,7 @@ export function DispatchPlanEditSheet({
       sap_invoice_doc_num: bill.doc_num,
       dispatch_date: stringOrNull(form.dispatch_date),
       priority: form.priority.trim(),
+      location: form.location.trim(),
       remarks: form.remarks.trim(),
     });
   }
@@ -129,7 +133,7 @@ export function DispatchPlanEditSheet({
               label="Transporter"
               value={bill.plan.transporter_name || bill.sap_transporter_name}
             />
-            <InfoItem label="Location" value={locationText(bill)} />
+            <InfoItem label="SAP Location" value={locationText(bill)} />
             <InfoItem label="Total Litres" value={formatLitres(bill.total_litres)} />
           </div>
         )}
@@ -154,6 +158,19 @@ export function DispatchPlanEditSheet({
                 onChange={(event) => updateField('priority', event.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="dispatch-location">Location</Label>
+            <Input
+              id="dispatch-location"
+              value={form.location}
+              onChange={(event) => updateField('location', event.target.value)}
+              placeholder="Delivery location"
+            />
+            <p className="text-xs text-muted-foreground">
+              Planning-entered location, shown alongside the read-only SAP location.
+            </p>
           </div>
 
           <div className="space-y-1.5">

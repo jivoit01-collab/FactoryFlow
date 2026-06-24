@@ -316,12 +316,16 @@ export function DispatchLinkingSheet({
           <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4 text-sm sm:grid-cols-3">
             <InfoItem label="Dispatch Date" value={bill.plan.dispatch_date} />
             <InfoItem
-              label="Location"
+              label="SAP Location"
               value={
                 isBatchLink
                   ? 'Multiple invoices'
                   : `${compactText(bill.city)} ${compactText(bill.state)}`
               }
+            />
+            <InfoItem
+              label="Location"
+              value={isBatchLink ? 'Multiple invoices' : compactText(bill.plan.location)}
             />
             <InfoItem
               label="Total Litres"

@@ -70,13 +70,16 @@ export function DispatchLinkingTable({
   return (
     <div className="overflow-x-auto rounded-md border">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1380px] text-sm">
+        <table className="w-full min-w-[1500px] text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
               <th className="w-10 px-4 py-3 text-left font-medium text-muted-foreground"></th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dispatch</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bill</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Customer</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                SAP Location
+              </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Location</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Load</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">SAP Hints</th>
@@ -143,6 +146,14 @@ export function DispatchLinkingTable({
                       title={bill.ship_to_address}
                     >
                       {compactText(bill.ship_to_address)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div
+                      className="max-w-[200px] truncate"
+                      title={bill.plan.location ?? undefined}
+                    >
+                      {compactText(bill.plan.location)}
                     </div>
                   </td>
                   <td className="px-4 py-3 align-top tabular-nums">

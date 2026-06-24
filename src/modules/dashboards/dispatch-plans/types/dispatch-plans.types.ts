@@ -25,6 +25,8 @@ export interface DispatchPlan {
   invoice_weight: string | null;
   invoice_amount: string | null;
   place_of_supply: string;
+  /** Free-text delivery location filled by the dispatch-planning team. */
+  location: string;
   product_variety: string;
   total_litres: string | null;
   effective_month: string | null;
@@ -129,6 +131,7 @@ export interface DispatchPlanUpdatePayload {
   invoice_weight?: string | null;
   invoice_amount?: string | null;
   place_of_supply?: string;
+  location?: string;
   product_variety?: string;
   total_litres?: string | null;
   effective_month?: string | null;
