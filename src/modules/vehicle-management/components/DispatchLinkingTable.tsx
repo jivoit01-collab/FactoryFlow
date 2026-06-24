@@ -74,6 +74,7 @@ export function DispatchLinkingTable({
           <thead className="border-b bg-muted/40">
             <tr>
               <th className="w-10 px-4 py-3 text-left font-medium text-muted-foreground"></th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Action</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dispatch</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bill</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Customer</th>
@@ -81,8 +82,6 @@ export function DispatchLinkingTable({
                 SAP Location
               </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Location</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Load</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">SAP Hints</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Linked Vehicle
               </th>
@@ -90,8 +89,9 @@ export function DispatchLinkingTable({
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Vehicle Status
               </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Load</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">SAP Hints</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Remarks</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -115,6 +115,33 @@ export function DispatchLinkingTable({
                       aria-label={`Select invoice ${bill.doc_num}`}
                       onCheckedChange={() => onToggleSelection(bill)}
                     />
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <Button
+                      type="button"
+                      variant={bill.plan.vehicle_id ? 'outline' : 'default'}
+                      size="sm"
+                      disabled={!canEdit || linkLocked}
+                      title={
+                        linkLocked
+                          ? 'Empty vehicle gate-in is complete. To re-plan, complete an empty-vehicle-out for this vehicle first.'
+                          : undefined
+                      }
+                      onClick={() => onLink(bill)}
+                    >
+                      {linkLocked ? (
+                        <Lock className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Link2 className="mr-2 h-4 w-4" />
+                      )}
+                      {linkLocked
+                        ? 'Locked'
+                        : selectedDocEntries.size > 1 && selected
+                          ? 'Link Selected'
+                          : bill.plan.vehicle_id
+                            ? 'Edit Link'
+                            : 'Link'}
+                    </Button>
                   </td>
                   <td className="px-4 py-3 align-top">
                     <div className="font-medium">{compactText(bill.plan.dispatch_date)}</div>
@@ -156,6 +183,18 @@ export function DispatchLinkingTable({
                       {compactText(bill.plan.location)}
                     </div>
                   </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="font-medium">Vehicle {compactText(bill.plan.vehicle_no)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Bilty {compactText(bill.plan.bilty_no)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <StatusBadge status={bill.plan.booking_status} />
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <PipelineStatusBadge status={bill.plan.pipeline_status} />
+                  </td>
                   <td className="px-4 py-3 align-top tabular-nums">
                     <div>{formatNumber(bill.total_litres)} L</div>
                     <div className="text-xs text-muted-foreground">
@@ -182,51 +221,12 @@ export function DispatchLinkingTable({
                     </div>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <div className="font-medium">Vehicle {compactText(bill.plan.vehicle_no)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Bilty {compactText(bill.plan.bilty_no)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <StatusBadge status={bill.plan.booking_status} />
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <PipelineStatusBadge status={bill.plan.pipeline_status} />
-                  </td>
-                  <td className="px-4 py-3 align-top">
                     <div
                       className="max-w-[220px] truncate text-xs text-muted-foreground"
                       title={bill.plan.remarks ?? undefined}
                     >
                       {compactText(bill.plan.remarks)}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-right align-top">
-                    <Button
-                      type="button"
-                      variant={bill.plan.vehicle_id ? 'outline' : 'default'}
-                      size="sm"
-                      disabled={!canEdit || linkLocked}
-                      title={
-                        linkLocked
-                          ? 'Empty vehicle gate-in is complete. To re-plan, complete an empty-vehicle-out for this vehicle first.'
-                          : undefined
-                      }
-                      onClick={() => onLink(bill)}
-                    >
-                      {linkLocked ? (
-                        <Lock className="mr-2 h-4 w-4" />
-                      ) : (
-                        <Link2 className="mr-2 h-4 w-4" />
-                      )}
-                      {linkLocked
-                        ? 'Locked'
-                        : selectedDocEntries.size > 1 && selected
-                          ? 'Link Selected'
-                          : bill.plan.vehicle_id
-                            ? 'Edit Link'
-                            : 'Link'}
-                    </Button>
                   </td>
                 </tr>
               );
