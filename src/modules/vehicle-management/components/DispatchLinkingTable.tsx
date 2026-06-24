@@ -78,6 +78,7 @@ export function DispatchLinkingTable({
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dispatch</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bill</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Customer</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 SAP Location
               </th>
@@ -85,7 +86,6 @@ export function DispatchLinkingTable({
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Linked Vehicle
               </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Vehicle Status
               </th>
@@ -165,6 +165,9 @@ export function DispatchLinkingTable({
                     <div className="font-mono text-xs text-muted-foreground">{bill.card_code}</div>
                   </td>
                   <td className="px-4 py-3 align-top">
+                    <StatusBadge status={bill.plan.booking_status} />
+                  </td>
+                  <td className="px-4 py-3 align-top">
                     <div className="max-w-[200px] truncate" title={bill.ship_to_address}>
                       {compactText(bill.city)} {compactText(bill.state)}
                     </div>
@@ -188,9 +191,6 @@ export function DispatchLinkingTable({
                     <div className="text-xs text-muted-foreground">
                       Bilty {compactText(bill.plan.bilty_no)}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <StatusBadge status={bill.plan.booking_status} />
                   </td>
                   <td className="px-4 py-3 align-top">
                     <PipelineStatusBadge status={bill.plan.pipeline_status} />
