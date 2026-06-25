@@ -4,8 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { ENTRY_STATUS, ENTRY_TYPES } from '@/config/constants';
-import { GATE_PERMISSIONS } from '@/config/permissions';
-import { usePermission } from '@/core/auth';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { GateStatusBadge } from '@/modules/gate/components';
 import {
@@ -58,8 +56,6 @@ export default function RawMaterialsPage() {
 
   const { data: entries = [], isLoading } = useVehicleEntries(apiParams);
 
-  const { hasPermission } = usePermission();
-  const canDelete = hasPermission(GATE_PERMISSIONS.RAW_MATERIAL.DELETE);
   const deleteEntry = useDeleteRawMaterialEntry();
   const [deleteTarget, setDeleteTarget] = useState<VehicleEntry | null>(null);
 
@@ -248,7 +244,7 @@ export default function RawMaterialsPage() {
                     <td className="p-3 text-sm text-muted-foreground">{entry.remarks || '-'}</td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {canDelete && DELETABLE_STATUSES.has(entry.status) ? (
+                        {DELETABLE_STATUSES.has(entry.status) ? (
                           <Button
                             type="button"
                             variant="ghost"
