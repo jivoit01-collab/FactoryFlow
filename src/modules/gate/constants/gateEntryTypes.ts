@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeftRight,
+  Boxes,
   Building2,
   Factory,
   HardHat,
@@ -93,6 +94,20 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     icon: Building2,
     colorClassName: 'text-orange-600',
     keywords: ['civil', 'building', 'construction', 'contractor'],
+  },
+  {
+    id: 'fixed-assets',
+    title: 'Fixed Assets',
+    description: 'Capital asset and equipment inward entries (machinery, tools, furniture).',
+    direction: 'in',
+    vehicleMode: 'vehicle',
+    dashboardRoute: '/gate/fixed-assets',
+    newEntryRoute: '/gate/fixed-assets/new',
+    viewPermissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
+    createPermissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    icon: Boxes,
+    colorClassName: 'text-teal-600',
+    keywords: ['asset', 'fixed', 'capital', 'equipment', 'machinery'],
   },
   {
     id: 'visitor-labour',

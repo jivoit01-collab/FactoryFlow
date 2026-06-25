@@ -50,6 +50,14 @@ const COStep3Page = lazy(() => import('./pages/constructionPages/Step3Page'));
 const COAttachmentsPage = lazy(() => import('./pages/constructionPages/AttachmentsPage'));
 const COReviewPage = lazy(() => import('./pages/constructionPages/ReviewPage'));
 
+// Fixed Assets wizard pages
+const FixedAssetsDashboard = lazy(() => import('./pages/fixedAssetsPages/FixedAssetsDashboard'));
+const FixedAssetsAllPage = lazy(() => import('./pages/fixedAssetsPages/FixedAssetsAllPage'));
+const FAStep1Page = lazy(() => import('./pages/fixedAssetsPages/Step1Page'));
+const FAStep2Page = lazy(() => import('./pages/fixedAssetsPages/Step2Page'));
+const FAAttachmentsPage = lazy(() => import('./pages/fixedAssetsPages/AttachmentsPage'));
+const FAReviewPage = lazy(() => import('./pages/fixedAssetsPages/ReviewPage'));
+
 // Person Gate-In pages (Visitor/Labour)
 const PersonGateInDashboard = lazy(() => import('./pages/personGateInPages/PersonGateInDashboard'));
 const PersonGateInAllPage = lazy(() => import('./pages/personGateInPages/PersonGateInAllPage'));
@@ -540,6 +548,70 @@ export const gateModuleConfig: ModuleConfig = {
       element: <ConstructionAllPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
+    },
+
+    // ── Fixed Assets ─────────────────────────────────────────────
+    {
+      path: '/gate/fixed-assets/new',
+      element: <FAStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/step2',
+      element: <FAStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/attachments',
+      element: <FAAttachmentsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/review',
+      element: <FAReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    // Edit Fixed Asset Entry - Steps
+    {
+      path: '/gate/fixed-assets/edit/:entryId/step1',
+      element: <FAStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/step2',
+      element: <FAStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/attachments',
+      element: <FAAttachmentsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/review',
+      element: <FAReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets',
+      element: <FixedAssetsDashboard />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
+      breadcrumb: { label: 'Assets' },
+    },
+    {
+      path: '/gate/fixed-assets/all',
+      element: <FixedAssetsAllPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
     },
 
     // ── Person Gate-In (Visitor/Labour) ──────────────────────────
