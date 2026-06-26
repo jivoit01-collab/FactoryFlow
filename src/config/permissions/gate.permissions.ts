@@ -219,6 +219,18 @@ export const GATE_PERMISSIONS = {
   },
 
   // ============================================
+  // LABOUR COUNT (casual daily-labour man-day register)
+  // ============================================
+  LABOUR_COUNT: {
+    /** View labour count sheets */
+    VIEW: 'labour_count.view_labourcountsheet',
+    /** Department supervisor: enter/submit labour counts */
+    SUBMIT: 'labour_count.can_submit_labour_count',
+    /** Gate operator: verify (OK) submitted counts */
+    VERIFY: 'labour_count.can_verify_labour_count',
+  },
+
+  // ============================================
   // PERSON GATE-IN PERMISSIONS (Visitor/Labour)
   // ============================================
   PERSON_GATE_IN: {
@@ -263,6 +275,7 @@ export const GATE_MODULE_PREFIX = [
   'maintenance_gatein',
   'construction_gatein',
   'fixed_asset_gatein',
+  'labour_count',
 ] as const;
 
 /**
@@ -285,5 +298,6 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.REPAIR_MOVEMENT)[keyof typeof GATE_PERMISSIONS.REPAIR_MOVEMENT]
   | (typeof GATE_PERMISSIONS.CONSTRUCTION)[keyof typeof GATE_PERMISSIONS.CONSTRUCTION]
   | (typeof GATE_PERMISSIONS.FIXED_ASSET)[keyof typeof GATE_PERMISSIONS.FIXED_ASSET]
+  | (typeof GATE_PERMISSIONS.LABOUR_COUNT)[keyof typeof GATE_PERMISSIONS.LABOUR_COUNT]
   | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN]
   | (typeof GATE_PERMISSIONS.JOB_WORK)[keyof typeof GATE_PERMISSIONS.JOB_WORK];

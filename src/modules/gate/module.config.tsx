@@ -58,6 +58,10 @@ const FAStep2Page = lazy(() => import('./pages/fixedAssetsPages/Step2Page'));
 const FAAttachmentsPage = lazy(() => import('./pages/fixedAssetsPages/AttachmentsPage'));
 const FAReviewPage = lazy(() => import('./pages/fixedAssetsPages/ReviewPage'));
 
+// Labour count (casual daily-labour register)
+const LabourCountPage = lazy(() => import('./pages/labourPages/LabourCountPage'));
+const LabourGatePage = lazy(() => import('./pages/labourPages/LabourGatePage'));
+
 // Person Gate-In pages (Visitor/Labour)
 const PersonGateInDashboard = lazy(() => import('./pages/personGateInPages/PersonGateInDashboard'));
 const PersonGateInAllPage = lazy(() => import('./pages/personGateInPages/PersonGateInAllPage'));
@@ -612,6 +616,22 @@ export const gateModuleConfig: ModuleConfig = {
       element: <FixedAssetsAllPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
+    },
+
+    // ── Daily Labour Count ───────────────────────────────────────
+    {
+      path: '/gate/labour',
+      element: <LabourCountPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_COUNT.SUBMIT],
+      breadcrumb: { label: 'Labour' },
+    },
+    {
+      path: '/gate/labour/verify',
+      element: <LabourGatePage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_COUNT.VERIFY],
+      breadcrumb: { label: 'Labour Verify' },
     },
 
     // ── Person Gate-In (Visitor/Labour) ──────────────────────────
