@@ -494,6 +494,8 @@ export interface SalesDispatchAttachmentUploadRequest {
 
 export interface SalesDispatchBoxScanRequest {
   barcode_raw: string;
+  /** The bill (document id) being scanned into. Omitted = backend auto-resolves the bill. */
+  document?: number | null;
 }
 
 /** A box already scanned in the old barcode-module dispatch flow for this SAP bill. */

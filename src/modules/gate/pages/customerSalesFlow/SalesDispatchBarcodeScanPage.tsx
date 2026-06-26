@@ -16,7 +16,15 @@ import {
   Trash2,
   Truck,
 } from 'lucide-react';
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -35,6 +43,7 @@ import {
   type BarcodeDispatchSession,
   type SalesDispatchBoxScan,
   type SalesDispatchGateOut,
+  type SalesDispatchGateOutDocument,
   type SalesDispatchItem,
   useImportSalesDispatchBarcodeScans,
   useRemoveSalesDispatchBoxScan,
@@ -68,6 +77,7 @@ import { cn, getErrorMessage } from '@/shared/utils';
 import { ReviewModeBanner } from './ReviewModeBanner';
 import {
   getExpectedDispatchBoxes,
+  getExpectedDocumentBoxes,
   getExpectedItemBoxes,
   parsePositiveNumber,
 } from './salesDispatchBoxCounts';
@@ -117,6 +127,13 @@ export default function SalesDispatchBarcodeScanPage() {
   // Computed once per device — auto-focus the barcode field only where a hardware
   // scanner is used (fine pointer), so we never pop the soft keyboard on mobile.
   const [autoFocusBarcode] = useState(detectFinePointer);
+  // Which bill (document) is expanded for scanning — one at a time so a single
+  // camera element is mounted. Boxes scanned while a bill is open are attributed to
+  // that bill. `scanTargetRef` mirrors the open bill's document id for the camera
+  // callback (which is created once and can't read fresh state).
+  const [openBillKey, setOpenBillKey] = useState<number | null>(null);
+  const scanTargetRef = useRef<number | null>(null);
+  const didAutoOpenRef = useRef(false);
 
   const {
     data: entry,
@@ -178,9 +195,23 @@ export default function SalesDispatchBarcodeScanPage() {
     () => scans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
     [scans],
   );
-  const itemScanSummary = useMemo(() => buildItemScanSummary(entry, scans), [entry, scans]);
+  const billGroups = useMemo(() => buildBillGroups(entry, scans), [entry, scans]);
   const progressPercent =
     expectedBoxes > 0 ? Math.min(100, Math.round((scans.length / expectedBoxes) * 100)) : 0;
+
+  // Auto-open the only bill (nothing to choose); multi-bill loads stay collapsed.
+  useEffect(() => {
+    if (!didAutoOpenRef.current && billGroups.length === 1) {
+      didAutoOpenRef.current = true;
+      setOpenBillKey(billGroups[0].key);
+    }
+  }, [billGroups]);
+
+  // Keep the camera's scan target pointed at the currently open bill.
+  useEffect(() => {
+    const open = billGroups.find((bill) => bill.key === openBillKey);
+    scanTargetRef.current = open ? open.documentId : null;
+  }, [billGroups, openBillKey]);
 
   useEffect(() => {
     if (!closedScanRedirectPath || !entry) return;
@@ -189,7 +220,7 @@ export default function SalesDispatchBarcodeScanPage() {
   }, [closedScanRedirectPath, entry, navigate]);
 
   const processBarcode = useCallback(
-    async (rawBarcode: string, source: ScanSource) => {
+    async (rawBarcode: string, source: ScanSource, documentId: number | null) => {
       const barcode = rawBarcode.trim();
       if (!entry) {
         setError('Docking details not found.');
@@ -220,7 +251,9 @@ export default function SalesDispatchBarcodeScanPage() {
       try {
         const savedScan = await scanBox.mutateAsync({
           id: entry.id,
-          data: { barcode_raw: barcode },
+          // documentId scopes the scan to the bill the operator opened; the backend
+          // rejects items not on that bill and any box past its invoiced quantity.
+          data: { barcode_raw: barcode, document: documentId },
         });
         setManualBarcode('');
         await refetchEntry();
@@ -239,16 +272,26 @@ export default function SalesDispatchBarcodeScanPage() {
 
   const handleCameraScan = useCallback(
     (decodedText: string) => {
-      void processBarcode(decodedText, 'camera');
+      void processBarcode(decodedText, 'camera', scanTargetRef.current);
     },
     [processBarcode],
   );
 
   const scanner = useScanner({ onScan: handleCameraScan, debounceMs: 1800 });
 
-  const handleManualSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    void processBarcode(manualBarcode, 'manual');
+  // Switching bills tears the camera element out of one accordion and into another,
+  // so stop any running camera first; the operator restarts it in the open bill.
+  useEffect(() => {
+    if (scanner.isScanning) scanner.stopScanning();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openBillKey]);
+
+  const handleManualSubmit = (documentId: number | null) => {
+    void processBarcode(manualBarcode, 'manual', documentId);
+  };
+
+  const handleToggleBill = (key: number) => {
+    setOpenBillKey((current) => (current === key ? null : key));
   };
 
   const handleRemoveScan = async (scan: SalesDispatchBoxScan) => {
@@ -368,12 +411,6 @@ export default function SalesDispatchBarcodeScanPage() {
 
       {isReview ? <ReviewModeBanner /> : null}
 
-      <ItemsToScanCard
-        items={itemScanSummary.items}
-        unplannedScanCount={itemScanSummary.unplannedScanCount}
-        itemSummary={entry.item_summary}
-      />
-
       {isBoxScanOptional ? (
         <ScanOptionalPanel />
       ) : scans.length === 0 ? (
@@ -403,7 +440,7 @@ export default function SalesDispatchBarcodeScanPage() {
         />
       ) : null}
 
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]">
         <Card className="overflow-hidden">
           <CardHeader className="border-b">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -413,7 +450,7 @@ export default function SalesDispatchBarcodeScanPage() {
                   Box Scanning
                 </CardTitle>
                 <CardDescription>
-                  Capture each loaded box against this Docking entry.
+                  Open a bill below to scan its boxes against that bill.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -432,95 +469,30 @@ export default function SalesDispatchBarcodeScanPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-5 pt-6">
-            <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.9fr)_minmax(0,1.1fr)]">
-              <div className="space-y-4">
-                <div className="relative overflow-hidden rounded-md border bg-slate-950">
-                  <div
-                    id={scanner.elementId}
-                    className="aspect-square min-h-[260px] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-                  />
-                  {!scanner.isScanning ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950 text-white">
-                      <Camera className="h-10 w-10 text-white/80" />
-                      <span className="text-sm font-medium">Camera scanner is idle</span>
-                    </div>
-                  ) : (
-                    <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
-                  )}
-                </div>
-                <div>
-                  <Button
-                    type="button"
-                    variant={scanner.isScanning ? 'outline' : 'default'}
-                    onClick={scanner.isScanning ? scanner.stopScanning : scanner.startScanning}
-                    disabled={isReadOnly || !canEditDocking || isSaving}
-                    className="w-full"
-                  >
-                    <Camera className="h-4 w-4" />
-                    {scanner.isScanning ? 'Stop' : 'Start'}
-                  </Button>
-                </div>
+          <CardContent className="space-y-4 pt-6">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ScanMetric
+                label="Expected Boxes"
+                value={expectedBoxes > 0 ? formatNumber(expectedBoxes) : '-'}
+              />
+              <ScanMetric label="Scanned Boxes" value={String(scans.length)} />
+              <ScanMetric
+                label="Scanned Qty"
+                value={scannedQuantity > 0 ? formatNumber(scannedQuantity) : '-'}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Scan progress</span>
+                <span>{expectedBoxes > 0 ? `${progressPercent}%` : 'Open count'}</span>
               </div>
-
-              <div className="space-y-4">
-                <form className="space-y-3" onSubmit={handleManualSubmit}>
-                  <Label htmlFor="sales-dispatch-box-barcode">Box Barcode</Label>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Input
-                      ref={manualInputRef}
-                      id="sales-dispatch-box-barcode"
-                      autoFocus={autoFocusBarcode}
-                      value={manualBarcode}
-                      disabled={isReadOnly || !canEditDocking || isSaving}
-                      onChange={(event) => {
-                        setManualBarcode(event.target.value);
-                        setError('');
-                      }}
-                      placeholder="Scan or type barcode"
-                      className="font-mono"
-                    />
-                    <Button
-                      type="submit"
-                      disabled={isReadOnly || !canEditDocking || isSaving || !manualBarcode.trim()}
-                    >
-                      {scanBox.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <PackageCheck className="h-4 w-4" />
-                      )}
-                      Add
-                    </Button>
-                  </div>
-                </form>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <ScanMetric
-                    label="Expected Boxes"
-                    value={expectedBoxes > 0 ? formatNumber(expectedBoxes) : '-'}
-                  />
-                  <ScanMetric label="Scanned Boxes" value={String(scans.length)} />
-                  <ScanMetric
-                    label="Scanned Qty"
-                    value={scannedQuantity > 0 ? formatNumber(scannedQuantity) : '-'}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Scan progress</span>
-                    <span>{expectedBoxes > 0 ? `${progressPercent}%` : 'Open count'}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{
-                        width:
-                          expectedBoxes > 0 ? `${progressPercent}%` : scans.length ? '100%' : '0%',
-                      }}
-                    />
-                  </div>
-                </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all"
+                  style={{
+                    width: expectedBoxes > 0 ? `${progressPercent}%` : scans.length ? '100%' : '0%',
+                  }}
+                />
               </div>
             </div>
           </CardContent>
@@ -537,80 +509,51 @@ export default function SalesDispatchBarcodeScanPage() {
             <InfoItem label="Entry No." value={entry.entry_no} />
             <InfoItem label="Vehicle" value={entry.vehicle_no} />
             <InfoItem label="Driver" value={entry.driver_name} />
-            <InfoItem label="SAP Invoice" value={entry.sap_doc_num} />
             <InfoItem label="Customer" value={entry.customer_name || entry.to_warehouse} />
             <InfoItem label="Docked At" value={formatTimestamp(entry.docked_at)} />
           </CardContent>
         </Card>
       </section>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2 text-xl">
-            <CheckCircle2 className="h-5 w-5" />
-            Scanned Boxes
+            <ClipboardList className="h-5 w-5" />
+            Bills on this Load
           </CardTitle>
+          <CardDescription>
+            {billGroups.length} bill{billGroups.length === 1 ? '' : 's'}. Open a bill to scan its
+            boxes — each box is recorded against that bill only.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          {scans.length === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">No boxes scanned yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="p-3 text-left font-medium">Barcode</th>
-                    <th className="p-3 text-left font-medium">Item</th>
-                    <th className="p-3 text-left font-medium">Batch</th>
-                    <th className="p-3 text-left font-medium">Qty</th>
-                    <th className="p-3 text-left font-medium">Warehouse</th>
-                    <th className="p-3 text-left font-medium">Status</th>
-                    <th className="p-3 text-right font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scans.map((scan) => (
-                    <tr key={scan.id} className="border-b last:border-b-0">
-                      <td className="p-3 font-mono text-xs font-medium">{scan.box_barcode}</td>
-                      <td className="p-3">
-                        <div className="font-medium">{scan.item_code || '-'}</div>
-                        <div className="max-w-[280px] truncate text-xs text-muted-foreground">
-                          {scan.item_name || '-'}
-                        </div>
-                      </td>
-                      <td className="p-3">{formatValue(scan.batch_number)}</td>
-                      <td className="p-3">
-                        {[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}
-                      </td>
-                      <td className="p-3">{formatValue(scan.warehouse_code)}</td>
-                      <td className="p-3">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            scan.box_status === 'ACTIVE' &&
-                              'border-emerald-200 bg-emerald-50 text-emerald-700',
-                          )}
-                        >
-                          {scan.box_status || 'BOX'}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          disabled={isReadOnly || !canEditDocking || isSaving}
-                          onClick={() => void handleRemoveScan(scan)}
-                          title="Remove scan"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <CardContent className="space-y-3 p-4">
+          {billGroups.length === 0 ? (
+            <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+              {entry.item_summary || 'No bills/items found for this Docking entry.'}
             </div>
+          ) : (
+            billGroups.map((bill) => (
+              <BillScanCard
+                key={bill.key}
+                bill={bill}
+                isOpen={openBillKey === bill.key}
+                onToggle={handleToggleBill}
+                scanner={scanner}
+                manualBarcode={manualBarcode}
+                manualInputRef={manualInputRef}
+                autoFocusBarcode={autoFocusBarcode}
+                scanPending={scanBox.isPending}
+                isReadOnly={isReadOnly}
+                canEdit={canEditDocking}
+                isSaving={isSaving}
+                onManualChange={(value) => {
+                  setManualBarcode(value);
+                  setError('');
+                }}
+                onManualSubmit={() => handleManualSubmit(bill.documentId)}
+                onRemoveScan={handleRemoveScan}
+              />
+            ))
           )}
         </CardContent>
       </Card>
@@ -996,129 +939,304 @@ interface ItemScanRow {
   isComplete: boolean;
 }
 
-function ItemsToScanCard({
-  items,
-  unplannedScanCount,
-  itemSummary,
+function BillScanCard({
+  bill,
+  isOpen,
+  onToggle,
+  scanner,
+  manualBarcode,
+  manualInputRef,
+  autoFocusBarcode,
+  scanPending,
+  isReadOnly,
+  canEdit,
+  isSaving,
+  onManualChange,
+  onManualSubmit,
+  onRemoveScan,
 }: {
-  items: ItemScanRow[];
-  unplannedScanCount: number;
-  itemSummary?: string;
+  bill: BillGroup;
+  isOpen: boolean;
+  onToggle: (key: number) => void;
+  scanner: ReturnType<typeof useScanner>;
+  manualBarcode: string;
+  manualInputRef: RefObject<HTMLInputElement | null>;
+  autoFocusBarcode: boolean;
+  scanPending: boolean;
+  isReadOnly: boolean;
+  canEdit: boolean;
+  isSaving: boolean;
+  onManualChange: (value: string) => void;
+  onManualSubmit: () => void;
+  onRemoveScan: (scan: SalesDispatchBoxScan) => void;
 }) {
-  const openCount = items.filter((item) => !item.isComplete).length;
-  const scannedCount = items.reduce((total, item) => total + item.scanCount, 0);
+  const canScan = !isReadOnly && canEdit;
+  const inputId = `box-barcode-${bill.key}`;
 
   return (
-    <Card className="overflow-hidden border-primary/30">
-      <CardHeader className="border-b bg-muted/30">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <ClipboardList className="h-5 w-5" />
-              Items to Scan
-            </CardTitle>
-            <CardDescription>
-              {items.length > 0
-                ? `${items.length} dispatch line${items.length === 1 ? '' : 's'}`
-                : 'No dispatch lines found'}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant={openCount > 0 ? 'outline' : 'success'}>{openCount} open</Badge>
-            <Badge variant={scannedCount > 0 ? 'success' : 'outline'}>{scannedCount} scanned</Badge>
-            {unplannedScanCount > 0 ? (
-              <Badge className="border-red-200 bg-red-50 text-red-700">
-                {unplannedScanCount} outside list
-              </Badge>
+    <div className="overflow-hidden rounded-md border">
+      <button
+        type="button"
+        onClick={() => onToggle(bill.key)}
+        className="flex w-full items-center gap-3 bg-muted/40 p-3 text-left transition-colors hover:bg-muted/60"
+      >
+        {isOpen ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold">
+            Bill {formatValue(bill.sapDocNum)}
+            {bill.customerName ? (
+              <span className="font-normal text-muted-foreground"> · {bill.customerName}</span>
             ) : null}
           </div>
+          <div className="text-xs text-muted-foreground">
+            {bill.items.length} item{bill.items.length === 1 ? '' : 's'}
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {items.length === 0 ? (
-          <div className="p-5 text-sm text-muted-foreground">
-            {itemSummary || 'No item details available for this invoice.'}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr>
-                  <th className="w-[150px] p-3 text-left font-medium">Item Code</th>
-                  <th className="p-3 text-left font-medium">Item</th>
-                  <th className="w-[150px] p-3 text-right font-medium">Invoice Qty</th>
-                  <th className="w-[130px] p-3 text-right font-medium">Boxes</th>
-                  <th className="w-[150px] p-3 text-right font-medium">Weight</th>
-                  <th className="w-[190px] p-3 text-left font-medium">Scanned</th>
-                  <th className="w-[130px] p-3 text-left font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr
-                    key={item.key}
-                    className={cn(
-                      'border-b last:border-b-0',
-                      item.scanCount > 0 && !item.isComplete && 'bg-amber-50/60',
-                      item.isComplete && 'bg-emerald-50/60',
+        <Badge variant="outline">
+          {bill.scannedBoxes}
+          {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
+          {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
+        </Badge>
+        <Badge
+          variant={bill.status === 'Complete' ? 'success' : 'outline'}
+          className={cn(bill.status === 'Partial' && 'border-amber-200 bg-amber-50 text-amber-700')}
+        >
+          {bill.status === 'Complete' ? (
+            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+          ) : null}
+          {bill.status}
+        </Badge>
+      </button>
+
+      {isOpen ? (
+        <div className="space-y-4 border-t p-4">
+          <BillItemsTable summary={bill.summary} />
+
+          {canScan ? (
+            <div className="grid gap-4 rounded-md border bg-muted/10 p-3 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
+              <div className="space-y-3">
+                <div className="relative overflow-hidden rounded-md border bg-slate-950">
+                  <div
+                    id={scanner.elementId}
+                    className="aspect-square min-h-[220px] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+                  />
+                  {!scanner.isScanning ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950 text-white">
+                      <Camera className="h-10 w-10 text-white/80" />
+                      <span className="text-sm font-medium">Camera scanner is idle</span>
+                    </div>
+                  ) : (
+                    <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant={scanner.isScanning ? 'outline' : 'default'}
+                  onClick={scanner.isScanning ? scanner.stopScanning : scanner.startScanning}
+                  disabled={isSaving}
+                  className="w-full"
+                >
+                  <Camera className="h-4 w-4" />
+                  {scanner.isScanning ? 'Stop' : 'Start'}
+                </Button>
+              </div>
+
+              <form
+                className="space-y-3"
+                onSubmit={(event: FormEvent<HTMLFormElement>) => {
+                  event.preventDefault();
+                  onManualSubmit();
+                }}
+              >
+                <Label htmlFor={inputId}>Scan boxes for Bill {formatValue(bill.sapDocNum)}</Label>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Input
+                    ref={manualInputRef}
+                    id={inputId}
+                    autoFocus={autoFocusBarcode}
+                    value={manualBarcode}
+                    disabled={isSaving}
+                    onChange={(event) => onManualChange(event.target.value)}
+                    placeholder="Scan or type barcode"
+                    className="font-mono"
+                  />
+                  <Button type="submit" disabled={isSaving || !manualBarcode.trim()}>
+                    {scanPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <PackageCheck className="h-4 w-4" />
                     )}
-                  >
-                    <td className="whitespace-nowrap p-3 align-top font-mono text-xs font-semibold">
-                      {formatValue(item.itemCode)}
-                    </td>
-                    <td className="p-3 align-top">
-                      <div className="font-medium">{formatValue(item.itemName)}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Line {item.lineNum + 1}
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                      {formatQuantity(item.expectedQuantity, item.uom)}
-                    </td>
-                    <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                      {item.expectedBoxes > 0 ? formatNumber(item.expectedBoxes) : '-'}
-                    </td>
-                    <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                      {item.totalWeight > 0 ? `${formatNumber(item.totalWeight)} kg` : '-'}
-                    </td>
-                    <td className="p-3 align-top">
-                      <div className="font-medium">
-                        {item.scanCount} box{item.scanCount === 1 ? '' : 'es'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.scannedQuantity > 0
-                          ? formatQuantity(item.scannedQuantity, item.uom)
-                          : '-'}
-                      </div>
-                      {item.progressPercent !== null ? (
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-emerald-500"
-                            style={{ width: `${item.progressPercent}%` }}
-                          />
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="p-3 align-top">
-                      <Badge
-                        variant={item.isComplete ? 'success' : 'outline'}
-                        className={cn(
-                          !item.isComplete &&
-                            item.scanCount > 0 &&
-                            'border-amber-200 bg-amber-50 text-amber-700',
-                        )}
-                      >
-                        {item.isComplete ? 'Complete' : item.scanCount > 0 ? 'Partial' : 'Open'}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                    Add
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Boxes are recorded against this bill only, capped at its invoiced quantity.
+                </p>
+              </form>
+            </div>
+          ) : null}
+
+          <BillScannedBoxes
+            scans={bill.scans}
+            canRemove={canScan && !isSaving}
+            onRemoveScan={onRemoveScan}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BillItemsTable({ summary }: { summary: BillScanSummary }) {
+  const { items, unplannedScanCount } = summary;
+  if (items.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+        No item lines on this bill.
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full min-w-[860px] text-sm">
+        <thead className="border-b bg-muted/40">
+          <tr>
+            <th className="w-[150px] p-3 text-left font-medium">Item Code</th>
+            <th className="p-3 text-left font-medium">Item</th>
+            <th className="w-[140px] p-3 text-right font-medium">Invoice Qty</th>
+            <th className="w-[110px] p-3 text-right font-medium">Boxes</th>
+            <th className="w-[170px] p-3 text-left font-medium">Scanned</th>
+            <th className="w-[120px] p-3 text-left font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr
+              key={item.key}
+              className={cn(
+                'border-b last:border-b-0',
+                item.scanCount > 0 && !item.isComplete && 'bg-amber-50/60',
+                item.isComplete && 'bg-emerald-50/60',
+              )}
+            >
+              <td className="whitespace-nowrap p-3 align-top font-mono text-xs font-semibold">
+                {formatValue(item.itemCode)}
+              </td>
+              <td className="p-3 align-top">
+                <div className="font-medium">{formatValue(item.itemName)}</div>
+                <div className="mt-1 text-xs text-muted-foreground">Line {item.lineNum + 1}</div>
+              </td>
+              <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
+                {formatQuantity(item.expectedQuantity, item.uom)}
+              </td>
+              <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
+                {item.expectedBoxes > 0 ? formatNumber(item.expectedBoxes) : '-'}
+              </td>
+              <td className="p-3 align-top">
+                <div className="font-medium">
+                  {item.scanCount} box{item.scanCount === 1 ? '' : 'es'}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {item.scannedQuantity > 0 ? formatQuantity(item.scannedQuantity, item.uom) : '-'}
+                </div>
+                {item.progressPercent !== null ? (
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{ width: `${item.progressPercent}%` }}
+                    />
+                  </div>
+                ) : null}
+              </td>
+              <td className="p-3 align-top">
+                <Badge
+                  variant={item.isComplete ? 'success' : 'outline'}
+                  className={cn(
+                    !item.isComplete &&
+                      item.scanCount > 0 &&
+                      'border-amber-200 bg-amber-50 text-amber-700',
+                  )}
+                >
+                  {item.isComplete ? 'Complete' : item.scanCount > 0 ? 'Partial' : 'Open'}
+                </Badge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {unplannedScanCount > 0 ? (
+        <div className="border-t bg-red-50 p-2 text-xs text-red-700">
+          {unplannedScanCount} scanned box{unplannedScanCount === 1 ? '' : 'es'} outside this bill's
+          item list.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BillScannedBoxes({
+  scans,
+  canRemove,
+  onRemoveScan,
+}: {
+  scans: SalesDispatchBoxScan[];
+  canRemove: boolean;
+  onRemoveScan: (scan: SalesDispatchBoxScan) => void;
+}) {
+  if (scans.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+        No boxes scanned for this bill yet.
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-sm">
+        <thead className="border-b bg-muted/50">
+          <tr>
+            <th className="p-3 text-left font-medium">Barcode</th>
+            <th className="p-3 text-left font-medium">Item</th>
+            <th className="p-3 text-left font-medium">Batch</th>
+            <th className="p-3 text-left font-medium">Qty</th>
+            <th className="p-3 text-left font-medium">Warehouse</th>
+            <th className="p-3 text-right font-medium">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {scans.map((scan) => (
+            <tr key={scan.id} className="border-b last:border-b-0">
+              <td className="p-3 font-mono text-xs font-medium">{scan.box_barcode}</td>
+              <td className="p-3">
+                <div className="font-medium">{scan.item_code || '-'}</div>
+                <div className="max-w-[280px] truncate text-xs text-muted-foreground">
+                  {scan.item_name || '-'}
+                </div>
+              </td>
+              <td className="p-3">{formatValue(scan.batch_number)}</td>
+              <td className="p-3">{[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}</td>
+              <td className="p-3">{formatValue(scan.warehouse_code)}</td>
+              <td className="p-3 text-right">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={!canRemove}
+                  onClick={() => void onRemoveScan(scan)}
+                  title="Remove scan"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -1349,17 +1467,101 @@ function getScanClosedMessage(status: SalesDispatchGateOut['status']) {
   return 'Box scanning is closed for this Docking entry.';
 }
 
-function buildItemScanSummary(
+interface BillScanSummary {
+  items: ItemScanRow[];
+  unplannedScanCount: number;
+}
+
+interface BillGroup {
+  key: number;
+  documentId: number | null;
+  sapDocNum: string;
+  customerName: string;
+  items: SalesDispatchItem[];
+  scans: SalesDispatchBoxScan[];
+  expectedBoxes: number;
+  scannedBoxes: number;
+  summary: BillScanSummary;
+  status: 'Open' | 'Partial' | 'Complete';
+}
+
+// Group the load's scans under the bill (SAP document) each belongs to, so the
+// operator scans into one bill at a time and a box never reflects on every bill.
+function buildBillGroups(
   entry: SalesDispatchGateOut | undefined,
   scans: SalesDispatchBoxScan[],
-) {
-  const expectedItems = getExpectedItems(entry);
+): BillGroup[] {
+  if (!entry) return [];
+  const documents = entry.documents ?? [];
+  if (documents.length > 0) {
+    return documents.map((document) =>
+      makeBillGroup({
+        key: document.id,
+        documentId: document.id,
+        sapDocNum: document.sap_doc_num || String(document.sap_doc_entry || ''),
+        customerName: document.customer_name || '',
+        items: getDocumentItems(entry, document),
+        scans: scans.filter((scan) => scan.document === document.id),
+        expectedBoxes: getExpectedDocumentBoxes(document),
+      }),
+    );
+  }
+  // Legacy single-document docking: synthesize one bill from the entry header.
+  const items = entry.items ?? [];
+  if (items.length === 0 && scans.length === 0) return [];
+  return [
+    makeBillGroup({
+      key: 0,
+      documentId: null,
+      sapDocNum: entry.sap_doc_num || '',
+      customerName: entry.customer_name || entry.to_warehouse || '',
+      items,
+      scans,
+      expectedBoxes: getExpectedDispatchBoxes(entry),
+    }),
+  ];
+}
 
-  // A docking can carry several bills that share the same item, so a scan must be
-  // attributed to the one bill it belongs to — not every bill with that item.
-  // The backend stamps each scan's bill (scan.document); we honour it, then fall
-  // back to greedily filling the first bill that still needs the item (legacy
-  // scans without a document), so a box never counts toward more than one bill.
+function makeBillGroup(args: {
+  key: number;
+  documentId: number | null;
+  sapDocNum: string;
+  customerName: string;
+  items: SalesDispatchItem[];
+  scans: SalesDispatchBoxScan[];
+  expectedBoxes: number;
+}): BillGroup {
+  const summary = summarizeItems(args.items, args.scans);
+  const scannedBoxes = args.scans.length;
+  const allComplete = summary.items.length > 0 && summary.items.every((item) => item.isComplete);
+  const status: BillGroup['status'] = allComplete
+    ? 'Complete'
+    : scannedBoxes > 0
+      ? 'Partial'
+      : 'Open';
+  return { ...args, scannedBoxes, summary, status };
+}
+
+function getDocumentItems(
+  entry: SalesDispatchGateOut,
+  document: SalesDispatchGateOutDocument,
+): SalesDispatchItem[] {
+  if (document.items?.length) return document.items;
+  const matched = entry.items.filter(
+    (item) =>
+      (item.document != null && item.document === document.id) ||
+      (item.document_sap_doc_num && item.document_sap_doc_num === document.sap_doc_num),
+  );
+  if (matched.length) return matched;
+  return entry.documents?.length ? [] : entry.items;
+}
+
+// Allocate a single bill's scans to its item lines (document already matches), with
+// a greedy fallback for legacy null-document scans so none is double-counted.
+function summarizeItems(
+  expectedItems: SalesDispatchItem[],
+  scans: SalesDispatchBoxScan[],
+): BillScanSummary {
   const stats = expectedItems.map(() => ({ count: 0, quantity: 0 }));
   const candidatesByCode = new Map<string, number[]>();
   expectedItems.forEach((item, index) => {
@@ -1424,12 +1626,6 @@ function buildItemScanSummary(
   });
 
   return { items, unplannedScanCount };
-}
-
-function getExpectedItems(entry?: SalesDispatchGateOut): SalesDispatchItem[] {
-  if (!entry) return [];
-  if (entry.items?.length) return entry.items;
-  return entry.documents?.flatMap((document) => document.items || []) || [];
 }
 
 function normalizeItemCode(value?: string | null) {
