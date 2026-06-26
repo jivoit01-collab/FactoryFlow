@@ -18,6 +18,7 @@ import { qcModuleConfig } from '@/modules/qc/module.config';
 import { settingsModuleConfig } from '@/modules/settings/module.config';
 import { vehicleManagementModuleConfig } from '@/modules/vehicle-management/module.config';
 import { warehouseModuleConfig } from '@/modules/warehouse/module.config';
+import { wmsModuleConfig } from '@/modules/wms/module.config';
 
 /**
  * Central registry of all feature modules
@@ -36,6 +37,7 @@ export const moduleRegistry: ModuleConfig[] = [
   productionModuleConfig,
   maintenanceModuleConfig,
   warehouseModuleConfig,
+  wmsModuleConfig,
   barcodeModuleConfig,
   notificationsModuleConfig,
   settingsModuleConfig,
