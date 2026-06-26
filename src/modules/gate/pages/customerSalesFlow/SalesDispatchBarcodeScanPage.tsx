@@ -7,10 +7,12 @@ import {
   ChevronRight,
   ClipboardList,
   Clock3,
+  Flashlight,
   Loader2,
   PackageCheck,
   PackageSearch,
   Plus,
+  RotateCcw,
   ScanLine,
   ShieldCheck,
   Trash2,
@@ -138,6 +140,9 @@ export default function SalesDispatchBarcodeScanPage() {
   // drives the "syncing" indicator; `flashing` drives the green success blink.
   const [pendingCount, setPendingCount] = useState(0);
   const [flashing, setFlashing] = useState(false);
+  // Boxes whose sync was rejected (over-invoice, not on bill, not found, …). Shown in
+  // a separate queue under the scanner so the operator can see/retry/dismiss each one.
+  const [failedScans, setFailedScans] = useState<FailedScan[]>([]);
   const scanQueueRef = useRef<{ barcode: string; documentId: number | null }[]>([]);
   const inFlightRef = useRef<Set<string>>(new Set());
   const processingRef = useRef(false);
@@ -250,6 +255,7 @@ export default function SalesDispatchBarcodeScanPage() {
     while (scanQueueRef.current.length > 0) {
       const next = scanQueueRef.current[0];
       const { entryId, scanBox: scanMutation } = queueCtxRef.current;
+      const key = next.barcode.toLowerCase();
       try {
         if (entryId == null) throw new Error('Docking details not found.');
         const saved = await scanMutation.mutateAsync({
@@ -261,10 +267,15 @@ export default function SalesDispatchBarcodeScanPage() {
         } else {
           triggerFlash();
         }
+        // It synced — drop it from the error queue if it was there from a prior try.
+        setFailedScans((prev) => prev.filter((failed) => failed.barcode.toLowerCase() !== key));
       } catch (scanError) {
         const message = getErrorMessage(scanError, `Couldn't scan ${next.barcode}`);
-        setError(message);
-        toast.error(message);
+        // Surface it in the persistent error queue (deduped by barcode), newest first.
+        setFailedScans((prev) => [
+          { barcode: next.barcode, documentId: next.documentId, reason: message },
+          ...prev.filter((failed) => failed.barcode.toLowerCase() !== key),
+        ]);
       } finally {
         scanQueueRef.current.shift();
         inFlightRef.current.delete(next.barcode.toLowerCase());
@@ -341,6 +352,19 @@ export default function SalesDispatchBarcodeScanPage() {
 
   const handleToggleBill = (key: number) => {
     setOpenBillKey((current) => (current === key ? null : key));
+  };
+
+  const handleRetryFailedScan = (failed: FailedScan) => {
+    setFailedScans((prev) =>
+      prev.filter((item) => item.barcode.toLowerCase() !== failed.barcode.toLowerCase()),
+    );
+    enqueueScan(failed.barcode, failed.documentId);
+  };
+
+  const handleDismissFailedScan = (failed: FailedScan) => {
+    setFailedScans((prev) =>
+      prev.filter((item) => item.barcode.toLowerCase() !== failed.barcode.toLowerCase()),
+    );
   };
 
   const handleRemoveScan = async (scan: SalesDispatchBoxScan) => {
@@ -599,6 +623,7 @@ export default function SalesDispatchBarcodeScanPage() {
                 autoFocusBarcode={autoFocusBarcode}
                 pendingCount={pendingCount}
                 flashing={flashing}
+                failedScans={failedScans}
                 isReadOnly={isReadOnly}
                 canEdit={canEditDocking}
                 onManualChange={(value) => {
@@ -607,6 +632,8 @@ export default function SalesDispatchBarcodeScanPage() {
                 }}
                 onManualSubmit={() => handleManualSubmit(bill.documentId)}
                 onRemoveScan={handleRemoveScan}
+                onRetryFailed={handleRetryFailedScan}
+                onDismissFailed={handleDismissFailedScan}
               />
             ))
           )}
@@ -979,6 +1006,12 @@ function BarcodeScansDialog({
   );
 }
 
+interface FailedScan {
+  barcode: string;
+  documentId: number | null;
+  reason: string;
+}
+
 interface ItemScanRow {
   key: string;
   lineNum: number;
@@ -1004,11 +1037,14 @@ function BillScanCard({
   autoFocusBarcode,
   pendingCount,
   flashing,
+  failedScans,
   isReadOnly,
   canEdit,
   onManualChange,
   onManualSubmit,
   onRemoveScan,
+  onRetryFailed,
+  onDismissFailed,
 }: {
   bill: BillGroup;
   isOpen: boolean;
@@ -1019,11 +1055,14 @@ function BillScanCard({
   autoFocusBarcode: boolean;
   pendingCount: number;
   flashing: boolean;
+  failedScans: FailedScan[];
   isReadOnly: boolean;
   canEdit: boolean;
   onManualChange: (value: string) => void;
   onManualSubmit: () => void;
   onRemoveScan: (scan: SalesDispatchBoxScan) => void;
+  onRetryFailed: (failed: FailedScan) => void;
+  onDismissFailed: (failed: FailedScan) => void;
 }) {
   const canScan = !isReadOnly && canEdit;
   const inputId = `box-barcode-${bill.key}`;
@@ -1074,36 +1113,57 @@ function BillScanCard({
           {canScan ? (
             <div className="grid gap-4 rounded-md border bg-muted/10 p-3 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
               <div className="space-y-3">
-                <div className="relative overflow-hidden rounded-md border bg-slate-950">
-                  <div
-                    id={scanner.elementId}
-                    className="aspect-square min-h-[220px] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-                  />
-                  {!scanner.isScanning ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950 text-white">
-                      <Camera className="h-10 w-10 text-white/80" />
-                      <span className="text-sm font-medium">Camera scanner is idle</span>
+                {/* The camera viewport only takes space while the camera is running;
+                    when off we just show the Start button. */}
+                {scanner.isScanning ? (
+                  <>
+                    <div className="relative overflow-hidden rounded-md border bg-slate-950">
+                      <div
+                        id={scanner.elementId}
+                        className="aspect-square min-h-[220px] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+                      />
+                      <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
+                      {/* Green blink confirming a box was accepted via the camera. */}
+                      <div
+                        className={cn(
+                          'pointer-events-none absolute inset-0 bg-emerald-400/60 transition-opacity duration-200',
+                          flashing ? 'opacity-100' : 'opacity-0',
+                        )}
+                      />
                     </div>
-                  ) : (
-                    <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
-                  )}
-                  {/* Green blink confirming a box was accepted (camera or gun). */}
-                  <div
-                    className={cn(
-                      'pointer-events-none absolute inset-0 bg-emerald-400/60 transition-opacity duration-200',
-                      flashing ? 'opacity-100' : 'opacity-0',
-                    )}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant={scanner.isScanning ? 'outline' : 'default'}
-                  onClick={scanner.isScanning ? scanner.stopScanning : scanner.startScanning}
-                  className="w-full"
-                >
-                  <Camera className="h-4 w-4" />
-                  {scanner.isScanning ? 'Stop' : 'Start'}
-                </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={scanner.stopScanning}
+                        className="flex-1"
+                      >
+                        <Camera className="h-4 w-4" />
+                        Stop
+                      </Button>
+                      {scanner.torchSupported ? (
+                        <Button
+                          type="button"
+                          variant={scanner.torchOn ? 'default' : 'outline'}
+                          onClick={() => void scanner.toggleTorch()}
+                          title="Toggle flashlight"
+                        >
+                          <Flashlight className="h-4 w-4" />
+                          {scanner.torchOn ? 'Light on' : 'Light'}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={scanner.startScanning}
+                    className="w-full"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Start Camera
+                  </Button>
+                )}
               </div>
 
               <form
@@ -1122,7 +1182,10 @@ function BillScanCard({
                     value={manualBarcode}
                     onChange={(event) => onManualChange(event.target.value)}
                     placeholder="Scan or type barcode"
-                    className="font-mono"
+                    className={cn(
+                      'font-mono transition-shadow',
+                      flashing && 'ring-2 ring-emerald-400 ring-offset-1',
+                    )}
                   />
                   <Button type="submit" disabled={!manualBarcode.trim()}>
                     <PackageCheck className="h-4 w-4" />
@@ -1141,6 +1204,13 @@ function BillScanCard({
               </form>
             </div>
           ) : null}
+
+          <FailedScansQueue
+            failedScans={failedScans}
+            canEdit={canScan}
+            onRetry={onRetryFailed}
+            onDismiss={onDismissFailed}
+          />
 
           <BillScannedBoxes
             scans={bill.scans}
@@ -1236,6 +1306,63 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
           item list.
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function FailedScansQueue({
+  failedScans,
+  canEdit,
+  onRetry,
+  onDismiss,
+}: {
+  failedScans: FailedScan[];
+  canEdit: boolean;
+  onRetry: (failed: FailedScan) => void;
+  onDismiss: (failed: FailedScan) => void;
+}) {
+  if (failedScans.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-md border border-red-200">
+      <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+        <AlertCircle className="h-4 w-4" />
+        Failed scans ({failedScans.length})
+      </div>
+      <ul className="divide-y">
+        {failedScans.map((failed) => (
+          <li
+            key={failed.barcode}
+            className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="min-w-0">
+              <div className="font-mono text-xs font-medium">{failed.barcode}</div>
+              <div className="text-xs text-red-600">{failed.reason}</div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!canEdit}
+                onClick={() => onRetry(failed)}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Retry
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={!canEdit}
+                onClick={() => onDismiss(failed)}
+                title="Remove from list"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
