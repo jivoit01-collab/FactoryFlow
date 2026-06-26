@@ -323,6 +323,7 @@ export interface CreateInspectionRequest {
   unit_packing: string;
   purchase_order_no?: string;
   internal_report_no?: string;
+  report_no?: string;
   internal_lot_no?: string;
   invoice_bill_no: string;
   vehicle_no: string;

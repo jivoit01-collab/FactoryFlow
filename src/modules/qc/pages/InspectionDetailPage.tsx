@@ -14,7 +14,7 @@ import {
   Undo2,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
@@ -57,7 +57,7 @@ import {
   useMaterialTypes,
 } from '../api/materialType';
 import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries';
-import { QCSuccessScreen } from '../components';
+import { QCSuccessScreen, useInspectionReportPrint } from '../components';
 import {
   DECISION_STATUS_CONFIG,
   FINAL_STATUS,
@@ -125,6 +125,9 @@ export default function InspectionDetailPage() {
   // Fetch arrival slip data for prefilling and showing attachments
   const { data: arrivalSlip, isLoading: isLoadingArrivalSlip } = useArrivalSlipById(arrivalSlipId);
 
+  // Print the inspection report using the same format as the GRPO report
+  const { printInspectionReport, printPortal } = useInspectionReportPrint(inspection);
+
   // Form state
   const [formData, setFormData] = useState<Partial<CreateInspectionRequest>>({
     inspection_date: new Date().toISOString().split('T')[0],
@@ -135,6 +138,7 @@ export default function InspectionDetailPage() {
     supplier_batch_lot_no: '',
     unit_packing: '',
     purchase_order_no: '',
+    report_no: '',
     internal_lot_no: '',
     invoice_bill_no: '',
     vehicle_no: '',
@@ -245,41 +249,48 @@ export default function InspectionDetailPage() {
   // Send-back state
   const [sendBackRemarks, setSendBackRemarks] = useState('');
 
+  // Populate the form (and parameter results) from the persisted inspection.
+  // Used both on initial load and to revert unsaved edits when cancelling.
+  const populateFormFromInspection = useCallback(() => {
+    if (!inspection) return;
+
+    setFormData({
+      inspection_date: inspection.inspection_date,
+      description_of_material: inspection.description_of_material,
+      sap_code: inspection.sap_code,
+      supplier_name: inspection.supplier_name,
+      manufacturer_name: inspection.manufacturer_name,
+      supplier_batch_lot_no: inspection.supplier_batch_lot_no,
+      unit_packing: inspection.unit_packing,
+      purchase_order_no: inspection.purchase_order_no,
+      report_no: inspection.report_no,
+      internal_lot_no: inspection.internal_lot_no,
+      invoice_bill_no: inspection.invoice_bill_no,
+      vehicle_no: inspection.vehicle_no,
+      material_type_id: inspection.material_type,
+      remarks: inspection.remarks,
+    });
+
+    // Load parameter results
+    const resultsMap: Record<
+      number,
+      { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
+    > = {};
+    inspection.parameter_results?.forEach((result: ParameterResult) => {
+      resultsMap[result.parameter_master] = {
+        result_value: result.result_value,
+        result_numeric: result.result_numeric || undefined,
+        is_within_spec: result.is_within_spec ?? undefined,
+        remarks: result.remarks,
+      };
+    });
+    setParameterResults(resultsMap);
+  }, [inspection]);
+
   // Load existing inspection data
   useEffect(() => {
-    if (inspection) {
-      setFormData({
-        inspection_date: inspection.inspection_date,
-        description_of_material: inspection.description_of_material,
-        sap_code: inspection.sap_code,
-        supplier_name: inspection.supplier_name,
-        manufacturer_name: inspection.manufacturer_name,
-        supplier_batch_lot_no: inspection.supplier_batch_lot_no,
-        unit_packing: inspection.unit_packing,
-        purchase_order_no: inspection.purchase_order_no,
-        internal_lot_no: inspection.internal_lot_no,
-        invoice_bill_no: inspection.invoice_bill_no,
-        vehicle_no: inspection.vehicle_no,
-        material_type_id: inspection.material_type,
-        remarks: inspection.remarks,
-      });
-
-      // Load parameter results
-      const resultsMap: Record<
-        number,
-        { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
-      > = {};
-      inspection.parameter_results?.forEach((result: ParameterResult) => {
-        resultsMap[result.parameter_master] = {
-          result_value: result.result_value,
-          result_numeric: result.result_numeric || undefined,
-          is_within_spec: result.is_within_spec ?? undefined,
-          remarks: result.remarks,
-        };
-      });
-      setParameterResults(resultsMap);
-    }
-  }, [inspection]);
+    populateFormFromInspection();
+  }, [populateFormFromInspection]);
 
   useEffect(() => {
     if (!inspection) return;
@@ -489,6 +500,12 @@ export default function InspectionDetailPage() {
       if (!sapItemCode) {
         errors.sap_code = 'SAP code is required';
       }
+      if (!formData.report_no?.trim()) {
+        errors.report_no = 'Report number is required';
+      }
+      if (!formData.internal_lot_no?.trim()) {
+        errors.internal_lot_no = 'Internal lot number is required';
+      }
       if (isResolvingMaterialType) {
         errors.material_type_id = 'Material type mapping is still loading';
       } else if (!selectedMaterialTypeId || isUnmappedMaterialType) {
@@ -559,6 +576,15 @@ export default function InspectionDetailPage() {
         setApiErrors({ general: apiError.message || 'Failed to save inspection' });
       }
     }
+  };
+
+  // Cancel an in-progress edit: discard unsaved changes and return to the
+  // read-only view (which restores the approval decision buttons).
+  const handleCancelEdit = () => {
+    setApiErrors({});
+    populateFormFromInspection();
+    clearSelectedQcAttachments();
+    setIsEditing(false);
   };
 
   const handleMaterialTypeLinkDialogOpenChange = (open: boolean) => {
@@ -728,15 +754,20 @@ export default function InspectionDetailPage() {
 
   const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT;
 
-  // Can edit if: permission allows and either no inspection yet or in edit mode
-  const canEdit = canEditFields && (!inspection || isEditing);
+  const canApproveChemist = showChemistApproval;
+  const canApproveQAM = showQAMApproval;
+  // An approver (chemist/manager) is reviewing this inspection for accept/reject.
+  const isApprover = canApproveChemist || canApproveQAM;
+
+  // Can edit if: permission allows (draft) OR an approver chose to edit before
+  // deciding. The backend allows updates until the inspection is locked (QAM approval).
+  const canEdit =
+    (canEditFields && (!inspection || isEditing)) || (isApprover && isEditing && !isLocked);
 
   // Can update (show Update button) if: has inspection, is draft, has permission, not currently editing
   const canUpdate = inspection && isDraft && canEditInspection && !isEditing && !isLocked;
 
   const canSubmit = showSubmitButton && !isEditing;
-  const canApproveChemist = showChemistApproval;
-  const canApproveQAM = showQAMApproval;
   const showFactoryHeadDecision =
     currentCompany?.role === 'Factory Head' &&
     (inspection?.workflow_status === WORKFLOW_STATUS.QAM_APPROVED ||
@@ -900,6 +931,8 @@ export default function InspectionDetailPage() {
             key !== 'general' &&
             key !== 'sap_code' &&
             key !== 'material_type_id' &&
+            key !== 'report_no' &&
+            key !== 'internal_lot_no' &&
             !key.startsWith('param_') &&
             key !== 'approval_remarks'
           ) {
@@ -1150,12 +1183,37 @@ export default function InspectionDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Internal Lot No.</Label>
+              <Label>
+                Report No. <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={formData.report_no || ''}
+                onChange={(e) => handleInputChange('report_no', e.target.value)}
+                disabled={!canEdit || isSaving}
+                className={
+                  apiErrors.report_no ? 'border-destructive focus-visible:ring-destructive' : ''
+                }
+              />
+              {apiErrors.report_no && (
+                <p className="text-sm text-destructive">{apiErrors.report_no}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Internal Lot No. <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={formData.internal_lot_no || ''}
                 onChange={(e) => handleInputChange('internal_lot_no', e.target.value)}
                 disabled={!canEdit || isSaving}
+                className={
+                  apiErrors.internal_lot_no ? 'border-destructive focus-visible:ring-destructive' : ''
+                }
               />
+              {apiErrors.internal_lot_no && (
+                <p className="text-sm text-destructive">{apiErrors.internal_lot_no}</p>
+              )}
             </div>
 
             {/* NOTE: Manufacturer Name field is currently in discussion and can become usable anytime in the future.
@@ -1639,8 +1697,8 @@ export default function InspectionDetailPage() {
         </Card>
       )}
 
-      {/* Approval Section */}
-      {(canApproveChemist || canApproveQAM) && (
+      {/* Approval Section — hidden while editing so the approver sees Save/Cancel instead */}
+      {isApprover && !isEditing && (
         <Card className="border-primary/50">
           <CardHeader>
             <CardTitle>Approval</CardTitle>
@@ -1860,7 +1918,7 @@ export default function InspectionDetailPage() {
         </Button>
         <div className="flex gap-4">
           {inspection && (
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button variant="outline" onClick={printInspectionReport}>
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
@@ -1869,6 +1927,18 @@ export default function InspectionDetailPage() {
             <Button variant="outline" onClick={() => setIsEditing(true)}>
               <Pencil className="h-4 w-4 mr-2" />
               Update
+            </Button>
+          )}
+          {isApprover && !isEditing && (
+            <Button variant="outline" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )}
+          {isApprover && isEditing && (
+            <Button variant="outline" onClick={handleCancelEdit} disabled={isSaving}>
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel
             </Button>
           )}
           {canEdit && (
@@ -1888,6 +1958,8 @@ export default function InspectionDetailPage() {
           )}
         </div>
       </div>
+
+      {printPortal}
     </div>
   );
 }
