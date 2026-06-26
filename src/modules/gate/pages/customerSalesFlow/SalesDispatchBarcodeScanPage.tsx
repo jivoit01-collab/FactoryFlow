@@ -84,8 +84,6 @@ import {
 import { DOCKING_TOTAL_STEPS, formatTimestamp, formatValue } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 
-type ScanSource = 'camera' | 'manual';
-
 const SCAN_CLOSED_STATUSES = [
   'GATEPASS_PRINTED',
   'PRINT_COMMITTED',
@@ -134,6 +132,16 @@ export default function SalesDispatchBarcodeScanPage() {
   const [openBillKey, setOpenBillKey] = useState<number | null>(null);
   const scanTargetRef = useRef<number | null>(null);
   const didAutoOpenRef = useRef(false);
+  // Non-blocking scan queue: scans (camera or hardware gun) are accepted instantly
+  // and synced to the backend one at a time in the background, so the barcode field
+  // and Add button never lock up and the operator can keep firing boxes. `pendingCount`
+  // drives the "syncing" indicator; `flashing` drives the green success blink.
+  const [pendingCount, setPendingCount] = useState(0);
+  const [flashing, setFlashing] = useState(false);
+  const scanQueueRef = useRef<{ barcode: string; documentId: number | null }[]>([]);
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const processingRef = useRef(false);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     data: entry,
@@ -175,17 +183,16 @@ export default function SalesDispatchBarcodeScanPage() {
   const isPartialPending = partialStatus === 'PENDING';
   const isSaving = scanBox.isPending || removeScan.isPending;
 
-  // Keep the barcode field focused so a connected hardware scanner can fire one
-  // box after another without the user clicking back into it. This re-focuses on
-  // load and after every scan: the field is disabled while a scan saves
-  // (isSaving), so when isSaving flips back to false and the field re-enables,
-  // focus returns to it automatically. Skipped on touch devices (autoFocusBarcode)
-  // so the soft keyboard never pops over the camera — see detectFinePointer.
+  // Keep the barcode field focused so a connected hardware scanner can fire one box
+  // after another without the user clicking back into it. The field is never disabled
+  // (scans queue in the background), so focus is retained between scans; we only need
+  // to re-assert it on load and when the open bill changes. Skipped on touch devices
+  // (autoFocusBarcode) so the soft keyboard never pops over the camera.
   useEffect(() => {
-    if (autoFocusBarcode && entry && !isReadOnly && canEditDocking && !isSaving) {
+    if (autoFocusBarcode && entry && !isReadOnly && canEditDocking) {
       manualInputRef.current?.focus();
     }
-  }, [autoFocusBarcode, entry, isReadOnly, canEditDocking, isSaving]);
+  }, [autoFocusBarcode, entry, isReadOnly, canEditDocking, openBillKey]);
 
   const expectedBoxes = getExpectedDispatchBoxes(entry);
   // Partial = at least one box scanned but fewer than expected. Such a load needs a
@@ -219,8 +226,61 @@ export default function SalesDispatchBarcodeScanPage() {
     navigate(closedScanRedirectPath, { replace: true });
   }, [closedScanRedirectPath, entry, navigate]);
 
-  const processBarcode = useCallback(
-    async (rawBarcode: string, source: ScanSource, documentId: number | null) => {
+  // Latest entry id / refetch / mutation, read by the background queue worker so it
+  // never closes over stale values while it drains.
+  const queueCtxRef = useRef({ entryId: entry?.id, refetchEntry, scanBox });
+  queueCtxRef.current = { entryId: entry?.id, refetchEntry, scanBox };
+
+  const triggerFlash = useCallback(() => {
+    setFlashing(true);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlashing(false), 350);
+  }, []);
+
+  useEffect(() => () => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+  }, []);
+
+  // Drain the queue one scan at a time. Reentrancy-guarded so only one worker runs;
+  // new scans pushed while it runs are picked up before it exits.
+  const processQueue = useCallback(async () => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+    let didProcess = false;
+    while (scanQueueRef.current.length > 0) {
+      const next = scanQueueRef.current[0];
+      const { entryId, scanBox: scanMutation } = queueCtxRef.current;
+      try {
+        if (entryId == null) throw new Error('Docking details not found.');
+        const saved = await scanMutation.mutateAsync({
+          id: entryId,
+          data: { barcode_raw: next.barcode, document: next.documentId },
+        });
+        if (saved.duplicate) {
+          toast.warning(`${next.barcode}: already scanned for this docking`);
+        } else {
+          triggerFlash();
+        }
+      } catch (scanError) {
+        const message = getErrorMessage(scanError, `Couldn't scan ${next.barcode}`);
+        setError(message);
+        toast.error(message);
+      } finally {
+        scanQueueRef.current.shift();
+        inFlightRef.current.delete(next.barcode.toLowerCase());
+        setPendingCount(scanQueueRef.current.length);
+        didProcess = true;
+      }
+    }
+    processingRef.current = false;
+    if (didProcess) await queueCtxRef.current.refetchEntry();
+    if (scanQueueRef.current.length > 0) void processQueue();
+  }, [triggerFlash]);
+
+  // Accept a scan instantly: validate, dedupe, enqueue, keep the field focused, and
+  // kick the background worker. Never awaits the network, so it can't block the field.
+  const enqueueScan = useCallback(
+    (rawBarcode: string, documentId: number | null) => {
       const barcode = rawBarcode.trim();
       if (!entry) {
         setError('Docking details not found.');
@@ -234,48 +294,37 @@ export default function SalesDispatchBarcodeScanPage() {
         setError('Box scans cannot be changed for this Docking entry.');
         return;
       }
-
-      const alreadyScanned = scans.some(
-        (scan) =>
-          scan.box_barcode.toLowerCase() === barcode.toLowerCase() ||
-          scan.barcode_raw.toLowerCase() === barcode.toLowerCase(),
-      );
-      if (alreadyScanned) {
+      const key = barcode.toLowerCase();
+      const already =
+        inFlightRef.current.has(key) ||
+        scans.some(
+          (scan) =>
+            scan.box_barcode.toLowerCase() === key || scan.barcode_raw.toLowerCase() === key,
+        );
+      if (already) {
         setError('');
         toast.warning('This box is already in the scan list');
         setManualBarcode('');
         return;
       }
-
       setError('');
-      try {
-        const savedScan = await scanBox.mutateAsync({
-          id: entry.id,
-          // documentId scopes the scan to the bill the operator opened; the backend
-          // rejects items not on that bill and any box past its invoiced quantity.
-          data: { barcode_raw: barcode, document: documentId },
-        });
-        setManualBarcode('');
-        await refetchEntry();
-        if (savedScan.duplicate) {
-          toast.warning('This box was already scanned for this docking entry');
-        } else {
-          toast.success(source === 'camera' ? 'Camera scan added' : 'Box scan added');
-        }
-        if (autoFocusBarcode) manualInputRef.current?.focus();
-      } catch (scanError) {
-        setError(getErrorMessage(scanError, 'Unable to save this box scan'));
-      }
+      inFlightRef.current.add(key);
+      scanQueueRef.current.push({ barcode, documentId });
+      setPendingCount(scanQueueRef.current.length);
+      setManualBarcode('');
+      if (autoFocusBarcode) manualInputRef.current?.focus();
+      void processQueue();
     },
-    [autoFocusBarcode, canEditDocking, entry, isReadOnly, refetchEntry, scanBox, scans],
+    [autoFocusBarcode, canEditDocking, entry, isReadOnly, scans, processQueue],
   );
 
-  const handleCameraScan = useCallback(
-    (decodedText: string) => {
-      void processBarcode(decodedText, 'camera', scanTargetRef.current);
-    },
-    [processBarcode],
-  );
+  // Stable ref so the camera's one-time onScan callback always enqueues against the
+  // latest state and the currently open bill.
+  const enqueueRef = useRef(enqueueScan);
+  enqueueRef.current = enqueueScan;
+  const handleCameraScan = useCallback((decodedText: string) => {
+    enqueueRef.current(decodedText, scanTargetRef.current);
+  }, []);
 
   const scanner = useScanner({ onScan: handleCameraScan, debounceMs: 1800 });
 
@@ -287,7 +336,7 @@ export default function SalesDispatchBarcodeScanPage() {
   }, [openBillKey]);
 
   const handleManualSubmit = (documentId: number | null) => {
-    void processBarcode(manualBarcode, 'manual', documentId);
+    enqueueScan(manualBarcode, documentId);
   };
 
   const handleToggleBill = (key: number) => {
@@ -463,6 +512,12 @@ export default function SalesDispatchBarcodeScanPage() {
                   <PackageSearch className="h-4 w-4" />
                   Check Barcode Scans
                 </Button>
+                {pendingCount > 0 ? (
+                  <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    Syncing {pendingCount}
+                  </Badge>
+                ) : null}
                 <Badge variant={scans.length > 0 ? 'success' : 'outline'}>
                   {scans.length} scanned
                 </Badge>
@@ -542,10 +597,10 @@ export default function SalesDispatchBarcodeScanPage() {
                 manualBarcode={manualBarcode}
                 manualInputRef={manualInputRef}
                 autoFocusBarcode={autoFocusBarcode}
-                scanPending={scanBox.isPending}
+                pendingCount={pendingCount}
+                flashing={flashing}
                 isReadOnly={isReadOnly}
                 canEdit={canEditDocking}
-                isSaving={isSaving}
                 onManualChange={(value) => {
                   setManualBarcode(value);
                   setError('');
@@ -947,10 +1002,10 @@ function BillScanCard({
   manualBarcode,
   manualInputRef,
   autoFocusBarcode,
-  scanPending,
+  pendingCount,
+  flashing,
   isReadOnly,
   canEdit,
-  isSaving,
   onManualChange,
   onManualSubmit,
   onRemoveScan,
@@ -962,10 +1017,10 @@ function BillScanCard({
   manualBarcode: string;
   manualInputRef: RefObject<HTMLInputElement | null>;
   autoFocusBarcode: boolean;
-  scanPending: boolean;
+  pendingCount: number;
+  flashing: boolean;
   isReadOnly: boolean;
   canEdit: boolean;
-  isSaving: boolean;
   onManualChange: (value: string) => void;
   onManualSubmit: () => void;
   onRemoveScan: (scan: SalesDispatchBoxScan) => void;
@@ -1032,12 +1087,18 @@ function BillScanCard({
                   ) : (
                     <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
                   )}
+                  {/* Green blink confirming a box was accepted (camera or gun). */}
+                  <div
+                    className={cn(
+                      'pointer-events-none absolute inset-0 bg-emerald-400/60 transition-opacity duration-200',
+                      flashing ? 'opacity-100' : 'opacity-0',
+                    )}
+                  />
                 </div>
                 <Button
                   type="button"
                   variant={scanner.isScanning ? 'outline' : 'default'}
                   onClick={scanner.isScanning ? scanner.stopScanning : scanner.startScanning}
-                  disabled={isSaving}
                   className="w-full"
                 >
                   <Camera className="h-4 w-4" />
@@ -1059,22 +1120,23 @@ function BillScanCard({
                     id={inputId}
                     autoFocus={autoFocusBarcode}
                     value={manualBarcode}
-                    disabled={isSaving}
                     onChange={(event) => onManualChange(event.target.value)}
                     placeholder="Scan or type barcode"
                     className="font-mono"
                   />
-                  <Button type="submit" disabled={isSaving || !manualBarcode.trim()}>
-                    {scanPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <PackageCheck className="h-4 w-4" />
-                    )}
+                  <Button type="submit" disabled={!manualBarcode.trim()}>
+                    <PackageCheck className="h-4 w-4" />
                     Add
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Boxes are recorded against this bill only, capped at its invoiced quantity.
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {pendingCount > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-amber-600">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Syncing {pendingCount}…
+                    </span>
+                  ) : null}
+                  <span>Boxes are recorded against this bill only, capped at its invoiced quantity.</span>
                 </p>
               </form>
             </div>
@@ -1082,7 +1144,7 @@ function BillScanCard({
 
           <BillScannedBoxes
             scans={bill.scans}
-            canRemove={canScan && !isSaving}
+            canRemove={canScan}
             onRemoveScan={onRemoveScan}
           />
         </div>
