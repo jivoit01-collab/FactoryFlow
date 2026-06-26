@@ -22,6 +22,9 @@ const WmsTransferPage = lazy(() => import('./pages/WmsTransferPage'));
 const WmsReceivePage = lazy(() => import('./pages/WmsReceivePage'));
 const WmsOutboundPage = lazy(() => import('./pages/WmsOutboundPage'));
 const WmsPickPage = lazy(() => import('./pages/WmsPickPage'));
+const WmsCountPage = lazy(() => import('./pages/WmsCountPage'));
+const WmsReportsPage = lazy(() => import('./pages/WmsReportsPage'));
+const WmsLabelsPage = lazy(() => import('./pages/WmsLabelsPage'));
 
 export const wmsModuleConfig: ModuleConfig = {
   name: 'warehouse-ops',
@@ -74,6 +77,24 @@ export const wmsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Outbound' },
     },
     {
+      path: '/warehouse-ops/count',
+      element: <WmsCountPage />,
+      layout: 'main',
+      breadcrumb: { label: 'Count' },
+    },
+    {
+      path: '/warehouse-ops/reports',
+      element: <WmsReportsPage />,
+      layout: 'main',
+      breadcrumb: { label: 'Reports' },
+    },
+    {
+      path: '/warehouse-ops/labels',
+      element: <WmsLabelsPage />,
+      layout: 'main',
+      breadcrumb: { label: 'Labels' },
+    },
+    {
       path: '/warehouse-ops/designer',
       element: <WmsDesignerPage />,
       layout: 'main',
@@ -100,6 +121,9 @@ export const wmsModuleConfig: ModuleConfig = {
         { path: '/warehouse-ops/transfer', title: 'Transfer' },
         { path: '/warehouse-ops/pick', title: 'Pick' },
         { path: '/warehouse-ops/outbound', title: 'Outbound' },
+        { path: '/warehouse-ops/count', title: 'Cycle Count' },
+        { path: '/warehouse-ops/reports', title: 'Reports' },
+        { path: '/warehouse-ops/labels', title: 'Labels' },
         { path: '/warehouse-ops/designer', title: 'Designer' },
         { path: '/warehouse-ops/settings', title: 'Settings' },
       ],

@@ -25,10 +25,11 @@ import {
 
 import { WarehouseGrid, type GridCell } from '../components/WarehouseGrid';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
 import { ZoneDialog, type ZoneFormValue } from '../components/ZoneDialog';
 import { TextPromptDialog } from '../components/TextPromptDialog';
 import { LocationPropertiesPanel } from '../components/LocationPropertiesPanel';
-import { useWarehouseEditor, useWmsEnabled, wmsStore } from '../store';
+import { useWarehouseEditor, useWmsEnabled, useWmsRole, wmsStore } from '../store';
 import {
   addColumn,
   addLevel,
@@ -50,6 +51,7 @@ import { nowIso } from '../utils';
 export default function WmsWarehouseEditorPage() {
   const { warehouseId = '' } = useParams();
   const enabled = useWmsEnabled();
+  const { isAdmin } = useWmsRole();
   const editor = useWarehouseEditor(warehouseId);
   const { bundle, loading, busy, canUndo, canRedo, mutate, undo, redo } = editor;
 
@@ -257,6 +259,14 @@ export default function WmsWarehouseEditorPage() {
     return (
       <div className="mx-auto max-w-3xl p-4 md:p-6">
         <WmsDisabledNotice />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 md:p-6">
+        <AdminOnlyNotice />
       </div>
     );
   }

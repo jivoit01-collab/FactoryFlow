@@ -37,6 +37,8 @@ interface PalletAuditDialogProps {
   location: WarehouseLocation | null;
   totalUnits: number;
   mandatory: boolean;
+  /** Only an admin/manager may approve a large discrepancy. */
+  canApprove?: boolean;
   onConfirm: (result: AuditResult) => void | Promise<void>;
 }
 
@@ -52,6 +54,7 @@ export function PalletAuditDialog({
   location,
   totalUnits,
   mandatory,
+  canApprove = true,
   onConfirm,
 }: PalletAuditDialogProps) {
   const [mode, setMode] = useState<'verify' | 'discrepancy'>('verify');
@@ -110,9 +113,10 @@ export function PalletAuditDialog({
             {large ? (
               <label className="flex items-center justify-between gap-2 text-sm">
                 <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
-                  <AlertTriangle className="h-4 w-4" /> Large discrepancy — supervisor approval
+                  <AlertTriangle className="h-4 w-4" />
+                  {canApprove ? 'Large discrepancy — supervisor approval' : 'Large discrepancy — needs a manager'}
                 </span>
-                <Switch checked={approved} onChange={setApproved} />
+                <Switch checked={approved} disabled={!canApprove} onChange={setApproved} />
               </label>
             ) : null}
           </div>

@@ -27,6 +27,7 @@ import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import { validateMove } from '../services';
 import type { MoveItem, ValidationResult } from '../services';
+import { notifyFail, notifyOk } from '../utils';
 import type {
   InventoryRecord,
   MaterialWarehouseProfile,
@@ -191,12 +192,12 @@ export default function WmsTransferPage() {
       } else {
         await wmsStore.movePallet({ palletId: subject.pallet.id, toLocationId: destLocationId });
       }
-      toast.success('Move completed.');
+      notifyOk('Move completed.');
       setSubject(null);
       setDestQuery('');
       setDestLocationId(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Move failed.');
+      notifyFail(error instanceof Error ? error.message : 'Move failed.');
     } finally {
       setBusy(false);
     }

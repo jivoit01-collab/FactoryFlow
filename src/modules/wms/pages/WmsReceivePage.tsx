@@ -27,6 +27,7 @@ import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import { suggestPutaway, validateMove } from '../services';
 import type { MoveItem, PutawaySuggestion, ValidationResult } from '../services';
+import { notifyFail, notifyOk } from '../utils';
 import type { MaterialWarehouseProfile, WarehouseLocation } from '../types';
 
 export default function WmsReceivePage() {
@@ -186,10 +187,10 @@ export default function WmsReceivePage() {
         volume: added.volume || null,
         licensePlate: licensePlate.trim() || undefined,
       });
-      toast.success(`Received ${quantity} ${uom} into ${destLocation?.code}.`);
+      notifyOk(`Received ${quantity} ${uom} into ${destLocation?.code}.`);
       reset();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Receive failed.');
+      notifyFail(error instanceof Error ? error.message : 'Receive failed.');
     } finally {
       setBusy(false);
     }

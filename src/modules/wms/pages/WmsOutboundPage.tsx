@@ -22,12 +22,14 @@ import {
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { PalletAuditDialog, type AuditResult } from '../components/PalletAuditDialog';
-import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
+import { useWmsCollection, useWmsEnabled, useWmsRole, useWmsSettings, wmsStore } from '../store';
+import { notifyFail, notifyOk } from '../utils';
 import type { Pallet } from '../types';
 
 export default function WmsOutboundPage() {
   const enabled = useWmsEnabled();
   const { settings } = useWmsSettings();
+  const { isAdmin } = useWmsRole();
   const { data: locations } = useWmsCollection('locations');
   const { data: pallets } = useWmsCollection('pallets');
   const { data: inventory } = useWmsCollection('inventory');
@@ -76,13 +78,13 @@ export default function WmsOutboundPage() {
         correctedBoxCount: result.correctedBoxCount,
         supervisorApproved: result.supervisorApproved,
       });
-      toast.success(`Pallet ${selectedPallet.licensePlate} shipped.`);
+      notifyOk(`Pallet ${selectedPallet.licensePlate} shipped.`);
       setAuditOpen(false);
       setSelectedPallet(null);
       setScanQuery('');
       setLocationId(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Ship failed.');
+      notifyFail(error instanceof Error ? error.message : 'Ship failed.');
     }
   }
 
@@ -193,6 +195,7 @@ export default function WmsOutboundPage() {
         location={selectedPallet ? locations.find((l) => l.id === selectedPallet.currentLocationId) ?? null : null}
         totalUnits={selectedPallet ? unitsOf(selectedPallet) : 0}
         mandatory={settings?.mandatoryOutboundAudit ?? true}
+        canApprove={isAdmin}
         onConfirm={handleConfirm}
       />
     </div>

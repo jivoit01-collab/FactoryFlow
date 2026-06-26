@@ -25,7 +25,8 @@ import {
 
 import { WarehouseGrid, type GridCell } from '../components/WarehouseGrid';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
-import { useWmsEnabled } from '../store';
+import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
+import { useWmsEnabled, useWmsRole } from '../store';
 import { wmsStore } from '../store';
 import {
   DEFAULT_NAMING_SCHEME,
@@ -40,6 +41,7 @@ import { createWmsId, nowIso } from '../utils';
 
 export default function WmsDesignerPage() {
   const enabled = useWmsEnabled();
+  const { isAdmin } = useWmsRole();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
@@ -113,6 +115,14 @@ export default function WmsDesignerPage() {
     return (
       <div className="mx-auto max-w-3xl p-4 md:p-6">
         <WmsDisabledNotice />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 md:p-6">
+        <AdminOnlyNotice />
       </div>
     );
   }

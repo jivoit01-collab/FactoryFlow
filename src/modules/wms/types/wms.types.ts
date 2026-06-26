@@ -27,6 +27,13 @@ export type StorageAdapterKind = 'indexeddb' | 'localstorage' | 'api';
 export type PutawayMode = 'DIRECTED' | 'MANUAL' | 'HYBRID';
 export type PickStrategy = 'FIFO' | 'LIFO' | 'FEFO';
 
+/**
+ * Self-contained module role. ADMIN/manager designs the warehouse, edits
+ * properties/settings, and approves large audit discrepancies; OPERATOR runs
+ * only the scan workflows. Stored in settings since the module is frontend-driven.
+ */
+export type WmsRole = 'ADMIN' | 'OPERATOR';
+
 /** Whether a rule violation hard-blocks the action or only warns. */
 export type ViolationMode = 'BLOCK' | 'WARN';
 
@@ -310,6 +317,8 @@ export interface WmsSettings extends WmsRecordBase {
   allowNegativeStock: boolean;
   /** Which storage implementation the adapter should use. */
   storageAdapter: StorageAdapterKind;
+  /** Active module role (gates the designer, settings, and approvals). */
+  role: WmsRole;
   updatedAt: IsoDateTime;
 }
 
@@ -325,4 +334,5 @@ export const DEFAULT_WMS_SETTINGS: Omit<WmsSettings, 'updatedAt'> = {
   materialRuleViolation: 'WARN',
   allowNegativeStock: false,
   storageAdapter: 'indexeddb',
+  role: 'ADMIN',
 };

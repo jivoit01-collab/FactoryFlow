@@ -32,7 +32,8 @@ import {
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
-import { useWarehouses, useWmsCollection, useWmsEnabled, wmsStore } from '../store';
+import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
+import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsRole, wmsStore } from '../store';
 import {
   buildWarehouseExport,
   instantiateTemplate,
@@ -44,6 +45,7 @@ import type { LayoutTemplate, Warehouse } from '../types';
 
 export default function WmsWarehousesPage() {
   const enabled = useWmsEnabled();
+  const { isAdmin } = useWmsRole();
   const navigate = useNavigate();
   const { warehouses, loading } = useWarehouses();
   const { data: locations } = useWmsCollection('locations');
@@ -159,6 +161,14 @@ export default function WmsWarehousesPage() {
     return (
       <div className="mx-auto max-w-3xl p-4 md:p-6">
         <WmsDisabledNotice />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 md:p-6">
+        <AdminOnlyNotice />
       </div>
     );
   }

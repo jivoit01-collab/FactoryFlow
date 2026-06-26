@@ -24,7 +24,8 @@ import {
   Switch,
 } from '@/shared/components/ui';
 
-import { useWmsSettings } from '../store';
+import { useWmsRole, useWmsSettings } from '../store';
+import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
 import type {
   PickStrategy,
   PutawayMode,
@@ -59,6 +60,7 @@ function SettingRow({
 
 export default function WmsSettingsPage() {
   const { settings, loading, save, switchStorageAdapter } = useWmsSettings();
+  const { isAdmin } = useWmsRole();
   const [saving, setSaving] = useState(false);
 
   async function patch(change: Partial<Omit<WmsSettings, 'id'>>) {
@@ -72,17 +74,21 @@ export default function WmsSettingsPage() {
     }
   }
 
+  const adapterLabel: Record<StorageAdapterKind, string> = {
+    indexeddb: 'IndexedDB',
+    localstorage: 'localStorage',
+    api: 'the backend API',
+  };
+
   async function changeAdapter(kind: StorageAdapterKind) {
-    if (kind === 'api') {
-      toast.info('The backend API adapter arrives in Step 10 — keeping the current storage.');
-      return;
-    }
     setSaving(true);
     try {
       await switchStorageAdapter(kind);
-      toast.success(`Storage switched to ${kind === 'indexeddb' ? 'IndexedDB' : 'localStorage'}.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to switch storage.');
+      toast.success(`Storage switched to ${adapterLabel[kind]}.`);
+    } catch {
+      // The backend isn't reachable here — revert so the module stays usable.
+      await switchStorageAdapter('indexeddb');
+      toast.error('Could not reach that storage backend. Reverted to IndexedDB.');
     } finally {
       setSaving(false);
     }
@@ -92,6 +98,14 @@ export default function WmsSettingsPage() {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 md:p-6">
+        <AdminOnlyNotice />
       </div>
     );
   }
@@ -302,7 +316,7 @@ export default function WmsSettingsPage() {
               >
                 <option value="indexeddb">IndexedDB (default)</option>
                 <option value="localstorage">localStorage (fallback)</option>
-                <option value="api">Backend API (coming in Step 10)</option>
+                <option value="api">Backend API</option>
               </NativeSelect>
             }
           />

@@ -93,8 +93,8 @@ describe('createWmsAdapter (single swap point)', () => {
     ).toBe(true);
   });
 
-  it('api stub rejects every operation until the backend is wired', async () => {
-    await expect(new ApiAdapter().list('warehouses')).rejects.toThrow(/not implemented/i);
+  it('the api adapter is a real REST client (behaviour covered in wms.apiAdapter.test)', () => {
+    expect(new ApiAdapter().kind).toBe('api');
   });
 });
 

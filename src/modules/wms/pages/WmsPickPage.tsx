@@ -24,13 +24,15 @@ import {
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { PalletAuditDialog, type AuditResult } from '../components/PalletAuditDialog';
-import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
+import { useWmsCollection, useWmsEnabled, useWmsRole, useWmsSettings, wmsStore } from '../store';
 import { planPicks } from '../services';
 import type { PickAllocation, PickPlan } from '../services';
+import { notifyFail, notifyOk } from '../utils';
 
 export default function WmsPickPage() {
   const enabled = useWmsEnabled();
   const { settings } = useWmsSettings();
+  const { isAdmin } = useWmsRole();
   const { data: locations } = useWmsCollection('locations');
   const { data: inventory } = useWmsCollection('inventory');
   const { data: pallets } = useWmsCollection('pallets');
@@ -81,7 +83,7 @@ export default function WmsPickPage() {
     if (!plan) return;
     const nextIndex = index + 1;
     if (nextIndex >= plan.allocations.length) {
-      toast.success('Pick complete.');
+      notifyOk('Pick complete.');
       setPlan(null);
       setIndex(0);
       setItemCode('');
@@ -102,7 +104,7 @@ export default function WmsPickPage() {
       await wmsStore.pickInventory({ sourceId: current.inventoryId, quantity: pickQty, note: orderRef ? `Order ${orderRef}` : undefined });
       advance();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Pick failed.');
+      notifyFail(error instanceof Error ? error.message : 'Pick failed.');
     }
   }
 
@@ -118,7 +120,7 @@ export default function WmsPickPage() {
       setAuditOpen(false);
       advance();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Pick failed.');
+      notifyFail(error instanceof Error ? error.message : 'Pick failed.');
     }
   }
 
@@ -251,6 +253,7 @@ export default function WmsPickPage() {
         location={currentLocation}
         totalUnits={current?.available ?? 0}
         mandatory={settings?.mandatoryOutboundAudit ?? true}
+        canApprove={isAdmin}
         onConfirm={confirmPalletAudit}
       />
     </div>

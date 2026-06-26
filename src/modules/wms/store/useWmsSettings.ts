@@ -55,3 +55,14 @@ export function useWmsEnabled(): boolean {
   const { settings } = useWmsSettings();
   return settings?.masterEnabled ?? false;
 }
+
+/** Active role + an admin convenience flag, plus a setter. */
+export function useWmsRole(): {
+  role: 'ADMIN' | 'OPERATOR';
+  isAdmin: boolean;
+  setRole: (role: 'ADMIN' | 'OPERATOR') => Promise<unknown>;
+} {
+  const { settings, save } = useWmsSettings();
+  const role = settings?.role ?? 'ADMIN';
+  return { role, isAdmin: role === 'ADMIN', setRole: (next) => save({ role: next }) };
+}

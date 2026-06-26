@@ -19,11 +19,12 @@ import {
   CardTitle,
 } from '@/shared/components/ui';
 
-import { useWmsEnabled, useWmsSettings } from '../store';
+import { useWmsEnabled, useWmsRole, useWmsSettings } from '../store';
 
 export default function WmsOverviewPage() {
   const { loading } = useWmsSettings();
   const enabled = useWmsEnabled();
+  const { role, setRole } = useWmsRole();
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
@@ -42,6 +43,26 @@ export default function WmsOverviewPage() {
             {enabled ? 'Enabled' : 'Disabled'}
           </Badge>
         ) : null}
+      </div>
+
+      {/* Role switcher — gates the designer, settings, and approvals */}
+      <div className="flex items-center justify-between rounded-lg border p-3">
+        <div>
+          <p className="text-sm font-medium">Role: {role === 'ADMIN' ? 'Administrator' : 'Operator'}</p>
+          <p className="text-xs text-muted-foreground">
+            {role === 'ADMIN'
+              ? 'Full access — design, settings, and approvals.'
+              : 'Scan workflows only — designer and settings are hidden.'}
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant={role === 'ADMIN' ? 'default' : 'outline'} onClick={() => void setRole('ADMIN')}>
+            Admin
+          </Button>
+          <Button size="sm" variant={role === 'OPERATOR' ? 'default' : 'outline'} onClick={() => void setRole('OPERATOR')}>
+            Operator
+          </Button>
+        </div>
       </div>
 
       {enabled ? (

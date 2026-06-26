@@ -591,6 +591,91 @@ class WmsStore {
     await Promise.all([this.load('inventory'), this.load('pallets'), this.load('movements')]);
   }
 
+  // -- cycle count (Step 9) -------------------------------------------------
+
+  /**
+   * Post a cycle count for a location: set each counted line to its counted
+   * quantity (removing emptied lines), create any newly-found items, and log a
+   * CYCLE_COUNT movement (flagged as a discrepancy) for every line that changed.
+   */
+  async postCycleCount(params: {
+    locationId: WmsId;
+    counts: { inventoryId: WmsId; countedQuantity: number; countedBoxCount?: number | null }[];
+    additions?: { itemCode: string; itemName?: string; quantity: number; uom?: string; lotNumber?: string }[];
+    actor?: MoveActor;
+  }): Promise<{ adjustments: number }> {
+    const adapter = this.adapter();
+    let adjustments = 0;
+
+    for (const count of params.counts) {
+      const record = await adapter.get('inventory', count.inventoryId);
+      if (!record) continue;
+      if (count.countedQuantity === record.quantity) continue;
+      adjustments += 1;
+      const recordedQuantity = record.quantity;
+
+      if (count.countedQuantity <= 0) {
+        await adapter.remove('inventory', record.id);
+      } else {
+        await adapter.update('inventory', record.id, {
+          quantity: count.countedQuantity,
+          boxCount: count.countedBoxCount ?? record.boxCount,
+          updatedAt: nowIso(),
+        });
+      }
+      await adapter.create(
+        'movements',
+        makeMovement({
+          type: 'CYCLE_COUNT',
+          itemCode: record.itemCode,
+          itemName: record.itemName,
+          fromLocationId: record.locationId,
+          quantity: count.countedQuantity,
+          boxCount: count.countedBoxCount ?? null,
+          lotNumber: record.lotNumber,
+          discrepancy: true,
+          note: `Counted ${count.countedQuantity}, was ${recordedQuantity}`,
+          userId: params.actor?.id,
+          userName: params.actor?.name,
+        }),
+      );
+    }
+
+    for (const addition of params.additions ?? []) {
+      if (!(addition.quantity > 0)) continue;
+      adjustments += 1;
+      await adapter.create(
+        'inventory',
+        makeInventoryRecord({
+          locationId: params.locationId,
+          itemCode: addition.itemCode,
+          itemName: addition.itemName,
+          quantity: addition.quantity,
+          uom: addition.uom,
+          lotNumber: addition.lotNumber,
+        }),
+      );
+      await adapter.create(
+        'movements',
+        makeMovement({
+          type: 'CYCLE_COUNT',
+          itemCode: addition.itemCode,
+          itemName: addition.itemName,
+          toLocationId: params.locationId,
+          quantity: addition.quantity,
+          lotNumber: addition.lotNumber,
+          discrepancy: true,
+          note: `Found ${addition.quantity} not on record`,
+          userId: params.actor?.id,
+          userName: params.actor?.name,
+        }),
+      );
+    }
+
+    await Promise.all([this.load('inventory'), this.load('movements')]);
+    return { adjustments };
+  }
+
   // -- settings singleton ---------------------------------------------------
 
   /** Read the settings record, seeding it with defaults on first run. */

@@ -1,5 +1,27 @@
 /** Small shared helpers for building WMS records. */
+import { toast } from 'sonner';
+
 import type { IsoDateTime, WmsId } from './types';
+
+function vibrate(pattern: number | number[]): void {
+  try {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(pattern);
+  } catch {
+    // Vibration unsupported — colour + toast still convey the result.
+  }
+}
+
+/** Success feedback: green toast + a short single buzz (handheld-friendly). */
+export function notifyOk(message: string): void {
+  vibrate(40);
+  toast.success(message);
+}
+
+/** Failure feedback: red toast + a double buzz so it's felt without looking. */
+export function notifyFail(message: string): void {
+  vibrate([70, 50, 70]);
+  toast.error(message);
+}
 
 /** Generate a new record id (native, no extra dependency). */
 export function createWmsId(): WmsId {

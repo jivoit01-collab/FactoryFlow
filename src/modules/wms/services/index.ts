@@ -20,6 +20,25 @@ export { suggestPutaway } from './putaway';
 export type { PutawaySuggestion, SuggestPutawayParams } from './putaway';
 export { planPicks } from './picking';
 export type { PickAllocation, PickPlan } from './picking';
+export {
+  findItemLocations,
+  utilizationByZone,
+  utilizationTotal,
+  stockByLocation,
+  locationByStock,
+  filterMovements,
+  replenishmentList,
+  expiryReport,
+} from './reports';
+export type {
+  ItemLocationHit,
+  UtilizationRow,
+  StockByLocationRow,
+  ItemStockRow,
+  MovementFilter,
+  ReplenishmentRow,
+  ExpiryRow,
+} from './reports';
 export { validateMove } from './validation';
 export type {
   MoveItem,

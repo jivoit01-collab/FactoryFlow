@@ -4,6 +4,7 @@ export type {
   StorageAdapterKind,
   PutawayMode,
   PickStrategy,
+  WmsRole,
   ViolationMode,
   TemperatureClass,
   MovementType,
