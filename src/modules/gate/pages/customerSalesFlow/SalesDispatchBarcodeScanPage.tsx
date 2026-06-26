@@ -12,16 +12,18 @@ import {
   PackageCheck,
   PackageSearch,
   Plus,
+  RotateCcw,
   ScanLine,
-  Send,
   ShieldCheck,
   Trash2,
   Truck,
+  WifiOff,
 } from 'lucide-react';
 import {
   type FocusEvent,
   type FormEvent,
   type KeyboardEvent,
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -48,7 +50,6 @@ import {
   type SalesDispatchBoxScanFailureReason,
   type SalesDispatchGateOut,
   type SalesDispatchItem,
-  useBatchScanSalesDispatchBoxes,
   useImportSalesDispatchBarcodeScans,
   useRemoveSalesDispatchBoxScan,
   useSalesDispatchBarcodeScans,
@@ -57,6 +58,12 @@ import {
 } from '@/modules/gate/api';
 import { StepFooter, StepHeader, StepLoadingSpinner } from '@/modules/gate/components';
 import { useEntryId } from '@/modules/gate/hooks';
+import {
+  MAX_SYNC_ATTEMPTS,
+  type QueuedScan,
+  scanFeedback,
+  useBoxScanSync,
+} from '@/modules/gate/services/boxScanQueue';
 import {
   Badge,
   Button,
@@ -87,15 +94,6 @@ import { DOCKING_TOTAL_STEPS, formatTimestamp, formatValue } from './salesDispat
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 
 type ScanSource = 'camera' | 'manual';
-
-/** One locally-scanned barcode held in client state until the batch is submitted. */
-interface ScanQueueItem {
-  /** Stable client-side id so React keys and inline edits survive re-renders. */
-  uid: number;
-  barcode: string;
-  /** Set after a submit attempt when the backend rejected this barcode. */
-  error: { reason: SalesDispatchBoxScanFailureReason; detail: string } | null;
-}
 
 const FAILURE_LABELS: Record<SalesDispatchBoxScanFailureReason, string> = {
   EMPTY: 'Empty',
@@ -128,15 +126,7 @@ export default function SalesDispatchBarcodeScanPage() {
   const [partialReason, setPartialReason] = useState('');
   const [partialError, setPartialError] = useState('');
   const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
-  // Scan-then-submit: barcodes are queued in client state and only written to the
-  // database on submit. After a submit, only the rejected barcodes remain here.
-  const [queue, setQueue] = useState<ScanQueueItem[]>([]);
   const manualInputRef = useRef<HTMLInputElement>(null);
-  const queueUidRef = useRef(0);
-  // Live, lowercase mirror of the barcodes currently in `queue`. Read inside
-  // addToQueue so duplicate detection stays correct even from the camera scanner's
-  // stale closure (it captures addToQueue once on start). Kept in sync below.
-  const queuedKeysRef = useRef<Set<string>>(new Set());
 
   const {
     data: entry,
@@ -144,7 +134,11 @@ export default function SalesDispatchBarcodeScanPage() {
     error: entryError,
     refetch: refetchEntry,
   } = useSalesDispatchByVehicleEntry(entryIdNumber);
-  const { data: scans = [], isLoading: isScansLoading } = useSalesDispatchBoxScans(entry?.id);
+  const {
+    data: scans = [],
+    isLoading: isScansLoading,
+    refetch: refetchScans,
+  } = useSalesDispatchBoxScans(entry?.id);
   const { data: skipRequest } = useDockingScanSkipRequestByDispatch(entry?.id);
   const { data: partialRequest } = useDockingPartialScanRequestByDispatch(entry?.id);
   const {
@@ -152,18 +146,45 @@ export default function SalesDispatchBarcodeScanPage() {
     isFetching: isBarcodeScansLoading,
     error: barcodeScansError,
   } = useSalesDispatchBarcodeScans(entry?.id, { enabled: isBarcodeDialogOpen });
-  const batchScan = useBatchScanSalesDispatchBoxes();
   const removeScan = useRemoveSalesDispatchBoxScan();
   const createSkipRequest = useCreateDockingScanSkipRequest();
   const createPartialRequest = useCreateDockingPartialScanRequest();
 
   const isReadOnly = entry ? SCAN_CLOSED_STATUSES.includes(entry.status) : false;
-  // In review mode we deliberately stay on the page to walk a closed entry.
-  const closedScanRedirectPath = isReview ? '' : getClosedScanRedirectPath(entry);
   const canEditDocking = hasAnyPermission([
     GATE_PERMISSIONS.SALES_DISPATCH.CREATE,
     GATE_PERMISSIONS.SALES_DISPATCH.EDIT,
   ]);
+  // Scanning + background sync run only when this entry is editable.
+  const canScanNow = Boolean(entry) && !isReadOnly && canEditDocking;
+
+  // Background sync: refetch server truth after a successful batch flush so the
+  // Saved Boxes table and per-item progress reconcile with what was confirmed.
+  const onServerChanged = useCallback(() => {
+    void refetchScans();
+    void refetchEntry();
+  }, [refetchScans, refetchEntry]);
+
+  // The two-lane scan engine: instant local accept + durable queue + 1.5s sync.
+  const {
+    acceptScan,
+    acceptedCount,
+    pendingCount,
+    failedCount,
+    queue,
+    isSyncing,
+    isOffline,
+    flushNow,
+    retryQueued,
+    removeQueued,
+  } = useBoxScanSync({
+    dispatchId: entry?.id,
+    serverScans: scans,
+    enabled: canScanNow,
+    onServerChanged,
+  });
+  // In review mode we deliberately stay on the page to walk a closed entry.
+  const closedScanRedirectPath = isReview ? '' : getClosedScanRedirectPath(entry);
   const canRequestScanSkip = hasPermission(ADMIN_PERMISSIONS.DOCKING.REQUEST_SCAN_SKIP);
   const canRequestPartial = hasPermission(ADMIN_PERMISSIONS.DOCKING.REQUEST_PARTIAL_SCAN);
   // Some companies (e.g. Jivo Beverages) don't scan boxes at the factory at all, so box
@@ -176,19 +197,20 @@ export default function SalesDispatchBarcodeScanPage() {
   const partialStatus = partialRequest?.status ?? null;
   const isPartialApproved = partialStatus === 'APPROVED';
   const isPartialPending = partialStatus === 'PENDING';
-  const isSaving = batchScan.isPending || removeScan.isPending;
+  const isSaving = removeScan.isPending;
 
   const expectedBoxes = getExpectedDispatchBoxes(entry);
-  // Partial = at least one box scanned but fewer than expected. Such a load needs a
-  // partial-dispatch approval (the zero-scan case still uses the scan-skip flow).
-  const isPartialScan = scans.length > 0 && expectedBoxes > 0 && scans.length < expectedBoxes;
+  // Counts are driven by the instant in-memory tally (server-confirmed + locally
+  // queued), so progress and the partial/skip gates react the moment a box is
+  // scanned — long before the background sync confirms it.
+  const isPartialScan = acceptedCount > 0 && expectedBoxes > 0 && acceptedCount < expectedBoxes;
   const scannedQuantity = useMemo(
     () => scans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
     [scans],
   );
   const itemScanSummary = useMemo(() => buildItemScanSummary(entry, scans), [entry, scans]);
   const progressPercent =
-    expectedBoxes > 0 ? Math.min(100, Math.round((scans.length / expectedBoxes) * 100)) : 0;
+    expectedBoxes > 0 ? Math.min(100, Math.round((acceptedCount / expectedBoxes) * 100)) : 0;
 
   useEffect(() => {
     if (!closedScanRedirectPath || !entry) return;
@@ -198,7 +220,6 @@ export default function SalesDispatchBarcodeScanPage() {
 
   // Auto-focus the barcode field once the entry is ready and no dialog is open, so
   // the operator can start scanning immediately without tapping the field.
-  const canScanNow = Boolean(entry) && !isReadOnly && canEditDocking;
   const isAnyDialogOpen = isSkipDialogOpen || isPartialDialogOpen || isBarcodeDialogOpen;
   useEffect(() => {
     if (!canScanNow || isAnyDialogOpen) return;
@@ -210,17 +231,14 @@ export default function SalesDispatchBarcodeScanPage() {
     requestAnimationFrame(() => manualInputRef.current?.focus());
   }, []);
 
-  // Append a scanned barcode to the local queue. Synchronous so rapid wedge scans
-  // never race or drop; deduped against the queue and already-saved boxes.
-  const addToQueue = useCallback(
+  // The scan hot path. Synchronous and non-blocking: it validates in memory
+  // (dedupe), persists locally (fire-and-forget), beeps, and returns. No `await`,
+  // no API call, no DB read — so it stays in single-digit milliseconds whether
+  // it is box 4 or box 400. The background loop pushes the boxes to the server.
+  const handleScan = useCallback(
     (rawBarcode: string, source: ScanSource) => {
-      const barcode = rawBarcode.trim();
       if (!entry) {
         setError('Docking details not found.');
-        return;
-      }
-      if (!barcode) {
-        if (source === 'manual') setError('Enter or scan a box barcode.');
         return;
       }
       if (isReadOnly || !canEditDocking) {
@@ -228,64 +246,31 @@ export default function SalesDispatchBarcodeScanPage() {
         return;
       }
 
-      const lower = barcode.toLowerCase();
-      const alreadySaved = scans.some(
-        (scan) =>
-          scan.box_barcode.toLowerCase() === lower ||
-          scan.barcode_raw.toLowerCase() === lower,
-      );
-      if (alreadySaved) {
-        setError('');
-        setManualBarcode('');
-        toast.warning('This box is already scanned for this docking entry');
-        if (source === 'manual') focusScanInput();
+      const outcome = acceptScan(rawBarcode);
+      if (outcome === 'empty') {
+        if (source === 'manual') setError('Enter or scan a box barcode.');
         return;
       }
-
-      // Decide duplicate-vs-new from the ref (always live), NOT from a flag mutated
-      // inside the setQueue updater: that updater runs after this function returns,
-      // so the flag would always read false and every fresh scan would wrongly warn
-      // "already in the scan queue".
-      if (queuedKeysRef.current.has(lower)) {
-        setError('');
-        setManualBarcode('');
-        toast.warning('This box is already in the scan queue');
-        if (source === 'manual') focusScanInput();
-        return;
-      }
-
-      queuedKeysRef.current.add(lower);
-      queueUidRef.current += 1;
-      const uid = queueUidRef.current;
-      setQueue((prev) =>
-        prev.some((item) => item.barcode.toLowerCase() === lower)
-          ? prev
-          : [...prev, { uid, barcode, error: null }],
-      );
 
       setError('');
       setManualBarcode('');
-      if (source === 'camera') {
-        toast.success('Box added to queue');
+      if (outcome === 'accepted') {
+        scanFeedback('accept');
+      } else {
+        // Already scanned this box (server-confirmed or still queued locally).
+        scanFeedback('duplicate');
+        toast.warning('This box is already scanned for this docking entry');
       }
       if (source === 'manual') focusScanInput();
     },
-    [canEditDocking, entry, focusScanInput, isReadOnly, scans],
+    [acceptScan, canEditDocking, entry, focusScanInput, isReadOnly],
   );
-
-  // Re-sync the live key set after any queue change (add, remove, inline edit, or
-  // the post-submit rebuild), so duplicate detection always reflects the real queue.
-  useEffect(() => {
-    queuedKeysRef.current = new Set(
-      queue.map((item) => item.barcode.trim().toLowerCase()),
-    );
-  }, [queue]);
 
   const handleCameraScan = useCallback(
     (decodedText: string) => {
-      addToQueue(decodedText, 'camera');
+      handleScan(decodedText, 'camera');
     },
-    [addToQueue],
+    [handleScan],
   );
 
   const scanner = useScanner({ onScan: handleCameraScan, debounceMs: 1800 });
@@ -293,7 +278,7 @@ export default function SalesDispatchBarcodeScanPage() {
   const handleManualSubmit = (event: FormEvent<HTMLFormElement>) => {
     // Honeywell wedge scanners terminate a scan with Enter, which submits the form.
     event.preventDefault();
-    addToQueue(manualBarcode, 'manual');
+    handleScan(manualBarcode, 'manual');
   };
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -301,7 +286,7 @@ export default function SalesDispatchBarcodeScanPage() {
     // both as "commit this barcode" and never let Tab move focus off the field.
     if (event.key === 'Tab' && manualBarcode.trim()) {
       event.preventDefault();
-      addToQueue(manualBarcode, 'manual');
+      handleScan(manualBarcode, 'manual');
     }
   };
 
@@ -315,97 +300,36 @@ export default function SalesDispatchBarcodeScanPage() {
     focusScanInput();
   };
 
-  const updateQueueBarcode = (uid: number, value: string) => {
-    setError('');
-    setQueue((prev) =>
-      prev.map((item) =>
-        item.uid === uid ? { ...item, barcode: value, error: null } : item,
-      ),
-    );
-  };
-
-  const removeQueueItem = (uid: number) => {
-    setQueue((prev) => prev.filter((item) => item.uid !== uid));
-  };
-
-  const handleSubmitQueue = async () => {
-    if (!entry || isReadOnly || !canEditDocking) return;
-    const items = queue.filter((item) => item.barcode.trim());
-    if (items.length === 0) {
-      setError('Scan at least one box before submitting.');
-      return;
-    }
-    setError('');
-    const submittedBarcodes = new Set(items.map((item) => item.barcode.trim().toLowerCase()));
-    try {
-      const result = await batchScan.mutateAsync({
-        id: entry.id,
-        data: { barcodes: items.map((item) => item.barcode.trim()) },
-      });
-      await refetchEntry();
-
-      // Rebuild the queue: drop the boxes that saved, keep the rejected ones tagged
-      // with their reason, and leave any boxes scanned *during* this in-flight
-      // submit untouched so a fast operator never loses a scan.
-      const failureByBarcode = new Map(
-        result.failed.map((failure) => [failure.barcode_raw.trim().toLowerCase(), failure]),
-      );
-      setQueue((prev) =>
-        prev
-          .map((item) => {
-            const key = item.barcode.trim().toLowerCase();
-            if (!submittedBarcodes.has(key)) return item; // scanned after submit started
-            const failure = failureByBarcode.get(key);
-            return failure
-              ? { ...item, error: { reason: failure.reason, detail: failure.detail } }
-              : null; // saved successfully
-          })
-          .filter((item): item is ScanQueueItem => item !== null),
-      );
-
-      if (result.saved_count > 0) {
-        toast.success(
-          `Saved ${result.saved_count} box${result.saved_count === 1 ? '' : 'es'}` +
-            (result.failed_count ? `, ${result.failed_count} need attention` : ''),
-        );
+  const handleRemoveScan = useCallback(
+    async (scan: SalesDispatchBoxScan) => {
+      if (!entry || isReadOnly || !canEditDocking) return;
+      setError('');
+      try {
+        await removeScan.mutateAsync({ id: entry.id, scanId: scan.id });
+        await refetchScans();
+        await refetchEntry();
+        toast.success('Box scan removed');
+      } catch (removeError) {
+        setError(getErrorMessage(removeError, 'Unable to remove this box scan'));
       }
-      if (result.failed_count > 0) {
-        if (result.saved_count === 0) {
-          toast.error(
-            `${result.failed_count} box${result.failed_count === 1 ? '' : 'es'} could not be saved`,
-          );
-        }
-      } else {
-        focusScanInput();
-      }
-    } catch (submitError) {
-      setError(getErrorMessage(submitError, 'Unable to submit the scanned boxes'));
-    }
-  };
+    },
+    [canEditDocking, entry, isReadOnly, refetchEntry, refetchScans, removeScan],
+  );
 
-  const handleRemoveScan = async (scan: SalesDispatchBoxScan) => {
-    if (!entry || isReadOnly || !canEditDocking) return;
-    setError('');
-    try {
-      await removeScan.mutateAsync({ id: entry.id, scanId: scan.id });
-      await refetchEntry();
-      toast.success('Box scan removed');
-    } catch (removeError) {
-      setError(getErrorMessage(removeError, 'Unable to remove this box scan'));
-    }
-  };
-
-  const handleNext = () => {
+  // The single forward action = "Complete load" for this step. It validates from
+  // the instant tally, then force-flushes the local queue and refuses to advance
+  // until every scanned box is confirmed server-side. Nothing is ever left behind.
+  const handleNext = async () => {
     if (!entry) {
       setError('Docking details not found.');
       return;
     }
-    if (queue.length > 0) {
-      setError('Submit or remove the boxes in your scan queue before continuing.');
+    if (failedCount > 0) {
+      setError('Some scanned boxes could not be saved. Retry or remove them before continuing.');
       return;
     }
     if (!isBoxScanOptional) {
-      if (scans.length === 0 && !isSkipApproved) {
+      if (acceptedCount === 0 && !isSkipApproved) {
         setError(
           isSkipPending
             ? 'Box scanning skip is awaiting admin approval. You can continue once it is approved.'
@@ -419,6 +343,21 @@ export default function SalesDispatchBarcodeScanPage() {
             ? 'Partial dispatch is awaiting admin approval. You can continue once it is approved.'
             : 'Scan all boxes, or request partial dispatch approval to continue.',
         );
+        return;
+      }
+    }
+    // Force-flush any boxes still queued locally and block until the server has them.
+    if (pendingCount > 0 || failedCount > 0) {
+      setError('');
+      const { pendingRemaining, failedRemaining } = await flushNow();
+      if (pendingRemaining > 0) {
+        setError(
+          'Still syncing scanned boxes. Reconnect to the network to finish, then continue.',
+        );
+        return;
+      }
+      if (failedRemaining > 0) {
+        setError('Some scanned boxes could not be saved. Retry or remove them before continuing.');
         return;
       }
     }
@@ -562,8 +501,8 @@ export default function SalesDispatchBarcodeScanPage() {
                   <PackageSearch className="h-4 w-4" />
                   Check Barcode Scans
                 </Button>
-                <Badge variant={scans.length > 0 ? 'success' : 'outline'}>
-                  {scans.length} scanned
+                <Badge variant={acceptedCount > 0 ? 'success' : 'outline'}>
+                  {acceptedCount} scanned
                 </Badge>
               </div>
             </div>
@@ -634,12 +573,33 @@ export default function SalesDispatchBarcodeScanPage() {
                   </div>
                 </form>
 
+                {/* Headline tally — the single number that updates on every scan. */}
+                <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border bg-muted/20 p-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Boxes scanned</p>
+                    <p className="mt-1 text-4xl font-bold tabular-nums leading-none">
+                      {formatNumber(acceptedCount)}
+                      {expectedBoxes > 0 ? (
+                        <span className="text-2xl font-semibold text-muted-foreground">
+                          {' '}
+                          / {formatNumber(expectedBoxes)}
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+                  <SyncStatusBadge
+                    pendingCount={pendingCount}
+                    isSyncing={isSyncing}
+                    isOffline={isOffline}
+                  />
+                </div>
+
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <ScanMetric
                     label="Expected Boxes"
                     value={expectedBoxes > 0 ? formatNumber(expectedBoxes) : '-'}
                   />
-                  <ScanMetric label="In Queue" value={String(queue.length)} />
+                  <ScanMetric label="Pending Sync" value={String(pendingCount)} />
                   <ScanMetric label="Saved Boxes" value={String(scans.length)} />
                   <ScanMetric
                     label="Saved Qty"
@@ -657,7 +617,11 @@ export default function SalesDispatchBarcodeScanPage() {
                       className="h-full rounded-full bg-emerald-500 transition-all"
                       style={{
                         width:
-                          expectedBoxes > 0 ? `${progressPercent}%` : scans.length ? '100%' : '0%',
+                          expectedBoxes > 0
+                            ? `${progressPercent}%`
+                            : acceptedCount
+                              ? '100%'
+                              : '0%',
                       }}
                     />
                   </div>
@@ -685,85 +649,22 @@ export default function SalesDispatchBarcodeScanPage() {
         </Card>
       </section>
 
-      <ScanQueueCard
+      <SyncQueueCard
         queue={queue}
+        pendingCount={pendingCount}
+        failedCount={failedCount}
+        isOffline={isOffline}
         canEdit={!isReadOnly && canEditDocking}
-        isSubmitting={batchScan.isPending}
-        onChangeBarcode={updateQueueBarcode}
-        onRemove={removeQueueItem}
-        onSubmit={() => void handleSubmitQueue()}
+        onRetry={retryQueued}
+        onRemove={removeQueued}
       />
 
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <CheckCircle2 className="h-5 w-5" />
-            Saved Boxes
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {scans.length === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">No boxes saved yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="p-3 text-left font-medium">Barcode</th>
-                    <th className="p-3 text-left font-medium">Item</th>
-                    <th className="p-3 text-left font-medium">Batch</th>
-                    <th className="p-3 text-left font-medium">Qty</th>
-                    <th className="p-3 text-left font-medium">Warehouse</th>
-                    <th className="p-3 text-left font-medium">Status</th>
-                    <th className="p-3 text-right font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scans.map((scan) => (
-                    <tr key={scan.id} className="border-b last:border-b-0">
-                      <td className="p-3 font-mono text-xs font-medium">{scan.box_barcode}</td>
-                      <td className="p-3">
-                        <div className="font-medium">{scan.item_code || '-'}</div>
-                        <div className="max-w-[280px] truncate text-xs text-muted-foreground">
-                          {scan.item_name || '-'}
-                        </div>
-                      </td>
-                      <td className="p-3">{formatValue(scan.batch_number)}</td>
-                      <td className="p-3">
-                        {[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}
-                      </td>
-                      <td className="p-3">{formatValue(scan.warehouse_code)}</td>
-                      <td className="p-3">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            scan.box_status === 'ACTIVE' &&
-                              'border-emerald-200 bg-emerald-50 text-emerald-700',
-                          )}
-                        >
-                          {scan.box_status || 'BOX'}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          disabled={isReadOnly || !canEditDocking || isSaving}
-                          onClick={() => void handleRemoveScan(scan)}
-                          title="Remove scan"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <SavedBoxesCard
+        scans={scans}
+        canEdit={!isReadOnly && canEditDocking}
+        isSaving={isSaving}
+        onRemove={handleRemoveScan}
+      />
 
       <StepFooter
         onPrevious={() =>
@@ -775,7 +676,7 @@ export default function SalesDispatchBarcodeScanPage() {
         onNext={
           isReview
             ? () => navigate(DOCKING_ROUTES.attachments(entry.vehicle_entry, true))
-            : handleNext
+            : () => void handleNext()
         }
         isSaving={isSaving}
         nextLabel={isReview ? 'Next →' : 'Continue to Attachments'}
@@ -1146,7 +1047,9 @@ interface ItemScanRow {
   isComplete: boolean;
 }
 
-function ItemsToScanCard({
+// Memoized: its props derive from `entry`/`scans` (stable across scans), so it
+// never reconciles on the per-scan count bump.
+const ItemsToScanCard = memo(function ItemsToScanCard({
   items,
   unplannedScanCount,
   itemSummary,
@@ -1270,124 +1173,325 @@ function ItemsToScanCard({
       </CardContent>
     </Card>
   );
+});
+
+/** Compact sync indicator: syncing / offline / all-synced. */
+function SyncStatusBadge({
+  pendingCount,
+  isSyncing,
+  isOffline,
+}: {
+  pendingCount: number;
+  isSyncing: boolean;
+  isOffline: boolean;
+}) {
+  if (isOffline && pendingCount > 0) {
+    return (
+      <Badge className="gap-1.5 border-amber-200 bg-amber-50 text-amber-700">
+        <WifiOff className="h-3.5 w-3.5" />
+        Offline · {pendingCount} queued
+      </Badge>
+    );
+  }
+  if (pendingCount > 0 || isSyncing) {
+    return (
+      <Badge className="gap-1.5 border-sky-200 bg-sky-50 text-sky-700">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Syncing{pendingCount > 0 ? ` ${pendingCount}` : ''}…
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
+      <CheckCircle2 className="h-3.5 w-3.5" />
+      All synced
+    </Badge>
+  );
 }
 
-function ScanQueueCard({
-  queue,
+/**
+ * Boxes the server rejected during background sync (unknown barcode, not a box,
+ * wrong status). They are never silently dropped: the operator re-checks the
+ * label and retries, or removes the box from the local queue.
+ */
+/** Cap how many queue rows we render so an offline backlog can't blow up the DOM. */
+const MAX_QUEUE_ROWS = 50;
+
+/** Per-box status chip in the sync queue. */
+function QueueStatusPill({ status }: { status: QueuedScan['status'] }) {
+  if (status === 'syncing') {
+    return (
+      <Badge className="shrink-0 gap-1 border-sky-200 bg-sky-50 text-sky-700">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Syncing
+      </Badge>
+    );
+  }
+  if (status === 'rejected' || status === 'failed') {
+    return (
+      <Badge className="shrink-0 gap-1 border-red-200 bg-red-50 text-red-700">
+        <AlertTriangle className="h-3 w-3" />
+        Failed
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="shrink-0 gap-1">
+      <Clock3 className="h-3 w-3" />
+      Queued
+    </Badge>
+  );
+}
+
+function QueueRow({
+  item,
   canEdit,
-  isSubmitting,
-  onChangeBarcode,
+  onRetry,
   onRemove,
-  onSubmit,
 }: {
-  queue: ScanQueueItem[];
+  item: QueuedScan;
   canEdit: boolean;
-  isSubmitting: boolean;
-  onChangeBarcode: (uid: number, value: string) => void;
-  onRemove: (uid: number) => void;
-  onSubmit: () => void;
+  onRetry: (key: string) => void;
+  onRemove: (key: string) => void;
 }) {
-  const failedCount = queue.filter((item) => item.error).length;
-  const hasFailures = failedCount > 0;
-  const submitLabel = hasFailures
-    ? `Re-submit ${queue.length} box${queue.length === 1 ? '' : 'es'}`
-    : `Submit ${queue.length} box${queue.length === 1 ? '' : 'es'}`;
+  const needsAction = item.status === 'rejected' || item.status === 'failed';
+  const isSyncing = item.status === 'syncing';
+  // Rejected = the server refused the box (has a reason). Failed = it couldn't be
+  // synced after the auto-retry budget (a network/server problem).
+  const message =
+    item.status === 'rejected' && item.reason
+      ? `${FAILURE_LABELS[item.reason]}: ${item.detail ?? ''}`
+      : item.status === 'failed'
+        ? `Couldn't sync after ${MAX_SYNC_ATTEMPTS} attempts. Check the connection, then retry.`
+        : '';
+  return (
+    <div className={cn('flex items-center gap-3 p-3', needsAction && 'bg-red-50/60')}>
+      <QueueStatusPill status={item.status} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-mono text-sm font-medium">{item.barcode}</p>
+        {needsAction && message ? (
+          <div className="mt-0.5 flex items-start gap-1.5 text-xs text-red-700">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{message}</span>
+          </div>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        {needsAction ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canEdit}
+            onClick={() => onRetry(item.key)}
+            title="Try saving this box again"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Retry
+          </Button>
+        ) : null}
+        {/* A box that's mid-flight can't be cancelled; let the POST resolve first. */}
+        {!isSyncing ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={!canEdit}
+            onClick={() => onRemove(item.key)}
+            title="Remove this box from the queue"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Live sync queue: every scanned box that the server has not yet confirmed.
+ * Boxes appear as "Queued", flip to "Syncing" while a batch is in flight, and
+ * disappear the moment the server saves them. Rejected boxes stay (pinned to the
+ * top) with the reason, so the operator can retry or remove them. The hot path
+ * stays cheap because this list only holds unsynced boxes (it drains every ~1.5s)
+ * and we render at most {@link MAX_QUEUE_ROWS} rows.
+ */
+function SyncQueueCard({
+  queue,
+  pendingCount,
+  failedCount,
+  isOffline,
+  canEdit,
+  onRetry,
+  onRemove,
+}: {
+  queue: QueuedScan[];
+  pendingCount: number;
+  failedCount: number;
+  isOffline: boolean;
+  canEdit: boolean;
+  onRetry: (key: string) => void;
+  onRemove: (key: string) => void;
+}) {
+  const hasFailed = failedCount > 0;
+  const visible = queue.slice(0, MAX_QUEUE_ROWS);
+  const hiddenCount = queue.length - visible.length;
 
   return (
-    <Card className={cn(hasFailures && 'border-red-300')}>
+    <Card className={cn(hasFailed && 'border-red-300')}>
       <CardHeader className="border-b">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-xl">
               <ScanLine className="h-5 w-5" />
-              Scan Queue
+              Sync Queue
             </CardTitle>
             <CardDescription>
-              {hasFailures
-                ? 'These boxes were not saved. Fix the barcode or remove them, then submit again.'
-                : 'Boxes are held here until you submit. Nothing is saved until then.'}
+              {hasFailed
+                ? 'Retry or remove the failed boxes below. Saved boxes leave this list automatically.'
+                : 'Boxes save to the server in the background and leave this list once confirmed.'}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            {hasFailures ? (
-              <Badge className="border-red-200 bg-red-50 text-red-700">
-                {failedCount} need{failedCount === 1 ? 's' : ''} attention
+          <div className="flex flex-wrap items-center gap-2">
+            {pendingCount > 0 ? (
+              <Badge className="gap-1.5 border-sky-200 bg-sky-50 text-sky-700">
+                {isOffline ? (
+                  <WifiOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                )}
+                {pendingCount} {isOffline ? 'waiting' : 'syncing'}
               </Badge>
             ) : null}
-            <Badge variant={queue.length > 0 ? 'success' : 'outline'}>{queue.length} queued</Badge>
-            <Button
-              type="button"
-              onClick={onSubmit}
-              disabled={!canEdit || queue.length === 0 || isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              {submitLabel}
-            </Button>
+            {hasFailed ? (
+              <Badge className="gap-1.5 border-red-200 bg-red-50 text-red-700">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {failedCount} failed
+              </Badge>
+            ) : null}
           </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
         {queue.length === 0 ? (
-          <div className="p-6 text-sm text-muted-foreground">
-            Scan boxes to add them to the queue, then press Submit.
+          <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            All scanned boxes are saved. Nothing waiting to sync.
           </div>
         ) : (
-          <div className="divide-y">
-            {queue.map((item, index) => (
-              <div
-                key={item.uid}
-                className={cn(
-                  'flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-3',
-                  item.error && 'bg-red-50/60',
-                )}
-              >
-                <span className="w-6 shrink-0 text-xs text-muted-foreground">{index + 1}.</span>
-                <div className="flex-1">
-                  <Input
-                    value={item.barcode}
-                    disabled={!canEdit || isSubmitting}
-                    onChange={(event) => onChangeBarcode(item.uid, event.target.value)}
-                    className={cn('font-mono', item.error && 'border-red-300')}
-                    aria-label={`Queued barcode ${index + 1}`}
-                  />
-                  {item.error ? (
-                    <div className="mt-1 flex items-start gap-1.5 text-xs text-red-700">
-                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      <span>
-                        <span className="font-medium">{FAILURE_LABELS[item.error.reason]}:</span>{' '}
-                        {item.error.detail}
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-                {item.error ? (
-                  <Badge className="shrink-0 border-red-200 bg-red-50 text-red-700">
-                    {FAILURE_LABELS[item.error.reason]}
-                  </Badge>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0"
-                  disabled={!canEdit || isSubmitting}
-                  onClick={() => onRemove(item.uid)}
-                  title="Remove from queue"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+          <>
+            <div className="divide-y">
+              {visible.map((item) => (
+                <QueueRow
+                  key={item.key}
+                  item={item}
+                  canEdit={canEdit}
+                  onRetry={onRetry}
+                  onRemove={onRemove}
+                />
+              ))}
+            </div>
+            {hiddenCount > 0 ? (
+              <div className="border-t p-3 text-center text-xs text-muted-foreground">
+                and {hiddenCount} more box{hiddenCount === 1 ? '' : 'es'} waiting to sync…
               </div>
-            ))}
-          </div>
+            ) : null}
+          </>
         )}
       </CardContent>
     </Card>
   );
 }
+
+/**
+ * Server-confirmed boxes. Memoized so the (potentially large) table only
+ * re-renders when the confirmed-scan list actually changes — never on the
+ * per-scan count bump — keeping the scan hot path O(1) at any load size.
+ */
+const SavedBoxesCard = memo(function SavedBoxesCard({
+  scans,
+  canEdit,
+  isSaving,
+  onRemove,
+}: {
+  scans: SalesDispatchBoxScan[];
+  canEdit: boolean;
+  isSaving: boolean;
+  onRemove: (scan: SalesDispatchBoxScan) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <CheckCircle2 className="h-5 w-5" />
+          Saved Boxes
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {scans.length === 0 ? (
+          <div className="p-6 text-sm text-muted-foreground">No boxes saved yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/50">
+                <tr>
+                  <th className="p-3 text-left font-medium">Barcode</th>
+                  <th className="p-3 text-left font-medium">Item</th>
+                  <th className="p-3 text-left font-medium">Batch</th>
+                  <th className="p-3 text-left font-medium">Qty</th>
+                  <th className="p-3 text-left font-medium">Warehouse</th>
+                  <th className="p-3 text-left font-medium">Status</th>
+                  <th className="p-3 text-right font-medium">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scans.map((scan) => (
+                  <tr key={scan.id} className="border-b last:border-b-0">
+                    <td className="p-3 font-mono text-xs font-medium">{scan.box_barcode}</td>
+                    <td className="p-3">
+                      <div className="font-medium">{scan.item_code || '-'}</div>
+                      <div className="max-w-[280px] truncate text-xs text-muted-foreground">
+                        {scan.item_name || '-'}
+                      </div>
+                    </td>
+                    <td className="p-3">{formatValue(scan.batch_number)}</td>
+                    <td className="p-3">
+                      {[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}
+                    </td>
+                    <td className="p-3">{formatValue(scan.warehouse_code)}</td>
+                    <td className="p-3">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          scan.box_status === 'ACTIVE' &&
+                            'border-emerald-200 bg-emerald-50 text-emerald-700',
+                        )}
+                      >
+                        {scan.box_status || 'BOX'}
+                      </Badge>
+                    </td>
+                    <td className="p-3 text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={!canEdit || isSaving}
+                        onClick={() => onRemove(scan)}
+                        title="Remove scan"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+});
 
 function ScanMetric({ label, value }: { label: string; value: string }) {
   return (
