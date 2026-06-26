@@ -125,8 +125,10 @@ export default function InspectionDetailPage() {
   // Fetch arrival slip data for prefilling and showing attachments
   const { data: arrivalSlip, isLoading: isLoadingArrivalSlip } = useArrivalSlipById(arrivalSlipId);
 
-  // Print the inspection report using the same format as the GRPO report
-  const { printInspectionReport, printPortal } = useInspectionReportPrint(inspection);
+  // Print the inspection report using the same format as the GRPO report.
+  // Opening the print button shows a dialog to choose which sections to print.
+  const { openPrintOptions, printOptionsModal, printPortal } =
+    useInspectionReportPrint(inspection);
 
   // Form state
   const [formData, setFormData] = useState<Partial<CreateInspectionRequest>>({
@@ -1918,7 +1920,7 @@ export default function InspectionDetailPage() {
         </Button>
         <div className="flex gap-4">
           {inspection && (
-            <Button variant="outline" onClick={printInspectionReport}>
+            <Button variant="outline" onClick={openPrintOptions}>
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
@@ -1959,6 +1961,7 @@ export default function InspectionDetailPage() {
         </div>
       </div>
 
+      {printOptionsModal}
       {printPortal}
     </div>
   );

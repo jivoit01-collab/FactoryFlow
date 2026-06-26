@@ -2,6 +2,18 @@ import { Printer } from 'lucide-react';
 
 import type { Inspection } from '../types';
 
+/** Which sections of the inspection printout to include. */
+export type PrintSections = {
+  /** Inspection info, QC parameters, and approval details. */
+  report: boolean;
+  /** Certificate of Analysis attachment(s). */
+  coa: boolean;
+  /** Certificate of Quantity attachment(s). */
+  coq: boolean;
+  /** QC-uploaded inspection attachment(s). */
+  qcAttachments: boolean;
+};
+
 // Print-only styles for the QC inspection report. The report markup is hidden on
 // screen and only revealed by the browser print dialog (triggered by
 // `useInspectionReportPrint`). This mirrors the GRPO inspection-report layout so
@@ -30,6 +42,13 @@ export function InspectionReportPrintStyles() {
           }
 
           body.qc-inspection-report-printing #root {
+            display: none !important;
+          }
+
+          /* Radix portals (the print-options dialog, toasts) mount as direct
+             children of <body>, outside #root. Hide everything except the
+             report so a still-closing dialog can't bleed into the printout. */
+          body.qc-inspection-report-printing > *:not(.qc-inspection-report-print) {
             display: none !important;
           }
 
@@ -86,7 +105,13 @@ export function InspectionReportPrintStyles() {
   );
 }
 
-export function InspectionReportPrintView({ inspection }: { inspection: Inspection }) {
+export function InspectionReportPrintView({
+  inspection,
+  sections,
+}: {
+  inspection: Inspection;
+  sections: PrintSections;
+}) {
   const infoFields: Array<[string, string | number | null | undefined]> = [
     ['Description of Material', inspection.description_of_material],
     ['SAP Code', inspection.sap_code],
@@ -109,6 +134,18 @@ export function InspectionReportPrintView({ inspection }: { inspection: Inspecti
   const certificateOfQuantity = attachments.filter(
     (attachment) => attachment.attachment_type === 'CERTIFICATE_OF_QUANTITY',
   );
+  const qcAttachments = inspection.qc_attachments ?? [];
+
+  // Approval details are merged into the Inspection Information card, so this
+  // only needs to know whether any approval data exists (the card itself is
+  // already gated by sections.report).
+  const hasApproval = Boolean(
+    inspection.qa_chemist_name ||
+    inspection.qam_name ||
+    inspection.qa_chemist_remarks ||
+    inspection.qam_remarks,
+  );
+  const hasApprovalRemarks = Boolean(inspection.qa_chemist_remarks || inspection.qam_remarks);
 
   return (
     <div className="qc-inspection-report-print" aria-hidden="true">
@@ -130,107 +167,56 @@ export function InspectionReportPrintView({ inspection }: { inspection: Inspecti
           </div>
         </div>
 
-        <div className="qc-inspection-report-card">
-          <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>Inspection Information</h2>
-          <div className="qc-inspection-report-grid">
-            {infoFields.map(([label, value]) => (
-              <div key={label}>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>{label}</div>
-                <div>{formatPrintValue(value)}</div>
-              </div>
-            ))}
-          </div>
-          {inspection.remarks && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>Remarks</div>
-              <div>{inspection.remarks}</div>
-            </div>
-          )}
-        </div>
-
-        <div className="qc-inspection-report-card">
-          <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>QC Parameters</h2>
-          <table className="qc-inspection-report-table">
-            <thead>
-              <tr>
-                <th>Parameter</th>
-                <th>Standard Value</th>
-                <th>Result</th>
-                <th>Within Spec</th>
-                <th>Remarks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inspection.parameter_results.length > 0 ? (
-                inspection.parameter_results.map((parameter) => (
-                  <tr key={parameter.id}>
-                    <td>{parameter.parameter_name}</td>
-                    <td>{formatPrintValue(parameter.standard_value)}</td>
-                    <td>{formatPrintValue(parameter.result_value || parameter.result_numeric)}</td>
-                    <td>
-                      {parameter.is_within_spec == null
-                        ? '-'
-                        : parameter.is_within_spec
-                          ? 'Yes'
-                          : 'No'}
-                    </td>
-                    <td>{formatPrintValue(parameter.remarks)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5}>No QC parameters recorded for this inspection.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {certificateOfAnalysis.length > 0 && (
-          <InspectionReportAttachmentSection
-            title="Certificate of Analysis (COA)"
-            attachments={certificateOfAnalysis}
-          />
-        )}
-
-        {certificateOfQuantity.length > 0 && (
-          <InspectionReportAttachmentSection
-            title="Certificate of Quantity (COQ)"
-            attachments={certificateOfQuantity}
-          />
-        )}
-
-        {(inspection.qa_chemist_name ||
-          inspection.qam_name ||
-          inspection.qa_chemist_remarks ||
-          inspection.qam_remarks) && (
+        {sections.report && (
           <div className="qc-inspection-report-card">
-            <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>Approval Details</h2>
+            <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>Inspection Information</h2>
             <div className="qc-inspection-report-grid">
-              <div>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Chemist</div>
-                <div>{formatPrintValue(inspection.qa_chemist_name)}</div>
-                <div style={{ marginTop: 4, fontSize: 10 }}>
-                  {formatPrintDateTime(inspection.qa_chemist_approved_at)}
+              {infoFields.map(([label, value]) => (
+                <div key={label}>
+                  <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>{label}</div>
+                  <div>{formatPrintValue(value)}</div>
                 </div>
-              </div>
-              <div>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Manager</div>
-                <div>{formatPrintValue(inspection.qam_name)}</div>
-                <div style={{ marginTop: 4, fontSize: 10 }}>
-                  {formatPrintDateTime(inspection.qam_approved_at)}
-                </div>
-              </div>
-              <div>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>Final Status</div>
-                <div>
-                  {formatPrintValue(inspection.effective_final_status || inspection.final_status)}
-                </div>
-              </div>
+              ))}
+              {hasApproval && (
+                <>
+                  <div>
+                    <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Chemist</div>
+                    <div>{formatPrintValue(inspection.qa_chemist_name)}</div>
+                    <div style={{ marginTop: 4, fontSize: 10 }}>
+                      {formatPrintDateTime(inspection.qa_chemist_approved_at)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Manager</div>
+                    <div>{formatPrintValue(inspection.qam_name)}</div>
+                    <div style={{ marginTop: 4, fontSize: 10 }}>
+                      {formatPrintDateTime(inspection.qam_approved_at)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
+                      Final Status
+                    </div>
+                    <div>
+                      {formatPrintValue(
+                        inspection.effective_final_status || inspection.final_status,
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            {(inspection.qa_chemist_remarks || inspection.qam_remarks) && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>Approval Remarks</div>
+            {inspection.remarks && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>Remarks</div>
+                <div>{inspection.remarks}</div>
+              </div>
+            )}
+            {hasApprovalRemarks && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
+                  Approval Remarks
+                </div>
                 <div>
                   {formatPrintValue(
                     [inspection.qa_chemist_remarks, inspection.qam_remarks]
@@ -242,6 +228,66 @@ export function InspectionReportPrintView({ inspection }: { inspection: Inspecti
             )}
           </div>
         )}
+
+        {sections.report && (
+          <div className="qc-inspection-report-card">
+            <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>QC Parameters</h2>
+            <table className="qc-inspection-report-table">
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Standard Value</th>
+                  <th>Result</th>
+                  <th>Within Spec</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inspection.parameter_results.length > 0 ? (
+                  inspection.parameter_results.map((parameter) => (
+                    <tr key={parameter.id}>
+                      <td>{parameter.parameter_name}</td>
+                      <td>{formatPrintValue(parameter.standard_value)}</td>
+                      <td>
+                        {formatPrintValue(parameter.result_value || parameter.result_numeric)}
+                      </td>
+                      <td>
+                        {parameter.is_within_spec == null
+                          ? '-'
+                          : parameter.is_within_spec
+                            ? 'Yes'
+                            : 'No'}
+                      </td>
+                      <td>{formatPrintValue(parameter.remarks)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5}>No QC parameters recorded for this inspection.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {sections.coa && certificateOfAnalysis.length > 0 && (
+          <InspectionReportAttachmentSection
+            title="Certificate of Analysis (COA)"
+            attachments={certificateOfAnalysis}
+          />
+        )}
+
+        {sections.coq && certificateOfQuantity.length > 0 && (
+          <InspectionReportAttachmentSection
+            title="Certificate of Quantity (COQ)"
+            attachments={certificateOfQuantity}
+          />
+        )}
+
+        {sections.qcAttachments && qcAttachments.length > 0 && (
+          <InspectionReportAttachmentSection title="QC Attachments" attachments={qcAttachments} />
+        )}
       </div>
     </div>
   );
@@ -252,7 +298,8 @@ function InspectionReportAttachmentSection({
   attachments,
 }: {
   title: string;
-  attachments: Inspection['attachments'];
+  // Accepts both arrival-slip (COA/COQ) and QC attachments — both expose id + file.
+  attachments: Array<{ id: number; file: string }>;
 }) {
   return (
     <div className="qc-inspection-report-card">
