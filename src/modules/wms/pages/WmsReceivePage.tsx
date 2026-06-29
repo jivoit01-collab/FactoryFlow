@@ -70,6 +70,13 @@ export default function WmsReceivePage() {
   const quantity = boxCount * (typeof unitsPerBox === 'number' && unitsPerBox > 0 ? unitsPerBox : 1);
   const profile = materialByItem.get(itemCode);
 
+  // A scanned item resolved against the catalog needs no manual identity entry —
+  // the master already holds its name, UoM, units/box and what it tracks. Only
+  // ask for the per-receipt fields the item is actually configured to track.
+  const recognized = Boolean(profile);
+  const showLot = recognized ? Boolean(profile?.trackLot) : true;
+  const showExpiry = recognized ? Boolean(profile?.trackExpiry) : true;
+
   const item: MoveItem = useMemo(
     () => ({
       itemCode,
@@ -266,49 +273,86 @@ export default function WmsReceivePage() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Item code">
-              <Input value={itemCode} onChange={(event) => setItemCode(event.target.value)} />
-            </Field>
-            <Field label="Item name">
-              <Input value={itemName} onChange={(event) => setItemName(event.target.value)} />
-            </Field>
-            <Field label="Pallet plate (optional)">
-              <Input
-                value={licensePlate}
-                placeholder="Leave blank for loose stock"
-                onChange={(event) => setLicensePlate(event.target.value)}
-              />
-            </Field>
-            <Field label="UoM">
-              <Input value={uom} onChange={(event) => setUom(event.target.value)} />
-            </Field>
-            <Field label="Boxes">
-              <Input
-                type="number"
-                min={1}
-                value={boxCount}
-                onChange={(event) => setBoxCount(Math.max(1, Number(event.target.value) || 1))}
-              />
-            </Field>
-            <Field label="Units per box">
-              <Input
-                type="number"
-                min={1}
-                value={unitsPerBox}
-                placeholder="1"
-                onChange={(event) =>
-                  setUnitsPerBox(event.target.value === '' ? '' : Math.max(1, Number(event.target.value) || 1))
-                }
-              />
-            </Field>
-            <Field label="Lot (optional)">
-              <Input value={lotNumber} onChange={(event) => setLotNumber(event.target.value)} />
-            </Field>
-            <Field label="Expiry (optional)">
-              <Input type="date" value={expiry} onChange={(event) => setExpiry(event.target.value)} />
-            </Field>
-          </div>
+          {itemCode.trim() ? (
+            recognized ? (
+              /* Scan matched the catalog — show what we know, don't re-ask for it. */
+              <div className="flex items-baseline justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{itemName || itemCode}</p>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-mono">{itemCode}</span> · {uom}
+                    {typeof unitsPerBox === 'number' && unitsPerBox > 0 ? ` · ${unitsPerBox}/box` : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              /* Code isn't in the catalog — fall back to manual identity entry. */
+              <div className="space-y-3">
+                <p className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                  Not in the item catalog — confirm the details below.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Item code">
+                    <Input value={itemCode} onChange={(event) => setItemCode(event.target.value)} />
+                  </Field>
+                  <Field label="Item name">
+                    <Input value={itemName} onChange={(event) => setItemName(event.target.value)} />
+                  </Field>
+                  <Field label="UoM">
+                    <Input value={uom} onChange={(event) => setUom(event.target.value)} />
+                  </Field>
+                  <Field label="Units per box">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={unitsPerBox}
+                      placeholder="1"
+                      onChange={(event) =>
+                        setUnitsPerBox(event.target.value === '' ? '' : Math.max(1, Number(event.target.value) || 1))
+                      }
+                    />
+                  </Field>
+                </div>
+              </div>
+            )
+          ) : null}
+
+          {itemCode.trim() ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Boxes">
+                <Input
+                  type="number"
+                  min={1}
+                  value={boxCount}
+                  onChange={(event) => setBoxCount(Math.max(1, Number(event.target.value) || 1))}
+                />
+              </Field>
+              <Field label="Pallet plate (optional)">
+                <Input
+                  value={licensePlate}
+                  placeholder="Leave blank for loose stock"
+                  onChange={(event) => setLicensePlate(event.target.value)}
+                />
+              </Field>
+              {showLot ? (
+                <Field label="Lot">
+                  <Input value={lotNumber} onChange={(event) => setLotNumber(event.target.value)} />
+                </Field>
+              ) : null}
+              {showExpiry ? (
+                <Field label="Expiry">
+                  <Input type="date" value={expiry} onChange={(event) => setExpiry(event.target.value)} />
+                </Field>
+              ) : null}
+            </div>
+          ) : null}
 
           {ready ? (
             <p className="text-sm text-muted-foreground">

@@ -37,6 +37,7 @@ export default function WmsPickPage() {
   const { data: locations } = useWmsCollection('locations');
   const { data: inventory } = useWmsCollection('inventory');
   const { data: pallets } = useWmsCollection('pallets');
+  const { data: materials } = useWmsCollection('materials');
 
   const [orderRef, setOrderRef] = useState('');
   const [itemCode, setItemCode] = useState('');
@@ -51,6 +52,10 @@ export default function WmsPickPage() {
 
   const strategy = settings?.pickStrategy ?? 'FEFO';
   const locationById = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
+  const resolvedItemName = useMemo(
+    () => materials.find((m) => m.itemCode.toLowerCase() === itemCode.trim().toLowerCase())?.itemName ?? '',
+    [materials, itemCode],
+  );
 
   function startPlan() {
     if (!itemCode.trim() || quantity <= 0) return;
@@ -155,7 +160,18 @@ export default function WmsPickPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pick-item">Item code</Label>
-                <Input id="pick-item" value={itemCode} onChange={(event) => setItemCode(event.target.value)} />
+                <div className="flex gap-2">
+                  <Input
+                    id="pick-item"
+                    value={itemCode}
+                    onChange={(event) => setItemCode(event.target.value)}
+                    onKeyDown={(event) => event.key === 'Enter' && startPlan()}
+                  />
+                  <WmsScanButton label="Scan" onScan={setItemCode} />
+                </div>
+                {resolvedItemName ? (
+                  <p className="text-xs text-muted-foreground">{resolvedItemName}</p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pick-qty">Quantity</Label>
