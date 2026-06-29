@@ -8,10 +8,11 @@
  * any pallet's location, and writes a TRANSFER to the movement log. Handheld
  * scanners type into the focused field and submit on Enter.
  */
-import { useMemo, useState } from 'react';
 import { ArrowRight, PackageSearch, ScanLine } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { useSyncPalletToBarcode } from '@/modules/barcode/hooks/useSyncPalletToBarcode';
 import {
   Badge,
   Button,
@@ -25,16 +26,16 @@ import {
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsScanButton } from '../components/WmsScanButton';
-import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
-import { validateMove } from '../services';
 import type { MoveItem, ValidationResult } from '../services';
-import { notifyFail, notifyOk } from '../utils';
+import { validateMove } from '../services';
+import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import type {
   InventoryRecord,
   MaterialWarehouseProfile,
   Pallet,
   WarehouseLocation,
 } from '../types';
+import { notifyFail, notifyOk } from '../utils';
 
 type Subject =
   | { kind: 'inventory'; record: InventoryRecord }
@@ -48,6 +49,7 @@ export default function WmsTransferPage() {
   const { data: pallets } = useWmsCollection('pallets');
   const { data: materials } = useWmsCollection('materials');
   const { data: movements } = useWmsCollection('movements');
+  const syncToBarcode = useSyncPalletToBarcode();
 
   const [sourceQuery, setSourceQuery] = useState('');
   const [sourceLocationId, setSourceLocationId] = useState<string | null>(null);
@@ -192,6 +194,18 @@ export default function WmsTransferPage() {
         await wmsStore.moveInventory({ sourceId: subject.record.id, toLocationId: destLocationId, quantity });
       } else {
         await wmsStore.movePallet({ palletId: subject.pallet.id, toLocationId: destLocationId });
+        // Mirror whole-pallet moves back to the barcode backend (best effort).
+        if (destLocation) {
+          try {
+            await syncToBarcode({
+              licensePlate: subject.pallet.licensePlate,
+              warehouseId: destLocation.warehouseId,
+              binCode: destLocation.code,
+            });
+          } catch {
+            // Non-fatal: the WMS move already succeeded.
+          }
+        }
       }
       notifyOk('Move completed.');
       setSubject(null);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { makeWarehouseLocation } from '../services';
-import { buildOccupancyIndex, computeOccupancy } from '../services/occupancy';
+import { buildOccupancyIndex, computeOccupancy, palletsLocatedAt } from '../services/occupancy';
 import type { InventoryRecord, Pallet, WarehouseLocation } from '../types';
 import { createWmsId, nowIso } from '../utils';
 
@@ -100,5 +100,42 @@ describe('buildOccupancyIndex', () => {
     );
     expect(index.get('a')?.status).toBe('FULL');
     expect(index.get('b')?.status).toBe('EMPTY');
+  });
+});
+
+describe('palletsLocatedAt', () => {
+  function pallet(id: string, currentLocationId: string | null): Pallet {
+    return {
+      id,
+      licensePlate: id,
+      currentLocationId,
+      itemCode: 'SKU1',
+      itemName: 'Item 1',
+      boxCount: 1,
+      unitsPerBox: null,
+      totalUnits: 10,
+      lotNumber: '',
+      expiryDate: null,
+      status: 'ACTIVE',
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+  }
+
+  it('includes pallets placed at the location', () => {
+    const result = palletsLocatedAt('A', [pallet('P1', 'A'), pallet('P2', 'B')], []);
+    expect(result.map((p) => p.id)).toEqual(['P1']);
+  });
+
+  it('includes a pallet whose stock is here even if its currentLocationId drifted', () => {
+    const p = pallet('P1', 'B'); // record says elsewhere…
+    const result = palletsLocatedAt('A', [p], [inv('A', { palletId: 'P1' })]); // …but stock is at A
+    expect(result.map((p) => p.id)).toEqual(['P1']);
+  });
+
+  it('does not double-count a pallet that is both placed here and holds stock here', () => {
+    const p = pallet('P1', 'A');
+    const result = palletsLocatedAt('A', [p], [inv('A', { palletId: 'P1' })]);
+    expect(result).toHaveLength(1);
   });
 });

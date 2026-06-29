@@ -19,7 +19,8 @@ import {
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
-import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings } from '../store';
+import { WmsScanButton } from '../components/WmsScanButton';
+import type { MoveItem, MovementFilter } from '../services';
 import {
   buildOccupancyIndex,
   expiryReport,
@@ -32,7 +33,7 @@ import {
   utilizationByZone,
   utilizationTotal,
 } from '../services';
-import type { MoveItem, MovementFilter } from '../services';
+import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings } from '../store';
 import type { MovementType } from '../types';
 
 type Report =
@@ -167,8 +168,11 @@ function FindItem({ inventory, locations }: { inventory: Parameters<typeof findI
   const hits = useMemo(() => findItemLocations({ query, inventory, locations }), [query, inventory, locations]);
   return (
     <div className="space-y-3">
-      <Input value={query} placeholder="Item code, name, or lot" onChange={(event) => setQuery(event.target.value)} />
-      {!query ? <Empty text="Type to find where an item or lot is." /> : hits.length === 0 ? <Empty text="No stock matches." /> : (
+      <div className="flex gap-2">
+        <Input value={query} placeholder="Item code, name, or lot" onChange={(event) => setQuery(event.target.value)} />
+        <WmsScanButton label="Scan" onScan={setQuery} />
+      </div>
+      {!query ? <Empty text="Scan or type to find where an item or lot is." /> : hits.length === 0 ? <Empty text="No stock matches." /> : (
         <div>
           {hits.map((hit) => (
             <Row key={hit.location.id}>

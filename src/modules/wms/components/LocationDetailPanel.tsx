@@ -2,11 +2,11 @@
  * Location detail side panel for the map (Step 5).
  *
  * Opens when a cell is clicked. Shows the block's identity, capacity vs usage,
- * occupancy, and the pallets / inventory currently inside, with action buttons.
- * The stock lists are empty until receiving/putaway (Steps 6–7) add records;
- * the actions are placeholders that those steps will wire up.
+ * occupancy, and the pallets / inventory currently inside. Scan-driven move
+ * actions (wired through the barcode scanner) let the operator pick a pallet
+ * here up for relocation, or scan a pallet to place into this location.
  */
-import { ArrowLeftRight, PackagePlus } from 'lucide-react';
+import { MoveRight, PackagePlus } from 'lucide-react';
 
 import {
   Badge,
@@ -19,9 +19,11 @@ import {
   SheetTitle,
 } from '@/shared/components/ui';
 
-import { DISPLAY_STATUS_META } from '../services';
 import type { LocationOccupancy } from '../services';
+import { DISPLAY_STATUS_META } from '../services';
 import type { InventoryRecord, Pallet, WarehouseLocation, Zone } from '../types';
+import { WmsPrintLabelButton } from './WmsPrintLabelButton';
+import { WmsScanButton } from './WmsScanButton';
 
 interface LocationDetailPanelProps {
   open: boolean;
@@ -31,6 +33,10 @@ interface LocationDetailPanelProps {
   occupancy: LocationOccupancy | null;
   palletsHere: Pallet[];
   inventoryHere: InventoryRecord[];
+  /** Begin relocating a pallet that currently sits in this location. */
+  onMovePallet?: (pallet: Pallet) => void;
+  /** Scan a pallet elsewhere to move it into this location. */
+  onPlacePalletHere?: (scannedCode: string) => void;
 }
 
 function Usage({ label, used, max, unit }: { label: string; used: number; max: number | null; unit?: string }) {
@@ -60,6 +66,8 @@ export function LocationDetailPanel({
   occupancy,
   palletsHere,
   inventoryHere,
+  onMovePallet,
+  onPlacePalletHere,
 }: LocationDetailPanelProps) {
   if (!location) return null;
   const meta = occupancy ? DISPLAY_STATUS_META[occupancy.status] : null;
@@ -82,6 +90,20 @@ export function LocationDetailPanel({
             {zone ? ` · ${zone.name}` : ''}
             {occupancy ? ` · ${Math.round(occupancy.occupancyPct)}% full` : ''}
           </SheetDescription>
+          <div className="pt-1">
+            <WmsPrintLabelButton
+              label="Print location label"
+              documentTitle={`Location ${location.code}`}
+              labels={[
+                {
+                  code: location.barcode || location.code,
+                  title: location.code,
+                  heading: 'LOCATION',
+                  subtitle: location.type,
+                },
+              ]}
+            />
+          </div>
         </SheetHeader>
 
         <div className="flex-1 space-y-5 py-4">
@@ -105,11 +127,32 @@ export function LocationDetailPanel({
               <p className="text-sm text-muted-foreground">No pallets here yet.</p>
             ) : (
               palletsHere.map((pallet) => (
-                <div key={pallet.id} className="rounded-md border p-2 text-sm">
-                  <p className="font-medium">{pallet.licensePlate}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {pallet.itemName || pallet.itemCode} · {pallet.boxCount} boxes
-                  </p>
+                <div key={pallet.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{pallet.licensePlate}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {pallet.itemName || pallet.itemCode} · {pallet.boxCount} boxes
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <WmsPrintLabelButton
+                      label="Print"
+                      documentTitle={`Pallet ${pallet.licensePlate}`}
+                      labels={[
+                        {
+                          code: pallet.licensePlate,
+                          title: pallet.licensePlate,
+                          heading: 'PALLET',
+                          subtitle: pallet.itemName || pallet.itemCode,
+                        },
+                      ]}
+                    />
+                    {onMovePallet ? (
+                      <Button variant="outline" size="sm" onClick={() => onMovePallet(pallet)}>
+                        <MoveRight className="mr-1 h-3.5 w-3.5" /> Move
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ))
             )}
@@ -133,15 +176,18 @@ export function LocationDetailPanel({
           </section>
         </div>
 
-        {/* Actions (wired up in Steps 6–7) */}
-        <div className="flex gap-2 border-t pt-4">
-          <Button variant="outline" className="flex-1" disabled title="Available in Step 6">
-            <ArrowLeftRight className="mr-2 h-4 w-4" /> Transfer
-          </Button>
-          <Button variant="outline" className="flex-1" disabled title="Available in Step 7">
-            <PackagePlus className="mr-2 h-4 w-4" /> Put away
-          </Button>
-        </div>
+        {/* Scan-driven actions */}
+        {onPlacePalletHere ? (
+          <div className="flex flex-col gap-2 border-t pt-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <PackagePlus className="h-4 w-4" /> Place a pallet here
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Scan a pallet anywhere in the warehouse to move it into {location.code}.
+            </p>
+            <WmsScanButton label="Scan pallet to place" onScan={onPlacePalletHere} />
+          </div>
+        ) : null}
       </SheetContent>
     </Sheet>
   );

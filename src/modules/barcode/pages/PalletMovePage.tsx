@@ -5,13 +5,14 @@ import { toast } from 'sonner';
 
 import { useWMSWarehouses } from '@/modules/warehouse/api';
 import type { WarehouseOption } from '@/modules/warehouse/types';
+import { useWmsPalletMirror } from '@/modules/wms/store';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useMovePallet, usePalletDetail, usePallets } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
-import { useDestinationBins, type BinOption } from '../hooks/useDestinationBins';
+import { type BinOption,useDestinationBins } from '../hooks/useDestinationBins';
 import type { Pallet } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
@@ -32,6 +33,7 @@ export default function PalletMovePage() {
   const warehouses: WarehouseOption[] = whData?.warehouses ?? [];
   const { isOwnWarehouse, bins, warehouseName } = useDestinationBins(toWarehouse);
   const moveMutation = useMovePallet();
+  const mirrorToWms = useWmsPalletMirror();
 
   const handleMove = async () => {
     if (!selectedPalletId || !toWarehouse) return;
@@ -45,6 +47,29 @@ export default function PalletMovePage() {
         data: { to_warehouse: toWarehouse, to_bin: toBin || undefined, notes },
       });
       toast.success(`Pallet moved to ${toWarehouse}${toBin ? ` / ${toBin}` : ''}`);
+
+      // Mirror the move into Warehouse Ops so it shows up there too. This is a
+      // best-effort sync — the barcode move has already committed, so a failure
+      // here must not surface as a move failure.
+      if (isOwnWarehouse && toBin && palletDetail) {
+        try {
+          const result = await mirrorToWms({
+            licensePlate: palletDetail.pallet_id,
+            warehouseCode: toWarehouse,
+            binCode: toBin,
+            itemCode: palletDetail.item_code,
+            itemName: palletDetail.item_name,
+            lotNumber: palletDetail.batch_number,
+            boxCount: palletDetail.box_count,
+            totalUnits: Number(palletDetail.total_qty) || null,
+            uom: palletDetail.uom,
+          });
+          if (result.mirrored) toast.success(`Synced to Warehouse Ops (${result.locationCode}).`);
+        } catch {
+          toast.warning('Pallet moved, but syncing to Warehouse Ops failed.');
+        }
+      }
+
       navigate(`/barcode/pallets/${selectedPalletId}`);
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to move pallet. Please check the selected warehouse.');

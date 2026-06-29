@@ -4,13 +4,14 @@ import { toast } from 'sonner';
 
 import { useWMSWarehouses } from '@/modules/warehouse/api';
 import type { WarehouseOption } from '@/modules/warehouse/types';
+import { useWmsPalletMirror } from '@/modules/wms/store';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useMovePallet, usePallets } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
-import { useDestinationBins, type BinOption } from '../hooks/useDestinationBins';
+import { type BinOption,useDestinationBins } from '../hooks/useDestinationBins';
 import type { Pallet } from '../types';
 import { getBarcodeErrorMessage } from '../utils/errors';
 
@@ -28,6 +29,7 @@ export default function PalletTransferPage() {
   const warehouses: WarehouseOption[] = whData?.warehouses ?? [];
   const { isOwnWarehouse, bins, warehouseName } = useDestinationBins(toWarehouse);
   const moveMutation = useMovePallet();
+  const mirrorToWms = useWmsPalletMirror();
 
   function selectWarehouse(code: string) {
     setToWarehouse(code);
@@ -62,6 +64,24 @@ export default function PalletTransferPage() {
           },
         });
         successCount++;
+        // Mirror into Warehouse Ops for own-warehouse destinations (best effort).
+        if (isOwnWarehouse && toBin) {
+          try {
+            await mirrorToWms({
+              licensePlate: pallet.pallet_id,
+              warehouseCode: toWarehouse,
+              binCode: toBin,
+              itemCode: pallet.item_code,
+              itemName: pallet.item_name,
+              lotNumber: pallet.batch_number,
+              boxCount: pallet.box_count,
+              totalUnits: Number(pallet.total_qty) || null,
+              uom: pallet.uom,
+            });
+          } catch {
+            // Non-fatal: the barcode transfer already succeeded.
+          }
+        }
       } catch (err: unknown) {
         const status = (err as { status?: number; response?: { status?: number } })?.status;
         const responseStatus = (err as { response?: { status?: number } })?.response?.status;

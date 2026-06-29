@@ -117,6 +117,32 @@ export function computeOccupancy(
   };
 }
 
+/**
+ * Pallets physically at a location: those placed there (`currentLocationId`) OR
+ * holding stock there (an inventory line at the location carrying their id).
+ *
+ * Using both sources means a pallet still shows where its stock actually is even
+ * if its `currentLocationId` drifted from the inventory (e.g. legacy data from an
+ * item-level move) — so the map/outbound never show "stock here but no pallet".
+ */
+export function palletsLocatedAt(
+  locationId: string,
+  pallets: Pallet[],
+  inventory: InventoryRecord[],
+): Pallet[] {
+  const ids = new Set<string>();
+  for (const pallet of pallets) {
+    if (pallet.currentLocationId === locationId) ids.add(pallet.id);
+  }
+  for (const record of inventory) {
+    if (record.locationId === locationId && record.palletId) ids.add(record.palletId);
+  }
+  const byId = new Map(pallets.map((pallet) => [pallet.id, pallet]));
+  return [...ids]
+    .map((id) => byId.get(id))
+    .filter((pallet): pallet is Pallet => pallet != null);
+}
+
 /** Build an occupancy lookup for every location, grouping stock by location once. */
 export function buildOccupancyIndex(
   locations: WarehouseLocation[],

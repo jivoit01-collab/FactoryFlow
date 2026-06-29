@@ -1,32 +1,21 @@
-/** CODE128 barcode (self-contained; used on printable labels). */
-import JsBarcode from 'jsbarcode';
-import { useEffect, useRef } from 'react';
+/** 2D QR code (self-contained; used on printable labels). */
+import { QRCodeSVG } from 'qrcode.react';
 
 interface WmsBarcodeProps {
   value: string;
-  height?: number;
-  width?: number;
-  fontSize?: number;
+  /** Rendered size of the QR code in pixels. */
+  size?: number;
+  /** Show the encoded value as a caption beneath the code. */
+  displayValue?: boolean;
 }
 
-export function WmsBarcode({ value, height = 38, width = 1.4, fontSize = 11 }: WmsBarcodeProps) {
-  const ref = useRef<SVGSVGElement>(null);
+export function WmsBarcode({ value, size = 96, displayValue = true }: WmsBarcodeProps) {
+  if (!value) return null;
 
-  useEffect(() => {
-    if (!ref.current || !value) return;
-    try {
-      JsBarcode(ref.current, value, {
-        format: 'CODE128',
-        height,
-        width,
-        fontSize,
-        displayValue: true,
-        margin: 0,
-      });
-    } catch {
-      // Unencodable value — render nothing rather than throw.
-    }
-  }, [value, height, width, fontSize]);
-
-  return <svg ref={ref} className="max-w-full" />;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <QRCodeSVG value={value} size={size} level="M" marginSize={0} className="max-w-full" />
+      {displayValue ? <span className="font-mono text-[11px] leading-none">{value}</span> : null}
+    </div>
+  );
 }

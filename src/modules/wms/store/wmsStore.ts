@@ -7,12 +7,12 @@
  * mutation reloads its collection from the adapter so the cache can never drift
  * from what is persisted (simple and correct; later steps can optimise).
  */
+import { makeInventoryRecord, makeMovement, makePallet } from '../services/factories';
+import type { WarehouseBundle } from '../services/warehouseIO';
+import type { WmsCollection, WmsCollectionMap, WmsStorageAdapter } from '../storage';
+import { getActiveWmsAdapter } from '../storage';
 import type { Warehouse, WmsId, WmsSettings } from '../types';
 import { DEFAULT_WMS_SETTINGS, WMS_SETTINGS_ID } from '../types';
-import { getActiveWmsAdapter } from '../storage';
-import type { WmsCollection, WmsCollectionMap, WmsStorageAdapter } from '../storage';
-import type { WarehouseBundle } from '../services/warehouseIO';
-import { makeInventoryRecord, makeMovement, makePallet } from '../services/factories';
 import { nowIso } from '../utils';
 
 export interface MoveActor {
@@ -248,7 +248,10 @@ class WmsStore {
     const movedVolume = source.volume != null ? source.volume * proportion : null;
     const timestamp = nowIso();
 
-    // Destination: merge into a matching line (same item/lot/serial) or create one.
+    // Destination: merge into a matching line (same item/lot/serial AND same
+    // pallet) or create one. Matching on palletId keeps pallet-backed stock from
+    // merging into loose stock (and vice-versa), so a moved pallet's stock stays
+    // linked to its pallet at the destination.
     const destinationStock = (await adapter.list('inventory')).filter(
       (record) => record.locationId === params.toLocationId,
     );
@@ -256,7 +259,8 @@ class WmsStore {
       (record) =>
         record.itemCode === source.itemCode &&
         record.lotNumber === source.lotNumber &&
-        record.serialNumber === source.serialNumber,
+        record.serialNumber === source.serialNumber &&
+        record.palletId === source.palletId,
     );
     if (target) {
       await adapter.update('inventory', target.id, {
@@ -272,6 +276,8 @@ class WmsStore {
           locationId: params.toLocationId,
           itemCode: source.itemCode,
           itemName: source.itemName,
+          // Carry the pallet link so the stock stays attached to its pallet.
+          palletId: source.palletId,
           lotNumber: source.lotNumber,
           serialNumber: source.serialNumber,
           quantity: moveQty,
@@ -296,12 +302,28 @@ class WmsStore {
       });
     }
 
+    // If this stock belonged to a pallet and none of that pallet's stock remains
+    // at the source, follow the pallet to the destination — otherwise the pallet
+    // record is orphaned at its old location (shows stock here but "no pallet").
+    if (source.palletId) {
+      const palletStillAtSource = (await adapter.list('inventory')).some(
+        (record) => record.palletId === source.palletId && record.locationId === source.locationId,
+      );
+      if (!palletStillAtSource) {
+        await adapter.update('pallets', source.palletId, {
+          currentLocationId: params.toLocationId,
+          updatedAt: timestamp,
+        });
+      }
+    }
+
     await adapter.create(
       'movements',
       makeMovement({
         type: 'TRANSFER',
         itemCode: source.itemCode,
         itemName: source.itemName,
+        palletId: source.palletId,
         lotNumber: source.lotNumber,
         fromLocationId: source.locationId,
         toLocationId: params.toLocationId,
@@ -312,7 +334,7 @@ class WmsStore {
       }),
     );
 
-    await Promise.all([this.load('inventory'), this.load('movements')]);
+    await Promise.all([this.load('inventory'), this.load('pallets'), this.load('movements')]);
   }
 
   /**
@@ -455,6 +477,276 @@ class WmsStore {
         userId: params.actor?.id,
         userName: params.actor?.name,
         note: params.note,
+      }),
+    );
+
+    await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
+  }
+
+  /**
+   * Mirror an external (barcode-module) pallet move into the WMS dataset.
+   *
+   * The barcode module persists pallet moves to its own backend. When the chosen
+   * destination is a WMS-managed ("own") warehouse + bin, the move would
+   * otherwise be invisible in Warehouse Ops (different backend). This brings the
+   * pallet into the WMS so it shows on the map, reports, transfer, and outbound.
+   *
+   * Idempotent by license plate: a pallet already known to the WMS is relocated
+   * (its stock follows, like `movePallet`); an unknown plate is created with a
+   * single inventory line. Already at the destination → no-op.
+   */
+  async syncExternalPalletPlacement(params: {
+    licensePlate: string;
+    toLocationId: WmsId;
+    itemCode: string;
+    itemName?: string;
+    lotNumber?: string;
+    boxCount?: number;
+    totalUnits?: number | null;
+    uom?: string;
+    expiryDate?: string | null;
+    actor?: MoveActor;
+    note?: string;
+  }): Promise<void> {
+    const adapter = this.adapter();
+    const plate = params.licensePlate.trim();
+    if (!plate) throw new Error('A pallet license plate is required.');
+    const timestamp = nowIso();
+    const note = params.note ?? 'Synced from barcode move';
+
+    const existing = (await adapter.list('pallets')).find(
+      (p) => p.licensePlate.toLowerCase() === plate.toLowerCase(),
+    );
+
+    if (existing) {
+      const fromLocationId = existing.currentLocationId;
+      if (fromLocationId === params.toLocationId) return; // already here
+      await adapter.update('pallets', existing.id, {
+        currentLocationId: params.toLocationId,
+        status: existing.status === 'SHIPPED' ? 'ACTIVE' : existing.status,
+        updatedAt: timestamp,
+      });
+      const palletStock = (await adapter.list('inventory')).filter(
+        (record) => record.palletId === existing.id,
+      );
+      await Promise.all(
+        palletStock.map((record) =>
+          adapter.update('inventory', record.id, { locationId: params.toLocationId, updatedAt: timestamp }),
+        ),
+      );
+      await adapter.create(
+        'movements',
+        makeMovement({
+          type: 'TRANSFER',
+          itemCode: existing.itemCode,
+          itemName: existing.itemName,
+          palletId: existing.id,
+          fromLocationId,
+          toLocationId: params.toLocationId,
+          boxCount: existing.boxCount,
+          userId: params.actor?.id,
+          userName: params.actor?.name,
+          note,
+        }),
+      );
+    } else {
+      const pallet = makePallet({
+        licensePlate: plate,
+        currentLocationId: params.toLocationId,
+        itemCode: params.itemCode,
+        itemName: params.itemName,
+        boxCount: params.boxCount ?? 0,
+        totalUnits: params.totalUnits ?? null,
+        lotNumber: params.lotNumber,
+        expiryDate: params.expiryDate ?? null,
+      });
+      await adapter.create('pallets', pallet);
+      if ((params.totalUnits ?? 0) > 0) {
+        await adapter.create(
+          'inventory',
+          makeInventoryRecord({
+            locationId: params.toLocationId,
+            itemCode: params.itemCode,
+            itemName: params.itemName,
+            palletId: pallet.id,
+            lotNumber: params.lotNumber,
+            quantity: params.totalUnits ?? 0,
+            uom: params.uom,
+            boxCount: params.boxCount ?? null,
+            expiryDate: params.expiryDate ?? null,
+          }),
+        );
+      }
+      await adapter.create(
+        'movements',
+        makeMovement({
+          type: 'PUTAWAY',
+          itemCode: params.itemCode,
+          itemName: params.itemName,
+          palletId: pallet.id,
+          toLocationId: params.toLocationId,
+          quantity: params.totalUnits ?? null,
+          boxCount: params.boxCount ?? null,
+          lotNumber: params.lotNumber,
+          userId: params.actor?.id,
+          userName: params.actor?.name,
+          note,
+        }),
+      );
+    }
+
+    await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
+  }
+
+  /**
+   * Reconcile a WMS pallet to an absolute snapshot from the barcode module.
+   *
+   * Unlike `syncExternalPalletPlacement` (which only relocates), this also brings
+   * the pallet's box count and quantity into line — needed for box transfers,
+   * splits, and add/remove-box flows where the location may not change but the
+   * contents do. For an unknown plate it falls back to the create path. For a
+   * WMS-rich pallet (multiple inventory lines, e.g. received via WMS with lots),
+   * it relocates but does NOT overwrite the line quantities, to avoid clobbering
+   * detail the barcode side doesn't track.
+   */
+  async reconcileExternalPallet(params: {
+    licensePlate: string;
+    toLocationId: WmsId;
+    itemCode: string;
+    itemName?: string;
+    lotNumber?: string;
+    boxCount?: number;
+    totalUnits?: number | null;
+    uom?: string;
+    expiryDate?: string | null;
+    actor?: MoveActor;
+    note?: string;
+  }): Promise<void> {
+    const adapter = this.adapter();
+    const plate = params.licensePlate.trim();
+    if (!plate) throw new Error('A pallet license plate is required.');
+
+    const existing = (await adapter.list('pallets')).find(
+      (p) => p.licensePlate.toLowerCase() === plate.toLowerCase(),
+    );
+    if (!existing) {
+      await this.syncExternalPalletPlacement(params);
+      return;
+    }
+
+    const timestamp = nowIso();
+    const note = params.note ?? 'Synced from barcode transfer';
+    const fromLocationId = existing.currentLocationId;
+    const relocating = fromLocationId !== params.toLocationId;
+    const stock = (await adapter.list('inventory')).filter((r) => r.palletId === existing.id);
+    const target = params.totalUnits ?? null;
+
+    if (relocating) {
+      await Promise.all(
+        stock.map((r) => adapter.update('inventory', r.id, { locationId: params.toLocationId, updatedAt: timestamp })),
+      );
+    }
+
+    // Reconcile quantity only for the simple mirrored case (0 or 1 lines).
+    if (stock.length <= 1) {
+      const line = stock[0];
+      if (line) {
+        if ((target ?? 0) <= 0) {
+          await adapter.remove('inventory', line.id);
+        } else {
+          await adapter.update('inventory', line.id, {
+            quantity: target ?? line.quantity,
+            boxCount: params.boxCount ?? line.boxCount,
+            locationId: params.toLocationId,
+            updatedAt: timestamp,
+          });
+        }
+      } else if ((target ?? 0) > 0) {
+        await adapter.create(
+          'inventory',
+          makeInventoryRecord({
+            locationId: params.toLocationId,
+            itemCode: params.itemCode,
+            itemName: params.itemName,
+            palletId: existing.id,
+            lotNumber: params.lotNumber,
+            quantity: target ?? 0,
+            uom: params.uom,
+            boxCount: params.boxCount ?? null,
+            expiryDate: params.expiryDate ?? null,
+          }),
+        );
+      }
+    }
+
+    await adapter.update('pallets', existing.id, {
+      currentLocationId: params.toLocationId,
+      boxCount: params.boxCount ?? existing.boxCount,
+      totalUnits: target ?? existing.totalUnits,
+      status: existing.status === 'SHIPPED' ? 'ACTIVE' : existing.status,
+      updatedAt: timestamp,
+    });
+
+    await adapter.create(
+      'movements',
+      makeMovement({
+        type: relocating ? 'TRANSFER' : 'ADJUSTMENT',
+        itemCode: existing.itemCode,
+        itemName: existing.itemName,
+        palletId: existing.id,
+        fromLocationId: relocating ? fromLocationId : null,
+        toLocationId: params.toLocationId,
+        quantity: target,
+        boxCount: params.boxCount ?? null,
+        userId: params.actor?.id,
+        userName: params.actor?.name,
+        note,
+      }),
+    );
+
+    await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
+  }
+
+  /**
+   * Remove a pallet from WMS-managed space — used when an external (barcode)
+   * move sends a pallet to a warehouse the WMS does not manage. Clears its stock,
+   * unplaces it, and logs the departure. No-op for plates the WMS never held.
+   */
+  async removeExternalPallet(params: {
+    licensePlate: string;
+    actor?: MoveActor;
+    note?: string;
+  }): Promise<void> {
+    const adapter = this.adapter();
+    const plate = params.licensePlate.trim().toLowerCase();
+    if (!plate) return;
+    const existing = (await adapter.list('pallets')).find(
+      (p) => p.licensePlate.toLowerCase() === plate,
+    );
+    if (!existing || existing.currentLocationId == null) return;
+
+    const fromLocationId = existing.currentLocationId;
+    const timestamp = nowIso();
+    const stock = (await adapter.list('inventory')).filter((r) => r.palletId === existing.id);
+    await Promise.all(stock.map((r) => adapter.remove('inventory', r.id)));
+    await adapter.update('pallets', existing.id, {
+      currentLocationId: null,
+      status: 'SHIPPED',
+      updatedAt: timestamp,
+    });
+    await adapter.create(
+      'movements',
+      makeMovement({
+        type: 'TRANSFER',
+        itemCode: existing.itemCode,
+        itemName: existing.itemName,
+        palletId: existing.id,
+        fromLocationId,
+        toLocationId: null,
+        boxCount: existing.boxCount,
+        userId: params.actor?.id,
+        userName: params.actor?.name,
+        note: params.note ?? 'Left WMS-managed warehouse (barcode move)',
       }),
     );
 

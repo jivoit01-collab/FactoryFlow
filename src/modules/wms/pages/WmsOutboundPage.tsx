@@ -7,8 +7,8 @@
  * box count. On confirm the store removes the stock, marks the pallet SHIPPED,
  * and writes the OUTBOUND (and any ADJUSTMENT) movement; the map refreshes.
  */
-import { useMemo, useState } from 'react';
 import { ArrowRight, ScanLine, Truck } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -20,12 +20,24 @@ import {
   Input,
 } from '@/shared/components/ui';
 
+import { type AuditResult,PalletAuditDialog } from '../components/PalletAuditDialog';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import type { WmsLabelData } from '../components/WmsPrintLabel';
+import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
 import { WmsScanButton } from '../components/WmsScanButton';
-import { PalletAuditDialog, type AuditResult } from '../components/PalletAuditDialog';
+import { palletsLocatedAt } from '../services';
 import { useWmsCollection, useWmsEnabled, useWmsRole, useWmsSettings, wmsStore } from '../store';
-import { notifyFail, notifyOk } from '../utils';
 import type { Pallet } from '../types';
+import { notifyFail, notifyOk } from '../utils';
+
+function palletLabel(pallet: Pallet, heading: string): WmsLabelData {
+  return {
+    code: pallet.licensePlate,
+    title: pallet.licensePlate,
+    heading,
+    subtitle: pallet.itemName || pallet.itemCode,
+  };
+}
 
 export default function WmsOutboundPage() {
   const enabled = useWmsEnabled();
@@ -40,10 +52,14 @@ export default function WmsOutboundPage() {
   const [locationId, setLocationId] = useState<string | null>(null);
   const [selectedPallet, setSelectedPallet] = useState<Pallet | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [lastShippedLabel, setLastShippedLabel] = useState<WmsLabelData | null>(null);
 
   const palletsAtLocation = useMemo(
-    () => pallets.filter((p) => p.currentLocationId === locationId && p.status !== 'SHIPPED'),
-    [pallets, locationId],
+    () =>
+      locationId
+        ? palletsLocatedAt(locationId, pallets, inventory).filter((p) => p.status !== 'SHIPPED')
+        : [],
+    [pallets, inventory, locationId],
   );
 
   function unitsOf(pallet: Pallet) {
@@ -80,6 +96,7 @@ export default function WmsOutboundPage() {
         supervisorApproved: result.supervisorApproved,
       });
       notifyOk(`Pallet ${selectedPallet.licensePlate} shipped.`);
+      setLastShippedLabel(palletLabel(selectedPallet, 'SHIPPED'));
       setAuditOpen(false);
       setSelectedPallet(null);
       setScanQuery('');
@@ -147,6 +164,12 @@ export default function WmsOutboundPage() {
               </p>
             ) : (
               <div className="space-y-2">
+                <div className="flex justify-end">
+                  <WmsPrintLabelButton
+                    label={`Print ${palletsAtLocation.length} label${palletsAtLocation.length > 1 ? 's' : ''}`}
+                    labels={palletsAtLocation.map((pallet) => palletLabel(pallet, 'PALLET'))}
+                  />
+                </div>
                 {palletsAtLocation.map((pallet) => (
                   <button
                     key={pallet.id}
@@ -168,6 +191,23 @@ export default function WmsOutboundPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      {lastShippedLabel ? (
+        <Card className="border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div className="text-sm">
+              Pallet <span className="font-mono font-semibold">{lastShippedLabel.title}</span> shipped.
+              Print a SHIPPED label for the gate/manifest.
+            </div>
+            <div className="flex items-center gap-2">
+              <WmsPrintLabelButton labels={[lastShippedLabel]} label="Print shipped label" />
+              <Button variant="ghost" size="sm" onClick={() => setLastShippedLabel(null)}>
+                Dismiss
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {recentOutbound.length > 0 ? (
         <Card>

@@ -1,28 +1,22 @@
 /**
  * Label printing & export (Step 10).
  *
- * A print-and-export sheet of every location barcode and every pallet
- * license-plate label. Pick a warehouse and a label set, then Print (which the
- * browser can also "Save as PDF" to export). The print stylesheet hides the app
- * chrome so only the label grid prints.
+ * A print-and-export sheet of every location QR label and every pallet
+ * license-plate label. Pick a warehouse and a label set, then Print. Labels are
+ * rendered at 100x40mm and printed through the same react-to-print pipeline /
+ * TSC DA310 page geometry as the barcode module, so they run on the same
+ * thermal printer and stock.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Printer } from 'lucide-react';
+import { useReactToPrint } from 'react-to-print';
 
 import { Button, Card, CardContent, NativeSelect } from '@/shared/components/ui';
+import { LABEL_PRINT_PAGE_STYLE } from '@/modules/barcode/components/labelPrint';
 
-import { WmsBarcode } from '../components/WmsBarcode';
+import WmsPrintLabel, { type WmsLabelData } from '../components/WmsPrintLabel';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { useWarehouses, useWmsCollection, useWmsEnabled } from '../store';
-
-const PRINT_CSS = `
-@media print {
-  body * { visibility: hidden !important; }
-  #wms-label-sheet, #wms-label-sheet * { visibility: visible !important; }
-  #wms-label-sheet { position: absolute; left: 0; top: 0; width: 100%; }
-  .wms-no-print { display: none !important; }
-}
-`;
 
 type LabelSet = 'locations' | 'pallets';
 
@@ -35,12 +29,39 @@ export default function WmsLabelsPage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [labelSet, setLabelSet] = useState<LabelSet>('locations');
 
+  const printRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: 'WMS Labels 100x40mm',
+    ignoreGlobalStyles: true,
+    pageStyle: LABEL_PRINT_PAGE_STYLE,
+  });
+
   const activeWarehouseId = warehouseId || warehouses[0]?.id || '';
   const warehouseLocations = useMemo(
     () => locations.filter((location) => location.warehouseId === activeWarehouseId),
     [locations, activeWarehouseId],
   );
   const activePallets = useMemo(() => pallets.filter((p) => p.status !== 'SHIPPED'), [pallets]);
+
+  const labels: Array<{ key: string } & WmsLabelData> = useMemo(() => {
+    if (labelSet === 'locations') {
+      return warehouseLocations.map((location) => ({
+        key: location.id,
+        code: location.barcode || location.code,
+        title: location.code,
+        heading: 'LOCATION',
+        subtitle: location.type,
+      }));
+    }
+    return activePallets.map((pallet) => ({
+      key: pallet.id,
+      code: pallet.licensePlate,
+      title: pallet.licensePlate,
+      heading: 'PALLET',
+      subtitle: pallet.itemName || pallet.itemCode,
+    }));
+  }, [labelSet, warehouseLocations, activePallets]);
 
   if (!enabled) {
     return (
@@ -50,29 +71,14 @@ export default function WmsLabelsPage() {
     );
   }
 
-  const labels =
-    labelSet === 'locations'
-      ? warehouseLocations.map((location) => ({
-          key: location.id,
-          code: location.barcode || location.code,
-          title: location.code,
-          subtitle: location.type,
-        }))
-      : activePallets.map((pallet) => ({
-          key: pallet.id,
-          code: pallet.licensePlate,
-          title: pallet.licensePlate,
-          subtitle: pallet.itemName || pallet.itemCode,
-        }));
-
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
-      <style>{PRINT_CSS}</style>
-
-      <div className="wms-no-print flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Labels</h1>
-          <p className="text-sm text-muted-foreground">Print or export location and pallet barcodes.</p>
+          <p className="text-sm text-muted-foreground">
+            Print or export location and pallet QR labels (100&times;40mm).
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {warehouses.length > 1 && labelSet === 'locations' ? (
@@ -88,36 +94,40 @@ export default function WmsLabelsPage() {
             <option value="locations">Location labels</option>
             <option value="pallets">Pallet labels</option>
           </NativeSelect>
-          <Button onClick={() => window.print()} disabled={labels.length === 0}>
+          <Button onClick={() => handlePrint()} disabled={labels.length === 0}>
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
         </div>
       </div>
 
       {labels.length === 0 ? (
-        <Card className="wms-no-print">
+        <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             Nothing to print yet.
           </CardContent>
         </Card>
       ) : (
-        <div
-          id="wms-label-sheet"
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3"
-        >
+        <div className="flex flex-wrap gap-4">
           {labels.map((label) => (
             <div
               key={label.key}
-              className="flex flex-col items-center gap-1 rounded-md border p-3 text-center"
-              style={{ breakInside: 'avoid' }}
+              className="overflow-hidden rounded-md border shadow-sm"
+              style={{ width: '100mm', height: '40mm' }}
             >
-              <span className="font-mono text-sm font-semibold">{label.title}</span>
-              <WmsBarcode value={label.code} />
-              {label.subtitle ? <span className="text-xs text-muted-foreground">{label.subtitle}</span> : null}
+              <WmsPrintLabel data={label} />
             </div>
           ))}
         </div>
       )}
+
+      {/* Hidden 100x40mm print sheet — one page per label for the TSC DA310. */}
+      <div aria-hidden style={{ position: 'fixed', left: '-10000px', top: 0 }}>
+        <div ref={printRef} className="barcode-print-sheet">
+          {labels.map((label) => (
+            <WmsPrintLabel key={label.key} data={label} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

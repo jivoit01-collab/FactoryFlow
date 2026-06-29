@@ -25,6 +25,10 @@ export interface MapCell {
   highlighted?: boolean;
   dimmed?: boolean;
   tooltip?: string;
+  /** Move mode: a recommended putaway destination (shows a star + ring). */
+  suggested?: boolean;
+  /** Move mode: where the pallet being moved currently sits. */
+  current?: boolean;
 }
 
 const HATCH =
@@ -94,9 +98,21 @@ export function WarehouseMapGrid({ columns, rows, naming, cells, onCellClick }: 
                     'relative flex h-12 flex-col items-center justify-center overflow-hidden rounded-sm border border-black/10 px-0.5 text-[10px] font-semibold leading-none text-white/95 transition',
                     'hover:ring-2 hover:ring-foreground/40',
                     cell.highlighted && 'ring-2 ring-foreground ring-offset-1',
+                    cell.suggested && 'ring-2 ring-emerald-500 ring-offset-1',
+                    cell.current && 'outline outline-2 outline-dashed outline-sky-400',
                     cell.dimmed && 'opacity-25',
                   )}
                 >
+                  {cell.suggested ? (
+                    <span className="absolute right-0.5 top-0.5 text-[9px] leading-none text-emerald-50 drop-shadow">
+                      ★
+                    </span>
+                  ) : null}
+                  {cell.current ? (
+                    <span className="absolute left-0.5 top-0.5 rounded-sm bg-sky-500/90 px-0.5 text-[7px] font-bold leading-tight text-white">
+                      HERE
+                    </span>
+                  ) : null}
                   <span className="truncate drop-shadow-sm">{cell.code}</span>
                   <span className="absolute inset-x-0 bottom-0 h-1.5 bg-black/20">
                     <span className="block h-full bg-white/70" style={{ width: `${fill}%` }} />

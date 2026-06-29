@@ -8,8 +8,8 @@
  * save the layout as a reusable template; and export the locations as CSV.
  * Every edit persists immediately and is undoable.
  */
-import { useMemo, useState } from 'react';
 import { ArrowLeft, Download, Loader2, Map as MapIcon, Redo2, Save, Undo2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -23,13 +23,14 @@ import {
   NativeSelect,
 } from '@/shared/components/ui';
 
-import { WarehouseGrid, type GridCell } from '../components/WarehouseGrid';
-import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
-import { ZoneDialog, type ZoneFormValue } from '../components/ZoneDialog';
-import { TextPromptDialog } from '../components/TextPromptDialog';
 import { LocationPropertiesPanel } from '../components/LocationPropertiesPanel';
-import { useWarehouseEditor, useWmsEnabled, useWmsRole, wmsStore } from '../store';
+import { TextPromptDialog } from '../components/TextPromptDialog';
+import { type GridCell,WarehouseGrid } from '../components/WarehouseGrid';
+import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
+import { ZoneDialog, type ZoneFormValue } from '../components/ZoneDialog';
+import type { LocationDraft, LocationDraftField } from '../services';
 import {
   addColumn,
   addLevel,
@@ -44,7 +45,7 @@ import {
   removeRow,
   renameLocation,
 } from '../services';
-import type { LocationDraft, LocationDraftField } from '../services';
+import { useWarehouseEditor, useWmsEnabled, useWmsRole, wmsStore } from '../store';
 import type { WarehouseLocation } from '../types';
 import { nowIso } from '../utils';
 
@@ -490,6 +491,18 @@ export default function WmsWarehouseEditorPage() {
             <Button size="sm" variant="outline" disabled={busy} onClick={() => setEnabledForSelection(false)}>
               Disable
             </Button>
+            <WmsPrintLabelButton
+              label="Print labels"
+              documentTitle="Location labels"
+              labels={locations
+                .filter((l) => isSelected(l.id))
+                .map((l) => ({
+                  code: l.barcode || l.code,
+                  title: l.code,
+                  heading: 'LOCATION',
+                  subtitle: l.type,
+                }))}
+            />
             {selectedArray.length === 1 ? (
               <Button
                 size="sm"

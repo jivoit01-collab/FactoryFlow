@@ -8,8 +8,8 @@
  * scans a destination. On confirm the store creates the pallet + inventory,
  * writes a PUTAWAY movement, and the map updates.
  */
-import { useMemo, useState } from 'react';
 import { PackagePlus, ScanLine, Sparkles } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -24,12 +24,14 @@ import {
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import type { WmsLabelData } from '../components/WmsPrintLabel';
+import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
 import { WmsScanButton } from '../components/WmsScanButton';
-import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
-import { suggestPutaway, validateMove } from '../services';
 import type { MoveItem, PutawaySuggestion, ValidationResult } from '../services';
-import { notifyFail, notifyOk } from '../utils';
+import { suggestPutaway, validateMove } from '../services';
+import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import type { MaterialWarehouseProfile, WarehouseLocation } from '../types';
+import { notifyFail, notifyOk } from '../utils';
 
 export default function WmsReceivePage() {
   const enabled = useWmsEnabled();
@@ -53,6 +55,8 @@ export default function WmsReceivePage() {
   const [destQuery, setDestQuery] = useState('');
   const [destLocationId, setDestLocationId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The label for the most recently received pallet, so it can be printed.
+  const [lastPalletLabel, setLastPalletLabel] = useState<WmsLabelData | null>(null);
 
   const activeWarehouseId = warehouseId || warehouses[0]?.id || '';
   const putawayMode = settings?.putawayMode ?? 'HYBRID';
@@ -195,6 +199,12 @@ export default function WmsReceivePage() {
         licensePlate: licensePlate.trim() || undefined,
       });
       notifyOk(`Received ${quantity} ${uom} into ${destLocation?.code}.`);
+      const plate = licensePlate.trim();
+      setLastPalletLabel(
+        plate
+          ? { code: plate, title: plate, heading: 'PALLET', subtitle: itemName.trim() || itemCode.trim() }
+          : null,
+      );
       reset();
     } catch (error) {
       notifyFail(error instanceof Error ? error.message : 'Receive failed.');
@@ -335,11 +345,14 @@ export default function WmsReceivePage() {
                 />
               </Field>
               <Field label="Pallet plate (optional)">
-                <Input
-                  value={licensePlate}
-                  placeholder="Leave blank for loose stock"
-                  onChange={(event) => setLicensePlate(event.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={licensePlate}
+                    placeholder="Leave blank for loose stock"
+                    onChange={(event) => setLicensePlate(event.target.value)}
+                  />
+                  <WmsScanButton label="Scan" onScan={setLicensePlate} />
+                </div>
               </Field>
               {showLot ? (
                 <Field label="Lot">
@@ -436,6 +449,24 @@ export default function WmsReceivePage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Print the just-received pallet's QR label (TSC DA310, 100x40mm). */}
+      {lastPalletLabel ? (
+        <Card className="border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div className="text-sm">
+              Pallet <span className="font-mono font-semibold">{lastPalletLabel.title}</span> received.
+              Print its QR label to put on the pallet.
+            </div>
+            <div className="flex items-center gap-2">
+              <WmsPrintLabelButton labels={[lastPalletLabel]} label="Print pallet label" />
+              <Button variant="ghost" size="sm" onClick={() => setLastPalletLabel(null)}>
+                Dismiss
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { wmsStore } from '../store';
 import { makeInventoryRecord } from '../services';
+import { wmsStore } from '../store';
 import type { InventoryRecord, Pallet } from '../types';
 import { createWmsId, nowIso } from '../utils';
 import { resetWmsBackend } from './helpers/wmsBackendMock';
@@ -32,6 +32,35 @@ describe('moveInventory', () => {
     // A TRANSFER entry was logged.
     const log = wmsStore.getSnapshot('movements');
     expect(log.some((m) => m.type === 'TRANSFER' && m.quantity === 4)).toBe(true);
+  });
+
+  it('keeps a pallet with its stock: moving a pallet-backed line relocates the pallet and preserves the link', async () => {
+    const pallet: Pallet = {
+      id: createWmsId(),
+      licensePlate: 'LP-INV',
+      currentLocationId: 'A',
+      itemCode: 'SKU1',
+      itemName: 'Item 1',
+      boxCount: 5,
+      unitsPerBox: null,
+      totalUnits: 50,
+      lotNumber: '',
+      expiryDate: null,
+      status: 'ACTIVE',
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    const line = makeInventoryRecord({ locationId: 'A', itemCode: 'SKU1', quantity: 50, palletId: pallet.id });
+    await wmsStore.create('pallets', pallet);
+    await wmsStore.create('inventory', line);
+
+    await wmsStore.moveInventory({ sourceId: line.id, toLocationId: 'B', quantity: 50 });
+
+    // Pallet followed its stock to B, and the destination line still carries the link.
+    expect(wmsStore.getSnapshot('pallets')[0]?.currentLocationId).toBe('B');
+    const destLine = inventoryAt('B')[0];
+    expect(destLine?.palletId).toBe(pallet.id);
+    expect(inventoryAt('A')).toHaveLength(0);
   });
 
   it('clears the source line when fully moved and merges into an existing destination line', async () => {
