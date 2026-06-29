@@ -24,6 +24,7 @@ import {
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import { WmsScanButton } from '../components/WmsScanButton';
 import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import { validateMove } from '../services';
 import type { MoveItem, ValidationResult } from '../services';
@@ -78,8 +79,8 @@ export default function WmsTransferPage() {
     [pallets, sourceLocationId],
   );
 
-  function resolveSource() {
-    const query = sourceQuery.trim().toLowerCase();
+  function resolveSource(override?: string) {
+    const query = (override ?? sourceQuery).trim().toLowerCase();
     if (!query) return;
     const pallet = pallets.find((p) => p.licensePlate.toLowerCase() === query);
     if (pallet?.currentLocationId) {
@@ -102,8 +103,8 @@ export default function WmsTransferPage() {
     toast.error('No location, pallet, or item matched that code.');
   }
 
-  function resolveDestination() {
-    const location = locationByCode.get(destQuery.trim().toLowerCase());
+  function resolveDestination(override?: string) {
+    const location = locationByCode.get((override ?? destQuery).trim().toLowerCase());
     if (location) setDestLocationId(location.id);
     else toast.error('No destination location matched that code.');
   }
@@ -243,7 +244,14 @@ export default function WmsTransferPage() {
               onChange={(event) => setSourceQuery(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && resolveSource()}
             />
-            <Button variant="outline" onClick={resolveSource}>
+            <WmsScanButton
+              label="Scan"
+              onScan={(code) => {
+                setSourceQuery(code);
+                resolveSource(code);
+              }}
+            />
+            <Button variant="outline" onClick={() => resolveSource()}>
               <ScanLine className="mr-2 h-4 w-4" /> Find
             </Button>
           </div>
@@ -322,7 +330,14 @@ export default function WmsTransferPage() {
                 onChange={(event) => setDestQuery(event.target.value)}
                 onKeyDown={(event) => event.key === 'Enter' && resolveDestination()}
               />
-              <Button variant="outline" onClick={resolveDestination}>
+              <WmsScanButton
+                label="Scan"
+                onScan={(code) => {
+                  setDestQuery(code);
+                  resolveDestination(code);
+                }}
+              />
+              <Button variant="outline" onClick={() => resolveDestination()}>
                 <ScanLine className="mr-2 h-4 w-4" /> Find
               </Button>
             </div>

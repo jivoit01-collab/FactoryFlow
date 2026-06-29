@@ -21,6 +21,7 @@ import {
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import { WmsScanButton } from '../components/WmsScanButton';
 import { PalletAuditDialog, type AuditResult } from '../components/PalletAuditDialog';
 import { useWmsCollection, useWmsEnabled, useWmsRole, useWmsSettings, wmsStore } from '../store';
 import { notifyFail, notifyOk } from '../utils';
@@ -49,8 +50,8 @@ export default function WmsOutboundPage() {
     return inventory.filter((r) => r.palletId === pallet.id).reduce((s, r) => s + (r.quantity || 0), 0);
   }
 
-  function resolveScan() {
-    const query = scanQuery.trim().toLowerCase();
+  function resolveScan(override?: string) {
+    const query = (override ?? scanQuery).trim().toLowerCase();
     if (!query) return;
     const pallet = pallets.find((p) => p.licensePlate.toLowerCase() === query && p.status !== 'SHIPPED');
     if (pallet) {
@@ -127,7 +128,14 @@ export default function WmsOutboundPage() {
               onChange={(event) => setScanQuery(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && resolveScan()}
             />
-            <Button variant="outline" onClick={resolveScan}>
+            <WmsScanButton
+              label="Scan"
+              onScan={(code) => {
+                setScanQuery(code);
+                resolveScan(code);
+              }}
+            />
+            <Button variant="outline" onClick={() => resolveScan()}>
               <ScanLine className="mr-2 h-4 w-4" /> Find
             </Button>
           </div>

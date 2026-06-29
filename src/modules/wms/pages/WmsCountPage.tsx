@@ -21,6 +21,7 @@ import {
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import { WmsScanButton } from '../components/WmsScanButton';
 import { useWmsCollection, useWmsEnabled, wmsStore } from '../store';
 import { notifyFail, notifyOk } from '../utils';
 
@@ -52,8 +53,9 @@ export default function WmsCountPage() {
     [inventory, locationId],
   );
 
-  function resolve() {
-    const found = locations.find((l) => l.code.toLowerCase() === scanQuery.trim().toLowerCase());
+  function resolve(override?: string) {
+    const code = (override ?? scanQuery).trim().toLowerCase();
+    const found = locations.find((l) => l.code.toLowerCase() === code);
     if (!found) {
       toast.error('No location matched that code.');
       return;
@@ -129,7 +131,14 @@ export default function WmsCountPage() {
               onChange={(event) => setScanQuery(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && resolve()}
             />
-            <Button variant="outline" onClick={resolve}>
+            <WmsScanButton
+              label="Scan"
+              onScan={(code) => {
+                setScanQuery(code);
+                resolve(code);
+              }}
+            />
+            <Button variant="outline" onClick={() => resolve()}>
               <ScanLine className="mr-2 h-4 w-4" /> Find
             </Button>
           </div>

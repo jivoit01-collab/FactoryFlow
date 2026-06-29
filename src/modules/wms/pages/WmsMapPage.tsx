@@ -22,6 +22,7 @@ import { WarehouseMapGrid, type MapCell } from '../components/WarehouseMapGrid';
 import { MapLegend } from '../components/MapLegend';
 import { LocationDetailPanel } from '../components/LocationDetailPanel';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import { WmsScanButton } from '../components/WmsScanButton';
 import { useWarehouseLayout, useWarehouses, useWmsCollection, useWmsEnabled } from '../store';
 import { DISPLAY_STATUS_META, buildOccupancyIndex } from '../services';
 import type { DisplayStatus } from '../services';
@@ -254,14 +255,17 @@ export default function WmsMapPage() {
             </Control>
           ) : null}
           <Control label="Search item, lot or code" className="min-w-48 flex-1">
-            <Input
-              value={search}
-              placeholder="e.g. SKU123 or A-01"
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') handleSearchEnter();
-              }}
-            />
+            <div className="flex gap-2">
+              <Input
+                value={search}
+                placeholder="e.g. SKU123 or A-01"
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') handleSearchEnter();
+                }}
+              />
+              <WmsScanButton label="Scan" onScan={setSearch} />
+            </div>
           </Control>
         </CardContent>
       </Card>

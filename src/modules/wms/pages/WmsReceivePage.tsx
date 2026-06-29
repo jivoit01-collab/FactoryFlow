@@ -24,6 +24,7 @@ import {
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import { WmsScanButton } from '../components/WmsScanButton';
 import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import { suggestPutaway, validateMove } from '../services';
 import type { MoveItem, PutawaySuggestion, ValidationResult } from '../services';
@@ -124,8 +125,8 @@ export default function WmsReceivePage() {
     });
   }, [destLocation, settings, ready, inventory, pallets, item, quantity, added]);
 
-  function applyScan() {
-    const query = scanQuery.trim();
+  function applyScan(override?: string) {
+    const query = (override ?? scanQuery).trim();
     if (!query) return;
     const existingPallet = pallets.find((p) => p.licensePlate.toLowerCase() === query.toLowerCase());
     if (existingPallet) {
@@ -148,10 +149,9 @@ export default function WmsReceivePage() {
     setDestQuery(location.code);
   }
 
-  function resolveDestination() {
-    const location = warehouseLocations.find(
-      (l) => l.code.toLowerCase() === destQuery.trim().toLowerCase(),
-    );
+  function resolveDestination(override?: string) {
+    const code = (override ?? destQuery).trim().toLowerCase();
+    const location = warehouseLocations.find((l) => l.code.toLowerCase() === code);
     if (location) setDestLocationId(location.id);
     else toast.error('No destination location matched that code.');
   }
@@ -254,7 +254,14 @@ export default function WmsReceivePage() {
               onChange={(event) => setScanQuery(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && applyScan()}
             />
-            <Button variant="outline" onClick={applyScan}>
+            <WmsScanButton
+              label="Scan"
+              onScan={(code) => {
+                setScanQuery(code);
+                applyScan(code);
+              }}
+            />
+            <Button variant="outline" onClick={() => applyScan()}>
               <ScanLine className="mr-2 h-4 w-4" /> Identify
             </Button>
           </div>
@@ -352,7 +359,14 @@ export default function WmsReceivePage() {
               onChange={(event) => setDestQuery(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && resolveDestination()}
             />
-            <Button variant="outline" onClick={resolveDestination}>
+            <WmsScanButton
+              label="Scan"
+              onScan={(code) => {
+                setDestQuery(code);
+                resolveDestination(code);
+              }}
+            />
+            <Button variant="outline" onClick={() => resolveDestination()}>
               <ScanLine className="mr-2 h-4 w-4" /> Find
             </Button>
           </div>

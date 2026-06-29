@@ -23,6 +23,7 @@ import {
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import { WmsScanButton } from '../components/WmsScanButton';
 import { PalletAuditDialog, type AuditResult } from '../components/PalletAuditDialog';
 import { useWmsCollection, useWmsEnabled, useWmsRole, useWmsSettings, wmsStore } from '../store';
 import { planPicks } from '../services';
@@ -197,22 +198,28 @@ export default function WmsPickPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="confirm-loc">Scan location</Label>
-              <Input
-                id="confirm-loc"
-                value={locScan}
-                placeholder={currentLocation?.code}
-                onChange={(event) => setLocScan(event.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="confirm-loc"
+                  value={locScan}
+                  placeholder={currentLocation?.code}
+                  onChange={(event) => setLocScan(event.target.value)}
+                />
+                <WmsScanButton label="Scan" onScan={setLocScan} />
+              </div>
               {locScan && !locOk ? <p className="text-xs text-destructive">Doesn’t match {currentLocation?.code}.</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="confirm-item">Scan item</Label>
-              <Input
-                id="confirm-item"
-                value={itemScan}
-                placeholder={current.itemCode}
-                onChange={(event) => setItemScan(event.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="confirm-item"
+                  value={itemScan}
+                  placeholder={current.itemCode}
+                  onChange={(event) => setItemScan(event.target.value)}
+                />
+                <WmsScanButton label="Scan" onScan={setItemScan} />
+              </div>
               {itemScan && !itemOk ? <p className="text-xs text-destructive">Doesn’t match {current.itemCode}.</p> : null}
             </div>
             <div className="space-y-1.5">
