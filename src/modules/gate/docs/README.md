@@ -43,7 +43,7 @@ gate/
 ├── constants/
 │   └── entryFlowConfig.ts    # Config-driven entry flow definitions
 ├── pages/
-│   ├── shared/                # SharedStep1Page, SharedStep2Page, etc.
+│   ├── shared/                # SharedStep1Page (vehicle/driver + security), etc.
 │   ├── rawMaterialPages/
 │   ├── dailyNeedsPages/
 │   ├── constructionPages/
@@ -58,7 +58,7 @@ gate/
 
 ### Config-Driven Wizards
 
-Step1 and Step2 pages are shared across all 4 entry types via `SharedStep1Page` and `SharedStep2Page`. Each entry type passes a config object:
+The first step is shared across all 4 entry types via `SharedStep1Page`, which collects vehicle, driver, and security-check details together (the former separate Security Check step was merged into it). Each entry type passes a config object:
 
 ```typescript
 // entryFlowConfig.ts

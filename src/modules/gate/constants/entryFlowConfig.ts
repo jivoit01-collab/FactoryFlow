@@ -9,13 +9,21 @@ export interface EntryFlowConfig {
   dashboardDescription: string;
   allPageTitle: string;
   allPageDescription: string;
+  /**
+   * URL step segment the Attachments page navigates back to. The vehicle &
+   * security steps were merged into step 1, so the displayed step count
+   * (`totalSteps`) no longer matches the underlying URL segments — this keeps
+   * the Attachments "Previous" target explicit instead of derived from it.
+   */
+  attachmentsPreviousStep?: string;
 }
 
 export const RAW_MATERIAL_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.RAW_MATERIAL,
   routePrefix: '/gate/raw-materials',
   headerTitle: 'Material Inward',
-  totalSteps: 5,
+  totalSteps: 4,
+  attachmentsPreviousStep: 'step3',
   dashboardTitle: 'Raw Materials (RM/PM/Assets)',
   dashboardDescription: 'Manage raw materials, packing materials, and assets gate entries',
   allPageTitle: 'Raw Materials (RM/PM/Assets)',
@@ -26,7 +34,8 @@ export const CONSTRUCTION_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.CONSTRUCTION,
   routePrefix: '/gate/construction',
   headerTitle: 'Construction Entry',
-  totalSteps: 4,
+  totalSteps: 3,
+  attachmentsPreviousStep: 'step2',
   dashboardTitle: 'Construction (Civil/Building Work)',
   dashboardDescription: 'Manage construction materials and building work gate entries',
   allPageTitle: 'Construction (Civil/Building Work)',
@@ -37,7 +46,8 @@ export const DAILY_NEED_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.DAILY_NEED,
   routePrefix: '/gate/daily-needs',
   headerTitle: 'Daily Needs Entry',
-  totalSteps: 4,
+  totalSteps: 3,
+  attachmentsPreviousStep: 'step2',
   dashboardTitle: 'Daily Needs (Food/Consumables)',
   dashboardDescription: 'Manage daily needs, food, and consumables gate entries',
   allPageTitle: 'Daily Needs (Food/Consumables)',
@@ -48,7 +58,8 @@ export const MAINTENANCE_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.MAINTENANCE,
   routePrefix: '/gate/maintenance',
   headerTitle: 'Maintenance Entry',
-  totalSteps: 4,
+  totalSteps: 3,
+  attachmentsPreviousStep: 'step2',
   dashboardTitle: 'Maintenance (Spare parts/Tools)',
   dashboardDescription: 'Manage maintenance items, spare parts, and tools gate entries',
   allPageTitle: 'Maintenance (Spare parts/Tools)',

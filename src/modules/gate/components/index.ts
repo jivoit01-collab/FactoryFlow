@@ -35,6 +35,12 @@ export type {
   SecurityCheckFormShellProps,
   VehicleDriverFormData,
   VehicleDriverFormShellProps,
+  VehicleDriverSecurityFormData,
+  VehicleDriverSecurityFormShellProps,
   VehicleSelection,
 } from './forms';
-export { SecurityCheckFormShell, VehicleDriverFormShell } from './forms';
+export {
+  SecurityCheckFormShell,
+  VehicleDriverFormShell,
+  VehicleDriverSecurityFormShell,
+} from './forms';

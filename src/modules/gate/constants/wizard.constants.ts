@@ -4,24 +4,25 @@
 
 export const WIZARD_CONFIG = {
   /** Total number of steps in the wizard (excluding review) */
-  TOTAL_STEPS: 5,
+  TOTAL_STEPS: 4,
 
-  /** Step numbers */
+  /**
+   * Step numbers. Vehicle/Driver and the former Security Check step were merged
+   * into a single step 1, so PO Receipt onwards shifted down by one.
+   */
   STEPS: {
     VEHICLE_DRIVER: 1,
-    SECURITY_CHECK: 2,
-    PO_RECEIPT: 3,
-    ARRIVAL_SLIP: 4,
-    ATTACHMENTS: 5,
+    PO_RECEIPT: 2,
+    ARRIVAL_SLIP: 3,
+    WEIGHMENT: 4,
   },
 
   /** Step titles */
   STEP_TITLES: {
-    1: 'Vehicle & Driver',
-    2: 'Security Check',
-    3: 'PO Receipt',
-    4: 'Arrival Slip',
-    5: 'Attachments',
+    1: 'Vehicle, Driver & Security',
+    2: 'PO Receipt',
+    3: 'Arrival Slip',
+    4: 'Weighment',
   },
 } as const;
 
@@ -35,4 +36,4 @@ export const DEBOUNCE_CONFIG = {
   SEARCH_DELAY: 100,
 } as const;
 
-export type StepNumber = 1 | 2 | 3 | 4 | 5;
+export type StepNumber = 1 | 2 | 3 | 4;
