@@ -256,6 +256,8 @@ export interface VoidPayload {
 
 export interface PalletMovePayload {
   to_warehouse: string;
+  /** Destination location/bin code — required when the destination is an own (WMS) warehouse. */
+  to_bin?: string;
   notes?: string;
 }
 
@@ -279,6 +281,8 @@ export interface PalletRemoveBoxesPayload {
 export interface BoxTransferPayload {
   box_ids: number[];
   to_warehouse: string;
+  /** Destination location/bin code — required when the destination is an own (WMS) warehouse. */
+  to_bin?: string;
   to_pallet_id?: number | null;
 }
 

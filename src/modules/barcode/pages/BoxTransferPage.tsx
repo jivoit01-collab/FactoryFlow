@@ -132,6 +132,9 @@ export default function BoxTransferPage() {
       await transferMutation.mutateAsync({
         box_ids: selectedBoxIds,
         to_warehouse: targetPallet.current_warehouse,
+        // Boxes adopt the destination pallet's location/bin (its warehouse may be
+        // an own/WMS warehouse with internal bins).
+        to_bin: targetPallet.current_bin || undefined,
         to_pallet_id: targetPallet.id,
       });
       toast.success(`Transferred ${selectedBoxIds.length} boxes to ${targetPallet.pallet_id}`);
