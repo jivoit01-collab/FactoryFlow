@@ -680,7 +680,13 @@ class WmsStore {
 
   /** Read the settings record, seeding it with defaults on first run. */
   async getSettings(): Promise<WmsSettings> {
-    const existing = await this.adapter().get('settings', WMS_SETTINGS_ID);
+    // Load the collection into the reactive cache (de-duped across the concurrent
+    // callers — useWmsSettings/useWmsRole/useWmsEnabled). A bare adapter.get()
+    // would return the record WITHOUT populating the cache, so React subscribers
+    // reading getSnapshot('settings') would never see it and the settings page
+    // would stay stuck on its loading spinner after a reload.
+    const rows = await this.ensureLoaded('settings');
+    const existing = rows.find((record) => record.id === WMS_SETTINGS_ID);
     if (existing) return existing;
     const seeded: WmsSettings = { ...DEFAULT_WMS_SETTINGS, updatedAt: nowIso() };
     await this.create('settings', seeded);
