@@ -1072,7 +1072,7 @@ function BillScanCard({
       <button
         type="button"
         onClick={() => onToggle(bill.key)}
-        className="flex w-full items-center gap-3 bg-muted/40 p-3 text-left transition-colors hover:bg-muted/60"
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 bg-muted/40 p-3 text-left transition-colors hover:bg-muted/60"
       >
         {isOpen ? (
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1090,20 +1090,27 @@ function BillScanCard({
             {bill.items.length} item{bill.items.length === 1 ? '' : 's'}
           </div>
         </div>
-        <Badge variant="outline">
-          {bill.scannedBoxes}
-          {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
-          {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
-        </Badge>
-        <Badge
-          variant={bill.status === 'Complete' ? 'success' : 'outline'}
-          className={cn(bill.status === 'Partial' && 'border-amber-200 bg-amber-50 text-amber-700')}
-        >
-          {bill.status === 'Complete' ? (
-            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-          ) : null}
-          {bill.status}
-        </Badge>
+        {/* On phones the badges drop to their own full-width line (indented under the
+            title past the chevron) so the bill number isn't squeezed into a stub.
+            From sm up they sit inline to the right of the title. */}
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 pl-7 sm:w-auto sm:pl-0">
+          <Badge variant="outline">
+            {bill.scannedBoxes}
+            {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
+            {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
+          </Badge>
+          <Badge
+            variant={bill.status === 'Complete' ? 'success' : 'outline'}
+            className={cn(
+              bill.status === 'Partial' && 'border-amber-200 bg-amber-50 text-amber-700',
+            )}
+          >
+            {bill.status === 'Complete' ? (
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+            ) : null}
+            {bill.status}
+          </Badge>
+        </div>
       </button>
 
       {isOpen ? (
