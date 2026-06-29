@@ -92,10 +92,6 @@ export const ROUTES = {
         path: '/gate/raw-materials/new/step4',
         title: 'New Raw Material Entry - Step 4',
       },
-      RAW_MATERIALS_NEW_STEP5: {
-        path: '/gate/raw-materials/new/step5',
-        title: 'New Raw Material Entry - Step 5',
-      },
       RAW_MATERIALS_NEW_REVIEW: {
         path: '/gate/raw-materials/new/review',
         title: 'New Raw Material Entry - Review',
@@ -115,10 +111,6 @@ export const ROUTES = {
       RAW_MATERIALS_EDIT_STEP4: {
         path: '/gate/raw-materials/edit/:entryId/step4',
         title: 'Edit Raw Material Entry - Step 4',
-      },
-      RAW_MATERIALS_EDIT_STEP5: {
-        path: '/gate/raw-materials/edit/:entryId/step5',
-        title: 'Edit Raw Material Entry - Step 5',
       },
       RAW_MATERIALS_EDIT_REVIEW: {
         path: '/gate/raw-materials/edit/:entryId/review',

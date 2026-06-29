@@ -8,3 +8,8 @@ export type {
   VehicleSelection,
 } from './VehicleDriverFormShell';
 export { VehicleDriverFormShell } from './VehicleDriverFormShell';
+export type {
+  VehicleDriverSecurityFormData,
+  VehicleDriverSecurityFormShellProps,
+} from './VehicleDriverSecurityFormShell';
+export { VehicleDriverSecurityFormShell } from './VehicleDriverSecurityFormShell';

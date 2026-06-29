@@ -11,48 +11,40 @@ import { WIZARD_CONFIG, TABLE_CONFIG, DEBOUNCE_CONFIG } from '../../constants/wi
 // ═══════════════════════════════════════════════════════════════
 
 describe('WIZARD_CONFIG', () => {
-  it('has TOTAL_STEPS = 5', () => {
-    expect(WIZARD_CONFIG.TOTAL_STEPS).toBe(5);
+  it('has TOTAL_STEPS = 4 (vehicle/driver + security merged into step 1)', () => {
+    expect(WIZARD_CONFIG.TOTAL_STEPS).toBe(4);
   });
 
   it('has STEPS.VEHICLE_DRIVER = 1', () => {
     expect(WIZARD_CONFIG.STEPS.VEHICLE_DRIVER).toBe(1);
   });
 
-  it('has STEPS.SECURITY_CHECK = 2', () => {
-    expect(WIZARD_CONFIG.STEPS.SECURITY_CHECK).toBe(2);
+  it('has STEPS.PO_RECEIPT = 2', () => {
+    expect(WIZARD_CONFIG.STEPS.PO_RECEIPT).toBe(2);
   });
 
-  it('has STEPS.PO_RECEIPT = 3', () => {
-    expect(WIZARD_CONFIG.STEPS.PO_RECEIPT).toBe(3);
+  it('has STEPS.ARRIVAL_SLIP = 3', () => {
+    expect(WIZARD_CONFIG.STEPS.ARRIVAL_SLIP).toBe(3);
   });
 
-  it('has STEPS.ARRIVAL_SLIP = 4', () => {
-    expect(WIZARD_CONFIG.STEPS.ARRIVAL_SLIP).toBe(4);
-  });
-
-  it('has STEPS.ATTACHMENTS = 5', () => {
-    expect(WIZARD_CONFIG.STEPS.ATTACHMENTS).toBe(5);
+  it('has STEPS.WEIGHMENT = 4', () => {
+    expect(WIZARD_CONFIG.STEPS.WEIGHMENT).toBe(4);
   });
 
   it('has STEP_TITLES for step 1', () => {
-    expect(WIZARD_CONFIG.STEP_TITLES[1]).toBe('Vehicle & Driver');
+    expect(WIZARD_CONFIG.STEP_TITLES[1]).toBe('Vehicle, Driver & Security');
   });
 
   it('has STEP_TITLES for step 2', () => {
-    expect(WIZARD_CONFIG.STEP_TITLES[2]).toBe('Security Check');
+    expect(WIZARD_CONFIG.STEP_TITLES[2]).toBe('PO Receipt');
   });
 
   it('has STEP_TITLES for step 3', () => {
-    expect(WIZARD_CONFIG.STEP_TITLES[3]).toBe('PO Receipt');
+    expect(WIZARD_CONFIG.STEP_TITLES[3]).toBe('Arrival Slip');
   });
 
   it('has STEP_TITLES for step 4', () => {
-    expect(WIZARD_CONFIG.STEP_TITLES[4]).toBe('Arrival Slip');
-  });
-
-  it('has STEP_TITLES for step 5', () => {
-    expect(WIZARD_CONFIG.STEP_TITLES[5]).toBe('Attachments');
+    expect(WIZARD_CONFIG.STEP_TITLES[4]).toBe('Weighment');
   });
 });
 
