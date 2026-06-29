@@ -44,7 +44,9 @@ export default function DismantlePage() {
       : undefined,
   );
   const { data: boxes = [], isLoading: loadingBoxes } = useBoxes(
-    mode === 'box' && boxSearch.length >= 2 ? { search: boxSearch, status: 'ACTIVE' } : undefined,
+    mode === 'box' && boxSearch.length >= 2
+      ? { search: boxSearch, status: 'ACTIVE,PARTIAL' }
+      : undefined,
   );
 
   const handlePalletSearch = useCallback((s: string) => setPalletSearch(s), []);
@@ -205,7 +207,7 @@ export default function DismantlePage() {
                   inputId="dismantle-box"
                   loadingText="Searching..."
                   emptyText="Type at least 2 characters to search"
-                  notFoundText="No active boxes found"
+                  notFoundText="No active or partial boxes found"
                   onSearchChange={handleBoxSearch}
                   onItemSelect={(b) => setSelectedId(b.id)}
                   onClear={() => setSelectedId(null)}

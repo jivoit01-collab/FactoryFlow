@@ -1,14 +1,39 @@
-import { ChevronRight, Plus, Search } from 'lucide-react';
+import { ChevronRight, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { ENTRY_STATUS, ENTRY_TYPES } from '@/config/constants';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { GateStatusBadge } from '@/modules/gate/components';
-import { Button, Input } from '@/shared/components/ui';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
-import { useVehicleEntries } from '../api/vehicle/vehicleEntry.queries';
+import type { VehicleEntry } from '../api/vehicle/vehicleEntry.api';
+import {
+  useDeleteRawMaterialEntry,
+  useVehicleEntries,
+} from '../api/vehicle/vehicleEntry.queries';
 import { DateRangePicker } from '../components/DateRangePicker';
+
+// Gate-phase statuses — an entry is still "in progress" and safe to delete
+// before it reaches QC. The backend enforces the same guard.
+const DELETABLE_STATUSES = new Set<string>([
+  ENTRY_STATUS.DRAFT,
+  ENTRY_STATUS.SECURITY_CHECK_DONE,
+  ENTRY_STATUS.ARRIVAL_SLIP_SUBMITTED,
+  ENTRY_STATUS.ARRIVAL_SLIP_REJECTED,
+  ENTRY_STATUS.IN_PROGRESS,
+]);
 
 export default function RawMaterialsPage() {
   const navigate = useNavigate();
@@ -30,6 +55,20 @@ export default function RawMaterialsPage() {
   }, [dateRange, statusFilter]);
 
   const { data: entries = [], isLoading } = useVehicleEntries(apiParams);
+
+  const deleteEntry = useDeleteRawMaterialEntry();
+  const [deleteTarget, setDeleteTarget] = useState<VehicleEntry | null>(null);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteEntry.mutateAsync(deleteTarget.id);
+      toast.success(`Gate entry ${deleteTarget.entry_no} deleted`);
+      setDeleteTarget(null);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to delete the gate entry'));
+    }
+  };
 
   // Filter entries based on search query only (date filtering is done by API)
   const filteredData = useMemo(() => {
@@ -204,7 +243,24 @@ export default function RawMaterialsPage() {
                     </td>
                     <td className="p-3 text-sm text-muted-foreground">{entry.remarks || '-'}</td>
                     <td className="p-3 text-right">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center justify-end gap-1">
+                        {DELETABLE_STATUSES.has(entry.status) ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            title="Delete entry"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setDeleteTarget(entry);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -213,6 +269,44 @@ export default function RawMaterialsPage() {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteEntry.isPending) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete gate entry?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes gate entry{' '}
+              <span className="font-medium">{deleteTarget?.entry_no}</span> and everything entered
+              for it — PO receipts, arrival slips, security check, weighment and attachments. This
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteEntry.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleConfirmDelete()}
+              disabled={deleteEntry.isPending}
+            >
+              {deleteEntry.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete entry
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

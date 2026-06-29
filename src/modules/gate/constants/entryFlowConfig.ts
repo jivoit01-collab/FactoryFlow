@@ -42,6 +42,17 @@ export const CONSTRUCTION_FLOW: EntryFlowConfig = {
   allPageDescription: 'Manage construction materials and building work gate entries',
 };
 
+export const FIXED_ASSET_FLOW: EntryFlowConfig = {
+  entryType: ENTRY_TYPES.FIXED_ASSET,
+  routePrefix: '/gate/fixed-assets',
+  headerTitle: 'Fixed Asset Entry',
+  totalSteps: 3,
+  dashboardTitle: 'Fixed Assets',
+  dashboardDescription: 'Manage fixed asset inward gate entries',
+  allPageTitle: 'Fixed Assets',
+  allPageDescription: 'Manage fixed asset inward gate entries',
+};
+
 export const DAILY_NEED_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.DAILY_NEED,
   routePrefix: '/gate/daily-needs',

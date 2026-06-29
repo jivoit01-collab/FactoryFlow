@@ -281,6 +281,11 @@ export interface MaintenanceSparePayload {
   description?: string;
 }
 
+export interface SpareStockAdjustPayload {
+  new_stock: MaintenanceDecimal;
+  reason: string;
+}
+
 export interface MaintenanceSpareFilters {
   search?: string;
   category?: number | 'ALL';

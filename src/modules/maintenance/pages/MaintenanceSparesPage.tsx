@@ -48,6 +48,7 @@ import {
 } from '@/shared/components/ui';
 
 import {
+  useAdjustSpareStock,
   useConsumeSpareRequest,
   useCreateMaintenanceSpare,
   useCreateSpareCategory,
@@ -71,6 +72,7 @@ import type {
   SpareRequest,
   SpareRequestActionPayload,
   SpareRequestStatus,
+  SpareStockAdjustPayload,
 } from '../types';
 
 type SpareActionKind = 'issue' | 'consume' | 'return';
@@ -219,7 +221,9 @@ function SpareFormDialog({
       is_critical: form.is_critical,
       minimum_stock: form.minimum_stock || 0,
       reorder_level: form.reorder_level || 0,
-      current_stock: form.current_stock || 0,
+      // Opening stock is only set on create; on an existing spare, on-hand
+      // changes go through the adjust-stock action so the ledger stays accurate.
+      ...(spare ? {} : { current_stock: form.current_stock || 0 }),
       unit_cost: form.unit_cost || 0,
       storage_location: form.storage_location.trim(),
       description: form.description.trim(),
@@ -308,7 +312,9 @@ function SpareFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="spare_current_stock">Current Stock</Label>
+              <Label htmlFor="spare_current_stock">
+                {spare ? 'Current Stock (read-only)' : 'Opening Stock'}
+              </Label>
               <Input
                 id="spare_current_stock"
                 type="number"
@@ -316,7 +322,13 @@ function SpareFormDialog({
                 step="0.001"
                 value={form.current_stock}
                 onChange={(event) => setField('current_stock', event.target.value)}
+                disabled={Boolean(spare)}
               />
+              {spare && (
+                <p className="text-xs text-muted-foreground">
+                  Use “Adjust Stock” to change on-hand quantity so the movement ledger stays accurate.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="spare_unit_cost">Unit Cost</Label>
@@ -540,6 +552,78 @@ function SpareActionDialog({
   );
 }
 
+function SpareAdjustDialog({
+  open,
+  spare,
+  isSubmitting,
+  onOpenChange,
+  onSubmit,
+}: {
+  open: boolean;
+  spare?: MaintenanceSpare | null;
+  isSubmitting?: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (payload: SpareStockAdjustPayload) => Promise<void> | void;
+}) {
+  const [newStock, setNewStock] = useState('');
+  const [reason, setReason] = useState('');
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await onSubmit({ new_stock: newStock, reason: reason.trim() });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Adjust Stock</DialogTitle>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="font-medium">{spare?.part_number}</div>
+            <div className="text-muted-foreground">{spare?.name}</div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              Current on-hand: {formatQty(spare?.current_stock)} {spare?.uom}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="spare_adjust_new_stock">New counted stock</Label>
+            <Input
+              id="spare_adjust_new_stock"
+              type="number"
+              min="0"
+              step="0.001"
+              value={newStock}
+              onChange={(event) => setNewStock(event.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="spare_adjust_reason">Reason</Label>
+            <Textarea
+              id="spare_adjust_reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="e.g. Physical cycle count correction"
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              <SlidersHorizontal className="h-4 w-4" />
+              Adjust
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function MaintenanceSparesPage() {
   const { hasPermission } = usePermission();
   const canManageSpare = hasPermission(MAINTENANCE_PERMISSIONS.MANAGE_SPARE);
@@ -555,6 +639,8 @@ export default function MaintenanceSparesPage() {
   const [spareDialogOpen, setSpareDialogOpen] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingSpare, setEditingSpare] = useState<MaintenanceSpare | null>(null);
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [adjustSpare, setAdjustSpare] = useState<MaintenanceSpare | null>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionKind, setActionKind] = useState<SpareActionKind>('issue');
   const [actionRequest, setActionRequest] = useState<SpareRequest | null>(null);
@@ -575,6 +661,7 @@ export default function MaintenanceSparesPage() {
 
   const createSpare = useCreateMaintenanceSpare();
   const updateSpare = useUpdateMaintenanceSpare();
+  const adjustStock = useAdjustSpareStock();
   const createCategory = useCreateSpareCategory();
   const issueRequest = useIssueSpareRequest();
   const consumeRequest = useConsumeSpareRequest();
@@ -603,6 +690,11 @@ export default function MaintenanceSparesPage() {
     setSpareDialogOpen(true);
   };
 
+  const openAdjustSpare = (spare: MaintenanceSpare) => {
+    setAdjustSpare(spare);
+    setAdjustDialogOpen(true);
+  };
+
   const openAction = (request: SpareRequest, action: SpareActionKind) => {
     setActionRequest(request);
     setActionKind(action);
@@ -618,6 +710,13 @@ export default function MaintenanceSparesPage() {
       toast.success('Spare created');
     }
     setSpareDialogOpen(false);
+  };
+
+  const handleAdjustSubmit = async (payload: SpareStockAdjustPayload) => {
+    if (!adjustSpare) return;
+    await adjustStock.mutateAsync({ spareId: adjustSpare.id, payload });
+    toast.success('Stock adjusted');
+    setAdjustDialogOpen(false);
   };
 
   const handleCategorySubmit = async (payload: SpareCategoryPayload) => {
@@ -868,7 +967,16 @@ export default function MaintenanceSparesPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-end">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAdjustSpare(spare)}
+                            disabled={!canManageSpare}
+                          >
+                            <SlidersHorizontal className="h-4 w-4" />
+                            Adjust
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -1050,6 +1158,15 @@ export default function MaintenanceSparesPage() {
           assets={assetsQuery.data ?? []}
           isSubmitting={createSpare.isPending || updateSpare.isPending}
           onSubmit={handleSpareSubmit}
+        />
+      )}
+      {adjustDialogOpen && (
+        <SpareAdjustDialog
+          open={adjustDialogOpen}
+          onOpenChange={setAdjustDialogOpen}
+          spare={adjustSpare}
+          isSubmitting={adjustStock.isPending}
+          onSubmit={handleAdjustSubmit}
         />
       )}
       {categoryDialogOpen && (

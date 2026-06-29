@@ -250,6 +250,11 @@ describe('NotificationsPage — Notification Items', () => {
     expect(content).toContain('markAsRead([notification.id])');
   });
 
+  it('handleNotificationClick navigates to click_action_url fallback', () => {
+    const content = readPageSource();
+    expect(content).toContain("navigate(notification.click_action_url || '/notifications')");
+  });
+
   it('renders formatTimeAgo for each notification', () => {
     const content = readPageSource();
     expect(content).toContain('formatTimeAgo(notification.created_at)');

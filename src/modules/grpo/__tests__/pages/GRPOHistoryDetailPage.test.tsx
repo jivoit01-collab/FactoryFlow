@@ -79,9 +79,30 @@ describe('GRPOHistoryDetailPage — Header', () => {
     expect(content).toContain('>Posting Detail</h2>');
   });
 
-  it('has back button navigating to /grpo/history', () => {
+  it('has back button navigating to /grpo/material/history', () => {
     const content = readSource();
-    expect(content).toContain("navigate('/grpo/history')");
+    expect(content).toContain("navigate('/grpo/material/history')");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// QC Inspection Report Printing
+// ═══════════════════════════════════════════════════════════════
+
+describe('GRPOHistoryDetailPage — QC report printing', () => {
+  it('uses the shared QC report print hook and button', () => {
+    const content = readSource();
+    expect(content).toContain('useQCReportPrint');
+    expect(content).toContain('QCReportButton');
+    expect(content).toContain("from '../components'");
+  });
+
+  it('renders the print portal and wires the print trigger per line', () => {
+    const content = readSource();
+    expect(content).toContain('{printPortal}');
+    expect(content).toContain('onPrint={printQCReport}');
+    expect(content).toContain('printingArrivalSlipId={printingArrivalSlipId}');
+    expect(content).toContain('item={line}');
   });
 });
 

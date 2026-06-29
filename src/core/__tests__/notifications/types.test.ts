@@ -32,38 +32,47 @@ import type {
 describe('Notification Types', () => {
   // ─── NotificationTypeCode ─────────────────────────────────
 
-  it('NotificationTypeCode has exactly 15 entries', () => {
-    expect(Object.keys(NotificationTypeCode)).toHaveLength(15);
+  it('NotificationTypeCode has exactly 24 entries', () => {
+    expect(Object.keys(NotificationTypeCode)).toHaveLength(24);
   });
 
-  it('contains all person-related codes', () => {
-    expect(NotificationTypeCode.PERSON_ENTRY).toBe('PERSON_ENTRY');
-    expect(NotificationTypeCode.PERSON_EXIT).toBe('PERSON_EXIT');
-    expect(NotificationTypeCode.LONG_DURATION_ALERT).toBe('LONG_DURATION_ALERT');
-    expect(NotificationTypeCode.BLACKLISTED_PERSON).toBe('BLACKLISTED_PERSON');
+  it('contains all gate workflow codes', () => {
+    expect(NotificationTypeCode.GATE_ENTRY_CREATED).toBe('GATE_ENTRY_CREATED');
+    expect(NotificationTypeCode.GATE_ENTRY_STATUS_CHANGED).toBe('GATE_ENTRY_STATUS_CHANGED');
+    expect(NotificationTypeCode.SECURITY_CHECK_DONE).toBe('SECURITY_CHECK_DONE');
+    expect(NotificationTypeCode.WEIGHMENT_RECORDED).toBe('WEIGHMENT_RECORDED');
+    expect(NotificationTypeCode.PO_RECEIVED).toBe('PO_RECEIVED');
+    expect(NotificationTypeCode.GATE_ENTRY_COMPLETED).toBe('GATE_ENTRY_COMPLETED');
   });
 
-  it('contains all vehicle-related codes', () => {
-    expect(NotificationTypeCode.VEHICLE_ENTRY).toBe('VEHICLE_ENTRY');
-    expect(NotificationTypeCode.VEHICLE_EXIT).toBe('VEHICLE_EXIT');
-  });
-
-  it('contains all gate-in codes', () => {
-    expect(NotificationTypeCode.RAW_MATERIAL_GATEIN).toBe('RAW_MATERIAL_GATEIN');
-    expect(NotificationTypeCode.DAILY_NEEDS_GATEIN).toBe('DAILY_NEEDS_GATEIN');
-    expect(NotificationTypeCode.MAINTENANCE_GATEIN).toBe('MAINTENANCE_GATEIN');
-    expect(NotificationTypeCode.CONSTRUCTION_GATEIN).toBe('CONSTRUCTION_GATEIN');
-  });
-
-  it('contains all QC codes', () => {
-    expect(NotificationTypeCode.QC_PENDING).toBe('QC_PENDING');
+  it('contains all QC and approval codes', () => {
+    expect(NotificationTypeCode.ARRIVAL_SLIP_SUBMITTED).toBe('ARRIVAL_SLIP_SUBMITTED');
+    expect(NotificationTypeCode.ARRIVAL_SLIP_SENT_BACK).toBe('ARRIVAL_SLIP_SENT_BACK');
+    expect(NotificationTypeCode.QC_INSPECTION_SUBMITTED).toBe('QC_INSPECTION_SUBMITTED');
+    expect(NotificationTypeCode.QC_CHEMIST_APPROVED).toBe('QC_CHEMIST_APPROVED');
+    expect(NotificationTypeCode.QC_QAM_APPROVED).toBe('QC_QAM_APPROVED');
+    expect(NotificationTypeCode.QC_REJECTED).toBe('QC_REJECTED');
+    expect(NotificationTypeCode.QC_HOLD).toBe('QC_HOLD');
     expect(NotificationTypeCode.QC_COMPLETED).toBe('QC_COMPLETED');
-    expect(NotificationTypeCode.QC_FAILED).toBe('QC_FAILED');
+    expect(NotificationTypeCode.FACTORY_HEAD_DECISION_REQUIRED).toBe(
+      'FACTORY_HEAD_DECISION_REQUIRED',
+    );
+    expect(NotificationTypeCode.FACTORY_HEAD_DECISION_RECORDED).toBe(
+      'FACTORY_HEAD_DECISION_RECORDED',
+    );
   });
 
-  it('contains weighment and security codes', () => {
-    expect(NotificationTypeCode.WEIGHMENT_COMPLETED).toBe('WEIGHMENT_COMPLETED');
-    expect(NotificationTypeCode.SECURITY_ALERT).toBe('SECURITY_ALERT');
+  it('contains all GRPO and general system codes', () => {
+    expect(NotificationTypeCode.GRPO_POSTED).toBe('GRPO_POSTED');
+    expect(NotificationTypeCode.GRPO_FAILED).toBe('GRPO_FAILED');
+    expect(NotificationTypeCode.SERVICE_GRPO_POSTED).toBe('SERVICE_GRPO_POSTED');
+    expect(NotificationTypeCode.SERVICE_GRPO_FAILED).toBe('SERVICE_GRPO_FAILED');
+    expect(NotificationTypeCode.STOCK_ALERT).toBe('STOCK_ALERT');
+    expect(NotificationTypeCode.DOCKING_SCAN_SKIP_REQUESTED).toBe(
+      'DOCKING_SCAN_SKIP_REQUESTED',
+    );
+    expect(NotificationTypeCode.DOCKING_SCAN_SKIP_REVIEWED).toBe('DOCKING_SCAN_SKIP_REVIEWED');
+    expect(NotificationTypeCode.GENERAL_ANNOUNCEMENT).toBe('GENERAL_ANNOUNCEMENT');
   });
 
   // ─── Type Aliases ─────────────────────────────────────────
@@ -226,7 +235,7 @@ describe('Notification Types', () => {
   // ─── NotificationTypeCodeType ─────────────────────────────
 
   it('NotificationTypeCodeType can be any NotificationTypeCode value', () => {
-    const code: NotificationTypeCodeType = 'QC_PENDING';
+    const code: NotificationTypeCodeType = 'QC_COMPLETED';
     expect(Object.values(NotificationTypeCode)).toContain(code);
   });
 });

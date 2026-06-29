@@ -9,6 +9,7 @@ export { StepHeader } from './StepHeader';
 export { StepLoadingSpinner } from './StepLoadingSpinner';
 
 // Form components
+export { AssetCategorySelect } from './AssetCategorySelect';
 export { CategorySelect } from './CategorySelect';
 export { ConstructionCategorySelect } from './ConstructionCategorySelect';
 export { ContractorSelect } from './ContractorSelect';

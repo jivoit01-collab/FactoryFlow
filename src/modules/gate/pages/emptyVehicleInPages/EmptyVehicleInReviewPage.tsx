@@ -53,6 +53,13 @@ export default function EmptyVehicleInReviewPage() {
       return;
     }
 
+    // Already completed (revisiting the wizard) -> don't re-run completion, which
+    // would re-snapshot covers. Just return to the dashboard.
+    if (entry.vehicle_entry_status === 'COMPLETED') {
+      navigate(EMPTY_VEHICLE_IN_ROUTES.dashboard);
+      return;
+    }
+
     try {
       await completeEmptyGateIn.mutateAsync(entry.id);
       toast.success('Empty vehicle entry completed');

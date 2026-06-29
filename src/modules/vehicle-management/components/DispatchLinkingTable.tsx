@@ -1,5 +1,6 @@
-import { Link2, Loader2 } from 'lucide-react';
+import { Link2, Loader2, Lock } from 'lucide-react';
 
+import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
 import { Button, Checkbox } from '@/shared/components/ui';
@@ -69,25 +70,34 @@ export function DispatchLinkingTable({
   return (
     <div className="overflow-x-auto rounded-md border">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1180px] text-sm">
+        <table className="w-full min-w-[1500px] text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
               <th className="w-10 px-4 py-3 text-left font-medium text-muted-foreground"></th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Action</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dispatch</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bill</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Customer</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Load</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">SAP Hints</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                SAP Location
+              </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Location</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Linked Vehicle
               </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">Action</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                Vehicle Status
+              </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Load</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">SAP Hints</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Remarks</th>
             </tr>
           </thead>
           <tbody>
             {bills.map((bill) => {
               const selected = selectedDocEntries.has(bill.doc_entry);
+              const linkLocked = bill.plan.is_vehicle_link_locked;
               return (
                 <tr
                   key={bill.doc_entry}
@@ -101,10 +111,37 @@ export function DispatchLinkingTable({
                   <td className="px-4 py-3 align-top">
                     <Checkbox
                       checked={selected}
-                      disabled={!canEdit}
+                      disabled={!canEdit || linkLocked}
                       aria-label={`Select invoice ${bill.doc_num}`}
                       onCheckedChange={() => onToggleSelection(bill)}
                     />
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <Button
+                      type="button"
+                      variant={bill.plan.vehicle_id ? 'outline' : 'default'}
+                      size="sm"
+                      disabled={!canEdit || linkLocked}
+                      title={
+                        linkLocked
+                          ? 'Empty vehicle gate-in is complete. To re-plan, complete an empty-vehicle-out for this vehicle first.'
+                          : undefined
+                      }
+                      onClick={() => onLink(bill)}
+                    >
+                      {linkLocked ? (
+                        <Lock className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Link2 className="mr-2 h-4 w-4" />
+                      )}
+                      {linkLocked
+                        ? 'Locked'
+                        : selectedDocEntries.size > 1 && selected
+                          ? 'Link Selected'
+                          : bill.plan.vehicle_id
+                            ? 'Edit Link'
+                            : 'Link'}
+                    </Button>
                   </td>
                   <td className="px-4 py-3 align-top">
                     <div className="font-medium">{compactText(bill.plan.dispatch_date)}</div>
@@ -126,12 +163,37 @@ export function DispatchLinkingTable({
                       {compactText(bill.card_name)}
                     </div>
                     <div className="font-mono text-xs text-muted-foreground">{bill.card_code}</div>
-                    <div
-                      className="max-w-[230px] truncate text-xs text-muted-foreground"
-                      title={bill.ship_to_address}
-                    >
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <StatusBadge status={bill.plan.booking_status} />
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="max-w-[200px] truncate" title={bill.ship_to_address}>
                       {compactText(bill.city)} {compactText(bill.state)}
                     </div>
+                    <div
+                      className="max-w-[200px] truncate text-xs text-muted-foreground"
+                      title={bill.ship_to_address}
+                    >
+                      {compactText(bill.ship_to_address)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div
+                      className="max-w-[200px] truncate"
+                      title={bill.plan.location ?? undefined}
+                    >
+                      {compactText(bill.plan.location)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="font-medium">Vehicle {compactText(bill.plan.vehicle_no)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Bilty {compactText(bill.plan.bilty_no)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <PipelineStatusBadge status={bill.plan.pipeline_status} />
                   </td>
                   <td className="px-4 py-3 align-top tabular-nums">
                     <div>{formatNumber(bill.total_litres)} L</div>
@@ -159,29 +221,12 @@ export function DispatchLinkingTable({
                     </div>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <div className="font-medium">Vehicle {compactText(bill.plan.vehicle_no)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Bilty {compactText(bill.plan.bilty_no)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <StatusBadge status={bill.plan.booking_status} />
-                  </td>
-                  <td className="px-4 py-3 text-right align-top">
-                    <Button
-                      type="button"
-                      variant={bill.plan.vehicle_id ? 'outline' : 'default'}
-                      size="sm"
-                      disabled={!canEdit}
-                      onClick={() => onLink(bill)}
+                    <div
+                      className="max-w-[220px] truncate text-xs text-muted-foreground"
+                      title={bill.plan.remarks ?? undefined}
                     >
-                      <Link2 className="mr-2 h-4 w-4" />
-                      {selectedDocEntries.size > 1 && selected
-                        ? 'Link Selected'
-                        : bill.plan.vehicle_id
-                          ? 'Edit Link'
-                          : 'Link'}
-                    </Button>
+                      {compactText(bill.plan.remarks)}
+                    </div>
                   </td>
                 </tr>
               );

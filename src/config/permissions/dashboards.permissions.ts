@@ -13,6 +13,7 @@ export const DASHBOARDS_PERMISSIONS = {
   VIEW_PRODUCTION_MOVEMENT: 'production_execution.can_view_reports',
   VIEW_DISPATCH_PLANS: 'dispatch_plans.can_view_dispatch_plans',
   EDIT_DISPATCH_PLANS: 'dispatch_plans.can_edit_dispatch_plans',
+  VIEW_DISPATCH_PIPELINE: 'dispatch_plans.can_view_dispatch_pipeline',
 } as const;
 
 export type DashboardsPermission =

@@ -162,3 +162,4 @@ export interface CreateFGReceiptPayload {
   uom?: string;
   posting_date?: string;
 }
+

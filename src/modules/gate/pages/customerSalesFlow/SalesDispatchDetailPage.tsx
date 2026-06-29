@@ -16,9 +16,9 @@ import { toast } from 'sonner';
 import { GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import {
+  type SalesDispatchBoxScan,
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
-  type SalesDispatchBoxScan,
   type SalesDispatchItem,
   useCancelSalesDispatch,
   useRejectSalesDispatch,
@@ -43,16 +43,16 @@ import {
 import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
 import {
+  getExpectedDispatchBoxes,
+  getExpectedDocumentBoxes,
+  getExpectedItemBoxes,
+} from './salesDispatchBoxCounts';
+import {
   formatDateTime,
   formatDocumentType,
   formatTimestamp,
   formatValue,
 } from './salesDispatchFlow.helpers';
-import {
-  getExpectedDispatchBoxes,
-  getExpectedDocumentBoxes,
-  getExpectedItemBoxes,
-} from './salesDispatchBoxCounts';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 
 interface DetailDocument extends SalesDispatchGateOutDocument {
@@ -416,6 +416,14 @@ function DockingOverviewCard({
           <InfoItem label="Docked At" value={formatTimestamp(entry.docked_at)} />
           <InfoItem label="Box Scan Progress" value={formatScanProgress(entry)} />
           <InfoItem label="Invoice Weight" value={formatInvoiceWeightValue(entry.total_weight)} />
+          {hasDisplayValue(entry.challan_weight) ? (
+            <InfoItem
+              label="Challan Weight"
+              value={`${formatWeightValue(entry.challan_weight)}${
+                entry.challan_weight_by_name ? ` (by ${entry.challan_weight_by_name})` : ''
+              }`}
+            />
+          ) : null}
           <InfoItem label="Tare Weight" value={formatWeightValue(entry.tare_weight)} />
           {hasDisplayValue(entry.gross_weight) ? (
             <InfoItem label="Gross Weight" value={formatWeightValue(entry.gross_weight)} />
@@ -844,7 +852,8 @@ function getPrimaryActionLabel(entry: SalesDispatchGateOut, isGateOutMode: boole
   if (entry.status === 'GATEPASS_PRINTED') return 'Commit Gatepass Print';
   if (entry.status === 'PRINT_COMMITTED') return 'Dispatch Vehicle';
 
-  return 'Resume Flow';
+  // Terminal entries (dispatched / rejected / cancelled): read-only step walk.
+  return 'View Steps';
 }
 
 function getPrimaryActionPath(
@@ -864,7 +873,8 @@ function getPrimaryActionPath(
   if (entry.status === 'GATEPASS_PRINTED' || entry.status === 'PRINT_COMMITTED') {
     return routes.gatepass(entry.vehicle_entry);
   }
-  return `${routes.newEntry}?entryId=${entry.vehicle_entry}`;
+  // Terminal entries: walk the flow read-only (review mode).
+  return routes.barcodeScan(entry.vehicle_entry, true);
 }
 
 function hasCompleteGateOutWeighment(entry: SalesDispatchGateOut) {

@@ -13,10 +13,8 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { FINAL_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
 import {
   Badge,
@@ -34,16 +32,16 @@ import {
   Label,
 } from '@/shared/components/ui';
 
-import { grpoApi, useGRPOPreview, usePostGRPO } from '../api';
-import { ExtraChargesSection, WarehouseSelect } from '../components';
+import { useGRPOPreview, usePostGRPO } from '../api';
+import {
+  ExtraChargesSection,
+  QCReportButton,
+  QCStatusBadge,
+  useQCReportPrint,
+  WarehouseSelect,
+} from '../components';
 import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants';
-import type {
-  ExtraCharge,
-  GRPOInspectionReport,
-  PostGRPOResponse,
-  PreviewItem,
-  PreviewPOReceipt,
-} from '../types';
+import type { ExtraCharge, PostGRPOResponse, PreviewPOReceipt } from '../types';
 
 // Per-item form state
 interface ItemFormState {
@@ -83,6 +81,20 @@ interface PrintableQCReportItem {
   inspection_report_no: string | null;
 }
 
+// Format the PO creation date (date-only, no time component)
+const formatPODate = (dateStr?: string | null) => {
+  if (!dateStr) return null;
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
 export default function GRPOPreviewPage() {
   const navigate = useNavigate();
   const { vehicleEntryId } = useParams<{ vehicleEntryId: string }>();
@@ -102,38 +114,33 @@ export default function GRPOPreviewPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [successResult, setSuccessResult] = useState<PostGRPOResponse | null>(null);
   const [lastPostedQCReports, setLastPostedQCReports] = useState<PrintableQCReportItem[]>([]);
-  const [printReport, setPrintReport] = useState<GRPOInspectionReport | null>(null);
-  const [pendingReportPrint, setPendingReportPrint] = useState(false);
-  const [printingArrivalSlipId, setPrintingArrivalSlipId] = useState<number | null>(null);
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
   const isPosting = postGRPO.isPending;
-  const printPortal =
-    printReport && typeof document !== 'undefined'
-      ? createPortal(
-          <>
-            <GRPOInspectionReportPrintStyles />
-            <GRPOInspectionReportPrintView report={printReport} />
-          </>,
-          document.body,
-        )
-      : null;
+  const { printQCReport, printingArrivalSlipId, printPortal, printError } = useQCReportPrint();
 
   // Separate posted and unposted POs
   const unpostedPOs = useMemo(
     () => previewData.filter((po) => po.grpo_status !== GRPO_STATUS.POSTED),
     [previewData],
   );
+  // GRPO is bill-based: only bills (POs) whose items have all passed QC can be
+  // posted. A rejected/held bill is shown separately and never blocks the rest.
+  const readyPOs = useMemo(() => unpostedPOs.filter((po) => po.is_ready_for_grpo), [unpostedPOs]);
+  const blockedPOs = useMemo(
+    () => unpostedPOs.filter((po) => !po.is_ready_for_grpo),
+    [unpostedPOs],
+  );
   const postedPOs = useMemo(
     () => previewData.filter((po) => po.grpo_status === GRPO_STATUS.POSTED),
     [previewData],
   );
 
-  // Group unposted POs by supplier
+  // Group ready (postable) POs by supplier
   const supplierGroups = useMemo((): SupplierGroup[] => {
     const map = new Map<string, SupplierGroup>();
-    unpostedPOs.forEach((po) => {
+    readyPOs.forEach((po) => {
       const key = po.supplier_code;
       if (!map.has(key)) {
         map.set(key, {
@@ -145,12 +152,12 @@ export default function GRPOPreviewPage() {
       map.get(key)!.pos.push(po);
     });
     return Array.from(map.values());
-  }, [unpostedPOs]);
+  }, [readyPOs]);
 
-  // Selected POs (resolved from IDs)
+  // Selected POs (resolved from IDs) — only ready bills are selectable
   const selectedPOs = useMemo(
-    () => unpostedPOs.filter((po) => selectedPOIds.has(po.po_receipt_id)),
-    [unpostedPOs, selectedPOIds],
+    () => readyPOs.filter((po) => selectedPOIds.has(po.po_receipt_id)),
+    [readyPOs, selectedPOIds],
   );
 
   // Check if all selected POs share the same supplier
@@ -165,27 +172,6 @@ export default function GRPOPreviewPage() {
   }, [selectedPOs]);
 
   const hasMixedSuppliers = selectedPOs.length > 1 && !selectedSupplier;
-
-  const printQCReport = useCallback(async (arrivalSlipId: number) => {
-    try {
-      setApiErrors((prev) => {
-        const next = { ...prev };
-        delete next.general;
-        return next;
-      });
-      setPrintingArrivalSlipId(arrivalSlipId);
-      const report = await grpoApi.getInspectionReport(arrivalSlipId);
-      setPrintReport(report);
-      setPendingReportPrint(true);
-    } catch (err) {
-      const printError = err as ApiError;
-      setApiErrors({
-        general: printError.message || 'Could not load the QC inspection report for printing.',
-      });
-    } finally {
-      setPrintingArrivalSlipId(null);
-    }
-  }, []);
 
   const getPrintableQCReportItems = useCallback((pos: PreviewPOReceipt[]) => {
     return pos.flatMap((po) =>
@@ -203,33 +189,6 @@ export default function GRPOPreviewPage() {
       }),
     );
   }, []);
-
-  useEffect(() => {
-    if (!printReport || !pendingReportPrint) return;
-
-    const printTimer = window.setTimeout(() => {
-      window.print();
-      setPendingReportPrint(false);
-    }, 100);
-
-    return () => window.clearTimeout(printTimer);
-  }, [pendingReportPrint, printReport]);
-
-  useEffect(() => {
-    const clearPrintReport = () => setPrintReport(null);
-    window.addEventListener('afterprint', clearPrintReport);
-    return () => window.removeEventListener('afterprint', clearPrintReport);
-  }, []);
-
-  useEffect(() => {
-    if (!printReport || typeof document === 'undefined') return;
-
-    document.body.classList.add('grpo-inspection-report-printing');
-
-    return () => {
-      document.body.classList.remove('grpo-inspection-report-printing');
-    };
-  }, [printReport]);
 
   // Initialize / update merged form when selection changes
   useEffect(() => {
@@ -297,7 +256,7 @@ export default function GRPOPreviewPage() {
       } else {
         // Select all in group (and deselect POs from other suppliers)
         // Clear any POs from different suppliers
-        const otherSupplierIds = unpostedPOs
+        const otherSupplierIds = readyPOs
           .filter((po) => po.supplier_code !== group.supplier_code)
           .map((po) => po.po_receipt_id);
         otherSupplierIds.forEach((id) => next.delete(id));
@@ -587,10 +546,10 @@ export default function GRPOPreviewPage() {
       )}
 
       {/* General form error */}
-      {apiErrors.general && (
+      {printError && (
         <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
           <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-destructive">{apiErrors.general}</p>
+          <p className="text-sm text-destructive">{printError}</p>
         </div>
       )}
 
@@ -698,7 +657,8 @@ export default function GRPOPreviewPage() {
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Invoice: {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
+                            PO Date: {formatPODate(po.po_date) || '-'} | Invoice:{' '}
+                            {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
                             {po.branch_id != null && ` | Branch: ${po.branch_id}`}
                           </p>
                         </div>
@@ -749,7 +709,10 @@ export default function GRPOPreviewPage() {
                                 </p>
                               </div>
                               <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center">
-                                <QCStatusBadge status={item.qc_status} />
+                                <QCStatusBadge
+                                  status={item.qc_status}
+                                  decision={item.qc_decision}
+                                />
                                 <QCReportButton
                                   item={item}
                                   onPrint={printQCReport}
@@ -768,6 +731,75 @@ export default function GRPOPreviewPage() {
           );
         })}
 
+      {/* Blocked POs — bills still awaiting QC, not postable */}
+      {!isLoading && !error && blockedPOs.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <ShieldX className="h-4 w-4 text-amber-600" />
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Awaiting QC — not ready to post
+            </h3>
+          </div>
+          <p className="px-1 text-xs text-muted-foreground">
+            These bills can be posted once every item passes QC. Rejected or held items must be
+            resolved first.
+          </p>
+          {blockedPOs.map((po) => (
+            <Card
+              key={po.po_receipt_id}
+              className="border-amber-300/60 bg-amber-50/40 dark:bg-amber-900/10"
+            >
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-sm">{po.po_number}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {po.items.length} item{po.items.length > 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {po.supplier_name} &middot; PO Date: {formatPODate(po.po_date) || '-'} |
+                      Invoice: {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
+                    <AlertCircle className="h-3 w-3" />
+                    QC not passed
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {po.items.map((item) => (
+                    <div
+                      key={item.po_item_receipt_id}
+                      className="flex flex-col gap-2 rounded-md border bg-background/60 p-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {item.item_code} - {item.item_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Received: {item.received_qty} {item.uom}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <QCStatusBadge status={item.qc_status} />
+                        <QCReportButton
+                          item={item}
+                          onPrint={printQCReport}
+                          printingArrivalSlipId={printingArrivalSlipId}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Posted POs */}
       {postedPOs.length > 0 && (
         <div className="space-y-2">
@@ -784,7 +816,10 @@ export default function GRPOPreviewPage() {
                       Posted (SAP #{po.sap_doc_num})
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{po.supplier_name}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {po.supplier_name}
+                    {formatPODate(po.po_date) && ` · PO Date: ${formatPODate(po.po_date)}`}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   {po.items.map((item) => (
@@ -801,7 +836,7 @@ export default function GRPOPreviewPage() {
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <QCStatusBadge status={item.qc_status} />
+                        <QCStatusBadge status={item.qc_status} decision={item.qc_decision} />
                         <QCReportButton
                           item={item}
                           onPrint={printQCReport}
@@ -863,7 +898,7 @@ export default function GRPOPreviewPage() {
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center">
-                            <QCStatusBadge status={item.qc_status} />
+                            <QCStatusBadge status={item.qc_status} decision={item.qc_decision} />
                             <QCReportButton
                               item={item}
                               onPrint={printQCReport}
@@ -1418,351 +1453,4 @@ export default function GRPOPreviewPage() {
       </Dialog>
     </div>
   );
-}
-
-function QCStatusBadge({ status }: { status: PreviewItem['qc_status'] }) {
-  const statusClass =
-    status === FINAL_STATUS.ACCEPTED
-      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-      : status === FINAL_STATUS.REJECTED
-        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-
-  return (
-    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusClass}`}>
-      {status}
-    </span>
-  );
-}
-
-function QCReportButton({
-  item,
-  onPrint,
-  printingArrivalSlipId,
-}: {
-  item: PreviewItem;
-  onPrint: (arrivalSlipId: number) => void;
-  printingArrivalSlipId: number | null;
-}) {
-  const arrivalSlipId = item.arrival_slip_id;
-  if (!arrivalSlipId || !item.inspection_id) return null;
-  const isPrinting = printingArrivalSlipId === arrivalSlipId;
-
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="h-7 gap-1.5 px-2 text-xs"
-      disabled={isPrinting}
-      title={item.inspection_report_no ? `Print ${item.inspection_report_no}` : 'Print QC Report'}
-      onClick={(event) => {
-        event.stopPropagation();
-        onPrint(arrivalSlipId);
-      }}
-    >
-      <Printer className="h-3.5 w-3.5" />
-      {isPrinting ? 'Loading...' : 'Print Report'}
-    </Button>
-  );
-}
-
-function GRPOInspectionReportPrintStyles() {
-  return (
-    <style>
-      {`
-        @media screen {
-          .grpo-inspection-report-print {
-            display: none;
-          }
-        }
-
-        @media print {
-          @page {
-            size: A4;
-            margin: 12mm;
-          }
-
-          html,
-          body {
-            background: #ffffff !important;
-            height: auto !important;
-            overflow: visible !important;
-          }
-
-          body.grpo-inspection-report-printing #root {
-            display: none !important;
-          }
-
-          .grpo-inspection-report-print {
-            display: block !important;
-            position: static !important;
-            width: 100%;
-            background: white !important;
-            color: #111827 !important;
-            padding: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 11px;
-            line-height: 1.45;
-          }
-
-          .grpo-inspection-report-page {
-            break-after: auto;
-          }
-
-          .grpo-inspection-report-card {
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            padding: 14px;
-            margin-top: 14px;
-            break-inside: avoid;
-          }
-
-          .grpo-inspection-report-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 14px 18px;
-          }
-
-          .grpo-inspection-report-table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          .grpo-inspection-report-table th,
-          .grpo-inspection-report-table td {
-            border-bottom: 1px solid #e5e7eb;
-            padding: 7px 8px;
-            text-align: left;
-            vertical-align: top;
-          }
-
-          .grpo-inspection-report-table th {
-            background: #f9fafb !important;
-            font-weight: 700;
-          }
-        }
-      `}
-    </style>
-  );
-}
-
-function GRPOInspectionReportPrintView({ report }: { report: GRPOInspectionReport }) {
-  const infoFields: Array<[string, string | number | null | undefined]> = [
-    ['Description of Material', report.description_of_material],
-    ['SAP Code', report.sap_code],
-    ['Supplier Name', report.supplier_name],
-    ['Unit Packing', report.unit_packing],
-    ['Vehicle No.', report.vehicle_no],
-    ['Commercial Invoice No.', report.invoice_bill_no],
-    ['Inspection Date', formatPrintDate(report.inspection_date)],
-    ['Material Type', report.material_type_name],
-    ['Internal Lot No.', report.internal_lot_no],
-    ['Supplier Batch/Lot No.', report.supplier_batch_lot_no],
-    ['Item Code', report.po_item_code],
-    ['Gate Entry', report.entry_no],
-  ];
-  const certificateOfAnalysis = report.attachments.filter(
-    (attachment) => attachment.attachment_type === 'CERTIFICATE_OF_ANALYSIS',
-  );
-  const certificateOfQuantity = report.attachments.filter(
-    (attachment) => attachment.attachment_type === 'CERTIFICATE_OF_QUANTITY',
-  );
-
-  return (
-    <div className="grpo-inspection-report-print" aria-hidden="true">
-      <div className="grpo-inspection-report-page">
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
-          <span>{formatPrintDateTime(new Date().toISOString())}</span>
-          <span>JI</span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
-          <Printer style={{ height: 22, width: 22 }} />
-          <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Inspection Details</h1>
-            <div style={{ display: 'flex', gap: 18, marginTop: 4, fontSize: 10 }}>
-              <span>Report No: {report.report_no || '-'}</span>
-              <span>{report.workflow_status || '-'}</span>
-              <span>{report.effective_final_status || report.final_status || '-'}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grpo-inspection-report-card">
-          <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>Inspection Information</h2>
-          <div className="grpo-inspection-report-grid">
-            {infoFields.map(([label, value]) => (
-              <div key={label}>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>{label}</div>
-                <div>{formatPrintValue(value)}</div>
-              </div>
-            ))}
-          </div>
-          {report.remarks && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>Remarks</div>
-              <div>{report.remarks}</div>
-            </div>
-          )}
-        </div>
-
-        <div className="grpo-inspection-report-card">
-          <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>QC Parameters</h2>
-          <table className="grpo-inspection-report-table">
-            <thead>
-              <tr>
-                <th>Parameter</th>
-                <th>Standard Value</th>
-                <th>Result</th>
-                <th>Within Spec</th>
-                <th>Remarks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.parameter_results.length > 0 ? (
-                report.parameter_results.map((parameter) => (
-                  <tr key={parameter.id}>
-                    <td>{parameter.parameter_name}</td>
-                    <td>{formatPrintValue(parameter.standard_value)}</td>
-                    <td>
-                      {formatPrintValue(parameter.result_value || parameter.result_numeric)}
-                    </td>
-                    <td>
-                      {parameter.is_within_spec == null
-                        ? '-'
-                        : parameter.is_within_spec
-                          ? 'Yes'
-                          : 'No'}
-                    </td>
-                    <td>{formatPrintValue(parameter.remarks)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5}>No QC parameters recorded for this inspection.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {certificateOfAnalysis.length > 0 && (
-          <GRPOInspectionReportAttachmentSection
-            title="Certificate of Analysis (COA)"
-            attachments={certificateOfAnalysis}
-          />
-        )}
-
-        {certificateOfQuantity.length > 0 && (
-          <GRPOInspectionReportAttachmentSection
-            title="Certificate of Quantity (COQ)"
-            attachments={certificateOfQuantity}
-          />
-        )}
-
-        {(report.qa_chemist_name ||
-          report.qam_name ||
-          report.qa_chemist_remarks ||
-          report.qam_remarks) && (
-          <div className="grpo-inspection-report-card">
-            <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>Approval Details</h2>
-            <div className="grpo-inspection-report-grid">
-              <div>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Chemist</div>
-                <div>{formatPrintValue(report.qa_chemist_name)}</div>
-                <div style={{ marginTop: 4, fontSize: 10 }}>
-                  {formatPrintDateTime(report.qa_chemist_approved_at)}
-                </div>
-              </div>
-              <div>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Manager</div>
-                <div>{formatPrintValue(report.qam_name)}</div>
-                <div style={{ marginTop: 4, fontSize: 10 }}>
-                  {formatPrintDateTime(report.qam_approved_at)}
-                </div>
-              </div>
-              <div>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>Final Status</div>
-                <div>{formatPrintValue(report.effective_final_status || report.final_status)}</div>
-              </div>
-            </div>
-            {(report.qa_chemist_remarks || report.qam_remarks) && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
-                  Approval Remarks
-                </div>
-                <div>
-                  {formatPrintValue(
-                    [report.qa_chemist_remarks, report.qam_remarks].filter(Boolean).join(' | '),
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function GRPOInspectionReportAttachmentSection({
-  title,
-  attachments,
-}: {
-  title: string;
-  attachments: GRPOInspectionReport['attachments'];
-}) {
-  return (
-    <div className="grpo-inspection-report-card">
-      <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>{title}</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {attachments.map((attachment) => (
-          <div key={attachment.id} style={{ border: '1px solid #e5e7eb', padding: 8 }}>
-            {isPrintableImage(attachment.file) ? (
-              <img
-                src={attachment.file}
-                alt={title}
-                style={{ display: 'block', width: '100%', maxHeight: 520, objectFit: 'contain' }}
-              />
-            ) : (
-              <div style={{ minHeight: 80 }}>
-                <div style={{ fontWeight: 700 }}>Attached file</div>
-                <div style={{ marginTop: 6, wordBreak: 'break-all' }}>{attachment.file}</div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function isPrintableImage(file: string) {
-  return /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(file);
-}
-
-function formatPrintValue(value: string | number | null | undefined) {
-  if (value == null || value === '') return '-';
-  return String(value);
-}
-
-function formatPrintDate(value: string | null | undefined) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('en-IN');
-}
-
-function formatPrintDateTime(value: string | null | undefined) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('en-IN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }

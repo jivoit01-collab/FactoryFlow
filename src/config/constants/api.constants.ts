@@ -54,6 +54,10 @@ export const API_ENDPOINTS = {
     PO_RECEIPTS: (entryId: number) => `/raw-material-gatein/gate-entries/${entryId}/po-receipts/`,
     PO_RECEIPT_DETAIL: (entryId: number, poReceiptId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/`,
+    PO_RECEIPT_REPLACE: (entryId: number, poReceiptId: number) =>
+      `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/replace/`,
+    GATE_ENTRY_DELETE: (entryId: number) =>
+      `/raw-material-gatein/gate-entries/${entryId}/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
   },
@@ -86,6 +90,16 @@ export const API_ENDPOINTS = {
     EMPTY_VEHICLE_OUTS: '/gate-core/empty-vehicle-outs/',
     EMPTY_VEHICLE_OUT_BY_ID: (id: number) => `/gate-core/empty-vehicle-outs/${id}/`,
     EMPTY_VEHICLE_OUT_CANCEL_BY_ID: (id: number) => `/gate-core/empty-vehicle-outs/${id}/cancel/`,
+    ARRIVALS_EXPECTED: '/gate-core/arrivals/expected/',
+    ARRIVALS: '/gate-core/arrivals/',
+    ARRIVAL_DEPART_BY_ID: (id: number) => `/gate-core/arrivals/${id}/depart/`,
+    ARRIVAL_EMPTY_OUT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/empty-out/`,
+    ARRIVAL_DISPATCH_BY_ID: (id: number) => `/gate-core/arrivals/${id}/dispatch/`,
+    ARRIVAL_GATEPASS_READINESS_BY_ID: (id: number) =>
+      `/gate-core/arrivals/${id}/gatepass/readiness/`,
+    ARRIVAL_GATEPASS_PRINT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/print/`,
+    ARRIVAL_GATEPASS_COMMIT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/commit/`,
+    ARRIVAL_GATEPASS_REPRINT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/reprint/`,
     BST_OUT_SAP_TRANSFERS: '/gate-core/bst-outs/sap-transfers/',
     BST_OUT_SAP_TRANSFER_BY_DOC_ENTRY: (docEntry: number) =>
       `/gate-core/bst-outs/sap-transfers/${docEntry}/`,
@@ -110,6 +124,10 @@ export const API_ENDPOINTS = {
     SALES_DISPATCH_BOX_SCANS: (id: number) => `/gate-core/sales-dispatch/${id}/box-scans/`,
     SALES_DISPATCH_BOX_SCAN: (id: number, scanId: number) =>
       `/gate-core/sales-dispatch/${id}/box-scans/${scanId}/`,
+    SALES_DISPATCH_BARCODE_SCANS: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/barcode-scans/`,
+    SALES_DISPATCH_BARCODE_SCANS_IMPORT: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/barcode-scans/import/`,
     SALES_DISPATCH_GATEPASS_PREVIEW: (id: number) =>
       `/gate-core/sales-dispatch/${id}/gatepass/preview/`,
     SALES_DISPATCH_GATEPASS_PRINT: (id: number) =>
@@ -118,10 +136,22 @@ export const API_ENDPOINTS = {
       `/gate-core/sales-dispatch/${id}/gatepass/reprint/`,
     SALES_DISPATCH_GATEPASS_PRINTS: (id: number) =>
       `/gate-core/sales-dispatch/${id}/gatepass/prints/`,
+    SALES_DISPATCH_CHALLAN_WEIGHT: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/challan-weight/`,
+    SALES_DISPATCH_ADDITIONAL_WEIGHTS: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/additional-weights/`,
     SALES_DISPATCH_COMMIT_PRINT: (id: number) => `/gate-core/sales-dispatch/${id}/commit-print/`,
     SALES_DISPATCH_MARK_DISPATCHED: (id: number) => `/gate-core/sales-dispatch/${id}/dispatch/`,
     SALES_DISPATCH_REJECT: (id: number) => `/gate-core/sales-dispatch/${id}/reject/`,
     SALES_DISPATCH_CANCEL: (id: number) => `/gate-core/sales-dispatch/${id}/cancel/`,
+    SALES_DISPATCH_ADD_DOCUMENT: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/documents/add/`,
+    SALES_DISPATCH_REMOVE_DOCUMENT: (id: number, documentId: number) =>
+      `/gate-core/sales-dispatch/${id}/documents/${documentId}/remove/`,
+    SALES_DISPATCH_PARTIAL_APPROVAL: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/partial-approval/`,
+    SALES_DISPATCH_PARTIAL_APPROVAL_DECIDE: (approvalId: number) =>
+      `/gate-core/sales-dispatch/partial-approval/${approvalId}/decide/`,
     BST_IN_ELIGIBLE_OUTS: '/gate-core/bst-ins/eligible-outs/',
     BST_INS: '/gate-core/bst-ins/',
     BST_IN_BY_ID: (id: number) => `/gate-core/bst-ins/${id}/`,
@@ -177,7 +207,7 @@ export const API_ENDPOINTS = {
       UNREGISTER: '/notifications/devices/unregister/',
     },
   },
-  // Admin - Docking (scan skip approvals)
+  // Admin - Docking (scan skip + partial-dispatch approvals)
   DOCKING_ADMIN: {
     SCAN_SKIP_REQUESTS: '/docking-admin/scan-skip-requests/',
     SCAN_SKIP_REQUEST_BY_DISPATCH: (entryId: number) =>
@@ -186,6 +216,13 @@ export const API_ENDPOINTS = {
       `/docking-admin/scan-skip-requests/${id}/approve/`,
     SCAN_SKIP_REQUEST_REJECT: (id: number) =>
       `/docking-admin/scan-skip-requests/${id}/reject/`,
+    PARTIAL_SCAN_REQUESTS: '/docking-admin/partial-scan-requests/',
+    PARTIAL_SCAN_REQUEST_BY_DISPATCH: (entryId: number) =>
+      `/docking-admin/partial-scan-requests/by-sales-dispatch/${entryId}/`,
+    PARTIAL_SCAN_REQUEST_APPROVE: (id: number) =>
+      `/docking-admin/partial-scan-requests/${id}/approve/`,
+    PARTIAL_SCAN_REQUEST_REJECT: (id: number) =>
+      `/docking-admin/partial-scan-requests/${id}/reject/`,
   },
   // Quality Control V2 (New QC Module)
   QUALITY_CONTROL_V2: {
@@ -205,6 +242,7 @@ export const API_ENDPOINTS = {
     MATERIAL_TYPE_BY_ID: (id: number) => `/quality-control/material-types/${id}/`,
     MATERIAL_TYPE_BY_SAP_ITEM: (itemCode: string) =>
       `/quality-control/material-types/by-sap-item/${encodeURIComponent(itemCode)}/`,
+    MATERIAL_TYPE_LINK_SAP_ITEM: '/quality-control/material-types/link-sap-item/',
     MATERIAL_TYPE_PARAMETERS: (materialTypeId: number) =>
       `/quality-control/material-types/${materialTypeId}/parameters/`,
     SAP_ITEMS: '/quality-control/sap-items/',
@@ -236,6 +274,8 @@ export const API_ENDPOINTS = {
     // Approvals
     APPROVE_CHEMIST: (id: number) => `/quality-control/inspections/${id}/approve/chemist/`,
     APPROVE_QAM: (id: number) => `/quality-control/inspections/${id}/approve/qam/`,
+    CHEMIST_DECISION: (id: number) => `/quality-control/inspections/${id}/chemist-decision/`,
+    MANAGER_DECISION: (id: number) => `/quality-control/inspections/${id}/manager-decision/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
     FACTORY_HEAD_DECISION: (id: number) =>
       `/quality-control/inspections/${id}/factory-head-decision/`,
@@ -341,6 +381,10 @@ export const API_ENDPOINTS = {
       `/dispatch-plans/bills/by-number/${encodeURIComponent(invoiceNumber)}/`,
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,
   },
+  // Dispatch Pipeline Dashboard (vehicle stage board)
+  DISPATCH_PIPELINE: {
+    BOARD: '/dispatch-plans/pipeline/',
+  },
   // Dispatch
   DISPATCH: {
     OPEN_BILTIES: '/dispatch/open-bilties/',
@@ -416,6 +460,7 @@ export const API_ENDPOINTS = {
     SPARES: '/maintenance/spares/',
     SPARE_DETAIL: (spareId: number) => `/maintenance/spares/${spareId}/`,
     SPARES_LOW_STOCK: '/maintenance/spares/low-stock/',
+    SPARE_ADJUST_STOCK: (spareId: number) => `/maintenance/spares/${spareId}/adjust-stock/`,
     SPARE_REQUESTS: '/maintenance/spare-requests/',
     SPARE_REQUEST_DETAIL: (requestId: number) => `/maintenance/spare-requests/${requestId}/`,
     SPARE_REQUEST_ISSUE: (requestId: number) => `/maintenance/spare-requests/${requestId}/issue/`,

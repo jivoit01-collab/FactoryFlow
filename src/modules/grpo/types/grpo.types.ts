@@ -1,3 +1,5 @@
+import type { InspectionDecision, InspectionDecisionInfo, QCStage } from '@/modules/qc/types';
+
 // Warehouse (from /po/warehouses/)
 export interface Warehouse {
   warehouse_code: string;
@@ -12,6 +14,7 @@ export type QCStatus =
   | 'PENDING'
   | 'ACCEPTED'
   | 'REJECTED'
+  | 'HOLD'
   | 'NO_ARRIVAL_SLIP'
   | 'ARRIVAL_SLIP_PENDING'
   | 'INSPECTION_PENDING';
@@ -92,6 +95,10 @@ export interface GRPOInspectionReport {
   final_status: QCStatus;
   workflow_status: string;
   effective_final_status?: QCStatus;
+  chemist_decision?: InspectionDecisionInfo;
+  manager_decision?: InspectionDecisionInfo;
+  qc_stage?: QCStage;
+  qc_decision?: InspectionDecision | null;
   remarks: string;
   qa_chemist_name: string | null;
   qa_chemist_approved_at: string | null;
@@ -137,6 +144,7 @@ export interface PreviewItem {
   rejected_qty: number;
   uom: string;
   qc_status: QCStatus;
+  qc_decision?: InspectionDecision | null;
   arrival_slip_id: number | null;
   inspection_id: number | null;
   inspection_report_no: string | null;
@@ -159,6 +167,7 @@ export interface PreviewPOReceipt {
   po_number: string;
   supplier_code: string;
   supplier_name: string;
+  po_date: string | null;
   invoice_no: string;
   invoice_date: string;
   challan_no: string;
@@ -226,6 +235,10 @@ export interface GRPOHistoryLine {
   quantity_posted: string;
   base_entry: number | null;
   base_line: number | null;
+  // QC traceability — used to reprint the QC inspection report from history
+  arrival_slip_id: number | null;
+  inspection_id: number | null;
+  inspection_report_no: string;
 }
 
 // History entry (GET /history/ and GET /{posting_id}/)
@@ -284,6 +297,29 @@ export interface AllGRPOEntrySupplier {
   po_count: number;
 }
 
+// Per-item QC verdict for the All Entries read-only drill-down
+export interface AllGRPOEntryItemQC {
+  po_item_receipt_id: number;
+  item_code: string;
+  item_name: string;
+  received_qty: string;
+  accepted_qty: string;
+  rejected_qty: string;
+  uom: string;
+  qc_status: QCStatus;
+}
+
+// Per-PO (bill) QC summary for the All Entries read-only drill-down
+export interface AllGRPOEntryPOQC {
+  po_receipt_id: number;
+  po_number: string;
+  supplier_code: string;
+  supplier_name: string;
+  is_ready_for_grpo: boolean;
+  is_posted: boolean;
+  items: AllGRPOEntryItemQC[];
+}
+
 // All-entries row (GET /grpo/all-entries/)
 export interface AllGRPOEntry {
   vehicle_entry_id: number;
@@ -299,6 +335,7 @@ export interface AllGRPOEntry {
   pending_po_count: number;
   suppliers: AllGRPOEntrySupplier[];
   po_numbers: string[];
+  po_receipts: AllGRPOEntryPOQC[];
 }
 
 // Booked dispatch plan shown in Service GRPO pending queue

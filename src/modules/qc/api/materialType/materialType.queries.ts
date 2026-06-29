@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { CreateMaterialTypeRequest } from '../../types';
+import type { CreateMaterialTypeRequest, LinkMaterialTypeSAPItemRequest } from '../../types';
 import {
   type ListMaterialTypesParams,
   type ListSAPItemsParams,
@@ -21,10 +21,11 @@ export const MATERIAL_TYPE_QUERY_KEYS = {
 };
 
 // Get all material types
-export function useMaterialTypes(params?: ListMaterialTypesParams) {
+export function useMaterialTypes(params?: ListMaterialTypesParams, enabled = true) {
   return useQuery({
     queryKey: MATERIAL_TYPE_QUERY_KEYS.list(params),
     queryFn: () => materialTypeApi.getList(params),
+    enabled,
     placeholderData: keepPreviousData,
   });
 }
@@ -72,6 +73,24 @@ export function useCreateMaterialType() {
     mutationFn: (data: CreateMaterialTypeRequest) => materialTypeApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: MATERIAL_TYPE_QUERY_KEYS.lists() });
+    },
+  });
+}
+
+// Link SAP item to material type
+export function useLinkMaterialTypeSAPItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: LinkMaterialTypeSAPItemRequest) => materialTypeApi.linkSAPItem(data),
+    onSuccess: (materialType, variables) => {
+      queryClient.invalidateQueries({ queryKey: MATERIAL_TYPE_QUERY_KEYS.lists() });
+      queryClient.invalidateQueries({
+        queryKey: MATERIAL_TYPE_QUERY_KEYS.detail(materialType.id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: MATERIAL_TYPE_QUERY_KEYS.bySapItem(variables.item_code.trim().toUpperCase()),
+      });
     },
   });
 }

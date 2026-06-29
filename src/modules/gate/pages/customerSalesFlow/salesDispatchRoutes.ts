@@ -3,10 +3,13 @@ const GATE_SALES_DISPATCH_BASE = '/gate/sales-dispatch';
 const GATE_BST_OUT_BASE = '/gate/bst-out';
 
 function buildSalesDispatchRoutes(base: string) {
-  const barcodeScan = (entryId: string | number) =>
-    `${base}/new/barcode-scan?entryId=${encodeURIComponent(String(entryId))}`;
-  const weighment = (entryId: string | number) =>
-    `${base}/new/weighment?entryId=${encodeURIComponent(String(entryId))}`;
+  // `review` appends a flag so the flow pages render read-only (walk a closed
+  // entry forwards/backwards without saving or redirecting away).
+  const reviewSuffix = (review?: boolean) => (review ? '&review=1' : '');
+  const barcodeScan = (entryId: string | number, review?: boolean) =>
+    `${base}/new/barcode-scan?entryId=${encodeURIComponent(String(entryId))}${reviewSuffix(review)}`;
+  const weighment = (entryId: string | number, review?: boolean) =>
+    `${base}/new/weighment?entryId=${encodeURIComponent(String(entryId))}${reviewSuffix(review)}`;
 
   return {
     dashboard: base,
@@ -15,10 +18,10 @@ function buildSalesDispatchRoutes(base: string) {
     newEntry: `${base}/new`,
     barcodeScan,
     weighment,
-    attachments: (entryId: string | number) =>
-      `${base}/new/attachments?entryId=${encodeURIComponent(String(entryId))}`,
-    gatepass: (entryId: string | number) =>
-      `${base}/new/gatepass?entryId=${encodeURIComponent(String(entryId))}`,
+    attachments: (entryId: string | number, review?: boolean) =>
+      `${base}/new/attachments?entryId=${encodeURIComponent(String(entryId))}${reviewSuffix(review)}`,
+    gatepass: (entryId: string | number, review?: boolean) =>
+      `${base}/new/gatepass?entryId=${encodeURIComponent(String(entryId))}${reviewSuffix(review)}`,
     detail: (entryId: string | number) => `${base}/${entryId}`,
     reprint: (entryId: string | number) => `${base}/${entryId}/reprint`,
   };

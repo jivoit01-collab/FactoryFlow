@@ -26,8 +26,8 @@ describe('NOTIFICATION_TYPES', () => {
     expect(NOTIFICATION_TYPES.length).toBeGreaterThan(0);
   });
 
-  it('has exactly 13 entries', () => {
-    expect(NOTIFICATION_TYPES).toHaveLength(13);
+  it('has exactly 24 entries', () => {
+    expect(NOTIFICATION_TYPES).toHaveLength(24);
   });
 
   it('each entry has a value string and label string', () => {

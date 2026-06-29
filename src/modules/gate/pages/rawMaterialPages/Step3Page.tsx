@@ -8,8 +8,8 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -20,8 +20,15 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   Label,
+  Textarea,
 } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 import { useDebounce } from '@/shared/hooks';
@@ -36,7 +43,12 @@ import {
 
 import type { CreatePOReceiptRequest, PurchaseOrder, Vendor } from '../../api/po/po.api';
 import { useOpenPOs } from '../../api/po/po.queries';
-import { useCreatePOReceipt, usePOReceipts, useUpdatePOReceipt } from '../../api/po/poReceipt.queries';
+import {
+  useCreatePOReceipt,
+  usePOReceipts,
+  useReplacePOReceipt,
+  useUpdatePOReceipt,
+} from '../../api/po/poReceipt.queries';
 import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner, VendorSelect } from '../../components';
 import { WIZARD_CONFIG } from '../../constants';
 import { useEntryId, useEntryStepTracker } from '../../hooks';
@@ -63,6 +75,11 @@ interface POFormData {
   supplierCode: string;
   poNumber: string;
   items: POItemFormData[];
+  // Set when correcting a wrong PO that QC sent back: the form is unlocked for a
+  // fresh PO selection and saved via the audited replace endpoint with a reason.
+  isReplacing?: boolean;
+  replaceReason?: string;
+  originalSupplierCode?: string;
 }
 
 export default function Step3Page() {
@@ -449,6 +466,47 @@ export default function Step3Page() {
 
   const createPOReceipt = useCreatePOReceipt(entryIdNumber || 0);
   const updatePOReceipt = useUpdatePOReceipt(entryIdNumber || 0);
+  const replacePOReceipt = useReplacePOReceipt(entryIdNumber || 0);
+
+  // Replace-PO (wrong PO sent back by QC): which form is being replaced + reason.
+  const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
+  const [replaceReason, setReplaceReason] = useState('');
+  const [replaceError, setReplaceError] = useState('');
+
+  const handleStartReplace = (formId: string) => {
+    setReplaceTargetId(formId);
+    setReplaceReason('');
+    setReplaceError('');
+  };
+
+  const handleConfirmReplace = () => {
+    const reason = replaceReason.trim();
+    if (!reason) {
+      setReplaceError('Please enter why this PO is being replaced.');
+      return;
+    }
+    setPoForms((prev) =>
+      prev.map((form) =>
+        form.id === replaceTargetId
+          ? {
+              ...form,
+              isEditable: true,
+              isReplacing: true,
+              replaceReason: reason,
+              lockReason: null,
+              originalSupplierCode: form.supplierCode,
+              // Clear the wrong PO so the user re-selects the correct one.
+              poNumber: '',
+              items: [],
+            }
+          : form,
+      ),
+    );
+    setReplaceTargetId(null);
+    setReplaceReason('');
+    setReplaceError('');
+    toast.info('Select the correct PO, then save to replace it.');
+  };
 
   const handleNext = async () => {
     if (!entryId) {
@@ -521,7 +579,15 @@ export default function Step3Page() {
       // Submit all PO receipts
       for (const poForm of formsToSave) {
         const payload = buildPOReceiptPayload(poForm);
-        if (poForm.receiptId) {
+        if (poForm.receiptId && poForm.isReplacing) {
+          const result = await replacePOReceipt.mutateAsync({
+            poReceiptId: poForm.receiptId,
+            data: { ...payload, reason: poForm.replaceReason || '' },
+          });
+          if (result.supplier_changed) {
+            toast.warning('Heads up: the corrected PO is from a different supplier.');
+          }
+        } else if (poForm.receiptId) {
           await updatePOReceipt.mutateAsync({
             poReceiptId: poForm.receiptId,
             data: payload,
@@ -634,6 +700,7 @@ export default function Step3Page() {
             onFillData={() => handleFillDataForPO(poForm.id)}
             lockReason={poForm.lockReason}
             onLockedAttempt={() => notifyLockedPO(poForm.id)}
+            onReplace={() => handleStartReplace(poForm.id)}
           />
         ))}
 
@@ -667,6 +734,47 @@ export default function Step3Page() {
           effectiveEditMode && !hasWritableForms && !fillDataMode ? 'Next ->' : undefined
         }
       />
+      <Dialog
+        open={replaceTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReplaceTargetId(null);
+            setReplaceError('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Replace Purchase Order</DialogTitle>
+            <DialogDescription>
+              Use this only if the wrong PO was entered. The current PO and its items will be
+              replaced, and you&apos;ll select the correct PO next. If the correct PO is from a
+              different supplier, the supplier on this gate entry will change.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="replace-po-reason">Reason</Label>
+            <Textarea
+              id="replace-po-reason"
+              value={replaceReason}
+              onChange={(event) => {
+                setReplaceReason(event.target.value);
+                setReplaceError('');
+              }}
+              placeholder="e.g. Wrong PO number entered at gate"
+            />
+            {replaceError ? <p className="text-sm text-destructive">{replaceError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setReplaceTargetId(null)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleConfirmReplace}>
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -691,14 +799,13 @@ interface POCardProps {
   onFillData: () => void;
   lockReason?: string | null;
   onLockedAttempt: () => void;
+  onReplace: () => void;
 }
 
 function POCard({
   poForm,
   isReadOnly,
   fillDataMode,
-  onSupplierNameChange: _onSupplierNameChange,
-  onSupplierCodeChange: _onSupplierCodeChange,
   onVendorSelect,
   onPOFocus,
   onPOSelect,
@@ -713,6 +820,7 @@ function POCard({
   onFillData,
   lockReason,
   onLockedAttempt,
+  onReplace,
 }: POCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const debouncedPOSearch = useDebounce(poSearchTerm, 100);
@@ -800,9 +908,24 @@ function POCard({
           {/* Show locked PO message */}
           {isLockedPO && (
             <div className="rounded-md bg-amber-50 p-4 text-sm text-amber-800 border border-amber-200">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                <span>{lockReason}</span>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{lockReason}</span>
+                </div>
+                {/* Wrong PO entered? Allow an audited replace while QC has only a
+                    draft inspection (backend enforces the sent-back guard). */}
+                {lockReason && /qc/i.test(lockReason) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+                    onClick={onReplace}
+                  >
+                    Replace PO
+                  </Button>
+                )}
               </div>
             </div>
           )}

@@ -32,6 +32,12 @@ export function useDispatchLinkingPlans(
   });
 }
 
+function invalidateDispatchLinkingQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: DISPATCH_LINKING_QUERY_KEYS.all });
+  queryClient.invalidateQueries({ queryKey: ['dispatch-plans'] });
+  queryClient.invalidateQueries({ queryKey: ['salesDispatchGateOuts'] });
+}
+
 export function useLinkDispatchVehicle() {
   const queryClient = useQueryClient();
 
@@ -43,10 +49,16 @@ export function useLinkDispatchVehicle() {
       docEntry: number;
       payload: DispatchVehicleLinkPayload;
     }) => dispatchLinkingApi.linkVehicle(docEntry, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DISPATCH_LINKING_QUERY_KEYS.all });
-      queryClient.invalidateQueries({ queryKey: ['dispatch-plans'] });
-      queryClient.invalidateQueries({ queryKey: ['salesDispatchGateOuts'] });
-    },
+    onSuccess: () => invalidateDispatchLinkingQueries(queryClient),
+  });
+}
+
+export function useUnlinkDispatchVehicle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ docEntry }: { docEntry: number }) =>
+      dispatchLinkingApi.unlinkVehicle(docEntry),
+    onSuccess: () => invalidateDispatchLinkingQueries(queryClient),
   });
 }

@@ -24,6 +24,13 @@ export interface POReceipt {
   }>;
 }
 
+export interface ReplacePOReceiptRequest extends CreatePOReceiptRequest {
+  /** Mandatory reason for replacing the wrong PO on a sent-back arrival slip. */
+  reason: string;
+}
+
+export type ReplacePOReceiptResponse = POReceipt & { supplier_changed?: boolean };
+
 export const poReceiptApi = {
   async get(entryId: number): Promise<POReceipt[]> {
     const response = await apiClient.get<POReceipt[]>(
@@ -47,6 +54,18 @@ export const poReceiptApi = {
   ): Promise<POReceipt> {
     const response = await apiClient.put<POReceipt>(
       API_ENDPOINTS.RAW_MATERIAL_GATEIN.PO_RECEIPT_DETAIL(entryId, poReceiptId),
+      data,
+    );
+    return response.data;
+  },
+
+  async replace(
+    entryId: number,
+    poReceiptId: number,
+    data: ReplacePOReceiptRequest,
+  ): Promise<ReplacePOReceiptResponse> {
+    const response = await apiClient.post<ReplacePOReceiptResponse>(
+      API_ENDPOINTS.RAW_MATERIAL_GATEIN.PO_RECEIPT_REPLACE(entryId, poReceiptId),
       data,
     );
     return response.data;

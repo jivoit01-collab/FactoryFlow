@@ -46,6 +46,18 @@ const COStep3Page = lazy(() => import('./pages/constructionPages/Step3Page'));
 const COAttachmentsPage = lazy(() => import('./pages/constructionPages/AttachmentsPage'));
 const COReviewPage = lazy(() => import('./pages/constructionPages/ReviewPage'));
 
+// Fixed Assets wizard pages
+const FixedAssetsDashboard = lazy(() => import('./pages/fixedAssetsPages/FixedAssetsDashboard'));
+const FixedAssetsAllPage = lazy(() => import('./pages/fixedAssetsPages/FixedAssetsAllPage'));
+const FAStep1Page = lazy(() => import('./pages/fixedAssetsPages/Step1Page'));
+const FAStep2Page = lazy(() => import('./pages/fixedAssetsPages/Step2Page'));
+const FAAttachmentsPage = lazy(() => import('./pages/fixedAssetsPages/AttachmentsPage'));
+const FAReviewPage = lazy(() => import('./pages/fixedAssetsPages/ReviewPage'));
+
+// Labour count (casual daily-labour register)
+const LabourCountPage = lazy(() => import('./pages/labourPages/LabourCountPage'));
+const LabourGatePage = lazy(() => import('./pages/labourPages/LabourGatePage'));
+
 // Person Gate-In pages (Visitor/Labour)
 const PersonGateInDashboard = lazy(() => import('./pages/personGateInPages/PersonGateInDashboard'));
 const PersonGateInAllPage = lazy(() => import('./pages/personGateInPages/PersonGateInAllPage'));
@@ -81,6 +93,12 @@ const EmptyVehicleOutDetailPage = lazy(
   () => import('./pages/emptyVehicleOutPages/EmptyVehicleOutDetailPage'),
 );
 const EmptyVehicleInPage = lazy(() => import('./pages/emptyVehicleInPages/EmptyVehicleInPage'));
+const CrossCompanyArrivalPage = lazy(
+  () => import('./pages/emptyVehicleInPages/CrossCompanyArrivalPage'),
+);
+const ArrivalGatepassPage = lazy(
+  () => import('./pages/emptyVehicleInPages/ArrivalGatepassPage'),
+);
 const EmptyVehicleInNewPage = lazy(
   () => import('./pages/emptyVehicleInPages/EmptyVehicleInNewPage'),
 );
@@ -484,6 +502,86 @@ export const gateModuleConfig: ModuleConfig = {
       permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
     },
 
+    // ── Fixed Assets ─────────────────────────────────────────────
+    {
+      path: '/gate/fixed-assets/new',
+      element: <FAStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/step2',
+      element: <FAStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/attachments',
+      element: <FAAttachmentsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/review',
+      element: <FAReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    // Edit Fixed Asset Entry - Steps
+    {
+      path: '/gate/fixed-assets/edit/:entryId/step1',
+      element: <FAStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/step2',
+      element: <FAStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/attachments',
+      element: <FAAttachmentsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/review',
+      element: <FAReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets',
+      element: <FixedAssetsDashboard />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
+      breadcrumb: { label: 'Assets' },
+    },
+    {
+      path: '/gate/fixed-assets/all',
+      element: <FixedAssetsAllPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
+    },
+
+    // ── Daily Labour Count ───────────────────────────────────────
+    {
+      path: '/gate/labour',
+      element: <LabourCountPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_COUNT.SUBMIT],
+      breadcrumb: { label: 'Labour' },
+    },
+    {
+      path: '/gate/labour/verify',
+      element: <LabourGatePage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_COUNT.VERIFY],
+      breadcrumb: { label: 'Labour Verify' },
+    },
+
     // ── Person Gate-In (Visitor/Labour) ──────────────────────────
     {
       path: '/gate/visitor-labour',
@@ -629,6 +727,20 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
       breadcrumb: { label: 'New Empty Vehicle In' },
+    },
+    {
+      path: '/gate/arrivals',
+      element: <CrossCompanyArrivalPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
+      breadcrumb: { label: 'Cross-Company Arrival' },
+    },
+    {
+      path: '/gate/arrivals/:arrivalId/gatepass',
+      element: <ArrivalGatepassPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
+      breadcrumb: { label: 'Combined Gatepass' },
     },
     {
       path: '/gate/empty-vehicle-in/new/weighment',
@@ -993,6 +1105,11 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/new',
           title: 'New Entry',
           permissions: GATE_ENTRY_CREATE_PERMISSIONS,
+        },
+        {
+          path: '/gate/arrivals',
+          title: 'Cross-Company Arrivals',
+          permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
         },
         {
           path: '/gate/sales-dispatch/barcode-reports',

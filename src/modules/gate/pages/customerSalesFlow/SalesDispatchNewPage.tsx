@@ -260,7 +260,10 @@ export default function SalesDispatchNewPage() {
     useSalesDispatchByVehicleEntry(existingVehicleEntryId);
   const { data: pendingBookings = [], isLoading: isPendingBookingLoading } =
     useSalesDispatchPendingBookings(
-      { dispatch_plan_ids: pendingDispatchPlanIds },
+      // all_companies: the docking board is cross-company, so a pending row may
+      // belong to a sibling company; resolve the booking regardless of the
+      // active Company-Code (the backend keys the create off the plan's company).
+      { dispatch_plan_ids: pendingDispatchPlanIds, all_companies: 1 },
       { enabled: isPendingBookingMode },
     );
   const {
@@ -273,6 +276,9 @@ export default function SalesDispatchNewPage() {
       document_type: draft.documentType,
       search: submittedSearch,
       limit: 50,
+      // Manual SAP search spans every company the user belongs to (decorator);
+      // a booked invoice still docks under its own company via its plan.
+      all_companies: 1,
     },
     { enabled: !isPendingBookingMode && !existingVehicleEntryId },
   );
@@ -419,6 +425,20 @@ export default function SalesDispatchNewPage() {
         dock_incharge: draft.dockIncharge,
         remarks: draft.remarks,
       };
+      // Editing an existing docking with no changes -> just advance; no redundant PATCH + toast.
+      if (existingEntry) {
+        const seededPayload = {
+          security_name: existingEntry.security_name || '',
+          bilty_no: existingEntry.bilty_no || '',
+          bilty_date: existingEntry.bilty_date || null,
+          dock_incharge: existingEntry.dock_incharge || '',
+          remarks: existingEntry.remarks || '',
+        };
+        if (JSON.stringify(payload) === JSON.stringify(seededPayload)) {
+          navigate(DOCKING_ROUTES.barcodeScan(existingEntry.vehicle_entry));
+          return;
+        }
+      }
       const entry = existingEntry
         ? await updateSalesDispatch.mutateAsync({ id: existingEntry.id, data: payload })
         : await createSalesDispatch.mutateAsync({

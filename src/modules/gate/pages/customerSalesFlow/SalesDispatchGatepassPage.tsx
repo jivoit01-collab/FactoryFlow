@@ -10,24 +10,24 @@ import {
   Truck,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import {
+  type SalesDispatchBoxScan,
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
-  type SalesDispatchBoxScan,
   type SalesDispatchItem,
   useCommitSalesDispatchPrint,
   useMarkSalesDispatchDispatched,
   usePreviewSalesDispatchGatepass,
   usePrintSalesDispatchGatepass,
   useSalesDispatchByVehicleEntry,
-  useSalesDispatchLock,
 } from '@/modules/gate/api';
+import { useDepartArrival } from '@/modules/gate/api/arrivals/arrivals.queries';
 import {
   GateStatusBadge,
   StepFooter,
@@ -46,6 +46,8 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
+import { ArrivalCombinedGatepassPanel } from './ArrivalCombinedGatepassPanel';
+import { ReviewModeBanner } from './ReviewModeBanner';
 import {
   DOCKING_TOTAL_STEPS,
   formatDateTime,
@@ -55,8 +57,8 @@ import {
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 import {
-  SAP_GATEPASS_PRINT_PAGE_STYLE,
   SalesDispatchSapGatepassPrint,
+  SAP_GATEPASS_PRINT_PAGE_STYLE,
 } from './SalesDispatchSapGatepassPrint';
 
 interface GatepassDraft {
@@ -104,6 +106,8 @@ export default function SalesDispatchGatepassPage() {
   const routes = getSalesDispatchRoutes(location.pathname);
   const isGateOutMode = isSalesDispatchOutPath(location.pathname);
   const { entryId, entryIdNumber } = useEntryId();
+  const [searchParams] = useSearchParams();
+  const isReview = searchParams.get('review') === '1';
   const [draft, setDraft] = useState<GatepassDraft>(() => buildDraft());
   const [error, setError] = useState('');
   const sapPrintRef = useRef<HTMLDivElement>(null);
@@ -116,11 +120,11 @@ export default function SalesDispatchGatepassPage() {
     error: entryError,
     refetch,
   } = useSalesDispatchByVehicleEntry(entryIdNumber);
-  const { data: dispatchLock } = useSalesDispatchLock();
   const previewGatepass = usePreviewSalesDispatchGatepass();
   const printGatepass = usePrintSalesDispatchGatepass();
   const commitPrint = useCommitSalesDispatchPrint();
   const markDispatched = useMarkSalesDispatchDispatched();
+  const departArrival = useDepartArrival();
   const printFrontendGatepass = useReactToPrint({
     contentRef: sapPrintRef,
     documentTitle: buildFrontendGatepassDocumentTitle(entryToPrint || entry),
@@ -140,6 +144,7 @@ export default function SalesDispatchGatepassPage() {
   useEffect(() => {
     if (!pendingFrontendPrint || !entryToPrint) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot reset of the print trigger flag
     setPendingFrontendPrint(false);
     window.setTimeout(() => {
       printFrontendGatepass();
@@ -150,10 +155,17 @@ export default function SalesDispatchGatepassPage() {
     previewGatepass.isPending ||
     printGatepass.isPending ||
     commitPrint.isPending ||
-    markDispatched.isPending;
+    markDispatched.isPending ||
+    departArrival.isPending;
   const readiness = entry?.gatepass_readiness;
   const action = useMemo(() => getNextAction(entry, isGateOutMode), [entry, isGateOutMode]);
-  const isGatepassPrintLocked = Boolean(dispatchLock?.is_locked);
+  // A multi-company truck dispatches as one unit: dispatching here dispatches every
+  // company's docking together (the backend does it atomically). Used only to label
+  // the action and confirm the whole-truck dispatch -- no separate page.
+  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1;
+  // The lock that matters is THIS docking's company's, not the active selector's
+  // (the backend enforces the record's lock); resolved from the entry, cross-company.
+  const isGatepassPrintLocked = Boolean(entry?.gatepass_print_locked);
   const canPrintGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.PRINT_GATEPASS);
   const canCommitGatepassPrint = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.COMMIT_PRINT);
   const canDispatchGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.DISPATCH);
@@ -185,7 +197,7 @@ export default function SalesDispatchGatepassPage() {
     if (!entry) return;
 
     if (isGatepassPrintLocked) {
-      setError(buildLockError(dispatchLock?.reason));
+      setError(buildLockError(entry?.gatepass_lock_reason));
       return;
     }
 
@@ -223,7 +235,7 @@ export default function SalesDispatchGatepassPage() {
     if (!entry) return;
 
     if (isGatepassPrintLocked) {
-      setError(buildLockError(dispatchLock?.reason));
+      setError(buildLockError(entry?.gatepass_lock_reason));
       return;
     }
 
@@ -254,11 +266,32 @@ export default function SalesDispatchGatepassPage() {
     }
 
     try {
+      // For a multi-company truck the backend dispatches every company's docking
+      // in one atomic step (one truck, one exit) -- in place, no separate page.
       await markDispatched.mutateAsync(entry.id);
-      toast.success('Entry marked as dispatched');
-      navigate(routes.dashboard);
+      toast.success(
+        isMultiCompanyArrival
+          ? 'All companies on this truck dispatched'
+          : 'Entry marked as dispatched',
+      );
+      // Arrival-backed trucks get an inline Depart step (the single physical exit);
+      // stay so the Depart button appears once every gate-in is retired.
+      if (!entry.arrival) {
+        navigate(routes.dashboard);
+      }
     } catch (dispatchError) {
       setError(getErrorMessage(dispatchError, 'Failed to mark entry as dispatched'));
+    }
+  };
+
+  const handleDepart = async () => {
+    if (!entry?.arrival) return;
+    try {
+      await departArrival.mutateAsync({ id: entry.arrival });
+      toast.success('Truck departed');
+      navigate(routes.dashboard);
+    } catch (departError) {
+      setError(getErrorMessage(departError, 'Failed to depart the truck'));
     }
   };
 
@@ -318,8 +351,13 @@ export default function SalesDispatchGatepassPage() {
     );
   }
 
+  // Print under the DOCKING's own company (cross-company), not the active selector,
+  // so a sibling-company gatepass never prints under the wrong company name.
   const companyName =
-    currentCompany?.company_name || entry.sap_branch_name || String(entry.company);
+    entry.company_name ||
+    entry.sap_branch_name ||
+    currentCompany?.company_name ||
+    String(entry.company);
   const gatepassDocuments = getGatepassDocuments(entry);
   const gatepassReferenceFields = buildGatepassReferenceFields(entry, draft);
   const gatepassSummaryFields = buildGatepassSummaryFields(entry);
@@ -335,6 +373,7 @@ export default function SalesDispatchGatepassPage() {
             title={pageTitle}
             error={error || null}
           />
+          {isReview ? <ReviewModeBanner /> : null}
         </div>
 
         {!isGateOutMode && isGatepassPrintLocked ? (
@@ -343,7 +382,7 @@ export default function SalesDispatchGatepassPage() {
             <div>
               <p className="font-medium">Gate pass printing is locked</p>
               <p className="mt-1">
-                {dispatchLock?.reason || 'Gatepass print and commit are temporarily held.'}
+                {entry?.gatepass_lock_reason || 'Gatepass print and commit are temporarily held.'}
               </p>
             </div>
           </div>
@@ -495,9 +534,11 @@ export default function SalesDispatchGatepassPage() {
                 label="Box Scanning"
                 ready={Boolean(readiness?.has_box_scans)}
                 detail={
-                  readiness?.scan_skip_approved && !entry.box_scans?.length
-                    ? 'Skipped (approved)'
-                    : `${entry.box_scans?.length || 0} boxes`
+                  readiness?.box_scan_optional && !entry.box_scans?.length
+                    ? 'Not required'
+                    : readiness?.scan_skip_approved && !entry.box_scans?.length
+                      ? 'Skipped (approved)'
+                      : `${entry.box_scans?.length || 0} boxes`
                 }
               />
               <ReadinessItem label="SAP Items" ready={Boolean(readiness?.has_items)} />
@@ -516,8 +557,16 @@ export default function SalesDispatchGatepassPage() {
           </Card>
         </div>
 
+        {isMultiCompanyArrival && entry.arrival ? (
+          // Multi-company truck: print ONE combined gatepass for the whole truck,
+          // inline -- the per-company print/commit below is hidden in favour of this.
+          <div className="print-hide">
+            <ArrivalCombinedGatepassPanel arrivalId={entry.arrival} />
+          </div>
+        ) : null}
+
         <div className="print-hide flex flex-wrap justify-end gap-3">
-          {!isGateOutMode && (
+          {!isGateOutMode && !isMultiCompanyArrival && (
             <>
               <Button
                 type="button"
@@ -559,32 +608,47 @@ export default function SalesDispatchGatepassPage() {
                   {hasCompleteGateOutWeighment(entry) ? 'Edit Weighment' : 'Record Weighment'}
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                onClick={handleMarkDispatched}
-                disabled={isSaving || action !== 'dispatch' || !canDispatchGatepass}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Mark Dispatched
-              </Button>
+              {entry.arrival_can_depart ? (
+                <Button type="button" onClick={handleDepart} disabled={isSaving}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Depart Truck
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleMarkDispatched}
+                  disabled={isSaving || action !== 'dispatch' || !canDispatchGatepass}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  {isMultiCompanyArrival ? 'Dispatch Truck (all companies)' : 'Mark Dispatched'}
+                </Button>
+              )}
             </>
           )}
         </div>
 
         <div className="print-hide">
           <StepFooter
-            onPrevious={() => navigate(routes.attachments(entryId || entry.vehicle_entry))}
+            onPrevious={() =>
+              navigate(routes.attachments(entryId || entry.vehicle_entry, isReview))
+            }
             onCancel={() => navigate(routes.dashboard)}
-            onNext={handleNextAction}
+            onNext={isReview ? () => navigate(routes.detail(entry.id)) : handleNextAction}
             showPrevious={!isGateOutMode}
             isSaving={isSaving}
             isNextDisabled={
-              isGateOutMode && action !== 'weighment' && action !== 'dispatch' && action !== 'done'
+              !isReview &&
+              isGateOutMode &&
+              action !== 'weighment' &&
+              action !== 'dispatch' &&
+              action !== 'done'
             }
             nextLabel={
-              isGateOutMode
-                ? getGateOutActionLabel(entry, isSaving)
-                : getNextActionLabel(entry, isSaving)
+              isReview
+                ? 'Done'
+                : isGateOutMode
+                  ? getGateOutActionLabel(entry, isSaving)
+                  : getNextActionLabel(entry, isSaving)
             }
           />
         </div>

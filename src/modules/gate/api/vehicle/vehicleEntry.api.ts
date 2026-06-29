@@ -153,4 +153,10 @@ export const vehicleEntryApi = {
     const response = await apiClient.get<VehicleEntriesCountResponse>(url);
     return response.data;
   },
+
+  /** Delete an in-progress raw-material gate entry (backend enforces the
+   * gate-phase / no-QC / no-GRPO guard). */
+  async deleteRawMaterialEntry(id: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.RAW_MATERIAL_GATEIN.GATE_ENTRY_DELETE(id));
+  },
 };

@@ -1,4 +1,4 @@
-import { ArrowLeft, LogOut, RefreshCw, ShieldCheck, Truck } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, LogOut, RefreshCw, ShieldCheck, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -20,7 +20,10 @@ import {
   Textarea,
 } from '@/shared/components/ui';
 
-import { writeEmptyVehicleOutDraft } from './emptyVehicleOutDraft.storage';
+import {
+  buildEmptyOutSideEffectMessage,
+  writeEmptyVehicleOutDraft,
+} from './emptyVehicleOutDraft.storage';
 
 const ENTRY_TYPE_LABELS: Record<string, string> = {
   RAW_MATERIAL: 'Raw Material',
@@ -117,6 +120,12 @@ export default function EmptyVehicleOutNewPage() {
       eligibleEntries.find((entry) => String(entry.id) === selectedEntryId),
     [eligibleEntries, selectedEntryId, selectedEntrySnapshot],
   );
+  const sideEffectMessage = selectedEntry
+    ? buildEmptyOutSideEffectMessage(
+        selectedEntry.release_invoice_count,
+        selectedEntry.release_cancels_docking,
+      )
+    : null;
 
   const handleSubmit = async () => {
     if (!selectedEntry) {
@@ -148,6 +157,8 @@ export default function EmptyVehicleOutNewPage() {
       outTime,
       securityName,
       remarks,
+      releaseInvoiceCount: selectedEntry.release_invoice_count,
+      releaseCancelsDocking: selectedEntry.release_cancels_docking,
     });
 
     toast.success('Vehicle details saved');
@@ -303,6 +314,13 @@ export default function EmptyVehicleOutNewPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {sideEffectMessage && (
+            <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{sideEffectMessage}</span>
+            </div>
           )}
 
           {formError && <p className="text-sm text-destructive">{formError}</p>}

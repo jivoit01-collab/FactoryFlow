@@ -63,6 +63,12 @@ export interface SalesDispatchGatepassReadiness {
   has_box_scans: boolean;
   /** True when an admin-approved scan-skip request satisfies the box-scan requirement. */
   scan_skip_approved?: boolean;
+  /**
+   * True when box scanning is optional for this entry's company (e.g. Jivo Beverages).
+   * Operators can continue past the scan step and print the gatepass without scanning
+   * any box and without an admin scan-skip approval.
+   */
+  box_scan_optional?: boolean;
   has_weighment: boolean;
   has_items: boolean;
   has_bilty_details?: boolean;
@@ -145,6 +151,9 @@ export interface SalesDispatchAttachment {
 export interface SalesDispatchBoxScan {
   id: number;
   sales_dispatch: number;
+  /** The specific bill (document) this box is dispatched against; null = unattributed. */
+  document?: number | null;
+  document_sap_doc_num?: string;
   box?: number | null;
   scan_log?: number | null;
   box_barcode: string;
@@ -171,6 +180,19 @@ export interface SalesDispatchGateOut {
   id: number;
   entry_no: string;
   company: number;
+  company_code?: string;
+  company_name?: string;
+  /** Cross-company arrival this docking shares (the physical truck trip). */
+  arrival?: number | null;
+  /** The truck's real in/out state (INSIDE / LOADING / DEPARTED), not the docking's. */
+  arrival_status?: string | null;
+  /** >1 = a multi-company truck: dispatching one docking dispatches the whole truck. */
+  arrival_company_count?: number;
+  /** true once every company on the truck is dispatched and it can make its single exit. */
+  arrival_can_depart?: boolean;
+  /** Gatepass-print lock of THIS docking's company (not the active selector). */
+  gatepass_print_locked?: boolean;
+  gatepass_lock_reason?: string;
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;
@@ -214,6 +236,11 @@ export interface SalesDispatchGateOut {
   total_litres?: string | null;
   total_boxes?: string | null;
   total_weight?: string | null;
+  /** Operator-entered challan weight; comparison reference when SAP total_weight is missing/wrong. */
+  challan_weight?: string | null;
+  challan_weight_at?: string | null;
+  challan_weight_by?: number | null;
+  challan_weight_by_name?: string | null;
   vehicle_no: string;
   transporter_name?: string;
   transporter_gstin?: string;
@@ -269,6 +296,7 @@ export interface SalesDispatchGateOut {
   items: SalesDispatchItem[];
   attachments: SalesDispatchAttachment[];
   box_scans?: SalesDispatchBoxScan[];
+  additional_weights?: SalesDispatchAdditionalWeight[];
   gatepass_print_logs?: SalesDispatchGatepassPrintLog[];
   created_at: string;
   updated_at: string;
@@ -277,6 +305,9 @@ export interface SalesDispatchGateOut {
 export interface SalesDispatchPendingBooking {
   row_type: 'PENDING_BOOKING';
   id: string;
+  company?: number;
+  company_code?: string;
+  company_name?: string;
   entry_no?: string;
   dispatch_plan_ids: number[];
   document_count: number;
@@ -390,6 +421,8 @@ export interface SalesDispatchDocumentParams {
   branch?: string;
   booking_status?: string;
   limit?: number;
+  /** 1 = search SAP invoices across every company the user belongs to (cross-company). */
+  all_companies?: number;
 }
 
 export interface SalesDispatchListParams {
@@ -398,6 +431,8 @@ export interface SalesDispatchListParams {
   from_date?: string;
   to_date?: string;
   search?: string;
+  /** 1 = aggregate across every company the user belongs to (cross-company view). */
+  all_companies?: number;
 }
 
 export interface SalesDispatchPendingBookingParams {
@@ -406,6 +441,8 @@ export interface SalesDispatchPendingBookingParams {
   search?: string;
   dispatch_plan_ids?: string;
   limit?: number;
+  /** 1 = aggregate across every company the user belongs to (cross-company view). */
+  all_companies?: number;
 }
 
 export type SalesDispatchReportParams = SalesDispatchListParams & {
@@ -457,6 +494,49 @@ export interface SalesDispatchAttachmentUploadRequest {
 
 export interface SalesDispatchBoxScanRequest {
   barcode_raw: string;
+  /** The bill (document id) being scanned into. Omitted = backend auto-resolves the bill. */
+  document?: number | null;
+}
+
+/** A box already scanned in the old barcode-module dispatch flow for this SAP bill. */
+export interface BarcodeDispatchScan {
+  id: number;
+  barcode: string;
+  entity_type: string;
+  item_code?: string;
+  item_name?: string;
+  batch_number?: string;
+  quantity?: string | null;
+  uom?: string;
+  scan_status?: string;
+  box_status?: string;
+  scanned_at: string;
+}
+
+export interface BarcodeDispatchSession {
+  session_id: number;
+  bill_number: string;
+  sap_doc_num: string;
+  status: string;
+  customer_code?: string;
+  customer_name?: string;
+  total_scanned_qty?: string | null;
+  scanned_at: string;
+  box_count: number;
+  boxes: BarcodeDispatchScan[];
+}
+
+export interface BarcodeDispatchScansResult {
+  matched: boolean;
+  session_count: number;
+  box_count: number;
+  sessions: BarcodeDispatchSession[];
+}
+
+export interface BarcodeDispatchImportResult {
+  imported: number;
+  skipped: number;
+  total: number;
 }
 
 export interface SalesDispatchGatepassPrintRequest {
@@ -475,6 +555,25 @@ export interface SalesDispatchGatepassReprintRequest {
 
 export interface SalesDispatchReasonRequest {
   reason: string;
+}
+
+export interface SalesDispatchChallanWeightRequest {
+  /** Pass null to clear the operator value and fall back to the SAP document weight. */
+  challan_weight: number | null;
+}
+
+/** A named weight of non-goods items (packaging, dunnage, securing material). */
+export interface SalesDispatchAdditionalWeight {
+  id: number;
+  sales_dispatch: number;
+  name: string;
+  weight: string;
+  recorded_by_name?: string | null;
+  created_at: string;
+}
+
+export interface SalesDispatchAdditionalWeightsRequest {
+  items: { name: string; weight: number }[];
 }
 
 function buildQuery(params?: Record<string, string | number | undefined>) {
@@ -634,6 +733,24 @@ export const salesDispatchApi = {
     await apiClient.delete(API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BOX_SCAN(id, scanId));
   },
 
+  async barcodeScans(id: number): Promise<BarcodeDispatchScansResult> {
+    const response = await apiClient.get<BarcodeDispatchScansResult>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BARCODE_SCANS(id),
+    );
+    return response.data;
+  },
+
+  async importBarcodeScans(
+    id: number,
+    data: { session_ids: number[] },
+  ): Promise<BarcodeDispatchImportResult> {
+    const response = await apiClient.post<BarcodeDispatchImportResult>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BARCODE_SCANS_IMPORT(id),
+      data,
+    );
+    return response.data;
+  },
+
   async previewGatepass(id: number): Promise<SalesDispatchGateOut> {
     const response = await apiClient.post<SalesDispatchGateOut>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_GATEPASS_PREVIEW(id),
@@ -670,9 +787,39 @@ export const salesDispatchApi = {
     return response.data;
   },
 
+  async setChallanWeight(
+    id: number,
+    data: SalesDispatchChallanWeightRequest,
+  ): Promise<SalesDispatchGateOut> {
+    const response = await apiClient.post<SalesDispatchGateOut>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_CHALLAN_WEIGHT(id),
+      data,
+    );
+    return response.data;
+  },
+
+  async setAdditionalWeights(
+    id: number,
+    data: SalesDispatchAdditionalWeightsRequest,
+  ): Promise<SalesDispatchAdditionalWeight[]> {
+    const response = await apiClient.put<SalesDispatchAdditionalWeight[]>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ADDITIONAL_WEIGHTS(id),
+      data,
+    );
+    return response.data;
+  },
+
   async commitPrint(id: number): Promise<SalesDispatchGateOut> {
     const response = await apiClient.post<SalesDispatchGateOut>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_COMMIT_PRINT(id),
+    );
+    return response.data;
+  },
+
+  async addDocument(id: number, dispatchPlanId: number): Promise<SalesDispatchGateOut> {
+    const response = await apiClient.post<SalesDispatchGateOut>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ADD_DOCUMENT(id),
+      { dispatch_plan_id: dispatchPlanId },
     );
     return response.data;
   },

@@ -1,3 +1,5 @@
+import type { PipelineStatus } from '@/modules/dashboards/dispatch-pipeline/types';
+
 export type DispatchPlanStatus = 'PENDING' | 'BOOKED' | 'DISPATCHED' | 'CANCELLED';
 
 export interface DispatchPlanFilters {
@@ -8,6 +10,10 @@ export interface DispatchPlanFilters {
   branch?: string;
   limit?: number;
   exclude_jivo_mart_transfer?: boolean;
+  /** Window on the plan's scheduled dispatch_date instead of the SAP invoice date. */
+  by_dispatch_date?: boolean;
+  /** 1 = aggregate SAP bills across every company the user belongs to (cross-company). */
+  all_companies?: boolean;
 }
 
 export interface DispatchPlan {
@@ -19,6 +25,8 @@ export interface DispatchPlan {
   invoice_weight: string | null;
   invoice_amount: string | null;
   place_of_supply: string;
+  /** Free-text delivery location filled by the dispatch-planning team. */
+  location: string;
   product_variety: string;
   total_litres: string | null;
   effective_month: string | null;
@@ -31,6 +39,8 @@ export interface DispatchPlan {
   transporter_id: number | null;
   driver_id: number | null;
   linked_vehicle_entry_id: number | null;
+  is_vehicle_link_locked: boolean;
+  pipeline_status: PipelineStatus | null;
   booking_status: DispatchPlanStatus;
   dispatch_date: string | null;
   priority: string;
@@ -121,6 +131,7 @@ export interface DispatchPlanUpdatePayload {
   invoice_weight?: string | null;
   invoice_amount?: string | null;
   place_of_supply?: string;
+  location?: string;
   product_variety?: string;
   total_litres?: string | null;
   effective_month?: string | null;

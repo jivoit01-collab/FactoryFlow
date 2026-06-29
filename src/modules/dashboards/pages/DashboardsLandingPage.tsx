@@ -5,6 +5,7 @@ import {
   Package,
   PackageX,
   Target,
+  Truck,
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -70,6 +71,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/production-movement',
     color: 'text-sky-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+  },
+  {
+    title: 'Dispatch Pipeline',
+    description: 'Track which vehicle is at which stage from vehicle linking to sales dispatch out',
+    icon: <Truck className="h-5 w-5" />,
+    route: '/dashboards/dispatch-pipeline',
+    color: 'text-teal-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE],
   },
 ];
 

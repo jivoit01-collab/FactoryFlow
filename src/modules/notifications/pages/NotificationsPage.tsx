@@ -69,6 +69,7 @@ export default function NotificationsPage() {
     if (!notification.is_read) {
       markAsRead([notification.id]);
     }
+    navigate(notification.click_action_url || '/notifications');
   };
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);

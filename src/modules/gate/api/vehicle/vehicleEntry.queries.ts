@@ -64,3 +64,15 @@ export function useUpdateVehicleEntry() {
     },
   });
 }
+
+export function useDeleteRawMaterialEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => vehicleEntryApi.deleteRawMaterialEntry(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicleEntriesCount'] });
+      queryClient.invalidateQueries({ queryKey: ['gateEntryFullView'] });
+    },
+  });
+}

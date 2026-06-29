@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  type SalesDispatchAdditionalWeightsRequest,
+  salesDispatchApi,
   type SalesDispatchAttachmentUploadRequest,
   type SalesDispatchBoxScanRequest,
+  type SalesDispatchChallanWeightRequest,
   type SalesDispatchCreateRequest,
   type SalesDispatchDocumentParams,
   type SalesDispatchDocumentType,
@@ -14,7 +17,6 @@ import {
   type SalesDispatchReasonRequest,
   type SalesDispatchReportParams,
   type SalesDispatchUpdateRequest,
-  salesDispatchApi,
 } from './salesDispatch.api';
 
 export const SALES_DISPATCH_QUERY_KEYS = {
@@ -36,6 +38,8 @@ export const SALES_DISPATCH_QUERY_KEYS = {
   attachments: (id?: number | null) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'attachments', id] as const,
   boxScans: (id?: number | null) => [...SALES_DISPATCH_QUERY_KEYS.all, 'boxScans', id] as const,
+  barcodeScans: (id?: number | null) =>
+    [...SALES_DISPATCH_QUERY_KEYS.all, 'barcodeScans', id] as const,
   gatepassPrintHistory: (id?: number | null) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'gatepassPrintHistory', id] as const,
 };
@@ -146,6 +150,28 @@ export function useSalesDispatchBoxScans(id?: number | null) {
   });
 }
 
+export function useSalesDispatchBarcodeScans(
+  id?: number | null,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: SALES_DISPATCH_QUERY_KEYS.barcodeScans(id),
+    queryFn: () => salesDispatchApi.barcodeScans(id!),
+    enabled: !!id && (options?.enabled ?? true),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useImportSalesDispatchBarcodeScans() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { session_ids: number[] } }) =>
+      salesDispatchApi.importBarcodeScans(id, data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
 export function useCreateSalesDispatch() {
   const queryClient = useQueryClient();
 
@@ -241,11 +267,41 @@ export function useSalesDispatchGatepassPrintHistory(id?: number | null) {
   });
 }
 
+export function useSetSalesDispatchChallanWeight() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SalesDispatchChallanWeightRequest }) =>
+      salesDispatchApi.setChallanWeight(id, data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
+export function useSetSalesDispatchAdditionalWeights() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SalesDispatchAdditionalWeightsRequest }) =>
+      salesDispatchApi.setAdditionalWeights(id, data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
 export function useCommitSalesDispatchPrint() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: number) => salesDispatchApi.commitPrint(id),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
+export function useAddDocumentToDocking() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, dispatchPlanId }: { id: number; dispatchPlanId: number }) =>
+      salesDispatchApi.addDocument(id, dispatchPlanId),
     onSuccess: () => invalidateSalesDispatch(queryClient),
   });
 }
