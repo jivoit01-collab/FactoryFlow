@@ -1,16 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  ApiAdapter,
-  IndexedDbAdapter,
-  LocalStorageAdapter,
-  createWmsAdapter,
-  setActiveWmsAdapter,
-} from '../storage';
 import { wmsStore } from '../store';
 import type { Warehouse } from '../types';
 import { WMS_SETTINGS_ID } from '../types';
 import { createWmsId, nowIso } from '../utils';
+import { resetWmsBackend } from './helpers/wmsBackendMock';
+
+// The module persists only through the REST ApiAdapter; drive it with an
+// in-memory stand-in for the backend (the raw REST contract is covered in
+// wms.apiAdapter.test.ts).
+vi.mock('@/core/api', async () => {
+  const mod = await import('./helpers/wmsBackendMock');
+  return { apiClient: mod.apiClient };
+});
 
 function makeWarehouse(overrides: Partial<Warehouse> = {}): Warehouse {
   const timestamp = nowIso();
@@ -36,71 +38,9 @@ function makeWarehouse(overrides: Partial<Warehouse> = {}): Warehouse {
   };
 }
 
-beforeEach(() => {
-  localStorage.clear();
-});
-
-describe('LocalStorageAdapter', () => {
-  it('creates, gets, lists, updates and removes records', async () => {
-    const adapter = new LocalStorageAdapter();
-    const warehouse = makeWarehouse();
-
-    await adapter.create('warehouses', warehouse);
-    expect(await adapter.get('warehouses', warehouse.id)).toEqual(warehouse);
-    expect(await adapter.list('warehouses')).toHaveLength(1);
-
-    const updated = await adapter.update('warehouses', warehouse.id, { name: 'Renamed' });
-    expect(updated.name).toBe('Renamed');
-    expect((await adapter.get('warehouses', warehouse.id))?.name).toBe('Renamed');
-
-    await adapter.remove('warehouses', warehouse.id);
-    expect(await adapter.get('warehouses', warehouse.id)).toBeNull();
-    expect(await adapter.list('warehouses')).toHaveLength(0);
-  });
-
-  it('persists across a simulated reload (a fresh adapter reads the same data)', async () => {
-    const warehouse = makeWarehouse({ code: 'WH-PERSIST' });
-    await new LocalStorageAdapter().create('warehouses', warehouse);
-
-    // A brand-new adapter instance == a page reload: same localStorage, no cache.
-    const afterReload = await new LocalStorageAdapter().list('warehouses');
-    expect(afterReload).toHaveLength(1);
-    expect(afterReload[0]?.code).toBe('WH-PERSIST');
-  });
-
-  it('rejects updates to a missing record', async () => {
-    await expect(
-      new LocalStorageAdapter().update('warehouses', 'nope', { name: 'x' }),
-    ).rejects.toThrow();
-  });
-
-  it('clearAll empties every collection', async () => {
-    const adapter = new LocalStorageAdapter();
-    await adapter.create('warehouses', makeWarehouse());
-    await adapter.clearAll();
-    expect(await adapter.list('warehouses')).toHaveLength(0);
-  });
-});
-
-describe('createWmsAdapter (single swap point)', () => {
-  it('builds the requested implementation', () => {
-    expect(createWmsAdapter('localstorage')).toBeInstanceOf(LocalStorageAdapter);
-    expect(createWmsAdapter('api')).toBeInstanceOf(ApiAdapter);
-    // indexeddb resolves to the IDB adapter when available, else falls back.
-    const idb = createWmsAdapter('indexeddb');
-    expect(
-      idb instanceof IndexedDbAdapter || idb instanceof LocalStorageAdapter,
-    ).toBe(true);
-  });
-
-  it('the api adapter is a real REST client (behaviour covered in wms.apiAdapter.test)', () => {
-    expect(new ApiAdapter().kind).toBe('api');
-  });
-});
-
-describe('wmsStore (central store over the active adapter)', () => {
+describe('wmsStore (central store over the backend adapter)', () => {
   beforeEach(() => {
-    setActiveWmsAdapter('localstorage');
+    resetWmsBackend();
     wmsStore.reset();
   });
 
@@ -108,6 +48,15 @@ describe('wmsStore (central store over the active adapter)', () => {
     await wmsStore.create('warehouses', makeWarehouse({ code: 'WH-STORE' }));
     expect(wmsStore.getSnapshot('warehouses')).toHaveLength(1);
     expect(wmsStore.getSnapshot('warehouses')[0]?.code).toBe('WH-STORE');
+  });
+
+  it('persists to the backend so data survives a store reset (reload)', async () => {
+    await wmsStore.create('warehouses', makeWarehouse({ code: 'WH-PERSIST' }));
+
+    // Reload: drop the in-memory cache, then re-read from the backend.
+    wmsStore.reset();
+    const reloaded = await wmsStore.load('warehouses');
+    expect(reloaded.some((warehouse) => warehouse.code === 'WH-PERSIST')).toBe(true);
   });
 
   it('seeds the settings singleton with defaults on first read', async () => {

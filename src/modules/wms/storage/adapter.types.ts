@@ -2,10 +2,8 @@
  * Storage adapter contract for the WMS module.
  *
  * Every screen and the central store talk to a `WmsStorageAdapter` — never to
- * IndexedDB / localStorage / the network directly. Swapping the whole module
- * from browser storage to a backend API is therefore a one-line change in
- * `createAdapter.ts`; nothing else in the module needs to know which
- * implementation is active.
+ * the network directly. The module persists exclusively through the backend
+ * REST API (`ApiAdapter`); this interface is the single seam they share.
  */
 import type {
   InventoryRecord,
@@ -13,7 +11,6 @@ import type {
   MaterialWarehouseProfile,
   MovementLogEntry,
   Pallet,
-  StorageAdapterKind,
   Warehouse,
   WarehouseLocation,
   WmsId,
@@ -58,8 +55,8 @@ export const WMS_COLLECTIONS: readonly WmsCollection[] = [
  * synchronous localStorage one.
  */
 export interface WmsStorageAdapter {
-  /** Which implementation this instance is. */
-  readonly kind: StorageAdapterKind;
+  /** Which implementation this instance is (always the backend API). */
+  readonly kind: 'api';
 
   list<K extends WmsCollection>(collection: K): Promise<WmsCollectionMap[K][]>;
 

@@ -242,9 +242,16 @@ export default function WmsWarehousesPage() {
                     <span className="font-mono text-xs text-muted-foreground">{warehouse.code}</span>
                   </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {warehouse.columns}×{warehouse.rows}
-                    {warehouse.levels > 1 ? `×${warehouse.levels}` : ''} ·{' '}
-                    {locationCounts.get(warehouse.id) ?? 0} locations
+                    {warehouse.type === 'SAP' ? (
+                      <>SAP warehouse · {warehouse.sapWarehouseCode ?? '—'}</>
+                    ) : (
+                      <>
+                        {warehouse.columns}×{warehouse.rows}
+                        {warehouse.levels > 1 ? `×${warehouse.levels}` : ''} ·{' '}
+                        {locationCounts.get(warehouse.id) ?? 0} locations
+                        {warehouse.sapWarehouseCode ? ` · SAP ${warehouse.sapWarehouseCode}` : ''}
+                      </>
+                    )}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">

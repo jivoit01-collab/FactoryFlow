@@ -1,14 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { setActiveWmsAdapter } from '../storage';
 import { wmsStore } from '../store';
 import { makeInventoryRecord } from '../services';
 import type { InventoryRecord, Pallet } from '../types';
 import { createWmsId, nowIso } from '../utils';
+import { resetWmsBackend } from './helpers/wmsBackendMock';
+
+vi.mock('@/core/api', async () => {
+  const mod = await import('./helpers/wmsBackendMock');
+  return { apiClient: mod.apiClient };
+});
 
 beforeEach(() => {
-  localStorage.clear();
-  setActiveWmsAdapter('localstorage');
+  resetWmsBackend();
   wmsStore.reset();
 });
 

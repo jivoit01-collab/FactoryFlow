@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
-import type { StorageAdapterKind, WmsSettings } from '../types';
+import type { WmsSettings } from '../types';
 import { WMS_SETTINGS_ID } from '../types';
 import { wmsStore } from './wmsStore';
 
@@ -16,7 +16,6 @@ export interface UseWmsSettingsResult {
   settings: WmsSettings | null;
   loading: boolean;
   save: (patch: Partial<Omit<WmsSettings, 'id'>>) => Promise<WmsSettings>;
-  switchStorageAdapter: (kind: StorageAdapterKind) => Promise<WmsSettings>;
 }
 
 export function useWmsSettings(): UseWmsSettingsResult {
@@ -42,12 +41,7 @@ export function useWmsSettings(): UseWmsSettingsResult {
     [],
   );
 
-  const switchStorageAdapter = useCallback(
-    (kind: StorageAdapterKind) => wmsStore.switchStorageAdapter(kind),
-    [],
-  );
-
-  return { settings, loading, save, switchStorageAdapter };
+  return { settings, loading, save };
 }
 
 /** Master switch. When false, the WMS feature must be invisible across the app. */

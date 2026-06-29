@@ -23,6 +23,8 @@ import {
   NativeSelect,
 } from '@/shared/components/ui';
 
+import { WarehouseSelect } from '@/modules/grpo/components';
+
 import { WarehouseGrid, type GridCell } from '../components/WarehouseGrid';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
@@ -36,7 +38,7 @@ import {
   validateLayoutParams,
 } from '../services';
 import type { AxisStyle } from '../services';
-import type { Warehouse, WarehouseNamingScheme } from '../types';
+import type { Warehouse, WarehouseNamingScheme, WarehouseType } from '../types';
 import { createWmsId, nowIso } from '../utils';
 
 export default function WmsDesignerPage() {
@@ -46,6 +48,8 @@ export default function WmsDesignerPage() {
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  const [whType, setWhType] = useState<WarehouseType>('OWN');
+  const [sapWarehouseCode, setSapWarehouseCode] = useState('');
   const [columns, setColumns] = useState(6);
   const [rows, setRows] = useState(4);
   const [levels, setLevels] = useState(1);
@@ -78,10 +82,17 @@ export default function WmsDesignerPage() {
       toast.error('Give the warehouse a name.');
       return;
     }
-    const error = validateLayoutParams({ columns, rows, levels });
-    if (error) {
-      toast.error(error);
+    if (!sapWarehouseCode) {
+      toast.error('Select the SAP warehouse code.');
       return;
+    }
+    const isOwn = whType === 'OWN';
+    if (isOwn) {
+      const error = validateLayoutParams({ columns, rows, levels });
+      if (error) {
+        toast.error(error);
+        return;
+      }
     }
 
     setCreating(true);
@@ -93,17 +104,26 @@ export default function WmsDesignerPage() {
         name: name.trim(),
         description: '',
         enabled: true,
-        columns,
-        rows,
-        levels,
+        type: whType,
+        sapWarehouseCode,
+        // SAP warehouses are external and carry no internal grid/locations.
+        columns: isOwn ? columns : 0,
+        rows: isOwn ? rows : 0,
+        levels: isOwn ? levels : 0,
         namingScheme: naming,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
-      const locations = generated.map((cell) => makeWarehouseLocation(warehouse.id, cell));
+      const locations = isOwn
+        ? generated.map((cell) => makeWarehouseLocation(warehouse.id, cell))
+        : [];
       await wmsStore.saveWarehouseBundle({ warehouse, zones: [], locations });
-      toast.success(`Created "${warehouse.name}" with ${locations.length} locations.`);
-      navigate(`/warehouse-ops/warehouses/${warehouse.id}`);
+      toast.success(
+        isOwn
+          ? `Created "${warehouse.name}" with ${locations.length} locations.`
+          : `Registered SAP warehouse "${warehouse.name}" (${sapWarehouseCode}).`,
+      );
+      navigate(isOwn ? `/warehouse-ops/warehouses/${warehouse.id}` : '/warehouse-ops/warehouses');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create the warehouse.');
     } finally {
@@ -162,9 +182,35 @@ export default function WmsDesignerPage() {
                   onChange={(event) => setCode(event.target.value)}
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="wh-type">Type</Label>
+                <NativeSelect
+                  id="wh-type"
+                  value={whType}
+                  onChange={(event) => setWhType(event.target.value as WarehouseType)}
+                >
+                  <option value="OWN">Own warehouse (internal locations)</option>
+                  <option value="SAP">SAP warehouse (external, no locations)</option>
+                </NativeSelect>
+                <p className="text-xs text-muted-foreground">
+                  {whType === 'OWN'
+                    ? 'Designs a grid of bins; transfers here prompt for a location.'
+                    : 'External SAP warehouse; transfers go straight in with no location.'}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <WarehouseSelect
+                  value={sapWarehouseCode}
+                  onChange={setSapWarehouseCode}
+                  label="SAP warehouse code"
+                  placeholder="Select SAP warehouse"
+                  required
+                />
+              </div>
             </CardContent>
           </Card>
 
+          {whType === 'OWN' ? (
           <Card>
             <CardHeader>
               <CardTitle>Grid</CardTitle>
@@ -178,7 +224,9 @@ export default function WmsDesignerPage() {
               </div>
             </CardContent>
           </Card>
+          ) : null}
 
+          {whType === 'OWN' ? (
           <Card>
             <CardHeader>
               <CardTitle>Naming</CardTitle>
@@ -227,6 +275,7 @@ export default function WmsDesignerPage() {
               </div>
             </CardContent>
           </Card>
+          ) : null}
 
           <Button className="w-full" disabled={creating} onClick={() => void handleCreate()}>
             {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
@@ -234,7 +283,22 @@ export default function WmsDesignerPage() {
           </Button>
         </div>
 
-        {/* Live preview */}
+        {/* Live preview (own warehouses only) */}
+        {whType === 'SAP' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>SAP warehouse</CardTitle>
+              <CardDescription>External warehouse — no internal layout.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                Stock is transferred straight into{' '}
+                <span className="font-mono">{sapWarehouseCode || 'the selected SAP warehouse'}</span>{' '}
+                with no location prompt. No grid is created.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>
@@ -273,6 +337,7 @@ export default function WmsDesignerPage() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   );

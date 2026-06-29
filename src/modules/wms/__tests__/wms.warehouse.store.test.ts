@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { setActiveWmsAdapter } from '../storage';
 import { wmsStore } from '../store';
 import {
   DEFAULT_NAMING_SCHEME,
@@ -10,6 +9,12 @@ import {
 } from '../services';
 import type { Warehouse } from '../types';
 import { createWmsId, nowIso } from '../utils';
+import { resetWmsBackend } from './helpers/wmsBackendMock';
+
+vi.mock('@/core/api', async () => {
+  const mod = await import('./helpers/wmsBackendMock');
+  return { apiClient: mod.apiClient };
+});
 
 function buildBundle(name = 'Main') {
   const timestamp = nowIso();
@@ -32,8 +37,7 @@ function buildBundle(name = 'Main') {
 }
 
 beforeEach(() => {
-  localStorage.clear();
-  setActiveWmsAdapter('localstorage');
+  resetWmsBackend();
   wmsStore.reset();
 });
 

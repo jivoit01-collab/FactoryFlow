@@ -1,16 +1,20 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getActiveWmsAdapterKind, setActiveWmsAdapter } from '../storage';
 import { wmsStore } from '../store';
 import { DEFAULT_WMS_SETTINGS } from '../types';
+import { resetWmsBackend } from './helpers/wmsBackendMock';
+
+vi.mock('@/core/api', async () => {
+  const mod = await import('./helpers/wmsBackendMock');
+  return { apiClient: mod.apiClient };
+});
 
 beforeEach(() => {
-  localStorage.clear();
-  setActiveWmsAdapter('localstorage');
+  resetWmsBackend();
   wmsStore.reset();
 });
 
-describe('WMS settings (Step 2)', () => {
+describe('WMS settings', () => {
   it('loads defaults on first read, then saves and re-loads changes', async () => {
     const initial = await wmsStore.getSettings();
     expect(initial.masterEnabled).toBe(DEFAULT_WMS_SETTINGS.masterEnabled);
@@ -31,17 +35,8 @@ describe('WMS settings (Step 2)', () => {
   it('master flag survives a simulated reload (fresh store, same backend)', async () => {
     await wmsStore.saveSettings({ masterEnabled: true });
 
-    // Simulate a reload: drop the in-memory cache, keep localStorage.
+    // Simulate a reload: drop the in-memory cache; the backend keeps the data.
     wmsStore.reset();
     expect((await wmsStore.getSettings()).masterEnabled).toBe(true);
-  });
-
-  it('switches the storage adapter and remembers the choice', async () => {
-    await wmsStore.switchStorageAdapter('localstorage');
-    expect(getActiveWmsAdapterKind()).toBe('localstorage');
-    expect((await wmsStore.getSettings()).storageAdapter).toBe('localstorage');
-
-    // The choice is persisted in a fixed key for the next page load.
-    expect(localStorage.getItem('wms:active-adapter')).toBe('localstorage');
   });
 });

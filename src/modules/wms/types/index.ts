@@ -1,7 +1,6 @@
 export type {
   WmsId,
   IsoDateTime,
-  StorageAdapterKind,
   PutawayMode,
   PickStrategy,
   WmsRole,
@@ -13,6 +12,7 @@ export type {
   WmsRecordBase,
   WarehouseNamingScheme,
   Warehouse,
+  WarehouseType,
   Zone,
   LocationCapacity,
   LocationDimensions,

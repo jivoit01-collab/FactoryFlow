@@ -20,7 +20,6 @@ import {
   CardTitle,
   Label,
   NativeSelect,
-  Separator,
   Switch,
 } from '@/shared/components/ui';
 
@@ -29,7 +28,6 @@ import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
 import type {
   PickStrategy,
   PutawayMode,
-  StorageAdapterKind,
   ViolationMode,
   WmsSettings,
 } from '../types';
@@ -59,7 +57,7 @@ function SettingRow({
 }
 
 export default function WmsSettingsPage() {
-  const { settings, loading, save, switchStorageAdapter } = useWmsSettings();
+  const { settings, loading, save } = useWmsSettings();
   const { isAdmin } = useWmsRole();
   const [saving, setSaving] = useState(false);
 
@@ -69,26 +67,6 @@ export default function WmsSettingsPage() {
       await save(change);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save WMS settings.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const adapterLabel: Record<StorageAdapterKind, string> = {
-    indexeddb: 'IndexedDB',
-    localstorage: 'localStorage',
-    api: 'the backend API',
-  };
-
-  async function changeAdapter(kind: StorageAdapterKind) {
-    setSaving(true);
-    try {
-      await switchStorageAdapter(kind);
-      toast.success(`Storage switched to ${adapterLabel[kind]}.`);
-    } catch {
-      // The backend isn't reachable here — revert so the module stays usable.
-      await switchStorageAdapter('indexeddb');
-      toast.error('Could not reach that storage backend. Reverted to IndexedDB.');
     } finally {
       setSaving(false);
     }
@@ -296,36 +274,10 @@ export default function WmsSettingsPage() {
         <CardHeader>
           <CardTitle>Storage</CardTitle>
           <CardDescription>
-            Where warehouse data is saved. The choice is remembered across reloads; each
-            backend keeps its own data.
+            Warehouse data is saved to the backend server, so it is shared across devices
+            and users and persists safely.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <SettingRow
-            title="Storage adapter"
-            description="IndexedDB (default), localStorage (fallback), or the backend API (Step 10)."
-            htmlFor="wms-adapter"
-            control={
-              <NativeSelect
-                id="wms-adapter"
-                value={settings.storageAdapter}
-                disabled={saving}
-                onChange={(event) =>
-                  void changeAdapter(event.target.value as StorageAdapterKind)
-                }
-              >
-                <option value="indexeddb">IndexedDB (default)</option>
-                <option value="localstorage">localStorage (fallback)</option>
-                <option value="api">Backend API</option>
-              </NativeSelect>
-            }
-          />
-          <Separator />
-          <p className="pt-4 text-xs text-muted-foreground">
-            Switching storage reloads data from the selected backend, so existing records
-            may not be visible there.
-          </p>
-        </CardContent>
       </Card>
     </div>
   );

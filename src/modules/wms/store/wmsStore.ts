@@ -7,9 +7,9 @@
  * mutation reloads its collection from the adapter so the cache can never drift
  * from what is persisted (simple and correct; later steps can optimise).
  */
-import type { StorageAdapterKind, Warehouse, WmsId, WmsSettings } from '../types';
+import type { Warehouse, WmsId, WmsSettings } from '../types';
 import { DEFAULT_WMS_SETTINGS, WMS_SETTINGS_ID } from '../types';
-import { getActiveWmsAdapter, setActiveWmsAdapter } from '../storage';
+import { getActiveWmsAdapter } from '../storage';
 import type { WmsCollection, WmsCollectionMap, WmsStorageAdapter } from '../storage';
 import type { WarehouseBundle } from '../services/warehouseIO';
 import { makeInventoryRecord, makeMovement, makePallet } from '../services/factories';
@@ -691,17 +691,6 @@ class WmsStore {
   async saveSettings(patch: Partial<Omit<WmsSettings, 'id'>>): Promise<WmsSettings> {
     await this.getSettings(); // ensure it exists
     return this.update('settings', WMS_SETTINGS_ID, { ...patch, updatedAt: nowIso() });
-  }
-
-  /**
-   * Switch the active storage backend, then re-seed/load settings from it. The
-   * chosen kind is remembered (in `createAdapter`) so it persists across reload.
-   * Each backend keeps its own data, so the visible records may change.
-   */
-  async switchStorageAdapter(kind: StorageAdapterKind): Promise<WmsSettings> {
-    setActiveWmsAdapter(kind);
-    this.reset();
-    return this.saveSettings({ storageAdapter: kind });
   }
 
   // -- lifecycle ------------------------------------------------------------

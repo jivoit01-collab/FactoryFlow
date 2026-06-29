@@ -21,9 +21,6 @@ export type WmsId = string;
 /** ISO-8601 timestamp string, e.g. `2026-06-26T10:00:00.000Z`. */
 export type IsoDateTime = string;
 
-/** Which storage implementation backs the adapter. */
-export type StorageAdapterKind = 'indexeddb' | 'localstorage' | 'api';
-
 export type PutawayMode = 'DIRECTED' | 'MANUAL' | 'HYBRID';
 export type PickStrategy = 'FIFO' | 'LIFO' | 'FEFO';
 
@@ -78,12 +75,27 @@ export interface WarehouseNamingScheme {
   separator: string;
 }
 
+/**
+ * How a warehouse is managed:
+ * - OWN: internally designed grid of locations/bins (the WMS designer flow).
+ * - SAP: an external SAP warehouse with no internal locations; stock is
+ *   transferred straight into it.
+ */
+export type WarehouseType = 'OWN' | 'SAP';
+
 export interface Warehouse extends WmsRecordBase {
   code: string;
   name: string;
   description: string;
   /** The whole warehouse can be turned off without deleting it. */
   enabled: boolean;
+  /**
+   * OWN (default) = has internal locations; SAP = external, no locations.
+   * Optional so legacy records (created before this field) read as OWN.
+   */
+  type?: WarehouseType;
+  /** The SAP OWHS warehouse code this warehouse maps to (for stock transfers). */
+  sapWarehouseCode?: string | null;
   columns: number;
   rows: number;
   /** Vertical levels; `1` means a single-level warehouse. */
@@ -315,8 +327,6 @@ export interface WmsSettings extends WmsRecordBase {
   capacityViolation: ViolationMode;
   materialRuleViolation: ViolationMode;
   allowNegativeStock: boolean;
-  /** Which storage implementation the adapter should use. */
-  storageAdapter: StorageAdapterKind;
   /** Active module role (gates the designer, settings, and approvals). */
   role: WmsRole;
   updatedAt: IsoDateTime;
@@ -333,6 +343,5 @@ export const DEFAULT_WMS_SETTINGS: Omit<WmsSettings, 'updatedAt'> = {
   capacityViolation: 'WARN',
   materialRuleViolation: 'WARN',
   allowNegativeStock: false,
-  storageAdapter: 'indexeddb',
   role: 'ADMIN',
 };
