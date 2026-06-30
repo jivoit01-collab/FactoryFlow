@@ -7,12 +7,13 @@
  * `WmsEnabledGate` / `useWmsEnabled`); the storage selector swaps the active
  * adapter for real.
  */
-import { useState, type ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wrench } from 'lucide-react';
+import { type ReactNode,useState } from 'react';
 import { toast } from 'sonner';
 
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   CardDescription,
@@ -23,14 +24,15 @@ import {
   Switch,
 } from '@/shared/components/ui';
 
-import { useWmsRole, useWmsSettings } from '../store';
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
+import { useWmsRole, useWmsSettings, wmsStore } from '../store';
 import type {
   PickStrategy,
   PutawayMode,
   ViolationMode,
   WmsSettings,
 } from '../types';
+import { notifyOk } from '../utils';
 
 function SettingRow({
   title,
@@ -60,6 +62,23 @@ export default function WmsSettingsPage() {
   const { settings, loading, save } = useWmsSettings();
   const { isAdmin } = useWmsRole();
   const [saving, setSaving] = useState(false);
+  const [repairing, setRepairing] = useState(false);
+
+  async function repairLinks() {
+    setRepairing(true);
+    try {
+      const { relocated, relinked } = await wmsStore.reconcilePalletLinks();
+      if (relocated === 0 && relinked === 0) {
+        notifyOk('All pallets are already consistent — nothing to repair.');
+      } else {
+        notifyOk(`Repaired pallet links: ${relocated} relocated, ${relinked} re-linked.`);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Repair failed.');
+    } finally {
+      setRepairing(false);
+    }
+  }
 
   async function patch(change: Partial<Omit<WmsSettings, 'id'>>) {
     setSaving(true);
@@ -263,6 +282,34 @@ export default function WmsSettingsPage() {
                   disabled={saving}
                   onChange={(checked) => void patch({ allowNegativeStock: checked })}
                 />
+              </div>
+            }
+          />
+        </CardContent>
+      </Card>
+
+      {/* Maintenance */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Maintenance</CardTitle>
+          <CardDescription>
+            Repair tools for warehouse data consistency.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y">
+          <SettingRow
+            title="Reconcile pallet & stock links"
+            description="Fixes pallets that show stock at a location but appear as 'no pallet' — moves each pallet to where its stock is, and re-links stranded pallets to matching loose stock."
+            control={
+              <div className="flex sm:justify-end">
+                <Button variant="outline" disabled={repairing} onClick={() => void repairLinks()}>
+                  {repairing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wrench className="mr-2 h-4 w-4" />
+                  )}
+                  Reconcile now
+                </Button>
               </div>
             }
           />

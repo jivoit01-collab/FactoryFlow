@@ -106,3 +106,60 @@ describe('movePallet', () => {
     expect(wmsStore.getSnapshot('movements').some((m) => m.type === 'TRANSFER' && m.palletId === pallet.id)).toBe(true);
   });
 });
+
+function strandedPallet(currentLocationId: string | null, overrides: Partial<Pallet> = {}): Pallet {
+  return {
+    id: createWmsId(),
+    licensePlate: 'LP-X',
+    currentLocationId,
+    itemCode: 'SKU1',
+    itemName: 'Item 1',
+    boxCount: 4,
+    unitsPerBox: null,
+    totalUnits: 40,
+    lotNumber: '',
+    expiryDate: null,
+    status: 'ACTIVE',
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+    ...overrides,
+  };
+}
+
+describe('reconcilePalletLinks (data repair)', () => {
+  it('follows the stock: relocates a pallet to where its linked inventory sits', async () => {
+    const pallet = strandedPallet('A');
+    await wmsStore.create('pallets', pallet);
+    await wmsStore.create('inventory', makeInventoryRecord({ locationId: 'B', itemCode: 'SKU1', quantity: 40, palletId: pallet.id }));
+
+    const result = await wmsStore.reconcilePalletLinks();
+
+    expect(result.relocated).toBe(1);
+    expect(wmsStore.getSnapshot('pallets')[0]?.currentLocationId).toBe('B');
+  });
+
+  it('re-links a stranded pallet to a single matching loose line', async () => {
+    const pallet = strandedPallet('A'); // no inventory references it
+    await wmsStore.create('pallets', pallet);
+    const loose = makeInventoryRecord({ locationId: 'B', itemCode: 'SKU1', quantity: 40 }); // palletId null
+    await wmsStore.create('inventory', loose);
+
+    const result = await wmsStore.reconcilePalletLinks();
+
+    expect(result.relinked).toBe(1);
+    expect(wmsStore.getSnapshot('inventory')[0]?.palletId).toBe(pallet.id);
+    expect(wmsStore.getSnapshot('pallets')[0]?.currentLocationId).toBe('B');
+  });
+
+  it('does not guess when the loose match is ambiguous', async () => {
+    const pallet = strandedPallet('A');
+    await wmsStore.create('pallets', pallet);
+    await wmsStore.create('inventory', makeInventoryRecord({ locationId: 'B', itemCode: 'SKU1', quantity: 40 }));
+    await wmsStore.create('inventory', makeInventoryRecord({ locationId: 'C', itemCode: 'SKU1', quantity: 40 }));
+
+    const result = await wmsStore.reconcilePalletLinks();
+
+    expect(result.relinked).toBe(0);
+    expect(wmsStore.getSnapshot('inventory').every((r) => r.palletId == null)).toBe(true);
+  });
+});

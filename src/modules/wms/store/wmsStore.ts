@@ -753,6 +753,74 @@ class WmsStore {
     await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
   }
 
+  /**
+   * Repair pallet ↔ inventory ↔ location consistency for existing data.
+   *
+   * Heals records orphaned by older bugs (e.g. an item-level move that left a
+   * pallet behind or dropped the pallet link), in two passes:
+   *   1. Follow stock — a pallet whose linked inventory all sits at one location
+   *      is moved to that location (deterministic).
+   *   2. Re-link stranded pallets — a pallet with NO inventory anywhere is matched
+   *      to a single loose (palletId-less) line of the same item/lot (and, when
+   *      known, the same total quantity); the line is linked and the pallet moved.
+   *      Ambiguous matches are skipped, so this never guesses.
+   */
+  async reconcilePalletLinks(): Promise<{ relocated: number; relinked: number }> {
+    const adapter = this.adapter();
+    const [pallets, inventory] = await Promise.all([
+      adapter.list('pallets'),
+      adapter.list('inventory'),
+    ]);
+    const timestamp = nowIso();
+    let relocated = 0;
+    let relinked = 0;
+
+    const linesByPallet = new Map<WmsId, typeof inventory>();
+    for (const record of inventory) {
+      if (!record.palletId) continue;
+      const list = linesByPallet.get(record.palletId) ?? [];
+      list.push(record);
+      linesByPallet.set(record.palletId, list);
+    }
+
+    for (const pallet of pallets) {
+      if (pallet.status === 'SHIPPED') continue;
+      const lines = linesByPallet.get(pallet.id) ?? [];
+
+      if (lines.length > 0) {
+        // Pass 1: follow the stock when it all sits in one place.
+        const locationIds = new Set(lines.map((line) => line.locationId));
+        if (locationIds.size === 1) {
+          const locationId = lines[0]!.locationId;
+          if (pallet.currentLocationId !== locationId) {
+            await adapter.update('pallets', pallet.id, { currentLocationId: locationId, updatedAt: timestamp });
+            relocated += 1;
+          }
+        }
+        continue;
+      }
+
+      // Pass 2: stranded pallet — try one unambiguous loose line.
+      const candidates = inventory.filter(
+        (record) =>
+          record.palletId == null &&
+          record.itemCode === pallet.itemCode &&
+          (!pallet.lotNumber || record.lotNumber === pallet.lotNumber) &&
+          (pallet.totalUnits == null || record.quantity === pallet.totalUnits),
+      );
+      if (candidates.length === 1) {
+        const line = candidates[0]!;
+        await adapter.update('inventory', line.id, { palletId: pallet.id, updatedAt: timestamp });
+        await adapter.update('pallets', pallet.id, { currentLocationId: line.locationId, updatedAt: timestamp });
+        line.palletId = pallet.id; // claim it so another pallet can't match the same line
+        relinked += 1;
+      }
+    }
+
+    await Promise.all([this.load('pallets'), this.load('inventory')]);
+    return { relocated, relinked };
+  }
+
   // -- outbound audit + picking (Step 8) ------------------------------------
 
   /**
