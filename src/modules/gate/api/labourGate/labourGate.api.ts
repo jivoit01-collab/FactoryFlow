@@ -19,12 +19,22 @@ export interface LabourGateEntry {
   total_out: number;
   remaining: number;
   out_batches: LabourOutBatch[];
+  is_deleted: boolean;
+  /** Whether the most recent out batch is still within the undo grace window. */
+  can_undo_last: boolean;
+  /** Whether a soft-deleted entry is still within the restore grace window. */
+  can_restore: boolean;
+  created_by_name?: string | null;
+  updated_by_name?: string | null;
+  deleted_by_name?: string | null;
+  deleted_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
 
 export interface RecordInRequest {
-  department: number;
+  /** Omitted for gate Labour In (contractor total); set for the Labour module (per-department split). */
+  department?: number | null;
   contractor: number;
   work_date: string;
   count_in: number;
@@ -48,9 +58,14 @@ export const labourGateApi = {
     return (await apiClient.patch<LabourGateEntry>(`${BASE}/${id}/`, { count_in })).data;
   },
 
-  // DELETE /labour-gate/{id}/ — remove an entry (only if nothing marked out yet).
+  // DELETE /labour-gate/{id}/ — soft-delete an entry (only if nothing marked out yet).
   remove: async (id: number): Promise<void> => {
     await apiClient.delete(`${BASE}/${id}/`);
+  },
+
+  // POST /labour-gate/{id}/restore/ — undo a soft-delete within the grace window.
+  restore: async (id: number): Promise<LabourGateEntry> => {
+    return (await apiClient.post<LabourGateEntry>(`${BASE}/${id}/restore/`)).data;
   },
 
   // POST /labour-gate/{id}/out/ — add one batch of people leaving.

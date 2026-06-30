@@ -4,6 +4,7 @@ import { SearchableSelect } from '@/shared/components';
 
 import type { Department } from '../api/department/department.api';
 import { useDepartments } from '../api/department/department.queries';
+import { CreateDepartmentDialog } from './CreateDepartmentDialog';
 
 interface DepartmentSelectProps {
   value?: number | '';
@@ -15,6 +16,8 @@ interface DepartmentSelectProps {
   required?: boolean;
   /** Initial display text to show without fetching departments (for edit mode) */
   initialDisplayText?: string;
+  /** Show an "Add department" option that opens a create dialog */
+  allowCreate?: boolean;
 }
 
 export function DepartmentSelect({
@@ -26,6 +29,7 @@ export function DepartmentSelect({
   label,
   required = false,
   initialDisplayText,
+  allowCreate = false,
 }: DepartmentSelectProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -58,6 +62,7 @@ export function DepartmentSelect({
       loadingText="Loading departments..."
       emptyText="No departments available"
       notFoundText="No departments found"
+      addNewLabel={allowCreate ? 'Add department' : undefined}
       onOpenChange={setIsDropdownOpen}
       onItemSelect={(department) => {
         onChange(department.id, department.name);
@@ -65,6 +70,20 @@ export function DepartmentSelect({
       onClear={() => {
         onChange('', '');
       }}
+      renderCreateDialog={
+        allowCreate
+          ? (open, onOpenChange, updateSelection) => (
+              <CreateDepartmentDialog
+                open={open}
+                onOpenChange={onOpenChange}
+                onSuccess={(department) => {
+                  updateSelection(department.id, department.name);
+                  onChange(department.id, department.name);
+                }}
+              />
+            )
+          : undefined
+      }
     />
   );
 }

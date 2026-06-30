@@ -1,9 +1,28 @@
-import { Building2, LogOut, Plus, Undo2 } from 'lucide-react';
+import {
+  Building2,
+  ChevronDown,
+  LogIn,
+  LogOut,
+  Undo2,
+  UserCheck,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui';
-import { cn } from '@/shared/utils';
+import { SearchableSelect } from '@/shared/components';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Input,
+  Label,
+} from '@/shared/components/ui';
+import { cn, getErrorMessage } from '@/shared/utils';
 
 import type { LabourGateEntry } from '../../api/labourGate/labourGate.api';
 import {
@@ -11,243 +30,368 @@ import {
   useLabourGateDay,
   useUndoLabourOut,
 } from '../../api/labourGate/labourGate.queries';
+import { ProgressBar, SummaryStat } from './labourShared';
+import { fmtTime, pctOf, todayLocal } from './labourUtils';
 
-function todayLocal(): string {
-  const d = new Date();
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
-}
-
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-}
-
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-  return (
-    <div className="text-center">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn('font-semibold', accent && 'text-primary')}>{value}</p>
-    </div>
-  );
-}
-
-interface DepartmentGroup {
-  key: string;
-  name: string;
-  entries: LabourGateEntry[];
-  totalIn: number;
-  totalOut: number;
-  remaining: number;
+interface AuditRow {
+  batchId: number;
+  entryId: number;
+  contractorName: string;
+  count: number;
+  createdAt: string;
+  by?: string | null;
+  canUndo: boolean;
 }
 
 export default function LabourOutPage() {
   const [workDate, setWorkDate] = useState<string>(todayLocal());
-  const [batchInputs, setBatchInputs] = useState<Record<number, string>>({});
+  const [outContractorId, setOutContractorId] = useState<number | null>(null);
+  const [outCount, setOutCount] = useState('');
+  const [openDepts, setOpenDepts] = useState<Set<number>>(new Set());
 
-  const { data: entries = [], isLoading } = useLabourGateDay(workDate);
+  const { data: allEntries = [], isLoading } = useLabourGateDay(workDate);
   const addOut = useAddLabourOut();
   const undoOut = useUndoLabourOut();
-
   const busy = addOut.isPending || undoOut.isPending;
 
-  const totalIn = useMemo(() => entries.reduce((s, e) => s + e.count_in, 0), [entries]);
-  const totalOut = useMemo(() => entries.reduce((s, e) => s + e.total_out, 0), [entries]);
-  const totalRemaining = totalIn - totalOut;
+  const gateEntries = useMemo(
+    () => allEntries.filter((e) => e.department == null && !e.is_deleted),
+    [allEntries],
+  );
+  const moduleEntries = useMemo(
+    () => allEntries.filter((e) => e.department != null && !e.is_deleted),
+    [allEntries],
+  );
 
-  // Group the labour-in records by department for review.
-  const groups = useMemo<DepartmentGroup[]>(() => {
-    const map = new Map<string, DepartmentGroup>();
-    entries.forEach((e) => {
-      const key = e.department != null ? `d${e.department}` : 'none';
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          name: e.department_name ?? 'No department',
-          entries: [],
-          totalIn: 0,
-          totalOut: 0,
-          remaining: 0,
-        });
-      }
-      const g = map.get(key)!;
-      g.entries.push(e);
-      g.totalIn += e.count_in;
-      g.totalOut += e.total_out;
-      g.remaining = g.totalIn - g.totalOut;
+  const totalIn = useMemo(() => gateEntries.reduce((s, e) => s + e.count_in, 0), [gateEntries]);
+  const totalOut = useMemo(() => gateEntries.reduce((s, e) => s + e.total_out, 0), [gateEntries]);
+  const totalInside = totalIn - totalOut;
+  const allCleared = totalIn > 0 && totalInside === 0;
+
+  // Department-wise read-only breakdown (from the Labour module).
+  const departmentGroups = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; total: number; rows: LabourGateEntry[] }>();
+    moduleEntries.forEach((e) => {
+      const id = e.department as number;
+      if (!map.has(id)) map.set(id, { id, name: e.department_name ?? `#${id}`, total: 0, rows: [] });
+      const g = map.get(id)!;
+      g.rows.push(e);
+      g.total += e.count_in;
     });
-    return Array.from(map.values());
-  }, [entries]);
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [moduleEntries]);
 
-  const handleOut = async (entry: LabourGateEntry) => {
-    const n = parseInt(batchInputs[entry.id] ?? '', 10);
+  // Contractors with labour still inside — the out form's options.
+  const outableEntries = useMemo(() => gateEntries.filter((e) => e.remaining > 0), [gateEntries]);
+  const selectedEntry = useMemo(
+    () => gateEntries.find((e) => e.contractor === outContractorId) ?? null,
+    [gateEntries, outContractorId],
+  );
+
+  // Flat out audit log (newest first), with undo on the most recent batch.
+  const auditRows = useMemo<AuditRow[]>(() => {
+    const rows: AuditRow[] = [];
+    gateEntries.forEach((e) => {
+      const batches = [...(e.out_batches ?? [])].sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime() || a.id - b.id,
+      );
+      const latestId = batches.length ? batches[batches.length - 1].id : -1;
+      batches.forEach((b) => {
+        rows.push({
+          batchId: b.id,
+          entryId: e.id,
+          contractorName: e.contractor_name ?? `#${e.contractor}`,
+          count: b.count,
+          createdAt: b.created_at,
+          by: b.by,
+          canUndo: e.can_undo_last && b.id === latestId,
+        });
+      });
+    });
+    return rows.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || b.batchId - a.batchId,
+    );
+  }, [gateEntries]);
+
+  const toggleDept = (id: number) =>
+    setOpenDepts((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const handleOut = async () => {
+    if (!selectedEntry) {
+      toast.error('Select a contractor');
+      return;
+    }
+    const n = parseInt(outCount, 10);
     if (!n || n <= 0) {
       toast.error('Enter how many just left');
       return;
     }
-    if (n > entry.remaining) {
-      toast.error(`Only ${entry.remaining} remaining inside`);
+    if (n > selectedEntry.remaining) {
+      toast.error(`Only ${selectedEntry.remaining} remaining inside`);
       return;
     }
     try {
-      await addOut.mutateAsync({ id: entry.id, count: n });
-      setBatchInputs((prev) => ({ ...prev, [entry.id]: '' }));
-    } catch {
-      toast.error('Could not mark out');
+      await addOut.mutateAsync({ id: selectedEntry.id, count: n });
+      setOutCount('');
+      toast.success(`${selectedEntry.contractor_name}: ${n} out`);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not mark out'));
     }
   };
 
-  const handleUndo = async (entry: LabourGateEntry) => {
+  const handleUndo = async (entryId: number) => {
     try {
-      await undoOut.mutateAsync(entry.id);
-    } catch {
-      toast.error('Could not undo');
+      await undoOut.mutateAsync(entryId);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not undo'));
     }
   };
 
   return (
     <div className="space-y-6 pb-6">
-      <div className="space-y-1">
-        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <LogOut className="h-7 w-7" />
-          Labour Out
-        </h2>
-        <p className="text-muted-foreground">
-          Review labour-in counts department-wise, then mark labour out in batches as each group
-          leaves.
-        </p>
+      {/* Header + date */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <LogOut className="h-7 w-7" />
+            Labour Out
+          </h2>
+          <p className="text-muted-foreground">
+            Mark labour out per contractor as they leave. The department breakdown below is
+            informational.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="workDate">Date</Label>
+          <Input
+            id="workDate"
+            type="date"
+            value={workDate}
+            onChange={(e) => setWorkDate(e.target.value)}
+            className="border-2 font-medium sm:w-44"
+          />
+        </div>
       </div>
-
-      {/* Date */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="workDate">Date</Label>
-              <Input
-                id="workDate"
-                type="date"
-                value={workDate}
-                onChange={(e) => setWorkDate(e.target.value)}
-                className="border-2 font-medium"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {isLoading ? (
         <div className="flex items-center justify-center h-40">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
-      ) : entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No labour recorded in for this date.</p>
+      ) : gateEntries.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            No labour recorded in for this date.
+          </CardContent>
+        </Card>
       ) : (
         <>
-          {/* Grand totals */}
-          <Card className={cn(totalRemaining === 0 && 'border-green-500/50')}>
-            <CardContent className="pt-6 flex flex-wrap items-center gap-8">
-              <div>
-                <p className="text-xs text-muted-foreground">In</p>
-                <p className="text-2xl font-bold">{totalIn}</p>
+          {/* Summary */}
+          <Card className={cn(allCleared && 'border-green-500/50')}>
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex flex-wrap items-end gap-8">
+                <SummaryStat icon={<LogIn className="h-4 w-4" />} label="In" value={totalIn} />
+                <SummaryStat
+                  icon={<LogOut className="h-4 w-4" />}
+                  label="Out"
+                  value={totalOut}
+                  className="text-primary"
+                />
+                <SummaryStat
+                  icon={<UserCheck className="h-4 w-4" />}
+                  label="Inside"
+                  value={totalInside}
+                  className={cn(allCleared && 'text-green-600 dark:text-green-400')}
+                />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Out</p>
-                <p className="text-2xl font-bold text-primary">{totalOut}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Still inside</p>
-                <p className="text-2xl font-bold">{totalRemaining}</p>
+              <ProgressBar pct={pctOf(totalOut, totalIn)} tone={allCleared ? 'green' : 'primary'} />
+            </CardContent>
+          </Card>
+
+          {/* Department-wise info (read-only) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Building2 className="h-5 w-5" />
+                Department Breakdown
+                <span className="text-xs font-normal text-muted-foreground">(from Labour module)</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {departmentGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  No department split entered in the Labour module.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {departmentGroups.map((g) => {
+                    const open = openDepts.has(g.id);
+                    return (
+                      <Collapsible key={g.id} open={open} onOpenChange={() => toggleDept(g.id)}>
+                        <div className="rounded-lg border">
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-muted/40"
+                            >
+                              <span className="flex items-center gap-2 font-medium">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                {g.name}
+                              </span>
+                              <span className="flex items-center gap-2">
+                                <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold">
+                                  {g.total}
+                                </span>
+                                <ChevronDown
+                                  className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
+                                />
+                              </span>
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="divide-y border-t">
+                              {g.rows.map((entry) => (
+                                <div
+                                  key={entry.id}
+                                  className="flex items-center justify-between gap-4 p-3 text-sm"
+                                >
+                                  <span className="font-medium">
+                                    {entry.contractor_name ?? `#${entry.contractor}`}
+                                  </span>
+                                  <span className="font-semibold">{entry.count_in}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Out form */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Mark Out</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="out-contractor">Contractor</Label>
+                    <SearchableSelect<LabourGateEntry>
+                      inputId="out-contractor"
+                      value={selectedEntry?.contractor_name}
+                      items={outableEntries}
+                      isLoading={false}
+                      placeholder="Search contractor with labour inside"
+                      inputClassName="border-2 font-medium"
+                      loadingText="Loading..."
+                      emptyText="No contractors with labour inside"
+                      notFoundText="No contractor found"
+                      getItemKey={(e) => e.contractor}
+                      getItemLabel={(e) => e.contractor_name ?? `#${e.contractor}`}
+                      filterFn={(e, search) =>
+                        (e.contractor_name ?? '').toLowerCase().includes(search.toLowerCase())
+                      }
+                      renderItem={(e) => (
+                        <div className="flex min-w-0 items-center justify-between gap-2">
+                          <span className="truncate text-sm font-medium">{e.contractor_name}</span>
+                          <span className="text-xs text-muted-foreground">{e.remaining} inside</span>
+                        </div>
+                      )}
+                      onItemSelect={(e) => setOutContractorId(e.contractor)}
+                      onClear={() => setOutContractorId(null)}
+                    />
+                    {selectedEntry && (
+                      <p className="text-xs text-muted-foreground">
+                        {selectedEntry.remaining} inside · {selectedEntry.total_out} out of{' '}
+                        {selectedEntry.count_in}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="out-count">Number leaving</Label>
+                    <Input
+                      id="out-count"
+                      type="number"
+                      min="1"
+                      inputMode="numeric"
+                      value={outCount}
+                      onChange={(e) => setOutCount(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="0"
+                      className="border-2 font-medium text-right"
+                    />
+                  </div>
+                </div>
+                <Button type="button" onClick={handleOut} disabled={busy} className="md:h-10">
+                  <LogOut className="h-4 w-4 mr-1" /> Out
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Department-wise */}
-          {groups.map((group) => (
-            <Card key={group.key}>
-              <CardHeader>
-                <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
-                  <span className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    {group.name}
-                  </span>
-                  <span className="flex items-center gap-4 font-normal">
-                    <Stat label="In" value={group.totalIn} />
-                    <Stat label="Out" value={group.totalOut} accent />
-                    <Stat label="Inside" value={group.remaining} />
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {group.entries.map((entry) => {
-                  const done = entry.remaining === 0;
-                  const batches = entry.out_batches ?? [];
-                  return (
-                    <div key={entry.id} className="rounded-lg border p-3 space-y-2">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="min-w-[10rem] font-medium">
-                          {entry.contractor_name ?? `#${entry.contractor}`}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-4">
-                          <Stat label="In" value={entry.count_in} />
-                          <Stat label="Out" value={entry.total_out} accent />
-                          <Stat label="Inside" value={entry.remaining} />
-                          {done ? (
-                            <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                              All out
-                            </span>
-                          ) : (
-                            <Input
-                              type="number"
-                              min="1"
-                              inputMode="numeric"
-                              value={batchInputs[entry.id] ?? ''}
-                              onChange={(e) =>
-                                setBatchInputs((prev) => ({
-                                  ...prev,
-                                  [entry.id]: e.target.value.replace(/[^0-9]/g, ''),
-                                }))
-                              }
-                              placeholder="#"
-                              className="w-16 border-2 font-medium text-right"
-                            />
-                          )}
-                          {!done && (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              onClick={() => handleOut(entry)}
-                              disabled={busy}
-                            >
-                              <Plus className="h-4 w-4 mr-1" /> Out
-                            </Button>
-                          )}
-                          {batches.length > 0 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleUndo(entry)}
-                              disabled={busy}
-                              title="Undo last batch"
-                            >
-                              <Undo2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      {batches.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Out:{' '}
-                          {batches.map((b) => `+${b.count} @ ${fmtTime(b.created_at)}`).join('  ·  ')}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          ))}
+          {/* Out audit log */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Out Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {auditRows.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">No labour marked out yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                        <th className="py-2 pr-4 font-medium">Time</th>
+                        <th className="py-2 pr-4 font-medium">Contractor</th>
+                        <th className="py-2 pr-4 font-medium text-right">Out</th>
+                        <th className="py-2 pr-4 font-medium">By</th>
+                        <th className="py-2 font-medium" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {auditRows.map((r) => (
+                        <tr key={r.batchId}>
+                          <td className="py-2 pr-4 whitespace-nowrap text-muted-foreground">
+                            {fmtTime(r.createdAt)}
+                          </td>
+                          <td className="py-2 pr-4 font-medium">{r.contractorName}</td>
+                          <td className="py-2 pr-4 text-right font-semibold text-primary">
+                            +{r.count}
+                          </td>
+                          <td className="py-2 pr-4 text-muted-foreground">{r.by ?? '—'}</td>
+                          <td className="py-2 text-right">
+                            {r.canUndo && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUndo(r.entryId)}
+                                disabled={busy}
+                                title="Undo (within 10 min)"
+                              >
+                                <Undo2 className="h-4 w-4 mr-1" /> Undo
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

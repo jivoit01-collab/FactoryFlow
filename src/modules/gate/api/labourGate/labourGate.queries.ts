@@ -43,6 +43,16 @@ export function useRemoveLabourIn() {
   });
 }
 
+export function useRestoreLabourIn() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => labourGateApi.restore(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [DAY_KEY] });
+    },
+  });
+}
+
 export function useAddLabourOut() {
   const queryClient = useQueryClient();
   return useMutation({

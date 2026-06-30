@@ -176,15 +176,15 @@ describe('Gate Module Config', () => {
     expect(content).toContain("path: '/gate/visitor-labour/contractors'");
   });
 
-  it('lazy-loads LabourInPage and LabourOutPage', () => {
-    expect(content).toContain("lazy(() => import('./pages/labourGatePages/LabourInPage'))");
+  it('lazy-loads GateLabourInPage and LabourOutPage', () => {
+    expect(content).toContain("lazy(() => import('./pages/labourGatePages/GateLabourInPage'))");
     expect(content).toContain("lazy(() => import('./pages/labourGatePages/LabourOutPage'))");
   });
 
   it('includes the labour in/out routes', () => {
     expect(content).toContain("path: '/gate/labour-in'");
     expect(content).toContain("path: '/gate/labour-out'");
-    expect(content).toContain('element: <LabourInPage />');
+    expect(content).toContain('element: <GateLabourInPage />');
     expect(content).toContain('element: <LabourOutPage />');
   });
 

@@ -8,7 +8,7 @@ import type { ModuleConfig } from '@/core/types';
 // gate-domain masters: Contractor, Department). This top-level Labour module
 // gives it its own sidebar entry and /labour route. The recorded data is then
 // marked out from the gate's "Labour Out" screen (Gate Out section).
-const LabourEntryPage = lazy(() => import('@/modules/gate/pages/labourGatePages/LabourInPage'));
+const LabourModulePage = lazy(() => import('@/modules/gate/pages/labourGatePages/LabourModulePage'));
 
 const LABOUR_PERMISSIONS = [
   GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN,
@@ -25,7 +25,7 @@ export const labourModuleConfig: ModuleConfig = {
   routes: [
     {
       path: '/labour',
-      element: <LabourEntryPage />,
+      element: <LabourModulePage />,
       layout: 'main',
       permissions: LABOUR_PERMISSIONS,
       breadcrumb: { label: 'Labour' },
