@@ -9,6 +9,12 @@ const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
 const BOMRequestDetailPage = lazy(() => import('./pages/BOMRequestDetailPage'));
 const FGReceiptListPage = lazy(() => import('./pages/FGReceiptListPage'));
 
+// BST (Branch Stock Transfer) Pages
+const BSTDashboardPage = lazy(() => import('./pages/bst/BSTDashboardPage'));
+const BSTNewPage = lazy(() => import('./pages/bst/BSTNewPage'));
+const BSTScanPage = lazy(() => import('./pages/bst/BSTScanPage'));
+const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
+
 // WMS Pages
 const WMSDashboardPage = lazy(() => import('./pages/WMSDashboardPage'));
 const StockTrackerPage = lazy(() => import('./pages/StockTrackerPage'));
@@ -44,6 +50,31 @@ export const warehouseModuleConfig: ModuleConfig = {
       element: <FGReceiptListPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
+    },
+    // BST Routes
+    {
+      path: '/warehouse/bst',
+      element: <BSTDashboardPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+    },
+    {
+      path: '/warehouse/bst/new',
+      element: <BSTNewPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+    },
+    {
+      path: '/warehouse/bst/:transferId',
+      element: <BSTDetailPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+    },
+    {
+      path: '/warehouse/bst/:transferId/scan',
+      element: <BSTScanPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
     },
     // WMS Routes
     {
@@ -107,6 +138,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/fg-receipts',
           title: 'FG Receipts',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
+        },
+        {
+          path: '/warehouse/bst',
+          title: 'Branch Transfer',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
         },
       ],
     },

@@ -5,6 +5,12 @@ export {
   type UseCurrentTimeConfig,
   type UseCurrentTimeReturn,
 } from './useCurrentTime';
+export {
+  useBoxScanQueue,
+  type FailedScan,
+  type UseBoxScanQueueOptions,
+  type UseBoxScanQueueResult,
+} from './useBoxScanQueue';
 export { useDebounce } from './useDebounce';
 export {
   useEditFormState,

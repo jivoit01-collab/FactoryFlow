@@ -1,0 +1,191 @@
+import { Loader2, ScanLine } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+
+import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
+
+import { useBSTTransfer, useCancelBST } from '../../api';
+import type { BSTReceiveStatus } from '../../types';
+import { BSTStatusBadge } from './bstStatus';
+
+function formatDateTime(value: string | null): string {
+  if (!value) return '—';
+  return new Date(value).toLocaleString();
+}
+
+function ReceiveBadge({ status }: { status: BSTReceiveStatus }) {
+  const cfg: Record<BSTReceiveStatus, string> = {
+    PENDING: 'bg-slate-100 text-slate-700',
+    ACCEPTED: 'bg-green-100 text-green-800',
+    REJECTED: 'bg-red-100 text-red-800',
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${cfg[status]}`}>
+      {status}
+    </span>
+  );
+}
+
+export default function BSTDetailPage() {
+  const { transferId: idParam } = useParams<{ transferId: string }>();
+  const transferId = Number(idParam);
+  const navigate = useNavigate();
+
+  const { data: t, isLoading } = useBSTTransfer(transferId);
+  const cancelMut = useCancelBST();
+
+  if (isLoading || !t) {
+    return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
+  }
+
+  const canResume = t.status === 'SCANNING' || t.status === 'DRAFT';
+  const canCancel = !['RECEIVED', 'PARTIALLY_RECEIVED', 'CLOSED', 'CANCELLED'].includes(t.status);
+
+  const handleCancel = async () => {
+    try {
+      await cancelMut.mutateAsync({ transferId, cancelReason: 'Cancelled from detail page' });
+      toast.success('BST cancelled');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not cancel'));
+    }
+  };
+
+  const infoRows: Array<[string, string]> = [
+    ['Source', `${t.company_name} (${t.company_code})`],
+    ['Destination', `${t.to_company_name} (${t.to_company_code})`],
+    ['SAP Doc', t.sap_doc_num || '—'],
+    ['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`],
+    ['Invoice / Ref', t.invoice_no || '—'],
+    ['Vehicle', t.vehicle_number],
+    ['Driver', t.driver_name],
+    ['Requires gate', t.requires_gate ? 'Yes' : 'No'],
+    ['Created by', `${t.created_by_name} · ${formatDateTime(t.created_at)}`],
+    ['Dispatched', t.dispatched_at ? `${t.dispatched_by_name} · ${formatDateTime(t.dispatched_at)}` : '—'],
+    ['Gated out', formatDateTime(t.gated_out_at)],
+    ['Gated in', formatDateTime(t.gated_in_at)],
+    ['Received', t.received_at ? `${t.received_by_name} · ${formatDateTime(t.received_at)}` : '—'],
+  ];
+
+  return (
+    <div className="space-y-6">
+      <DashboardHeader title={t.entry_no} description="Branch stock transfer detail">
+        <div className="flex items-center gap-2">
+          <BSTStatusBadge status={t.status} />
+          {canResume && (
+            <Button onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}>
+              <ScanLine className="h-4 w-4 mr-1" /> Resume scanning
+            </Button>
+          )}
+          {canCancel && (
+            <Button variant="outline" onClick={handleCancel} disabled={cancelMut.isPending}>
+              {cancelMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Cancel
+            </Button>
+          )}
+        </div>
+      </DashboardHeader>
+
+      <Card>
+        <CardContent className="pt-6 grid gap-x-8 gap-y-2 sm:grid-cols-2 text-sm">
+          {infoRows.map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-4 border-b py-1.5">
+              <span className="text-muted-foreground">{label}</span>
+              <span className="font-medium text-right">{value}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Expected items */}
+      <Card>
+        <CardContent className="pt-6">
+          <p className="font-medium mb-3">Expected items ({t.items.length})</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-2 px-3">Line</th>
+                  <th className="py-2 px-3">Item</th>
+                  <th className="py-2 px-3 text-right">Qty</th>
+                  <th className="py-2 px-3">From → To</th>
+                </tr>
+              </thead>
+              <tbody>
+                {t.items.map((it) => (
+                  <tr key={it.id} className="border-b">
+                    <td className="py-2 px-3">{it.line_num}</td>
+                    <td className="py-2 px-3">
+                      <p className="font-medium">{it.item_code}</p>
+                      <p className="text-xs text-muted-foreground">{it.item_name}</p>
+                    </td>
+                    <td className="py-2 px-3 text-right">
+                      {it.quantity} {it.uom}
+                    </td>
+                    <td className="py-2 px-3">
+                      {it.from_warehouse} → {it.to_warehouse}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Box scans */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-medium">Boxes ({t.box_scans.length})</p>
+            <div className="flex gap-2">
+              <Badge variant="outline" className="text-green-700">
+                {t.accepted_count} accepted
+              </Badge>
+              <Badge variant="outline" className="text-red-700">
+                {t.rejected_count} rejected
+              </Badge>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-2 px-3">Box</th>
+                  <th className="py-2 px-3">Item</th>
+                  <th className="py-2 px-3">Pallet</th>
+                  <th className="py-2 px-3">Receive</th>
+                </tr>
+              </thead>
+              <tbody>
+                {t.box_scans.map((s) => (
+                  <tr key={s.id} className="border-b">
+                    <td className="py-2 px-3 font-medium">
+                      {s.box_barcode}
+                      {s.is_unexpected && (
+                        <Badge variant="outline" className="ml-1 text-amber-700">
+                          unexpected
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="py-2 px-3">{s.item_code}</td>
+                    <td className="py-2 px-3">{s.pallet_code || '—'}</td>
+                    <td className="py-2 px-3">
+                      <ReceiveBadge status={s.receive_status} />
+                      {s.reject_reason && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({s.reject_reason})
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
