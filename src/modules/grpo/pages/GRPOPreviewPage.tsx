@@ -118,7 +118,8 @@ export default function GRPOPreviewPage() {
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
   const isPosting = postGRPO.isPending;
-  const { printQCReport, printingArrivalSlipId, printPortal, printError } = useQCReportPrint();
+  const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
+    useQCReportPrint();
 
   // Separate posted and unposted POs
   const unpostedPOs = useMemo(
@@ -490,6 +491,7 @@ export default function GRPOPreviewPage() {
 
   return (
     <div className="space-y-6 pb-32">
+      {printOptionsModal}
       {printPortal}
 
       {/* Header */}

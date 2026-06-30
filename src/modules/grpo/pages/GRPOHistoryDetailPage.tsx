@@ -35,7 +35,8 @@ export default function GRPOHistoryDetailPage() {
 
   const { data: posting, isLoading, error, refetch } = useGRPODetail(id);
   const canManageAttachments = useHasPermission(GRPO_PERMISSIONS.MANAGE_ATTACHMENTS);
-  const { printQCReport, printingArrivalSlipId, printPortal, printError } = useQCReportPrint();
+  const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
+    useQCReportPrint();
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
@@ -44,6 +45,7 @@ export default function GRPOHistoryDetailPage() {
 
   return (
     <div className="space-y-6">
+      {printOptionsModal}
       {printPortal}
       {/* Header */}
       <div className="flex items-center gap-2 mb-1">
@@ -198,10 +200,7 @@ export default function GRPOHistoryDetailPage() {
           )}
 
           {/* Record Timestamps */}
-          <RecordTimestamps
-            createdAt={posting.created_at}
-            updatedAt={posting.updated_at}
-          />
+          <RecordTimestamps createdAt={posting.created_at} updatedAt={posting.updated_at} />
           {/* Attachments */}
           {posting.status === 'POSTED' && (
             <AttachmentsSection

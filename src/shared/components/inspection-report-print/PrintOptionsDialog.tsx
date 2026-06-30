@@ -13,17 +13,19 @@ import {
   Label,
 } from '@/shared/components/ui';
 
-import type { PrintSections } from './InspectionReportPrint';
+import type { PrintSections } from './types';
 
 interface PrintOptionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Whether the inspection actually has a COA attachment to print. */
+  /** Whether the report actually has a COA attachment to print. */
   hasCoa: boolean;
-  /** Whether the inspection actually has a COQ attachment to print. */
+  /** Whether the report actually has a COQ attachment to print. */
   hasCoq: boolean;
-  /** Whether the inspection actually has QC-uploaded attachments to print. */
+  /** Whether the report actually has QC-uploaded attachments to print. */
   hasQcAttachments: boolean;
+  /** QC attachments only exist for some report sources; hide the row otherwise. */
+  showQcAttachments: boolean;
   /** Called with the chosen sections when the user confirms. */
   onConfirm: (sections: PrintSections) => void;
 }
@@ -37,9 +39,8 @@ type SectionRow = {
 
 /**
  * Lets the user pick which sections of the inspection printout to send to the
- * browser print dialog. Attachment rows (COA/COQ/QC) are disabled (and
- * unchecked) when nothing of that type is attached, so the user can't print an
- * empty section.
+ * browser print dialog. Attachment rows are disabled (and unchecked) when
+ * nothing of that type is attached, so an empty section can't be printed.
  */
 export function PrintOptionsDialog({
   open,
@@ -47,6 +48,7 @@ export function PrintOptionsDialog({
   hasCoa,
   hasCoq,
   hasQcAttachments,
+  showQcAttachments,
   onConfirm,
 }: PrintOptionsDialogProps) {
   const defaultSections = (): PrintSections => ({
@@ -59,8 +61,8 @@ export function PrintOptionsDialog({
   const [sections, setSections] = useState<PrintSections>(defaultSections);
 
   // Reset to sensible defaults whenever the dialog transitions to open
-  // (availability can change between inspections that share this instance).
-  // Done during render per React's "adjust state when a prop changes" guidance,
+  // (availability can change between reports that share this instance). Done
+  // during render per React's "adjust state when a prop changes" guidance,
   // which avoids an extra render cycle and the set-state-in-effect lint rule.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
@@ -84,12 +86,16 @@ export function PrintOptionsDialog({
       available: hasCoq,
       unavailableHint: 'No COQ attached',
     },
-    {
-      key: 'qcAttachments',
-      label: 'QC attachments',
-      available: hasQcAttachments,
-      unavailableHint: 'No QC attachments',
-    },
+    ...(showQcAttachments
+      ? [
+          {
+            key: 'qcAttachments' as const,
+            label: 'QC attachments',
+            available: hasQcAttachments,
+            unavailableHint: 'No QC attachments',
+          },
+        ]
+      : []),
   ];
 
   const nothingSelected = !Object.values(sections).some(Boolean);

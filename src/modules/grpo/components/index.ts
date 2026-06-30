@@ -3,6 +3,7 @@ export { ExtraChargesSection } from './ExtraChargesSection';
 export {
   GRPOInspectionReportPrintStyles,
   GRPOInspectionReportPrintView,
+  type GRPOPrintSections,
 } from './QCInspectionReportPrint';
 export type { QCReportButtonItem } from './QCReportButton';
 export { QCReportButton } from './QCReportButton';
