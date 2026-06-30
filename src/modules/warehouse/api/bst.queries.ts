@@ -19,7 +19,8 @@ export const BST_QUERY_KEYS = {
   detail: (id: number) => [...BST_QUERY_KEYS.all, 'detail', id] as const,
   incoming: (params?: BSTListParams) => [...BST_QUERY_KEYS.all, 'incoming', params ?? {}] as const,
   incomingDetail: (id: number) => [...BST_QUERY_KEYS.all, 'incoming', id] as const,
-  gateOutwards: () => [...BST_QUERY_KEYS.all, 'gate', 'outwards'] as const,
+  gateOutwards: (params?: BSTListParams) =>
+    [...BST_QUERY_KEYS.all, 'gate', 'outwards', params ?? {}] as const,
   gateInwards: () => [...BST_QUERY_KEYS.all, 'gate', 'inwards'] as const,
   sapTransfers: (search?: string) => [...BST_QUERY_KEYS.all, 'sap-transfers', { search }] as const,
   sapTransfer: (docEntry: number) => [...BST_QUERY_KEYS.all, 'sap-transfer', docEntry] as const,
@@ -160,10 +161,10 @@ export function useCompleteBSTReceive() {
 // Gate
 // ============================================================================
 
-export function useBSTGateOutwards() {
+export function useBSTGateOutwards(params?: BSTListParams) {
   return useQuery({
-    queryKey: BST_QUERY_KEYS.gateOutwards(),
-    queryFn: () => bstApi.listGateOutwards(),
+    queryKey: BST_QUERY_KEYS.gateOutwards(params),
+    queryFn: () => bstApi.listGateOutwards(params),
   });
 }
 

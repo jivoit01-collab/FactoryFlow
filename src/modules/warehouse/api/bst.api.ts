@@ -118,8 +118,11 @@ export const bstApi = {
   },
 
   // ---- Gate ----
-  async listGateOutwards(): Promise<BSTTransferListItem[]> {
-    const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_GATE_OUTWARDS);
+  async listGateOutwards(params?: {
+    from_date?: string;
+    to_date?: string;
+  }): Promise<BSTTransferListItem[]> {
+    const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_GATE_OUTWARDS, { params });
     return res.data;
   },
 

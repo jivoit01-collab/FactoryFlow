@@ -13,6 +13,9 @@ import {
 // Lazy load all gate pages
 const GateDashboardPage = lazy(() => import('./pages/GateDashboardPage'));
 const GateNewEntryPage = lazy(() => import('./pages/GateNewEntryPage'));
+// Warehouse-driven BST gate-out (verify warehouse approval + mark vehicle out).
+const BSTGateOutListPage = lazy(() => import('./pages/bstGate/BSTGateOutListPage'));
+const BSTGateOutReviewPage = lazy(() => import('./pages/bstGate/BSTGateOutReviewPage'));
 const RawMaterialsDashboard = lazy(() => import('./pages/rawMaterialPages/RawMaterialsDashboard'));
 const RawMaterialsPage = lazy(() => import('./pages/RawMaterialsPage'));
 
@@ -780,6 +783,20 @@ export const gateModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Empty Vehicle Out Entry' },
     },
     {
+      path: '/gate/bst-out',
+      element: <BSTGateOutListPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
+      breadcrumb: { label: 'BST Out' },
+    },
+    {
+      path: '/gate/bst-out/:transferId',
+      element: <BSTGateOutReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
+      breadcrumb: { label: 'BST Out' },
+    },
+    {
       path: '/gate/customer-return',
       element: <CustomerReturnDashboardPage />,
       layout: 'main',
@@ -981,6 +998,11 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/sales-dispatch/barcode-reports',
           title: 'Barcode Dispatch Reports',
           permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
+        },
+        {
+          path: '/gate/bst-out',
+          title: 'BST Out',
+          permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
         },
       ],
     },
