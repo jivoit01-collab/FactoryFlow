@@ -1,4 +1,4 @@
-import { Camera, CameraOff, Flashlight, Loader2, Send, Trash2, X } from 'lucide-react';
+import { Loader2, Send, Trash2, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { bstApi, useBSTTransfer, useDispatchBST, useRemoveBSTScan } from '../../api';
+import { BoxScanCamera } from './BoxScanCamera';
 import { BSTStatusBadge } from './bstStatus';
 
 export default function BSTScanPage() {
@@ -119,44 +120,12 @@ export default function BSTScanPage() {
                 <Button onClick={handleManualSubmit}>Add</Button>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => (scanner.isScanning ? scanner.stopScanning() : scanner.startScanning())}
-                >
-                  {scanner.isScanning ? (
-                    <>
-                      <CameraOff className="h-4 w-4 mr-1" /> Stop camera
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="h-4 w-4 mr-1" /> Scan with camera
-                    </>
-                  )}
-                </Button>
-                {scanner.isScanning && scanner.torchSupported && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => scanner.toggleTorch()}
-                    title="Toggle flashlight"
-                  >
-                    <Flashlight className={cn('h-4 w-4', scanner.torchOn && 'text-amber-500')} />
-                  </Button>
-                )}
-                {pendingCount > 0 && (
-                  <span className="text-sm text-muted-foreground inline-flex items-center">
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" /> Syncing {pendingCount}…
-                  </span>
-                )}
-              </div>
-
-              {/* Camera viewport */}
-              <div
-                id={scanner.elementId}
-                className={cn('w-full max-w-sm mx-auto rounded-md overflow-hidden', !scanner.isScanning && 'hidden')}
-              />
+              <BoxScanCamera scanner={scanner} flashing={flashing} />
+              {pendingCount > 0 && (
+                <span className="text-sm text-muted-foreground inline-flex items-center">
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" /> Syncing {pendingCount}…
+                </span>
+              )}
               {scanner.error && <p className="text-sm text-red-600">{scanner.error}</p>}
             </CardContent>
           </Card>

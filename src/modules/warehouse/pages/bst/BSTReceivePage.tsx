@@ -1,4 +1,4 @@
-import { Camera, CameraOff, Check, Flashlight, Loader2, PackageCheck, X } from 'lucide-react';
+import { Check, Loader2, PackageCheck, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { cn, getErrorMessage } from '@/shared/utils';
 
 import { bstApi, useBSTIncomingDetail, useCompleteBSTReceive } from '../../api';
 import type { BSTReceiveStatus } from '../../types';
+import { BoxScanCamera } from './BoxScanCamera';
 import { BSTStatusBadge } from './bstStatus';
 
 const RECEIVABLE = ['IN_TRANSIT', 'ARRIVED', 'RECEIVING'];
@@ -45,6 +46,7 @@ export default function BSTReceivePage() {
   const [manualBarcode, setManualBarcode] = useState('');
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [decidingBarcode, setDecidingBarcode] = useState<string | null>(null);
 
   const receivable = transfer ? RECEIVABLE.includes(transfer.status) : false;
   const scans = transfer?.box_scans ?? [];
@@ -92,11 +94,14 @@ export default function BSTReceivePage() {
   };
 
   const handleRowDecision = async (barcode: string, decision: 'ACCEPTED' | 'REJECTED', reason = '') => {
+    setDecidingBarcode(barcode);
     try {
       await decide(barcode, decision, reason);
-      refetch();
+      await refetch();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not update box'));
+    } finally {
+      setDecidingBarcode(null);
     }
   };
 
@@ -156,38 +161,12 @@ export default function BSTReceivePage() {
               <Button onClick={handleManualSubmit}>Accept</Button>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => (scanner.isScanning ? scanner.stopScanning() : scanner.startScanning())}
-              >
-                {scanner.isScanning ? (
-                  <>
-                    <CameraOff className="h-4 w-4 mr-1" /> Stop camera
-                  </>
-                ) : (
-                  <>
-                    <Camera className="h-4 w-4 mr-1" /> Scan with camera
-                  </>
-                )}
-              </Button>
-              {scanner.isScanning && scanner.torchSupported && (
-                <Button variant="outline" size="sm" onClick={() => scanner.toggleTorch()}>
-                  <Flashlight className={cn('h-4 w-4', scanner.torchOn && 'text-amber-500')} />
-                </Button>
-              )}
-              {pendingCount > 0 && (
-                <span className="text-sm text-muted-foreground inline-flex items-center">
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" /> Syncing {pendingCount}…
-                </span>
-              )}
-            </div>
-
-            <div
-              id={scanner.elementId}
-              className={cn('w-full max-w-sm mx-auto rounded-md overflow-hidden', !scanner.isScanning && 'hidden')}
-            />
+            <BoxScanCamera scanner={scanner} flashing={flashing} />
+            {pendingCount > 0 && (
+              <span className="text-sm text-muted-foreground inline-flex items-center">
+                <Loader2 className="h-3 w-3 animate-spin mr-1" /> Syncing {pendingCount}…
+              </span>
+            )}
             {scanner.error && <p className="text-sm text-red-600">{scanner.error}</p>}
           </CardContent>
         </Card>
@@ -267,9 +246,14 @@ export default function BSTReceivePage() {
                                 size="sm"
                                 variant="outline"
                                 className="h-7"
+                                disabled={decidingBarcode === s.box_barcode}
                                 onClick={() => handleRowDecision(s.box_barcode, 'ACCEPTED')}
                               >
-                                <Check className="h-3 w-3 text-green-600" />
+                                {decidingBarcode === s.box_barcode ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                )}
                               </Button>
                             )}
                             {s.receive_status !== 'REJECTED' && (
@@ -277,6 +261,7 @@ export default function BSTReceivePage() {
                                 size="sm"
                                 variant="outline"
                                 className="h-7"
+                                disabled={decidingBarcode === s.box_barcode}
                                 onClick={() => {
                                   setRejectTarget(s.box_barcode);
                                   setRejectReason('');
@@ -331,7 +316,10 @@ export default function BSTReceivePage() {
               <Button variant="outline" onClick={() => setRejectTarget(null)}>
                 Cancel
               </Button>
-              <Button onClick={confirmReject}>Reject</Button>
+              <Button onClick={confirmReject} disabled={decidingBarcode === rejectTarget}>
+                {decidingBarcode === rejectTarget && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Reject
+              </Button>
             </div>
           </div>
         </DialogContent>
