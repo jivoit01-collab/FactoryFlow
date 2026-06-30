@@ -106,7 +106,7 @@ export default function WmsReportsPage() {
           <p className="text-sm text-muted-foreground">Search, utilization, history, replenishment and expiry.</p>
         </div>
         {warehouses.length > 1 ? (
-          <NativeSelect className="w-52" value={activeWarehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
+          <NativeSelect className="w-full sm:w-52" value={activeWarehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
             {warehouses.map((wh) => (
               <option key={wh.id} value={wh.id}>
                 {wh.name}
@@ -222,7 +222,7 @@ function Utilization({ locations, zones, occupancy }: { locations: Parameters<ty
   const rows = utilizationByZone(locations, zones, occupancy);
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-4 gap-2 text-center text-sm">
+      <div className="grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-4">
         <Stat label="Locations" value={total.total} />
         <Stat label="Empty" value={total.empty} />
         <Stat label="Full" value={total.full} />
@@ -288,11 +288,11 @@ function History({ movements }: { movements: Parameters<typeof filterMovements>[
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <NativeSelect className="w-36" value={type} onChange={(event) => setType(event.target.value as MovementType | 'ALL')}>
+        <NativeSelect className="w-28 sm:w-36" value={type} onChange={(event) => setType(event.target.value as MovementType | 'ALL')}>
           {MOVEMENT_TYPES.map((value) => <option key={value} value={value}>{value === 'ALL' ? 'All types' : value}</option>)}
         </NativeSelect>
-        <Input className="w-40" value={item} placeholder="Item" onChange={(event) => setItem(event.target.value)} />
-        <Input type="date" className="w-40" value={from} onChange={(event) => setFrom(event.target.value)} />
+        <Input className="w-28 sm:w-40" value={item} placeholder="Item" onChange={(event) => setItem(event.target.value)} />
+        <Input type="date" className="w-36 sm:w-40" value={from} onChange={(event) => setFrom(event.target.value)} />
         <Button size="sm" variant={onlyDiscrepancies ? 'default' : 'outline'} onClick={() => setOnlyDiscrepancies((v) => !v)}>
           Discrepancies
         </Button>

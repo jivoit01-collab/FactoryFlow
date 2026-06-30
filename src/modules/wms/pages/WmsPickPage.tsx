@@ -7,8 +7,8 @@
  * item, then entering the quantity. When a stop consumes a whole pallet, the
  * mandatory outbound audit is applied before it leaves.
  */
-import { useMemo, useState } from 'react';
 import { CheckCircle2, MapPin, ScanLine } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -22,12 +22,12 @@ import {
   Label,
 } from '@/shared/components/ui';
 
+import { type AuditResult,PalletAuditDialog } from '../components/PalletAuditDialog';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsScanButton } from '../components/WmsScanButton';
-import { PalletAuditDialog, type AuditResult } from '../components/PalletAuditDialog';
-import { useWmsCollection, useWmsEnabled, useWmsRole, useWmsSettings, wmsStore } from '../store';
-import { planPicks } from '../services';
 import type { PickAllocation, PickPlan } from '../services';
+import { planPicks } from '../services';
+import { useWmsCollection, useWmsEnabled, useWmsRole, useWmsSettings, wmsStore } from '../store';
 import { notifyFail, notifyOk } from '../utils';
 
 export default function WmsPickPage() {
@@ -153,7 +153,7 @@ export default function WmsPickPage() {
             <CardTitle className="text-base">Pick line</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="order-ref">Order (optional)</Label>
                 <Input id="order-ref" value={orderRef} onChange={(event) => setOrderRef(event.target.value)} />

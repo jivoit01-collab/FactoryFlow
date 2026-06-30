@@ -7,7 +7,7 @@
  * blocks saving while there are errors. In bulk mode only the fields the user
  * actually changes are applied, and the unique Identity fields are hidden.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { type ReactNode,useEffect, useMemo, useState } from 'react';
 
 import {
   Button,
@@ -25,15 +25,15 @@ import {
   Textarea,
 } from '@/shared/components/ui';
 
-import { TagInput } from './TagInput';
+import type { LocationDraft, LocationDraftField } from '../services';
 import {
+  draftFromLocations,
   HAZMAT_CLASS_SUGGESTIONS,
   MATERIAL_TYPE_SUGGESTIONS,
-  draftFromLocations,
   validateLocationDraft,
 } from '../services';
-import type { LocationDraft, LocationDraftField } from '../services';
 import type { TemperatureClass, WarehouseLocation, Zone } from '../types';
+import { TagInput } from './TagInput';
 
 const LOCATION_TYPE_SUGGESTIONS = ['RACK', 'FLOOR', 'BIN', 'SHELF', 'BULK', 'DOCK'];
 
@@ -143,13 +143,13 @@ export function LocationPropertiesPanel({
 
           {/* Capacity */}
           <Section title="Capacity">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <NumberField label="Max pallets" value={draft.maxPallets} error={errors.maxPallets} onChange={(v) => set('maxPallets', v)} />
               <NumberField label="Max units" value={draft.maxUnits} error={errors.maxUnits} onChange={(v) => set('maxUnits', v)} />
               <NumberField label="Max weight (kg)" value={draft.maxWeight} error={errors.maxWeight} onChange={(v) => set('maxWeight', v)} />
               <NumberField label="Max volume (m³)" value={draft.maxVolume} error={errors.maxVolume} onChange={(v) => set('maxVolume', v)} />
             </div>
-            <div className="grid grid-cols-3 gap-3 pt-1">
+            <div className="grid grid-cols-2 gap-3 pt-1 sm:grid-cols-3">
               <NumberField label="Length (m)" value={draft.dimLength} error={errors.dimLength} onChange={(v) => set('dimLength', v)} />
               <NumberField label="Width (m)" value={draft.dimWidth} error={errors.dimWidth} onChange={(v) => set('dimWidth', v)} />
               <NumberField label="Height (m)" value={draft.dimHeight} error={errors.dimHeight} onChange={(v) => set('dimHeight', v)} />

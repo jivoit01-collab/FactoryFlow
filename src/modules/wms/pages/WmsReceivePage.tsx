@@ -240,7 +240,7 @@ export default function WmsReceivePage() {
         </div>
         {warehouses.length > 1 ? (
           <NativeSelect
-            className="w-52"
+            className="w-full sm:w-52"
             value={activeWarehouseId}
             onChange={(event) => {
               setWarehouseId(event.target.value);
@@ -308,7 +308,7 @@ export default function WmsReceivePage() {
                 <p className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
                   Not in the item catalog — confirm the details below.
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Item code">
                     <Input value={itemCode} onChange={(event) => setItemCode(event.target.value)} />
                   </Field>
@@ -335,7 +335,7 @@ export default function WmsReceivePage() {
           ) : null}
 
           {itemCode.trim() ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Boxes">
                 <Input
                   type="number"

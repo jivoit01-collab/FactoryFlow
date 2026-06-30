@@ -446,12 +446,12 @@ export default function WmsMapPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Warehouse Map</h1>
           <p className="text-sm text-muted-foreground">Live occupancy, status, and scan-driven moves.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           {!moveSession ? (
             <WmsScanButton label="Move pallet" onScan={resolveAndStartMove} />
           ) : null}
           <NativeSelect
-            className="w-48"
+            className="w-full sm:w-48"
             value={selectedId ?? ''}
             onChange={(event) => setSearchParams({ warehouse: event.target.value })}
           >
@@ -488,16 +488,16 @@ export default function WmsMapPage() {
 
       {/* Controls */}
       <Card>
-        <CardContent className="flex flex-wrap items-end gap-3 py-3">
+        <CardContent className="grid grid-cols-2 items-end gap-3 py-3 sm:flex sm:flex-wrap">
           <Control label="Colour by">
-            <NativeSelect value={viewMode} onChange={(event) => setViewMode(event.target.value as ViewMode)}>
+            <NativeSelect className="w-full sm:w-auto" value={viewMode} onChange={(event) => setViewMode(event.target.value as ViewMode)}>
               <option value="status">Status</option>
               <option value="zone">Zone</option>
               <option value="occupancy">Occupancy</option>
             </NativeSelect>
           </Control>
           <Control label="Zone">
-            <NativeSelect value={zoneFilter} onChange={(event) => setZoneFilter(event.target.value)}>
+            <NativeSelect className="w-full sm:w-auto" value={zoneFilter} onChange={(event) => setZoneFilter(event.target.value)}>
               <option value="all">All zones</option>
               <option value="none">No zone</option>
               {zones.map((zone) => (
@@ -509,6 +509,7 @@ export default function WmsMapPage() {
           </Control>
           <Control label="Status">
             <NativeSelect
+              className="w-full sm:w-auto"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as DisplayStatus | 'all')}
             >
@@ -522,7 +523,7 @@ export default function WmsMapPage() {
           </Control>
           {warehouse && warehouse.levels > 1 ? (
             <Control label="Level">
-              <NativeSelect className="w-20" value={safeLevel} onChange={(event) => setLevel(Number(event.target.value))}>
+              <NativeSelect className="w-full sm:w-20" value={safeLevel} onChange={(event) => setLevel(Number(event.target.value))}>
                 {Array.from({ length: warehouse.levels }, (_, index) => (
                   <option key={index} value={index}>
                     {index + 1}
@@ -531,7 +532,7 @@ export default function WmsMapPage() {
               </NativeSelect>
             </Control>
           ) : null}
-          <Control label="Search item, lot or code" className="min-w-48 flex-1">
+          <Control label="Search item, lot or code" className="col-span-2 min-w-0 sm:min-w-48 sm:flex-1">
             <div className="flex gap-2">
               <Input
                 value={search}
