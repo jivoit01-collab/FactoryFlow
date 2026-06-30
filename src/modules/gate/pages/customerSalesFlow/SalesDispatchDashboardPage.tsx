@@ -17,15 +17,23 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
-import { GATE_PERMISSIONS } from '@/config/permissions';
+import { DASHBOARDS_PERMISSIONS, GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
+import type { PipelineStage } from '@/modules/dashboards/dispatch-pipeline/types';
+import {
+  buildPipelineStatusFromStage,
+  getPipelineStageRowClass,
+} from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import {
   type SalesDispatchDashboardEntry,
   type SalesDispatchDocument,
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
   type SalesDispatchLock,
+  type SalesDispatchPendingBooking,
+  useAddDocumentToDocking,
   useSalesDispatchEntries,
   useSalesDispatchLock,
   useSalesDispatchPendingBookings,
@@ -35,6 +43,7 @@ import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
 import { Button, Card, CardContent, Input } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
+import { ExpectedVehiclesSection } from './ExpectedVehiclesSection';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 
 const GATE_OUT_PENDING_STATUS = 'PRINT_COMMITTED';
@@ -95,6 +104,10 @@ export default function SalesDispatchDashboardPage() {
       to_date: dateRange.to,
       search: searchTerm.trim() || undefined,
       document_type: isGateOutMode ? ('INVOICE' as const) : undefined,
+      // The factory handles all three companies as one physical flow, so the
+      // docking / dispatch-out board always aggregates across the user's companies
+      // regardless of the active Company-Code. Each row is tagged with its company.
+      all_companies: 1,
     }),
     [dateRange.from, dateRange.to, searchTerm, isGateOutMode],
   );
@@ -107,11 +120,29 @@ export default function SalesDispatchDashboardPage() {
   } = useSalesDispatchPendingBookings(listParams, { enabled: !isGateOutMode });
   const { data: dispatchLock } = useSalesDispatchLock();
   const updateLock = useUpdateSalesDispatchLock();
+  const addToDocking = useAddDocumentToDocking();
   const isDashboardFetching = isFetching || isPendingBookingsFetching;
   const canCreateDocking = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.CREATE);
   const canManageDockingLock = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.MANAGE_LOCK);
   const canReprintGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.REPRINT_GATEPASS);
   const canViewDockingReports = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.VIEW_REPORTS);
+  const canViewExpectedVehicles = hasPermission(DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE);
+
+  const handleAddToDocking = async (
+    booking: SalesDispatchPendingBooking,
+    docking: SalesDispatchGateOut,
+  ) => {
+    const dispatchPlanId = booking.dispatch_plan_ids?.[0];
+    if (!dispatchPlanId) return;
+    try {
+      await addToDocking.mutateAsync({ id: docking.id, dispatchPlanId });
+      toast.success(`Bill added to ${docking.entry_no}`);
+      void refetch();
+      void refetchPendingBookings();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to add the bill to the docking'));
+    }
+  };
 
   const displayEntries = useMemo(() => {
     if (isGateOutMode) return entries.slice().sort(sortSalesDispatchOutEntries);
@@ -320,6 +351,14 @@ export default function SalesDispatchDashboardPage() {
         />
       )}
 
+      {canViewExpectedVehicles && (
+        <ExpectedVehiclesSection
+          isGateOutMode={isGateOutMode}
+          dateFrom={dateRange.from}
+          dateTo={dateRange.to}
+        />
+      )}
+
       <section>
         <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -365,6 +404,8 @@ export default function SalesDispatchDashboardPage() {
             weighmentPath={routes.weighment}
             gatepassPath={routes.gatepass}
             isGateOutMode={isGateOutMode}
+            onAddToDocking={handleAddToDocking}
+            isAddingToDocking={addToDocking.isPending}
           />
         )}
       </section>
@@ -379,6 +420,8 @@ function DispatchTable({
   weighmentPath,
   gatepassPath,
   isGateOutMode,
+  onAddToDocking,
+  isAddingToDocking,
 }: {
   entries: SalesDispatchDashboardEntry[];
   newEntryPath: string;
@@ -386,37 +429,60 @@ function DispatchTable({
   weighmentPath: (entryId: string | number) => string;
   gatepassPath: (entryId: string | number) => string;
   isGateOutMode: boolean;
+  onAddToDocking?: (booking: SalesDispatchPendingBooking, docking: SalesDispatchGateOut) => void;
+  isAddingToDocking?: boolean;
 }) {
   const navigate = useNavigate();
+
+  // A pending bill whose truck already has an open (pre-photo-lock) docking can be
+  // folded into it instead of standing as its own row. Index those dockings by
+  // vehicle so each pending row can offer an "Add to docking" shortcut; the
+  // backend still enforces the same-truck / not-locked rules.
+  const openDockingByVehicle = useMemo(() => {
+    const map = new Map<string, SalesDispatchGateOut>();
+    for (const entry of entries) {
+      if (isPendingBookingEntry(entry) || entry.status !== 'DOCKED') continue;
+      const key = entry.vehicle != null ? `id:${entry.vehicle}` : `no:${entry.vehicle_no}`;
+      if (!map.has(key)) map.set(key, entry);
+    }
+    return map;
+  }, [entries]);
+
+  const findOpenDocking = (booking: SalesDispatchPendingBooking) => {
+    const byId = booking.vehicle != null ? openDockingByVehicle.get(`id:${booking.vehicle}`) : undefined;
+    return byId ?? openDockingByVehicle.get(`no:${booking.vehicle_no}`);
+  };
 
   return (
     <div className="overflow-hidden rounded-md border">
       <div className="max-h-[520px] overflow-auto">
-        <table className="w-full min-w-[1905px] table-fixed">
+        <table className="w-full min-w-[2180px] table-fixed">
           <colgroup>
             <col className="w-[180px]" />
+            <col className="w-[150px]" />
+            <col className="w-[130px]" />
+            <col className="w-[260px]" />
             <col className="w-[280px]" />
             <col className="w-[240px]" />
             <col className="w-[320px]" />
-            <col className="w-[130px]" />
             <col className="w-[165px]" />
             <col className="w-[165px]" />
             <col className="w-[280px]" />
-            <col className="w-[145px]" />
           </colgroup>
           <thead className="bg-muted/50">
             <tr>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Entry No.</th>
+              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Company</th>
+              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Vehicle</th>
+              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Status</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">SAP Document</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Customer</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Items</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Vehicle</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Dispatch Date</th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">
                 Actual Gate Out
               </th>
               <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Gatepass</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -424,6 +490,8 @@ function DispatchTable({
               const itemSummary = entry.item_summary || summarizeItems(getEntryItems(entry));
               const plannedDispatchDate = getPlannedDispatchDate(entry);
               const actualGateOut = getActualGateOut(entry);
+              const openDocking =
+                onAddToDocking && isPendingBookingEntry(entry) ? findOpenDocking(entry) : undefined;
 
               return (
                 <tr
@@ -446,7 +514,42 @@ function DispatchTable({
                   }}
                 >
                   <td className="whitespace-nowrap p-3 text-sm font-medium">
-                    {isPendingBookingEntry(entry) ? 'Pending' : entry.entry_no}
+                    <div className="space-y-1">
+                      <span>{isPendingBookingEntry(entry) ? 'Pending' : entry.entry_no}</span>
+                      {openDocking ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-full whitespace-nowrap px-2 text-xs font-normal"
+                          disabled={isAddingToDocking}
+                          title={`This bill's truck is already docked as ${openDocking.entry_no}. Add it to that load.`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onAddToDocking?.(entry as SalesDispatchPendingBooking, openDocking);
+                          }}
+                        >
+                          + Add to {openDocking.entry_no}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap p-3 text-sm">
+                    {entry.company_name || entry.company_code ? (
+                      <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                        {entry.company_name || entry.company_code}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
+                  <td className="whitespace-nowrap p-3 text-sm">
+                    <PipelineStatusBadge
+                      status={buildPipelineStatusFromStage(
+                        getSalesDispatchDashboardEntryStage(entry),
+                      )}
+                    />
                   </td>
                   <td className="p-3 text-sm" title={formatDocumentNumbers(entry)}>
                     <div className="flex flex-wrap items-center gap-2">
@@ -472,7 +575,6 @@ function DispatchTable({
                   <td className="p-3 text-sm" title={itemSummary}>
                     <div className="truncate whitespace-nowrap">{itemSummary}</div>
                   </td>
-                  <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
                   <td className="whitespace-nowrap p-3 text-sm">
                     {formatDate(plannedDispatchDate)}
                   </td>
@@ -481,12 +583,6 @@ function DispatchTable({
                     <GateStatusBadge
                       status={entry.gatepass_no ? 'PRINTED' : 'PENDING'}
                       label={entry.gatepass_no || 'Pending'}
-                    />
-                  </td>
-                  <td className="whitespace-nowrap p-3 text-sm">
-                    <GateStatusBadge
-                      status={entry.status}
-                      label={getSalesDispatchDashboardStatusLabel(entry.status, isGateOutMode)}
                     />
                   </td>
                 </tr>
@@ -499,30 +595,17 @@ function DispatchTable({
   );
 }
 
-function getSalesDispatchDashboardRowClassName(entry: SalesDispatchDashboardEntry) {
-  if (isPendingBookingEntry(entry)) {
-    return 'bg-slate-50 hover:bg-slate-100/80';
-  }
+function getSalesDispatchDashboardEntryStage(entry: SalesDispatchDashboardEntry): PipelineStage {
+  if (isPendingBookingEntry(entry)) return 'READY_TO_DOCK';
+  if (entry.status === 'CANCELLED') return 'REJECTED';
+  if (entry.status === 'PENDING_DOCKING') return 'READY_TO_DOCK';
+  return entry.status as PipelineStage;
+}
 
-  switch (entry.status) {
-    case 'PENDING_DOCKING':
-    case 'DOCKED':
-      return 'bg-blue-50/70 hover:bg-blue-100/80';
-    case 'PHOTO_ATTACHED':
-    case 'READY_FOR_GATEPASS':
-      return 'bg-violet-50/70 hover:bg-violet-100/80';
-    case 'GATEPASS_PRINTED':
-      return 'bg-amber-50/80 hover:bg-amber-100/80';
-    case 'PRINT_COMMITTED':
-      return 'bg-sky-50/80 hover:bg-sky-100/80';
-    case 'DISPATCHED':
-      return 'bg-emerald-50/75 hover:bg-emerald-100/80';
-    case 'REJECTED':
-    case 'CANCELLED':
-      return 'bg-red-50/75 hover:bg-red-100/80';
-    default:
-      return 'hover:bg-muted/50';
-  }
+function getSalesDispatchDashboardRowClassName(entry: SalesDispatchDashboardEntry) {
+  return (
+    getPipelineStageRowClass(getSalesDispatchDashboardEntryStage(entry)) || 'hover:bg-muted/50'
+  );
 }
 
 function DockingLockPanel({
@@ -777,6 +860,7 @@ function buildDashboardEntryExportRow(
 
   return {
     'Entry No.': isPending ? 'Pending' : exportValue(entry.entry_no),
+    Company: exportValue(entry.company_name || entry.company_code),
     'Pending Booking': isPending ? 'Yes' : 'No',
     'Dispatch Plan IDs': isPending
       ? entry.dispatch_plan_ids.join(', ')

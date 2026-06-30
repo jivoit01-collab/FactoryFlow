@@ -309,9 +309,9 @@ export default function ArrivalSlipPage() {
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step3`);
+      navigate(`/gate/raw-materials/edit/${entryId}/step2`);
     } else {
-      navigate(`/gate/raw-materials/new/step3?entryId=${entryId}`);
+      navigate(`/gate/raw-materials/new/step2?entryId=${entryId}`);
     }
   };
 

@@ -1,7 +1,13 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import type { ArrivalSlipStatus, EntryStatus } from '@/config/constants';
 import { apiClient } from '@/core/api';
-import type { InspectionFinalStatus, InspectionWorkflowStatus } from '@/modules/qc/types';
+import type {
+  InspectionDecision,
+  InspectionDecisionInfo,
+  InspectionFinalStatus,
+  InspectionWorkflowStatus,
+  QCStage,
+} from '@/modules/qc/types';
 
 type RawMaterialQcStatusCode =
   | 'NO_SLIP'
@@ -134,6 +140,10 @@ export interface GateEntryFullView {
         workflow_status_display?: string;
         final_status: InspectionFinalStatus;
         final_status_display?: string;
+        chemist_decision?: InspectionDecisionInfo;
+        manager_decision?: InspectionDecisionInfo;
+        qc_stage?: QCStage;
+        qc_decision?: InspectionDecision | null;
         is_locked: boolean;
         qa_chemist: string | null;
         qa_chemist_approved_at: string | null;

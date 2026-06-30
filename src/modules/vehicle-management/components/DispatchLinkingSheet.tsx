@@ -1,4 +1,4 @@
-import { Loader2, Plus, Save } from 'lucide-react';
+import { Loader2, Plus, Save, Unlink } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
@@ -26,8 +26,10 @@ interface DispatchLinkingSheetProps {
   selectedBills: DispatchBill[];
   open: boolean;
   isSaving: boolean;
+  isUnlinking: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (docEntry: number, payload: DispatchVehicleLinkPayload) => Promise<void>;
+  onUnlink: (docEntry: number) => Promise<void>;
 }
 
 interface FormState {
@@ -175,11 +177,14 @@ export function DispatchLinkingSheet({
   selectedBills,
   open,
   isSaving,
+  isUnlinking,
   onOpenChange,
   onSave,
+  onUnlink,
 }: DispatchLinkingSheetProps) {
   const [form, setForm] = useState<FormState>(() => formFromBill(bill));
   const [formError, setFormError] = useState('');
+  const [confirmingUnlink, setConfirmingUnlink] = useState(false);
   const formErrors = useMemo(
     () => (formError ? { 'dispatch-linking-form-error': { message: formError } } : {}),
     [formError],
@@ -222,11 +227,21 @@ export function DispatchLinkingSheet({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Sheet form must follow the selected bill.
     setForm(formFromBill(bill));
     setFormError('');
+    setConfirmingUnlink(false);
   }, [bill, open]);
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormError('');
+  }
+
+  const canUnlink = Boolean(
+    bill && !isBatchLink && bill.plan.vehicle_id && !bill.plan.is_vehicle_link_locked,
+  );
+
+  async function handleUnlink() {
+    if (!bill) return;
+    await onUnlink(bill.doc_entry);
   }
 
   function handleVehicleSelect(vehicle: VehicleSelection) {
@@ -301,11 +316,25 @@ export function DispatchLinkingSheet({
           <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4 text-sm sm:grid-cols-3">
             <InfoItem label="Dispatch Date" value={bill.plan.dispatch_date} />
             <InfoItem
-              label="Ship To"
+              label="SAP Location"
               value={
                 isBatchLink
                   ? 'Multiple invoices'
                   : `${compactText(bill.city)} ${compactText(bill.state)}`
+              }
+            />
+            <InfoItem
+              label="Location"
+              value={isBatchLink ? 'Multiple invoices' : compactText(bill.plan.location)}
+            />
+            <InfoItem
+              label="Total Litres"
+              value={
+                isBatchLink
+                  ? `${formatNumber(selectedTotals.litres, 2)} L`
+                  : bill.total_litres > 0
+                    ? `${formatNumber(bill.total_litres, 2)} L`
+                    : '-'
               }
             />
             <InfoItem
@@ -339,6 +368,7 @@ export function DispatchLinkingSheet({
                     <th className="px-2 py-1 text-left font-medium">Customer</th>
                     <th className="px-2 py-1 text-left font-medium">State</th>
                     <th className="px-2 py-1 text-left font-medium">Delivery Point</th>
+                    <th className="px-2 py-1 text-right font-medium">Litres</th>
                     <th className="px-2 py-1 text-right font-medium">Weight</th>
                     <th className="px-2 py-1 text-right font-medium">Amount</th>
                   </tr>
@@ -350,6 +380,11 @@ export function DispatchLinkingSheet({
                       <td className="px-2 py-1">{selected.card_name}</td>
                       <td className="px-2 py-1 whitespace-nowrap">{compactText(selected.state)}</td>
                       <td className="px-2 py-1 whitespace-nowrap">{compactText(selected.city)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">
+                        {selected.total_litres > 0
+                          ? `${formatNumber(selected.total_litres, 2)} L`
+                          : '-'}
+                      </td>
                       <td className="px-2 py-1 text-right tabular-nums">
                         {formatNumber(selected.total_weight, 3)} kg
                       </td>
@@ -434,20 +469,72 @@ export function DispatchLinkingSheet({
               value={form.remarks}
               onChange={(event) => updateField('remarks', event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              If the Total Litres above looks wrong, note the correct litres here.
+            </p>
           </div>
 
-          <SheetFooter className="mt-auto border-t pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <SheetFooter className="mt-auto flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+            {canUnlink ? (
+              confirmingUnlink ? (
+                <div className="flex w-full flex-col gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 sm:w-auto sm:flex-row sm:items-center">
+                  <span className="text-sm text-destructive">
+                    Unlink this vehicle and set the booking back to Pending?
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmingUnlink(false)}
+                      disabled={isUnlinking}
+                    >
+                      Keep
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleUnlink}
+                      disabled={isUnlinking}
+                    >
+                      {isUnlinking ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Unlink className="mr-2 h-4 w-4" />
+                      )}
+                      Confirm Unlink
+                    </Button>
+                  </div>
+                </div>
               ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              Save Link
-            </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setConfirmingUnlink(true)}
+                  disabled={isSaving || isUnlinking}
+                >
+                  <Unlink className="mr-2 h-4 w-4" />
+                  Unlink Vehicle
+                </Button>
+              )
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSaving || isUnlinking}>
+                {isSaving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Save Link
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>

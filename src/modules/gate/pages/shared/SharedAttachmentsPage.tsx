@@ -40,7 +40,7 @@ export default function SharedAttachmentsPage({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentStep = config.totalSteps;
-  const previousStep = `step${config.totalSteps - 1}`;
+  const previousStep = config.attachmentsPreviousStep ?? `step${config.totalSteps - 1}`;
 
   const [error, setError] = useState<string | null>(null);
   const [uploadedAttachmentCount, setUploadedAttachmentCount] = useState(0);

@@ -1,8 +1,9 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, Search, ShieldX, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
-import { Button } from '@/shared/components/ui';
+import { Button, Input } from '@/shared/components/ui';
 
 import { usePendingServiceGRPOEntries } from '../api';
 
@@ -31,6 +32,31 @@ export default function ServicePendingEntriesPage() {
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
+
+  const [search, setSearch] = useState('');
+
+  const filteredEntries = useMemo(() => {
+    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return pendingEntries;
+    return pendingEntries.filter((entry) => {
+      const haystack = [
+        entry.sap_invoice_doc_num,
+        entry.sap_invoice_doc_entry,
+        entry.vehicle_no,
+        entry.linked_vehicle_entry_no,
+        entry.transporter_name,
+        entry.transporter_gstin,
+        entry.driver_name,
+        entry.source_state,
+        entry.bilty_no,
+        entry.invoice_number,
+      ]
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .join(' ')
+        .toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    });
+  }, [pendingEntries, search]);
 
   return (
     <div className="space-y-6">
@@ -101,12 +127,38 @@ export default function ServicePendingEntriesPage() {
 
       {!isLoading && !error && pendingEntries.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Pending ({pendingEntries.length})
+          <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search bill, vehicle, transporter, driver, state, bilty, GSTIN…"
+                className="pl-9 pr-9"
+                aria-label="Search pending service GRPO"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <h3 className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+              Pending ({filteredEntries.length}
+              {filteredEntries.length !== pendingEntries.length ? ` of ${pendingEntries.length}` : ''})
             </h3>
           </div>
 
+          {filteredEntries.length === 0 ? (
+            <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
+              No entries match your search.
+            </div>
+          ) : (
           <div className="rounded-md border overflow-hidden">
             <div className="overflow-x-auto max-w-full">
               <table className="w-full min-w-[1040px]">
@@ -125,7 +177,7 @@ export default function ServicePendingEntriesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingEntries.map((entry) => (
+                  {filteredEntries.map((entry) => (
                     <tr
                       key={entry.dispatch_plan_id}
                       className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
@@ -182,6 +234,7 @@ export default function ServicePendingEntriesPage() {
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

@@ -296,6 +296,16 @@ export function useCommitSalesDispatchPrint() {
   });
 }
 
+export function useAddDocumentToDocking() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, dispatchPlanId }: { id: number; dispatchPlanId: number }) =>
+      salesDispatchApi.addDocument(id, dispatchPlanId),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
 export function useMarkSalesDispatchDispatched() {
   const queryClient = useQueryClient();
 

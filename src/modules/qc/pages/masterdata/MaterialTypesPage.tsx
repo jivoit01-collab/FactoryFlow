@@ -48,6 +48,8 @@ const getSAPItemLabel = (item: SAPItemMasterOption) =>
 const getLinkedSAPItemLabel = (item: { item_code: string; item_name?: string }) =>
   item.item_name ? `${item.item_code} - ${item.item_name}` : item.item_code;
 
+const getMaterialTypeLabel = (type: MaterialType) => `${type.code} - ${type.name}`;
+
 const emptyMaterialTypeForm: CreateMaterialTypeRequest = {
   code: '',
   name: '',
@@ -68,9 +70,12 @@ export default function MaterialTypesPage() {
     isFetching: isMaterialTypesFetching,
     isLoading,
     error,
-  } = useMaterialTypes(
-    materialTypeSearchTerm ? { search: materialTypeSearchTerm } : undefined,
-  );
+  } = useMaterialTypes(materialTypeSearchTerm ? { search: materialTypeSearchTerm } : undefined);
+  const {
+    data: copySourceMaterialTypes = [],
+    isLoading: isCopySourceMaterialTypesLoading,
+    isError: isCopySourceMaterialTypesError,
+  } = useMaterialTypes();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<MaterialType | null>(null);
@@ -135,6 +140,16 @@ export default function MaterialTypesPage() {
       setApiErrors((prev) => {
         const next = { ...prev };
         delete next.sap_items;
+        return next;
+      });
+    }
+  };
+
+  const clearCopySourceError = () => {
+    if (apiErrors.copy_parameters_from_material_type_id) {
+      setApiErrors((prev) => {
+        const next = { ...prev };
+        delete next.copy_parameters_from_material_type_id;
         return next;
       });
     }
@@ -566,38 +581,49 @@ export default function MaterialTypesPage() {
               />
             </div>
 
-            {!editingType && canCopyQCParameters && materialTypes.length > 0 && (
-              <div className="space-y-2 rounded-md border p-3">
-                <Label>Copy QC Parameters From</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={createCopySourceMaterialTypeId}
-                  onChange={(e) => {
-                    setCreateCopySourceMaterialTypeId(e.target.value);
-                    if (apiErrors.copy_parameters_from_material_type_id) {
-                      setApiErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.copy_parameters_from_material_type_id;
-                        return next;
-                      });
-                    }
-                  }}
-                  disabled={isSaving}
-                >
-                  <option value="">Do not copy parameters</option>
-                  {materialTypes.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.code} - {type.name}
-                    </option>
-                  ))}
-                </select>
-                {apiErrors.copy_parameters_from_material_type_id && (
-                  <p className="text-sm text-destructive">
-                    {apiErrors.copy_parameters_from_material_type_id}
-                  </p>
-                )}
-              </div>
-            )}
+            {!editingType &&
+              canCopyQCParameters &&
+              (isCopySourceMaterialTypesLoading || copySourceMaterialTypes.length > 0) && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <SearchableSelect<MaterialType>
+                    value={createCopySourceMaterialTypeId || undefined}
+                    items={copySourceMaterialTypes}
+                    isLoading={isCopySourceMaterialTypesLoading}
+                    isError={isCopySourceMaterialTypesError}
+                    getItemKey={(type) => type.id}
+                    getItemLabel={getMaterialTypeLabel}
+                    renderItem={(type) => (
+                      <div className="min-w-0">
+                        <div className="font-mono text-xs font-medium">{type.code}</div>
+                        <div className="truncate text-sm">{type.name}</div>
+                      </div>
+                    )}
+                    filterFn={(type, search) => {
+                      const term = search.toLowerCase();
+                      return [type.code, type.name, type.description]
+                        .filter(Boolean)
+                        .some((value) => String(value).toLowerCase().includes(term));
+                    }}
+                    label="Copy QC Parameters From"
+                    placeholder="Do not copy parameters"
+                    inputId="qc-copy-parameters-from-material-type"
+                    loadingText="Loading material types..."
+                    emptyText="No material types available"
+                    notFoundText="No matching material type"
+                    errorText="Unable to load material types"
+                    error={apiErrors.copy_parameters_from_material_type_id}
+                    onItemSelect={(type) => {
+                      setCreateCopySourceMaterialTypeId(String(type.id));
+                      clearCopySourceError();
+                    }}
+                    onClear={() => {
+                      setCreateCopySourceMaterialTypeId('');
+                      clearCopySourceError();
+                    }}
+                    disabled={isSaving}
+                  />
+                </div>
+              )}
 
             <div className="space-y-3 rounded-md border p-3">
               <div className="flex items-center justify-between gap-3">

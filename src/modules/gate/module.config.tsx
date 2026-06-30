@@ -18,7 +18,6 @@ const RawMaterialsPage = lazy(() => import('./pages/RawMaterialsPage'));
 
 // Raw Materials wizard pages
 const RMStep1Page = lazy(() => import('./pages/rawMaterialPages/Step1Page'));
-const RMStep2Page = lazy(() => import('./pages/rawMaterialPages/Step2Page'));
 const RMStep3Page = lazy(() => import('./pages/rawMaterialPages/Step3Page'));
 const RMArrivalSlipPage = lazy(() => import('./pages/rawMaterialPages/ArrivalSlipPage'));
 const RMWeighmentPage = lazy(() => import('./pages/rawMaterialPages/Step4Page'));
@@ -27,7 +26,6 @@ const RMReviewPage = lazy(() => import('./pages/rawMaterialPages/ReviewPage'));
 
 // Daily Needs wizard pages
 const DNStep1Page = lazy(() => import('./pages/dailyNeedsPages/Step1Page'));
-const DNStep2Page = lazy(() => import('./pages/dailyNeedsPages/Step2Page'));
 const DNStep3Page = lazy(() => import('./pages/dailyNeedsPages/Step3Page'));
 const DNAttachmentsPage = lazy(() => import('./pages/dailyNeedsPages/AttachmentsPage'));
 const DNReviewPage = lazy(() => import('./pages/dailyNeedsPages/ReviewPage'));
@@ -36,7 +34,6 @@ const DNReviewPage = lazy(() => import('./pages/dailyNeedsPages/ReviewPage'));
 const MaintenanceDashboard = lazy(() => import('./pages/maintenancePages/MaintenanceDashboard'));
 const MaintenanceAllPage = lazy(() => import('./pages/maintenancePages/MaintenanceAllPage'));
 const MNStep1Page = lazy(() => import('./pages/maintenancePages/Step1Page'));
-const MNStep2Page = lazy(() => import('./pages/maintenancePages/Step2Page'));
 const MNStep3Page = lazy(() => import('./pages/maintenancePages/Step3Page'));
 const MNAttachmentsPage = lazy(() => import('./pages/maintenancePages/AttachmentsPage'));
 const MNReviewPage = lazy(() => import('./pages/maintenancePages/ReviewPage'));
@@ -45,10 +42,26 @@ const MNReviewPage = lazy(() => import('./pages/maintenancePages/ReviewPage'));
 const ConstructionDashboard = lazy(() => import('./pages/constructionPages/ConstructionDashboard'));
 const ConstructionAllPage = lazy(() => import('./pages/constructionPages/ConstructionAllPage'));
 const COStep1Page = lazy(() => import('./pages/constructionPages/Step1Page'));
-const COStep2Page = lazy(() => import('./pages/constructionPages/Step2Page'));
 const COStep3Page = lazy(() => import('./pages/constructionPages/Step3Page'));
 const COAttachmentsPage = lazy(() => import('./pages/constructionPages/AttachmentsPage'));
 const COReviewPage = lazy(() => import('./pages/constructionPages/ReviewPage'));
+
+// Fixed Assets wizard pages
+const FixedAssetsDashboard = lazy(() => import('./pages/fixedAssetsPages/FixedAssetsDashboard'));
+const FixedAssetsAllPage = lazy(() => import('./pages/fixedAssetsPages/FixedAssetsAllPage'));
+const FAStep1Page = lazy(() => import('./pages/fixedAssetsPages/Step1Page'));
+const FAStep2Page = lazy(() => import('./pages/fixedAssetsPages/Step2Page'));
+const FAAttachmentsPage = lazy(() => import('./pages/fixedAssetsPages/AttachmentsPage'));
+const FAReviewPage = lazy(() => import('./pages/fixedAssetsPages/ReviewPage'));
+
+// Labour count (casual daily-labour register)
+const LabourCountPage = lazy(() => import('./pages/labourPages/LabourCountPage'));
+const LabourGatePage = lazy(() => import('./pages/labourPages/LabourGatePage'));
+
+// Labour gate — entry (department + contractor + count) and the out board.
+// The same entry screen is also exposed by the top-level Labour module.
+const GateLabourInPage = lazy(() => import('./pages/labourGatePages/GateLabourInPage'));
+const LabourOutPage = lazy(() => import('./pages/labourGatePages/LabourOutPage'));
 
 // Person Gate-In pages (Visitor/Labour)
 const PersonGateInDashboard = lazy(() => import('./pages/personGateInPages/PersonGateInDashboard'));
@@ -85,6 +98,12 @@ const EmptyVehicleOutDetailPage = lazy(
   () => import('./pages/emptyVehicleOutPages/EmptyVehicleOutDetailPage'),
 );
 const EmptyVehicleInPage = lazy(() => import('./pages/emptyVehicleInPages/EmptyVehicleInPage'));
+const CrossCompanyArrivalPage = lazy(
+  () => import('./pages/emptyVehicleInPages/CrossCompanyArrivalPage'),
+);
+const ArrivalGatepassPage = lazy(
+  () => import('./pages/emptyVehicleInPages/ArrivalGatepassPage'),
+);
 const EmptyVehicleInNewPage = lazy(
   () => import('./pages/emptyVehicleInPages/EmptyVehicleInNewPage'),
 );
@@ -228,24 +247,18 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/raw-materials/new/step2',
-      element: <RMStep2Page />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.RAW_MATERIAL.CREATE, GATE_PERMISSIONS.RAW_MATERIAL.RECEIVE_PO],
-    },
-    {
-      path: '/gate/raw-materials/new/step3',
       element: <RMStep3Page />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RAW_MATERIAL.CREATE, GATE_PERMISSIONS.RAW_MATERIAL.RECEIVE_PO],
     },
     {
-      path: '/gate/raw-materials/new/step4',
+      path: '/gate/raw-materials/new/step3',
       element: <RMArrivalSlipPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RAW_MATERIAL.CREATE, GATE_PERMISSIONS.RAW_MATERIAL.RECEIVE_PO],
     },
     {
-      path: '/gate/raw-materials/new/step5',
+      path: '/gate/raw-materials/new/step4',
       element: <RMWeighmentPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RAW_MATERIAL.CREATE, GATE_PERMISSIONS.RAW_MATERIAL.RECEIVE_PO],
@@ -271,24 +284,18 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/raw-materials/edit/:entryId/step2',
-      element: <RMStep2Page />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.RAW_MATERIAL.EDIT],
-    },
-    {
-      path: '/gate/raw-materials/edit/:entryId/step3',
       element: <RMStep3Page />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RAW_MATERIAL.EDIT],
     },
     {
-      path: '/gate/raw-materials/edit/:entryId/step4',
+      path: '/gate/raw-materials/edit/:entryId/step3',
       element: <RMArrivalSlipPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RAW_MATERIAL.EDIT],
     },
     {
-      path: '/gate/raw-materials/edit/:entryId/step5',
+      path: '/gate/raw-materials/edit/:entryId/step4',
       element: <RMWeighmentPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RAW_MATERIAL.EDIT],
@@ -329,12 +336,6 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/daily-needs/new/step2',
-      element: <DNStep2Page />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.DAILY_NEEDS.CREATE],
-    },
-    {
-      path: '/gate/daily-needs/new/step3',
       element: <DNStep3Page />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.DAILY_NEEDS.CREATE],
@@ -360,12 +361,6 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/daily-needs/edit/:entryId/step2',
-      element: <DNStep2Page />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.DAILY_NEEDS.EDIT],
-    },
-    {
-      path: '/gate/daily-needs/edit/:entryId/step3',
       element: <DNStep3Page />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.DAILY_NEEDS.EDIT],
@@ -406,12 +401,6 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/maintenance/new/step2',
-      element: <MNStep2Page />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.MAINTENANCE.CREATE],
-    },
-    {
-      path: '/gate/maintenance/new/step3',
       element: <MNStep3Page />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.MAINTENANCE.CREATE],
@@ -437,12 +426,6 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/maintenance/edit/:entryId/step2',
-      element: <MNStep2Page />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.MAINTENANCE.EDIT],
-    },
-    {
-      path: '/gate/maintenance/edit/:entryId/step3',
       element: <MNStep3Page />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.MAINTENANCE.EDIT],
@@ -469,12 +452,6 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/construction/new/step2',
-      element: <COStep2Page />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.CONSTRUCTION.CREATE],
-    },
-    {
-      path: '/gate/construction/new/step3',
       element: <COStep3Page />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.CONSTRUCTION.CREATE],
@@ -500,12 +477,6 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/construction/edit/:entryId/step2',
-      element: <COStep2Page />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.CONSTRUCTION.EDIT],
-    },
-    {
-      path: '/gate/construction/edit/:entryId/step3',
       element: <COStep3Page />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.CONSTRUCTION.EDIT],
@@ -534,6 +505,102 @@ export const gateModuleConfig: ModuleConfig = {
       element: <ConstructionAllPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.CONSTRUCTION.VIEW, GATE_PERMISSIONS.CONSTRUCTION.VIEW_FULL],
+    },
+
+    // ── Fixed Assets ─────────────────────────────────────────────
+    {
+      path: '/gate/fixed-assets/new',
+      element: <FAStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/step2',
+      element: <FAStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/attachments',
+      element: <FAAttachmentsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    {
+      path: '/gate/fixed-assets/new/review',
+      element: <FAReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.CREATE],
+    },
+    // Edit Fixed Asset Entry - Steps
+    {
+      path: '/gate/fixed-assets/edit/:entryId/step1',
+      element: <FAStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/step2',
+      element: <FAStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/attachments',
+      element: <FAAttachmentsPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets/edit/:entryId/review',
+      element: <FAReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.EDIT],
+    },
+    {
+      path: '/gate/fixed-assets',
+      element: <FixedAssetsDashboard />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
+      breadcrumb: { label: 'Assets' },
+    },
+    {
+      path: '/gate/fixed-assets/all',
+      element: <FixedAssetsAllPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
+    },
+
+    // ── Daily Labour Count ───────────────────────────────────────
+    {
+      path: '/gate/labour',
+      element: <LabourCountPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_COUNT.SUBMIT],
+      breadcrumb: { label: 'Labour' },
+    },
+    {
+      path: '/gate/labour/verify',
+      element: <LabourGatePage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_COUNT.VERIFY],
+      breadcrumb: { label: 'Labour Verify' },
+    },
+
+    // ── Labour In (entry) + Labour Out (gate board) ──────────────
+    {
+      path: '/gate/labour-in',
+      element: <GateLabourInPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN, GATE_PERMISSIONS.LABOUR_GATE.VIEW],
+      breadcrumb: { label: 'Labour In' },
+    },
+    {
+      path: '/gate/labour-out',
+      element: <LabourOutPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_OUT, GATE_PERMISSIONS.LABOUR_GATE.VIEW],
+      breadcrumb: { label: 'Labour Out' },
     },
 
     // ── Person Gate-In (Visitor/Labour) ──────────────────────────
@@ -681,6 +748,20 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
       breadcrumb: { label: 'New Empty Vehicle In' },
+    },
+    {
+      path: '/gate/arrivals',
+      element: <CrossCompanyArrivalPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
+      breadcrumb: { label: 'Cross-Company Arrival' },
+    },
+    {
+      path: '/gate/arrivals/:arrivalId/gatepass',
+      element: <ArrivalGatepassPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
+      breadcrumb: { label: 'Combined Gatepass' },
     },
     {
       path: '/gate/empty-vehicle-in/new/weighment',
@@ -1045,6 +1126,11 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/new',
           title: 'New Entry',
           permissions: GATE_ENTRY_CREATE_PERMISSIONS,
+        },
+        {
+          path: '/gate/arrivals',
+          title: 'Cross-Company Arrivals',
+          permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
         },
         {
           path: '/gate/sales-dispatch/barcode-reports',

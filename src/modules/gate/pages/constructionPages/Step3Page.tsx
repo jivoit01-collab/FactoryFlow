@@ -65,8 +65,8 @@ export default function Step3Page() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
-  const currentStep = 3;
-  const totalSteps = 4;
+  const currentStep = 2;
+  const totalSteps = 3;
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   // API hooks
@@ -172,9 +172,9 @@ export default function Step3Page() {
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/construction/edit/${entryId}/step2`);
+      navigate(`/gate/construction/edit/${entryId}/step1`);
     } else {
-      navigate(`/gate/construction/new/step2?entryId=${entryId}`);
+      navigate(`/gate/construction/new`);
     }
   };
 

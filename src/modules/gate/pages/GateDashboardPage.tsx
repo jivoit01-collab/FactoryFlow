@@ -1,12 +1,13 @@
-import { ArrowRight, Search } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, type LucideIcon,Search, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_TYPES } from '@/config/constants';
+import { GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import type { DateRange } from '@/core/store/filtersSlice';
 import { useGlobalDateRange } from '@/core/store/hooks';
-import { Badge, Card, CardContent, Input } from '@/shared/components/ui';
+import { Card, CardContent, Input } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import {
@@ -48,6 +49,51 @@ const directionSearchText: Record<GateEntryTypeConfig['direction'], string> = {
   out: 'gate out outward outgoing dispatch',
   return: 'return returned receiving back',
 };
+
+type GateCategory = 'Gate In' | 'Gate Out' | 'Visitor';
+const CATEGORY_ORDER: GateCategory[] = ['Gate In', 'Gate Out', 'Visitor'];
+
+function categoryOf(entryType: GateEntryTypeConfig): GateCategory {
+  if (entryType.id === 'visitor-labour') return 'Visitor';
+  if (entryType.direction === 'out') return 'Gate Out';
+  return 'Gate In';
+}
+
+interface GateToolConfig {
+  id: string;
+  title: string;
+  description: string;
+  route: string;
+  icon: LucideIcon;
+  colorClassName: string;
+  permissions: readonly string[];
+  keywords: readonly string[];
+}
+
+// Standalone gate tools (not vehicle/person entry types) shown as their own
+// dashboard section.
+const GATE_TOOLS: GateToolConfig[] = [
+  {
+    id: 'daily-labour',
+    title: 'Daily Labour',
+    description: 'Enter and submit the daily casual-labour headcount per contractor.',
+    route: '/gate/labour',
+    icon: Users,
+    colorClassName: 'text-red-600',
+    permissions: [GATE_PERMISSIONS.LABOUR_COUNT.SUBMIT],
+    keywords: ['labour', 'casual', 'count', 'contractor', 'daily', 'manday', 'mazdoor'],
+  },
+  {
+    id: 'labour-verification',
+    title: 'Labour Verification',
+    description: 'Gate head-count — mark labour out in batches and finalize per department.',
+    route: '/gate/labour/verify',
+    icon: ClipboardCheck,
+    colorClassName: 'text-emerald-600',
+    permissions: [GATE_PERMISSIONS.LABOUR_COUNT.VERIFY],
+    keywords: ['labour', 'verify', 'verification', 'out', 'gate', 'count'],
+  },
+];
 
 type StatTone = 'total' | 'open' | 'completed' | 'cancelled' | 'info' | 'warning';
 
@@ -104,6 +150,28 @@ export default function GateDashboardPage() {
     );
   }, [searchTerm, visibleEntryTypes]);
 
+  const groupedEntryTypes = useMemo(() => {
+    const groups: Record<GateCategory, GateEntryTypeConfig[]> = {
+      'Gate In': [],
+      'Gate Out': [],
+      Visitor: [],
+    };
+    filteredEntryTypes.forEach((entryType) => groups[categoryOf(entryType)].push(entryType));
+    return groups;
+  }, [filteredEntryTypes]);
+
+  const visibleTools = useMemo(
+    () => GATE_TOOLS.filter((tool) => hasAnyPermission(tool.permissions)),
+    [hasAnyPermission],
+  );
+  const filteredTools = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return visibleTools;
+    return visibleTools.filter((tool) =>
+      [tool.title, tool.description, ...tool.keywords].join(' ').toLowerCase().includes(query),
+    );
+  }, [searchTerm, visibleTools]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -135,27 +203,86 @@ export default function GateDashboardPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {filteredEntryTypes.length === 0 ? (
+      {filteredEntryTypes.length === 0 && filteredTools.length === 0 ? (
+        <Card>
+          <CardContent className="p-0">
             <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-              No gate entry types match this search
+              Nothing matches this search
             </div>
-          ) : (
-            <div className="divide-y">
-              {filteredEntryTypes.map((entryType) => (
-                <EntryTypeRow
-                  key={entryType.id}
-                  entryType={entryType}
-                  stats={statsByEntryType[entryType.id]}
-                  onOpen={() => navigate(entryType.dashboardRoute)}
-                />
-              ))}
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {CATEGORY_ORDER.map((category) => {
+            const items = groupedEntryTypes[category];
+            if (items.length === 0) return null;
+            return (
+              <div key={category} className="space-y-2">
+                <h3 className="text-lg font-semibold tracking-tight">{category}</h3>
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="divide-y">
+                      {items.map((entryType) => (
+                        <EntryTypeRow
+                          key={entryType.id}
+                          entryType={entryType}
+                          stats={statsByEntryType[entryType.id]}
+                          onOpen={() => navigate(entryType.dashboardRoute)}
+                        />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })}
+
+          {filteredTools.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold tracking-tight">Labour</h3>
+              <Card>
+                <CardContent className="p-0">
+                  <div className="divide-y">
+                    {filteredTools.map((tool) => (
+                      <ToolRow key={tool.id} tool={tool} onOpen={() => navigate(tool.route)} />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
     </div>
+  );
+}
+
+function ToolRow({ tool, onOpen }: { tool: GateToolConfig; onOpen: () => void }) {
+  const Icon = tool.icon;
+
+  return (
+    <button
+      type="button"
+      className="grid w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/50 lg:grid-cols-[minmax(0,1fr)_auto]"
+      onClick={onOpen}
+    >
+      <span className="flex min-w-0 items-start gap-3">
+        <span className="rounded-md border p-2">
+          <Icon className={cn('h-4 w-4', tool.colorClassName)} />
+        </span>
+        <span className="min-w-0">
+          <span className="block font-medium">{tool.title}</span>
+          <span className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+            {tool.description}
+          </span>
+        </span>
+      </span>
+
+      <span className="hidden items-center text-sm font-medium text-muted-foreground md:flex">
+        Open
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </span>
+    </button>
   );
 }
 
@@ -173,7 +300,7 @@ function EntryTypeRow({
   return (
     <button
       type="button"
-      className="grid w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/50 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto]"
+      className="grid w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/50 lg:grid-cols-[minmax(0,1fr)_auto_auto]"
       onClick={onOpen}
     >
       <span className="flex min-w-0 items-start gap-3">
@@ -189,10 +316,6 @@ function EntryTypeRow({
       </span>
 
       <EntryTypeStatsPills stats={stats} />
-
-      <span className="flex flex-wrap gap-2 md:justify-end">
-        <Badge variant="outline">{directionLabels[entryType.direction]}</Badge>
-      </span>
 
       <span className="hidden items-center text-sm font-medium text-muted-foreground md:flex">
         Open

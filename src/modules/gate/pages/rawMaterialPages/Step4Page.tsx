@@ -83,7 +83,7 @@ export default function Step4Page() {
   const queryClient = useQueryClient();
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
   useEntryStepTracker();
-  const currentStep = WIZARD_CONFIG.STEPS.ATTACHMENTS;
+  const currentStep = WIZARD_CONFIG.STEPS.WEIGHMENT;
   const createWeighment = useCreateWeighment(entryIdNumber || 0);
   const {
     data: weighmentData,
@@ -178,9 +178,9 @@ export default function Step4Page() {
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step4`);
+      navigate(`/gate/raw-materials/edit/${entryId}/step3`);
     } else {
-      navigate(`/gate/raw-materials/new/step4?entryId=${entryId}`);
+      navigate(`/gate/raw-materials/new/step3?entryId=${entryId}`);
     }
   };
 

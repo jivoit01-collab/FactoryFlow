@@ -7,9 +7,6 @@ import type {
   BOMRequestDetail,
   CreateBOMRequestPayload,
   CreateFGReceiptPayload,
-  DispatchScheduleLineItem,
-  DispatchScheduleParams,
-  DispatchScheduleResponse,
   FGReceipt,
   MaterialIssuePayload,
   RejectBOMRequestPayload,
@@ -105,25 +102,6 @@ export const warehouseApi = {
 
   async postFGToSAP(receiptId: number): Promise<FGReceipt> {
     const res = await apiClient.post<FGReceipt>(EP.FG_RECEIPT_POST_SAP(receiptId));
-    return res.data;
-  },
-
-  // =========================================================================
-  // Dispatch Schedule (read-only)
-  // =========================================================================
-
-  async getDispatchSchedule(params?: DispatchScheduleParams): Promise<DispatchScheduleResponse> {
-    const res = await apiClient.get<DispatchScheduleResponse>(
-      API_ENDPOINTS.DISPATCH_PLANS.SCHEDULE,
-      { params },
-    );
-    return res.data;
-  },
-
-  async getDispatchScheduleItems(docEntry: number): Promise<DispatchScheduleLineItem[]> {
-    const res = await apiClient.get<DispatchScheduleLineItem[]>(
-      API_ENDPOINTS.DISPATCH_PLANS.SCHEDULE_ITEMS(docEntry),
-    );
     return res.data;
   },
 };

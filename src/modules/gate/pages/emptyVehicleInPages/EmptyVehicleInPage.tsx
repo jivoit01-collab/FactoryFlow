@@ -8,10 +8,13 @@ import {
   Truck,
   User,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { type KeyboardEvent, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
+import { getPipelineStageRowClass } from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import { useDispatchBills } from '@/modules/dashboards/dispatch-plans/api';
 import {
   type EmptyVehicleGateInEntry,
@@ -25,6 +28,7 @@ import {
   CardContent,
   Input,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import {
   buildExpectedDispatchVehicles,
@@ -35,11 +39,29 @@ export default function EmptyVehicleInPage() {
   const navigate = useNavigate();
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'inside'>('all');
+  const expectedDispatchRef = useRef<HTMLElement>(null);
+
+  const showInsideOnly = () =>
+    setStatusFilter((current) => (current === 'inside' ? 'all' : 'inside'));
+  const showAllEntries = () => setStatusFilter('all');
+  const scrollToExpectedDispatch = () =>
+    expectedDispatchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const activateOnKey = (handler: () => void) => (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handler();
+    }
+  };
 
   const queryParams = useMemo(
     () => ({
       from_date: dateRange.from,
       to_date: dateRange.to,
+      // The factory is one physical place for all three companies, so the
+      // empty-vehicle-in board always aggregates across the user's companies
+      // regardless of the active Company-Code. Each row is tagged with its company.
+      all_companies: 1,
     }),
     [dateRange.from, dateRange.to],
   );
@@ -49,6 +71,13 @@ export default function EmptyVehicleInPage() {
       date_to: dateRange.to,
       booking_status: 'BOOKED' as const,
       limit: 200,
+      // The gate expects vehicles by their scheduled dispatch date, not the SAP
+      // invoice date — a bill invoiced earlier but scheduled to leave in this window
+      // must show.
+      by_dispatch_date: true,
+      // The gate is one place for all the user's companies: show expected vehicles
+      // across every company (the company selector is a decorator here too).
+      all_companies: true,
     }),
     [dateRange.from, dateRange.to],
   );
@@ -61,7 +90,11 @@ export default function EmptyVehicleInPage() {
   const {
     data: activeDispatchEntries = [],
     refetch: refetchActiveDispatchEntries,
-  } = useEmptyVehicleGateInEntries({ reason: 'DISPATCH', inside_only: true });
+  } = useEmptyVehicleGateInEntries({
+    reason: 'DISPATCH',
+    inside_only: true,
+    all_companies: 1,
+  });
   const {
     data: expectedDispatchResponse,
     isLoading: isExpectedDispatchLoading,
@@ -76,10 +109,16 @@ export default function EmptyVehicleInPage() {
     [activeDispatchEntries, expectedDispatchResponse?.data],
   );
   const filteredEntries = useMemo(() => {
+    const base =
+      statusFilter === 'inside'
+        ? entries.filter(
+            (entry) => !['COMPLETED', 'CANCELLED'].includes(entry.vehicle_entry_status),
+          )
+        : entries;
     const query = searchTerm.trim().toLowerCase();
-    if (!query) return entries;
+    if (!query) return base;
 
-    return entries.filter((entry) => (
+    return base.filter((entry) => (
       [
         entry.entry_no,
         entry.vehicle_number,
@@ -100,7 +139,7 @@ export default function EmptyVehicleInPage() {
         entry.security_name,
       ].some((value) => String(value || '').toLowerCase().includes(query))
     ));
-  }, [entries, searchTerm]);
+  }, [entries, searchTerm, statusFilter]);
 
   return (
     <div className="space-y-6">
@@ -141,7 +180,17 @@ export default function EmptyVehicleInPage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
+        <Card
+          role="button"
+          tabIndex={0}
+          onClick={showInsideOnly}
+          onKeyDown={activateOnKey(showInsideOnly)}
+          title="Show only vehicles still inside"
+          className={cn(
+            'cursor-pointer transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            statusFilter === 'inside' && 'ring-2 ring-blue-600',
+          )}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <Truck className="h-5 w-5 text-blue-600" />
@@ -150,7 +199,17 @@ export default function EmptyVehicleInPage() {
             <p className="mt-2 text-sm font-medium text-muted-foreground">Inside</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          role="button"
+          tabIndex={0}
+          onClick={showAllEntries}
+          onKeyDown={activateOnKey(showAllEntries)}
+          title="Show all entries"
+          className={cn(
+            'cursor-pointer transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            statusFilter === 'all' && 'ring-2 ring-green-600',
+          )}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -159,7 +218,19 @@ export default function EmptyVehicleInPage() {
             <p className="mt-2 text-sm font-medium text-muted-foreground">Total Entries</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          role="button"
+          tabIndex={0}
+          onClick={scrollToExpectedDispatch}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              scrollToExpectedDispatch();
+            }
+          }}
+          title="Jump to expected dispatch vehicles"
+          className="cursor-pointer transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <Clock className="h-5 w-5 text-amber-600" />
@@ -170,7 +241,7 @@ export default function EmptyVehicleInPage() {
         </Card>
       </div>
 
-      <section>
+      <section ref={expectedDispatchRef}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Truck className="h-4 w-4" />
@@ -203,10 +274,28 @@ export default function EmptyVehicleInPage() {
                       <tr
                         key={vehicle.vehicleId}
                         className="cursor-pointer border-t hover:bg-muted/40"
-                        onClick={() => navigate(href)}
+                        onClick={() => {
+                          if (vehicle.alreadyInside) {
+                            toast.error(
+                              `${vehicle.vehicleNo} is already inside under gate entry ` +
+                                `${vehicle.insideEntryNo ?? ''}`.trim() +
+                                ' and has not left yet. Finish its dispatch, or do an ' +
+                                'empty-vehicle-out, before starting a new entry.',
+                            );
+                            return;
+                          }
+                          navigate(href);
+                        }}
                       >
                         <td className="whitespace-nowrap p-3 text-sm font-medium">
-                          {vehicle.vehicleNo}
+                          <div className="flex items-center gap-2">
+                            {vehicle.vehicleNo}
+                            {vehicle.alreadyInside ? (
+                              <Badge variant="outline" className="border-amber-300 text-amber-700">
+                                Already inside
+                              </Badge>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="p-3 text-sm">
                           <div className="max-w-[260px] truncate">
@@ -236,9 +325,15 @@ export default function EmptyVehicleInPage() {
                           {vehicle.biltyNo || '-'}
                         </td>
                         <td className="p-3 text-right text-sm">
-                          <Button type="button" size="sm" variant="outline">
-                            Start Entry
-                          </Button>
+                          {vehicle.alreadyInside ? (
+                            <span className="text-xs font-medium text-amber-700">
+                              Inside — can't start
+                            </span>
+                          ) : (
+                            <Button type="button" size="sm" variant="outline">
+                              Start Entry
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -279,13 +374,14 @@ export default function EmptyVehicleInPage() {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium">Entry No.</th>
+                    <th className="p-3 text-left text-sm font-medium">Company</th>
                     <th className="p-3 text-left text-sm font-medium">Vehicle</th>
                     <th className="p-3 text-left text-sm font-medium">Driver</th>
+                    <th className="p-3 text-left text-sm font-medium">Status</th>
                     <th className="p-3 text-left text-sm font-medium">Reason</th>
                     <th className="p-3 text-left text-sm font-medium">Document</th>
                     <th className="p-3 text-left text-sm font-medium">In Date</th>
                     <th className="p-3 text-left text-sm font-medium">In Time</th>
-                    <th className="p-3 text-left text-sm font-medium">Status</th>
                     <th className="p-3 text-left text-sm font-medium">Security</th>
                   </tr>
                 </thead>
@@ -293,11 +389,23 @@ export default function EmptyVehicleInPage() {
                   {filteredEntries.map((entry) => (
                     <tr
                       key={entry.id}
-                      className="cursor-pointer border-t hover:bg-muted/40"
+                      className={cn(
+                        'cursor-pointer border-t',
+                        getPipelineStageRowClass(entry.pipeline_status?.stage) || 'hover:bg-muted/40',
+                      )}
                       onClick={() => navigate(`/gate/empty-vehicle-in/new?gateInId=${entry.id}`)}
                     >
                       <td className="whitespace-nowrap p-3 text-sm font-medium">
                         {entry.entry_no}
+                      </td>
+                      <td className="whitespace-nowrap p-3 text-sm">
+                        {entry.company_name || entry.company_code ? (
+                          <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                            {entry.company_name || entry.company_code}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
                         {entry.vehicle_number}
@@ -307,6 +415,13 @@ export default function EmptyVehicleInPage() {
                           <User className="h-3.5 w-3.5 text-muted-foreground" />
                           {entry.driver_name}
                         </span>
+                      </td>
+                      <td className="whitespace-nowrap p-3 text-sm">
+                        {entry.pipeline_status ? (
+                          <PipelineStatusBadge status={entry.pipeline_status} />
+                        ) : (
+                          <GateStatusBadge status={entry.vehicle_entry_status} />
+                        )}
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
                         <Badge variant="outline">{entry.reason_display}</Badge>
@@ -319,9 +434,6 @@ export default function EmptyVehicleInPage() {
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
                         {entry.in_time}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        <GateStatusBadge status={entry.vehicle_entry_status} />
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
                         {entry.security_name || '-'}

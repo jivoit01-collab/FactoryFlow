@@ -27,12 +27,14 @@ interface DispatchPlanEditSheetProps {
 interface FormState {
   dispatch_date: string;
   priority: string;
+  location: string;
   remarks: string;
 }
 
 const EMPTY_FORM: FormState = {
   dispatch_date: '',
   priority: '',
+  location: '',
   remarks: '',
 };
 
@@ -42,6 +44,7 @@ function formFromBill(bill: DispatchBill | null): FormState {
   return {
     dispatch_date: bill.plan.dispatch_date ?? '',
     priority: bill.plan.priority ?? '',
+    location: bill.plan.location ?? '',
     remarks: bill.plan.remarks ?? '',
   };
 }
@@ -53,6 +56,21 @@ function stringOrNull(value: string): string | null {
 
 function compactText(value: string | null | undefined, fallback = '-') {
   return value?.trim() || fallback;
+}
+
+function formatLitres(value: number | null | undefined): string {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return '-';
+  return `${num.toLocaleString('en-IN', { maximumFractionDigits: 2 })} L`;
+}
+
+function locationText(bill: DispatchBill): string {
+  return (
+    [bill.city, bill.state]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join(', ') || '-'
+  );
 }
 
 export function DispatchPlanEditSheet({
@@ -82,6 +100,7 @@ export function DispatchPlanEditSheet({
       sap_invoice_doc_num: bill.doc_num,
       dispatch_date: stringOrNull(form.dispatch_date),
       priority: form.priority.trim(),
+      location: form.location.trim(),
       remarks: form.remarks.trim(),
     });
   }
@@ -114,6 +133,8 @@ export function DispatchPlanEditSheet({
               label="Transporter"
               value={bill.plan.transporter_name || bill.sap_transporter_name}
             />
+            <InfoItem label="SAP Location" value={locationText(bill)} />
+            <InfoItem label="Total Litres" value={formatLitres(bill.total_litres)} />
           </div>
         )}
 
@@ -140,6 +161,19 @@ export function DispatchPlanEditSheet({
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="dispatch-location">Location</Label>
+            <Input
+              id="dispatch-location"
+              value={form.location}
+              onChange={(event) => updateField('location', event.target.value)}
+              placeholder="Delivery location"
+            />
+            <p className="text-xs text-muted-foreground">
+              Planning-entered location, shown alongside the read-only SAP location.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="dispatch-remarks">Planning Remarks</Label>
             <Textarea
               id="dispatch-remarks"
@@ -147,6 +181,9 @@ export function DispatchPlanEditSheet({
               value={form.remarks}
               onChange={(event) => updateField('remarks', event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              If the Total Litres above looks wrong, note the correct litres here.
+            </p>
           </div>
 
           <SheetFooter className="mt-auto border-t pt-4">

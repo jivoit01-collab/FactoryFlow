@@ -82,17 +82,31 @@ jobs:
           : "${SERVER_HOST:?Missing required SERVER_HOST secret}"
           : "${SERVER_USER:?Missing required SERVER_USER secret}"
 
-          if ! timeout 5m ssh \
-            -i ~/.ssh/deploy_key \
-            -o BatchMode=yes \
-            -o StrictHostKeyChecking=accept-new \
-            -o ConnectTimeout=60 \
-            -o ServerAliveInterval=15 \
-            -o ServerAliveCountMax=4 \
-            "$SERVER_USER@$SERVER_HOST" 'cat > /tmp/build.tar.gz' < build.tar.gz; then
-            echo "::error::Build succeeded, but upload to the deployment server failed. The build artifact is attached to this workflow run. Check SERVER_HOST connectivity, firewall, SSH access, and write permission for /tmp/build.tar.gz."
-            exit 1
-          fi
+          max_attempts=5
+          attempt=1
+          while true; do
+            echo "Upload attempt ${attempt}/${max_attempts}..."
+            if timeout 5m ssh \
+              -i ~/.ssh/deploy_key \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=60 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=4 \
+              "$SERVER_USER@$SERVER_HOST" 'cat > /tmp/build.tar.gz' < build.tar.gz; then
+              echo "Upload succeeded on attempt ${attempt}."
+              break
+            fi
+
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "::error::Build succeeded, but upload to the deployment server failed after ${max_attempts} attempts. The build artifact is attached to this workflow run. Check SERVER_HOST connectivity, firewall, SSH access, and write permission for /tmp/build.tar.gz."
+              exit 1
+            fi
+
+            echo "::warning::Upload attempt ${attempt} failed; retrying in 15s..."
+            sleep 15
+            attempt=$((attempt + 1))
+          done
 
       - name: Deploy to Server
         env:

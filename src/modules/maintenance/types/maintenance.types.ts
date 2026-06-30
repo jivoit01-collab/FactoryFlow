@@ -400,7 +400,7 @@ export interface MaintenanceWorkOrder {
 export interface MaintenanceWorkOrderPayload {
   work_type: WorkType;
   priority: MaintenancePriority;
-  asset: number;
+  asset?: number | null;
   department?: number;
   assigned_to?: number | null;
   production_run?: number | null;

@@ -16,4 +16,13 @@ describe('GRPO Components Index (barrel re-exports)', () => {
     expect(content).toContain('WarehouseSelect');
     expect(content).toContain('./WarehouseSelect');
   });
+
+  it('re-exports the shared QC report print pieces', () => {
+    expect(content).toContain('QCReportButton');
+    expect(content).toContain('./QCReportButton');
+    expect(content).toContain('useQCReportPrint');
+    expect(content).toContain('./useQCReportPrint');
+    expect(content).toContain('GRPOInspectionReportPrintView');
+    expect(content).toContain('./QCInspectionReportPrint');
+  });
 });

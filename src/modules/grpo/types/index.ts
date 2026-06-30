@@ -1,5 +1,7 @@
 export type {
   AllGRPOEntry,
+  AllGRPOEntryItemQC,
+  AllGRPOEntryPOQC,
   AllGRPOEntrySupplier,
   AttachmentStatus,
   EntryPhase,

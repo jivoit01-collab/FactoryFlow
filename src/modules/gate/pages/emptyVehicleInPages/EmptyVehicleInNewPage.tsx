@@ -137,6 +137,9 @@ export default function EmptyVehicleInNewPage() {
   const [remarks, setRemarks] = useState('');
   const [formError, setFormError] = useState('');
   const isBstReason = reason === 'BST';
+  // DISPATCH reference/notes are auto-derived from the linked bills and not stored,
+  // so they are shown read-only rather than as editable inputs.
+  const isDispatchReason = reason === 'DISPATCH';
 
   const { data: reasons = [], isLoading: isReasonsLoading } = useEmptyVehicleGateInReasons();
   const { data: existingEntry, isLoading: isExistingLoading } = useEmptyVehicleGateIn(gateInId);
@@ -378,6 +381,22 @@ export default function EmptyVehicleInNewPage() {
 
     try {
       if (isEditing && existingEntry) {
+        // Step 1 is re-entered with an already-saved entry; only persist (and
+        // toast) when a step-1 field actually changed, so clicking "Save and Next"
+        // through doesn't fire a redundant update. For DISPATCH the reference/notes
+        // are read-only/derived, so only security/remarks can change. BST keeps its
+        // always-save behaviour (its doc/line edits are harder to diff cheaply).
+        const stepOneUnchanged =
+          !isBstReason &&
+          securityName === (existingEntry.security_name ?? '') &&
+          remarks === (existingEntry.remarks ?? '') &&
+          (isDispatchReason ||
+            (documentReference === (existingEntry.document_reference ?? '') &&
+              documentNotes === (existingEntry.document_notes ?? '')));
+        if (stepOneUnchanged) {
+          navigate(EMPTY_VEHICLE_IN_ROUTES.weighment(existingEntry.id));
+          return;
+        }
         await updateEmptyGateIn.mutateAsync({
           id: existingEntry.id,
           data: {
@@ -682,8 +701,15 @@ export default function EmptyVehicleInNewPage() {
                     id="document-reference"
                     value={documentReference}
                     onChange={(event) => setDocumentReference(event.target.value)}
+                    readOnly={isDispatchReason}
+                    className={isDispatchReason ? lockedInputClassName : undefined}
                     placeholder="Invoice, delivery note, job card, or other reference"
                   />
+                  {isDispatchReason && (
+                    <p className="text-xs text-muted-foreground">
+                      Auto-filled from the linked bills.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -695,6 +721,8 @@ export default function EmptyVehicleInNewPage() {
                 value={documentNotes}
                 onChange={(event) => setDocumentNotes(event.target.value)}
                 disabled={isBstDocumentLocked}
+                readOnly={isDispatchReason}
+                className={isDispatchReason ? lockedInputClassName : undefined}
                 placeholder="Optional document notes"
               />
             </div>

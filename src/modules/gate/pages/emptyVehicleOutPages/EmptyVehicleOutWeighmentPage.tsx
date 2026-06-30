@@ -27,6 +27,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/compo
 import { getErrorMessage, isNotFoundError as checkNotFoundError } from '@/shared/utils';
 
 import {
+  buildEmptyOutSideEffectMessage,
   clearEmptyVehicleOutDraft,
   type EmptyVehicleOutDraft,
   readEmptyVehicleOutDraft,
@@ -37,7 +38,6 @@ export default function EmptyVehicleOutWeighmentPage() {
   const [draft] = useState<EmptyVehicleOutDraft | null>(() => readEmptyVehicleOutDraft());
   const [values, setValues] = useState<RequiredWeighmentValues>(EMPTY_REQUIRED_WEIGHMENT);
   const [error, setError] = useState('');
-  const [uploadedGatepassCount, setUploadedGatepassCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const createWeighment = useCreateWeighment(draft?.vehicleEntryId || 0);
   const createGateOut = useCreateEmptyVehicleGateOut();
@@ -80,7 +80,6 @@ export default function EmptyVehicleOutWeighmentPage() {
     for (const file of files) {
       try {
         await uploadGatepass.mutateAsync(file);
-        setUploadedGatepassCount((count) => count + 1);
       } catch (err) {
         setError(getErrorMessage(err, `Failed to upload ${file.name}`));
       }
@@ -100,11 +99,6 @@ export default function EmptyVehicleOutWeighmentPage() {
     const validationError = validateRequiredWeighment(values);
     if (validationError) {
       setError(validationError);
-      return;
-    }
-
-    if (gatepassAttachments.length + uploadedGatepassCount === 0) {
-      setError('Gatepass document upload is required before completing empty vehicle out.');
       return;
     }
 
@@ -160,6 +154,11 @@ export default function EmptyVehicleOutWeighmentPage() {
       ? 'No existing weighment found. Fill it before completing gate out.'
       : '';
 
+  const sideEffectMessage = buildEmptyOutSideEffectMessage(
+    draft.releaseInvoiceCount ?? 0,
+    draft.releaseCancelsDocking ?? false,
+  );
+
   return (
     <div className="space-y-6 pb-6">
       <StepHeader
@@ -194,7 +193,7 @@ export default function EmptyVehicleOutWeighmentPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Paperclip className="h-5 w-5" />
-            Gatepass Document
+            Gatepass Document (optional)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -245,11 +244,20 @@ export default function EmptyVehicleOutWeighmentPage() {
             </div>
           ) : (
             <p className="text-center text-sm text-muted-foreground">
-              Gatepass document is required before completing this gate out.
+              Optional — attach a gatepass document if you have one.
             </p>
           )}
         </CardContent>
       </Card>
+
+      {sideEffectMessage && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <span>
+            {sideEffectMessage} This happens when you complete the gate out.
+          </span>
+        </div>
+      )}
 
       <StepFooter
         onPrevious={() => navigate('/gate/empty-vehicle-out/new')}

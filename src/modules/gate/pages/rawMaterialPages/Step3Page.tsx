@@ -453,9 +453,9 @@ export default function Step3Page() {
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step2`);
+      navigate(`/gate/raw-materials/edit/${entryId}/step1`);
     } else {
-      navigate(`/gate/raw-materials/new/step2?entryId=${entryId}`);
+      navigate(`/gate/raw-materials/new`);
     }
   };
 
@@ -521,7 +521,7 @@ export default function Step3Page() {
     });
 
     if (effectiveEditMode && formsToSave.length === 0) {
-      navigate(`/gate/raw-materials/edit/${entryId}/step4`);
+      navigate(`/gate/raw-materials/edit/${entryId}/step3`);
       return;
     }
 
@@ -603,9 +603,9 @@ export default function Step3Page() {
       }
       setIsNavigating(true);
       if (isEditMode) {
-        navigate(`/gate/raw-materials/edit/${entryId}/step4`);
+        navigate(`/gate/raw-materials/edit/${entryId}/step3`);
       } else {
-        navigate(`/gate/raw-materials/new/step4?entryId=${entryId}`);
+        navigate(`/gate/raw-materials/new/step3?entryId=${entryId}`);
       }
     } catch (error) {
       if (isApiError(error) && error.errors) {

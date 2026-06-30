@@ -9,6 +9,10 @@ interface UseScannerOptions {
 export function useScanner({ onScan, debounceMs = 1500 }: UseScannerOptions) {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Camera torch/flashlight — only some devices/browsers support it, so it's
+  // feature-detected once the camera is running and exposed for an optional toggle.
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const startingRef = useRef(false);
   const lastScanRef = useRef<string>('');
@@ -60,6 +64,14 @@ export function useScanner({ onScan, debounceMs = 1500 }: UseScannerOptions) {
         },
       );
 
+      // Feature-detect torch on the now-running camera track.
+      try {
+        const torch = scannerRef.current.getRunningTrackCameraCapabilities().torchFeature();
+        setTorchSupported(torch.isSupported());
+      } catch {
+        setTorchSupported(false);
+      }
+      setTorchOn(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to start camera';
       setError(msg);
@@ -68,6 +80,23 @@ export function useScanner({ onScan, debounceMs = 1500 }: UseScannerOptions) {
       startingRef.current = false;
     }
   }, [onScan, debounceMs, elementId]);
+
+  const toggleTorch = useCallback(async () => {
+    if (!scannerRef.current?.isScanning) return;
+    try {
+      const torch = scannerRef.current.getRunningTrackCameraCapabilities().torchFeature();
+      if (!torch.isSupported()) {
+        setTorchSupported(false);
+        return;
+      }
+      const next = !torchOn;
+      await torch.apply(next);
+      setTorchOn(next);
+    } catch {
+      // Torch toggle failed (unsupported/locked) — surface as "not supported".
+      setTorchSupported(false);
+    }
+  }, [torchOn]);
 
   const stopScanning = useCallback(async () => {
     startingRef.current = false;
@@ -79,6 +108,8 @@ export function useScanner({ onScan, debounceMs = 1500 }: UseScannerOptions) {
       // Ignore stop errors
     }
     setIsScanning(false);
+    setTorchSupported(false);
+    setTorchOn(false);
   }, []);
 
   // Cleanup on unmount
@@ -96,5 +127,8 @@ export function useScanner({ onScan, debounceMs = 1500 }: UseScannerOptions) {
     elementId,
     startScanning,
     stopScanning,
+    torchSupported,
+    torchOn,
+    toggleTorch,
   };
 }

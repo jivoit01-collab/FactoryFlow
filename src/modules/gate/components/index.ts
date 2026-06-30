@@ -9,6 +9,7 @@ export { StepHeader } from './StepHeader';
 export { StepLoadingSpinner } from './StepLoadingSpinner';
 
 // Form components
+export { AssetCategorySelect } from './AssetCategorySelect';
 export { CategorySelect } from './CategorySelect';
 export { ConstructionCategorySelect } from './ConstructionCategorySelect';
 export { ContractorSelect } from './ContractorSelect';
@@ -35,6 +36,12 @@ export type {
   SecurityCheckFormShellProps,
   VehicleDriverFormData,
   VehicleDriverFormShellProps,
+  VehicleDriverSecurityFormData,
+  VehicleDriverSecurityFormShellProps,
   VehicleSelection,
 } from './forms';
-export { SecurityCheckFormShell, VehicleDriverFormShell } from './forms';
+export {
+  SecurityCheckFormShell,
+  VehicleDriverFormShell,
+  VehicleDriverSecurityFormShell,
+} from './forms';

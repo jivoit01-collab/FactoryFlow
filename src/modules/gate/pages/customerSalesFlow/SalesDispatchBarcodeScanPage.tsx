@@ -7,24 +7,37 @@ import {
   ChevronRight,
   ClipboardList,
   Clock3,
+  Flashlight,
   Loader2,
   PackageCheck,
   PackageSearch,
   Plus,
+  RotateCcw,
   ScanLine,
   ShieldCheck,
   Trash2,
   Truck,
 } from 'lucide-react';
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { ADMIN_PERMISSIONS, GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import {
+  type DockingPartialScanRequest,
   type DockingScanSkipRequest,
+  useCreateDockingPartialScanRequest,
   useCreateDockingScanSkipRequest,
+  useDockingPartialScanRequestByDispatch,
   useDockingScanSkipRequestByDispatch,
 } from '@/modules/admin/api';
 import { useScanner } from '@/modules/barcode/hooks/useScanner';
@@ -32,6 +45,7 @@ import {
   type BarcodeDispatchSession,
   type SalesDispatchBoxScan,
   type SalesDispatchGateOut,
+  type SalesDispatchGateOutDocument,
   type SalesDispatchItem,
   useImportSalesDispatchBarcodeScans,
   useRemoveSalesDispatchBoxScan,
@@ -65,13 +79,12 @@ import { cn, getErrorMessage } from '@/shared/utils';
 import { ReviewModeBanner } from './ReviewModeBanner';
 import {
   getExpectedDispatchBoxes,
+  getExpectedDocumentBoxes,
   getExpectedItemBoxes,
   parsePositiveNumber,
 } from './salesDispatchBoxCounts';
 import { DOCKING_TOTAL_STEPS, formatTimestamp, formatValue } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
-
-type ScanSource = 'camera' | 'manual';
 
 const SCAN_CLOSED_STATUSES = [
   'GATEPASS_PRINTED',
@@ -80,6 +93,20 @@ const SCAN_CLOSED_STATUSES = [
   'REJECTED',
   'CANCELLED',
 ] as const;
+
+// A connected hardware scanner behaves like a keyboard, so it needs the box-barcode
+// field kept focused to receive each scan. But on touch devices, programmatically
+// focusing a text field pops the on-screen keyboard, which covers the camera and
+// knocks it out of place. So we only auto-focus on devices with a fine pointer
+// (desktop/laptop with a mouse or trackpad) — where hardware scanners are actually
+// used — and never on phones/tablets, where camera scanning is the workflow. Mobile
+// users can still tap the field to type manually; the keyboard just won't pop on its own.
+function detectFinePointer() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return true;
+  }
+  return window.matchMedia('(pointer: fine)').matches;
+}
 
 export default function SalesDispatchBarcodeScanPage() {
   const navigate = useNavigate();
@@ -92,8 +119,34 @@ export default function SalesDispatchBarcodeScanPage() {
   const [isSkipDialogOpen, setIsSkipDialogOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [skipError, setSkipError] = useState('');
+  const [isPartialDialogOpen, setIsPartialDialogOpen] = useState(false);
+  const [partialReason, setPartialReason] = useState('');
+  const [partialError, setPartialError] = useState('');
   const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
   const manualInputRef = useRef<HTMLInputElement>(null);
+  // Computed once per device — auto-focus the barcode field only where a hardware
+  // scanner is used (fine pointer), so we never pop the soft keyboard on mobile.
+  const [autoFocusBarcode] = useState(detectFinePointer);
+  // Which bill (document) is expanded for scanning — one at a time so a single
+  // camera element is mounted. Boxes scanned while a bill is open are attributed to
+  // that bill. `scanTargetRef` mirrors the open bill's document id for the camera
+  // callback (which is created once and can't read fresh state).
+  const [openBillKey, setOpenBillKey] = useState<number | null>(null);
+  const scanTargetRef = useRef<number | null>(null);
+  const didAutoOpenRef = useRef(false);
+  // Non-blocking scan queue: scans (camera or hardware gun) are accepted instantly
+  // and synced to the backend one at a time in the background, so the barcode field
+  // and Add button never lock up and the operator can keep firing boxes. `pendingCount`
+  // drives the "syncing" indicator; `flashing` drives the green success blink.
+  const [pendingCount, setPendingCount] = useState(0);
+  const [flashing, setFlashing] = useState(false);
+  // Boxes whose sync was rejected (over-invoice, not on bill, not found, …). Shown in
+  // a separate queue under the scanner so the operator can see/retry/dismiss each one.
+  const [failedScans, setFailedScans] = useState<FailedScan[]>([]);
+  const scanQueueRef = useRef<{ barcode: string; documentId: number | null }[]>([]);
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const processingRef = useRef(false);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     data: entry,
@@ -103,6 +156,7 @@ export default function SalesDispatchBarcodeScanPage() {
   } = useSalesDispatchByVehicleEntry(entryIdNumber);
   const { data: scans = [], isLoading: isScansLoading } = useSalesDispatchBoxScans(entry?.id);
   const { data: skipRequest } = useDockingScanSkipRequestByDispatch(entry?.id);
+  const { data: partialRequest } = useDockingPartialScanRequestByDispatch(entry?.id);
   const {
     data: barcodeScans,
     isFetching: isBarcodeScansLoading,
@@ -111,6 +165,7 @@ export default function SalesDispatchBarcodeScanPage() {
   const scanBox = useScanSalesDispatchBox();
   const removeScan = useRemoveSalesDispatchBoxScan();
   const createSkipRequest = useCreateDockingScanSkipRequest();
+  const createPartialRequest = useCreateDockingPartialScanRequest();
 
   const isReadOnly = entry ? SCAN_CLOSED_STATUSES.includes(entry.status) : false;
   // In review mode we deliberately stay on the page to walk a closed entry.
@@ -120,6 +175,7 @@ export default function SalesDispatchBarcodeScanPage() {
     GATE_PERMISSIONS.SALES_DISPATCH.EDIT,
   ]);
   const canRequestScanSkip = hasPermission(ADMIN_PERMISSIONS.DOCKING.REQUEST_SCAN_SKIP);
+  const canRequestPartial = hasPermission(ADMIN_PERMISSIONS.DOCKING.REQUEST_PARTIAL_SCAN);
   // Some companies (e.g. Jivo Beverages) don't scan boxes at the factory at all, so box
   // scanning is optional for them: operators can continue without scanning and without
   // the admin scan-skip approval flow. Driven by the backend per the entry's company.
@@ -127,16 +183,47 @@ export default function SalesDispatchBarcodeScanPage() {
   const skipStatus = skipRequest?.status ?? null;
   const isSkipApproved = skipStatus === 'APPROVED';
   const isSkipPending = skipStatus === 'PENDING';
+  const partialStatus = partialRequest?.status ?? null;
+  const isPartialApproved = partialStatus === 'APPROVED';
+  const isPartialPending = partialStatus === 'PENDING';
   const isSaving = scanBox.isPending || removeScan.isPending;
 
+  // Keep the barcode field focused so a connected hardware scanner can fire one box
+  // after another without the user clicking back into it. The field is never disabled
+  // (scans queue in the background), so focus is retained between scans; we only need
+  // to re-assert it on load and when the open bill changes. Skipped on touch devices
+  // (autoFocusBarcode) so the soft keyboard never pops over the camera.
+  useEffect(() => {
+    if (autoFocusBarcode && entry && !isReadOnly && canEditDocking) {
+      manualInputRef.current?.focus();
+    }
+  }, [autoFocusBarcode, entry, isReadOnly, canEditDocking, openBillKey]);
+
   const expectedBoxes = getExpectedDispatchBoxes(entry);
+  // Partial = at least one box scanned but fewer than expected. Such a load needs a
+  // partial-dispatch approval (the zero-scan case still uses the scan-skip flow).
+  const isPartialScan = scans.length > 0 && expectedBoxes > 0 && scans.length < expectedBoxes;
   const scannedQuantity = useMemo(
     () => scans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
     [scans],
   );
-  const itemScanSummary = useMemo(() => buildItemScanSummary(entry, scans), [entry, scans]);
+  const billGroups = useMemo(() => buildBillGroups(entry, scans), [entry, scans]);
   const progressPercent =
     expectedBoxes > 0 ? Math.min(100, Math.round((scans.length / expectedBoxes) * 100)) : 0;
+
+  // Auto-open the only bill (nothing to choose); multi-bill loads stay collapsed.
+  useEffect(() => {
+    if (!didAutoOpenRef.current && billGroups.length === 1) {
+      didAutoOpenRef.current = true;
+      setOpenBillKey(billGroups[0].key);
+    }
+  }, [billGroups]);
+
+  // Keep the camera's scan target pointed at the currently open bill.
+  useEffect(() => {
+    const open = billGroups.find((bill) => bill.key === openBillKey);
+    scanTargetRef.current = open ? open.documentId : null;
+  }, [billGroups, openBillKey]);
 
   useEffect(() => {
     if (!closedScanRedirectPath || !entry) return;
@@ -144,8 +231,67 @@ export default function SalesDispatchBarcodeScanPage() {
     navigate(closedScanRedirectPath, { replace: true });
   }, [closedScanRedirectPath, entry, navigate]);
 
-  const processBarcode = useCallback(
-    async (rawBarcode: string, source: ScanSource) => {
+  // Latest entry id / refetch / mutation, read by the background queue worker so it
+  // never closes over stale values while it drains.
+  const queueCtxRef = useRef({ entryId: entry?.id, refetchEntry, scanBox });
+  queueCtxRef.current = { entryId: entry?.id, refetchEntry, scanBox };
+
+  const triggerFlash = useCallback(() => {
+    setFlashing(true);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlashing(false), 350);
+  }, []);
+
+  useEffect(() => () => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+  }, []);
+
+  // Drain the queue one scan at a time. Reentrancy-guarded so only one worker runs;
+  // new scans pushed while it runs are picked up before it exits.
+  const processQueue = useCallback(async () => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+    let didProcess = false;
+    while (scanQueueRef.current.length > 0) {
+      const next = scanQueueRef.current[0];
+      const { entryId, scanBox: scanMutation } = queueCtxRef.current;
+      const key = next.barcode.toLowerCase();
+      try {
+        if (entryId == null) throw new Error('Docking details not found.');
+        const saved = await scanMutation.mutateAsync({
+          id: entryId,
+          data: { barcode_raw: next.barcode, document: next.documentId },
+        });
+        if (saved.duplicate) {
+          toast.warning(`${next.barcode}: already scanned for this docking`);
+        } else {
+          triggerFlash();
+        }
+        // It synced — drop it from the error queue if it was there from a prior try.
+        setFailedScans((prev) => prev.filter((failed) => failed.barcode.toLowerCase() !== key));
+      } catch (scanError) {
+        const message = getErrorMessage(scanError, `Couldn't scan ${next.barcode}`);
+        // Surface it in the persistent error queue (deduped by barcode), newest first.
+        setFailedScans((prev) => [
+          { barcode: next.barcode, documentId: next.documentId, reason: message },
+          ...prev.filter((failed) => failed.barcode.toLowerCase() !== key),
+        ]);
+      } finally {
+        scanQueueRef.current.shift();
+        inFlightRef.current.delete(next.barcode.toLowerCase());
+        setPendingCount(scanQueueRef.current.length);
+        didProcess = true;
+      }
+    }
+    processingRef.current = false;
+    if (didProcess) await queueCtxRef.current.refetchEntry();
+    if (scanQueueRef.current.length > 0) void processQueue();
+  }, [triggerFlash]);
+
+  // Accept a scan instantly: validate, dedupe, enqueue, keep the field focused, and
+  // kick the background worker. Never awaits the network, so it can't block the field.
+  const enqueueScan = useCallback(
+    (rawBarcode: string, documentId: number | null) => {
       const barcode = rawBarcode.trim();
       if (!entry) {
         setError('Docking details not found.');
@@ -159,52 +305,66 @@ export default function SalesDispatchBarcodeScanPage() {
         setError('Box scans cannot be changed for this Docking entry.');
         return;
       }
-
-      const alreadyScanned = scans.some(
-        (scan) =>
-          scan.box_barcode.toLowerCase() === barcode.toLowerCase() ||
-          scan.barcode_raw.toLowerCase() === barcode.toLowerCase(),
-      );
-      if (alreadyScanned) {
+      const key = barcode.toLowerCase();
+      const already =
+        inFlightRef.current.has(key) ||
+        scans.some(
+          (scan) =>
+            scan.box_barcode.toLowerCase() === key || scan.barcode_raw.toLowerCase() === key,
+        );
+      if (already) {
         setError('');
         toast.warning('This box is already in the scan list');
         setManualBarcode('');
         return;
       }
-
       setError('');
-      try {
-        const savedScan = await scanBox.mutateAsync({
-          id: entry.id,
-          data: { barcode_raw: barcode },
-        });
-        setManualBarcode('');
-        await refetchEntry();
-        if (savedScan.duplicate) {
-          toast.warning('This box was already scanned for this docking entry');
-        } else {
-          toast.success(source === 'camera' ? 'Camera scan added' : 'Box scan added');
-        }
-        manualInputRef.current?.focus();
-      } catch (scanError) {
-        setError(getErrorMessage(scanError, 'Unable to save this box scan'));
-      }
+      inFlightRef.current.add(key);
+      scanQueueRef.current.push({ barcode, documentId });
+      setPendingCount(scanQueueRef.current.length);
+      setManualBarcode('');
+      if (autoFocusBarcode) manualInputRef.current?.focus();
+      void processQueue();
     },
-    [canEditDocking, entry, isReadOnly, refetchEntry, scanBox, scans],
+    [autoFocusBarcode, canEditDocking, entry, isReadOnly, scans, processQueue],
   );
 
-  const handleCameraScan = useCallback(
-    (decodedText: string) => {
-      void processBarcode(decodedText, 'camera');
-    },
-    [processBarcode],
-  );
+  // Stable ref so the camera's one-time onScan callback always enqueues against the
+  // latest state and the currently open bill.
+  const enqueueRef = useRef(enqueueScan);
+  enqueueRef.current = enqueueScan;
+  const handleCameraScan = useCallback((decodedText: string) => {
+    enqueueRef.current(decodedText, scanTargetRef.current);
+  }, []);
 
   const scanner = useScanner({ onScan: handleCameraScan, debounceMs: 1800 });
 
-  const handleManualSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    void processBarcode(manualBarcode, 'manual');
+  // Switching bills tears the camera element out of one accordion and into another,
+  // so stop any running camera first; the operator restarts it in the open bill.
+  useEffect(() => {
+    if (scanner.isScanning) scanner.stopScanning();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openBillKey]);
+
+  const handleManualSubmit = (documentId: number | null) => {
+    enqueueScan(manualBarcode, documentId);
+  };
+
+  const handleToggleBill = (key: number) => {
+    setOpenBillKey((current) => (current === key ? null : key));
+  };
+
+  const handleRetryFailedScan = (failed: FailedScan) => {
+    setFailedScans((prev) =>
+      prev.filter((item) => item.barcode.toLowerCase() !== failed.barcode.toLowerCase()),
+    );
+    enqueueScan(failed.barcode, failed.documentId);
+  };
+
+  const handleDismissFailedScan = (failed: FailedScan) => {
+    setFailedScans((prev) =>
+      prev.filter((item) => item.barcode.toLowerCase() !== failed.barcode.toLowerCase()),
+    );
   };
 
   const handleRemoveScan = async (scan: SalesDispatchBoxScan) => {
@@ -224,15 +384,23 @@ export default function SalesDispatchBarcodeScanPage() {
       setError('Docking details not found.');
       return;
     }
-    if (scans.length === 0 && !isSkipApproved && !isBoxScanOptional) {
-      if (isSkipPending) {
+    if (!isBoxScanOptional) {
+      if (scans.length === 0 && !isSkipApproved) {
         setError(
-          'Box scanning skip is awaiting admin approval. You can continue once it is approved.',
+          isSkipPending
+            ? 'Box scanning skip is awaiting admin approval. You can continue once it is approved.'
+            : 'Scan at least one box, or request approval to skip scanning.',
         );
-      } else {
-        setError('Scan at least one box, or request approval to skip scanning.');
+        return;
       }
-      return;
+      if (isPartialScan && !isPartialApproved) {
+        setError(
+          isPartialPending
+            ? 'Partial dispatch is awaiting admin approval. You can continue once it is approved.'
+            : 'Scan all boxes, or request partial dispatch approval to continue.',
+        );
+        return;
+      }
     }
     navigate(DOCKING_ROUTES.attachments(entry.vehicle_entry));
   };
@@ -252,6 +420,24 @@ export default function SalesDispatchBarcodeScanPage() {
       toast.success('Scan skip request sent for admin approval');
     } catch (submitError) {
       setSkipError(getErrorMessage(submitError, 'Unable to submit the skip request'));
+    }
+  };
+
+  const handleSubmitPartialRequest = async () => {
+    if (!entry) return;
+    const trimmedReason = partialReason.trim();
+    if (!trimmedReason) {
+      setPartialError('Enter a reason for dispatching with a partial scan.');
+      return;
+    }
+    setPartialError('');
+    try {
+      await createPartialRequest.mutateAsync({ sales_dispatch: entry.id, reason: trimmedReason });
+      setIsPartialDialogOpen(false);
+      setPartialReason('');
+      toast.success('Partial dispatch request sent for admin approval');
+    } catch (submitError) {
+      setPartialError(getErrorMessage(submitError, 'Unable to submit the partial dispatch request'));
     }
   };
 
@@ -298,19 +484,13 @@ export default function SalesDispatchBarcodeScanPage() {
 
       {isReview ? <ReviewModeBanner /> : null}
 
-      <ItemsToScanCard
-        items={itemScanSummary.items}
-        unplannedScanCount={itemScanSummary.unplannedScanCount}
-        itemSummary={entry.item_summary}
-      />
-
       {isBoxScanOptional ? (
         <ScanOptionalPanel />
-      ) : (
+      ) : scans.length === 0 ? (
         <ScanSkipPanel
           skipRequest={skipRequest}
           canRequest={canRequestScanSkip && !isReadOnly && canEditDocking}
-          hasScans={scans.length > 0}
+          hasScans={false}
           isSubmitting={createSkipRequest.isPending}
           onRequest={() => {
             setSkipReason('');
@@ -318,9 +498,22 @@ export default function SalesDispatchBarcodeScanPage() {
             setIsSkipDialogOpen(true);
           }}
         />
-      )}
+      ) : isPartialScan ? (
+        <PartialScanPanel
+          partialRequest={partialRequest}
+          canRequest={canRequestPartial && !isReadOnly && canEditDocking}
+          scanned={scans.length}
+          expected={expectedBoxes}
+          isSubmitting={createPartialRequest.isPending}
+          onRequest={() => {
+            setPartialReason('');
+            setPartialError('');
+            setIsPartialDialogOpen(true);
+          }}
+        />
+      ) : null}
 
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]">
         <Card className="overflow-hidden">
           <CardHeader className="border-b">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -330,7 +523,7 @@ export default function SalesDispatchBarcodeScanPage() {
                   Box Scanning
                 </CardTitle>
                 <CardDescription>
-                  Capture each loaded box against this Docking entry.
+                  Open a bill below to scan its boxes against that bill.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -343,100 +536,42 @@ export default function SalesDispatchBarcodeScanPage() {
                   <PackageSearch className="h-4 w-4" />
                   Check Barcode Scans
                 </Button>
+                {pendingCount > 0 ? (
+                  <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    Syncing {pendingCount}
+                  </Badge>
+                ) : null}
                 <Badge variant={scans.length > 0 ? 'success' : 'outline'}>
                   {scans.length} scanned
                 </Badge>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-5 pt-6">
-            <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.9fr)_minmax(0,1.1fr)]">
-              <div className="space-y-4">
-                <div className="relative overflow-hidden rounded-md border bg-slate-950">
-                  <div
-                    id={scanner.elementId}
-                    className="aspect-square min-h-[260px] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-                  />
-                  {!scanner.isScanning ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950 text-white">
-                      <Camera className="h-10 w-10 text-white/80" />
-                      <span className="text-sm font-medium">Camera scanner is idle</span>
-                    </div>
-                  ) : (
-                    <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
-                  )}
-                </div>
-                <div>
-                  <Button
-                    type="button"
-                    variant={scanner.isScanning ? 'outline' : 'default'}
-                    onClick={scanner.isScanning ? scanner.stopScanning : scanner.startScanning}
-                    disabled={isReadOnly || !canEditDocking || isSaving}
-                    className="w-full"
-                  >
-                    <Camera className="h-4 w-4" />
-                    {scanner.isScanning ? 'Stop' : 'Start'}
-                  </Button>
-                </div>
+          <CardContent className="space-y-4 pt-6">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ScanMetric
+                label="Expected Boxes"
+                value={expectedBoxes > 0 ? formatNumber(expectedBoxes) : '-'}
+              />
+              <ScanMetric label="Scanned Boxes" value={String(scans.length)} />
+              <ScanMetric
+                label="Scanned Qty"
+                value={scannedQuantity > 0 ? formatNumber(scannedQuantity) : '-'}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Scan progress</span>
+                <span>{expectedBoxes > 0 ? `${progressPercent}%` : 'Open count'}</span>
               </div>
-
-              <div className="space-y-4">
-                <form className="space-y-3" onSubmit={handleManualSubmit}>
-                  <Label htmlFor="sales-dispatch-box-barcode">Box Barcode</Label>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Input
-                      ref={manualInputRef}
-                      id="sales-dispatch-box-barcode"
-                      value={manualBarcode}
-                      disabled={isReadOnly || !canEditDocking || isSaving}
-                      onChange={(event) => {
-                        setManualBarcode(event.target.value);
-                        setError('');
-                      }}
-                      placeholder="Scan or type barcode"
-                      className="font-mono"
-                    />
-                    <Button
-                      type="submit"
-                      disabled={isReadOnly || !canEditDocking || isSaving || !manualBarcode.trim()}
-                    >
-                      {scanBox.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <PackageCheck className="h-4 w-4" />
-                      )}
-                      Add
-                    </Button>
-                  </div>
-                </form>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <ScanMetric
-                    label="Expected Boxes"
-                    value={expectedBoxes > 0 ? formatNumber(expectedBoxes) : '-'}
-                  />
-                  <ScanMetric label="Scanned Boxes" value={String(scans.length)} />
-                  <ScanMetric
-                    label="Scanned Qty"
-                    value={scannedQuantity > 0 ? formatNumber(scannedQuantity) : '-'}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Scan progress</span>
-                    <span>{expectedBoxes > 0 ? `${progressPercent}%` : 'Open count'}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{
-                        width:
-                          expectedBoxes > 0 ? `${progressPercent}%` : scans.length ? '100%' : '0%',
-                      }}
-                    />
-                  </div>
-                </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all"
+                  style={{
+                    width: expectedBoxes > 0 ? `${progressPercent}%` : scans.length ? '100%' : '0%',
+                  }}
+                />
               </div>
             </div>
           </CardContent>
@@ -453,80 +588,54 @@ export default function SalesDispatchBarcodeScanPage() {
             <InfoItem label="Entry No." value={entry.entry_no} />
             <InfoItem label="Vehicle" value={entry.vehicle_no} />
             <InfoItem label="Driver" value={entry.driver_name} />
-            <InfoItem label="SAP Invoice" value={entry.sap_doc_num} />
             <InfoItem label="Customer" value={entry.customer_name || entry.to_warehouse} />
             <InfoItem label="Docked At" value={formatTimestamp(entry.docked_at)} />
           </CardContent>
         </Card>
       </section>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2 text-xl">
-            <CheckCircle2 className="h-5 w-5" />
-            Scanned Boxes
+            <ClipboardList className="h-5 w-5" />
+            Bills on this Load
           </CardTitle>
+          <CardDescription>
+            {billGroups.length} bill{billGroups.length === 1 ? '' : 's'}. Open a bill to scan its
+            boxes — each box is recorded against that bill only.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          {scans.length === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">No boxes scanned yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="p-3 text-left font-medium">Barcode</th>
-                    <th className="p-3 text-left font-medium">Item</th>
-                    <th className="p-3 text-left font-medium">Batch</th>
-                    <th className="p-3 text-left font-medium">Qty</th>
-                    <th className="p-3 text-left font-medium">Warehouse</th>
-                    <th className="p-3 text-left font-medium">Status</th>
-                    <th className="p-3 text-right font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scans.map((scan) => (
-                    <tr key={scan.id} className="border-b last:border-b-0">
-                      <td className="p-3 font-mono text-xs font-medium">{scan.box_barcode}</td>
-                      <td className="p-3">
-                        <div className="font-medium">{scan.item_code || '-'}</div>
-                        <div className="max-w-[280px] truncate text-xs text-muted-foreground">
-                          {scan.item_name || '-'}
-                        </div>
-                      </td>
-                      <td className="p-3">{formatValue(scan.batch_number)}</td>
-                      <td className="p-3">
-                        {[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}
-                      </td>
-                      <td className="p-3">{formatValue(scan.warehouse_code)}</td>
-                      <td className="p-3">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            scan.box_status === 'ACTIVE' &&
-                              'border-emerald-200 bg-emerald-50 text-emerald-700',
-                          )}
-                        >
-                          {scan.box_status || 'BOX'}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          disabled={isReadOnly || !canEditDocking || isSaving}
-                          onClick={() => void handleRemoveScan(scan)}
-                          title="Remove scan"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <CardContent className="space-y-3 p-4">
+          {billGroups.length === 0 ? (
+            <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+              {entry.item_summary || 'No bills/items found for this Docking entry.'}
             </div>
+          ) : (
+            billGroups.map((bill) => (
+              <BillScanCard
+                key={bill.key}
+                bill={bill}
+                isOpen={openBillKey === bill.key}
+                onToggle={handleToggleBill}
+                scanner={scanner}
+                manualBarcode={manualBarcode}
+                manualInputRef={manualInputRef}
+                autoFocusBarcode={autoFocusBarcode}
+                pendingCount={pendingCount}
+                flashing={flashing}
+                failedScans={failedScans}
+                isReadOnly={isReadOnly}
+                canEdit={canEditDocking}
+                onManualChange={(value) => {
+                  setManualBarcode(value);
+                  setError('');
+                }}
+                onManualSubmit={() => handleManualSubmit(bill.documentId)}
+                onRemoveScan={handleRemoveScan}
+                onRetryFailed={handleRetryFailedScan}
+                onDismissFailed={handleDismissFailedScan}
+              />
+            ))
           )}
         </CardContent>
       </Card>
@@ -590,6 +699,56 @@ export default function SalesDispatchBarcodeScanPage() {
               disabled={createSkipRequest.isPending || !skipReason.trim()}
             >
               {createSkipRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Send for Approval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isPartialDialogOpen}
+        onOpenChange={(open) => {
+          if (createPartialRequest.isPending) return;
+          setIsPartialDialogOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Partial Dispatch Approval</DialogTitle>
+            <DialogDescription>
+              Only {scans.length} of {expectedBoxes} boxes are scanned. Send this Docking entry to
+              Admin for approval to dispatch with a partial scan. You cannot continue until an admin
+              approves the request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="docking-partial-scan-reason">Reason</Label>
+            <Textarea
+              id="docking-partial-scan-reason"
+              value={partialReason}
+              onChange={(event) => {
+                setPartialReason(event.target.value);
+                setPartialError('');
+              }}
+              placeholder="Why is this Docking entry dispatched with a partial box scan?"
+            />
+            {partialError ? <p className="text-sm text-destructive">{partialError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsPartialDialogOpen(false)}
+              disabled={createPartialRequest.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleSubmitPartialRequest()}
+              disabled={createPartialRequest.isPending || !partialReason.trim()}
+            >
+              {createPartialRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Send for Approval
             </Button>
           </DialogFooter>
@@ -847,6 +1006,12 @@ function BarcodeScansDialog({
   );
 }
 
+interface FailedScan {
+  barcode: string;
+  documentId: number | null;
+  reason: string;
+}
+
 interface ItemScanRow {
   key: string;
   lineNum: number;
@@ -862,129 +1027,412 @@ interface ItemScanRow {
   isComplete: boolean;
 }
 
-function ItemsToScanCard({
-  items,
-  unplannedScanCount,
-  itemSummary,
+function BillScanCard({
+  bill,
+  isOpen,
+  onToggle,
+  scanner,
+  manualBarcode,
+  manualInputRef,
+  autoFocusBarcode,
+  pendingCount,
+  flashing,
+  failedScans,
+  isReadOnly,
+  canEdit,
+  onManualChange,
+  onManualSubmit,
+  onRemoveScan,
+  onRetryFailed,
+  onDismissFailed,
 }: {
-  items: ItemScanRow[];
-  unplannedScanCount: number;
-  itemSummary?: string;
+  bill: BillGroup;
+  isOpen: boolean;
+  onToggle: (key: number) => void;
+  scanner: ReturnType<typeof useScanner>;
+  manualBarcode: string;
+  manualInputRef: RefObject<HTMLInputElement | null>;
+  autoFocusBarcode: boolean;
+  pendingCount: number;
+  flashing: boolean;
+  failedScans: FailedScan[];
+  isReadOnly: boolean;
+  canEdit: boolean;
+  onManualChange: (value: string) => void;
+  onManualSubmit: () => void;
+  onRemoveScan: (scan: SalesDispatchBoxScan) => void;
+  onRetryFailed: (failed: FailedScan) => void;
+  onDismissFailed: (failed: FailedScan) => void;
 }) {
-  const openCount = items.filter((item) => !item.isComplete).length;
-  const scannedCount = items.reduce((total, item) => total + item.scanCount, 0);
+  const canScan = !isReadOnly && canEdit;
+  const inputId = `box-barcode-${bill.key}`;
 
   return (
-    <Card className="overflow-hidden border-primary/30">
-      <CardHeader className="border-b bg-muted/30">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <ClipboardList className="h-5 w-5" />
-              Items to Scan
-            </CardTitle>
-            <CardDescription>
-              {items.length > 0
-                ? `${items.length} dispatch line${items.length === 1 ? '' : 's'}`
-                : 'No dispatch lines found'}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant={openCount > 0 ? 'outline' : 'success'}>{openCount} open</Badge>
-            <Badge variant={scannedCount > 0 ? 'success' : 'outline'}>{scannedCount} scanned</Badge>
-            {unplannedScanCount > 0 ? (
-              <Badge className="border-red-200 bg-red-50 text-red-700">
-                {unplannedScanCount} outside list
-              </Badge>
+    <div className="overflow-hidden rounded-md border">
+      <button
+        type="button"
+        onClick={() => onToggle(bill.key)}
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 bg-muted/40 p-3 text-left transition-colors hover:bg-muted/60"
+      >
+        {isOpen ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold">
+            Bill {formatValue(bill.sapDocNum)}
+            {bill.customerName ? (
+              <span className="font-normal text-muted-foreground"> · {bill.customerName}</span>
             ) : null}
           </div>
+          <div className="text-xs text-muted-foreground">
+            {bill.items.length} item{bill.items.length === 1 ? '' : 's'}
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {items.length === 0 ? (
-          <div className="p-5 text-sm text-muted-foreground">
-            {itemSummary || 'No item details available for this invoice.'}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr>
-                  <th className="w-[150px] p-3 text-left font-medium">Item Code</th>
-                  <th className="p-3 text-left font-medium">Item</th>
-                  <th className="w-[150px] p-3 text-right font-medium">Invoice Qty</th>
-                  <th className="w-[130px] p-3 text-right font-medium">Boxes</th>
-                  <th className="w-[150px] p-3 text-right font-medium">Weight</th>
-                  <th className="w-[190px] p-3 text-left font-medium">Scanned</th>
-                  <th className="w-[130px] p-3 text-left font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr
-                    key={item.key}
-                    className={cn(
-                      'border-b last:border-b-0',
-                      item.scanCount > 0 && !item.isComplete && 'bg-amber-50/60',
-                      item.isComplete && 'bg-emerald-50/60',
-                    )}
-                  >
-                    <td className="whitespace-nowrap p-3 align-top font-mono text-xs font-semibold">
-                      {formatValue(item.itemCode)}
-                    </td>
-                    <td className="p-3 align-top">
-                      <div className="font-medium">{formatValue(item.itemName)}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Line {item.lineNum + 1}
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                      {formatQuantity(item.expectedQuantity, item.uom)}
-                    </td>
-                    <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                      {item.expectedBoxes > 0 ? formatNumber(item.expectedBoxes) : '-'}
-                    </td>
-                    <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                      {item.totalWeight > 0 ? `${formatNumber(item.totalWeight)} kg` : '-'}
-                    </td>
-                    <td className="p-3 align-top">
-                      <div className="font-medium">
-                        {item.scanCount} box{item.scanCount === 1 ? '' : 'es'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.scannedQuantity > 0
-                          ? formatQuantity(item.scannedQuantity, item.uom)
-                          : '-'}
-                      </div>
-                      {item.progressPercent !== null ? (
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-emerald-500"
-                            style={{ width: `${item.progressPercent}%` }}
-                          />
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="p-3 align-top">
-                      <Badge
-                        variant={item.isComplete ? 'success' : 'outline'}
+        {/* On phones the badges drop to their own full-width line (indented under the
+            title past the chevron) so the bill number isn't squeezed into a stub.
+            From sm up they sit inline to the right of the title. */}
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 pl-7 sm:w-auto sm:pl-0">
+          <Badge variant="outline">
+            {bill.scannedBoxes}
+            {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
+            {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
+          </Badge>
+          <Badge
+            variant={bill.status === 'Complete' ? 'success' : 'outline'}
+            className={cn(
+              bill.status === 'Partial' && 'border-amber-200 bg-amber-50 text-amber-700',
+            )}
+          >
+            {bill.status === 'Complete' ? (
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+            ) : null}
+            {bill.status}
+          </Badge>
+        </div>
+      </button>
+
+      {isOpen ? (
+        <div className="space-y-4 border-t p-4">
+          <BillItemsTable summary={bill.summary} />
+
+          {canScan ? (
+            <div className="grid gap-4 rounded-md border bg-muted/10 p-3 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
+              <div className="space-y-3">
+                {/* The camera viewport only takes space while the camera is running;
+                    when off we just show the Start button. */}
+                {scanner.isScanning ? (
+                  <>
+                    <div className="relative overflow-hidden rounded-md border bg-slate-950">
+                      <div
+                        id={scanner.elementId}
+                        className="aspect-square min-h-[220px] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+                      />
+                      <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
+                      {/* Green blink confirming a box was accepted via the camera. */}
+                      <div
                         className={cn(
-                          !item.isComplete &&
-                            item.scanCount > 0 &&
-                            'border-amber-200 bg-amber-50 text-amber-700',
+                          'pointer-events-none absolute inset-0 bg-emerald-400/60 transition-opacity duration-200',
+                          flashing ? 'opacity-100' : 'opacity-0',
                         )}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={scanner.stopScanning}
+                        className="flex-1"
                       >
-                        {item.isComplete ? 'Complete' : item.scanCount > 0 ? 'Partial' : 'Open'}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                        <Camera className="h-4 w-4" />
+                        Stop
+                      </Button>
+                      {scanner.torchSupported ? (
+                        <Button
+                          type="button"
+                          variant={scanner.torchOn ? 'default' : 'outline'}
+                          onClick={() => void scanner.toggleTorch()}
+                          title="Toggle flashlight"
+                        >
+                          <Flashlight className="h-4 w-4" />
+                          {scanner.torchOn ? 'Light on' : 'Light'}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={scanner.startScanning}
+                    className="w-full"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Start Camera
+                  </Button>
+                )}
+              </div>
+
+              <form
+                className="space-y-3"
+                onSubmit={(event: FormEvent<HTMLFormElement>) => {
+                  event.preventDefault();
+                  onManualSubmit();
+                }}
+              >
+                <Label htmlFor={inputId}>Scan boxes for Bill {formatValue(bill.sapDocNum)}</Label>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Input
+                    ref={manualInputRef}
+                    id={inputId}
+                    autoFocus={autoFocusBarcode}
+                    value={manualBarcode}
+                    onChange={(event) => onManualChange(event.target.value)}
+                    placeholder="Scan or type barcode"
+                    className={cn(
+                      'font-mono transition-shadow',
+                      flashing && 'ring-2 ring-emerald-400 ring-offset-1',
+                    )}
+                  />
+                  <Button type="submit" disabled={!manualBarcode.trim()}>
+                    <PackageCheck className="h-4 w-4" />
+                    Add
+                  </Button>
+                </div>
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {pendingCount > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-amber-600">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Syncing {pendingCount}…
+                    </span>
+                  ) : null}
+                  <span>Boxes are recorded against this bill only, capped at its invoiced quantity.</span>
+                </p>
+              </form>
+            </div>
+          ) : null}
+
+          <FailedScansQueue
+            failedScans={failedScans}
+            canEdit={canScan}
+            onRetry={onRetryFailed}
+            onDismiss={onDismissFailed}
+          />
+
+          <BillScannedBoxes
+            scans={bill.scans}
+            canRemove={canScan}
+            onRemoveScan={onRemoveScan}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BillItemsTable({ summary }: { summary: BillScanSummary }) {
+  const { items, unplannedScanCount } = summary;
+  if (items.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+        No item lines on this bill.
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full min-w-[860px] text-sm">
+        <thead className="border-b bg-muted/40">
+          <tr>
+            <th className="w-[150px] p-3 text-left font-medium">Item Code</th>
+            <th className="p-3 text-left font-medium">Item</th>
+            <th className="w-[140px] p-3 text-right font-medium">Invoice Qty</th>
+            <th className="w-[110px] p-3 text-right font-medium">Boxes</th>
+            <th className="w-[170px] p-3 text-left font-medium">Scanned</th>
+            <th className="w-[120px] p-3 text-left font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr
+              key={item.key}
+              className={cn(
+                'border-b last:border-b-0',
+                item.scanCount > 0 && !item.isComplete && 'bg-amber-50/60',
+                item.isComplete && 'bg-emerald-50/60',
+              )}
+            >
+              <td className="whitespace-nowrap p-3 align-top font-mono text-xs font-semibold">
+                {formatValue(item.itemCode)}
+              </td>
+              <td className="p-3 align-top">
+                <div className="font-medium">{formatValue(item.itemName)}</div>
+                <div className="mt-1 text-xs text-muted-foreground">Line {item.lineNum + 1}</div>
+              </td>
+              <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
+                {formatQuantity(item.expectedQuantity, item.uom)}
+              </td>
+              <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
+                {item.expectedBoxes > 0 ? formatNumber(item.expectedBoxes) : '-'}
+              </td>
+              <td className="p-3 align-top">
+                <div className="font-medium">
+                  {item.scanCount} box{item.scanCount === 1 ? '' : 'es'}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {item.scannedQuantity > 0 ? formatQuantity(item.scannedQuantity, item.uom) : '-'}
+                </div>
+                {item.progressPercent !== null ? (
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{ width: `${item.progressPercent}%` }}
+                    />
+                  </div>
+                ) : null}
+              </td>
+              <td className="p-3 align-top">
+                <Badge
+                  variant={item.isComplete ? 'success' : 'outline'}
+                  className={cn(
+                    !item.isComplete &&
+                      item.scanCount > 0 &&
+                      'border-amber-200 bg-amber-50 text-amber-700',
+                  )}
+                >
+                  {item.isComplete ? 'Complete' : item.scanCount > 0 ? 'Partial' : 'Open'}
+                </Badge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {unplannedScanCount > 0 ? (
+        <div className="border-t bg-red-50 p-2 text-xs text-red-700">
+          {unplannedScanCount} scanned box{unplannedScanCount === 1 ? '' : 'es'} outside this bill's
+          item list.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FailedScansQueue({
+  failedScans,
+  canEdit,
+  onRetry,
+  onDismiss,
+}: {
+  failedScans: FailedScan[];
+  canEdit: boolean;
+  onRetry: (failed: FailedScan) => void;
+  onDismiss: (failed: FailedScan) => void;
+}) {
+  if (failedScans.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-md border border-red-200">
+      <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+        <AlertCircle className="h-4 w-4" />
+        Failed scans ({failedScans.length})
+      </div>
+      <ul className="divide-y">
+        {failedScans.map((failed) => (
+          <li
+            key={failed.barcode}
+            className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="min-w-0">
+              <div className="font-mono text-xs font-medium">{failed.barcode}</div>
+              <div className="text-xs text-red-600">{failed.reason}</div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!canEdit}
+                onClick={() => onRetry(failed)}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Retry
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={!canEdit}
+                onClick={() => onDismiss(failed)}
+                title="Remove from list"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function BillScannedBoxes({
+  scans,
+  canRemove,
+  onRemoveScan,
+}: {
+  scans: SalesDispatchBoxScan[];
+  canRemove: boolean;
+  onRemoveScan: (scan: SalesDispatchBoxScan) => void;
+}) {
+  if (scans.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+        No boxes scanned for this bill yet.
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-sm">
+        <thead className="border-b bg-muted/50">
+          <tr>
+            <th className="p-3 text-left font-medium">Barcode</th>
+            <th className="p-3 text-left font-medium">Item</th>
+            <th className="p-3 text-left font-medium">Batch</th>
+            <th className="p-3 text-left font-medium">Qty</th>
+            <th className="p-3 text-left font-medium">Warehouse</th>
+            <th className="p-3 text-right font-medium">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {scans.map((scan) => (
+            <tr key={scan.id} className="border-b last:border-b-0">
+              <td className="p-3 font-mono text-xs font-medium">{scan.box_barcode}</td>
+              <td className="p-3">
+                <div className="font-medium">{scan.item_code || '-'}</div>
+                <div className="max-w-[280px] truncate text-xs text-muted-foreground">
+                  {scan.item_name || '-'}
+                </div>
+              </td>
+              <td className="p-3">{formatValue(scan.batch_number)}</td>
+              <td className="p-3">{[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}</td>
+              <td className="p-3">{formatValue(scan.warehouse_code)}</td>
+              <td className="p-3 text-right">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={!canRemove}
+                  onClick={() => void onRemoveScan(scan)}
+                  title="Remove scan"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -1105,6 +1553,92 @@ function ScanSkipPanel({
   );
 }
 
+function PartialScanPanel({
+  partialRequest,
+  canRequest,
+  scanned,
+  expected,
+  isSubmitting,
+  onRequest,
+}: {
+  partialRequest?: DockingPartialScanRequest | null;
+  canRequest: boolean;
+  scanned: number;
+  expected: number;
+  isSubmitting: boolean;
+  onRequest: () => void;
+}) {
+  const status = partialRequest?.status ?? null;
+
+  if (status === 'APPROVED') {
+    return (
+      <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
+        <div className="space-y-1">
+          <p className="font-medium">Partial dispatch approved</p>
+          <p className="text-sm">
+            {partialRequest?.reviewed_by_name ? `Approved by ${partialRequest.reviewed_by_name}. ` : ''}
+            You can continue to attachments with the boxes scanned so far.
+          </p>
+          {partialRequest?.review_notes ? (
+            <p className="text-sm text-emerald-800">Note: {partialRequest.review_notes}</p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'PENDING') {
+    return (
+      <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <Clock3 className="mt-0.5 h-5 w-5 shrink-0" />
+        <div className="space-y-1">
+          <p className="font-medium">Partial dispatch pending approval</p>
+          <p className="text-sm">
+            An admin must approve this request before you can continue with a partial scan. You can
+            still scan the remaining boxes to proceed normally.
+          </p>
+          {partialRequest?.reason ? (
+            <p className="text-sm text-amber-800">Reason: {partialRequest.reason}</p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  const wasRejected = status === 'REJECTED';
+
+  if (!wasRejected && !canRequest) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-3">
+        <Ban className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+        <div className="space-y-1">
+          <p className="font-medium">
+            {wasRejected ? 'Partial dispatch rejected' : 'Dispatching with a partial scan?'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {wasRejected
+              ? 'Please scan the remaining boxes to continue, or raise a new request.'
+              : `Only ${scanned} of ${expected} boxes are scanned. Request admin approval to dispatch this Docking entry with a partial scan.`}
+          </p>
+          {wasRejected && partialRequest?.review_notes ? (
+            <p className="text-sm text-red-700">Reason: {partialRequest.review_notes}</p>
+          ) : null}
+        </div>
+      </div>
+      {canRequest ? (
+        <Button type="button" variant="outline" onClick={onRequest} disabled={isSubmitting}>
+          {wasRejected ? 'Request Again' : 'Request Partial Dispatch Approval'}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 function InfoItem({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="border-b pb-3 last:border-b-0 last:pb-0">
@@ -1129,24 +1663,142 @@ function getScanClosedMessage(status: SalesDispatchGateOut['status']) {
   return 'Box scanning is closed for this Docking entry.';
 }
 
-function buildItemScanSummary(
+interface BillScanSummary {
+  items: ItemScanRow[];
+  unplannedScanCount: number;
+}
+
+interface BillGroup {
+  key: number;
+  documentId: number | null;
+  sapDocNum: string;
+  customerName: string;
+  items: SalesDispatchItem[];
+  scans: SalesDispatchBoxScan[];
+  expectedBoxes: number;
+  scannedBoxes: number;
+  summary: BillScanSummary;
+  status: 'Open' | 'Partial' | 'Complete';
+}
+
+// Group the load's scans under the bill (SAP document) each belongs to, so the
+// operator scans into one bill at a time and a box never reflects on every bill.
+function buildBillGroups(
   entry: SalesDispatchGateOut | undefined,
   scans: SalesDispatchBoxScan[],
-) {
-  const expectedItems = getExpectedItems(entry);
-  const scansByItem = scans.reduce((map, scan) => {
-    const key = normalizeItemCode(scan.item_code);
-    if (!key) return map;
-    const current = map.get(key) || { count: 0, quantity: 0 };
-    current.count += 1;
-    current.quantity += parsePositiveNumber(scan.quantity);
-    map.set(key, current);
-    return map;
-  }, new Map<string, { count: number; quantity: number }>());
+): BillGroup[] {
+  if (!entry) return [];
+  const documents = entry.documents ?? [];
+  if (documents.length > 0) {
+    return documents.map((document) =>
+      makeBillGroup({
+        key: document.id,
+        documentId: document.id,
+        sapDocNum: document.sap_doc_num || String(document.sap_doc_entry || ''),
+        customerName: document.customer_name || '',
+        items: getDocumentItems(entry, document),
+        scans: scans.filter((scan) => scan.document === document.id),
+        expectedBoxes: getExpectedDocumentBoxes(document),
+      }),
+    );
+  }
+  // Legacy single-document docking: synthesize one bill from the entry header.
+  const items = entry.items ?? [];
+  if (items.length === 0 && scans.length === 0) return [];
+  return [
+    makeBillGroup({
+      key: 0,
+      documentId: null,
+      sapDocNum: entry.sap_doc_num || '',
+      customerName: entry.customer_name || entry.to_warehouse || '',
+      items,
+      scans,
+      expectedBoxes: getExpectedDispatchBoxes(entry),
+    }),
+  ];
+}
+
+function makeBillGroup(args: {
+  key: number;
+  documentId: number | null;
+  sapDocNum: string;
+  customerName: string;
+  items: SalesDispatchItem[];
+  scans: SalesDispatchBoxScan[];
+  expectedBoxes: number;
+}): BillGroup {
+  const summary = summarizeItems(args.items, args.scans);
+  const scannedBoxes = args.scans.length;
+  const allComplete = summary.items.length > 0 && summary.items.every((item) => item.isComplete);
+  const status: BillGroup['status'] = allComplete
+    ? 'Complete'
+    : scannedBoxes > 0
+      ? 'Partial'
+      : 'Open';
+  return { ...args, scannedBoxes, summary, status };
+}
+
+function getDocumentItems(
+  entry: SalesDispatchGateOut,
+  document: SalesDispatchGateOutDocument,
+): SalesDispatchItem[] {
+  if (document.items?.length) return document.items;
+  const matched = entry.items.filter(
+    (item) =>
+      (item.document != null && item.document === document.id) ||
+      (item.document_sap_doc_num && item.document_sap_doc_num === document.sap_doc_num),
+  );
+  if (matched.length) return matched;
+  return entry.documents?.length ? [] : entry.items;
+}
+
+// Allocate a single bill's scans to its item lines (document already matches), with
+// a greedy fallback for legacy null-document scans so none is double-counted.
+function summarizeItems(
+  expectedItems: SalesDispatchItem[],
+  scans: SalesDispatchBoxScan[],
+): BillScanSummary {
+  const stats = expectedItems.map(() => ({ count: 0, quantity: 0 }));
+  const candidatesByCode = new Map<string, number[]>();
+  expectedItems.forEach((item, index) => {
+    const code = normalizeItemCode(item.item_code);
+    if (!code) return;
+    const list = candidatesByCode.get(code);
+    if (list) list.push(index);
+    else candidatesByCode.set(code, [index]);
+  });
+
+  let unplannedScanCount = 0;
+  for (const scan of scans) {
+    const code = normalizeItemCode(scan.item_code);
+    const candidates = code ? candidatesByCode.get(code) : undefined;
+    if (!candidates || candidates.length === 0) {
+      unplannedScanCount += 1;
+      continue;
+    }
+
+    let targetIndex = -1;
+    // 1) The exact bill the backend attributed this scan to.
+    if (scan.document != null) {
+      const matched = candidates.find((index) => expectedItems[index].document === scan.document);
+      if (matched !== undefined) targetIndex = matched;
+    }
+    // 2) Greedy fill: the first bill that still has un-scanned boxes for the item.
+    if (targetIndex === -1) {
+      const open = candidates.find((index) => {
+        const expectedBoxes = getExpectedItemBoxes(expectedItems[index]);
+        return expectedBoxes <= 0 || stats[index].count < expectedBoxes;
+      });
+      targetIndex = open !== undefined ? open : candidates[0];
+    }
+
+    stats[targetIndex].count += 1;
+    stats[targetIndex].quantity += parsePositiveNumber(scan.quantity);
+  }
 
   const items = expectedItems.map((item, index) => {
     const itemCode = item.item_code || '';
-    const scanStats = scansByItem.get(normalizeItemCode(itemCode)) || { count: 0, quantity: 0 };
+    const scanStats = stats[index];
     const expectedQuantity = parsePositiveNumber(item.quantity);
     const progressPercent =
       expectedQuantity > 0
@@ -1169,19 +1821,7 @@ function buildItemScanSummary(
     };
   });
 
-  const plannedItemCodes = new Set(items.map((item) => normalizeItemCode(item.itemCode)));
-  const unplannedScanCount = scans.filter((scan) => {
-    const key = normalizeItemCode(scan.item_code);
-    return key && !plannedItemCodes.has(key);
-  }).length;
-
   return { items, unplannedScanCount };
-}
-
-function getExpectedItems(entry?: SalesDispatchGateOut): SalesDispatchItem[] {
-  if (!entry) return [];
-  if (entry.items?.length) return entry.items;
-  return entry.documents?.flatMap((document) => document.items || []) || [];
 }
 
 function normalizeItemCode(value?: string | null) {

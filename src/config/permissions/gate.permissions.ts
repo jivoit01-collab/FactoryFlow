@@ -203,6 +203,46 @@ export const GATE_PERMISSIONS = {
   },
 
   // ============================================
+  // FIXED ASSET GATE-IN PERMISSIONS
+  // ============================================
+  FIXED_ASSET: {
+    /** View fixed asset entries */
+    VIEW: 'fixed_asset_gatein.view_fixedassetgateentry',
+    /** Create fixed asset entries */
+    CREATE: 'fixed_asset_gatein.add_fixedassetgateentry',
+    /** Edit fixed asset entries */
+    EDIT: 'fixed_asset_gatein.change_fixedassetgateentry',
+    /** Delete fixed asset entries */
+    DELETE: 'fixed_asset_gatein.delete_fixedassetgateentry',
+    /** Complete fixed asset entry */
+    COMPLETE: 'fixed_asset_gatein.can_complete_fixed_asset_entry',
+  },
+
+  // ============================================
+  // LABOUR COUNT (casual daily-labour man-day register)
+  // ============================================
+  LABOUR_COUNT: {
+    /** View labour count sheets */
+    VIEW: 'labour_count.view_labourcountsheet',
+    /** Department supervisor: enter/submit labour counts */
+    SUBMIT: 'labour_count.can_submit_labour_count',
+    /** Gate operator: verify (OK) submitted counts */
+    VERIFY: 'labour_count.can_verify_labour_count',
+  },
+
+  // ============================================
+  // LABOUR GATE (simple in/out headcount per contractor)
+  // ============================================
+  LABOUR_GATE: {
+    /** View labour gate in/out entries */
+    VIEW: 'labour_gate.view_labourgateentry',
+    /** Record how many labourers a contractor brought in */
+    RECORD_IN: 'labour_gate.can_record_labour_in',
+    /** Record labour leaving at the gate */
+    RECORD_OUT: 'labour_gate.can_record_labour_out',
+  },
+
+  // ============================================
   // PERSON GATE-IN PERMISSIONS (Visitor/Labour)
   // ============================================
   PERSON_GATE_IN: {
@@ -246,6 +286,9 @@ export const GATE_MODULE_PREFIX = [
   'daily_needs_gatein',
   'maintenance_gatein',
   'construction_gatein',
+  'fixed_asset_gatein',
+  'labour_count',
+  'labour_gate',
 ] as const;
 
 /**
@@ -267,5 +310,8 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.MAINTENANCE)[keyof typeof GATE_PERMISSIONS.MAINTENANCE]
   | (typeof GATE_PERMISSIONS.REPAIR_MOVEMENT)[keyof typeof GATE_PERMISSIONS.REPAIR_MOVEMENT]
   | (typeof GATE_PERMISSIONS.CONSTRUCTION)[keyof typeof GATE_PERMISSIONS.CONSTRUCTION]
+  | (typeof GATE_PERMISSIONS.FIXED_ASSET)[keyof typeof GATE_PERMISSIONS.FIXED_ASSET]
+  | (typeof GATE_PERMISSIONS.LABOUR_COUNT)[keyof typeof GATE_PERMISSIONS.LABOUR_COUNT]
+  | (typeof GATE_PERMISSIONS.LABOUR_GATE)[keyof typeof GATE_PERMISSIONS.LABOUR_GATE]
   | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN]
   | (typeof GATE_PERMISSIONS.JOB_WORK)[keyof typeof GATE_PERMISSIONS.JOB_WORK];

@@ -60,8 +60,8 @@ describe('RAW_MATERIAL_FLOW', () => {
     expect(RAW_MATERIAL_FLOW.headerTitle).toBe('Material Inward');
   });
 
-  it('has totalSteps = 5', () => {
-    expect(RAW_MATERIAL_FLOW.totalSteps).toBe(5);
+  it('has totalSteps = 4', () => {
+    expect(RAW_MATERIAL_FLOW.totalSteps).toBe(4);
   });
 
   it('has dashboardTitle', () => {

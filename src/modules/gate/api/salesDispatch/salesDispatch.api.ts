@@ -151,6 +151,9 @@ export interface SalesDispatchAttachment {
 export interface SalesDispatchBoxScan {
   id: number;
   sales_dispatch: number;
+  /** The specific bill (document) this box is dispatched against; null = unattributed. */
+  document?: number | null;
+  document_sap_doc_num?: string;
   box?: number | null;
   scan_log?: number | null;
   box_barcode: string;
@@ -177,6 +180,19 @@ export interface SalesDispatchGateOut {
   id: number;
   entry_no: string;
   company: number;
+  company_code?: string;
+  company_name?: string;
+  /** Cross-company arrival this docking shares (the physical truck trip). */
+  arrival?: number | null;
+  /** The truck's real in/out state (INSIDE / LOADING / DEPARTED), not the docking's. */
+  arrival_status?: string | null;
+  /** >1 = a multi-company truck: dispatching one docking dispatches the whole truck. */
+  arrival_company_count?: number;
+  /** true once every company on the truck is dispatched and it can make its single exit. */
+  arrival_can_depart?: boolean;
+  /** Gatepass-print lock of THIS docking's company (not the active selector). */
+  gatepass_print_locked?: boolean;
+  gatepass_lock_reason?: string;
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;
@@ -289,6 +305,9 @@ export interface SalesDispatchGateOut {
 export interface SalesDispatchPendingBooking {
   row_type: 'PENDING_BOOKING';
   id: string;
+  company?: number;
+  company_code?: string;
+  company_name?: string;
   entry_no?: string;
   dispatch_plan_ids: number[];
   document_count: number;
@@ -402,6 +421,8 @@ export interface SalesDispatchDocumentParams {
   branch?: string;
   booking_status?: string;
   limit?: number;
+  /** 1 = search SAP invoices across every company the user belongs to (cross-company). */
+  all_companies?: number;
 }
 
 export interface SalesDispatchListParams {
@@ -410,6 +431,8 @@ export interface SalesDispatchListParams {
   from_date?: string;
   to_date?: string;
   search?: string;
+  /** 1 = aggregate across every company the user belongs to (cross-company view). */
+  all_companies?: number;
 }
 
 export interface SalesDispatchPendingBookingParams {
@@ -418,6 +441,8 @@ export interface SalesDispatchPendingBookingParams {
   search?: string;
   dispatch_plan_ids?: string;
   limit?: number;
+  /** 1 = aggregate across every company the user belongs to (cross-company view). */
+  all_companies?: number;
 }
 
 export type SalesDispatchReportParams = SalesDispatchListParams & {
@@ -469,6 +494,8 @@ export interface SalesDispatchAttachmentUploadRequest {
 
 export interface SalesDispatchBoxScanRequest {
   barcode_raw: string;
+  /** The bill (document id) being scanned into. Omitted = backend auto-resolves the bill. */
+  document?: number | null;
 }
 
 /** A box already scanned in the old barcode-module dispatch flow for this SAP bill. */
@@ -785,6 +812,14 @@ export const salesDispatchApi = {
   async commitPrint(id: number): Promise<SalesDispatchGateOut> {
     const response = await apiClient.post<SalesDispatchGateOut>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_COMMIT_PRINT(id),
+    );
+    return response.data;
+  },
+
+  async addDocument(id: number, dispatchPlanId: number): Promise<SalesDispatchGateOut> {
+    const response = await apiClient.post<SalesDispatchGateOut>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ADD_DOCUMENT(id),
+      { dispatch_plan_id: dispatchPlanId },
     );
     return response.data;
   },

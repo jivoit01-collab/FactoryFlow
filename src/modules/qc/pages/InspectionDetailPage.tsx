@@ -5,6 +5,7 @@ import {
   ExternalLink,
   FileText,
   FlaskConical,
+  Link2,
   Paperclip,
   Pencil,
   Printer,
@@ -13,18 +14,25 @@ import {
   Undo2,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { usePermission } from '@/core/auth';
-import { RecordTimestamps } from '@/shared/components';
+import { RecordTimestamps, SearchableSelect } from '@/shared/components';
 import {
+  Badge,
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   Label,
   Textarea,
@@ -39,15 +47,19 @@ import {
   useCreateInspection,
   useInspectionForSlip,
   useRecordFactoryHeadDecision,
-  useRejectInspection,
   useSubmitInspection,
   useUpdateInspection,
   useUpdateParameterResults,
 } from '../api/inspection/inspection.queries';
-import { useMaterialTypeBySapItem } from '../api/materialType';
-import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries';
-import { QCSuccessScreen } from '../components';
 import {
+  useLinkMaterialTypeSAPItem,
+  useMaterialTypeBySapItem,
+  useMaterialTypes,
+} from '../api/materialType';
+import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries';
+import { QCSuccessScreen, useInspectionReportPrint } from '../components';
+import {
+  DECISION_STATUS_CONFIG,
   FINAL_STATUS,
   FINAL_STATUS_CONFIG,
   WORKFLOW_STATUS,
@@ -56,7 +68,9 @@ import {
 import { useArrivalSlipPermissions, useInspectionPermissions } from '../hooks';
 import type {
   CreateInspectionRequest,
-  InspectionFinalStatus,
+  InspectionDecision,
+  InspectionDecisionInfo,
+  MaterialType,
   ParameterResult,
   UpdateParameterResultRequest,
 } from '../types';
@@ -64,11 +78,36 @@ import {
   FACTORY_HEAD_DECISION_LABELS,
   FACTORY_HEAD_DECISION_OPTIONS,
   FACTORY_HEAD_DECISIONS,
+  type FactoryHeadDecision,
   isAcceptedQcOverride,
   readFactoryHeadDecision,
   writeFactoryHeadDecision,
-  type FactoryHeadDecision,
 } from '../utils/factoryHeadDecision';
+
+function DecisionPill({
+  label,
+  decision,
+}: {
+  label: string;
+  decision?: InspectionDecisionInfo | null;
+}) {
+  const decisionKey = decision?.decision ?? 'PENDING';
+  const config = DECISION_STATUS_CONFIG[decisionKey];
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
+        config.bgColor,
+        config.color,
+      )}
+    >
+      {label}: {decision?.label || config.label}
+    </span>
+  );
+}
+
+const getMaterialTypeLabel = (type: MaterialType) => `${type.name} (${type.code})`;
 
 export default function InspectionDetailPage() {
   const navigate = useNavigate();
@@ -86,6 +125,11 @@ export default function InspectionDetailPage() {
   // Fetch arrival slip data for prefilling and showing attachments
   const { data: arrivalSlip, isLoading: isLoadingArrivalSlip } = useArrivalSlipById(arrivalSlipId);
 
+  // Print the inspection report using the same format as the GRPO report.
+  // Opening the print button shows a dialog to choose which sections to print.
+  const { openPrintOptions, printOptionsModal, printPortal } =
+    useInspectionReportPrint(inspection);
+
   // Form state
   const [formData, setFormData] = useState<Partial<CreateInspectionRequest>>({
     inspection_date: new Date().toISOString().split('T')[0],
@@ -96,6 +140,7 @@ export default function InspectionDetailPage() {
     supplier_batch_lot_no: '',
     unit_packing: '',
     purchase_order_no: '',
+    report_no: '',
     internal_lot_no: '',
     invoice_bill_no: '',
     vehicle_no: '',
@@ -115,7 +160,6 @@ export default function InspectionDetailPage() {
 
   // Approval remarks
   const [approvalRemarks, setApprovalRemarks] = useState('');
-  const [finalStatus, setFinalStatus] = useState<InspectionFinalStatus>(FINAL_STATUS.ACCEPTED);
   const [factoryHeadDecision, setFactoryHeadDecision] = useState<FactoryHeadDecision>(
     FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE,
   );
@@ -125,7 +169,18 @@ export default function InspectionDetailPage() {
   const [factoryHeadSavedAt, setFactoryHeadSavedAt] = useState('');
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
-  const [successAction, setSuccessAction] = useState<'chemist' | 'manager' | null>(null);
+  const [successAction, setSuccessAction] = useState<{
+    actor: 'chemist' | 'manager';
+    decision: InspectionDecision;
+  } | null>(null);
+  const [manualLinkedMaterialType, setManualLinkedMaterialType] = useState<MaterialType | null>(
+    null,
+  );
+  const [isLinkMaterialTypeDialogOpen, setIsLinkMaterialTypeDialogOpen] = useState(false);
+  const [materialTypeLinkSearch, setMaterialTypeLinkSearch] = useState('');
+  const [selectedMaterialTypeForLink, setSelectedMaterialTypeForLink] =
+    useState<MaterialType | null>(null);
+  const [linkMaterialTypeErrors, setLinkMaterialTypeErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
   useScrollToError(apiErrors);
@@ -137,15 +192,34 @@ export default function InspectionDetailPage() {
     isFetching: isResolvingMaterialType,
     isError: isMaterialTypeLookupError,
   } = useMaterialTypeBySapItem(sapItemCode || null, shouldResolveMaterialType);
-  const materialTypeDisplay = linkedMaterialType
-    ? `${linkedMaterialType.name} (${linkedMaterialType.code})`
+  const resolvedMaterialType = linkedMaterialType || manualLinkedMaterialType;
+  const isUnmappedMaterialType = isMaterialTypeLookupError && !manualLinkedMaterialType;
+  const materialTypeDisplay = resolvedMaterialType
+    ? getMaterialTypeLabel(resolvedMaterialType)
     : formData.material_type_id && inspection?.material_type_name
       ? inspection.material_type_name
       : '';
+  const selectedMaterialTypeId = resolvedMaterialType?.id || formData.material_type_id || 0;
+  const materialTypeMappingError =
+    isUnmappedMaterialType && sapItemCode
+      ? `No material type mapping found for SAP item ${sapItemCode}`
+      : '';
+  const materialTypeInlineError = resolvedMaterialType
+    ? undefined
+    : apiErrors.material_type_id || materialTypeMappingError || undefined;
+  const materialTypeLinkSearchTerm = materialTypeLinkSearch.trim();
+  const {
+    data: materialTypeLinkOptions = [],
+    isLoading: isLoadingMaterialTypeLinkOptions,
+    isError: isMaterialTypeLinkOptionsError,
+  } = useMaterialTypes(
+    materialTypeLinkSearchTerm ? { search: materialTypeLinkSearchTerm } : undefined,
+    isLinkMaterialTypeDialogOpen,
+  );
 
   // Fetch parameters when material type changes
   const { data: qcParameters = [] } = useQCParametersByMaterialType(
-    formData.material_type_id || null,
+    selectedMaterialTypeId || null,
   );
   const parametersToShow = isEditing ? qcParameters : inspection?.parameter_results || qcParameters;
 
@@ -156,9 +230,9 @@ export default function InspectionDetailPage() {
   const submitInspection = useSubmitInspection();
   const approveAsChemist = useApproveAsChemist();
   const approveAsQAM = useApproveAsQAM();
-  const rejectInspection = useRejectInspection();
   const recordFactoryHeadDecision = useRecordFactoryHeadDecision();
   const sendBackArrivalSlip = useSendBackArrivalSlip();
+  const linkMaterialTypeSAPItem = useLinkMaterialTypeSAPItem();
   const { currentCompany } = usePermission();
 
   useEffect(() => {
@@ -177,41 +251,48 @@ export default function InspectionDetailPage() {
   // Send-back state
   const [sendBackRemarks, setSendBackRemarks] = useState('');
 
+  // Populate the form (and parameter results) from the persisted inspection.
+  // Used both on initial load and to revert unsaved edits when cancelling.
+  const populateFormFromInspection = useCallback(() => {
+    if (!inspection) return;
+
+    setFormData({
+      inspection_date: inspection.inspection_date,
+      description_of_material: inspection.description_of_material,
+      sap_code: inspection.sap_code,
+      supplier_name: inspection.supplier_name,
+      manufacturer_name: inspection.manufacturer_name,
+      supplier_batch_lot_no: inspection.supplier_batch_lot_no,
+      unit_packing: inspection.unit_packing,
+      purchase_order_no: inspection.purchase_order_no,
+      report_no: inspection.report_no,
+      internal_lot_no: inspection.internal_lot_no,
+      invoice_bill_no: inspection.invoice_bill_no,
+      vehicle_no: inspection.vehicle_no,
+      material_type_id: inspection.material_type,
+      remarks: inspection.remarks,
+    });
+
+    // Load parameter results
+    const resultsMap: Record<
+      number,
+      { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
+    > = {};
+    inspection.parameter_results?.forEach((result: ParameterResult) => {
+      resultsMap[result.parameter_master] = {
+        result_value: result.result_value,
+        result_numeric: result.result_numeric || undefined,
+        is_within_spec: result.is_within_spec ?? undefined,
+        remarks: result.remarks,
+      };
+    });
+    setParameterResults(resultsMap);
+  }, [inspection]);
+
   // Load existing inspection data
   useEffect(() => {
-    if (inspection) {
-      setFormData({
-        inspection_date: inspection.inspection_date,
-        description_of_material: inspection.description_of_material,
-        sap_code: inspection.sap_code,
-        supplier_name: inspection.supplier_name,
-        manufacturer_name: inspection.manufacturer_name,
-        supplier_batch_lot_no: inspection.supplier_batch_lot_no,
-        unit_packing: inspection.unit_packing,
-        purchase_order_no: inspection.purchase_order_no,
-        internal_lot_no: inspection.internal_lot_no,
-        invoice_bill_no: inspection.invoice_bill_no,
-        vehicle_no: inspection.vehicle_no,
-        material_type_id: inspection.material_type,
-        remarks: inspection.remarks,
-      });
-
-      // Load parameter results
-      const resultsMap: Record<
-        number,
-        { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
-      > = {};
-      inspection.parameter_results?.forEach((result: ParameterResult) => {
-        resultsMap[result.parameter_master] = {
-          result_value: result.result_value,
-          result_numeric: result.result_numeric || undefined,
-          is_within_spec: result.is_within_spec ?? undefined,
-          remarks: result.remarks,
-        };
-      });
-      setParameterResults(resultsMap);
-    }
-  }, [inspection]);
+    populateFormFromInspection();
+  }, [populateFormFromInspection]);
 
   useEffect(() => {
     if (!inspection) return;
@@ -271,45 +352,11 @@ export default function InspectionDetailPage() {
     }
   }, [arrivalSlip, inspection, isNewInspection]);
 
-  useEffect(() => {
-    if (!linkedMaterialType || !shouldResolveMaterialType) return;
-
-    if (formData.material_type_id !== linkedMaterialType.id) {
-      setFormData((prev) => ({
-        ...prev,
-        material_type_id: linkedMaterialType.id,
-      }));
-      setParameterResults({});
-    }
-
-    setApiErrors((prev) => {
-      const next = { ...prev };
-      delete next.material_type_id;
-      delete next.sap_code;
-      return next;
-    });
-  }, [linkedMaterialType, shouldResolveMaterialType, formData.material_type_id]);
-
-  useEffect(() => {
-    if (!sapItemCode || !shouldResolveMaterialType || !isMaterialTypeLookupError) return;
-
-    if (formData.material_type_id) {
-      setFormData((prev) => ({ ...prev, material_type_id: 0 }));
-      setParameterResults({});
-    }
-
-    setApiErrors((prev) => ({
-      ...prev,
-      material_type_id: `No material type mapping found for SAP item ${sapItemCode}`,
-    }));
-  }, [
-    sapItemCode,
-    shouldResolveMaterialType,
-    isMaterialTypeLookupError,
-    formData.material_type_id,
-  ]);
-
   const handleInputChange = (field: keyof CreateInspectionRequest, value: string | number) => {
+    if (field === 'sap_code') {
+      setManualLinkedMaterialType(null);
+    }
+
     setFormData((prev) => {
       if (field === 'sap_code') {
         return { ...prev, [field]: value, material_type_id: 0 };
@@ -404,7 +451,10 @@ export default function InspectionDetailPage() {
   };
 
   const buildInspectionPayload = (): CreateInspectionRequest | FormData => {
-    const inspectionPayload = formData as CreateInspectionRequest;
+    const inspectionPayload = {
+      ...formData,
+      material_type_id: selectedMaterialTypeId,
+    } as CreateInspectionRequest;
     if (qcAttachmentFiles.length === 0) return inspectionPayload;
 
     const payload = new FormData();
@@ -452,12 +502,16 @@ export default function InspectionDetailPage() {
       if (!sapItemCode) {
         errors.sap_code = 'SAP code is required';
       }
+      if (!formData.report_no?.trim()) {
+        errors.report_no = 'Report number is required';
+      }
+      if (!formData.internal_lot_no?.trim()) {
+        errors.internal_lot_no = 'Internal lot number is required';
+      }
       if (isResolvingMaterialType) {
         errors.material_type_id = 'Material type mapping is still loading';
-      } else if (!formData.material_type_id || isMaterialTypeLookupError) {
-        errors.material_type_id = sapItemCode
-          ? `No material type mapping found for SAP item ${sapItemCode}`
-          : 'No linked material type found';
+      } else if (!selectedMaterialTypeId || isUnmappedMaterialType) {
+        errors.material_type_id = materialTypeMappingError || 'No linked material type found';
       }
       // Validate mandatory parameters have result values
       const mandatoryParams = qcParameters.filter((p) => p.is_mandatory);
@@ -526,6 +580,78 @@ export default function InspectionDetailPage() {
     }
   };
 
+  // Cancel an in-progress edit: discard unsaved changes and return to the
+  // read-only view (which restores the approval decision buttons).
+  const handleCancelEdit = () => {
+    setApiErrors({});
+    populateFormFromInspection();
+    clearSelectedQcAttachments();
+    setIsEditing(false);
+  };
+
+  const handleMaterialTypeLinkDialogOpenChange = (open: boolean) => {
+    setIsLinkMaterialTypeDialogOpen(open);
+    if (!open) {
+      setSelectedMaterialTypeForLink(null);
+      setMaterialTypeLinkSearch('');
+      setLinkMaterialTypeErrors({});
+    }
+  };
+
+  const handleOpenMaterialTypeLinkDialog = () => {
+    if (!sapItemCode) {
+      setApiErrors((prev) => ({ ...prev, sap_code: 'SAP code is required' }));
+      return;
+    }
+    setSelectedMaterialTypeForLink(null);
+    setMaterialTypeLinkSearch('');
+    setLinkMaterialTypeErrors({});
+    setIsLinkMaterialTypeDialogOpen(true);
+  };
+
+  const handleLinkMaterialType = async () => {
+    if (!sapItemCode) {
+      setLinkMaterialTypeErrors({ item_code: 'SAP code is required' });
+      return;
+    }
+    if (!selectedMaterialTypeForLink) {
+      setLinkMaterialTypeErrors({ material_type_id: 'Select a material type' });
+      return;
+    }
+
+    try {
+      setLinkMaterialTypeErrors({});
+      const materialType = await linkMaterialTypeSAPItem.mutateAsync({
+        material_type_id: selectedMaterialTypeForLink.id,
+        item_code: sapItemCode,
+        item_name: formData.description_of_material || arrivalSlip?.item_name || '',
+      });
+      setManualLinkedMaterialType(materialType);
+      setFormData((prev) => ({ ...prev, material_type_id: materialType.id }));
+      setParameterResults({});
+      setApiErrors((prev) => {
+        const next = { ...prev };
+        delete next.material_type_id;
+        delete next.sap_code;
+        return next;
+      });
+      handleMaterialTypeLinkDialogOpenChange(false);
+    } catch (error) {
+      const apiError = error as ApiError;
+      if (apiError.errors) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(apiError.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = messages[0];
+        });
+        setLinkMaterialTypeErrors(fieldErrors);
+      } else {
+        setLinkMaterialTypeErrors({
+          general: apiError.message || 'Failed to link SAP item',
+        });
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!inspection) {
       setApiErrors({ general: 'Please save the inspection first' });
@@ -553,67 +679,25 @@ export default function InspectionDetailPage() {
     }
   };
 
-  const handleApproveChemist = async () => {
+  const handleApprovalDecision = async (
+    actor: 'chemist' | 'manager',
+    decision: InspectionDecision,
+  ) => {
     if (!inspection) return;
-
-    try {
-      setApiErrors({});
-      await approveAsChemist.mutateAsync({
-        id: inspection.id,
-        data: { remarks: approvalRemarks },
-      });
-      setSuccessAction('chemist');
-    } catch (error) {
-      const apiError = error as ApiError;
-      if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {};
-        Object.entries(apiError.errors).forEach(([field, messages]) => {
-          fieldErrors[field] = messages[0];
-        });
-        setApiErrors(fieldErrors);
-      } else {
-        setApiErrors({ general: apiError.message || 'Failed to approve' });
-      }
-    }
-  };
-
-  const handleApproveQAM = async () => {
-    if (!inspection) return;
-
-    try {
-      setApiErrors({});
-      await approveAsQAM.mutateAsync({
-        id: inspection.id,
-        data: { remarks: approvalRemarks, final_status: finalStatus },
-      });
-      setSuccessAction('manager');
-    } catch (error) {
-      const apiError = error as ApiError;
-      if (apiError.errors) {
-        const fieldErrors: Record<string, string> = {};
-        Object.entries(apiError.errors).forEach(([field, messages]) => {
-          fieldErrors[field] = messages[0];
-        });
-        setApiErrors(fieldErrors);
-      } else {
-        setApiErrors({ general: apiError.message || 'Failed to approve' });
-      }
-    }
-  };
-
-  const handleReject = async () => {
-    if (!inspection) return;
-    if (!approvalRemarks.trim()) {
+    if (decision === 'REJECTED' && !approvalRemarks.trim()) {
       setApiErrors({ approval_remarks: 'Please provide a reason for rejection' });
       return;
     }
 
+    const mutation = actor === 'chemist' ? approveAsChemist : approveAsQAM;
+
     try {
       setApiErrors({});
-      await rejectInspection.mutateAsync({
+      await mutation.mutateAsync({
         id: inspection.id,
-        data: { remarks: approvalRemarks },
+        data: { remarks: approvalRemarks, decision },
       });
+      setSuccessAction({ actor, decision });
     } catch (error) {
       const apiError = error as ApiError;
       if (apiError.errors) {
@@ -623,7 +707,7 @@ export default function InspectionDetailPage() {
         });
         setApiErrors(fieldErrors);
       } else {
-        setApiErrors({ general: apiError.message || 'Failed to reject' });
+        setApiErrors({ general: apiError.message || 'Failed to approve' });
       }
     }
   };
@@ -658,7 +742,6 @@ export default function InspectionDetailPage() {
     showSubmitButton,
     showChemistApproval,
     showQAMApproval,
-    showRejectButton,
     canEditFields,
     isLocked,
   } = useInspectionPermissions(inspection);
@@ -673,20 +756,26 @@ export default function InspectionDetailPage() {
 
   const isDraft = !inspection || inspection.workflow_status === WORKFLOW_STATUS.DRAFT;
 
-  // Can edit if: permission allows and either no inspection yet or in edit mode
-  const canEdit = canEditFields && (!inspection || isEditing);
+  const canApproveChemist = showChemistApproval;
+  const canApproveQAM = showQAMApproval;
+  // An approver (chemist/manager) is reviewing this inspection for accept/reject.
+  const isApprover = canApproveChemist || canApproveQAM;
+
+  // Can edit if: permission allows (draft) OR an approver chose to edit before
+  // deciding. The backend allows updates until the inspection is locked (QAM approval).
+  const canEdit =
+    (canEditFields && (!inspection || isEditing)) || (isApprover && isEditing && !isLocked);
 
   // Can update (show Update button) if: has inspection, is draft, has permission, not currently editing
   const canUpdate = inspection && isDraft && canEditInspection && !isEditing && !isLocked;
 
   const canSubmit = showSubmitButton && !isEditing;
-  const canApproveChemist = showChemistApproval;
-  const canApproveQAM = showQAMApproval;
-  const canReject = showRejectButton;
   const showFactoryHeadDecision =
     currentCompany?.role === 'Factory Head' &&
-    inspection?.workflow_status === WORKFLOW_STATUS.REJECTED &&
-    inspection?.final_status === FINAL_STATUS.REJECTED;
+    (inspection?.workflow_status === WORKFLOW_STATUS.QAM_APPROVED ||
+      inspection?.workflow_status === WORKFLOW_STATUS.REJECTED) &&
+    (inspection?.manager_decision?.decision === 'REJECTED' ||
+      inspection?.final_status === FINAL_STATUS.REJECTED);
   const isRejectedQCReturned = Boolean(inspection?.rejected_qc_return_entry_id);
   const hasAcceptedOverride = isAcceptedQcOverride(
     inspection?.factory_head_decision
@@ -713,9 +802,17 @@ export default function InspectionDetailPage() {
     submitInspection.isPending ||
     approveAsChemist.isPending ||
     approveAsQAM.isPending ||
-    rejectInspection.isPending ||
     recordFactoryHeadDecision.isPending ||
-    sendBackArrivalSlip.isPending;
+    sendBackArrivalSlip.isPending ||
+    linkMaterialTypeSAPItem.isPending;
+
+  const canOpenMaterialTypeLink =
+    canEdit &&
+    shouldResolveMaterialType &&
+    Boolean(sapItemCode) &&
+    isUnmappedMaterialType &&
+    !isResolvingMaterialType &&
+    !isSaving;
 
   const handleFactoryHeadDecisionSave = async () => {
     if (!inspection) return;
@@ -763,7 +860,8 @@ export default function InspectionDetailPage() {
   if (successAction) {
     return (
       <QCSuccessScreen
-        type={successAction}
+        type={successAction.actor}
+        decision={successAction.decision}
         onNavigateToDashboard={() => navigate('/qc')}
         onNavigateToHome={() => navigate('/')}
       />
@@ -816,17 +914,8 @@ export default function InspectionDetailPage() {
                   >
                     {WORKFLOW_STATUS_CONFIG[inspection.workflow_status].label}
                   </span>
-                  {inspection.final_status !== FINAL_STATUS.PENDING && (
-                    <span
-                      className={cn(
-                        'px-2 py-1 rounded-full text-xs font-medium',
-                        FINAL_STATUS_CONFIG[inspection.final_status].bgColor,
-                        FINAL_STATUS_CONFIG[inspection.final_status].color,
-                      )}
-                    >
-                      {FINAL_STATUS_CONFIG[inspection.final_status].label}
-                    </span>
-                  )}
+                  <DecisionPill label="Chemist" decision={inspection.chemist_decision} />
+                  <DecisionPill label="Manager" decision={inspection.manager_decision} />
                 </>
               )}
             </div>
@@ -844,6 +933,8 @@ export default function InspectionDetailPage() {
             key !== 'general' &&
             key !== 'sap_code' &&
             key !== 'material_type_id' &&
+            key !== 'report_no' &&
+            key !== 'internal_lot_no' &&
             !key.startsWith('param_') &&
             key !== 'approval_remarks'
           ) {
@@ -857,6 +948,112 @@ export default function InspectionDetailPage() {
           </div>
         ) : null;
       })()}
+
+      <Dialog
+        open={isLinkMaterialTypeDialogOpen}
+        onOpenChange={handleMaterialTypeLinkDialogOpenChange}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Link Material Type</DialogTitle>
+            <DialogDescription>
+              Select the QC material type for this SAP item.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium">SAP Item</span>
+                <Badge variant="secondary" className="font-mono">
+                  {sapItemCode || '-'}
+                </Badge>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {formData.description_of_material || arrivalSlip?.item_name || 'Material name unavailable'}
+              </p>
+            </div>
+
+            <SearchableSelect<MaterialType>
+              value={selectedMaterialTypeForLink ? String(selectedMaterialTypeForLink.id) : undefined}
+              defaultDisplayText={
+                selectedMaterialTypeForLink ? getMaterialTypeLabel(selectedMaterialTypeForLink) : ''
+              }
+              items={materialTypeLinkOptions}
+              isLoading={isLoadingMaterialTypeLinkOptions}
+              isError={isMaterialTypeLinkOptionsError}
+              label="Material Type"
+              required
+              inputId="qc-link-sap-item-material-type"
+              placeholder="Search material type..."
+              getItemKey={(type) => type.id}
+              getItemLabel={getMaterialTypeLabel}
+              renderItem={(type) => (
+                <div className="min-w-0">
+                  <div className="font-mono text-xs font-medium">{type.code}</div>
+                  <div className="truncate text-sm">{type.name}</div>
+                  {type.sap_items && type.sap_items.length > 0 && (
+                    <div className="truncate text-xs text-muted-foreground">
+                      Linked SAP items: {type.sap_items.map((item) => item.item_code).join(', ')}
+                    </div>
+                  )}
+                </div>
+              )}
+              filterFn={(type, search) => {
+                const term = search.toLowerCase();
+                return [
+                  type.code,
+                  type.name,
+                  type.description,
+                  ...(type.sap_items || []).flatMap((item) => [item.item_code, item.item_name]),
+                ]
+                  .filter(Boolean)
+                  .some((value) => String(value).toLowerCase().includes(term));
+              }}
+              loadingText="Loading material types..."
+              emptyText="No material types available"
+              notFoundText="No matching material type"
+              errorText="Unable to load material types"
+              error={linkMaterialTypeErrors.material_type_id}
+              onSearchChange={setMaterialTypeLinkSearch}
+              onItemSelect={(type) => {
+                setSelectedMaterialTypeForLink(type);
+                setLinkMaterialTypeErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.material_type_id;
+                  return next;
+                });
+              }}
+              onClear={() => setSelectedMaterialTypeForLink(null)}
+            />
+
+            {linkMaterialTypeErrors.general && (
+              <p className="text-sm text-destructive">{linkMaterialTypeErrors.general}</p>
+            )}
+            {linkMaterialTypeErrors.item_code && (
+              <p className="text-sm text-destructive">{linkMaterialTypeErrors.item_code}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleMaterialTypeLinkDialogOpenChange(false)}
+              disabled={linkMaterialTypeSAPItem.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleLinkMaterialType}
+              disabled={!selectedMaterialTypeForLink || linkMaterialTypeSAPItem.isPending}
+            >
+              {linkMaterialTypeSAPItem.isPending ? 'Linking...' : 'Link Material Type'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Inspection Form */}
       <Card>
@@ -944,36 +1141,81 @@ export default function InspectionDetailPage() {
               <Label>
                 Material Type <span className="text-destructive">*</span>
               </Label>
-              <Input
-                value={materialTypeDisplay}
-                readOnly
-                disabled
-                placeholder="Auto-loaded from SAP item"
-                className={
-                  apiErrors.material_type_id
-                    ? 'border-destructive focus-visible:ring-destructive'
-                    : ''
-                }
-              />
-              {apiErrors.material_type_id && (
-                <p className="text-sm text-destructive">{apiErrors.material_type_id}</p>
+              {canOpenMaterialTypeLink ? (
+                <button
+                  type="button"
+                  onClick={handleOpenMaterialTypeLinkDialog}
+                  className={cn(
+                    'flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-left text-sm ring-offset-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    materialTypeInlineError && 'border-destructive focus-visible:ring-destructive',
+                  )}
+                >
+                  <span className="truncate text-muted-foreground">
+                    Link SAP item {sapItemCode} to a material type
+                  </span>
+                  <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              ) : (
+                <Input
+                  value={materialTypeDisplay}
+                  readOnly
+                  disabled
+                  placeholder="Auto-loaded from SAP item"
+                  className={
+                    materialTypeInlineError
+                      ? 'border-destructive focus-visible:ring-destructive'
+                      : ''
+                  }
+                />
+              )}
+              {materialTypeInlineError && (
+                <p className="text-sm text-destructive">{materialTypeInlineError}</p>
               )}
               {isResolvingMaterialType ? (
                 <p className="text-xs text-muted-foreground">Resolving from SAP item...</p>
-              ) : linkedMaterialType && shouldResolveMaterialType ? (
+              ) : resolvedMaterialType && shouldResolveMaterialType ? (
                 <p className="text-xs text-muted-foreground">
                   Auto-loaded from SAP item {sapItemCode}
+                </p>
+              ) : canOpenMaterialTypeLink ? (
+                <p className="text-xs text-muted-foreground">
+                  Click the field to create the SAP item mapping.
                 </p>
               ) : null}
             </div>
 
             <div className="space-y-2">
-              <Label>Internal Lot No.</Label>
+              <Label>
+                Report No. <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={formData.report_no || ''}
+                onChange={(e) => handleInputChange('report_no', e.target.value)}
+                disabled={!canEdit || isSaving}
+                className={
+                  apiErrors.report_no ? 'border-destructive focus-visible:ring-destructive' : ''
+                }
+              />
+              {apiErrors.report_no && (
+                <p className="text-sm text-destructive">{apiErrors.report_no}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Internal Lot No. <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={formData.internal_lot_no || ''}
                 onChange={(e) => handleInputChange('internal_lot_no', e.target.value)}
                 disabled={!canEdit || isSaving}
+                className={
+                  apiErrors.internal_lot_no ? 'border-destructive focus-visible:ring-destructive' : ''
+                }
               />
+              {apiErrors.internal_lot_no && (
+                <p className="text-sm text-destructive">{apiErrors.internal_lot_no}</p>
+              )}
             </div>
 
             {/* NOTE: Manufacturer Name field is currently in discussion and can become usable anytime in the future.
@@ -1457,8 +1699,8 @@ export default function InspectionDetailPage() {
         </Card>
       )}
 
-      {/* Approval Section */}
-      {(canApproveChemist || canApproveQAM || canReject) && (
+      {/* Approval Section — hidden while editing so the approver sees Save/Cancel instead */}
+      {isApprover && !isEditing && (
         <Card className="border-primary/50">
           <CardHeader>
             <CardTitle>Approval</CardTitle>
@@ -1477,41 +1719,93 @@ export default function InspectionDetailPage() {
               )}
             </div>
 
-            {canApproveQAM && (
+            {canApproveChemist && (
               <div className="space-y-2">
-                <Label>Final Status</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={finalStatus}
-                  onChange={(e) => setFinalStatus(e.target.value as InspectionFinalStatus)}
-                >
-                  <option value={FINAL_STATUS.ACCEPTED}>Accepted</option>
-                  <option value={FINAL_STATUS.REJECTED}>Rejected</option>
-                  <option value={FINAL_STATUS.HOLD}>Hold</option>
-                </select>
+                <Label>Chemist Decision</Label>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => handleApprovalDecision('chemist', 'APPROVED')}
+                    disabled={isSaving}
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Approved
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleApprovalDecision('chemist', 'HOLD')}
+                    disabled={isSaving}
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Hold
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleApprovalDecision('chemist', 'REJECTED')}
+                    disabled={isSaving}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Reject
+                  </Button>
+                </div>
               </div>
             )}
 
-            <div className="flex flex-wrap gap-4">
-              {canApproveChemist && (
-                <Button onClick={handleApproveChemist} disabled={isSaving}>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Approve as Chemist
-                </Button>
-              )}
-              {canApproveQAM && (
-                <Button onClick={handleApproveQAM} disabled={isSaving}>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Approve as Manager
-                </Button>
-              )}
-              {canReject && (
-                <Button variant="destructive" onClick={handleReject} disabled={isSaving}>
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Reject
-                </Button>
-              )}
-            </div>
+            {canApproveQAM && (
+              <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Label>Manager Decision</Label>
+                  <DecisionPill label="Chemist" decision={inspection?.chemist_decision} />
+                </div>
+                {(inspection?.chemist_decision?.by ||
+                  inspection?.chemist_decision?.remarks ||
+                  inspection?.chemist_decision?.decided_at) && (
+                  <p className="text-sm text-muted-foreground">
+                    {inspection.chemist_decision.by && (
+                      <span>By {inspection.chemist_decision.by}</span>
+                    )}
+                    {inspection.chemist_decision.decided_at && (
+                      <span>
+                        {inspection.chemist_decision.by ? ' · ' : ''}
+                        {new Date(inspection.chemist_decision.decided_at).toLocaleString()}
+                      </span>
+                    )}
+                    {inspection.chemist_decision.remarks && (
+                      <span>
+                        {inspection.chemist_decision.by || inspection.chemist_decision.decided_at
+                          ? ' · '
+                          : ''}
+                        {inspection.chemist_decision.remarks}
+                      </span>
+                    )}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => handleApprovalDecision('manager', 'APPROVED')}
+                    disabled={isSaving}
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Approved
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleApprovalDecision('manager', 'HOLD')}
+                    disabled={isSaving}
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Hold
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleApprovalDecision('manager', 'REJECTED')}
+                    disabled={isSaving}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1626,7 +1920,7 @@ export default function InspectionDetailPage() {
         </Button>
         <div className="flex gap-4">
           {inspection && (
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button variant="outline" onClick={openPrintOptions}>
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
@@ -1635,6 +1929,18 @@ export default function InspectionDetailPage() {
             <Button variant="outline" onClick={() => setIsEditing(true)}>
               <Pencil className="h-4 w-4 mr-2" />
               Update
+            </Button>
+          )}
+          {isApprover && !isEditing && (
+            <Button variant="outline" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )}
+          {isApprover && isEditing && (
+            <Button variant="outline" onClick={handleCancelEdit} disabled={isSaving}>
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel
             </Button>
           )}
           {canEdit && (
@@ -1654,6 +1960,9 @@ export default function InspectionDetailPage() {
           )}
         </div>
       </div>
+
+      {printOptionsModal}
+      {printPortal}
     </div>
   );
 }

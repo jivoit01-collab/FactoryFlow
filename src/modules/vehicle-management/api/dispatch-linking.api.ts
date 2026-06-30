@@ -89,4 +89,18 @@ export const dispatchLinkingApi = {
   async linkVehicle(docEntry: number, payload: DispatchVehicleLinkPayload) {
     return dispatchPlansApi.updatePlan(docEntry, payload);
   },
+
+  // Clear a booking so the vehicle can be re-assigned to another invoice.
+  // Resets the plan to PENDING and drops the transport assignment; the backend
+  // wipes the snapshot fields (vehicle_no, transporter/driver details) once the
+  // ids are explicitly nulled.
+  async unlinkVehicle(docEntry: number) {
+    return dispatchPlansApi.updatePlan(docEntry, {
+      vehicle_id: null,
+      transporter_id: null,
+      driver_id: null,
+      linked_vehicle_entry_id: null,
+      booking_status: 'PENDING',
+    });
+  },
 };

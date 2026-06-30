@@ -189,7 +189,7 @@ export const inspectionApi = {
   // QA Chemist approve
   async approveAsChemist(id: number, data: ApprovalRequest): Promise<Inspection> {
     const response = await apiClient.post<Inspection>(
-      API_ENDPOINTS.QUALITY_CONTROL_V2.APPROVE_CHEMIST(id),
+      API_ENDPOINTS.QUALITY_CONTROL_V2.CHEMIST_DECISION(id),
       data,
     );
     return response.data;
@@ -198,7 +198,7 @@ export const inspectionApi = {
   // QA Manager approve
   async approveAsQAM(id: number, data: ApprovalRequest): Promise<Inspection> {
     const response = await apiClient.post<Inspection>(
-      API_ENDPOINTS.QUALITY_CONTROL_V2.APPROVE_QAM(id),
+      API_ENDPOINTS.QUALITY_CONTROL_V2.MANAGER_DECISION(id),
       data,
     );
     return response.data;

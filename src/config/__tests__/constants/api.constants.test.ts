@@ -197,6 +197,8 @@ describe('API_ENDPOINTS.QUALITY_CONTROL_V2', () => {
   it('has all approval endpoints', () => {
     expect(API_ENDPOINTS.QUALITY_CONTROL_V2).toHaveProperty('APPROVE_CHEMIST');
     expect(API_ENDPOINTS.QUALITY_CONTROL_V2).toHaveProperty('APPROVE_QAM');
+    expect(API_ENDPOINTS.QUALITY_CONTROL_V2).toHaveProperty('CHEMIST_DECISION');
+    expect(API_ENDPOINTS.QUALITY_CONTROL_V2).toHaveProperty('MANAGER_DECISION');
     expect(API_ENDPOINTS.QUALITY_CONTROL_V2).toHaveProperty('REJECT_INSPECTION');
   });
 
@@ -209,6 +211,9 @@ describe('API_ENDPOINTS.QUALITY_CONTROL_V2', () => {
     );
     expect(API_ENDPOINTS.QUALITY_CONTROL_V2.APPROVE_CHEMIST(3)).toBe(
       '/quality-control/inspections/3/approve/chemist/',
+    );
+    expect(API_ENDPOINTS.QUALITY_CONTROL_V2.CHEMIST_DECISION(3)).toBe(
+      '/quality-control/inspections/3/chemist-decision/',
     );
   });
 });

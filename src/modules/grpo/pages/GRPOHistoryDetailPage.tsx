@@ -3,12 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { GRPO_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
-import { RecordTimestamps } from '@/shared/components';
 import { useHasPermission } from '@/core/auth';
+import { RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useGRPODetail } from '../api';
-import { AttachmentsSection } from '../components';
+import { AttachmentsSection, QCReportButton, useQCReportPrint } from '../components';
 import { GRPO_STATUS_CONFIG } from '../constants';
 
 // Format date/time for display
@@ -35,6 +35,8 @@ export default function GRPOHistoryDetailPage() {
 
   const { data: posting, isLoading, error, refetch } = useGRPODetail(id);
   const canManageAttachments = useHasPermission(GRPO_PERMISSIONS.MANAGE_ATTACHMENTS);
+  const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
+    useQCReportPrint();
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
@@ -43,6 +45,8 @@ export default function GRPOHistoryDetailPage() {
 
   return (
     <div className="space-y-6">
+      {printOptionsModal}
+      {printPortal}
       {/* Header */}
       <div className="flex items-center gap-2 mb-1">
         <Button
@@ -66,6 +70,14 @@ export default function GRPOHistoryDetailPage() {
               {apiError?.message || 'You do not have permission to view this posting.'}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* QC report print error */}
+      {printError && (
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
+          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-destructive">{printError}</p>
         </div>
       )}
 
@@ -165,14 +177,21 @@ export default function GRPOHistoryDetailPage() {
                   {posting.lines.map((line) => (
                     <div
                       key={line.id}
-                      className="flex items-center justify-between p-2 rounded-md border bg-muted/30"
+                      className="flex items-center justify-between gap-3 p-2 rounded-md border bg-muted/30"
                     >
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-medium">
                           {line.item_code} - {line.item_name}
                         </p>
                       </div>
-                      <span className="text-sm font-semibold">{line.quantity_posted}</span>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-sm font-semibold">{line.quantity_posted}</span>
+                        <QCReportButton
+                          item={line}
+                          onPrint={printQCReport}
+                          printingArrivalSlipId={printingArrivalSlipId}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -181,10 +200,7 @@ export default function GRPOHistoryDetailPage() {
           )}
 
           {/* Record Timestamps */}
-          <RecordTimestamps
-            createdAt={posting.created_at}
-            updatedAt={posting.updated_at}
-          />
+          <RecordTimestamps createdAt={posting.created_at} updatedAt={posting.updated_at} />
           {/* Attachments */}
           {posting.status === 'POSTED' && (
             <AttachmentsSection

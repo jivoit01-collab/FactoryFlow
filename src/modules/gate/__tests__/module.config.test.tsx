@@ -112,7 +112,6 @@ describe('Gate Module Config', () => {
     expect(content).toContain("path: '/gate/raw-materials/new/step2'");
     expect(content).toContain("path: '/gate/raw-materials/new/step3'");
     expect(content).toContain("path: '/gate/raw-materials/new/step4'");
-    expect(content).toContain("path: '/gate/raw-materials/new/step5'");
     expect(content).toContain("path: '/gate/raw-materials/new/review'");
   });
 
@@ -121,7 +120,6 @@ describe('Gate Module Config', () => {
     expect(content).toContain("path: '/gate/raw-materials/edit/:entryId/step2'");
     expect(content).toContain("path: '/gate/raw-materials/edit/:entryId/step3'");
     expect(content).toContain("path: '/gate/raw-materials/edit/:entryId/step4'");
-    expect(content).toContain("path: '/gate/raw-materials/edit/:entryId/step5'");
     expect(content).toContain("path: '/gate/raw-materials/edit/:entryId/review'");
   });
 
@@ -130,14 +128,12 @@ describe('Gate Module Config', () => {
     expect(content).toContain("path: '/gate/daily-needs/all'");
     expect(content).toContain("path: '/gate/daily-needs/new'");
     expect(content).toContain("path: '/gate/daily-needs/new/step2'");
-    expect(content).toContain("path: '/gate/daily-needs/new/step3'");
     expect(content).toContain("path: '/gate/daily-needs/new/review'");
   });
 
   it('includes daily needs edit routes', () => {
     expect(content).toContain("path: '/gate/daily-needs/edit/:entryId/step1'");
     expect(content).toContain("path: '/gate/daily-needs/edit/:entryId/step2'");
-    expect(content).toContain("path: '/gate/daily-needs/edit/:entryId/step3'");
     expect(content).toContain("path: '/gate/daily-needs/edit/:entryId/review'");
   });
 
@@ -146,14 +142,12 @@ describe('Gate Module Config', () => {
     expect(content).toContain("path: '/gate/maintenance/all'");
     expect(content).toContain("path: '/gate/maintenance/new'");
     expect(content).toContain("path: '/gate/maintenance/new/step2'");
-    expect(content).toContain("path: '/gate/maintenance/new/step3'");
     expect(content).toContain("path: '/gate/maintenance/new/review'");
   });
 
   it('includes maintenance edit routes', () => {
     expect(content).toContain("path: '/gate/maintenance/edit/:entryId/step1'");
     expect(content).toContain("path: '/gate/maintenance/edit/:entryId/step2'");
-    expect(content).toContain("path: '/gate/maintenance/edit/:entryId/step3'");
     expect(content).toContain("path: '/gate/maintenance/edit/:entryId/review'");
   });
 
@@ -162,14 +156,12 @@ describe('Gate Module Config', () => {
     expect(content).toContain("path: '/gate/construction/all'");
     expect(content).toContain("path: '/gate/construction/new'");
     expect(content).toContain("path: '/gate/construction/new/step2'");
-    expect(content).toContain("path: '/gate/construction/new/step3'");
     expect(content).toContain("path: '/gate/construction/new/review'");
   });
 
   it('includes construction edit routes', () => {
     expect(content).toContain("path: '/gate/construction/edit/:entryId/step1'");
     expect(content).toContain("path: '/gate/construction/edit/:entryId/step2'");
-    expect(content).toContain("path: '/gate/construction/edit/:entryId/step3'");
     expect(content).toContain("path: '/gate/construction/edit/:entryId/review'");
   });
 
@@ -182,6 +174,18 @@ describe('Gate Module Config', () => {
     expect(content).toContain("path: '/gate/visitor-labour/visitors'");
     expect(content).toContain("path: '/gate/visitor-labour/labours'");
     expect(content).toContain("path: '/gate/visitor-labour/contractors'");
+  });
+
+  it('lazy-loads GateLabourInPage and LabourOutPage', () => {
+    expect(content).toContain("lazy(() => import('./pages/labourGatePages/GateLabourInPage'))");
+    expect(content).toContain("lazy(() => import('./pages/labourGatePages/LabourOutPage'))");
+  });
+
+  it('includes the labour in/out routes', () => {
+    expect(content).toContain("path: '/gate/labour-in'");
+    expect(content).toContain("path: '/gate/labour-out'");
+    expect(content).toContain('element: <GateLabourInPage />');
+    expect(content).toContain('element: <LabourOutPage />');
   });
 
   it('includes barcode dispatch reports route under Gate', () => {

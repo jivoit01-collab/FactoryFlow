@@ -188,8 +188,8 @@ const BoxLabel = forwardRef<HTMLDivElement, BoxLabelProps>(({ data }, ref) => {
     { label: 'Total Qty', value: joinValue(formatNumber(data.qty), data.uom), strong: true },
     { label: 'Boxes', value: boxCount },
     { label: 'MFG', value: formatDate(data.mfg_date) },
-    { label: 'EXP', value: formatDate(data.exp_date) },
     { label: 'Warehouse', value: compactText(data.warehouse) },
+    { label: 'EXP', value: formatDate(data.exp_date) },
   ];
 
   return (
