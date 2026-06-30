@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { DriverSelect, VehicleSelect } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
@@ -17,10 +16,7 @@ export default function BSTNewPage() {
   const [search, setSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<SAPStockTransfer | null>(null);
-  const [vehicleId, setVehicleId] = useState<number | null>(null);
-  const [driverId, setDriverId] = useState<number | null>(null);
   const [invoiceNo, setInvoiceNo] = useState('');
-  const [requiresGate, setRequiresGate] = useState(false);
 
   const { data: transfers = [], isLoading: searching } = useBSTSapTransfers(
     submittedSearch,
@@ -28,21 +24,14 @@ export default function BSTNewPage() {
   );
   const createMut = useCreateBST();
 
-  // Vehicle + driver are only needed when the truck leaves the factory. For an
-  // internal move the stock is already at the dock, so the fields are hidden.
-  const gateFieldsReady = !requiresGate || (vehicleId !== null && driverId !== null);
-  const canCreate = selectedDoc !== null && gateFieldsReady;
+  const canCreate = selectedDoc !== null;
 
   const handleCreate = async () => {
     if (!selectedDoc) return;
-    if (requiresGate && (vehicleId === null || driverId === null)) return;
     try {
       const transfer = await createMut.mutateAsync({
         sap_doc_entry: selectedDoc.doc_entry,
-        vehicle: requiresGate ? vehicleId : null,
-        driver: requiresGate ? driverId : null,
         invoice_no: invoiceNo,
-        requires_gate: requiresGate,
       });
       toast.success(`BST ${transfer.entry_no} created`);
       navigate(`/warehouse/bst/${transfer.id}/scan`);
@@ -124,9 +113,9 @@ export default function BSTNewPage() {
         </CardContent>
       </Card>
 
-      {/* Step 2 — reference + gate / vehicle / driver */}
+      {/* Step 2 — reference */}
       <Card>
-        <CardContent className="pt-6 space-y-4">
+        <CardContent className="pt-6">
           <div className="sm:max-w-sm">
             <Label>Invoice / Reference No.</Label>
             <Input
@@ -136,31 +125,6 @@ export default function BSTNewPage() {
               onChange={(e) => setInvoiceNo(e.target.value)}
             />
           </div>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={requiresGate}
-              onChange={(e) => setRequiresGate(e.target.checked)}
-            />
-            Requires gate movement (vehicle exits/enters a factory gate)
-          </label>
-
-          {requiresGate ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <VehicleSelect
-                label="Vehicle"
-                required
-                onChange={(v) => setVehicleId(v.vehicleId)}
-              />
-              <DriverSelect label="Driver" required onChange={(d) => setDriverId(d.driverId)} />
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Internal transfer — the stock is already at the dock, so no vehicle or driver is
-              needed.
-            </p>
-          )}
         </CardContent>
       </Card>
 

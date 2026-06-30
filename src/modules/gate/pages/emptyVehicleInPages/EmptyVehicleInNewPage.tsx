@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, FileText, LogIn, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FileText, LogIn, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -6,25 +6,20 @@ import { toast } from 'sonner';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { useDispatchBills } from '@/modules/dashboards/dispatch-plans/api';
 import {
-  type EmptyVehicleGateInEntry,
   type EmptyVehicleGateInReasonValue,
-  type SAPStockTransfer,
   useCreateEmptyVehicleGateIn,
   useEmptyVehicleGateIn,
   useEmptyVehicleGateInEntries,
   useEmptyVehicleGateInReasons,
-  useSAPStockTransfer,
-  useSAPStockTransfers,
   useUpdateEmptyVehicleGateIn,
 } from '@/modules/gate/api';
+import { useVehicleById } from '@/modules/gate/api/vehicle/vehicle.queries';
 import {
   DriverSelect,
   type DriverSelection,
   VehicleSelect,
   type VehicleSelection,
 } from '@/modules/gate/components';
-import { useVehicleById } from '@/modules/gate/api/vehicle/vehicle.queries';
-import { SearchableSelect } from '@/shared/components';
 import {
   Badge,
   Button,
@@ -66,53 +61,6 @@ function toTimeInputValue(date = new Date()) {
 const lockedInputClassName =
   'bg-muted/40 text-foreground disabled:cursor-not-allowed disabled:opacity-100';
 
-function buildTransferLabel(transfer: SAPStockTransfer) {
-  return [
-    `BST ${transfer.doc_num}`,
-    transfer.doc_date,
-    `${transfer.from_warehouse || '-'} -> ${transfer.to_warehouse || '-'}`,
-    `${transfer.line_count} line${transfer.line_count === 1 ? '' : 's'}`,
-  ].filter(Boolean).join(' - ');
-}
-
-function buildEntryTransferSnapshot(entry?: EmptyVehicleGateInEntry | null): SAPStockTransfer | null {
-  if (!entry?.sap_doc_entry) return null;
-
-  const lines = (entry.items || []).map((item) => ({
-    line_num: item.line_num,
-    item_code: item.item_code,
-    item_name: item.item_name,
-    quantity: Number(item.sap_quantity || 0),
-    uom: item.uom,
-    from_warehouse: item.from_warehouse,
-    to_warehouse: item.to_warehouse,
-  }));
-
-  return {
-    doc_entry: entry.sap_doc_entry,
-    doc_num: entry.sap_doc_num || String(entry.sap_doc_entry),
-    doc_date: entry.sap_doc_date || null,
-    tax_date: null,
-    doc_status: '',
-    from_warehouse: entry.sap_from_warehouse || '',
-    to_warehouse: entry.sap_to_warehouse || '',
-    comments: entry.sap_comments || '',
-    reference: entry.sap_reference || '',
-    branch_id: null,
-    line_count: entry.sap_line_count || 0,
-    total_quantity: Number(entry.sap_total_quantity || 0),
-    lines,
-  };
-}
-
-function buildLineQuantityMap(transfer?: SAPStockTransfer | null) {
-  return Object.fromEntries(
-    (transfer?.lines || []).map((line) => [line.line_num, String(line.quantity ?? '')]),
-  );
-}
-
-const showServerResults = () => true;
-
 export default function EmptyVehicleInNewPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -125,18 +73,13 @@ export default function EmptyVehicleInNewPage() {
   const [vehicle, setVehicle] = useState<VehicleSelection | null>(null);
   const [driver, setDriver] = useState<DriverSelection | null>(null);
   const [reason, setReason] = useState<EmptyVehicleGateInReasonValue | ''>('');
-  const [selectedDocEntry, setSelectedDocEntry] = useState('');
-  const [submittedSearch, setSubmittedSearch] = useState('');
-  const [selectedTransferSnapshot, setSelectedTransferSnapshot] = useState<SAPStockTransfer | null>(null);
   const [documentReference, setDocumentReference] = useState('');
   const [documentNotes, setDocumentNotes] = useState('');
-  const [actualQuantities, setActualQuantities] = useState<Record<number, string>>({});
   const [gateInDate, setGateInDate] = useState(() => toDateInputValue());
   const [inTime, setInTime] = useState(() => toTimeInputValue());
   const [securityName, setSecurityName] = useState('');
   const [remarks, setRemarks] = useState('');
   const [formError, setFormError] = useState('');
-  const isBstReason = reason === 'BST';
   // DISPATCH reference/notes are auto-derived from the linked bills and not stored,
   // so they are shown read-only rather than as editable inputs.
   const isDispatchReason = reason === 'DISPATCH';
@@ -156,14 +99,6 @@ export default function EmptyVehicleInNewPage() {
     booking_status: 'BOOKED',
     limit: 200,
   });
-  const {
-    data: sapTransfers = [],
-    isLoading: isTransfersLoading,
-    isError: isTransfersError,
-  } = useSAPStockTransfers({ search: submittedSearch, limit: 50 }, { enabled: isBstReason });
-  const { data: selectedTransfer, isLoading: isTransferLoading } = useSAPStockTransfer(
-    selectedDocEntry ? Number(selectedDocEntry) : null,
-  );
   const createEmptyGateIn = useCreateEmptyVehicleGateIn();
   const updateEmptyGateIn = useUpdateEmptyVehicleGateIn();
   const expectedDispatchVehicles = useMemo(
@@ -197,16 +132,11 @@ export default function EmptyVehicleInNewPage() {
     setReason('DISPATCH');
     setDocumentReference(buildDispatchDocumentReference(expectedDispatch));
     setDocumentNotes(buildDispatchDocumentNotes(expectedDispatch));
-    setSelectedDocEntry('');
-    setSelectedTransferSnapshot(null);
-    setActualQuantities({});
-    setSubmittedSearch('');
   }, []);
 
   useEffect(() => {
     if (!existingEntry) return;
 
-    const snapshot = buildEntryTransferSnapshot(existingEntry);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync edit form from loaded empty vehicle entry
     setVehicle({
       vehicleId: existingEntry.vehicle,
@@ -228,16 +158,6 @@ export default function EmptyVehicleInNewPage() {
       driverPhoto: null,
     });
     setReason(existingEntry.reason);
-    setSelectedDocEntry(existingEntry.sap_doc_entry ? String(existingEntry.sap_doc_entry) : '');
-    setSelectedTransferSnapshot(snapshot);
-    setActualQuantities(
-      Object.fromEntries(
-        (existingEntry.items || []).map((item) => [
-          item.line_num,
-          String(item.actual_quantity || item.sap_quantity || ''),
-        ]),
-      ),
-    );
     setDocumentReference(existingEntry.document_reference || '');
     setDocumentNotes(existingEntry.document_notes || '');
     setGateInDate(existingEntry.gate_in_date || toDateInputValue());
@@ -253,10 +173,6 @@ export default function EmptyVehicleInNewPage() {
     setVehicle(null);
     setDriver(null);
     setReason('');
-    setSelectedDocEntry('');
-    setSubmittedSearch('');
-    setSelectedTransferSnapshot(null);
-    setActualQuantities({});
     setDocumentReference('');
     setDocumentNotes('');
     setGateInDate(toDateInputValue());
@@ -306,27 +222,7 @@ export default function EmptyVehicleInNewPage() {
     setReason('DISPATCH');
   }, [expectedVehicleDetails, gateInId, selectedExpectedDispatch]);
 
-  useEffect(() => {
-    if (!selectedTransfer?.lines?.length) return;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Seed actual quantities from SAP line quantities when details load
-    setActualQuantities((current) => {
-      const next = { ...current };
-      selectedTransfer.lines?.forEach((line) => {
-        if (next[line.line_num] === undefined) {
-          next[line.line_num] = String(line.quantity ?? '');
-        }
-      });
-      return next;
-    });
-  }, [selectedTransfer]);
-
-  const selectedTransferForDisplay = selectedTransfer || selectedTransferSnapshot;
-  const selectedTransferDisplay = selectedTransferForDisplay
-    ? buildTransferLabel(selectedTransferForDisplay)
-    : '';
   const isEditing = Boolean(gateInId);
-  const isBstDocumentLocked = Boolean(existingEntry?.is_bst_document_locked);
   const isSaving = createEmptyGateIn.isPending || updateEmptyGateIn.isPending;
   const headerTitle = isEditing ? 'Edit Empty Vehicle Entry' : 'New Empty Vehicle Entry';
   const headerSubtitle = isEditing
@@ -349,24 +245,6 @@ export default function EmptyVehicleInNewPage() {
       return;
     }
 
-    if (isBstReason && !selectedDocEntry) {
-      setFormError('Please select the SAP BST document for this vehicle');
-      return;
-    }
-
-    const bstLines = isBstReason ? selectedTransferForDisplay?.lines || [] : [];
-    if (isBstReason && bstLines.length > 0) {
-      const invalidLine = bstLines.find((line) => {
-        const value = actualQuantities[line.line_num];
-        return value === undefined || value === '' || Number(value) < 0 || Number.isNaN(Number(value));
-      });
-
-      if (invalidLine) {
-        setFormError(`Please enter actual quantity for line ${invalidLine.line_num}`);
-        return;
-      }
-    }
-
     if (!gateInDate) {
       setFormError('Gate in date is required');
       return;
@@ -384,10 +262,8 @@ export default function EmptyVehicleInNewPage() {
         // Step 1 is re-entered with an already-saved entry; only persist (and
         // toast) when a step-1 field actually changed, so clicking "Save and Next"
         // through doesn't fire a redundant update. For DISPATCH the reference/notes
-        // are read-only/derived, so only security/remarks can change. BST keeps its
-        // always-save behaviour (its doc/line edits are harder to diff cheaply).
+        // are read-only/derived, so only security/remarks can change.
         const stepOneUnchanged =
-          !isBstReason &&
           securityName === (existingEntry.security_name ?? '') &&
           remarks === (existingEntry.remarks ?? '') &&
           (isDispatchReason ||
@@ -400,23 +276,8 @@ export default function EmptyVehicleInNewPage() {
         await updateEmptyGateIn.mutateAsync({
           id: existingEntry.id,
           data: {
-            ...(isBstDocumentLocked
-              ? {}
-              : {
-                  ...(isBstReason
-                    ? {
-                        sap_doc_entry: Number(selectedDocEntry),
-                        items: bstLines.map((line) => ({
-                          line_num: line.line_num,
-                          actual_quantity: Number(
-                            actualQuantities[line.line_num] || line.quantity || 0,
-                          ),
-                        })),
-                      }
-                    : {}),
-                  document_reference: documentReference,
-                  document_notes: documentNotes,
-                }),
+            document_reference: documentReference,
+            document_notes: documentNotes,
             security_name: securityName,
             remarks,
           },
@@ -433,17 +294,6 @@ export default function EmptyVehicleInNewPage() {
         reason,
         gate_in_date: gateInDate,
         in_time: inTime,
-        ...(isBstReason
-          ? {
-              sap_doc_entry: Number(selectedDocEntry),
-              items: bstLines.map((line) => ({
-                line_num: line.line_num,
-                actual_quantity: Number(
-                  actualQuantities[line.line_num] || line.quantity || 0,
-                ),
-              })),
-            }
-          : {}),
         document_reference: documentReference,
         document_notes: documentNotes,
         security_name: securityName,
@@ -476,13 +326,6 @@ export default function EmptyVehicleInNewPage() {
           <p className="text-muted-foreground">{headerSubtitle}</p>
         </div>
       </div>
-
-      {isBstDocumentLocked && existingEntry && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          SAP BST selection is locked because BST Out entry {existingEntry.bst_gate_out_entry_no} has
-          already been started.
-        </div>
-      )}
 
       <Card>
         <CardHeader>
@@ -534,14 +377,7 @@ export default function EmptyVehicleInNewPage() {
                 id="empty-vehicle-reason"
                 value={reason}
                 onChange={(event) => {
-                  const nextReason = event.target.value as EmptyVehicleGateInReasonValue;
-                  setReason(nextReason);
-                  if (nextReason !== 'BST') {
-                    setSelectedDocEntry('');
-                    setSelectedTransferSnapshot(null);
-                    setActualQuantities({});
-                    setSubmittedSearch('');
-                  }
+                  setReason(event.target.value as EmptyVehicleGateInReasonValue);
                   setFormError('');
                 }}
                 disabled={isReasonsLoading || isEditing || isExpectedDispatchEntry}
@@ -620,99 +456,24 @@ export default function EmptyVehicleInNewPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            {isBstReason ? (
-              <>
-                <SearchableSelect<SAPStockTransfer>
-                  inputId="empty-vehicle-sap-bst"
-                  label="SAP BST"
-                  required
-                  value={selectedDocEntry}
-                  defaultDisplayText={selectedTransferDisplay}
-                  items={sapTransfers}
-                  isLoading={isTransfersLoading}
-                  isError={isTransfersError}
-                  disabled={isBstDocumentLocked}
-                  placeholder="Search SAP BST by doc number, item, or warehouse"
-                  getItemKey={(transfer) => transfer.doc_entry}
-                  getItemLabel={buildTransferLabel}
-                  filterFn={showServerResults}
-                  loadingText="Loading SAP BST documents..."
-                  emptyText="Search SAP BST by doc number, item, or warehouse"
-                  notFoundText="No SAP BST documents found"
-                  errorText="Failed to load SAP BST documents"
-                  onSearchChange={(value) => setSubmittedSearch(value.trim())}
-                  onClear={() => {
-                    setSelectedDocEntry('');
-                    setSubmittedSearch('');
-                    setSelectedTransferSnapshot(null);
-                    setActualQuantities({});
-                    setFormError('');
-                  }}
-                  onItemSelect={(transfer) => {
-                    setSelectedDocEntry(String(transfer.doc_entry));
-                    setSelectedTransferSnapshot(transfer);
-                    setActualQuantities(buildLineQuantityMap(transfer));
-                    setFormError('');
-                  }}
-                  renderItem={(transfer) => (
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">BST {transfer.doc_num}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {[
-                          transfer.doc_date,
-                          `${transfer.from_warehouse || '-'} -> ${
-                            transfer.to_warehouse || '-'
-                          }`,
-                          `${transfer.line_count} line${
-                            transfer.line_count === 1 ? '' : 's'
-                          }`,
-                        ].filter(Boolean).join(' - ')}
-                      </div>
-                      {transfer.comments && (
-                        <div className="truncate text-xs text-muted-foreground">
-                          {transfer.comments}
-                        </div>
-                      )}
-                    </div>
-                  )}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="document-reference">Document Reference</Label>
+                <Input
+                  id="document-reference"
+                  value={documentReference}
+                  onChange={(event) => setDocumentReference(event.target.value)}
+                  readOnly={isDispatchReason}
+                  className={isDispatchReason ? lockedInputClassName : undefined}
+                  placeholder="Invoice, delivery note, job card, or other reference"
                 />
-
-                {selectedDocEntry && (
-                  <SelectedBSTCard
-                    transfer={selectedTransferForDisplay}
-                    isLoading={isTransferLoading && !selectedTransferSnapshot}
-                    actualQuantities={actualQuantities}
-                    disabled={isBstDocumentLocked}
-                    onActualQuantityChange={(lineNum, value) => {
-                      setActualQuantities((current) => ({
-                        ...current,
-                        [lineNum]: value,
-                      }));
-                      setFormError('');
-                    }}
-                  />
+                {isDispatchReason && (
+                  <p className="text-xs text-muted-foreground">
+                    Auto-filled from the linked bills.
+                  </p>
                 )}
-              </>
-            ) : (
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="document-reference">Document Reference</Label>
-                  <Input
-                    id="document-reference"
-                    value={documentReference}
-                    onChange={(event) => setDocumentReference(event.target.value)}
-                    readOnly={isDispatchReason}
-                    className={isDispatchReason ? lockedInputClassName : undefined}
-                    placeholder="Invoice, delivery note, job card, or other reference"
-                  />
-                  {isDispatchReason && (
-                    <p className="text-xs text-muted-foreground">
-                      Auto-filled from the linked bills.
-                    </p>
-                  )}
-                </div>
               </div>
-            )}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="document-notes">Document Notes</Label>
@@ -720,7 +481,6 @@ export default function EmptyVehicleInNewPage() {
                 id="document-notes"
                 value={documentNotes}
                 onChange={(event) => setDocumentNotes(event.target.value)}
-                disabled={isBstDocumentLocked}
                 readOnly={isDispatchReason}
                 className={isDispatchReason ? lockedInputClassName : undefined}
                 placeholder="Optional document notes"
@@ -741,91 +501,6 @@ export default function EmptyVehicleInNewPage() {
           {isSaving ? 'Saving...' : 'Save and Next'}
         </Button>
       </div>
-    </div>
-  );
-}
-
-function SelectedBSTCard({
-  transfer,
-  isLoading,
-  actualQuantities,
-  disabled,
-  onActualQuantityChange,
-}: {
-  transfer?: SAPStockTransfer | null;
-  isLoading: boolean;
-  actualQuantities: Record<number, string>;
-  disabled: boolean;
-  onActualQuantityChange: (lineNum: number, value: string) => void;
-}) {
-  if (isLoading) return <EmptyState text="Loading SAP BST details..." />;
-  if (!transfer) return <EmptyState text="Select a SAP BST document" />;
-
-  return (
-    <div className="rounded-md border p-4">
-      <div className="mb-3 flex items-center gap-2 font-medium">
-        <Truck className="h-4 w-4" />
-        Selected SAP BST
-      </div>
-      <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-        <InfoItem label="Doc Num" value={transfer.doc_num} />
-        <InfoItem label="Doc Date" value={transfer.doc_date || ''} />
-        <InfoItem label="From" value={transfer.from_warehouse} />
-        <InfoItem label="To" value={transfer.to_warehouse} />
-        <InfoItem label="Lines" value={String(transfer.line_count || '-')} />
-        <InfoItem label="Quantity" value={String(transfer.total_quantity || '-')} />
-      </div>
-      {transfer.lines && transfer.lines.length > 0 && (
-        <div className="mt-4 max-h-56 overflow-auto rounded-md border">
-          <table className="w-full min-w-[760px]">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="p-2 text-left text-xs font-medium">Item</th>
-                <th className="p-2 text-left text-xs font-medium">SAP Qty</th>
-                <th className="p-2 text-left text-xs font-medium">Actual Qty</th>
-                <th className="p-2 text-left text-xs font-medium">From</th>
-                <th className="p-2 text-left text-xs font-medium">To</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transfer.lines.map((line) => (
-                <tr key={line.line_num} className="border-t">
-                  <td className="p-2 text-xs">
-                    <div className="font-medium">{line.item_code}</div>
-                    <div className="text-muted-foreground">{line.item_name}</div>
-                  </td>
-                  <td className="whitespace-nowrap p-2 text-xs">
-                    {line.quantity} {line.uom}
-                  </td>
-                  <td className="p-2 text-xs">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      value={actualQuantities[line.line_num] ?? ''}
-                      disabled={disabled}
-                      onChange={(event) => onActualQuantityChange(line.line_num, event.target.value)}
-                      className="h-9 min-w-28"
-                      placeholder="0"
-                    />
-                  </td>
-                  <td className="whitespace-nowrap p-2 text-xs">{line.from_warehouse}</td>
-                  <td className="whitespace-nowrap p-2 text-xs">{line.to_warehouse}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function InfoItem({ label, value }: { label: string; value?: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 font-medium">{value || '-'}</p>
     </div>
   );
 }

@@ -111,9 +111,6 @@ const EmptyVehicleInAttachmentsPage = lazy(
 const EmptyVehicleInReviewPage = lazy(
   () => import('./pages/emptyVehicleInPages/EmptyVehicleInReviewPage'),
 );
-// New warehouse-driven BST gate views (expected outwards/inwards).
-const BSTGateOutwardsPage = lazy(() => import('./pages/bstGate/BSTGateOutwardsPage'));
-const BSTGateInwardsPage = lazy(() => import('./pages/bstGate/BSTGateInwardsPage'));
 const CustomerReturnDashboardPage = lazy(
   () => import('./pages/customerSalesFlow/CustomerReturnDashboardPage'),
 );
@@ -783,20 +780,6 @@ export const gateModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Empty Vehicle Out Entry' },
     },
     {
-      path: '/gate/bst-gate/outwards',
-      element: <BSTGateOutwardsPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
-      breadcrumb: { label: 'BST Expected Out' },
-    },
-    {
-      path: '/gate/bst-gate/inwards',
-      element: <BSTGateInwardsPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_IN.VIEW],
-      breadcrumb: { label: 'BST Expected In' },
-    },
-    {
       path: '/gate/customer-return',
       element: <CustomerReturnDashboardPage />,
       layout: 'main',
@@ -998,16 +981,6 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/sales-dispatch/barcode-reports',
           title: 'Barcode Dispatch Reports',
           permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
-        },
-        {
-          path: '/gate/bst-gate/outwards',
-          title: 'BST Expected Out',
-          permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
-        },
-        {
-          path: '/gate/bst-gate/inwards',
-          title: 'BST Expected In',
-          permissions: [GATE_PERMISSIONS.BST_IN.VIEW],
         },
       ],
     },
