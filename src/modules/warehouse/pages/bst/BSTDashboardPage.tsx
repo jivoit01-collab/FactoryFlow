@@ -69,7 +69,7 @@ function TransferTable({
                 </span>
               </td>
               <td className="py-2 px-3">{t.sap_doc_num || '—'}</td>
-              <td className="py-2 px-3">{t.vehicle_number}</td>
+              <td className="py-2 px-3">{t.vehicle_number || '—'}</td>
               <td className="py-2 px-3 text-right">{t.scanned_box_count}</td>
               <td className="py-2 px-3">{formatDate(t.dispatched_at)}</td>
               <td className="py-2 px-3">

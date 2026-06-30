@@ -92,8 +92,8 @@ export interface BSTTransferListItem {
   sap_to_warehouse: string;
   sap_reference: string;
   invoice_no: string;
-  vehicle_number: string;
-  driver_name: string;
+  vehicle_number: string | null;
+  driver_name: string | null;
   requires_gate: boolean;
   scanned_box_count: number;
   item_count: number;
@@ -120,8 +120,9 @@ export interface BSTTransferDetail extends BSTTransferListItem {
 export interface BSTCreatePayload {
   sap_doc_entry: number;
   to_company: number;
-  vehicle: number;
-  driver: number;
+  // Required only when requires_gate (the vehicle leaves the factory).
+  vehicle?: number | null;
+  driver?: number | null;
   invoice_no?: string;
   requires_gate?: boolean;
   remarks?: string;

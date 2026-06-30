@@ -47,17 +47,20 @@ export default function BSTNewPage() {
     (c) => c.company_id !== currentCompany?.company_id,
   );
 
-  const canCreate =
-    selectedDoc !== null && toCompany !== '' && vehicleId !== null && driverId !== null;
+  // Vehicle + driver are only needed when the truck leaves the factory. For an
+  // internal move the stock is already at the dock, so the fields are hidden.
+  const gateFieldsReady = !requiresGate || (vehicleId !== null && driverId !== null);
+  const canCreate = selectedDoc !== null && toCompany !== '' && gateFieldsReady;
 
   const handleCreate = async () => {
-    if (!selectedDoc || !toCompany || vehicleId === null || driverId === null) return;
+    if (!selectedDoc || !toCompany) return;
+    if (requiresGate && (vehicleId === null || driverId === null)) return;
     try {
       const transfer = await createMut.mutateAsync({
         sap_doc_entry: selectedDoc.doc_entry,
         to_company: Number(toCompany),
-        vehicle: vehicleId,
-        driver: driverId,
+        vehicle: requiresGate ? vehicleId : null,
+        driver: requiresGate ? driverId : null,
         invoice_no: invoiceNo,
         requires_gate: requiresGate,
       });
@@ -165,19 +168,6 @@ export default function BSTNewPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <VehicleSelect
-              label="Vehicle"
-              required
-              onChange={(v) => setVehicleId(v.vehicleId)}
-            />
-            <DriverSelect
-              label="Driver"
-              required
-              onChange={(d) => setDriverId(d.driverId)}
-            />
-          </div>
-
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -186,6 +176,22 @@ export default function BSTNewPage() {
             />
             Requires gate movement (vehicle exits/enters a factory gate)
           </label>
+
+          {requiresGate ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <VehicleSelect
+                label="Vehicle"
+                required
+                onChange={(v) => setVehicleId(v.vehicleId)}
+              />
+              <DriverSelect label="Driver" required onChange={(d) => setDriverId(d.driverId)} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Internal transfer — the stock is already at the dock, so no vehicle or driver is
+              needed.
+            </p>
+          )}
         </CardContent>
       </Card>
 
