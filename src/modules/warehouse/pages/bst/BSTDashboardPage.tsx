@@ -19,7 +19,8 @@ import { BSTStatusBadge } from './bstStatus';
 
 function formatDate(value: string | null): string {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString();
+  const d = new Date(value);
+  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function TransferTable({
