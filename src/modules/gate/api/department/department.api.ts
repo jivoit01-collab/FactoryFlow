@@ -7,9 +7,19 @@ export interface Department {
   description: string;
 }
 
+export interface CreateDepartmentRequest {
+  name: string;
+  description?: string;
+}
+
 export const departmentApi = {
   async getDepartments(): Promise<Department[]> {
     const response = await apiClient.get<Department[]>(API_ENDPOINTS.ACCOUNTS.DEPARTMENTS);
+    return response.data;
+  },
+
+  async createDepartment(data: CreateDepartmentRequest): Promise<Department> {
+    const response = await apiClient.post<Department>(API_ENDPOINTS.ACCOUNTS.DEPARTMENTS, data);
     return response.data;
   },
 };

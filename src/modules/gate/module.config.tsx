@@ -58,6 +58,11 @@ const FAReviewPage = lazy(() => import('./pages/fixedAssetsPages/ReviewPage'));
 const LabourCountPage = lazy(() => import('./pages/labourPages/LabourCountPage'));
 const LabourGatePage = lazy(() => import('./pages/labourPages/LabourGatePage'));
 
+// Labour gate — entry (department + contractor + count) and the out board.
+// The same entry screen is also exposed by the top-level Labour module.
+const GateLabourInPage = lazy(() => import('./pages/labourGatePages/GateLabourInPage'));
+const LabourOutPage = lazy(() => import('./pages/labourGatePages/LabourOutPage'));
+
 // Person Gate-In pages (Visitor/Labour)
 const PersonGateInDashboard = lazy(() => import('./pages/personGateInPages/PersonGateInDashboard'));
 const PersonGateInAllPage = lazy(() => import('./pages/personGateInPages/PersonGateInAllPage'));
@@ -580,6 +585,22 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [GATE_PERMISSIONS.LABOUR_COUNT.VERIFY],
       breadcrumb: { label: 'Labour Verify' },
+    },
+
+    // ── Labour In (entry) + Labour Out (gate board) ──────────────
+    {
+      path: '/gate/labour-in',
+      element: <GateLabourInPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN, GATE_PERMISSIONS.LABOUR_GATE.VIEW],
+      breadcrumb: { label: 'Labour In' },
+    },
+    {
+      path: '/gate/labour-out',
+      element: <LabourOutPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_OUT, GATE_PERMISSIONS.LABOUR_GATE.VIEW],
+      breadcrumb: { label: 'Labour Out' },
     },
 
     // ── Person Gate-In (Visitor/Labour) ──────────────────────────

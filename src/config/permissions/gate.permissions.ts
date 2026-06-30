@@ -231,6 +231,18 @@ export const GATE_PERMISSIONS = {
   },
 
   // ============================================
+  // LABOUR GATE (simple in/out headcount per contractor)
+  // ============================================
+  LABOUR_GATE: {
+    /** View labour gate in/out entries */
+    VIEW: 'labour_gate.view_labourgateentry',
+    /** Record how many labourers a contractor brought in */
+    RECORD_IN: 'labour_gate.can_record_labour_in',
+    /** Record labour leaving at the gate */
+    RECORD_OUT: 'labour_gate.can_record_labour_out',
+  },
+
+  // ============================================
   // PERSON GATE-IN PERMISSIONS (Visitor/Labour)
   // ============================================
   PERSON_GATE_IN: {
@@ -276,6 +288,7 @@ export const GATE_MODULE_PREFIX = [
   'construction_gatein',
   'fixed_asset_gatein',
   'labour_count',
+  'labour_gate',
 ] as const;
 
 /**
@@ -299,5 +312,6 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.CONSTRUCTION)[keyof typeof GATE_PERMISSIONS.CONSTRUCTION]
   | (typeof GATE_PERMISSIONS.FIXED_ASSET)[keyof typeof GATE_PERMISSIONS.FIXED_ASSET]
   | (typeof GATE_PERMISSIONS.LABOUR_COUNT)[keyof typeof GATE_PERMISSIONS.LABOUR_COUNT]
+  | (typeof GATE_PERMISSIONS.LABOUR_GATE)[keyof typeof GATE_PERMISSIONS.LABOUR_GATE]
   | (typeof GATE_PERMISSIONS.PERSON_GATE_IN)[keyof typeof GATE_PERMISSIONS.PERSON_GATE_IN]
   | (typeof GATE_PERMISSIONS.JOB_WORK)[keyof typeof GATE_PERMISSIONS.JOB_WORK];

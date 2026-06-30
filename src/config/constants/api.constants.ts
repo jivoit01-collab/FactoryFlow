@@ -189,7 +189,7 @@ export const API_ENDPOINTS = {
   },
   // Accounts
   ACCOUNTS: {
-    DEPARTMENTS: '/accounts/departments',
+    DEPARTMENTS: '/accounts/departments/',
     USERS: '/accounts/users/',
   },
 

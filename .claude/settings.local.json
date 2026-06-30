@@ -94,7 +94,22 @@
       "PowerShell(Set-Location c:\\\\Users\\\\dev02\\\\FactoryFlow; Write-Output \"origin/main: $\\(git rev-parse --short origin/main\\)\"; git checkout -b chore/sales-dispatch-challan-weight origin/main 2>&1; git cherry-pick de4b331 2>&1)",
       "PowerShell(Set-Location c:\\\\Users\\\\dev02\\\\FactoryFlow; npx tsc --noEmit 2>&1 | Select-Object -First 30; Write-Output \"---TSC EXIT:$LASTEXITCODE---\")",
       "PowerShell(Set-Location c:\\\\Users\\\\dev02\\\\FactoryFlow; git checkout feature/grpo-bill-based 2>&1; git branch -d chore/sales-dispatch-challan-weight 2>&1; Write-Output \"--- FE now on: $\\(git rev-parse --abbrev-ref HEAD\\) ---\"; git status --short)",
-      "PowerShell(Write-Output \"=== FRONTEND ===\"; Set-Location c:\\\\Users\\\\dev02\\\\FactoryFlow; Write-Output \"on branch: $\\(git rev-parse --abbrev-ref HEAD\\)\"; Write-Output \"origin/main tip:\"; git log origin/main -1 --oneline; Write-Output \"working tree:\"; git status --short; Write-Output \"\"; Write-Output \"=== BACKEND ===\"; Set-Location c:\\\\Users\\\\dev02\\\\factory_app; Write-Output \"on branch: $\\(git rev-parse --abbrev-ref HEAD\\)\"; Write-Output \"origin/main tip:\"; git log origin/main -1 --oneline; Write-Output \"working tree:\"; git status --short)"
+      "PowerShell(Write-Output \"=== FRONTEND ===\"; Set-Location c:\\\\Users\\\\dev02\\\\FactoryFlow; Write-Output \"on branch: $\\(git rev-parse --abbrev-ref HEAD\\)\"; Write-Output \"origin/main tip:\"; git log origin/main -1 --oneline; Write-Output \"working tree:\"; git status --short; Write-Output \"\"; Write-Output \"=== BACKEND ===\"; Set-Location c:\\\\Users\\\\dev02\\\\factory_app; Write-Output \"on branch: $\\(git rev-parse --abbrev-ref HEAD\\)\"; Write-Output \"origin/main tip:\"; git log origin/main -1 --oneline; Write-Output \"working tree:\"; git status --short)",
+      "Read(//c/Users/dev02/factory_app/**)",
+      "Bash(./.venv/Scripts/python.exe manage.py makemigrations labour_gate)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate labour_gate)",
+      "Bash(./.venv/Scripts/python.exe manage.py check labour_gate)",
+      "Bash(./.venv/Scripts/python.exe manage.py shell -c \"from django.contrib.auth.models import Permission; print\\([p.codename for p in Permission.objects.filter\\(content_type__app_label='labour_gate'\\)]\\)\")",
+      "Bash(./.venv/Scripts/python.exe manage.py test labour_gate --keepdb -v2)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate labour_gate --noinput)",
+      "Bash(./.venv/Scripts/python.exe manage.py test labour_gate --keepdb --noinput -v1)",
+      "Read(//c/Users/dev02/AppData/Local/Temp/claude/c--Users-dev02-FactoryFlow/74f674af-91a8-4bf8-be19-7c4b9846ae73/scratchpad/**)",
+      "Bash(./.venv/Scripts/python.exe manage.py makemigrations maintenance)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate maintenance --noinput)",
+      "Bash(./.venv/Scripts/python.exe manage.py test maintenance --keepdb --noinput -v1)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(./.venv/Scripts/python.exe manage.py shell -c \"from accounts.serializers import DepartmentSerializer; s=DepartmentSerializer\\(data={'name':'Smoke Dept'}\\); print\\('valid=', s.is_valid\\(\\), 'errors=', dict\\(s.errors\\)\\)\")",
+      "Bash(./.venv/Scripts/python.exe manage.py shell -c ' *)"
     ],
     "additionalDirectories": [
       "/tmp"
