@@ -57,31 +57,31 @@ export const warehouseModuleConfig: ModuleConfig = {
       path: '/warehouse/bst',
       element: <BSTDashboardPage />,
       layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
     },
     {
       path: '/warehouse/bst/new',
       element: <BSTNewPage />,
       layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_BST],
     },
     {
       path: '/warehouse/bst/incoming/:transferId',
       element: <BSTReceivePage />,
       layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+      permissions: [WAREHOUSE_PERMISSIONS.MANAGE_BST],
     },
     {
       path: '/warehouse/bst/:transferId',
       element: <BSTDetailPage />,
       layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
     },
     {
       path: '/warehouse/bst/:transferId/scan',
       element: <BSTScanPage />,
       layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_BST],
     },
     // WMS Routes
     {
@@ -149,7 +149,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         {
           path: '/warehouse/bst',
           title: 'Branch Transfer',
-          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
         },
       ],
     },
