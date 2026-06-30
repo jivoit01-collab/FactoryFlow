@@ -1,9 +1,16 @@
-import { Loader2, ScanLine } from 'lucide-react';
+import { Loader2, ScanLine, XCircle } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
+import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
 import { getErrorMessage } from '@/shared/utils';
 
 import { useBSTTransfer, useCancelBST } from '../../api';
@@ -35,6 +42,8 @@ export default function BSTDetailPage() {
 
   const { data: t, isLoading } = useBSTTransfer(transferId);
   const cancelMut = useCancelBST();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
   if (isLoading || !t) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
@@ -45,8 +54,13 @@ export default function BSTDetailPage() {
 
   const handleCancel = async () => {
     try {
-      await cancelMut.mutateAsync({ transferId, cancelReason: 'Cancelled from detail page' });
+      await cancelMut.mutateAsync({
+        transferId,
+        cancelReason: cancelReason.trim() || 'Cancelled from detail page',
+      });
       toast.success('BST cancelled');
+      setCancelOpen(false);
+      setCancelReason('');
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not cancel'));
     }
@@ -78,9 +92,8 @@ export default function BSTDetailPage() {
             </Button>
           )}
           {canCancel && (
-            <Button variant="outline" onClick={handleCancel} disabled={cancelMut.isPending}>
-              {cancelMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              Cancel
+            <Button variant="destructive" onClick={() => setCancelOpen(true)}>
+              <XCircle className="h-4 w-4 mr-1" /> Cancel transfer
             </Button>
           )}
         </div>
@@ -185,6 +198,41 @@ export default function BSTDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Cancel confirmation */}
+      <Dialog open={cancelOpen} onOpenChange={(open) => !open && setCancelOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel {t.entry_no}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              This cancels the branch stock transfer. Scanned boxes are released and it can no
+              longer be dispatched or received. This can't be undone.
+            </p>
+            <div className="space-y-1">
+              <Label htmlFor="cancel-reason">Reason (optional)</Label>
+              <Input
+                id="cancel-reason"
+                autoFocus
+                placeholder="Why is this being cancelled?"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCancel()}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCancelOpen(false)}>
+                Keep transfer
+              </Button>
+              <Button variant="destructive" onClick={handleCancel} disabled={cancelMut.isPending}>
+                {cancelMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Cancel transfer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
