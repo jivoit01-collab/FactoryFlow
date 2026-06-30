@@ -53,8 +53,7 @@ export default function BSTDetailPage() {
   };
 
   const infoRows: Array<[string, string]> = [
-    ['Source', `${t.company_name} (${t.company_code})`],
-    ['Destination', `${t.to_company_name} (${t.to_company_code})`],
+    ['Company', `${t.company_name} (${t.company_code})`],
     ['SAP Doc', t.sap_doc_num || '—'],
     ['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`],
     ['Invoice / Ref', t.invoice_no || '—'],

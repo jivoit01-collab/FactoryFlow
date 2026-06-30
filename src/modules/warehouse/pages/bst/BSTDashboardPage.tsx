@@ -63,9 +63,9 @@ function TransferTable({
               <td className="py-2 px-3 font-medium">{t.entry_no}</td>
               <td className="py-2 px-3">
                 <span className="inline-flex items-center gap-1">
-                  {t.company_code}
+                  {t.sap_from_warehouse || '—'}
                   <ArrowLeftRight className="h-3 w-3 text-muted-foreground" />
-                  {t.to_company_code}
+                  {t.sap_to_warehouse || '—'}
                 </span>
               </td>
               <td className="py-2 px-3">{t.sap_doc_num || '—'}</td>

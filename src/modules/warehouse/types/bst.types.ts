@@ -83,8 +83,6 @@ export interface BSTTransferListItem {
   status: BSTTransferStatus;
   company_code: string;
   company_name: string;
-  to_company_code: string;
-  to_company_name: string;
   sap_doc_entry: number | null;
   sap_doc_num: string;
   sap_doc_date: string | null;
@@ -119,7 +117,6 @@ export interface BSTTransferDetail extends BSTTransferListItem {
 
 export interface BSTCreatePayload {
   sap_doc_entry: number;
-  to_company: number;
   // Required only when requires_gate (the vehicle leaves the factory).
   vehicle?: number | null;
   driver?: number | null;

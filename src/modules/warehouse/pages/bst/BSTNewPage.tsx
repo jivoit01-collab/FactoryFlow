@@ -1,23 +1,11 @@
-import { Loader2, PackageSearch, Search } from 'lucide-react';
+import { ArrowRight, Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { useAuth } from '@/core/auth';
 import { DriverSelect, VehicleSelect } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import {
-  Button,
-  Card,
-  CardContent,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/ui';
+import { Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
 import { useBSTSapTransfers, useCreateBST } from '../../api';
@@ -25,12 +13,10 @@ import type { SAPStockTransfer } from '../../types';
 
 export default function BSTNewPage() {
   const navigate = useNavigate();
-  const { companies, currentCompany } = useAuth();
 
   const [search, setSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<SAPStockTransfer | null>(null);
-  const [toCompany, setToCompany] = useState<string>('');
   const [vehicleId, setVehicleId] = useState<number | null>(null);
   const [driverId, setDriverId] = useState<number | null>(null);
   const [invoiceNo, setInvoiceNo] = useState('');
@@ -42,23 +28,17 @@ export default function BSTNewPage() {
   );
   const createMut = useCreateBST();
 
-  // Destination = any other company the user belongs to.
-  const destinationCompanies = companies.filter(
-    (c) => c.company_id !== currentCompany?.company_id,
-  );
-
   // Vehicle + driver are only needed when the truck leaves the factory. For an
   // internal move the stock is already at the dock, so the fields are hidden.
   const gateFieldsReady = !requiresGate || (vehicleId !== null && driverId !== null);
-  const canCreate = selectedDoc !== null && toCompany !== '' && gateFieldsReady;
+  const canCreate = selectedDoc !== null && gateFieldsReady;
 
   const handleCreate = async () => {
-    if (!selectedDoc || !toCompany) return;
+    if (!selectedDoc) return;
     if (requiresGate && (vehicleId === null || driverId === null)) return;
     try {
       const transfer = await createMut.mutateAsync({
         sap_doc_entry: selectedDoc.doc_entry,
-        to_company: Number(toCompany),
         vehicle: requiresGate ? vehicleId : null,
         driver: requiresGate ? driverId : null,
         invoice_no: invoiceNo,
@@ -75,7 +55,7 @@ export default function BSTNewPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="New Branch Stock Transfer"
-        description="Pick the SAP stock-transfer document, vehicle, and driver"
+        description="Pick the SAP stock-transfer document; the source and destination warehouses come from it"
       />
 
       {/* Step 1 — SAP document */}
@@ -129,43 +109,32 @@ export default function BSTNewPage() {
           ) : null}
 
           {selectedDoc && (
-            <div className="flex items-center gap-2 text-sm bg-primary/5 rounded-md px-3 py-2">
-              <PackageSearch className="h-4 w-4 text-primary" />
-              Selected SAP Doc <span className="font-medium">#{selectedDoc.doc_num}</span> (
-              {selectedDoc.line_count} lines)
+            <div className="flex flex-wrap items-center gap-2 text-sm bg-primary/5 rounded-md px-3 py-2">
+              <span>
+                Selected SAP Doc <span className="font-medium">#{selectedDoc.doc_num}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                {selectedDoc.from_warehouse}
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                {selectedDoc.to_warehouse}
+              </span>
+              <span className="text-muted-foreground">· {selectedDoc.line_count} lines</span>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Step 2 — destination + vehicle/driver */}
+      {/* Step 2 — reference + gate / vehicle / driver */}
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label>Destination Branch</Label>
-              <Select value={toCompany} onValueChange={setToCompany}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select destination company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {destinationCompanies.map((c) => (
-                    <SelectItem key={c.company_id} value={String(c.company_id)}>
-                      {c.company_name} ({c.company_code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Invoice / Reference No.</Label>
-              <Input
-                className="mt-1"
-                placeholder="Optional"
-                value={invoiceNo}
-                onChange={(e) => setInvoiceNo(e.target.value)}
-              />
-            </div>
+          <div className="sm:max-w-sm">
+            <Label>Invoice / Reference No.</Label>
+            <Input
+              className="mt-1"
+              placeholder="Optional"
+              value={invoiceNo}
+              onChange={(e) => setInvoiceNo(e.target.value)}
+            />
           </div>
 
           <label className="flex items-center gap-2 text-sm">
