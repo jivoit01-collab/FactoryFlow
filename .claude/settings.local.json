@@ -103,7 +103,11 @@
       "Bash(./.venv/Scripts/python.exe manage.py test labour_gate --keepdb -v2)",
       "Bash(./.venv/Scripts/python.exe manage.py migrate labour_gate --noinput)",
       "Bash(./.venv/Scripts/python.exe manage.py test labour_gate --keepdb --noinput -v1)",
-      "Read(//c/Users/dev02/AppData/Local/Temp/claude/c--Users-dev02-FactoryFlow/74f674af-91a8-4bf8-be19-7c4b9846ae73/scratchpad/**)"
+      "Read(//c/Users/dev02/AppData/Local/Temp/claude/c--Users-dev02-FactoryFlow/74f674af-91a8-4bf8-be19-7c4b9846ae73/scratchpad/**)",
+      "Bash(./.venv/Scripts/python.exe manage.py makemigrations maintenance)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate maintenance --noinput)",
+      "Bash(./.venv/Scripts/python.exe manage.py test maintenance --keepdb --noinput -v1)",
+      "Bash(echo \"EXIT=$?\")"
     ],
     "additionalDirectories": [
       "/tmp"

@@ -119,7 +119,7 @@ function formFromWorkOrder(workOrder?: MaintenanceWorkOrder | null): WorkOrderFo
   return {
     work_type: workOrder.work_type,
     priority: workOrder.priority,
-    asset: String(workOrder.asset),
+    asset: workOrder.asset ? String(workOrder.asset) : '',
     department: String(workOrder.department),
     assigned_to: workOrder.assigned_to ? String(workOrder.assigned_to) : '',
     target_date: workOrder.target_date ?? '',
@@ -182,7 +182,7 @@ export function WorkOrderFormDialog({
     await onSubmit({
       work_type: form.work_type,
       priority: form.priority,
-      asset: Number(form.asset),
+      asset: form.asset ? Number(form.asset) : null,
       department: form.department ? Number(form.department) : undefined,
       assigned_to: form.assigned_to ? Number(form.assigned_to) : null,
       target_date: nullableDate(form.target_date),
@@ -252,9 +252,8 @@ export function WorkOrderFormDialog({
                 id="work_order_asset"
                 value={form.asset}
                 onChange={(event) => handleAssetChange(event.target.value)}
-                required
               >
-                <SelectOption value="">Select asset</SelectOption>
+                <SelectOption value="">Select asset (optional)</SelectOption>
                 {assets.map((asset) => (
                   <SelectOption key={asset.id} value={String(asset.id)}>
                     {asset.asset_code} - {asset.name}
@@ -345,7 +344,10 @@ export function WorkOrderFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !form.asset || !form.title.trim()}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !form.title.trim() || (!form.asset && !form.department)}
+            >
               <Save className="h-4 w-4" />
               Save
             </Button>
