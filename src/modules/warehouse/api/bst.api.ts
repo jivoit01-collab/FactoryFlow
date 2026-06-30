@@ -1,0 +1,133 @@
+import { API_ENDPOINTS } from '@/config/constants';
+import { apiClient } from '@/core/api';
+
+import type {
+  BSTBatchScanResult,
+  BSTCreatePayload,
+  BSTReceiveScanPayload,
+  BSTReceiveScanResult,
+  BSTScanResult,
+  BSTTransferDetail,
+  BSTTransferListItem,
+  BSTUpdatePayload,
+  SAPStockTransfer,
+} from '../types';
+
+const EP = API_ENDPOINTS.WAREHOUSE;
+
+export const bstApi = {
+  // ---- SAP stock-transfer lookup ----
+  async listSapTransfers(params?: {
+    search?: string;
+    from_date?: string;
+    to_date?: string;
+    limit?: number;
+  }): Promise<SAPStockTransfer[]> {
+    const res = await apiClient.get<SAPStockTransfer[]>(EP.BST_SAP_TRANSFERS, { params });
+    return res.data;
+  },
+
+  async getSapTransfer(docEntry: number): Promise<SAPStockTransfer> {
+    const res = await apiClient.get<SAPStockTransfer>(EP.BST_SAP_TRANSFER_DETAIL(docEntry));
+    return res.data;
+  },
+
+  // ---- Sender ----
+  async list(params?: { status?: string }): Promise<BSTTransferListItem[]> {
+    const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_LIST, { params });
+    return res.data;
+  },
+
+  async get(transferId: number): Promise<BSTTransferDetail> {
+    const res = await apiClient.get<BSTTransferDetail>(EP.BST_DETAIL(transferId));
+    return res.data;
+  },
+
+  async create(data: BSTCreatePayload): Promise<BSTTransferDetail> {
+    const res = await apiClient.post<BSTTransferDetail>(EP.BST_LIST, data);
+    return res.data;
+  },
+
+  async update(transferId: number, data: BSTUpdatePayload): Promise<BSTTransferDetail> {
+    const res = await apiClient.put<BSTTransferDetail>(EP.BST_DETAIL(transferId), data);
+    return res.data;
+  },
+
+  async scanBox(transferId: number, barcodeRaw: string): Promise<BSTScanResult> {
+    const res = await apiClient.post<BSTScanResult>(EP.BST_BOX_SCANS(transferId), {
+      barcode_raw: barcodeRaw,
+    });
+    return res.data;
+  },
+
+  async scanBatch(transferId: number, barcodes: string[]): Promise<BSTBatchScanResult> {
+    const res = await apiClient.post<BSTBatchScanResult>(EP.BST_BOX_SCANS_BATCH(transferId), {
+      barcodes,
+    });
+    return res.data;
+  },
+
+  async removeScan(transferId: number, scanId: number): Promise<void> {
+    await apiClient.delete(EP.BST_BOX_SCAN_DETAIL(transferId, scanId));
+  },
+
+  async dispatch(transferId: number): Promise<BSTTransferDetail> {
+    const res = await apiClient.post<BSTTransferDetail>(EP.BST_DISPATCH(transferId));
+    return res.data;
+  },
+
+  async cancel(transferId: number, cancelReason: string): Promise<BSTTransferDetail> {
+    const res = await apiClient.post<BSTTransferDetail>(EP.BST_CANCEL(transferId), {
+      cancel_reason: cancelReason,
+    });
+    return res.data;
+  },
+
+  // ---- Receiver ----
+  async listIncoming(): Promise<BSTTransferListItem[]> {
+    const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_INCOMING);
+    return res.data;
+  },
+
+  async getIncoming(transferId: number): Promise<BSTTransferDetail> {
+    const res = await apiClient.get<BSTTransferDetail>(EP.BST_INCOMING_DETAIL(transferId));
+    return res.data;
+  },
+
+  async receiveScan(
+    transferId: number,
+    payload: BSTReceiveScanPayload,
+  ): Promise<BSTReceiveScanResult> {
+    const res = await apiClient.post<BSTReceiveScanResult>(
+      EP.BST_RECEIVE_SCAN(transferId),
+      payload,
+    );
+    return res.data;
+  },
+
+  async receiveComplete(transferId: number): Promise<BSTTransferDetail> {
+    const res = await apiClient.post<BSTTransferDetail>(EP.BST_RECEIVE_COMPLETE(transferId));
+    return res.data;
+  },
+
+  // ---- Gate ----
+  async listGateOutwards(): Promise<BSTTransferListItem[]> {
+    const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_GATE_OUTWARDS);
+    return res.data;
+  },
+
+  async listGateInwards(): Promise<BSTTransferListItem[]> {
+    const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_GATE_INWARDS);
+    return res.data;
+  },
+
+  async markGateOut(transferId: number): Promise<BSTTransferDetail> {
+    const res = await apiClient.post<BSTTransferDetail>(EP.BST_GATE_MARK_OUT(transferId));
+    return res.data;
+  },
+
+  async markGateIn(transferId: number): Promise<BSTTransferDetail> {
+    const res = await apiClient.post<BSTTransferDetail>(EP.BST_GATE_MARK_IN(transferId));
+    return res.data;
+  },
+};
