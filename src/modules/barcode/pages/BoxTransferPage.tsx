@@ -145,27 +145,26 @@ export default function BoxTransferPage() {
       // quantities changed, so re-read their fresh state and sync each. A pallet
       // sitting in a WMS-managed warehouse will reflect the new contents; one in
       // a non-WMS warehouse is left untouched (or dropped if it was in the WMS).
-      void (async () => {
-        const ids = [sourcePalletId, targetPallet.id].filter((id): id is number => id != null);
-        for (const id of ids) {
-          try {
-            const detail = await barcodeApi.getPalletDetail(id);
-            await syncToWms({
-              licensePlate: detail.pallet_id,
-              warehouseCode: detail.current_warehouse,
-              binCode: detail.current_bin,
-              itemCode: detail.item_code,
-              itemName: detail.item_name,
-              lotNumber: detail.batch_number,
-              boxCount: detail.box_count,
-              totalUnits: Number(detail.total_qty) || 0,
-              uom: detail.uom,
-            });
-          } catch {
-            // Non-fatal: the barcode transfer already succeeded.
-          }
+      // Awaited before navigating so WMS is up to date when the next page loads.
+      const ids = [sourcePalletId, targetPallet.id].filter((id): id is number => id != null);
+      for (const id of ids) {
+        try {
+          const detail = await barcodeApi.getPalletDetail(id);
+          await syncToWms({
+            licensePlate: detail.pallet_id,
+            warehouseCode: detail.current_warehouse,
+            binCode: detail.current_bin,
+            itemCode: detail.item_code,
+            itemName: detail.item_name,
+            lotNumber: detail.batch_number,
+            boxCount: detail.box_count,
+            totalUnits: Number(detail.total_qty) || 0,
+            uom: detail.uom,
+          });
+        } catch {
+          // Non-fatal: the barcode transfer already succeeded.
         }
-      })();
+      }
 
       navigate(`/barcode/pallets/${targetPallet.id}`);
     } catch (err: unknown) {

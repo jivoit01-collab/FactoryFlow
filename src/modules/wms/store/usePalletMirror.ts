@@ -15,6 +15,13 @@ import { useCallback } from 'react';
 import { useWmsCollection } from './useWmsStore';
 import { wmsStore } from './wmsStore';
 
+/** Case-/whitespace-insensitive code comparison, used consistently for both the
+ * warehouse SAP code and the bin code so the two halves of a lookup never
+ * disagree (e.g. `BH-LP` vs `bh-lp`). */
+function sameCode(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+}
+
 export interface ExternalPalletPlacement {
   /** The pallet's license plate (barcode `pallet_id`). */
   licensePlate: string;
@@ -48,13 +55,12 @@ export function useWmsPalletMirror() {
       const own = warehouses.find(
         (warehouse) =>
           (warehouse.type ?? 'OWN') === 'OWN' &&
-          warehouse.sapWarehouseCode === placement.warehouseCode,
+          sameCode(warehouse.sapWarehouseCode, placement.warehouseCode),
       );
       if (!own) return { mirrored: false, reason: 'not-own-warehouse' };
 
-      const code = placement.binCode.trim().toLowerCase();
       const location = locations.find(
-        (l) => l.warehouseId === own.id && l.code.toLowerCase() === code,
+        (l) => l.warehouseId === own.id && sameCode(l.code, placement.binCode),
       );
       if (!location) return { mirrored: false, reason: 'location-not-found' };
 
@@ -104,7 +110,7 @@ export function useWmsPalletSync() {
       const own = warehouses.find(
         (warehouse) =>
           (warehouse.type ?? 'OWN') === 'OWN' &&
-          warehouse.sapWarehouseCode === snapshot.warehouseCode,
+          sameCode(warehouse.sapWarehouseCode, snapshot.warehouseCode),
       );
       if (!own) {
         // Pallet moved to a warehouse the WMS doesn't manage — drop it if held.
@@ -112,9 +118,8 @@ export function useWmsPalletSync() {
         return { synced: false, reason: 'not-own-warehouse' };
       }
 
-      const code = snapshot.binCode.trim().toLowerCase();
       const location = locations.find(
-        (l) => l.warehouseId === own.id && l.code.toLowerCase() === code,
+        (l) => l.warehouseId === own.id && sameCode(l.code, snapshot.binCode),
       );
       if (!location) return { synced: false, reason: 'location-not-found' };
 
