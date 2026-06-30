@@ -1,10 +1,21 @@
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  ArrowRight,
+  ClipboardList,
+  Clock,
+  PackageCheck,
+  Plus,
+  Truck,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, PackageCheck, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Card, CardContent } from '@/shared/components/ui';
 
-import { useBOMRequests, useFGReceipts } from '../api';
+import { useBOMRequests, useBSTIncoming, useBSTTransfers, useFGReceipts } from '../api';
+
+const BST_TERMINAL = ['RECEIVED', 'PARTIALLY_RECEIVED', 'CLOSED', 'CANCELLED'];
 
 export default function WarehouseDashboardPage() {
   const navigate = useNavigate();
@@ -12,6 +23,10 @@ export default function WarehouseDashboardPage() {
   const { data: allBOM = [] } = useBOMRequests();
   const { data: pendingFG = [] } = useFGReceipts('PENDING');
   const { data: receivedFG = [] } = useFGReceipts('RECEIVED');
+  const { data: outgoingBST = [] } = useBSTTransfers();
+  const { data: incomingBST = [] } = useBSTIncoming();
+
+  const activeBST = outgoingBST.filter((t) => !BST_TERMINAL.includes(t.status));
 
   const cards = [
     {
@@ -42,16 +57,35 @@ export default function WarehouseDashboardPage() {
       color: 'text-green-600 bg-green-50',
       path: '/warehouse/fg-receipts?status=RECEIVED',
     },
+    {
+      title: 'Branch Transfers (active)',
+      value: activeBST.length,
+      icon: ArrowLeftRight,
+      color: 'text-indigo-600 bg-indigo-50',
+      path: '/warehouse/bst',
+    },
+    {
+      title: 'Incoming to Receive',
+      value: incomingBST.length,
+      icon: Truck,
+      color: 'text-teal-600 bg-teal-50',
+      path: '/warehouse/bst',
+    },
   ];
 
   return (
     <div className="space-y-6">
       <DashboardHeader
         title="Warehouse"
-        subtitle="Material requests, stock management, and finished goods"
+        subtitle="Material requests, stock management, finished goods, and branch transfers"
+        primaryAction={{
+          label: 'New Branch Transfer',
+          icon: <Plus className="h-4 w-4 mr-2" />,
+          onClick: () => navigate('/warehouse/bst/new'),
+        }}
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
@@ -74,7 +108,41 @@ export default function WarehouseDashboardPage() {
         })}
       </div>
 
-      {/* Quick actions */}
+      {/* Incoming branch transfers awaiting receipt */}
+      {incomingBST.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <Truck className="h-4 w-4 text-teal-600" />
+              Incoming Branch Transfers
+            </h3>
+            <div className="space-y-2">
+              {incomingBST.slice(0, 5).map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between p-2 bg-muted/50 rounded cursor-pointer hover:bg-muted"
+                  onClick={() => navigate(`/warehouse/bst/incoming/${t.id}`)}
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t.entry_no}</p>
+                    <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                      {t.sap_from_warehouse || '—'}
+                      <ArrowRight className="h-3 w-3" />
+                      {t.sap_to_warehouse || '—'}
+                      {t.sap_doc_num ? ` · SAP #${t.sap_doc_num}` : ''}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {t.scanned_box_count} box{t.scanned_box_count === 1 ? '' : 'es'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pending BOM approvals */}
       {pendingBOM.length > 0 && (
         <Card>
           <CardContent className="p-4">
