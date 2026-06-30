@@ -33,7 +33,11 @@ export const bstApi = {
   },
 
   // ---- Sender ----
-  async list(params?: { status?: string }): Promise<BSTTransferListItem[]> {
+  async list(params?: {
+    status?: string;
+    from_date?: string;
+    to_date?: string;
+  }): Promise<BSTTransferListItem[]> {
     const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_LIST, { params });
     return res.data;
   },
@@ -84,8 +88,11 @@ export const bstApi = {
   },
 
   // ---- Receiver ----
-  async listIncoming(): Promise<BSTTransferListItem[]> {
-    const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_INCOMING);
+  async listIncoming(params?: {
+    from_date?: string;
+    to_date?: string;
+  }): Promise<BSTTransferListItem[]> {
+    const res = await apiClient.get<BSTTransferListItem[]>(EP.BST_INCOMING, { params });
     return res.data;
   },
 

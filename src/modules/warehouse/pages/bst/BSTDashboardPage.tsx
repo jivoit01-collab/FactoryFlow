@@ -1,6 +1,8 @@
 import { ArrowLeftRight, Plus, Truck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Card,
@@ -85,8 +87,13 @@ function TransferTable({
 
 export default function BSTDashboardPage() {
   const navigate = useNavigate();
-  const { data: outgoing = [], isLoading: outLoading } = useBSTTransfers();
-  const { data: incoming = [], isLoading: inLoading } = useBSTIncoming();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { dateRange, dateRangeAsDateObjects, setDateRange, resetDateRange } = useGlobalDateRange();
+  const dateParams = { from_date: dateRange.from, to_date: dateRange.to };
+  const { data: outgoing = [], isLoading: outLoading } = useBSTTransfers(dateParams);
+  const { data: incoming = [], isLoading: inLoading } = useBSTIncoming(dateParams);
+
+  const activeTab = searchParams.get('tab') === 'incoming' ? 'incoming' : 'outgoing';
 
   return (
     <div className="space-y-6">
@@ -98,9 +105,24 @@ export default function BSTDashboardPage() {
           icon: <Plus className="h-4 w-4 mr-2" />,
           onClick: () => navigate('/warehouse/bst/new'),
         }}
-      />
+      >
+        <DateRangePicker
+          date={dateRangeAsDateObjects}
+          className="w-full sm:w-[300px]"
+          onDateChange={(date) => {
+            if (date && 'from' in date) {
+              setDateRange(date);
+            } else {
+              resetDateRange();
+            }
+          }}
+        />
+      </DashboardHeader>
 
-      <Tabs defaultValue="outgoing">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setSearchParams(v === 'incoming' ? { tab: 'incoming' } : {})}
+      >
         <TabsList>
           <TabsTrigger value="outgoing">Outgoing</TabsTrigger>
           <TabsTrigger value="incoming">

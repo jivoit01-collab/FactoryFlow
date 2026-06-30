@@ -7,11 +7,17 @@ import { bstApi } from './bst.api';
 // Query Keys
 // ============================================================================
 
+export interface BSTListParams {
+  status?: string;
+  from_date?: string;
+  to_date?: string;
+}
+
 export const BST_QUERY_KEYS = {
   all: ['warehouse', 'bst'] as const,
-  list: (status?: string) => [...BST_QUERY_KEYS.all, 'list', { status }] as const,
+  list: (params?: BSTListParams) => [...BST_QUERY_KEYS.all, 'list', params ?? {}] as const,
   detail: (id: number) => [...BST_QUERY_KEYS.all, 'detail', id] as const,
-  incoming: () => [...BST_QUERY_KEYS.all, 'incoming'] as const,
+  incoming: (params?: BSTListParams) => [...BST_QUERY_KEYS.all, 'incoming', params ?? {}] as const,
   incomingDetail: (id: number) => [...BST_QUERY_KEYS.all, 'incoming', id] as const,
   gateOutwards: () => [...BST_QUERY_KEYS.all, 'gate', 'outwards'] as const,
   gateInwards: () => [...BST_QUERY_KEYS.all, 'gate', 'inwards'] as const,
@@ -43,10 +49,10 @@ export function useBSTSapTransfer(docEntry: number | null) {
 // Sender
 // ============================================================================
 
-export function useBSTTransfers(status?: string) {
+export function useBSTTransfers(params?: BSTListParams) {
   return useQuery({
-    queryKey: BST_QUERY_KEYS.list(status),
-    queryFn: () => bstApi.list(status ? { status } : undefined),
+    queryKey: BST_QUERY_KEYS.list(params),
+    queryFn: () => bstApi.list(params),
   });
 }
 
@@ -117,10 +123,10 @@ export function useCancelBST() {
 // Receiver
 // ============================================================================
 
-export function useBSTIncoming() {
+export function useBSTIncoming(params?: BSTListParams) {
   return useQuery({
-    queryKey: BST_QUERY_KEYS.incoming(),
-    queryFn: () => bstApi.listIncoming(),
+    queryKey: BST_QUERY_KEYS.incoming(params),
+    queryFn: () => bstApi.listIncoming(params),
   });
 }
 

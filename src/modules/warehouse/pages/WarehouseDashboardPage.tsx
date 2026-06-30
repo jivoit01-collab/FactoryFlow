@@ -5,7 +5,6 @@ import {
   ClipboardList,
   Clock,
   PackageCheck,
-  Plus,
   Truck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +68,7 @@ export default function WarehouseDashboardPage() {
       value: incomingBST.length,
       icon: Truck,
       color: 'text-teal-600 bg-teal-50',
-      path: '/warehouse/bst',
+      path: '/warehouse/bst?tab=incoming',
     },
   ];
 
@@ -78,11 +77,6 @@ export default function WarehouseDashboardPage() {
       <DashboardHeader
         title="Warehouse"
         subtitle="Material requests, stock management, finished goods, and branch transfers"
-        primaryAction={{
-          label: 'New Branch Transfer',
-          icon: <Plus className="h-4 w-4 mr-2" />,
-          onClick: () => navigate('/warehouse/bst/new'),
-        }}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
