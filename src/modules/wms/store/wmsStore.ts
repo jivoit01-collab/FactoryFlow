@@ -1059,6 +1059,38 @@ class WmsStore {
     return this.update('settings', WMS_SETTINGS_ID, { ...patch, updatedAt: nowIso() });
   }
 
+  // -- maintenance ----------------------------------------------------------
+
+  /**
+   * Delete all transactional stock data — every pallet, inventory line, and
+   * movement-log entry. The warehouse layout (warehouses / zones / locations),
+   * material profiles, templates, and settings are left intact. Irreversible:
+   * intended as an admin "reset the stock" action. Returns how many records of
+   * each kind were removed.
+   */
+  async clearStockData(): Promise<{ pallets: number; inventory: number; movements: number }> {
+    const adapter = this.adapter();
+    const [pallets, inventory, movements] = await Promise.all([
+      adapter.list('pallets'),
+      adapter.list('inventory'),
+      adapter.list('movements'),
+    ]);
+    const counts = {
+      pallets: pallets.length,
+      inventory: inventory.length,
+      movements: movements.length,
+    };
+
+    await Promise.all([
+      ...pallets.map((record) => adapter.remove('pallets', record.id)),
+      ...inventory.map((record) => adapter.remove('inventory', record.id)),
+      ...movements.map((record) => adapter.remove('movements', record.id)),
+    ]);
+
+    await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
+    return counts;
+  }
+
   // -- lifecycle ------------------------------------------------------------
 
   /**

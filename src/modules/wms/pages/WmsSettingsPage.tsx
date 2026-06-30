@@ -7,8 +7,8 @@
  * `WmsEnabledGate` / `useWmsEnabled`); the storage selector swaps the active
  * adapter for real.
  */
-import { Loader2, Wrench } from 'lucide-react';
-import { type ReactNode,useState } from 'react';
+import { Loader2, Trash2, Wrench } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -19,6 +19,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
   Label,
   NativeSelect,
   Switch,
@@ -63,6 +70,23 @@ export default function WmsSettingsPage() {
   const { isAdmin } = useWmsRole();
   const [saving, setSaving] = useState(false);
   const [repairing, setRepairing] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearConfirm, setClearConfirm] = useState('');
+  const [clearing, setClearing] = useState(false);
+
+  async function clearStock() {
+    setClearing(true);
+    try {
+      const { pallets, inventory, movements } = await wmsStore.clearStockData();
+      notifyOk(`Cleared stock: ${pallets} pallet(s), ${inventory} inventory line(s), ${movements} movement(s).`);
+      setClearOpen(false);
+      setClearConfirm('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Clear failed.');
+    } finally {
+      setClearing(false);
+    }
+  }
 
   async function repairLinks() {
     setRepairing(true);
@@ -326,6 +350,76 @@ export default function WmsSettingsPage() {
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {/* Danger zone */}
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger zone</CardTitle>
+          <CardDescription>Irreversible actions. Proceed with care.</CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y">
+          <SettingRow
+            title="Clear all stock data"
+            description="Permanently deletes every pallet, inventory line, and movement-log entry. Your warehouse layout, locations, material profiles, templates, and these settings are kept."
+            control={
+              <div className="flex sm:justify-end">
+                <Button variant="destructive" onClick={() => setClearOpen(true)}>
+                  <Trash2 className="mr-2 h-4 w-4" /> Clear stock data
+                </Button>
+              </div>
+            }
+          />
+        </CardContent>
+      </Card>
+
+      {/* Clear-stock confirmation */}
+      <Dialog
+        open={clearOpen}
+        onOpenChange={(open) => {
+          if (!clearing) {
+            setClearOpen(open);
+            if (!open) setClearConfirm('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Clear all stock data?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes every <strong>pallet</strong>, <strong>inventory line</strong>, and{' '}
+              <strong>movement</strong> on the backend. It cannot be undone. The warehouse layout,
+              materials, templates, and settings are kept.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="clear-confirm">
+              Type <span className="font-mono font-semibold">DELETE</span> to confirm
+            </Label>
+            <Input
+              id="clear-confirm"
+              value={clearConfirm}
+              autoComplete="off"
+              placeholder="DELETE"
+              onChange={(event) => setClearConfirm(event.target.value)}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" disabled={clearing} onClick={() => setClearOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={clearing || clearConfirm.trim().toUpperCase() !== 'DELETE'}
+              onClick={() => void clearStock()}
+            >
+              {clearing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Delete stock data
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

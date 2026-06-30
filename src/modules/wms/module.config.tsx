@@ -25,6 +25,7 @@ const WmsPickPage = lazy(() => import('./pages/WmsPickPage'));
 const WmsCountPage = lazy(() => import('./pages/WmsCountPage'));
 const WmsReportsPage = lazy(() => import('./pages/WmsReportsPage'));
 const WmsLabelsPage = lazy(() => import('./pages/WmsLabelsPage'));
+const WmsAdminPage = lazy(() => import('./pages/WmsAdminPage'));
 
 export const wmsModuleConfig: ModuleConfig = {
   name: 'warehouse-ops',
@@ -101,6 +102,12 @@ export const wmsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Designer' },
     },
     {
+      path: '/warehouse-ops/admin',
+      element: <WmsAdminPage />,
+      layout: 'main',
+      breadcrumb: { label: 'Admin' },
+    },
+    {
       path: '/warehouse-ops/settings',
       element: <WmsSettingsPage />,
       layout: 'main',
@@ -125,6 +132,7 @@ export const wmsModuleConfig: ModuleConfig = {
         { path: '/warehouse-ops/reports', title: 'Reports' },
         { path: '/warehouse-ops/labels', title: 'Labels' },
         { path: '/warehouse-ops/designer', title: 'Designer' },
+        { path: '/warehouse-ops/admin', title: 'Admin' },
         { path: '/warehouse-ops/settings', title: 'Settings' },
       ],
     },

@@ -126,6 +126,22 @@ function strandedPallet(currentLocationId: string | null, overrides: Partial<Pal
   };
 }
 
+describe('clearStockData', () => {
+  it('deletes pallets, inventory, and movements but keeps the warehouse layout', async () => {
+    const pallet = strandedPallet('A');
+    await wmsStore.create('pallets', pallet);
+    await wmsStore.create('inventory', makeInventoryRecord({ locationId: 'A', itemCode: 'SKU1', quantity: 40, palletId: pallet.id }));
+    await wmsStore.moveInventory({ sourceId: wmsStore.getSnapshot('inventory')[0]!.id, toLocationId: 'B', quantity: 10 }); // creates a movement
+
+    const counts = await wmsStore.clearStockData();
+
+    expect(counts.pallets).toBe(1);
+    expect(wmsStore.getSnapshot('pallets')).toHaveLength(0);
+    expect(wmsStore.getSnapshot('inventory')).toHaveLength(0);
+    expect(wmsStore.getSnapshot('movements')).toHaveLength(0);
+  });
+});
+
 describe('reconcilePalletLinks (data repair)', () => {
   it('follows the stock: relocates a pallet to where its linked inventory sits', async () => {
     const pallet = strandedPallet('A');
