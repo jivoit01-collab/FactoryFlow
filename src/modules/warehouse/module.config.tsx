@@ -14,6 +14,7 @@ const BSTDashboardPage = lazy(() => import('./pages/bst/BSTDashboardPage'));
 const BSTNewPage = lazy(() => import('./pages/bst/BSTNewPage'));
 const BSTScanPage = lazy(() => import('./pages/bst/BSTScanPage'));
 const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
+const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
 
 // WMS Pages
 const WMSDashboardPage = lazy(() => import('./pages/WMSDashboardPage'));
@@ -61,6 +62,12 @@ export const warehouseModuleConfig: ModuleConfig = {
     {
       path: '/warehouse/bst/new',
       element: <BSTNewPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+    },
+    {
+      path: '/warehouse/bst/incoming/:transferId',
+      element: <BSTReceivePage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
     },
