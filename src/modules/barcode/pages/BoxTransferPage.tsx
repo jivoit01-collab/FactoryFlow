@@ -3,11 +3,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { useWmsPalletSync } from '@/modules/wms/store';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
-import { usePalletDetail, usePallets, useTransferBoxes } from '../api';
+import { barcodeApi, usePalletDetail, usePallets, useTransferBoxes } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
 import type { Pallet } from '../types';
 import { toastBarcodeError } from '../utils/errors';
@@ -55,6 +56,7 @@ export default function BoxTransferPage() {
   );
   const { data: selectedTargetPallet } = usePalletDetail(targetPalletId);
   const transferMutation = useTransferBoxes();
+  const syncToWms = useWmsPalletSync();
 
   const sourcePalletOptions = asList(sourcePallets);
   const targetPalletOptions = asList(targetPallets);
@@ -132,9 +134,38 @@ export default function BoxTransferPage() {
       await transferMutation.mutateAsync({
         box_ids: selectedBoxIds,
         to_warehouse: targetPallet.current_warehouse,
+        // Boxes adopt the destination pallet's location/bin (its warehouse may be
+        // an own/WMS warehouse with internal bins).
+        to_bin: targetPallet.current_bin || undefined,
         to_pallet_id: targetPallet.id,
       });
       toast.success(`Transferred ${selectedBoxIds.length} boxes to ${targetPallet.pallet_id}`);
+
+      // Reconcile both pallets into Warehouse Ops (best effort): box counts and
+      // quantities changed, so re-read their fresh state and sync each. A pallet
+      // sitting in a WMS-managed warehouse will reflect the new contents; one in
+      // a non-WMS warehouse is left untouched (or dropped if it was in the WMS).
+      // Awaited before navigating so WMS is up to date when the next page loads.
+      const ids = [sourcePalletId, targetPallet.id].filter((id): id is number => id != null);
+      for (const id of ids) {
+        try {
+          const detail = await barcodeApi.getPalletDetail(id);
+          await syncToWms({
+            licensePlate: detail.pallet_id,
+            warehouseCode: detail.current_warehouse,
+            binCode: detail.current_bin,
+            itemCode: detail.item_code,
+            itemName: detail.item_name,
+            lotNumber: detail.batch_number,
+            boxCount: detail.box_count,
+            totalUnits: Number(detail.total_qty) || 0,
+            uom: detail.uom,
+          });
+        } catch {
+          // Non-fatal: the barcode transfer already succeeded.
+        }
+      }
+
       navigate(`/barcode/pallets/${targetPallet.id}`);
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to transfer boxes. Check target capacity and pallet details.');

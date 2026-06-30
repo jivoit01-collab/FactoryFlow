@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 
 import { useWMSWarehouses } from '@/modules/warehouse/api';
 import type { WarehouseOption } from '@/modules/warehouse/types';
+import { useWmsPalletMirror } from '@/modules/wms/store';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useMovePallet, usePallets } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
+import { type BinOption,useDestinationBins } from '../hooks/useDestinationBins';
 import type { Pallet } from '../types';
 import { getBarcodeErrorMessage } from '../utils/errors';
 
@@ -18,13 +20,21 @@ export default function PalletTransferPage() {
   const [scannedPalletSearch, setScannedPalletSearch] = useState('');
   const [selectedPallets, setSelectedPallets] = useState<Pallet[]>([]);
   const [toWarehouse, setToWarehouse] = useState('');
+  const [toBin, setToBin] = useState('');
 
   const { data: pallets = [], isLoading } = usePallets(
     palletSearch.length >= 2 ? { search: palletSearch, status: 'ACTIVE' } : undefined,
   );
   const { data: whData } = useWMSWarehouses();
   const warehouses: WarehouseOption[] = whData?.warehouses ?? [];
+  const { isOwnWarehouse, bins, warehouseName } = useDestinationBins(toWarehouse);
   const moveMutation = useMovePallet();
+  const mirrorToWms = useWmsPalletMirror();
+
+  function selectWarehouse(code: string) {
+    setToWarehouse(code);
+    setToBin('');
+  }
 
   const addPallet = (p: Pallet) => {
     if (!selectedPallets.find((sp) => sp.id === p.id)) {
@@ -38,6 +48,10 @@ export default function PalletTransferPage() {
 
   const handleTransferAll = async () => {
     if (!toWarehouse || selectedPallets.length === 0) return;
+    if (isOwnWarehouse && !toBin) {
+      toast.error('Select a destination location inside the warehouse.');
+      return;
+    }
     let successCount = 0;
     for (const pallet of selectedPallets) {
       try {
@@ -45,10 +59,29 @@ export default function PalletTransferPage() {
           palletId: pallet.id,
           data: {
             to_warehouse: toWarehouse,
+            to_bin: toBin || undefined,
             notes: `Bulk godown transfer (${selectedPallets.length} pallets)`,
           },
         });
         successCount++;
+        // Mirror into Warehouse Ops for own-warehouse destinations (best effort).
+        if (isOwnWarehouse && toBin) {
+          try {
+            await mirrorToWms({
+              licensePlate: pallet.pallet_id,
+              warehouseCode: toWarehouse,
+              binCode: toBin,
+              itemCode: pallet.item_code,
+              itemName: pallet.item_name,
+              lotNumber: pallet.batch_number,
+              boxCount: pallet.box_count,
+              totalUnits: Number(pallet.total_qty) || null,
+              uom: pallet.uom,
+            });
+          } catch {
+            // Non-fatal: the barcode transfer already succeeded.
+          }
+        }
       } catch (err: unknown) {
         const status = (err as { status?: number; response?: { status?: number } })?.status;
         const responseStatus = (err as { response?: { status?: number } })?.response?.status;
@@ -128,9 +161,28 @@ export default function PalletTransferPage() {
               loadingText="Loading..."
               emptyText="No warehouses"
               notFoundText="No match"
-              onItemSelect={(wh) => setToWarehouse(wh.code)}
-              onClear={() => setToWarehouse('')}
+              onItemSelect={(wh) => selectWarehouse(wh.code)}
+              onClear={() => selectWarehouse('')}
             />
+
+            {isOwnWarehouse && (
+              <SearchableSelect<BinOption>
+                items={bins}
+                isLoading={false}
+                getItemKey={(b) => b.code}
+                getItemLabel={(b) => b.code}
+                renderItem={(b) => <span className="font-mono text-xs">{b.code}</span>}
+                placeholder="Select location..."
+                label={`Location in ${warehouseName ?? 'warehouse'}`}
+                required
+                inputId="transfer-bin"
+                loadingText="Loading..."
+                emptyText="No locations"
+                notFoundText="No match"
+                onItemSelect={(b) => setToBin(b.code)}
+                onClear={() => setToBin('')}
+              />
+            )}
           </div>
         </CardContent>
       </Card>
@@ -170,13 +222,13 @@ export default function PalletTransferPage() {
 
             <Button
               onClick={handleTransferAll}
-              disabled={moveMutation.isPending || !toWarehouse}
+              disabled={moveMutation.isPending || !toWarehouse || (isOwnWarehouse && !toBin)}
               className="w-full"
             >
               <Truck className="h-4 w-4 mr-2" />
               {moveMutation.isPending
                 ? 'Transferring...'
-                : `Transfer ${selectedPallets.length} Pallets → ${toWarehouse || '...'}`}
+                : `Transfer ${selectedPallets.length} Pallets → ${toWarehouse || '...'}${toBin ? ` / ${toBin}` : ''}`}
             </Button>
           </CardContent>
         </Card>

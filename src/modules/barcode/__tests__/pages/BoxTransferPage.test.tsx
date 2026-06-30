@@ -17,6 +17,10 @@ vi.mock('sonner', () => ({
   },
 }));
 
+vi.mock('@/modules/wms/store', () => ({
+  useWmsPalletSync: () => vi.fn(),
+}));
+
 vi.mock('@/shared/components/dashboard/DashboardHeader', () => ({
   DashboardHeader: ({ title, description }: { title: string; description?: string }) => (
     <header>

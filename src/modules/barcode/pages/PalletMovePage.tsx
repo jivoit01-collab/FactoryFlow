@@ -5,12 +5,14 @@ import { toast } from 'sonner';
 
 import { useWMSWarehouses } from '@/modules/warehouse/api';
 import type { WarehouseOption } from '@/modules/warehouse/types';
+import { useWmsPalletMirror } from '@/modules/wms/store';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useMovePallet, usePalletDetail, usePallets } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
+import { type BinOption,useDestinationBins } from '../hooks/useDestinationBins';
 import type { Pallet } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
@@ -20,6 +22,7 @@ export default function PalletMovePage() {
   const [scannedPalletSearch, setScannedPalletSearch] = useState('');
   const [selectedPalletId, setSelectedPalletId] = useState<number | null>(null);
   const [toWarehouse, setToWarehouse] = useState('');
+  const [toBin, setToBin] = useState('');
   const [notes, setNotes] = useState('');
 
   const { data: pallets = [], isLoading: loadingPallets } = usePallets(
@@ -28,21 +31,55 @@ export default function PalletMovePage() {
   const { data: palletDetail } = usePalletDetail(selectedPalletId);
   const { data: whData } = useWMSWarehouses();
   const warehouses: WarehouseOption[] = whData?.warehouses ?? [];
+  const { isOwnWarehouse, bins, warehouseName } = useDestinationBins(toWarehouse);
   const moveMutation = useMovePallet();
+  const mirrorToWms = useWmsPalletMirror();
 
   const handleMove = async () => {
     if (!selectedPalletId || !toWarehouse) return;
+    if (isOwnWarehouse && !toBin) {
+      toast.error('Select a destination location inside the warehouse.');
+      return;
+    }
     try {
       await moveMutation.mutateAsync({
         palletId: selectedPalletId,
-        data: { to_warehouse: toWarehouse, notes },
+        data: { to_warehouse: toWarehouse, to_bin: toBin || undefined, notes },
       });
-      toast.success(`Pallet moved to ${toWarehouse}`);
+      toast.success(`Pallet moved to ${toWarehouse}${toBin ? ` / ${toBin}` : ''}`);
+
+      // Mirror the move into Warehouse Ops so it shows up there too. This is a
+      // best-effort sync — the barcode move has already committed, so a failure
+      // here must not surface as a move failure.
+      if (isOwnWarehouse && toBin && palletDetail) {
+        try {
+          const result = await mirrorToWms({
+            licensePlate: palletDetail.pallet_id,
+            warehouseCode: toWarehouse,
+            binCode: toBin,
+            itemCode: palletDetail.item_code,
+            itemName: palletDetail.item_name,
+            lotNumber: palletDetail.batch_number,
+            boxCount: palletDetail.box_count,
+            totalUnits: Number(palletDetail.total_qty) || null,
+            uom: palletDetail.uom,
+          });
+          if (result.mirrored) toast.success(`Synced to Warehouse Ops (${result.locationCode}).`);
+        } catch {
+          toast.warning('Pallet moved, but syncing to Warehouse Ops failed.');
+        }
+      }
+
       navigate(`/barcode/pallets/${selectedPalletId}`);
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to move pallet. Please check the selected warehouse.');
     }
   };
+
+  function selectWarehouse(code: string) {
+    setToWarehouse(code);
+    setToBin(''); // a fresh destination clears any previously chosen bin
+  }
 
   return (
     <div className="space-y-6">
@@ -121,10 +158,30 @@ export default function PalletMovePage() {
                     loadingText="Loading..."
                     emptyText="No warehouses"
                     notFoundText="No match"
-                    onItemSelect={(wh) => setToWarehouse(wh.code)}
-                    onClear={() => setToWarehouse('')}
+                    onItemSelect={(wh) => selectWarehouse(wh.code)}
+                    onClear={() => selectWarehouse('')}
                   />
                 </div>
+                {isOwnWarehouse && (
+                  <div className="w-[300px]">
+                    <SearchableSelect<BinOption>
+                      items={bins}
+                      isLoading={false}
+                      getItemKey={(b) => b.code}
+                      getItemLabel={(b) => b.code}
+                      renderItem={(b) => <span className="font-mono text-xs">{b.code}</span>}
+                      placeholder="Select location..."
+                      label={`Location in ${warehouseName ?? 'warehouse'}`}
+                      required
+                      inputId="move-to-bin"
+                      loadingText="Loading..."
+                      emptyText="No locations"
+                      notFoundText="No match"
+                      onItemSelect={(b) => setToBin(b.code)}
+                      onClear={() => setToBin('')}
+                    />
+                  </div>
+                )}
                 <div className="flex-1">
                   <label className="text-xs font-medium text-muted-foreground">Notes</label>
                   <input
@@ -136,9 +193,14 @@ export default function PalletMovePage() {
                 </div>
               </div>
 
-              <Button onClick={handleMove} disabled={moveMutation.isPending || !toWarehouse}>
+              <Button
+                onClick={handleMove}
+                disabled={moveMutation.isPending || !toWarehouse || (isOwnWarehouse && !toBin)}
+              >
                 <ArrowRight className="h-4 w-4 mr-1" />
-                {moveMutation.isPending ? 'Moving...' : `Move to ${toWarehouse || '...'}`}
+                {moveMutation.isPending
+                  ? 'Moving...'
+                  : `Move to ${toWarehouse || '...'}${toBin ? ` / ${toBin}` : ''}`}
               </Button>
             </>
           )}
