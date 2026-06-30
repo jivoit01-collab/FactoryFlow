@@ -14,8 +14,8 @@ type Scanner = ReturnType<typeof useScanner>;
 export function BoxScanCamera({ scanner, flashing }: { scanner: Scanner; flashing: boolean }) {
   if (!scanner.isScanning) {
     return (
-      <Button type="button" variant="outline" size="sm" onClick={() => void scanner.startScanning()}>
-        <Camera className="h-4 w-4 mr-1" /> Scan with camera
+      <Button type="button" className="w-full" onClick={() => void scanner.startScanning()}>
+        <Camera className="h-4 w-4 mr-1" /> Start Camera
       </Button>
     );
   }
