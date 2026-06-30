@@ -15,12 +15,9 @@ import { getErrorMessage } from '@/shared/utils';
 
 import { useBSTTransfer, useCancelBST } from '../../api';
 import type { BSTReceiveStatus } from '../../types';
+import { BSTBillTable } from './BSTBillTable';
+import { formatBstDateTime } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
-
-function formatDateTime(value: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleString();
-}
 
 function ReceiveBadge({ status }: { status: BSTReceiveStatus }) {
   const cfg: Record<BSTReceiveStatus, string> = {
@@ -74,11 +71,11 @@ export default function BSTDetailPage() {
     ['Vehicle', t.vehicle_number || '—'],
     ['Driver', t.driver_name || '—'],
     ['Requires gate', t.requires_gate ? 'Yes' : 'No'],
-    ['Created by', `${t.created_by_name} · ${formatDateTime(t.created_at)}`],
-    ['Dispatched', t.dispatched_at ? `${t.dispatched_by_name} · ${formatDateTime(t.dispatched_at)}` : '—'],
-    ['Gated out', formatDateTime(t.gated_out_at)],
-    ['Gated in', formatDateTime(t.gated_in_at)],
-    ['Received', t.received_at ? `${t.received_by_name} · ${formatDateTime(t.received_at)}` : '—'],
+    ['Created by', `${t.created_by_name} · ${formatBstDateTime(t.created_at)}`],
+    ['Dispatched', t.dispatched_at ? `${t.dispatched_by_name} · ${formatBstDateTime(t.dispatched_at)}` : '—'],
+    ['Gated out', formatBstDateTime(t.gated_out_at)],
+    ['Gated in', formatBstDateTime(t.gated_in_at)],
+    ['Received', t.received_at ? `${t.received_by_name} · ${formatBstDateTime(t.received_at)}` : '—'],
   ];
 
   return (
@@ -110,39 +107,11 @@ export default function BSTDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Expected items */}
+      {/* Items + scan progress */}
       <Card>
         <CardContent className="pt-6">
-          <p className="font-medium mb-3">Expected items ({t.items.length})</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 px-3">Line</th>
-                  <th className="py-2 px-3">Item</th>
-                  <th className="py-2 px-3 text-right">Qty</th>
-                  <th className="py-2 px-3">From → To</th>
-                </tr>
-              </thead>
-              <tbody>
-                {t.items.map((it) => (
-                  <tr key={it.id} className="border-b">
-                    <td className="py-2 px-3">{it.line_num}</td>
-                    <td className="py-2 px-3">
-                      <p className="font-medium">{it.item_code}</p>
-                      <p className="text-xs text-muted-foreground">{it.item_name}</p>
-                    </td>
-                    <td className="py-2 px-3 text-right">
-                      {it.quantity} {it.uom}
-                    </td>
-                    <td className="py-2 px-3">
-                      {it.from_warehouse} → {it.to_warehouse}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <p className="font-medium mb-3">Stock to transfer ({t.items.length} items)</p>
+          <BSTBillTable items={t.items} scans={t.box_scans} />
         </CardContent>
       </Card>
 

@@ -15,13 +15,8 @@ import {
 
 import { useBSTIncoming, useBSTTransfers } from '../../api';
 import type { BSTTransferListItem } from '../../types';
+import { formatBstDateTime } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
-
-function formatDate(value: string | null): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-}
 
 function TransferTable({
   transfers,
@@ -73,8 +68,8 @@ function TransferTable({
               </td>
               <td className="py-2 px-3">{t.sap_doc_num || '—'}</td>
               <td className="py-2 px-3 text-right">{t.scanned_box_count}</td>
-              <td className="py-2 px-3">{formatDate(t.dispatched_at)}</td>
-              <td className="py-2 px-3">{formatDate(t.received_at)}</td>
+              <td className="py-2 px-3">{formatBstDateTime(t.dispatched_at)}</td>
+              <td className="py-2 px-3">{formatBstDateTime(t.received_at)}</td>
               <td className="py-2 px-3">
                 <BSTStatusBadge status={t.status} />
               </td>

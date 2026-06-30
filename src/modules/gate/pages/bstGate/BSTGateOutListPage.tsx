@@ -3,16 +3,11 @@ import { useNavigate } from 'react-router-dom';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { useBSTGateOutwards } from '@/modules/warehouse/api';
+import { formatBstDateTime } from '@/modules/warehouse/pages/bst/bstFormat';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Card, CardContent } from '@/shared/components/ui';
 
 import { DateRangePicker } from '../../components';
-
-function formatDateTime(value: string | null): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-}
 
 export default function BSTGateOutListPage() {
   const navigate = useNavigate();
@@ -86,7 +81,7 @@ export default function BSTGateOutListPage() {
                   <td className="py-2 px-3">
                     <Badge variant="outline" className="text-green-700">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
-                      {formatDateTime(t.scan_approved_at)}
+                      {formatBstDateTime(t.scan_approved_at)}
                     </Badge>
                   </td>
                 </tr>

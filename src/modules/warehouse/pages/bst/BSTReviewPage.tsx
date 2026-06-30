@@ -1,5 +1,4 @@
 import { CheckCircle2, Loader2, ScanLine } from 'lucide-react';
-import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -8,6 +7,7 @@ import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
 import { useApproveBST, useBSTTransfer } from '../../api';
+import { BSTBillTable } from './BSTBillTable';
 import { BSTStatusBadge } from './bstStatus';
 
 export default function BSTReviewPage() {
@@ -17,17 +17,6 @@ export default function BSTReviewPage() {
 
   const { data: t, isLoading } = useBSTTransfer(transferId);
   const approveMut = useApproveBST();
-
-  const scannedByItem = useMemo(() => {
-    const map = new Map<string, { qty: number; boxes: number }>();
-    for (const s of t?.box_scans ?? []) {
-      const cur = map.get(s.item_code) ?? { qty: 0, boxes: 0 };
-      cur.qty += Number(s.quantity) || 0;
-      cur.boxes += 1;
-      map.set(s.item_code, cur);
-    }
-    return map;
-  }, [t]);
 
   if (isLoading || !t) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
@@ -84,36 +73,7 @@ export default function BSTReviewPage() {
       <Card>
         <CardContent className="pt-6">
           <p className="font-medium mb-3">Bill vs scanned ({t.items.length} items)</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 px-3">Item</th>
-                  <th className="py-2 px-3 text-right">Bill Qty</th>
-                  <th className="py-2 px-3 text-right">Scanned Qty</th>
-                  <th className="py-2 px-3 text-right">Boxes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {t.items.map((it) => {
-                  const scanned = scannedByItem.get(it.item_code);
-                  return (
-                    <tr key={it.id} className="border-b">
-                      <td className="py-2 px-3">
-                        <p className="font-medium">{it.item_code}</p>
-                        <p className="text-xs text-muted-foreground">{it.item_name}</p>
-                      </td>
-                      <td className="py-2 px-3 text-right">
-                        {it.quantity} {it.uom}
-                      </td>
-                      <td className="py-2 px-3 text-right">{scanned?.qty ?? 0}</td>
-                      <td className="py-2 px-3 text-right">{scanned?.boxes ?? 0}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <BSTBillTable items={t.items} scans={t.box_scans} />
         </CardContent>
       </Card>
 
