@@ -13,6 +13,7 @@ const FGReceiptListPage = lazy(() => import('./pages/FGReceiptListPage'));
 const BSTDashboardPage = lazy(() => import('./pages/bst/BSTDashboardPage'));
 const BSTNewPage = lazy(() => import('./pages/bst/BSTNewPage'));
 const BSTScanPage = lazy(() => import('./pages/bst/BSTScanPage'));
+const BSTReviewPage = lazy(() => import('./pages/bst/BSTReviewPage'));
 const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
 const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
 
@@ -80,6 +81,12 @@ export const warehouseModuleConfig: ModuleConfig = {
     {
       path: '/warehouse/bst/:transferId/scan',
       element: <BSTScanPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_BST],
+    },
+    {
+      path: '/warehouse/bst/:transferId/review',
+      element: <BSTReviewPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.CREATE_BST],
     },

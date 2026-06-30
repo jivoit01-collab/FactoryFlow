@@ -75,8 +75,8 @@ export const bstApi = {
     await apiClient.delete(EP.BST_BOX_SCAN_DETAIL(transferId, scanId));
   },
 
-  async dispatch(transferId: number): Promise<BSTTransferDetail> {
-    const res = await apiClient.post<BSTTransferDetail>(EP.BST_DISPATCH(transferId));
+  async approve(transferId: number): Promise<BSTTransferDetail> {
+    const res = await apiClient.post<BSTTransferDetail>(EP.BST_APPROVE(transferId));
     return res.data;
   },
 

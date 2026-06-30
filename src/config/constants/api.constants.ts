@@ -648,7 +648,7 @@ export const API_ENDPOINTS = {
     BST_BOX_SCANS_BATCH: (transferId: number) => `/warehouse/bst/${transferId}/box-scans/batch/`,
     BST_BOX_SCAN_DETAIL: (transferId: number, scanId: number) =>
       `/warehouse/bst/${transferId}/box-scans/${scanId}/`,
-    BST_DISPATCH: (transferId: number) => `/warehouse/bst/${transferId}/dispatch/`,
+    BST_APPROVE: (transferId: number) => `/warehouse/bst/${transferId}/approve/`,
     BST_CANCEL: (transferId: number) => `/warehouse/bst/${transferId}/cancel/`,
     BST_INCOMING: '/warehouse/bst/incoming/',
     BST_INCOMING_DETAIL: (transferId: number) => `/warehouse/bst/incoming/${transferId}/`,

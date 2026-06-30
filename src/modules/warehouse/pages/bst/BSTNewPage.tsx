@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { DriverSelect, VehicleSelect } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
@@ -17,6 +18,11 @@ export default function BSTNewPage() {
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<SAPStockTransfer | null>(null);
   const [invoiceNo, setInvoiceNo] = useState('');
+  // When the stock leaves on a vehicle it needs a gate-out, so we capture the
+  // vehicle + driver and route it to the gate after the warehouse approves.
+  const [onVehicle, setOnVehicle] = useState(false);
+  const [vehicleId, setVehicleId] = useState<number | null>(null);
+  const [driverId, setDriverId] = useState<number | null>(null);
 
   const { data: transfers = [], isLoading: searching } = useBSTSapTransfers(
     submittedSearch,
@@ -24,14 +30,19 @@ export default function BSTNewPage() {
   );
   const createMut = useCreateBST();
 
-  const canCreate = selectedDoc !== null;
+  const vehicleReady = !onVehicle || (vehicleId !== null && driverId !== null);
+  const canCreate = selectedDoc !== null && vehicleReady;
 
   const handleCreate = async () => {
     if (!selectedDoc) return;
+    if (onVehicle && (vehicleId === null || driverId === null)) return;
     try {
       const transfer = await createMut.mutateAsync({
         sap_doc_entry: selectedDoc.doc_entry,
         invoice_no: invoiceNo,
+        requires_gate: onVehicle,
+        vehicle: onVehicle ? vehicleId : null,
+        driver: onVehicle ? driverId : null,
       });
       toast.success(`BST ${transfer.entry_no} created`);
       navigate(`/warehouse/bst/${transfer.id}/scan`);
@@ -125,6 +136,27 @@ export default function BSTNewPage() {
               onChange={(e) => setInvoiceNo(e.target.value)}
             />
           </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={onVehicle}
+              onChange={(e) => setOnVehicle(e.target.checked)}
+            />
+            Leaves on a vehicle (needs gate-out)
+          </label>
+
+          {onVehicle ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <VehicleSelect label="Vehicle" required onChange={(v) => setVehicleId(v.vehicleId)} />
+              <DriverSelect label="Driver" required onChange={(d) => setDriverId(d.driverId)} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Internal move — the stock stays inside the factory, so no vehicle or gate-out is
+              needed.
+            </p>
+          )}
         </CardContent>
       </Card>
 

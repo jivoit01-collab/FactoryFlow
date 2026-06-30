@@ -102,10 +102,10 @@ export function useRemoveBSTScan() {
   });
 }
 
-export function useDispatchBST() {
+export function useApproveBST() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (transferId: number) => bstApi.dispatch(transferId),
+    mutationFn: (transferId: number) => bstApi.approve(transferId),
     onSuccess: () => qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.all }),
   });
 }

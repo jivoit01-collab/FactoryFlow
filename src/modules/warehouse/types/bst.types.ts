@@ -95,6 +95,7 @@ export interface BSTTransferListItem {
   requires_gate: boolean;
   scanned_box_count: number;
   item_count: number;
+  scan_approved_at: string | null;
   dispatched_at: string | null;
   received_at: string | null;
   created_at: string;
@@ -106,6 +107,7 @@ export interface BSTTransferDetail extends BSTTransferListItem {
   gated_out_at: string | null;
   gated_in_at: string | null;
   created_by_name: string;
+  scan_approved_by_name: string;
   dispatched_by_name: string;
   received_by_name: string;
   accepted_count: number;

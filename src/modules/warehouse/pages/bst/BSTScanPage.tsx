@@ -1,4 +1,4 @@
-import { Loader2, Send, Trash2, X } from 'lucide-react';
+import { ClipboardCheck, Loader2, Trash2, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ import {
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { bstApi, useBSTTransfer, useDispatchBST, useRemoveBSTScan } from '../../api';
+import { bstApi, useBSTTransfer, useRemoveBSTScan } from '../../api';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTStatusBadge } from './bstStatus';
 
@@ -25,7 +25,6 @@ export default function BSTScanPage() {
 
   const { data: transfer, isLoading, refetch } = useBSTTransfer(transferId);
   const removeMut = useRemoveBSTScan();
-  const dispatchMut = useDispatchBST();
 
   const [manualBarcode, setManualBarcode] = useState('');
 
@@ -69,15 +68,7 @@ export default function BSTScanPage() {
     }
   };
 
-  const handleDispatch = async () => {
-    try {
-      await dispatchMut.mutateAsync(transferId);
-      toast.success('BST dispatched');
-      navigate(`/warehouse/bst/${transferId}`);
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not dispatch'));
-    }
-  };
+  const goToReview = () => navigate(`/warehouse/bst/${transferId}/review`);
 
   if (isLoading || !transfer) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
@@ -215,16 +206,9 @@ export default function BSTScanPage() {
           <Button variant="outline" onClick={() => navigate(`/warehouse/bst/${transferId}`)}>
             Save &amp; exit
           </Button>
-          <Button
-            onClick={handleDispatch}
-            disabled={scans.length === 0 || dispatchMut.isPending}
-          >
-            {dispatchMut.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <Send className="h-4 w-4 mr-1" />
-            )}
-            Dispatch
+          <Button onClick={goToReview} disabled={scans.length === 0}>
+            <ClipboardCheck className="h-4 w-4 mr-1" />
+            Review &amp; approve
           </Button>
         </div>
       )}
