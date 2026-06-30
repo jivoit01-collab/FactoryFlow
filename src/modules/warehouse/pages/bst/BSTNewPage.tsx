@@ -65,7 +65,7 @@ export default function BSTNewPage() {
             <Label>SAP Stock Transfer</Label>
             <div className="flex gap-2 mt-1">
               <Input
-                placeholder="Search by doc no., warehouse, item…"
+                placeholder="Search by BST invoice / document number"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && setSubmittedSearch(search.trim())}
