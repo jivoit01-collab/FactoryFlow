@@ -77,39 +77,6 @@ export const MAINTENANCE_FLOW: EntryFlowConfig = {
   allPageDescription: 'Manage maintenance items, spare parts, and tools gate entries',
 };
 
-export const BST_OUT_FLOW: EntryFlowConfig = {
-  entryType: 'BST_OUT',
-  routePrefix: '/gate/bst-out',
-  headerTitle: 'BST Out',
-  totalSteps: 3,
-  dashboardTitle: 'BST Out',
-  dashboardDescription: 'Manage branch stock transfer gate-out entries',
-  allPageTitle: 'BST Out',
-  allPageDescription: 'Manage branch stock transfer gate-out entries',
-};
-
-export const BST_IN_FLOW: EntryFlowConfig = {
-  entryType: ENTRY_TYPES.BST_IN,
-  routePrefix: '/gate/bst-in',
-  headerTitle: 'BST In',
-  totalSteps: 2,
-  dashboardTitle: 'BST In',
-  dashboardDescription: 'Receive in-transit branch stock transfer vehicles',
-  allPageTitle: 'BST In',
-  allPageDescription: 'Receive in-transit branch stock transfer vehicles',
-};
-
-export const BST_RETURN_FLOW: EntryFlowConfig = {
-  entryType: ENTRY_TYPES.BST_RETURN,
-  routePrefix: '/gate/bst-return',
-  headerTitle: 'BST Return',
-  totalSteps: 2,
-  dashboardTitle: 'BST Return',
-  dashboardDescription: 'Record BST vehicles that returned before destination BST in',
-  allPageTitle: 'BST Return',
-  allPageDescription: 'Record BST vehicles that returned before destination BST in',
-};
-
 export const JOB_WORK_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.JOB_WORK,
   routePrefix: '/gate/job-work',
