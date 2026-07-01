@@ -6,8 +6,8 @@
  * flags discrepancies; posting the count updates inventory to the counted
  * figures and writes a CYCLE_COUNT movement for every change.
  */
-import { useMemo, useState } from 'react';
 import { ClipboardCheck, Plus, ScanLine } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -173,7 +173,7 @@ export default function WmsCountPage() {
                       <Input
                         type="number"
                         min={0}
-                        className="w-24"
+                        className="w-20 sm:w-24"
                         value={counted}
                         onChange={(event) => setCount(record.id, Number(event.target.value) || 0)}
                       />

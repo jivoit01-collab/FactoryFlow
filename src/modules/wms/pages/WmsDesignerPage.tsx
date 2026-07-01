@@ -6,11 +6,12 @@
  * post-generation edits happen in the warehouse editor the user lands on after
  * creating.
  */
-import { useMemo, useState } from 'react';
 import { Loader2, Wand2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { WarehouseSelect } from '@/modules/grpo/components';
 import {
   Button,
   Card,
@@ -23,21 +24,19 @@ import {
   NativeSelect,
 } from '@/shared/components/ui';
 
-import { WarehouseSelect } from '@/modules/grpo/components';
-
-import { WarehouseGrid, type GridCell } from '../components/WarehouseGrid';
-import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
-import { useWmsEnabled, useWmsRole } from '../store';
-import { wmsStore } from '../store';
+import { type GridCell,WarehouseGrid } from '../components/WarehouseGrid';
+import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import type { AxisStyle } from '../services';
 import {
-  DEFAULT_NAMING_SCHEME,
   countLocations,
+  DEFAULT_NAMING_SCHEME,
   generateLayout,
   makeWarehouseLocation,
   validateLayoutParams,
 } from '../services';
-import type { AxisStyle } from '../services';
+import { useWmsEnabled, useWmsRole } from '../store';
+import { wmsStore } from '../store';
 import type { Warehouse, WarehouseNamingScheme, WarehouseType } from '../types';
 import { createWmsId, nowIso } from '../utils';
 
@@ -314,7 +313,7 @@ export default function WmsDesignerPage() {
                 </Label>
                 <NativeSelect
                   id="preview-level"
-                  className="w-24"
+                  className="w-20 sm:w-24"
                   value={safeLevel}
                   onChange={(event) => setPreviewLevel(Number(event.target.value))}
                 >

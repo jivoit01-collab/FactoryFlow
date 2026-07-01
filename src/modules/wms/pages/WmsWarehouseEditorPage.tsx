@@ -468,7 +468,7 @@ export default function WmsWarehouseEditorPage() {
               Create zone
             </Button>
             <NativeSelect
-              className="h-9 w-40"
+              className="h-9 w-32 sm:w-40"
               value=""
               disabled={busy || zones.length === 0}
               onChange={(event) => {
@@ -572,7 +572,7 @@ function RemoveSelect({
 }) {
   return (
     <NativeSelect
-      className="h-9 w-40"
+      className="h-9 w-32 sm:w-40"
       value=""
       disabled={disabled}
       onChange={(event) => {

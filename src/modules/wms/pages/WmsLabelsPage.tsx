@@ -7,15 +7,15 @@
  * TSC DA310 page geometry as the barcode module, so they run on the same
  * thermal printer and stock.
  */
-import { useMemo, useRef, useState } from 'react';
 import { Printer } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 
-import { Button, Card, CardContent, NativeSelect } from '@/shared/components/ui';
 import { LABEL_PRINT_PAGE_STYLE } from '@/modules/barcode/components/labelPrint';
+import { Button, Card, CardContent, NativeSelect } from '@/shared/components/ui';
 
-import WmsPrintLabel, { type WmsLabelData } from '../components/WmsPrintLabel';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
+import WmsPrintLabel, { type WmsLabelData } from '../components/WmsPrintLabel';
 import { useWarehouses, useWmsCollection, useWmsEnabled } from '../store';
 
 type LabelSet = 'locations' | 'pallets';
@@ -80,9 +80,9 @@ export default function WmsLabelsPage() {
             Print or export location and pallet QR labels (100&times;40mm).
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {warehouses.length > 1 && labelSet === 'locations' ? (
-            <NativeSelect className="w-44" value={activeWarehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
+            <NativeSelect className="w-full sm:w-44" value={activeWarehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
               {warehouses.map((wh) => (
                 <option key={wh.id} value={wh.id}>
                   {wh.name}
@@ -90,11 +90,11 @@ export default function WmsLabelsPage() {
               ))}
             </NativeSelect>
           ) : null}
-          <NativeSelect className="w-40" value={labelSet} onChange={(event) => setLabelSet(event.target.value as LabelSet)}>
+          <NativeSelect className="w-full sm:w-40" value={labelSet} onChange={(event) => setLabelSet(event.target.value as LabelSet)}>
             <option value="locations">Location labels</option>
             <option value="pallets">Pallet labels</option>
           </NativeSelect>
-          <Button onClick={() => handlePrint()} disabled={labels.length === 0}>
+          <Button className="w-full sm:w-auto" onClick={() => handlePrint()} disabled={labels.length === 0}>
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
         </div>
@@ -107,11 +107,13 @@ export default function WmsLabelsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-wrap gap-4">
+        // Horizontal-scroll strip on phones (labels are a fixed 100mm wide), a
+        // wrapping grid from sm up. Keeps the page from overflowing sideways.
+        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {labels.map((label) => (
             <div
               key={label.key}
-              className="overflow-hidden rounded-md border shadow-sm"
+              className="shrink-0 overflow-hidden rounded-md border shadow-sm"
               style={{ width: '100mm', height: '40mm' }}
             >
               <WmsPrintLabel data={label} />
