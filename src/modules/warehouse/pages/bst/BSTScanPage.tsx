@@ -36,6 +36,7 @@ export default function BSTScanPage() {
 
   // What this BST is supposed to move (the SAP lines), shown with live progress.
   const items = transfer?.items ?? [];
+  const billItemCodes = new Set(items.map((it) => it.item_code));
 
   const isAlreadyScanned = useCallback(
     (barcode: string) =>
@@ -207,7 +208,17 @@ export default function BSTScanPage() {
                   {scans.map((s) => (
                     <tr key={s.id} className="border-b">
                       <td className="py-2 px-3 font-medium">{s.box_barcode}</td>
-                      <td className="py-2 px-3">{s.item_code}</td>
+                      <td className="py-2 px-3">
+                        {s.item_code}
+                        {!billItemCodes.has(s.item_code) && (
+                          <Badge
+                            variant="outline"
+                            className="ml-1 border-red-200 bg-red-50 text-red-700"
+                          >
+                            off-bill
+                          </Badge>
+                        )}
+                      </td>
                       <td className="py-2 px-3">{s.batch_number}</td>
                       <td className="py-2 px-3">{s.pallet_code || '—'}</td>
                       {editable && (
