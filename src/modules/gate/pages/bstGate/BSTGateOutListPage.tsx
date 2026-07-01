@@ -1,7 +1,7 @@
 import { ArrowRight, CheckCircle2, Truck } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useGlobalDateRange } from '@/core/store/hooks';
 import { useBSTGateOutwards } from '@/modules/warehouse/api';
 import { formatBstDateTime } from '@/modules/warehouse/pages/bst/bstFormat';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -9,13 +9,22 @@ import { Badge, Card, CardContent } from '@/shared/components/ui';
 
 import { DateRangePicker } from '../../components';
 
+const toISODate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export default function BSTGateOutListPage() {
   const navigate = useNavigate();
-  const { dateRange, dateRangeAsDateObjects, setDateRange, resetDateRange } = useGlobalDateRange();
+  // The gate queue shows TODAY's warehouse-approved transfers by default (still filterable).
+  const today = useMemo(() => toISODate(new Date()), []);
+  const [range, setRange] = useState<{ from: string; to: string }>({ from: today, to: today });
   const { data: transfers = [], isLoading } = useBSTGateOutwards({
-    from_date: dateRange.from,
-    to_date: dateRange.to,
+    from_date: range.from,
+    to_date: range.to,
   });
+  const pickerDate = useMemo(
+    () => ({ from: new Date(`${range.from}T00:00:00`), to: new Date(`${range.to}T00:00:00`) }),
+    [range],
+  );
 
   return (
     <div className="space-y-6">
@@ -24,13 +33,13 @@ export default function BSTGateOutListPage() {
         description="Branch transfers approved by the warehouse, awaiting vehicle gate-out"
       >
         <DateRangePicker
-          date={dateRangeAsDateObjects}
+          date={pickerDate}
           className="w-full sm:w-[300px]"
           onDateChange={(date) => {
-            if (date && 'from' in date) {
-              setDateRange(date);
+            if (date && 'from' in date && date.from) {
+              setRange({ from: toISODate(date.from), to: toISODate(date.to ?? date.from) });
             } else {
-              resetDateRange();
+              setRange({ from: today, to: today });
             }
           }}
         />

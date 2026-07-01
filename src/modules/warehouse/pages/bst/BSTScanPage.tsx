@@ -1,4 +1,5 @@
 import { AlertCircle, ClipboardCheck, Loader2, Trash2, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,7 +17,7 @@ import {
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { bstApi, useBSTTransfer, useRemoveBSTScan } from '../../api';
+import { bstApi, BST_QUERY_KEYS, useBSTTransfer, useRemoveBSTScan } from '../../api';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTBillTable } from './BSTBillTable';
 import { BSTStatusBadge } from './bstStatus';
@@ -28,6 +29,7 @@ export default function BSTScanPage() {
 
   const { data: transfer, isLoading, refetch } = useBSTTransfer(transferId);
   const removeMut = useRemoveBSTScan();
+  const queryClient = useQueryClient();
 
   const [manualBarcode, setManualBarcode] = useState('');
 
@@ -58,7 +60,8 @@ export default function BSTScanPage() {
         return { duplicate: result.created_count === 0 && result.duplicate_count > 0 };
       },
       isAlreadyScanned,
-      onDrained: () => refetch(),
+      // Refresh the detail AND the dashboard/list counts (scanned_box_count).
+      onDrained: () => queryClient.invalidateQueries({ queryKey: BST_QUERY_KEYS.all }),
       onDuplicate: (barcode) => toast.warning(`${barcode}: already scanned`),
       onAlreadyInList: () => toast.warning('This box is already in the scan list'),
     });

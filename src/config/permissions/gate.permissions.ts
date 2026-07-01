@@ -78,12 +78,14 @@ export const GATE_PERMISSIONS = {
   },
 
   BST_OUT: {
+    // Dedicated BST gate permission (warehouse BSTTransfer model), so gate staff
+    // can be granted just the gate-out step without any other gate/dashboard access.
     /** View BST gate-out entries */
-    VIEW: 'person_gatein.can_view_dashboard',
+    VIEW: 'warehouse.can_gate_bst',
     /** Create BST gate-out entries */
-    CREATE: 'person_gatein.can_view_dashboard',
-    /** Complete BST gate-out entries */
-    COMPLETE: 'person_gatein.can_view_dashboard',
+    CREATE: 'warehouse.can_gate_bst',
+    /** Mark the vehicle out (complete BST gate-out) */
+    COMPLETE: 'warehouse.can_gate_bst',
   },
 
   BST_IN: {
