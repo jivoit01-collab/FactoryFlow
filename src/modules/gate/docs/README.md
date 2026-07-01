@@ -104,11 +104,22 @@ Each API group follows the pattern: `{feature}.api.ts` (Axios calls) + `{feature
 | department | Department lookup |
 | personGateIn | Visitor/labour entries, gates, contractors |
 
+## BST Out (warehouse-driven)
+
+The gate hosts a **BST Out** submodule (`/gate/bst-out`, sidebar → Gate → BST Out)
+for the warehouse Branch Stock Transfer flow: it lists transfers approved by the
+warehouse and awaiting gate-out, lets the gate person verify the warehouse
+approval + bill/scanned quantities, and mark the vehicle out (→ In Transit). It is
+a thin gate view over the `warehouse` module's BST API — see
+[`src/docs/bst_flow.md`](../../../docs/bst_flow.md). (An older gate-initiated BST —
+`gate_core` `BSTGateOut/In/Return` + the empty-vehicle "BST" reason — has been
+superseded and its dormant UI removed.)
+
 ## Dependencies
 
 - `@/config/constants` — Status constants, entry types, vehicle constants
 - `@/shared/components` — SearchableSelect, UI primitives
-- `@/shared/hooks` — useScrollToError, useFormErrors
+- `@/shared/hooks` — useScrollToError, useFormErrors, useBoxScanQueue
 - `@/core/api` — API client
 - `@/core/auth` — Permission hooks
-- No other module imports
+- `@/modules/warehouse` — BST Out submodule reuses the warehouse BST API + `BSTBillTable`

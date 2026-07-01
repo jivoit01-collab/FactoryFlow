@@ -639,6 +639,25 @@ export const API_ENDPOINTS = {
     FG_RECEIPT_DETAIL: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/`,
     FG_RECEIPT_RECEIVE: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/receive/`,
     FG_RECEIPT_POST_SAP: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/post-to-sap/`,
+    // Branch Stock Transfer (BST)
+    BST_SAP_TRANSFERS: '/warehouse/bst/sap-transfers/',
+    BST_SAP_TRANSFER_DETAIL: (docEntry: number) => `/warehouse/bst/sap-transfers/${docEntry}/`,
+    BST_LIST: '/warehouse/bst/',
+    BST_DETAIL: (transferId: number) => `/warehouse/bst/${transferId}/`,
+    BST_BOX_SCANS: (transferId: number) => `/warehouse/bst/${transferId}/box-scans/`,
+    BST_BOX_SCANS_BATCH: (transferId: number) => `/warehouse/bst/${transferId}/box-scans/batch/`,
+    BST_BOX_SCAN_DETAIL: (transferId: number, scanId: number) =>
+      `/warehouse/bst/${transferId}/box-scans/${scanId}/`,
+    BST_APPROVE: (transferId: number) => `/warehouse/bst/${transferId}/approve/`,
+    BST_CANCEL: (transferId: number) => `/warehouse/bst/${transferId}/cancel/`,
+    BST_INCOMING: '/warehouse/bst/incoming/',
+    BST_INCOMING_DETAIL: (transferId: number) => `/warehouse/bst/incoming/${transferId}/`,
+    BST_RECEIVE_SCAN: (transferId: number) => `/warehouse/bst/${transferId}/receive-scans/`,
+    BST_RECEIVE_COMPLETE: (transferId: number) => `/warehouse/bst/${transferId}/receive/complete/`,
+    BST_GATE_OUTWARDS: '/warehouse/bst/gate/expected-outwards/',
+    BST_GATE_INWARDS: '/warehouse/bst/gate/expected-inwards/',
+    BST_GATE_MARK_OUT: (transferId: number) => `/warehouse/bst/${transferId}/gate/mark-out/`,
+    BST_GATE_MARK_IN: (transferId: number) => `/warehouse/bst/${transferId}/gate/mark-in/`,
   },
 
   BARCODE: {

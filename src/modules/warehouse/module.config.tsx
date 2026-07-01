@@ -9,6 +9,14 @@ const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
 const BOMRequestDetailPage = lazy(() => import('./pages/BOMRequestDetailPage'));
 const FGReceiptListPage = lazy(() => import('./pages/FGReceiptListPage'));
 
+// BST (Branch Stock Transfer) Pages
+const BSTDashboardPage = lazy(() => import('./pages/bst/BSTDashboardPage'));
+const BSTNewPage = lazy(() => import('./pages/bst/BSTNewPage'));
+const BSTScanPage = lazy(() => import('./pages/bst/BSTScanPage'));
+const BSTReviewPage = lazy(() => import('./pages/bst/BSTReviewPage'));
+const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
+const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
+
 // WMS Pages
 const WMSDashboardPage = lazy(() => import('./pages/WMSDashboardPage'));
 const StockTrackerPage = lazy(() => import('./pages/StockTrackerPage'));
@@ -44,6 +52,43 @@ export const warehouseModuleConfig: ModuleConfig = {
       element: <FGReceiptListPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
+    },
+    // BST Routes
+    {
+      path: '/warehouse/bst',
+      element: <BSTDashboardPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
+    },
+    {
+      path: '/warehouse/bst/new',
+      element: <BSTNewPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_BST],
+    },
+    {
+      path: '/warehouse/bst/incoming/:transferId',
+      element: <BSTReceivePage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.MANAGE_BST],
+    },
+    {
+      path: '/warehouse/bst/:transferId',
+      element: <BSTDetailPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
+    },
+    {
+      path: '/warehouse/bst/:transferId/scan',
+      element: <BSTScanPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_BST],
+    },
+    {
+      path: '/warehouse/bst/:transferId/review',
+      element: <BSTReviewPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_BST],
     },
     // WMS Routes
     {
@@ -95,7 +140,9 @@ export const warehouseModuleConfig: ModuleConfig = {
       title: 'Warehouse',
       icon: Warehouse,
       showInSidebar: true,
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+      // Any of these shows the Warehouse group; the children filter individually,
+      // so a BST-only user sees the group with just "Branch Transfer".
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST, WAREHOUSE_PERMISSIONS.VIEW_BST],
       hasSubmenu: true,
       children: [
         {
@@ -107,6 +154,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/fg-receipts',
           title: 'FG Receipts',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
+        },
+        {
+          path: '/warehouse/bst',
+          title: 'Branch Transfer',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
         },
       ],
     },

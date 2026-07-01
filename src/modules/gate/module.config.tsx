@@ -13,6 +13,9 @@ import {
 // Lazy load all gate pages
 const GateDashboardPage = lazy(() => import('./pages/GateDashboardPage'));
 const GateNewEntryPage = lazy(() => import('./pages/GateNewEntryPage'));
+// Warehouse-driven BST gate-out (verify warehouse approval + mark vehicle out).
+const BSTGateOutListPage = lazy(() => import('./pages/bstGate/BSTGateOutListPage'));
+const BSTGateOutReviewPage = lazy(() => import('./pages/bstGate/BSTGateOutReviewPage'));
 const RawMaterialsDashboard = lazy(() => import('./pages/rawMaterialPages/RawMaterialsDashboard'));
 const RawMaterialsPage = lazy(() => import('./pages/RawMaterialsPage'));
 
@@ -116,21 +119,6 @@ const EmptyVehicleInAttachmentsPage = lazy(
 const EmptyVehicleInReviewPage = lazy(
   () => import('./pages/emptyVehicleInPages/EmptyVehicleInReviewPage'),
 );
-const BSTOutDashboardPage = lazy(() => import('./pages/bstOutPages/BSTOutDashboardPage'));
-const BSTOutNewPage = lazy(() => import('./pages/bstOutPages/BSTOutNewPage'));
-const BSTOutWeighmentPage = lazy(() => import('./pages/bstOutPages/BSTOutWeighmentPage'));
-const BSTOutAttachmentsPage = lazy(() => import('./pages/bstOutPages/BSTOutAttachmentsPage'));
-const BSTOutReviewPage = lazy(() => import('./pages/bstOutPages/BSTOutReviewPage'));
-const BSTInDashboardPage = lazy(() => import('./pages/bstInPages/BSTInDashboardPage'));
-const BSTInNewPage = lazy(() => import('./pages/bstInPages/BSTInNewPage'));
-const BSTInAttachmentsPage = lazy(() => import('./pages/bstInPages/BSTInAttachmentsPage'));
-const BSTInReviewPage = lazy(() => import('./pages/bstInPages/BSTInReviewPage'));
-const BSTReturnDashboardPage = lazy(() => import('./pages/bstReturnPages/BSTReturnDashboardPage'));
-const BSTReturnNewPage = lazy(() => import('./pages/bstReturnPages/BSTReturnNewPage'));
-const BSTReturnAttachmentsPage = lazy(
-  () => import('./pages/bstReturnPages/BSTReturnAttachmentsPage'),
-);
-const BSTReturnReviewPage = lazy(() => import('./pages/bstReturnPages/BSTReturnReviewPage'));
 const CustomerReturnDashboardPage = lazy(
   () => import('./pages/customerSalesFlow/CustomerReturnDashboardPage'),
 );
@@ -817,122 +805,17 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/bst-out',
-      element: <BSTOutDashboardPage />,
+      element: <BSTGateOutListPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
       breadcrumb: { label: 'BST Out' },
     },
     {
-      path: '/gate/bst-out/new/gatepass',
-      element: <SalesDispatchGatepassPage />,
+      path: '/gate/bst-out/:transferId',
+      element: <BSTGateOutReviewPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
       breadcrumb: { label: 'BST Out' },
-    },
-    {
-      path: '/gate/bst-out/new/weighment',
-      element: <SalesDispatchGateOutWeighmentPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
-      breadcrumb: { label: 'BST Out Weighment' },
-    },
-    {
-      path: '/gate/bst-out/new',
-      element: <Navigate to="/dispatch/docking/new?documentType=STOCK_TRANSFER" replace />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_OUT.CREATE],
-      breadcrumb: { label: 'New Docking' },
-    },
-    {
-      path: '/gate/bst-out/new/step2',
-      element: <BSTOutWeighmentPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_OUT.CREATE],
-      breadcrumb: { label: 'BST Weighment' },
-    },
-    {
-      path: '/gate/bst-out/new/attachments',
-      element: <BSTOutAttachmentsPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_OUT.CREATE],
-      breadcrumb: { label: 'BST Attachments' },
-    },
-    {
-      path: '/gate/bst-out/new/review',
-      element: <BSTOutReviewPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_OUT.CREATE, GATE_PERMISSIONS.BST_OUT.COMPLETE],
-      breadcrumb: { label: 'BST Review' },
-    },
-    {
-      path: '/gate/bst-in',
-      element: <BSTInDashboardPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_IN.VIEW],
-      breadcrumb: { label: 'BST In' },
-    },
-    {
-      path: '/gate/bst-in/new',
-      element: <BSTInNewPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_IN.CREATE],
-      breadcrumb: { label: 'New BST In' },
-    },
-    {
-      path: '/gate/bst-in/new/step1',
-      element: <BSTInNewPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_IN.CREATE],
-      breadcrumb: { label: 'New BST In' },
-    },
-    {
-      path: '/gate/bst-in/new/attachments',
-      element: <BSTInAttachmentsPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_IN.CREATE],
-      breadcrumb: { label: 'BST In Attachments' },
-    },
-    {
-      path: '/gate/bst-in/new/review',
-      element: <BSTInReviewPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_IN.CREATE, GATE_PERMISSIONS.BST_IN.COMPLETE],
-      breadcrumb: { label: 'BST In Review' },
-    },
-    {
-      path: '/gate/bst-return',
-      element: <BSTReturnDashboardPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_RETURN.VIEW],
-      breadcrumb: { label: 'BST Return' },
-    },
-    {
-      path: '/gate/bst-return/new',
-      element: <BSTReturnNewPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_RETURN.CREATE],
-      breadcrumb: { label: 'New BST Return' },
-    },
-    {
-      path: '/gate/bst-return/new/step1',
-      element: <BSTReturnNewPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_RETURN.CREATE],
-      breadcrumb: { label: 'New BST Return' },
-    },
-    {
-      path: '/gate/bst-return/new/attachments',
-      element: <BSTReturnAttachmentsPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_RETURN.CREATE],
-      breadcrumb: { label: 'BST Return Attachments' },
-    },
-    {
-      path: '/gate/bst-return/new/review',
-      element: <BSTReturnReviewPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.BST_RETURN.CREATE, GATE_PERMISSIONS.BST_RETURN.COMPLETE],
-      breadcrumb: { label: 'BST Return Review' },
     },
     {
       path: '/gate/customer-return',
@@ -1136,6 +1019,11 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/sales-dispatch/barcode-reports',
           title: 'Barcode Dispatch Reports',
           permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
+        },
+        {
+          path: '/gate/bst-out',
+          title: 'BST Out',
+          permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
         },
       ],
     },

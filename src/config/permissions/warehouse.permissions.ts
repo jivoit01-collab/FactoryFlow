@@ -20,6 +20,16 @@ export const WAREHOUSE_PERMISSIONS = {
   VIEW_FG_RECEIPT: 'production_execution.can_view_production_run',
   /** Create / receive finished goods */
   RECEIVE_FG: 'production_execution.can_complete_production_run',
+
+  // Branch Stock Transfer (BST) — dedicated Django permissions on the warehouse
+  // BSTTransfer model, so a "BST Operator" group can be granted just these
+  // without exposing the rest of the warehouse/production modules.
+  /** View / list branch stock transfers */
+  VIEW_BST: 'warehouse.view_bsttransfer',
+  /** Create a branch stock transfer + scan boxes onto it */
+  CREATE_BST: 'warehouse.can_create_bst',
+  /** Receive an incoming branch stock transfer */
+  MANAGE_BST: 'warehouse.can_receive_bst',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'production_execution';
