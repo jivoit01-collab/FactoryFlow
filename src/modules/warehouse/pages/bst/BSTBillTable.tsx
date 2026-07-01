@@ -9,11 +9,11 @@ type Tally = { qty: number; boxes: number; itemName: string; uom: string };
 
 /**
  * The transfer's SAP line items (the "bill") with live scanned progress per item,
- * styled like the sales-dispatch BillItemsTable. Scanning is NOT restricted to the
- * bill — the warehouse may send off-bill items or extra quantity — so this table
- * also flags over-scanned bill items ("Over +N") and appends any off-bill items
- * scanned ("Not on bill"). Shared by the BST scan, review, gate-out, and detail
- * screens so they read identically.
+ * styled like the sales-dispatch BillItemsTable. The bill's target is a **box
+ * count** (line quantity ÷ pieces-per-carton, from SAP) — each scanned box is one
+ * carton. Scanning is restricted to the bill (only its items, up to its box count),
+ * so the "Over +N" / "Not on bill" rows are defensive and shouldn't normally
+ * appear. Shared by the BST scan, review, gate-out, and detail screens.
  */
 export function BSTBillTable({
   items,
@@ -41,7 +41,7 @@ export function BSTBillTable({
           <tr>
             <th className="w-[150px] p-3 text-left font-medium">Item Code</th>
             <th className="p-3 text-left font-medium">Item</th>
-            <th className="w-[130px] p-3 text-right font-medium">Bill Qty</th>
+            <th className="w-[130px] p-3 text-right font-medium">Boxes to scan</th>
             <th className="w-[180px] p-3 text-left font-medium">Scanned</th>
             <th className="w-[130px] p-3 text-left font-medium">Status</th>
           </tr>
@@ -51,10 +51,11 @@ export function BSTBillTable({
             const scanned = scannedByItem.get(it.item_code);
             const scannedQty = scanned?.qty ?? 0;
             const boxes = scanned?.boxes ?? 0;
-            const billQty = Number(it.quantity) || 0;
-            const over = billQty > 0 && scannedQty > billQty;
-            const complete = billQty > 0 && scannedQty >= billQty;
-            const progress = billQty > 0 ? Math.min(100, Math.round((scannedQty / billQty) * 100)) : null;
+            const expectedBoxes = it.expected_boxes ?? 0;
+            const over = expectedBoxes > 0 && boxes > expectedBoxes;
+            const complete = expectedBoxes > 0 && boxes >= expectedBoxes;
+            const progress =
+              expectedBoxes > 0 ? Math.min(100, Math.round((boxes / expectedBoxes) * 100)) : null;
             return (
               <tr
                 key={it.id}
@@ -73,11 +74,16 @@ export function BSTBillTable({
                   <div className="mt-1 text-xs text-muted-foreground">Line {it.line_num + 1}</div>
                 </td>
                 <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                  {it.quantity} {it.uom}
+                  <div className="font-medium">
+                    {expectedBoxes} box{expectedBoxes === 1 ? '' : 'es'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {it.quantity} {it.uom}
+                  </div>
                 </td>
                 <td className="p-3 align-top">
                   <div className="font-medium">
-                    {boxes} box{boxes === 1 ? '' : 'es'}
+                    {boxes} of {expectedBoxes} box{expectedBoxes === 1 ? '' : 'es'}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {scannedQty > 0 ? `${scannedQty} ${it.uom}` : '-'}
@@ -94,7 +100,7 @@ export function BSTBillTable({
                 <td className="p-3 align-top">
                   {over ? (
                     <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
-                      <AlertTriangle className="mr-1 h-3.5 w-3.5" /> Over +{scannedQty - billQty}
+                      <AlertTriangle className="mr-1 h-3.5 w-3.5" /> Over +{boxes - expectedBoxes}
                     </Badge>
                   ) : complete ? (
                     <Badge variant="success">
@@ -112,7 +118,7 @@ export function BSTBillTable({
             );
           })}
 
-          {/* Items scanned that are NOT on the SAP bill. */}
+          {/* Items scanned that are NOT on the SAP bill (defensive — blocked on scan). */}
           {offBill.map(([code, tally]) => (
             <tr key={`off-${code}`} className="border-b bg-red-50/70 last:border-b-0">
               <td className="whitespace-nowrap p-3 align-top font-mono text-xs font-semibold">

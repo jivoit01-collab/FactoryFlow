@@ -29,6 +29,10 @@ export interface SAPStockTransferLine {
   uom: string;
   from_warehouse: string;
   to_warehouse: string;
+  /** Pieces per carton (SAP item-master sales factor). */
+  pcs_per_carton?: number;
+  /** Box count = quantity ÷ pieces-per-carton (the bill's box count). */
+  box_count?: number;
 }
 
 export interface SAPStockTransfer {
