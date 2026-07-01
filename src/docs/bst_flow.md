@@ -93,12 +93,15 @@ DRAFT ─▶ SCANNING ─▶ (approve)
   `useBoxScanQueue` (success flash, failed-scan retry).
 - Each scanned box is **validated** (`POST /warehouse/bst/:id/box-scans/`):
   - belongs to the company, is `ACTIVE`/`PARTIAL`, not dispatched,
-  - its `item_code` is **on this transfer's items**,
   - it is **physically at the source warehouse** (`current_warehouse ==
     sap_from_warehouse`),
   - it isn't already committed to another active BST.
-- The page leads with the **bill** (`BSTBillTable`): each SAP item with Bill Qty
-  vs live Scanned Qty / Boxes and an Open / Partial / Complete status.
+- **The transfer is not restricted to the SAP bill** — the warehouse may send
+  items that aren't on the bill and any quantity. These deviations are **flagged,
+  not blocked**: the page leads with the **bill** (`BSTBillTable`) where each SAP
+  item shows Bill Qty vs live Scanned Qty / Boxes with an Open / Partial /
+  Complete / **Over +N** status, off-bill items are appended as **"Not on bill"**
+  rows, and off-bill boxes are badged in the scanned list.
 
 ### 3. Review & approve (warehouse) — `BSTReviewPage`, `/warehouse/bst/:id/review`
 
