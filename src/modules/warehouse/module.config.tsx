@@ -140,7 +140,9 @@ export const warehouseModuleConfig: ModuleConfig = {
       title: 'Warehouse',
       icon: Warehouse,
       showInSidebar: true,
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
+      // Any of these shows the Warehouse group; the children filter individually,
+      // so a BST-only user sees the group with just "Branch Transfer".
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST, WAREHOUSE_PERMISSIONS.VIEW_BST],
       hasSubmenu: true,
       children: [
         {
