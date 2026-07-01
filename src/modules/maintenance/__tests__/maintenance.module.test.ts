@@ -9,6 +9,7 @@ describe('maintenanceModuleConfig', () => {
     const paths = maintenanceModuleConfig.routes.map((route) => route.path);
 
     expect(paths).toContain('/maintenance');
+    expect(paths).toContain('/maintenance/dashboard');
     expect(paths).toContain('/maintenance/assets');
     expect(paths).toContain('/maintenance/assets/:assetId');
     expect(paths).toContain('/maintenance/work-orders');
@@ -34,7 +35,7 @@ describe('maintenanceModuleConfig', () => {
 
     expect(nav.title).toBe('Maintenance');
     expect(nav.showInSidebar).toBe(true);
-    expect(childPaths).toContain('/maintenance');
+    expect(childPaths).toContain('/maintenance/dashboard');
     expect(childPaths).toContain('/maintenance/assets');
     expect(childPaths).toContain('/maintenance/work-orders');
     expect(childPaths).toContain('/maintenance/pm');
