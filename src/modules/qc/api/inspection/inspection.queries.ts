@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   ApprovalRequest,
-  FactoryHeadDecisionRequest,
   InspectionSavePayload,
   InspectionListItem,
   InspectionListParams,
@@ -261,15 +260,3 @@ export function useRejectInspection() {
   });
 }
 
-export function useRecordFactoryHeadDecision() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: FactoryHeadDecisionRequest }) =>
-      inspectionApi.recordFactoryHeadDecision(id, data),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.all });
-      queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.detail(result.id) });
-      queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.forSlip(result.arrival_slip_id) });
-    },
-  });
-}

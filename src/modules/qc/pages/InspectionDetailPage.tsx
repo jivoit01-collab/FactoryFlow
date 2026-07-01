@@ -5,6 +5,7 @@ import {
   ExternalLink,
   FileText,
   FlaskConical,
+  History,
   Link2,
   Paperclip,
   Pencil,
@@ -18,7 +19,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
-import { usePermission } from '@/core/auth';
 import { RecordTimestamps, SearchableSelect } from '@/shared/components';
 import {
   Badge,
@@ -46,7 +46,6 @@ import {
   useApproveAsQAM,
   useCreateInspection,
   useInspectionForSlip,
-  useRecordFactoryHeadDecision,
   useSubmitInspection,
   useUpdateInspection,
   useUpdateParameterResults,
@@ -60,8 +59,6 @@ import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.qu
 import { QCSuccessScreen, useInspectionReportPrint } from '../components';
 import {
   DECISION_STATUS_CONFIG,
-  FINAL_STATUS,
-  FINAL_STATUS_CONFIG,
   WORKFLOW_STATUS,
   WORKFLOW_STATUS_CONFIG,
 } from '../constants';
@@ -74,16 +71,6 @@ import type {
   ParameterResult,
   UpdateParameterResultRequest,
 } from '../types';
-import {
-  FACTORY_HEAD_DECISION_LABELS,
-  FACTORY_HEAD_DECISION_OPTIONS,
-  FACTORY_HEAD_DECISIONS,
-  type FactoryHeadDecision,
-  isAcceptedQcOverride,
-  readFactoryHeadDecision,
-  writeFactoryHeadDecision,
-} from '../utils/factoryHeadDecision';
-
 function DecisionPill({
   label,
   decision,
@@ -160,13 +147,6 @@ export default function InspectionDetailPage() {
 
   // Approval remarks
   const [approvalRemarks, setApprovalRemarks] = useState('');
-  const [factoryHeadDecision, setFactoryHeadDecision] = useState<FactoryHeadDecision>(
-    FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE,
-  );
-  const [savedFactoryHeadDecision, setSavedFactoryHeadDecision] =
-    useState<FactoryHeadDecision | null>(null);
-  const [factoryHeadRemarks, setFactoryHeadRemarks] = useState('');
-  const [factoryHeadSavedAt, setFactoryHeadSavedAt] = useState('');
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
   const [successAction, setSuccessAction] = useState<{
@@ -230,10 +210,8 @@ export default function InspectionDetailPage() {
   const submitInspection = useSubmitInspection();
   const approveAsChemist = useApproveAsChemist();
   const approveAsQAM = useApproveAsQAM();
-  const recordFactoryHeadDecision = useRecordFactoryHeadDecision();
   const sendBackArrivalSlip = useSendBackArrivalSlip();
   const linkMaterialTypeSAPItem = useLinkMaterialTypeSAPItem();
-  const { currentCompany } = usePermission();
 
   useEffect(() => {
     const documentId = inspection?.print_document_id?.trim();
@@ -293,39 +271,6 @@ export default function InspectionDetailPage() {
   useEffect(() => {
     populateFormFromInspection();
   }, [populateFormFromInspection]);
-
-  useEffect(() => {
-    if (!inspection) return;
-
-    if (inspection.factory_head_decision) {
-      setFactoryHeadDecision(inspection.factory_head_decision);
-      setSavedFactoryHeadDecision(inspection.factory_head_decision);
-      setFactoryHeadRemarks(inspection.factory_head_remarks || '');
-      setFactoryHeadSavedAt(
-        inspection.factory_head_decided_at
-          ? new Date(inspection.factory_head_decided_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '',
-      );
-      return;
-    }
-
-    const savedDecision = readFactoryHeadDecision(inspection.id);
-    if (!savedDecision) {
-      setFactoryHeadDecision(FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE);
-      setSavedFactoryHeadDecision(null);
-      setFactoryHeadRemarks('');
-      setFactoryHeadSavedAt('');
-      return;
-    }
-
-    setFactoryHeadDecision(savedDecision.decision);
-    setSavedFactoryHeadDecision(savedDecision.decision);
-    setFactoryHeadRemarks(savedDecision.remarks || '');
-    setFactoryHeadSavedAt(savedDecision.savedAt || '');
-  }, [inspection]);
 
   // Prefill form from arrival slip data when creating new inspection
   useEffect(() => {
@@ -770,30 +715,6 @@ export default function InspectionDetailPage() {
   const canUpdate = inspection && isDraft && canEditInspection && !isEditing && !isLocked;
 
   const canSubmit = showSubmitButton && !isEditing;
-  const showFactoryHeadDecision =
-    currentCompany?.role === 'Factory Head' &&
-    (inspection?.workflow_status === WORKFLOW_STATUS.QAM_APPROVED ||
-      inspection?.workflow_status === WORKFLOW_STATUS.REJECTED) &&
-    (inspection?.manager_decision?.decision === 'REJECTED' ||
-      inspection?.final_status === FINAL_STATUS.REJECTED);
-  const isRejectedQCReturned = Boolean(inspection?.rejected_qc_return_entry_id);
-  const hasAcceptedOverride = isAcceptedQcOverride(
-    inspection?.factory_head_decision
-      ? {
-          inspectionId: inspection.id,
-          decision: inspection.factory_head_decision,
-          remarks: inspection.factory_head_remarks || '',
-          savedAt: inspection.factory_head_decided_at || '',
-        }
-      : inspection && savedFactoryHeadDecision
-        ? {
-            inspectionId: inspection.id,
-            decision: savedFactoryHeadDecision,
-            remarks: factoryHeadRemarks,
-            savedAt: factoryHeadSavedAt,
-          }
-        : null,
-  );
 
   const isSaving =
     createInspection.isPending ||
@@ -802,7 +723,6 @@ export default function InspectionDetailPage() {
     submitInspection.isPending ||
     approveAsChemist.isPending ||
     approveAsQAM.isPending ||
-    recordFactoryHeadDecision.isPending ||
     sendBackArrivalSlip.isPending ||
     linkMaterialTypeSAPItem.isPending;
 
@@ -814,47 +734,6 @@ export default function InspectionDetailPage() {
     !isResolvingMaterialType &&
     !isSaving;
 
-  const handleFactoryHeadDecisionSave = async () => {
-    if (!inspection) return;
-    if (inspection.rejected_qc_return_entry_id) {
-      setApiErrors((current) => ({
-        ...current,
-        general: 'Factory Head decision is locked because this material is already out',
-      }));
-      return;
-    }
-
-    try {
-      const result = await recordFactoryHeadDecision.mutateAsync({
-        id: inspection.id,
-        data: { decision: factoryHeadDecision, remarks: factoryHeadRemarks },
-      });
-      const savedAt = result.factory_head_decided_at
-        ? new Date(result.factory_head_decided_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      writeFactoryHeadDecision({
-        inspectionId: inspection.id,
-        decision: factoryHeadDecision,
-        remarks: factoryHeadRemarks,
-        savedAt,
-      });
-      setSavedFactoryHeadDecision(factoryHeadDecision);
-      setFactoryHeadSavedAt(savedAt);
-    } catch (error) {
-      const detail =
-        error && typeof error === 'object' && 'data' in error
-          ? (error as { data?: { detail?: string } }).data?.detail
-          : undefined;
-      setApiErrors((current) => ({
-        ...current,
-        general: detail || 'Could not save factory head decision',
-      }));
-    }
-  };
 
   // Show animated success screen after approval
   if (successAction) {
@@ -893,31 +772,17 @@ export default function InspectionDetailPage() {
           {inspection && (
             <div className="flex items-center gap-4 ml-10">
               <span className="text-muted-foreground">Report No: {inspection.report_no}</span>
-              {hasAcceptedOverride ? (
-                <span
-                  className={cn(
-                    'px-2 py-1 rounded-full text-xs font-medium',
-                    FINAL_STATUS_CONFIG.ACCEPTED.bgColor,
-                    FINAL_STATUS_CONFIG.ACCEPTED.color,
-                  )}
-                >
-                  Accepted Override
-                </span>
-              ) : (
-                <>
-                  <span
-                    className={cn(
-                      'px-2 py-1 rounded-full text-xs font-medium',
-                      WORKFLOW_STATUS_CONFIG[inspection.workflow_status].bgColor,
-                      WORKFLOW_STATUS_CONFIG[inspection.workflow_status].color,
-                    )}
-                  >
-                    {WORKFLOW_STATUS_CONFIG[inspection.workflow_status].label}
-                  </span>
-                  <DecisionPill label="Chemist" decision={inspection.chemist_decision} />
-                  <DecisionPill label="Manager" decision={inspection.manager_decision} />
-                </>
-              )}
+              <span
+                className={cn(
+                  'px-2 py-1 rounded-full text-xs font-medium',
+                  WORKFLOW_STATUS_CONFIG[inspection.workflow_status].bgColor,
+                  WORKFLOW_STATUS_CONFIG[inspection.workflow_status].color,
+                )}
+              >
+                {WORKFLOW_STATUS_CONFIG[inspection.workflow_status].label}
+              </span>
+              <DecisionPill label="Chemist" decision={inspection.chemist_decision} />
+              <DecisionPill label="Manager" decision={inspection.manager_decision} />
             </div>
           )}
         </div>
@@ -1755,7 +1620,16 @@ export default function InspectionDetailPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <Label>Manager Decision</Label>
                   <DecisionPill label="Chemist" decision={inspection?.chemist_decision} />
+                  {inspection?.manager_decision?.decision && (
+                    <DecisionPill label="Current" decision={inspection?.manager_decision} />
+                  )}
                 </div>
+                {inspection?.manager_decision?.decision && (
+                  <p className="text-sm text-muted-foreground">
+                    You already recorded a decision. Selecting again updates it — the
+                    previous decision is kept in the history below.
+                  </p>
+                )}
                 {(inspection?.chemist_decision?.by ||
                   inspection?.chemist_decision?.remarks ||
                   inspection?.chemist_decision?.decided_at) && (
@@ -1810,63 +1684,6 @@ export default function InspectionDetailPage() {
         </Card>
       )}
 
-      {/* Factory Head Decision */}
-      {showFactoryHeadDecision && (
-        <Card className="border-amber-500/50">
-          <CardHeader>
-            <CardTitle>Factory Head Decision</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {isRejectedQCReturned
-                ? `This material is already out through ${inspection?.rejected_qc_return_entry_no || 'Rejected QC Return'}. The factory head decision is locked.`
-                : 'QA Manager has rejected this inspection. Accept QC Override marks the QC as accepted for app flow. Return to Vendor makes it available in gate-out return. Other decisions are recorded only for now.'}
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Decision</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={factoryHeadDecision}
-                  onChange={(e) => setFactoryHeadDecision(e.target.value as FactoryHeadDecision)}
-                  disabled={isRejectedQCReturned}
-                >
-                  {FACTORY_HEAD_DECISION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Remarks</Label>
-                <Textarea
-                  value={factoryHeadRemarks}
-                  onChange={(e) => setFactoryHeadRemarks(e.target.value)}
-                  placeholder="Factory head decision remarks"
-                  rows={3}
-                  disabled={isRejectedQCReturned}
-                />
-              </div>
-            </div>
-            {factoryHeadSavedAt && (
-              <p className="text-sm font-medium text-emerald-700">
-                Factory head decision saved as{' '}
-                {FACTORY_HEAD_DECISION_LABELS[savedFactoryHeadDecision || factoryHeadDecision]} at{' '}
-                {factoryHeadSavedAt}
-              </p>
-            )}
-            <Button
-              type="button"
-              onClick={handleFactoryHeadDecisionSave}
-              disabled={recordFactoryHeadDecision.isPending || isRejectedQCReturned}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Decision
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Send Back to Gate */}
       {showSendBack && (
@@ -1904,6 +1721,47 @@ export default function InspectionDetailPage() {
         </Card>
       )}
 
+      {/* Manager Decision Audit Trail */}
+      {inspection?.manager_decision_logs && inspection.manager_decision_logs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-4 w-4" />
+              Manager Decision History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ol className="space-y-3">
+              {inspection.manager_decision_logs.map((log, idx) => (
+                <li
+                  key={`${log.decided_at ?? 'log'}-${idx}`}
+                  className="space-y-1 border-l-2 border-border pl-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DecisionPill label="Decision" decision={log} />
+                    {idx === 0 && (
+                      <span className="text-xs font-medium text-emerald-600">Current</span>
+                    )}
+                  </div>
+                  {(log.by || log.decided_at) && (
+                    <p className="text-sm text-muted-foreground">
+                      {log.by && <span>By {log.by}</span>}
+                      {log.decided_at && (
+                        <span>
+                          {log.by ? ' · ' : ''}
+                          {new Date(log.decided_at).toLocaleString()}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {log.remarks && <p className="text-sm">{log.remarks}</p>}
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Record Timestamps */}
       {inspection && (
         <RecordTimestamps createdAt={inspection.created_at} updatedAt={inspection.updated_at} />
@@ -1931,7 +1789,7 @@ export default function InspectionDetailPage() {
               Update
             </Button>
           )}
-          {isApprover && !isEditing && (
+          {isApprover && !isEditing && !isLocked && (
             <Button variant="outline" onClick={() => setIsEditing(true)}>
               <Pencil className="h-4 w-4 mr-2" />
               Edit

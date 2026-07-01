@@ -4,7 +4,6 @@ import type { ApiError } from '@/core/api/types';
 
 import type {
   ApprovalRequest,
-  FactoryHeadDecisionRequest,
   Inspection,
   InspectionCounts,
   InspectionListItem,
@@ -208,18 +207,6 @@ export const inspectionApi = {
   async reject(id: number, data: ApprovalRequest): Promise<Inspection> {
     const response = await apiClient.post<Inspection>(
       API_ENDPOINTS.QUALITY_CONTROL_V2.REJECT_INSPECTION(id),
-      data,
-    );
-    return response.data;
-  },
-
-  // Factory Head decision after QA rejection
-  async recordFactoryHeadDecision(
-    id: number,
-    data: FactoryHeadDecisionRequest,
-  ): Promise<Inspection> {
-    const response = await apiClient.post<Inspection>(
-      API_ENDPOINTS.QUALITY_CONTROL_V2.FACTORY_HEAD_DECISION(id),
       data,
     );
     return response.data;

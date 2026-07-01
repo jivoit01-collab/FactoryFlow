@@ -277,8 +277,6 @@ export const API_ENDPOINTS = {
     CHEMIST_DECISION: (id: number) => `/quality-control/inspections/${id}/chemist-decision/`,
     MANAGER_DECISION: (id: number) => `/quality-control/inspections/${id}/manager-decision/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
-    FACTORY_HEAD_DECISION: (id: number) =>
-      `/quality-control/inspections/${id}/factory-head-decision/`,
 
     // Production QC
     PRODUCTION_QC_LIST: '/quality-control/production-qc/',

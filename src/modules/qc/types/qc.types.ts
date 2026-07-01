@@ -33,13 +33,6 @@ export interface InspectionDecisionInfo {
   remarks: string;
 }
 
-export type FactoryHeadDecision =
-  | 'ACCEPT_QC_OVERRIDE'
-  | 'RETURN_TO_VENDOR'
-  | 'HOLD_FOR_REVIEW'
-  | 'SEND_FOR_RECHECK'
-  | 'SCRAP';
-
 // Query params for inspection list endpoints
 export interface InspectionListParams {
   from_date?: string;
@@ -229,8 +222,6 @@ export interface InspectionListItem {
   manager_decision: InspectionDecisionInfo;
   qc_stage: QCStage;
   qc_decision: InspectionDecision | null;
-  factory_head_decision?: FactoryHeadDecision | '';
-  factory_head_decided_at?: string | null;
   rejected_qc_return_entry_id?: number | null;
   rejected_qc_return_entry_no?: string | null;
   material_type_name: string | null;
@@ -289,17 +280,16 @@ export interface Inspection {
   qam_remarks: string;
   chemist_decision: InspectionDecisionInfo;
   manager_decision: InspectionDecisionInfo;
+  /** Audit trail of every QA Manager decision, newest first. */
+  manager_decision_logs?: InspectionDecisionInfo[];
   qc_stage: QCStage;
   qc_decision: InspectionDecision | null;
   rejected_by?: number | null;
   rejected_by_name?: string | null;
   rejected_at?: string | null;
-  factory_head?: number | null;
-  factory_head_name?: string | null;
-  factory_head_decision?: FactoryHeadDecision | '';
-  factory_head_remarks?: string;
-  factory_head_decided_at?: string | null;
   effective_final_status?: InspectionFinalStatus;
+  /** True once a GRPO has been posted for this item — locks the QC decision. */
+  is_grpo_done?: boolean;
   rejected_qc_return_entry_id?: number | null;
   rejected_qc_return_entry_no?: string | null;
   workflow_status: InspectionWorkflowStatus;
@@ -337,11 +327,6 @@ export interface ApprovalRequest {
   remarks?: string;
   decision?: InspectionDecision;
   final_status?: InspectionFinalStatus;
-}
-
-export interface FactoryHeadDecisionRequest {
-  decision: FactoryHeadDecision;
-  remarks?: string;
 }
 
 // ============================================================================

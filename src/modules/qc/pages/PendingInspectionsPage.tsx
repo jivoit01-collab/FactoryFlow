@@ -11,7 +11,6 @@ import { Button, Input } from '@/shared/components/ui';
 import { useInspectionsByTab } from '../api/inspection/inspection.queries';
 import { DECISION_STATUS_CONFIG, WORKFLOW_STATUS_CONFIG } from '../constants';
 import type { InspectionDecisionInfo, InspectionListItem, InspectionListWorkflowStatus } from '../types';
-import { FACTORY_HEAD_DECISIONS, readFactoryHeadDecision } from '../utils/factoryHeadDecision';
 
 // Tab metadata
 const TAB_CONFIG = {
@@ -67,18 +66,6 @@ function getNavigateTo(item: InspectionListItem): string {
 }
 
 function getEffectiveStatusBadge(item: InspectionListItem) {
-  const factoryHeadDecision = readFactoryHeadDecision(item.inspection_id);
-
-  if (
-    item.factory_head_decision === FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE ||
-    factoryHeadDecision?.decision === FACTORY_HEAD_DECISIONS.ACCEPT_QC_OVERRIDE
-  ) {
-    return {
-      label: 'Accepted Override',
-      className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    };
-  }
-
   return {
     label: WORKFLOW_STATUS_CONFIG[item.workflow_status]?.label || item.workflow_status,
     className:
