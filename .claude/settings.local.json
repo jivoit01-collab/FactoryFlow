@@ -109,7 +109,12 @@
       "Bash(./.venv/Scripts/python.exe manage.py test maintenance --keepdb --noinput -v1)",
       "Bash(echo \"EXIT=$?\")",
       "Bash(./.venv/Scripts/python.exe manage.py shell -c \"from accounts.serializers import DepartmentSerializer; s=DepartmentSerializer\\(data={'name':'Smoke Dept'}\\); print\\('valid=', s.is_valid\\(\\), 'errors=', dict\\(s.errors\\)\\)\")",
-      "Bash(./.venv/Scripts/python.exe manage.py shell -c ' *)"
+      "Bash(./.venv/Scripts/python.exe manage.py shell -c ' *)",
+      "Bash(./.venv/Scripts/python.exe manage.py check)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate maintenance)",
+      "Bash(./.venv/Scripts/python.exe -c ' *)",
+      "Bash(./.venv/Scripts/python.exe manage.py test maintenance --keepdb -v1)",
+      "Bash([ -s \"$f\" ])"
     ],
     "additionalDirectories": [
       "/tmp"
