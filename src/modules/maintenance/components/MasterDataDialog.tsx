@@ -18,8 +18,8 @@ import {
 
 import type {
   AssetCategoryPayload,
-  AssetDepartmentPayload,
   AssetLocationPayload,
+  OrgDepartmentPayload,
 } from '../types';
 
 export type MaintenanceMasterKind = 'category' | 'location' | 'department';
@@ -27,7 +27,7 @@ export type MaintenanceMasterKind = 'category' | 'location' | 'department';
 export type MaintenanceMasterPayload =
   | AssetCategoryPayload
   | AssetLocationPayload
-  | AssetDepartmentPayload;
+  | OrgDepartmentPayload;
 
 interface MasterDataDialogProps {
   open: boolean;
@@ -54,7 +54,6 @@ export function MasterDataDialog({
   const [name, setName] = useState('');
   const [area, setArea] = useState('');
   const [line, setLine] = useState('');
-  const [departmentCode, setDepartmentCode] = useState('');
   const [description, setDescription] = useState('');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -62,10 +61,6 @@ export function MasterDataDialog({
     const base = { name: name.trim(), description: description.trim() };
     if (selectedKind === 'location') {
       await onSubmit(selectedKind, { ...base, area: area.trim(), line: line.trim() });
-      return;
-    }
-    if (selectedKind === 'department') {
-      await onSubmit(selectedKind, { ...base, department_code: departmentCode.trim() });
       return;
     }
     await onSubmit(selectedKind, base);
@@ -117,16 +112,6 @@ export function MasterDataDialog({
                   onChange={(event) => setLine(event.target.value)}
                 />
               </div>
-            </div>
-          )}
-          {selectedKind === 'department' && (
-            <div className="space-y-2">
-              <Label htmlFor="master_department_code">Department Code</Label>
-              <Input
-                id="master_department_code"
-                value={departmentCode}
-                onChange={(event) => setDepartmentCode(event.target.value)}
-              />
             </div>
           )}
           <div className="space-y-2">

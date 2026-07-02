@@ -27,6 +27,7 @@ import type {
   MaintenanceWorkOrderPayload,
   MaintenanceWorkOrderPhotoUploadPayload,
   MaintenanceWorkOrderStatusPayload,
+  OrgDepartmentPayload,
   PMExecutionCompletePayload,
   PMExecutionSkipPayload,
   PMGenerateDuePayload,
@@ -799,5 +800,18 @@ export function useUpdateAssetDepartment() {
     mutationFn: ({ id, payload }: { id: number; payload: AssetDepartmentPayload }) =>
       maintenanceApi.updateDepartment(id, payload),
     onSuccess: () => invalidateMaintenance(queryClient),
+  });
+}
+
+// Global org department (accounts.Department) used by assets/work orders.
+export function useCreateOrgDepartment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: OrgDepartmentPayload) => maintenanceApi.createOrgDepartment(payload),
+    onSuccess: () => {
+      invalidateMaintenance(queryClient);
+      // Refresh the shared accounts-department list used elsewhere (e.g. gate).
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+    },
   });
 }
