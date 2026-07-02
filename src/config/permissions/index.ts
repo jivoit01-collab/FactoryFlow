@@ -79,3 +79,12 @@ export {
   MAINTENANCE_PERMISSIONS,
   type MaintenancePermission,
 } from './maintenance.permissions';
+
+// Warehouse Ops (WMS) Module
+export {
+  WMS_ACCESS,
+  WMS_ADMIN_ACCESS,
+  WMS_MODULE_PREFIX,
+  WMS_PERMISSIONS,
+  type WmsPermission,
+} from './wms.permissions';
