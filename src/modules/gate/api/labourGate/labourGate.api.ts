@@ -32,6 +32,25 @@ export interface LabourGateEntry {
   updated_at?: string;
 }
 
+export type LabourAuditAction =
+  | 'CREATE_IN'
+  | 'UPDATE_IN'
+  | 'MARK_OUT'
+  | 'UNDO_OUT'
+  | 'DELETE'
+  | 'RESTORE';
+
+export interface LabourGateAudit {
+  id: number;
+  action: LabourAuditAction;
+  action_display: string;
+  detail: string;
+  old_value: number | null;
+  new_value: number | null;
+  performed_by_name: string | null;
+  created_at: string;
+}
+
 export interface RecordInRequest {
   /** Omitted for gate Labour In (contractor total); set for the Labour module (per-department split). */
   department?: number | null;
@@ -76,5 +95,10 @@ export const labourGateApi = {
   // POST /labour-gate/{id}/out/undo/ — remove the most recent out batch.
   undoOut: async (id: number): Promise<LabourGateEntry> => {
     return (await apiClient.post<LabourGateEntry>(`${BASE}/${id}/out/undo/`)).data;
+  },
+
+  // GET /labour-gate/{id}/audit/ — the full audit trail for one entry.
+  audit: async (id: number): Promise<LabourGateAudit[]> => {
+    return (await apiClient.get<LabourGateAudit[]>(`${BASE}/${id}/audit/`)).data;
   },
 };

@@ -9,8 +9,8 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/compo
 
 import {
   useCreateAssetCategory,
-  useCreateAssetDepartment,
   useCreateAssetLocation,
+  useCreateOrgDepartment,
   useMaintenanceOptions,
 } from '../api';
 import {
@@ -21,10 +21,10 @@ import {
 import type {
   AssetCategory,
   AssetCategoryPayload,
-  AssetDepartment,
-  AssetDepartmentPayload,
   AssetLocation,
   AssetLocationPayload,
+  OrgDepartmentOption,
+  OrgDepartmentPayload,
 } from '../types';
 
 function MasterTable<TItem extends { id: number; name: string; description: string; assets_count?: number }>({
@@ -108,7 +108,7 @@ export default function MaintenanceMastersPage() {
   const optionsQuery = useMaintenanceOptions();
   const createCategory = useCreateAssetCategory();
   const createLocation = useCreateAssetLocation();
-  const createDepartment = useCreateAssetDepartment();
+  const createDepartment = useCreateOrgDepartment();
   const { hasAnyPermission } = usePermission();
   const canAdd = hasAnyPermission([
     MAINTENANCE_PERMISSIONS.CREATE_ASSET_CATEGORY,
@@ -130,7 +130,7 @@ export default function MaintenanceMastersPage() {
       await createLocation.mutateAsync(payload as AssetLocationPayload);
       toast.success('Location created');
     } else {
-      await createDepartment.mutateAsync(payload as AssetDepartmentPayload);
+      await createDepartment.mutateAsync(payload as OrgDepartmentPayload);
       toast.success('Department created');
     }
     setDialogOpen(false);
@@ -170,11 +170,11 @@ export default function MaintenanceMastersPage() {
           onAdd={() => openDialog('location')}
           canAdd={canAdd}
         />
-        <MasterTable<AssetDepartment>
+        <MasterTable<OrgDepartmentOption>
           title="Departments"
           icon={Building2}
-          items={optionsQuery.data?.departments ?? []}
-          columns={[{ label: 'Code', render: (item) => item.department_code }]}
+          items={optionsQuery.data?.org_departments ?? []}
+          columns={[]}
           onAdd={() => openDialog('department')}
           canAdd={canAdd}
         />

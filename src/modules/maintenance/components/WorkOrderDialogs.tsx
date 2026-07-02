@@ -274,7 +274,7 @@ export function WorkOrderFormDialog({
                 onChange={(event) => setField('department', event.target.value)}
               >
                 <SelectOption value="">Use asset department</SelectOption>
-                {options?.departments.map((department) => (
+                {options?.org_departments.map((department) => (
                   <SelectOption key={department.id} value={String(department.id)}>
                     {department.name}
                   </SelectOption>

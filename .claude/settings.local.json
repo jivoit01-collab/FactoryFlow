@@ -114,7 +114,15 @@
       "Bash(./.venv/Scripts/python.exe manage.py migrate maintenance)",
       "Bash(./.venv/Scripts/python.exe -c ' *)",
       "Bash(./.venv/Scripts/python.exe manage.py test maintenance --keepdb -v1)",
-      "Bash([ -s \"$f\" ])"
+      "Bash([ -s \"$f\" ])",
+      "Bash(mkdir -p maintenance/management/commands)",
+      "Bash(printf '')",
+      "Bash(./.venv/Scripts/python.exe manage.py grant_fire_asset_view)",
+      "Bash(./.venv/Scripts/python.exe manage.py makemigrations maintenance --check --dry-run)",
+      "Bash(ls labour_gate/)",
+      "Bash(ls labour_count/)",
+      "Bash(grep -n \"^class \" labour_gate/models.py)",
+      "Bash(grep -n \"^class \" labour_count/models.py)"
     ],
     "additionalDirectories": [
       "/tmp"
