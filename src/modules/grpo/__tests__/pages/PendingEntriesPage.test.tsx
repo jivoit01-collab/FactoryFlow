@@ -23,7 +23,7 @@ function readSource(): string {
 describe('PendingEntriesPage — Exports', () => {
   it('default exports PendingEntriesPage function', () => {
     const content = readSource();
-    expect(content).toContain('export default function PendingEntriesPage()');
+    expect(content).toContain('export default function PendingEntriesPage(');
   });
 
   it('imports icons from lucide-react', () => {
@@ -84,7 +84,7 @@ describe('PendingEntriesPage — Header', () => {
 
   it('has back button navigating to /grpo', () => {
     const content = readSource();
-    expect(content).toContain("navigate('/grpo')");
+    expect(content).toContain("navigate('/grpo/material')");
   });
 });
 
@@ -123,7 +123,7 @@ describe('PendingEntriesPage — States', () => {
 describe('PendingEntriesPage — Entries List', () => {
   it('renders pendingEntries.map', () => {
     const content = readSource();
-    expect(content).toContain('pendingEntries.map');
+    expect(content).toContain('filteredEntries.map');
   });
 
   it('shows entry_no', () => {
@@ -140,12 +140,12 @@ describe('PendingEntriesPage — Entries List', () => {
 
   it('navigates to preview on click', () => {
     const content = readSource();
-    expect(content).toContain('navigate(`/grpo/preview/${entry.vehicle_entry_id}`)');
+    expect(content).toContain('navigate(`/grpo/material/preview/${entry.vehicle_entry_id}`)');
   });
 
   it('shows Pending count header', () => {
     const content = readSource();
-    expect(content).toContain('Pending ({pendingEntries.length})');
+    expect(content).toContain('Pending ({filteredEntries.length}');
   });
 });
 

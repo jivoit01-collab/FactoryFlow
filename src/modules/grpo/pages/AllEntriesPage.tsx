@@ -5,13 +5,15 @@ import {
   ChevronRight,
   Package,
   RefreshCw,
+  Search,
   ShieldX,
+  X,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
-import { Button } from '@/shared/components/ui';
+import { Button, Input } from '@/shared/components/ui';
 
 import { useAllGRPOEntries } from '../api';
 import { QCStatusBadge } from '../components';
@@ -39,7 +41,7 @@ const formatQuantity = (value: string) => {
 };
 
 const PHASE_FILTERS = ['ALL', 'GATE', 'QC', 'DONE'] as const;
-type PhaseFilter = (typeof PHASE_FILTERS)[number];
+export type PhaseFilter = (typeof PHASE_FILTERS)[number];
 
 const PHASE_PILL_CLASSES: Record<EntryPhase, string> = {
   GATE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
@@ -63,11 +65,19 @@ const compactStatusLabel = (entry: AllGRPOEntry): string => {
   return entry.status_label;
 };
 
-export default function AllEntriesPage() {
+export default function AllEntriesPage({
+  embedded = false,
+  phase,
+}: { embedded?: boolean; phase?: PhaseFilter } = {}) {
   const navigate = useNavigate();
   const { data: entries = [], isLoading, refetch, error } = useAllGRPOEntries();
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('ALL');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [search, setSearch] = useState('');
+
+  // When embedded in the unified GRPO page, the phase is driven by the parent's
+  // tab (pills are hidden); standalone, it's driven by this page's own pills.
+  const activePhase: PhaseFilter = embedded ? (phase ?? 'ALL') : phaseFilter;
 
   const toggleExpanded = (entryId: number) =>
     setExpanded((prev) => {
@@ -81,9 +91,23 @@ export default function AllEntriesPage() {
   const isPermissionError = apiError?.status === 403;
 
   const filtered = useMemo(() => {
-    if (phaseFilter === 'ALL') return entries;
-    return entries.filter((e) => e.phase === phaseFilter);
-  }, [entries, phaseFilter]);
+    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+    return entries.filter((e) => {
+      if (activePhase !== 'ALL' && e.phase !== activePhase) return false;
+      if (terms.length === 0) return true;
+      const haystack = [
+        e.entry_no,
+        PHASE_LABEL[e.phase],
+        e.status_label,
+        ...e.suppliers.flatMap((s) => [s.supplier_name, s.supplier_code]),
+        ...e.po_numbers,
+      ]
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .join(' ')
+        .toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    });
+  }, [entries, activePhase, search]);
 
   const counts = useMemo(() => {
     const c: Record<PhaseFilter, number> = { ALL: entries.length, GATE: 0, QC: 0, DONE: 0 };
@@ -97,28 +121,30 @@ export default function AllEntriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/grpo/material')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">All Entries</h2>
+      {!embedded && (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => navigate('/grpo/material')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <h2 className="text-3xl font-bold tracking-tight">All Entries</h2>
+            </div>
+            <p className="text-muted-foreground">
+              Every raw-material gate entry — including ones still at gate or QC
+            </p>
           </div>
-          <p className="text-muted-foreground">
-            Every raw-material gate entry — including ones still at gate or QC
-          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
+      )}
 
       {isPermissionError && (
         <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
@@ -155,22 +181,50 @@ export default function AllEntriesPage() {
 
       {!isLoading && !error && (
         <>
-          <div className="flex flex-wrap gap-2">
-            {PHASE_FILTERS.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPhaseFilter(p)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
-                  phaseFilter === p
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background hover:bg-muted border-border'
-                }`}
-              >
-                {p === 'ALL' ? 'All' : PHASE_LABEL[p as EntryPhase]}
-                <span className="ml-1.5 text-xs opacity-70">({counts[p]})</span>
-              </button>
-            ))}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search entry, supplier, PO, status…"
+                className="pl-9 pr-9"
+                aria-label="Search entries"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+              Showing {filtered.length} of {entries.length}
+            </span>
           </div>
+
+          {!embedded && (
+            <div className="flex flex-wrap gap-2">
+              {PHASE_FILTERS.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPhaseFilter(p)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                    phaseFilter === p
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted border-border'
+                  }`}
+                >
+                  {p === 'ALL' ? 'All' : PHASE_LABEL[p as EntryPhase]}
+                  <span className="ml-1.5 text-xs opacity-70">({counts[p]})</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {filtered.length === 0 ? (
             <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">

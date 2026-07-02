@@ -6,7 +6,7 @@ import { DISPATCH_PERMISSIONS, GRPO_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 // Lazy load GRPO pages
-const GRPODashboardPage = lazy(() => import('./pages/GRPODashboardPage'));
+const MaterialGRPOPage = lazy(() => import('./pages/MaterialGRPOPage'));
 const PendingEntriesPage = lazy(() => import('./pages/PendingEntriesPage'));
 const AllEntriesPage = lazy(() => import('./pages/AllEntriesPage'));
 const GRPOPreviewPage = lazy(() => import('./pages/GRPOPreviewPage'));
@@ -50,7 +50,7 @@ export const grpoModuleConfig: ModuleConfig = {
     },
     {
       path: '/grpo/material',
-      element: <GRPODashboardPage />,
+      element: <MaterialGRPOPage />,
       layout: 'main',
       permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
       breadcrumb: { label: 'Material GRPO' },
@@ -169,35 +169,14 @@ export const grpoModuleConfig: ModuleConfig = {
     },
   ],
   navigation: [
+    // GRPO is a single page: the tabbed Material GRPO list covers pending, all
+    // entries (gate/QC/done) and history, so no submenu is needed.
     {
-      path: '/grpo',
+      path: '/grpo/material',
       title: 'GRPO',
       icon: PackageCheck,
       showInSidebar: true,
       permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
-      hasSubmenu: true,
-      children: [
-        {
-          path: '/grpo/material',
-          title: 'Material GRPO',
-          permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
-        },
-        {
-          path: '/grpo/material/pending',
-          title: 'Material Pending',
-          permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
-        },
-        {
-          path: '/grpo/material/all-entries',
-          title: 'Material All Entries',
-          permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
-        },
-        {
-          path: '/grpo/material/history',
-          title: 'Material History',
-          permissions: [GRPO_PERMISSIONS.VIEW_HISTORY],
-        },
-      ],
     },
   ],
 };

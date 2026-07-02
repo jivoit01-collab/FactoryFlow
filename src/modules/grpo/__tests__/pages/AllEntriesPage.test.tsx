@@ -11,7 +11,7 @@ describe('AllEntriesPage file content', () => {
   const content = readSource();
 
   it('exports the All Entries page', () => {
-    expect(content).toContain('export default function AllEntriesPage()');
+    expect(content).toContain('export default function AllEntriesPage(');
   });
 
   it('loads all GRPO entries', () => {

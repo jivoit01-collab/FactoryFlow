@@ -1,9 +1,9 @@
-import { AlertCircle, ArrowLeft, Printer, RefreshCw, ShieldX } from 'lucide-react';
-import { useMemo } from 'react';
+import { AlertCircle, ArrowLeft, Printer, RefreshCw, Search, ShieldX, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
-import { Button } from '@/shared/components/ui';
+import { Button, Input } from '@/shared/components/ui';
 
 import { useServiceGRPOHistory } from '../api';
 import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants';
@@ -83,13 +83,32 @@ export default function ServiceGRPOHistoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: historyEntries = [], isLoading, refetch, error } = useServiceGRPOHistory();
 
+  const [search, setSearch] = useState('');
+
   const statusFilter = (searchParams.get('status') as StatusFilterKey) || 'all';
   const currentFilter = STATUS_FILTERS[statusFilter] || STATUS_FILTERS.all;
 
-  const filteredEntries = useMemo(
-    () => historyEntries.filter(currentFilter.filter),
-    [historyEntries, currentFilter],
-  );
+  const filteredEntries = useMemo(() => {
+    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+    return historyEntries.filter((entry) => {
+      if (!currentFilter.filter(entry)) return false;
+      if (terms.length === 0) return true;
+      const statusConfig = GRPO_STATUS_CONFIG[entry.status];
+      const haystack = [
+        entry.bilty_no,
+        entry.dispatch_bill_no,
+        entry.vehicle_no,
+        entry.transporter_name,
+        entry.vendor_name,
+        entry.sap_doc_num,
+        statusConfig?.label ?? entry.status,
+      ]
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .join(' ')
+        .toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    });
+  }, [historyEntries, currentFilter, search]);
 
   const handleFilterChange = (filter: StatusFilterKey) => {
     if (filter === 'all') {
@@ -138,6 +157,28 @@ export default function ServiceGRPOHistoryPage() {
             Refresh
           </Button>
         </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative w-full sm:max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search bilty, bill, vehicle, transporter, SAP #…"
+          className="pl-9 pr-9"
+          aria-label="Search service GRPO history"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">

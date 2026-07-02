@@ -23,7 +23,7 @@ function readSource(): string {
 describe('GRPOHistoryPage — Exports', () => {
   it('default exports GRPOHistoryPage function', () => {
     const content = readSource();
-    expect(content).toContain('export default function GRPOHistoryPage()');
+    expect(content).toContain('export default function GRPOHistoryPage(');
   });
 
   it('imports icons from lucide-react', () => {
@@ -70,7 +70,7 @@ describe('GRPOHistoryPage — Exports', () => {
 
   it('imports useMemo from react', () => {
     const content = readSource();
-    expect(content).toContain("import { useMemo } from 'react'");
+    expect(content).toContain("import { useMemo, useState } from 'react'");
   });
 });
 
@@ -97,7 +97,7 @@ describe('GRPOHistoryPage — Header', () => {
 
   it('has back button navigating to /grpo', () => {
     const content = readSource();
-    expect(content).toContain("navigate('/grpo')");
+    expect(content).toContain("navigate('/grpo/material')");
   });
 });
 
@@ -186,7 +186,7 @@ describe('GRPOHistoryPage — History List', () => {
 
   it('navigates to detail page on click', () => {
     const content = readSource();
-    expect(content).toContain('navigate(`/grpo/history/${entry.id}`)');
+    expect(content).toContain('navigate(`/grpo/material/history/${entry.id}`)');
   });
 
   it('shows SAP doc number when available', () => {
