@@ -23,6 +23,7 @@ import {
 } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
+const MaintenanceHubPage = lazy(() => import('./pages/MaintenanceHubPage'));
 const MaintenanceDashboardPage = lazy(() => import('./pages/MaintenanceDashboardPage'));
 const MaintenanceAssetsPage = lazy(() => import('./pages/MaintenanceAssetsPage'));
 const MaintenanceAssetDetailPage = lazy(() => import('./pages/MaintenanceAssetDetailPage'));
@@ -41,11 +42,11 @@ export const maintenanceModuleConfig: ModuleConfig = {
   name: 'maintenance',
   routes: [
     {
-      path: '/maintenance',
+      path: '/maintenance/dashboard',
       element: <MaintenanceDashboardPage />,
       layout: 'main',
       permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
-      breadcrumb: { label: 'Maintenance' },
+      breadcrumb: { label: 'Dashboard' },
     },
     {
       path: '/maintenance/assets',
@@ -136,6 +137,31 @@ export const maintenanceModuleConfig: ModuleConfig = {
       ],
       breadcrumb: { label: 'Masters' },
     },
+    {
+      // Module landing: a card hub of sub-modules, each shown only if the user
+      // has access. Gated with any-of every sub-module view permission so anyone
+      // with any Maintenance access can reach it.
+      path: '/maintenance',
+      element: <MaintenanceHubPage />,
+      layout: 'main',
+      permissions: [
+        MAINTENANCE_PERMISSIONS.VIEW_MODULE,
+        MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD,
+        MAINTENANCE_PERMISSIONS.VIEW_ASSET,
+        MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER,
+        MAINTENANCE_PERMISSIONS.VIEW_SPARE,
+        MAINTENANCE_PERMISSIONS.VIEW_FIRE,
+        MAINTENANCE_PERMISSIONS.VIEW_FIRE_REPORT,
+        MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE,
+        MAINTENANCE_PERMISSIONS.VIEW_PM,
+        MAINTENANCE_PERMISSIONS.VIEW_REPORTS,
+        MAINTENANCE_PERMISSIONS.VIEW_ASSET_CATEGORY,
+        MAINTENANCE_PERMISSIONS.VIEW_ASSET_LOCATION,
+        MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
+        MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
+      ],
+      breadcrumb: { label: 'Maintenance' },
+    },
   ],
   navigation: [
     {
@@ -147,7 +173,7 @@ export const maintenanceModuleConfig: ModuleConfig = {
       hasSubmenu: true,
       children: [
         {
-          path: '/maintenance',
+          path: '/maintenance/dashboard',
           title: 'Dashboard',
           icon: LayoutDashboard,
           permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
