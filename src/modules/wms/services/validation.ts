@@ -58,6 +58,11 @@ export interface MoveValidationInput {
   source?: MoveSource;
   /** Reference the move is for, matched against a reserved destination. */
   moveReference?: string;
+  /**
+   * Whether the destination's purpose holds stock. Defaults to true; pass false
+   * for non-storage cells (walkable paths, obstacles…) to reject the move.
+   */
+  destinationHoldsStock?: boolean;
 }
 
 export function validateMove(input: MoveValidationInput): ValidationResult {
@@ -80,6 +85,9 @@ export function validateMove(input: MoveValidationInput): ValidationResult {
   if (!(quantity > 0)) fail('quantity', 'Quantity must be greater than zero.');
 
   // 3. Location usable
+  if (input.destinationHoldsStock === false) {
+    fail('not_storage', `Location ${destination.code} is not a storage cell.`);
+  }
   if (!destination.enabled) {
     fail('location_disabled', `Location ${destination.code} is disabled.`);
   } else if (destination.status === 'BLOCKED' || destination.status === 'DAMAGED') {

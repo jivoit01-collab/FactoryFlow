@@ -8,11 +8,11 @@
  * (`renameLocation`) is the one edit that sets a custom code and is therefore
  * NOT a structural op.
  */
-import type { WarehouseBundle } from './warehouseIO';
-import { buildLocationCode, type LayoutParams } from './layout';
-import { makeWarehouseLocation } from './factories';
 import type { WmsId } from '../types';
 import { nowIso } from '../utils';
+import { makeWarehouseLocation } from './factories';
+import { buildLocationCode, type LayoutParams } from './layout';
+import type { WarehouseBundle } from './warehouseIO';
 
 type Axis = 'column' | 'row' | 'level';
 
@@ -78,6 +78,7 @@ export function addAxis(bundle: WarehouseBundle, axis: Axis): WarehouseBundle {
   return rebuildCodes({
     warehouse,
     zones: bundle.zones,
+    purposes: bundle.purposes,
     locations: [...bundle.locations, ...newLocations],
   });
 }
@@ -104,7 +105,7 @@ export function removeAxis(bundle: WarehouseBundle, axis: Axis, index: number): 
       return { ...location, level: shifted };
     });
 
-  return rebuildCodes({ warehouse, zones: bundle.zones, locations });
+  return rebuildCodes({ warehouse, zones: bundle.zones, purposes: bundle.purposes, locations });
 }
 
 export const addColumn = (bundle: WarehouseBundle) => addAxis(bundle, 'column');

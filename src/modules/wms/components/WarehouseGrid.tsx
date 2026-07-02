@@ -19,6 +19,8 @@ export interface GridCell {
   row: number;
   code: string;
   zoneColor?: string | null;
+  /** Purpose tint; when set it takes precedence over the zone colour. */
+  purposeColor?: string | null;
   enabled?: boolean;
   status?: LocationStatus;
 }
@@ -147,6 +149,7 @@ function Row({
         }
         const selected = selectedIds?.has(cell.id) ?? false;
         const disabled = cell.enabled === false || cell.status === 'BLOCKED' || cell.status === 'DAMAGED';
+        const tint = cell.purposeColor ?? cell.zoneColor;
         return (
           <button
             key={cell.id}
@@ -155,7 +158,7 @@ function Row({
             disabled={!selectable}
             onClick={(event) => onCellClick?.(cell, event.shiftKey)}
             onDoubleClick={() => onCellDoubleClick?.(cell)}
-            style={cell.zoneColor ? { borderColor: cell.zoneColor, backgroundColor: `${cell.zoneColor}22` } : undefined}
+            style={tint ? { borderColor: tint, backgroundColor: `${tint}22` } : undefined}
             className={cn(
               'flex h-10 items-center justify-center overflow-hidden rounded-sm border bg-background px-0.5 text-[10px] font-medium leading-none transition',
               selectable && 'cursor-pointer hover:ring-1 hover:ring-ring',

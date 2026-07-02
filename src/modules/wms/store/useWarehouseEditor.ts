@@ -9,10 +9,10 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 
-import type { WmsId } from '../types';
 import type { WarehouseBundle } from '../services';
-import { wmsStore } from './wmsStore';
+import type { WmsId } from '../types';
 import { useWarehouseLayout } from './useWarehouses';
+import { wmsStore } from './wmsStore';
 
 const HISTORY_LIMIT = 50;
 
@@ -37,9 +37,14 @@ export function useWarehouseEditor(warehouseId: WmsId | null): WarehouseEditor {
   const bundle: WarehouseBundle | null = useMemo(
     () =>
       layout.warehouse
-        ? { warehouse: layout.warehouse, zones: layout.zones, locations: layout.locations }
+        ? {
+            warehouse: layout.warehouse,
+            zones: layout.zones,
+            purposes: layout.purposes,
+            locations: layout.locations,
+          }
         : null,
-    [layout.warehouse, layout.zones, layout.locations],
+    [layout.warehouse, layout.zones, layout.purposes, layout.locations],
   );
 
   const persist = useCallback(async (next: WarehouseBundle) => {

@@ -29,7 +29,6 @@ import { TextPromptDialog } from '../components/TextPromptDialog';
 import { type GridCell,WarehouseGrid } from '../components/WarehouseGrid';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
-import { ZoneDialog, type ZoneFormValue } from '../components/ZoneDialog';
 import type { LocationDraft, LocationDraftField } from '../services';
 import {
   addColumn,
@@ -39,15 +38,13 @@ import {
   axisLabel,
   buildLocationsCsv,
   buildTemplate,
-  makeZone,
   removeColumn,
   removeLevel,
   removeRow,
   renameLocation,
 } from '../services';
 import { useWarehouseEditor, useWmsEnabled, useWmsRole, wmsStore } from '../store';
-import type { WarehouseLocation } from '../types';
-import { nowIso } from '../utils';
+import type { CellPurpose, WarehouseLocation, Zone } from '../types';
 
 export default function WmsWarehouseEditorPage() {
   const { warehouseId = '' } = useParams();
@@ -58,18 +55,20 @@ export default function WmsWarehouseEditorPage() {
 
   const warehouse = bundle?.warehouse ?? null;
   const zones = bundle?.zones ?? [];
+  const purposes = bundle?.purposes ?? [];
   const locations = useMemo(() => bundle?.locations ?? [], [bundle]);
 
   const [level, setLevel] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<{ column: number; row: number } | null>(null);
-  const [zoneDialogOpen, setZoneDialogOpen] = useState(false);
+  const [tintBy, setTintBy] = useState<'zone' | 'purpose'>('zone');
   const [renameTarget, setRenameTarget] = useState<WarehouseLocation | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [propsTargets, setPropsTargets] = useState<WarehouseLocation[]>([]);
   const [propsOpen, setPropsOpen] = useState(false);
 
   const zoneById = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
+  const purposeById = useMemo(() => new Map(purposes.map((purpose) => [purpose.id, purpose])), [purposes]);
   const safeLevel = warehouse ? Math.min(level, Math.max(0, warehouse.levels - 1)) : 0;
 
   const levelLocations = useMemo(
@@ -85,10 +84,14 @@ export default function WmsWarehouseEditorPage() {
         row: location.row,
         code: location.code,
         zoneColor: location.zoneId ? zoneById.get(location.zoneId)?.color ?? null : null,
+        purposeColor:
+          tintBy === 'purpose' && location.purposeId
+            ? purposeById.get(location.purposeId)?.color ?? null
+            : null,
         enabled: location.enabled,
         status: location.status,
       })),
-    [levelLocations, zoneById],
+    [levelLocations, zoneById, purposeById, tintBy],
   );
 
   const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
@@ -142,54 +145,6 @@ export default function WmsWarehouseEditorPage() {
 
   // -- selection-based edits (all undoable via mutate) ----------------------
 
-  function handleCreateZone(value: ZoneFormValue) {
-    if (!warehouse) return;
-    const ids = new Set(selectedArray);
-    void run(
-      () =>
-        mutate((current) => {
-          const zone = makeZone(current.warehouse.id, value);
-          return {
-            warehouse: current.warehouse,
-            zones: [...current.zones, zone],
-            locations: current.locations.map((location) =>
-              ids.has(location.id) ? { ...location, zoneId: zone.id, updatedAt: nowIso() } : location,
-            ),
-          };
-        }),
-      `Created zone "${value.name}" over ${ids.size} locations.`,
-    );
-    setZoneDialogOpen(false);
-  }
-
-  function assignZone(zoneId: string | null) {
-    const ids = new Set(selectedArray);
-    void run(
-      () =>
-        mutate((current) => ({
-          ...current,
-          locations: current.locations.map((location) =>
-            ids.has(location.id) ? { ...location, zoneId, updatedAt: nowIso() } : location,
-          ),
-        })),
-      zoneId ? 'Zone assigned.' : 'Zone cleared.',
-    );
-  }
-
-  function setEnabledForSelection(value: boolean) {
-    const ids = new Set(selectedArray);
-    void run(
-      () =>
-        mutate((current) => ({
-          ...current,
-          locations: current.locations.map((location) =>
-            ids.has(location.id) ? { ...location, enabled: value, updatedAt: nowIso() } : location,
-          ),
-        })),
-      value ? 'Locations enabled.' : 'Locations disabled.',
-    );
-  }
-
   function deleteSelected() {
     if (!window.confirm(`Delete ${selectedArray.length} location(s)?`)) return;
     const ids = new Set(selectedArray);
@@ -214,18 +169,27 @@ export default function WmsWarehouseEditorPage() {
     setPropsOpen(true);
   }
 
-  function handleSaveProperties(draft: LocationDraft, touched: Set<LocationDraftField>) {
+  function handleSaveProperties(
+    draft: LocationDraft,
+    touched: Set<LocationDraftField>,
+    newZones: Zone[],
+    newPurposes: CellPurpose[],
+  ) {
     const ids = new Set(propsTargets.map((location) => location.id));
     void run(
       () =>
         mutate((current) => ({
           ...current,
+          // Persist any zones/purposes created inline in the drawer.
+          zones: newZones.length ? [...current.zones, ...newZones] : current.zones,
+          purposes: newPurposes.length ? [...current.purposes, ...newPurposes] : current.purposes,
           locations: current.locations.map((location) =>
             ids.has(location.id) ? applyLocationDraft(location, draft, touched) : location,
           ),
         })),
       ids.size > 1 ? `Updated ${ids.size} locations.` : 'Location updated.',
     );
+    if (newPurposes.length) setTintBy('purpose');
     setPropsOpen(false);
   }
 
@@ -415,12 +379,40 @@ export default function WmsWarehouseEditorPage() {
         </div>
       ) : null}
 
+      {/* Purpose legend */}
+      {purposes.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {purposes.map((purpose) => (
+            <Badge key={purpose.id} variant="outline" className="gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: purpose.color }} />
+              {purpose.name}
+              <span className="text-[10px] text-muted-foreground">
+                · {purpose.holdsStock ? 'storage' : 'no stock'}
+              </span>
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+
       {/* Grid */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Click to select · shift-click for a range · click a header for a column/row
           </CardTitle>
+          {purposes.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Tint by</span>
+              <NativeSelect
+                className="h-9 w-28"
+                value={tintBy}
+                onChange={(event) => setTintBy(event.target.value as 'zone' | 'purpose')}
+              >
+                <option value="zone">Zone</option>
+                <option value="purpose">Purpose</option>
+              </NativeSelect>
+            </div>
+          ) : null}
           {selectedArray.length === 1 ? (
             <Button
               variant="ghost"
@@ -464,33 +456,6 @@ export default function WmsWarehouseEditorPage() {
             >
               Properties
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setZoneDialogOpen(true)}>
-              Create zone
-            </Button>
-            <NativeSelect
-              className="h-9 w-32 sm:w-40"
-              value=""
-              disabled={busy || zones.length === 0}
-              onChange={(event) => {
-                if (event.target.value) assignZone(event.target.value);
-              }}
-            >
-              <option value="">Assign zone…</option>
-              {zones.map((zone) => (
-                <option key={zone.id} value={zone.id}>
-                  {zone.name}
-                </option>
-              ))}
-            </NativeSelect>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => assignZone(null)}>
-              Clear zone
-            </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setEnabledForSelection(true)}>
-              Enable
-            </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setEnabledForSelection(false)}>
-              Disable
-            </Button>
             <WmsPrintLabelButton
               label="Print labels"
               documentTitle="Location labels"
@@ -503,32 +468,19 @@ export default function WmsWarehouseEditorPage() {
                   subtitle: l.type,
                 }))}
             />
-            {selectedArray.length === 1 ? (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => setRenameTarget(levelLocations.find((l) => isSelected(l.id)) ?? null)}
-              >
-                Rename
-              </Button>
-            ) : null}
             <Button size="sm" variant="destructive" disabled={busy} onClick={deleteSelected}>
               Delete
             </Button>
             <Button size="sm" variant="ghost" disabled={busy} onClick={clearSelection}>
               Clear
             </Button>
+            <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
+              Assign zone, purpose &amp; enabled state in <span className="font-medium">Properties</span>
+            </span>
           </CardContent>
         </Card>
       ) : null}
 
-      <ZoneDialog
-        open={zoneDialogOpen}
-        onOpenChange={setZoneDialogOpen}
-        locationCount={selectedArray.length}
-        onSubmit={handleCreateZone}
-      />
       <TextPromptDialog
         open={renameTarget !== null}
         onOpenChange={(open) => !open && setRenameTarget(null)}
@@ -553,6 +505,7 @@ export default function WmsWarehouseEditorPage() {
         onOpenChange={setPropsOpen}
         locations={propsTargets}
         zones={zones}
+        purposes={purposes}
         onSave={handleSaveProperties}
       />
     </div>

@@ -6,13 +6,31 @@
  * column/row/level values, and distinct zone names become zones. A minimal
  * RFC-4180-ish parser handles quoted fields and embedded commas/newlines.
  */
-import type { LocationStatus, Warehouse, WarehouseLocation, Zone } from '../types';
-import { DEFAULT_NAMING_SCHEME } from './layout';
-import { ZONE_COLOR_PRESETS, makeWarehouseLocation, makeZone } from './factories';
-import type { WarehouseBundle } from './warehouseIO';
+import type { CellPurpose, LocationStatus, Warehouse, WarehouseLocation, Zone } from '../types';
 import { createWmsId, nowIso } from '../utils';
+import {
+  makeCellPurpose,
+  makeWarehouseLocation,
+  makeZone,
+  PURPOSE_COLOR_PRESETS,
+  ZONE_COLOR_PRESETS,
+} from './factories';
+import { DEFAULT_NAMING_SCHEME } from './layout';
+import type { WarehouseBundle } from './warehouseIO';
 
-const HEADERS = ['code', 'column', 'row', 'level', 'zone', 'type', 'enabled', 'status', 'notes'] as const;
+const HEADERS = [
+  'code',
+  'column',
+  'row',
+  'level',
+  'zone',
+  'purpose',
+  'holds_stock',
+  'type',
+  'enabled',
+  'status',
+  'notes',
+] as const;
 
 function escapeCsv(value: string): string {
   return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
@@ -21,14 +39,18 @@ function escapeCsv(value: string): string {
 /** Serialise a warehouse's locations to a CSV string (zones resolved to names). */
 export function buildLocationsCsv(bundle: WarehouseBundle): string {
   const zoneName = new Map(bundle.zones.map((zone) => [zone.id, zone.name]));
+  const purposeById = new Map(bundle.purposes.map((purpose) => [purpose.id, purpose]));
   const lines = [HEADERS.join(',')];
   for (const location of bundle.locations) {
+    const purpose = location.purposeId ? purposeById.get(location.purposeId) : undefined;
     const cells = [
       location.code,
       String(location.column + 1),
       String(location.row + 1),
       String(location.level + 1),
       location.zoneId ? zoneName.get(location.zoneId) ?? '' : '',
+      purpose?.name ?? '',
+      purpose ? (purpose.holdsStock ? 'yes' : 'no') : '',
       location.type,
       location.enabled ? 'yes' : 'no',
       location.status,
@@ -101,6 +123,8 @@ export function parseWarehouseCsv(text: string, opts: { name: string; code?: str
   const levelIdx = indexOf('level');
   const codeIdx = indexOf('code');
   const zoneIdx = indexOf('zone');
+  const purposeIdx = indexOf('purpose');
+  const holdsStockIdx = indexOf('holds_stock');
   const typeIdx = indexOf('type');
   const enabledIdx = indexOf('enabled');
   const statusIdx = indexOf('status');
@@ -112,6 +136,8 @@ export function parseWarehouseCsv(text: string, opts: { name: string; code?: str
     row: number;
     level: number;
     zone: string;
+    purpose: string;
+    purposeHoldsStock: boolean;
     type: string;
     enabled: boolean;
     status: LocationStatus;
@@ -127,12 +153,15 @@ export function parseWarehouseCsv(text: string, opts: { name: string; code?: str
   const raw: RawRow[] = matrix.slice(1).map((cells) => {
     const statusValue = (statusIdx === -1 ? '' : cells[statusIdx]?.trim().toUpperCase()) as LocationStatus;
     const enabledRaw = enabledIdx === -1 ? 'yes' : (cells[enabledIdx]?.trim().toLowerCase() ?? 'yes');
+    const holdsStockRaw = holdsStockIdx === -1 ? 'yes' : (cells[holdsStockIdx]?.trim().toLowerCase() ?? 'yes');
     return {
       code: codeIdx === -1 ? '' : cells[codeIdx]?.trim() ?? '',
       column: num(cells, colIdx, 1),
       row: num(cells, rowIdx, 1),
       level: num(cells, levelIdx, 1),
       zone: zoneIdx === -1 ? '' : cells[zoneIdx]?.trim() ?? '',
+      purpose: purposeIdx === -1 ? '' : cells[purposeIdx]?.trim() ?? '',
+      purposeHoldsStock: !['no', 'false', '0', 'n'].includes(holdsStockRaw),
       type: typeIdx === -1 ? 'RACK' : cells[typeIdx]?.trim() || 'RACK',
       enabled: !['no', 'false', '0', 'n'].includes(enabledRaw),
       status: STATUSES.includes(statusValue) ? statusValue : 'ACTIVE',
@@ -161,13 +190,31 @@ export function parseWarehouseCsv(text: string, opts: { name: string; code?: str
     zoneByName.set(r.zone, makeZone(warehouseId, { name: r.zone, type: 'STORAGE', temperatureClass: null, color }));
   }
 
+  // Distinct purpose names → purpose records (holds-stock taken from the row).
+  const purposeByName = new Map<string, CellPurpose>();
+  for (const r of raw) {
+    if (!r.purpose || purposeByName.has(r.purpose)) continue;
+    const color = PURPOSE_COLOR_PRESETS[purposeByName.size % PURPOSE_COLOR_PRESETS.length]!;
+    purposeByName.set(
+      r.purpose,
+      makeCellPurpose(warehouseId, { name: r.purpose, color, holdsStock: r.purposeHoldsStock }),
+    );
+  }
+
   const locations: WarehouseLocation[] = raw.map((r) => {
     const base = makeWarehouseLocation(
       warehouseId,
       { code: r.code, barcode: r.code, column: r.column, row: r.row, level: r.level },
       r.zone ? zoneByName.get(r.zone)!.id : null,
     );
-    return { ...base, type: r.type, enabled: r.enabled, status: r.status, notes: r.notes };
+    return {
+      ...base,
+      purposeId: r.purpose ? purposeByName.get(r.purpose)!.id : null,
+      type: r.type,
+      enabled: r.enabled,
+      status: r.status,
+      notes: r.notes,
+    };
   });
 
   const warehouse: Warehouse = {
@@ -184,5 +231,10 @@ export function parseWarehouseCsv(text: string, opts: { name: string; code?: str
     updatedAt: timestamp,
   };
 
-  return { warehouse, zones: [...zoneByName.values()], locations };
+  return {
+    warehouse,
+    zones: [...zoneByName.values()],
+    purposes: [...purposeByName.values()],
+    locations,
+  };
 }

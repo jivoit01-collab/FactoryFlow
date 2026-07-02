@@ -25,6 +25,29 @@ type Listener = () => void;
 /** Stable empty reference so `getSnapshot` never returns a fresh array. */
 const EMPTY: readonly never[] = Object.freeze([]);
 
+interface RecordDiff<T> {
+  /** New or changed records to upsert (unchanged ones are skipped). */
+  upserts: T[];
+  /** Ids present before but absent now — to delete. */
+  removedIds: WmsId[];
+}
+
+/**
+ * Minimal write-set to turn `prev` into `next`: only records that are new or
+ * whose document changed are upserted, and only truly-removed ids are deleted.
+ * Equality is a JSON compare (records are small, plain documents).
+ */
+function diffById<T extends { id: WmsId }>(prev: T[], next: T[]): RecordDiff<T> {
+  const prevById = new Map(prev.map((record) => [record.id, record]));
+  const nextIds = new Set(next.map((record) => record.id));
+  const upserts = next.filter((record) => {
+    const existing = prevById.get(record.id);
+    return !existing || JSON.stringify(existing) !== JSON.stringify(record);
+  });
+  const removedIds = prev.filter((record) => !nextIds.has(record.id)).map((record) => record.id);
+  return { upserts, removedIds };
+}
+
 class WmsStore {
   private cache = new Map<WmsCollection, unknown[]>();
   private loaded = new Set<WmsCollection>();
@@ -153,6 +176,7 @@ class WmsStore {
   async saveWarehouseBundle(bundle: WarehouseBundle): Promise<Warehouse> {
     const warehouse = await this.create('warehouses', bundle.warehouse);
     if (bundle.zones.length) await this.bulkCreate('zones', bundle.zones);
+    if (bundle.purposes.length) await this.bulkCreate('cellPurposes', bundle.purposes);
     if (bundle.locations.length) await this.bulkCreate('locations', bundle.locations);
     return warehouse;
   }
@@ -160,9 +184,10 @@ class WmsStore {
   /** Delete a warehouse and every zone + location that belongs to it. */
   async deleteWarehouseCascade(warehouseId: WmsId): Promise<void> {
     const adapter = this.adapter();
-    const [locations, zones] = await Promise.all([
+    const [locations, zones, purposes] = await Promise.all([
       adapter.list('locations'),
       adapter.list('zones'),
+      adapter.list('cellPurposes'),
     ]);
     await Promise.all([
       ...locations
@@ -171,39 +196,78 @@ class WmsStore {
       ...zones
         .filter((zone) => zone.warehouseId === warehouseId)
         .map((zone) => adapter.remove('zones', zone.id)),
+      ...purposes
+        .filter((purpose) => purpose.warehouseId === warehouseId)
+        .map((purpose) => adapter.remove('cellPurposes', purpose.id)),
     ]);
     await adapter.remove('warehouses', warehouseId);
-    await Promise.all([this.load('warehouses'), this.load('zones'), this.load('locations')]);
+    await Promise.all([
+      this.load('warehouses'),
+      this.load('zones'),
+      this.load('cellPurposes'),
+      this.load('locations'),
+    ]);
   }
 
   /**
-   * Overwrite a warehouse's stored state with a new bundle: replace its zones
-   * and locations wholesale and update the warehouse record. This is the single
-   * persistence primitive behind structural edits and undo/redo, where each
-   * step is simply "make the stored bundle equal this one".
+   * Make a warehouse's stored state equal `bundle`. This is the single
+   * persistence primitive behind structural edits and undo/redo.
+   *
+   * Rather than wipe and rewrite the whole warehouse on every edit (which turned
+   * a "set purpose on 4 cells" click into dozens of deletes + full re-creates),
+   * it diffs the new bundle against the in-memory cache (kept in sync by the
+   * store) and issues only the minimal writes: upsert new/changed records — the
+   * backend keys on `record_id`, so a bulk create is an idempotent upsert — and
+   * delete only records that were actually removed. Only the collections that
+   * changed are reloaded afterwards.
    */
   async replaceWarehouseBundle(bundle: WarehouseBundle): Promise<void> {
     const adapter = this.adapter();
     const id = bundle.warehouse.id;
-    const [locations, zones] = await Promise.all([
-      adapter.list('locations'),
-      adapter.list('zones'),
-    ]);
+
+    // Current persisted state for this warehouse (from the cache — no network).
     await Promise.all([
-      ...locations
-        .filter((location) => location.warehouseId === id)
-        .map((location) => adapter.remove('locations', location.id)),
-      ...zones
-        .filter((zone) => zone.warehouseId === id)
-        .map((zone) => adapter.remove('zones', zone.id)),
+      this.ensureLoaded('warehouses'),
+      this.ensureLoaded('zones'),
+      this.ensureLoaded('cellPurposes'),
+      this.ensureLoaded('locations'),
     ]);
-    await adapter.update('warehouses', id, {
-      ...bundle.warehouse,
-      updatedAt: nowIso(),
-    });
-    if (bundle.zones.length) await adapter.bulkCreate('zones', bundle.zones);
-    if (bundle.locations.length) await adapter.bulkCreate('locations', bundle.locations);
-    await Promise.all([this.load('warehouses'), this.load('zones'), this.load('locations')]);
+    const prevWarehouse = this.getSnapshot('warehouses').find((w) => w.id === id) ?? null;
+    const zoneDiff = diffById(
+      this.getSnapshot('zones').filter((z) => z.warehouseId === id),
+      bundle.zones,
+    );
+    const purposeDiff = diffById(
+      this.getSnapshot('cellPurposes').filter((p) => p.warehouseId === id),
+      bundle.purposes,
+    );
+    const locationDiff = diffById(
+      this.getSnapshot('locations').filter((l) => l.warehouseId === id),
+      bundle.locations,
+    );
+    const warehouseChanged =
+      !prevWarehouse || JSON.stringify(prevWarehouse) !== JSON.stringify(bundle.warehouse);
+
+    // Apply only the writes that are actually needed.
+    const writes: Promise<unknown>[] = [];
+    if (warehouseChanged) {
+      writes.push(adapter.update('warehouses', id, { ...bundle.warehouse, updatedAt: nowIso() }));
+    }
+    if (zoneDiff.upserts.length) writes.push(adapter.bulkCreate('zones', zoneDiff.upserts));
+    if (purposeDiff.upserts.length) writes.push(adapter.bulkCreate('cellPurposes', purposeDiff.upserts));
+    if (locationDiff.upserts.length) writes.push(adapter.bulkCreate('locations', locationDiff.upserts));
+    for (const removedId of zoneDiff.removedIds) writes.push(adapter.remove('zones', removedId));
+    for (const removedId of purposeDiff.removedIds) writes.push(adapter.remove('cellPurposes', removedId));
+    for (const removedId of locationDiff.removedIds) writes.push(adapter.remove('locations', removedId));
+    await Promise.all(writes);
+
+    // Refresh only the collections we changed.
+    const reloads: Promise<unknown>[] = [];
+    if (warehouseChanged) reloads.push(this.load('warehouses'));
+    if (zoneDiff.upserts.length || zoneDiff.removedIds.length) reloads.push(this.load('zones'));
+    if (purposeDiff.upserts.length || purposeDiff.removedIds.length) reloads.push(this.load('cellPurposes'));
+    if (locationDiff.upserts.length || locationDiff.removedIds.length) reloads.push(this.load('locations'));
+    await Promise.all(reloads);
   }
 
   /** Read a warehouse and all of its zones + locations as a portable bundle. */
@@ -211,13 +275,15 @@ class WmsStore {
     const adapter = this.adapter();
     const warehouse = await adapter.get('warehouses', warehouseId);
     if (!warehouse) return null;
-    const [allZones, allLocations] = await Promise.all([
+    const [allZones, allPurposes, allLocations] = await Promise.all([
       adapter.list('zones'),
+      adapter.list('cellPurposes'),
       adapter.list('locations'),
     ]);
     return {
       warehouse,
       zones: allZones.filter((zone) => zone.warehouseId === warehouseId),
+      purposes: allPurposes.filter((purpose) => purpose.warehouseId === warehouseId),
       locations: allLocations.filter((location) => location.warehouseId === warehouseId),
     };
   }

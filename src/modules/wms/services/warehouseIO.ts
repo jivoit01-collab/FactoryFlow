@@ -6,7 +6,7 @@
  * references) so a bundle can be restored repeatedly without clashing with
  * existing data. The same re-keying powers "clone a warehouse".
  */
-import type { Warehouse, WarehouseLocation, Zone } from '../types';
+import type { CellPurpose, Warehouse, WarehouseLocation, Zone } from '../types';
 import { createWmsId, nowIso } from '../utils';
 
 export const WAREHOUSE_EXPORT_VERSION = 1;
@@ -14,6 +14,7 @@ export const WAREHOUSE_EXPORT_VERSION = 1;
 export interface WarehouseBundle {
   warehouse: Warehouse;
   zones: Zone[];
+  purposes: CellPurpose[];
   locations: WarehouseLocation[];
 }
 
@@ -43,6 +44,8 @@ export function parseWarehouseExport(data: unknown): WarehouseBundle {
   return {
     warehouse: candidate.warehouse as Warehouse,
     zones: candidate.zones as Zone[],
+    // Purposes were added later; tolerate bundles exported before them.
+    purposes: Array.isArray(candidate.purposes) ? (candidate.purposes as CellPurpose[]) : [],
     locations: candidate.locations as WarehouseLocation[],
   };
 }
@@ -75,14 +78,22 @@ export function rekeyWarehouseBundle(
     return { ...zone, id, warehouseId, createdAt: timestamp, updatedAt: timestamp };
   });
 
+  const purposeIdMap = new Map<string, string>();
+  const purposes: CellPurpose[] = bundle.purposes.map((purpose) => {
+    const id = createWmsId();
+    purposeIdMap.set(purpose.id, id);
+    return { ...purpose, id, warehouseId, createdAt: timestamp, updatedAt: timestamp };
+  });
+
   const locations: WarehouseLocation[] = bundle.locations.map((location) => ({
     ...location,
     id: createWmsId(),
     warehouseId,
     zoneId: location.zoneId ? zoneIdMap.get(location.zoneId) ?? null : null,
+    purposeId: location.purposeId ? purposeIdMap.get(location.purposeId) ?? null : null,
     createdAt: timestamp,
     updatedAt: timestamp,
   }));
 
-  return { warehouse, zones, locations };
+  return { warehouse, zones, purposes, locations };
 }

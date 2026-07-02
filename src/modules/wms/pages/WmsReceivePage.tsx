@@ -28,7 +28,7 @@ import type { WmsLabelData } from '../components/WmsPrintLabel';
 import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
 import { WmsScanButton } from '../components/WmsScanButton';
 import type { MoveItem, PutawaySuggestion, ValidationResult } from '../services';
-import { suggestPutaway, validateMove } from '../services';
+import { locationHoldsStock, suggestPutaway, validateMove } from '../services';
 import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import type { MaterialWarehouseProfile, WarehouseLocation } from '../types';
 import { notifyFail, notifyOk } from '../utils';
@@ -38,6 +38,7 @@ export default function WmsReceivePage() {
   const { settings } = useWmsSettings();
   const { warehouses } = useWarehouses();
   const { data: locations } = useWmsCollection('locations');
+  const { data: purposes } = useWmsCollection('cellPurposes');
   const { data: inventory } = useWmsCollection('inventory');
   const { data: pallets } = useWmsCollection('pallets');
   const { data: materials } = useWmsCollection('materials');
@@ -64,6 +65,10 @@ export default function WmsReceivePage() {
   const warehouseLocations = useMemo(
     () => locations.filter((location) => location.warehouseId === activeWarehouseId),
     [locations, activeWarehouseId],
+  );
+  const purposeById = useMemo(
+    () => new Map(purposes.map((purpose) => [purpose.id, purpose])),
+    [purposes],
   );
   const materialByItem = useMemo(() => {
     const map = new Map<string, MaterialWarehouseProfile>();
@@ -115,9 +120,10 @@ export default function WmsReceivePage() {
       locations: warehouseLocations,
       inventory,
       pallets,
+      purposesById: purposeById,
       limit: 4,
     });
-  }, [ready, settings, putawayMode, item, quantity, added, warehouseLocations, inventory, pallets]);
+  }, [ready, settings, putawayMode, item, quantity, added, warehouseLocations, inventory, pallets, purposeById]);
 
   const destLocation = destLocationId
     ? warehouseLocations.find((location) => location.id === destLocationId) ?? null
@@ -133,8 +139,9 @@ export default function WmsReceivePage() {
       item,
       quantity,
       added,
+      destinationHoldsStock: locationHoldsStock(destLocation, purposeById),
     });
-  }, [destLocation, settings, ready, inventory, pallets, item, quantity, added]);
+  }, [destLocation, settings, ready, inventory, pallets, item, quantity, added, purposeById]);
 
   function applyScan(override?: string) {
     const query = (override ?? scanQuery).trim();

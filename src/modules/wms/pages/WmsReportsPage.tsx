@@ -73,6 +73,7 @@ export default function WmsReportsPage() {
   const { warehouses } = useWarehouses();
   const { data: allLocations } = useWmsCollection('locations');
   const { data: zonesAll } = useWmsCollection('zones');
+  const { data: purposesAll } = useWmsCollection('cellPurposes');
   const { data: inventoryAll } = useWmsCollection('inventory');
   const { data: pallets } = useWmsCollection('pallets');
   const { data: movements } = useWmsCollection('movements');
@@ -88,7 +89,14 @@ export default function WmsReportsPage() {
   const locationIds = useMemo(() => new Set(locations.map((l) => l.id)), [locations]);
   const zones = useMemo(() => zonesAll.filter((z) => z.warehouseId === activeWarehouseId), [zonesAll, activeWarehouseId]);
   const inventory = useMemo(() => inventoryAll.filter((r) => locationIds.has(r.locationId)), [inventoryAll, locationIds]);
-  const occupancy = useMemo(() => buildOccupancyIndex(locations, inventory, pallets), [locations, inventory, pallets]);
+  const purposeById = useMemo(
+    () => new Map(purposesAll.filter((p) => p.warehouseId === activeWarehouseId).map((p) => [p.id, p])),
+    [purposesAll, activeWarehouseId],
+  );
+  const occupancy = useMemo(
+    () => buildOccupancyIndex(locations, inventory, pallets, purposeById),
+    [locations, inventory, pallets, purposeById],
+  );
 
   if (!enabled) {
     return (

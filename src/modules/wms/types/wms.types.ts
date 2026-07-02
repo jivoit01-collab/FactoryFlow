@@ -124,6 +124,33 @@ export interface Zone extends WmsRecordBase {
 }
 
 // ============================================================================
+// Cell purpose (what a grid cell IS — storage, walkable path, damaged goods…)
+// ============================================================================
+
+/**
+ * A user-defined classification of what a grid cell is used for. Orthogonal to
+ * zones (a cell can belong to a zone AND have a purpose) and to the derived
+ * occupancy status. `holdsStock` is the behavioural flag: cells whose purpose
+ * does not hold stock (walkable paths, obstacles, offices…) are excluded from
+ * occupancy statistics and rejected as move/putaway destinations.
+ *
+ * A location with `purposeId === null` behaves as ordinary storage, so existing
+ * layouts keep working with no migration.
+ */
+export interface CellPurpose extends WmsRecordBase {
+  warehouseId: WmsId;
+  code: string;
+  name: string;
+  /** Hex colour used to paint cells of this purpose on the map. */
+  color: string;
+  /** Whether cells of this purpose hold pallets/stock (true for storage-like). */
+  holdsStock: boolean;
+  enabled: boolean;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+}
+
+// ============================================================================
 // Location / Block
 // ============================================================================
 
@@ -171,6 +198,8 @@ export interface LocationReservation {
 export interface WarehouseLocation extends WmsRecordBase {
   warehouseId: WmsId;
   zoneId: WmsId | null;
+  /** User-assigned cell purpose; null means ordinary storage. */
+  purposeId: WmsId | null;
   code: string;
   barcode: string;
   /** Grid coordinates (0-based) within the warehouse layout. */

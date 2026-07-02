@@ -7,9 +7,9 @@
  * capacity, zone/temperature match, and pick optimization. Consolidating with
  * existing stock of the same item is preferred. Pure and testable.
  */
-import type { InventoryRecord, Pallet, WarehouseLocation, WmsSettings } from '../types';
-import { buildOccupancyIndex } from './occupancy';
-import { validateMove, type MoveItem } from './validation';
+import type { CellPurpose, InventoryRecord, Pallet, WarehouseLocation, WmsSettings } from '../types';
+import { buildOccupancyIndex, locationHoldsStock } from './occupancy';
+import { type MoveItem,validateMove } from './validation';
 
 export interface PutawaySuggestion {
   location: WarehouseLocation;
@@ -25,11 +25,13 @@ export interface SuggestPutawayParams {
   locations: WarehouseLocation[];
   inventory: InventoryRecord[];
   pallets: Pallet[];
+  /** Purpose lookup so non-storage locations (paths, obstacles…) are never suggested. */
+  purposesById?: Map<string, CellPurpose>;
   limit?: number;
 }
 
 export function suggestPutaway(params: SuggestPutawayParams): PutawaySuggestion[] {
-  const { settings, item, quantity, added, locations, inventory, pallets } = params;
+  const { settings, item, quantity, added, locations, inventory, pallets, purposesById } = params;
 
   const inventoryByLocation = new Map<string, InventoryRecord[]>();
   for (const record of inventory) {
@@ -45,7 +47,7 @@ export function suggestPutaway(params: SuggestPutawayParams): PutawaySuggestion[
       (palletCountByLocation.get(pallet.currentLocationId) ?? 0) + 1,
     );
   }
-  const occupancy = buildOccupancyIndex(locations, inventory, pallets);
+  const occupancy = buildOccupancyIndex(locations, inventory, pallets, purposesById);
 
   const suggestions: PutawaySuggestion[] = [];
   for (const location of locations) {
@@ -58,6 +60,7 @@ export function suggestPutaway(params: SuggestPutawayParams): PutawaySuggestion[
       item,
       quantity,
       added,
+      destinationHoldsStock: locationHoldsStock(location, purposesById),
     });
     if (!result.ok) continue;
 

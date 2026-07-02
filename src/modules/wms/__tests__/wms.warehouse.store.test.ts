@@ -9,7 +9,7 @@ import {
 } from '../services';
 import type { Warehouse } from '../types';
 import { createWmsId, nowIso } from '../utils';
-import { resetWmsBackend } from './helpers/wmsBackendMock';
+import { apiClient, resetWmsBackend } from './helpers/wmsBackendMock';
 
 vi.mock('@/core/api', async () => {
   const mod = await import('./helpers/wmsBackendMock');
@@ -33,7 +33,7 @@ function buildBundle(name = 'Main') {
   };
   const generated = generateLayout({ columns: 3, rows: 2, levels: 1, naming: DEFAULT_NAMING_SCHEME });
   const locations = generated.map((cell) => makeWarehouseLocation(warehouse.id, cell));
-  return { warehouse, zones: [], locations };
+  return { warehouse, zones: [], purposes: [], locations };
 }
 
 beforeEach(() => {
@@ -92,6 +92,7 @@ describe('warehouse store operations (Step 3)', () => {
     const trimmed = {
       warehouse: { ...bundle.warehouse, columns: 1, rows: 1 },
       zones: [],
+      purposes: [],
       locations: [bundle.locations[0]!],
     };
     await wmsStore.replaceWarehouseBundle(trimmed);
@@ -104,6 +105,35 @@ describe('warehouse store operations (Step 3)', () => {
     await wmsStore.replaceWarehouseBundle(bundle);
     const restored = await wmsStore.getWarehouseBundle(bundle.warehouse.id);
     expect(restored?.locations).toHaveLength(6);
+  });
+
+  it('replaceWarehouseBundle writes only what changed (no full wipe-and-rewrite)', async () => {
+    const bundle = buildBundle();
+    await wmsStore.saveWarehouseBundle(bundle);
+
+    // Edit a single location (as the editor does when assigning a purpose etc.).
+    const next = {
+      ...bundle,
+      locations: bundle.locations.map((location, index) =>
+        index === 0 ? { ...location, notes: 'edited', updatedAt: nowIso() } : location,
+      ),
+    };
+
+    const del = vi.spyOn(apiClient, 'delete');
+    const post = vi.spyOn(apiClient, 'post');
+    await wmsStore.replaceWarehouseBundle(next);
+
+    // Nothing is deleted, and only the one changed location is upserted — not all six.
+    expect(del).not.toHaveBeenCalled();
+    const bulkLocationCalls = post.mock.calls.filter(([url]) => url === '/wms/locations/bulk/');
+    expect(bulkLocationCalls).toHaveLength(1);
+    expect((bulkLocationCalls[0]![1] as unknown[])).toHaveLength(1);
+    del.mockRestore();
+    post.mockRestore();
+
+    const after = await wmsStore.getWarehouseBundle(bundle.warehouse.id);
+    expect(after?.locations).toHaveLength(6);
+    expect(after?.locations.find((l) => l.id === bundle.locations[0]!.id)?.notes).toBe('edited');
   });
 
   it('keeps two warehouses isolated', async () => {

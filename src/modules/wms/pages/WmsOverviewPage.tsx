@@ -58,15 +58,20 @@ export default function WmsOverviewPage() {
 
   const { data: warehouses } = useWmsCollection('warehouses');
   const { data: locations } = useWmsCollection('locations');
+  const { data: purposes } = useWmsCollection('cellPurposes');
   const { data: pallets } = useWmsCollection('pallets');
   const { data: inventory } = useWmsCollection('inventory');
 
   const [scanInput, setScanInput] = useState('');
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
+  const purposeById = useMemo(
+    () => new Map(purposes.map((purpose) => [purpose.id, purpose])),
+    [purposes],
+  );
   const occupancy = useMemo(
-    () => buildOccupancyIndex(locations, inventory, pallets),
-    [locations, inventory, pallets],
+    () => buildOccupancyIndex(locations, inventory, pallets, purposeById),
+    [locations, inventory, pallets, purposeById],
   );
 
   const kpis = useMemo(() => {

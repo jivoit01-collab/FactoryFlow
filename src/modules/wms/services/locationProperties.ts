@@ -15,6 +15,7 @@ export interface LocationDraft {
   barcode: string;
   type: string;
   zoneId: string | null;
+  purposeId: string | null;
   // Capacity
   maxPallets: number | null;
   maxUnits: number | null;
@@ -60,6 +61,7 @@ export function locationToDraft(location: WarehouseLocation): LocationDraft {
     barcode: location.barcode,
     type: location.type,
     zoneId: location.zoneId,
+    purposeId: location.purposeId,
     maxPallets: location.capacity.maxPallets,
     maxUnits: location.capacity.maxUnits,
     maxWeight: location.capacity.maxWeight,
@@ -93,6 +95,7 @@ const NEUTRAL_DRAFT: LocationDraft = {
   barcode: '',
   type: '',
   zoneId: null,
+  purposeId: null,
   maxPallets: null,
   maxUnits: null,
   maxWeight: null,
@@ -148,6 +151,7 @@ export function applyLocationDraft(
   if (has('barcode')) next.barcode = draft.barcode.trim();
   if (has('type')) next.type = draft.type.trim() || location.type;
   if (has('zoneId')) next.zoneId = draft.zoneId;
+  if (has('purposeId')) next.purposeId = draft.purposeId;
 
   if (['maxPallets', 'maxUnits', 'maxWeight', 'maxVolume'].some((f) => has(f as LocationDraftField))) {
     next.capacity = {

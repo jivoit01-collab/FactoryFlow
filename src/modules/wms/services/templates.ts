@@ -13,8 +13,8 @@ import type {
   ZoneTemplate,
 } from '../types';
 import { createWmsId, nowIso } from '../utils';
-import { generateLayout } from './layout';
 import { makeWarehouseLocation, makeZone } from './factories';
+import { generateLayout } from './layout';
 import type { WarehouseBundle } from './warehouseIO';
 
 const cellKey = (cell: { column: number; row: number; level: number }) =>
@@ -92,5 +92,6 @@ export function instantiateTemplate(
     makeWarehouseLocation(warehouseId, cell, cellToZone.get(cellKey(cell)) ?? null),
   );
 
-  return { warehouse, zones, locations };
+  // Templates capture grid + naming + zones only; purposes start empty.
+  return { warehouse, zones, purposes: [], locations };
 }

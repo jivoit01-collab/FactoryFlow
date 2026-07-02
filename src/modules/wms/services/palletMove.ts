@@ -6,12 +6,14 @@
  * identically to the Transfer screen without re-assembling a `MoveItem`. Pure.
  */
 import type {
+  CellPurpose,
   InventoryRecord,
   MaterialWarehouseProfile,
   Pallet,
   WarehouseLocation,
   WmsSettings,
 } from '../types';
+import { locationHoldsStock } from './occupancy';
 import { type MoveItem, validateMove, type ValidationResult } from './validation';
 
 /** Build the validation `MoveItem` for a whole-pallet move. */
@@ -34,11 +36,13 @@ export interface ValidatePalletMoveParams {
   destination: WarehouseLocation;
   inventory: InventoryRecord[];
   pallets: Pallet[];
+  /** Purpose lookup so non-storage destinations (paths, obstacles…) are rejected. */
+  purposesById?: Map<string, CellPurpose>;
 }
 
 /** Validate moving an entire pallet into `destination`. */
 export function validatePalletMove(params: ValidatePalletMoveParams): ValidationResult {
-  const { settings, pallet, profile, destination, inventory, pallets } = params;
+  const { settings, pallet, profile, destination, inventory, pallets, purposesById } = params;
   const destinationInventory = inventory.filter((record) => record.locationId === destination.id);
   // Don't count the pallet against its own destination capacity.
   const destinationPalletCount = pallets.filter(
@@ -53,5 +57,6 @@ export function validatePalletMove(params: ValidatePalletMoveParams): Validation
     item: palletMoveItem(pallet, profile),
     quantity: pallet.totalUnits ?? 1,
     added: { pallets: 1, units: pallet.totalUnits ?? 0, weight: 0, volume: 0 },
+    destinationHoldsStock: locationHoldsStock(destination, purposesById),
   });
 }
