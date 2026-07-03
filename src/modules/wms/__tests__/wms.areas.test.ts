@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   boundingRect,
+  buildAreaCodeMap,
   buildOccupancyIndex,
   codeForCell,
   isOutside,
@@ -10,6 +11,7 @@ import {
   makeWarehouseLocation,
   outsideLocationIds,
   rebuildWarehouseCodes,
+  rectsOverlap,
   validatePalletMove,
 } from '../services';
 import { DEFAULT_WMS_SETTINGS } from '../types';
@@ -159,6 +161,60 @@ describe('validatePalletMove rejects outside destinations', () => {
     });
     expect(result.ok).toBe(false);
     expect(result.errors.some((issue) => issue.code === 'outside_area')).toBe(true);
+  });
+});
+
+describe('buildAreaCodeMap — continuous numbering that skips disabled cells', () => {
+  it('numbers only enabled cells, so codes stay gapless across a disabled band', () => {
+    const area = makeWarehouseArea({
+      name: 'Main',
+      color: '#000',
+      startColumn: 0,
+      startRow: 0,
+      endColumn: 0,
+      endRow: 4,
+    });
+    const w = wh({ columns: 1, rows: 5, levels: 1, areas: [area] });
+    const cells = [
+      loc(0, 0),
+      loc(0, 1),
+      { ...loc(0, 2), enabled: false }, // wall / aisle
+      loc(0, 3),
+      loc(0, 4),
+    ];
+    const map = buildAreaCodeMap(w, cells);
+    const at = (r: number) => map.get(cells[r]!.id);
+    expect(at(0)).toBe('A-01');
+    expect(at(1)).toBe('A-02');
+    expect(at(2)).toBeNull(); // disabled → no code
+    expect(at(3)).toBe('A-03'); // continues from A-02, NOT A-04
+    expect(at(4)).toBe('A-04');
+  });
+
+  it('leaves cells outside every area uncoded', () => {
+    const area = makeWarehouseArea({
+      name: 'Main',
+      color: '#000',
+      startColumn: 1,
+      startRow: 1,
+      endColumn: 2,
+      endRow: 2,
+    });
+    const inside = loc(1, 1);
+    const outside = loc(0, 0);
+    const map = buildAreaCodeMap(wh({ areas: [area] }), [inside, outside]);
+    expect(map.get(inside.id)).toBe('A-01');
+    expect(map.get(outside.id)).toBeNull();
+  });
+});
+
+describe('rectsOverlap', () => {
+  const a = { startColumn: 0, startRow: 0, endColumn: 2, endRow: 2 };
+  it('detects overlapping rectangles (including shared edge)', () => {
+    expect(rectsOverlap(a, { startColumn: 2, startRow: 2, endColumn: 4, endRow: 4 })).toBe(true);
+  });
+  it('detects separated rectangles', () => {
+    expect(rectsOverlap(a, { startColumn: 3, startRow: 0, endColumn: 5, endRow: 2 })).toBe(false);
   });
 });
 

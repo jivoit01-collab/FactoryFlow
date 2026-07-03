@@ -10,23 +10,31 @@
  */
 import type { WmsId } from '../types';
 import { nowIso } from '../utils';
-import { codeForCell } from './areas';
+import { buildAreaCodeMap, codeForCell, warehouseAreas } from './areas';
 import { makeWarehouseLocation } from './factories';
 import type { WarehouseBundle } from './warehouseIO';
 
 type Axis = 'column' | 'row' | 'level';
 
 /**
- * Recompute every location's code/barcode from the warehouse's areas (or its
- * grid origin when no areas are defined). Cells that fall outside every area get
- * a blank code — they are "outside" and are not counted anywhere.
+ * Recompute every location's code/barcode.
+ *
+ * With areas defined, each area is numbered from its corner, skipping disabled
+ * cells so codes are gapless (see `buildAreaCodeMap`); cells outside every area
+ * or disabled get a blank code. With no areas, the whole grid is numbered from
+ * its origin (legacy behaviour).
  */
 function rebuildCodes(bundle: WarehouseBundle): WarehouseBundle {
   const { warehouse } = bundle;
   const timestamp = nowIso();
   const seen = new Set<string>();
+  const codeMap = warehouseAreas(warehouse).length
+    ? buildAreaCodeMap(warehouse, bundle.locations)
+    : null;
   const locations = bundle.locations.map((location) => {
-    const generated = codeForCell(warehouse, location.column, location.row, location.level);
+    const generated = codeMap
+      ? codeMap.get(location.id) ?? null
+      : codeForCell(warehouse, location.column, location.row, location.level);
     if (generated == null) {
       return { ...location, code: '', barcode: '', updatedAt: timestamp };
     }

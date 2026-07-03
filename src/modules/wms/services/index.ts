@@ -1,10 +1,12 @@
 export {
   areaContains,
   boundingRect,
+  buildAreaCodeMap,
   codeForCell,
   findArea,
   isOutside,
   outsideLocationIds,
+  rectsOverlap,
   warehouseAreas,
 } from './areas';
 export { buildLocationsCsv, parseCsv, parseWarehouseCsv } from './csv';

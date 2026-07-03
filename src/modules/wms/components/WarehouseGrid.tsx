@@ -162,7 +162,7 @@ function Row({
             disabled={!selectable}
             onClick={(event) => onCellClick?.(cell, event.shiftKey)}
             onDoubleClick={() => onCellDoubleClick?.(cell)}
-            style={tint ? { borderColor: tint, backgroundColor: `${tint}22` } : undefined}
+            style={tint ? { borderColor: tint, backgroundColor: `${tint}55` } : undefined}
             className={cn(
               'flex h-10 items-center justify-center overflow-hidden rounded-sm border bg-background px-0.5 text-[10px] font-medium leading-none transition',
               selectable && 'cursor-pointer hover:ring-1 hover:ring-ring',

@@ -108,6 +108,90 @@ export function outsideLocationIds(
   return ids;
 }
 
+/** Whether two grid rectangles overlap (corners inclusive). */
+export function rectsOverlap(
+  a: { startColumn: number; startRow: number; endColumn: number; endRow: number },
+  b: { startColumn: number; startRow: number; endColumn: number; endRow: number },
+): boolean {
+  return !(
+    a.endColumn < b.startColumn ||
+    b.endColumn < a.startColumn ||
+    a.endRow < b.startRow ||
+    b.endRow < a.startRow
+  );
+}
+
+/**
+ * Build the code for every location, area-aware and **skipping disabled cells**.
+ *
+ * Within each area only enabled cells are numbered, consecutively: fully-disabled
+ * rows and columns (walls, aisles) are skipped so codes stay gapless — e.g. the
+ * cell after A-15 across a disabled band is A-16, not A-21. Disabled cells and
+ * cells outside every area get `null` (no code). Each cell belongs to the first
+ * area that contains it, so areas should not overlap.
+ *
+ * Returns a Map from location id to its code (or null). Empty when no areas are
+ * defined — the caller then falls back to whole-grid numbering.
+ */
+export function buildAreaCodeMap(
+  warehouse: Warehouse,
+  locations: readonly WarehouseLocation[],
+): Map<string, string | null> {
+  const areas = warehouseAreas(warehouse);
+  const result = new Map<string, string | null>();
+  if (areas.length === 0) return result;
+
+  const naming = warehouse.namingScheme;
+  // Assign each location to the first area that contains it.
+  const byArea = new Map<number, WarehouseLocation[]>();
+  for (const location of locations) {
+    const index = areas.findIndex((area) => areaContains(area, location.column, location.row));
+    if (index === -1) {
+      result.set(location.id, null); // outside every area
+      continue;
+    }
+    const list = byArea.get(index);
+    if (list) list.push(location);
+    else byArea.set(index, [location]);
+  }
+
+  const isEnabled = (l: WarehouseLocation) => l.enabled !== false;
+
+  for (const [index, cells] of byArea) {
+    const area = areas[index]!;
+    const enabled = cells.filter(isEnabled);
+    // Counted rows/columns = those with at least one enabled cell (any level).
+    const rows = [...new Set(enabled.map((c) => c.row))].sort((a, b) => a - b);
+    const columns = [...new Set(enabled.map((c) => c.column))].sort((a, b) => a - b);
+    const rowIndex = new Map(rows.map((r, i) => [r, i]));
+    const colIndex = new Map(columns.map((c, i) => [c, i]));
+    const prefix = (area.prefix || '').trim() || (naming.prefix || '').trim();
+
+    for (const cell of cells) {
+      if (!isEnabled(cell)) {
+        result.set(cell.id, null); // disabled → no code
+        continue;
+      }
+      const ci = colIndex.get(cell.column);
+      const ri = rowIndex.get(cell.row);
+      if (ci === undefined || ri === undefined) {
+        result.set(cell.id, null);
+        continue;
+      }
+      const segments: string[] = [];
+      if (prefix) segments.push(prefix);
+      segments.push(axisLabel(naming.columnStyle, ci, columns.length));
+      segments.push(axisLabel(naming.rowStyle, ri, rows.length));
+      if (warehouse.levels > 1) {
+        segments.push(axisLabel(naming.levelStyle, cell.level, warehouse.levels));
+      }
+      result.set(cell.id, segments.join(naming.separator || '-'));
+    }
+  }
+
+  return result;
+}
+
 /** Bounding rectangle (0-based inclusive) of a set of grid cells. */
 export function boundingRect(
   cells: readonly { column: number; row: number }[],

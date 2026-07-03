@@ -38,12 +38,14 @@ import {
   applyLocationDraft,
   axisLabel,
   boundingRect,
+  buildLocationCode,
   buildLocationsCsv,
   buildTemplate,
   findArea,
   makeWarehouseArea,
   outsideLocationIds,
   rebuildWarehouseCodes,
+  rectsOverlap,
   removeColumn,
   removeLevel,
   removeRow,
@@ -69,6 +71,7 @@ export default function WmsWarehouseEditorPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<{ column: number; row: number } | null>(null);
   const [tintBy, setTintBy] = useState<'zone' | 'purpose' | 'area'>('zone');
+  const [showFullGrid, setShowFullGrid] = useState(false);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<WarehouseLocation | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -94,7 +97,21 @@ export default function WmsWarehouseEditorPage() {
         id: location.id,
         column: location.column,
         row: location.row,
-        code: location.code,
+        // Full-grid view shows every cell's raw grid code (as before areas).
+        code:
+          showFullGrid && warehouse
+            ? buildLocationCode(
+                {
+                  columns: warehouse.columns,
+                  rows: warehouse.rows,
+                  levels: warehouse.levels,
+                  naming: warehouse.namingScheme,
+                },
+                location.column,
+                location.row,
+                location.level,
+              )
+            : location.code,
         zoneColor: location.zoneId ? zoneById.get(location.zoneId)?.color ?? null : null,
         purposeColor:
           tintBy === 'purpose' && location.purposeId
@@ -102,11 +119,11 @@ export default function WmsWarehouseEditorPage() {
             : null,
         areaColor:
           tintBy === 'area' ? findArea(areas, location.column, location.row)?.color ?? null : null,
-        outside: outsideIds.has(location.id),
+        outside: showFullGrid ? false : outsideIds.has(location.id),
         enabled: location.enabled,
         status: location.status,
       })),
-    [levelLocations, zoneById, purposeById, areas, outsideIds, tintBy],
+    [levelLocations, zoneById, purposeById, areas, outsideIds, tintBy, showFullGrid, warehouse],
   );
 
   const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
@@ -166,6 +183,12 @@ export default function WmsWarehouseEditorPage() {
 
   function handleCreateArea(value: AreaFormValue) {
     if (!warehouse || !selectedRect) return;
+    const clash = areas.find((area) => rectsOverlap(area, selectedRect));
+    if (clash) {
+      toast.error(`Selection overlaps area "${clash.name}". Areas can't overlap — remove it first.`);
+      setAreaDialogOpen(false);
+      return;
+    }
     void run(
       () =>
         mutate((current) => {
@@ -467,6 +490,12 @@ export default function WmsWarehouseEditorPage() {
               {area.prefix ? (
                 <span className="font-mono text-[10px] text-muted-foreground">· {area.prefix}-</span>
               ) : null}
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {axisLabel(warehouse.namingScheme.columnStyle, area.startColumn, warehouse.columns)}
+                {axisLabel(warehouse.namingScheme.rowStyle, area.startRow, warehouse.rows)}–
+                {axisLabel(warehouse.namingScheme.columnStyle, area.endColumn, warehouse.columns)}
+                {axisLabel(warehouse.namingScheme.rowStyle, area.endRow, warehouse.rows)}
+              </span>
               <button
                 type="button"
                 title="Remove area"
@@ -487,32 +516,44 @@ export default function WmsWarehouseEditorPage() {
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Click to select · shift-click for a range · click a header for a column/row
           </CardTitle>
-          {purposes.length > 0 || areas.length > 0 ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Tint by</span>
-              <NativeSelect
-                className="h-9 w-28"
-                value={tintBy}
-                onChange={(event) => setTintBy(event.target.value as 'zone' | 'purpose' | 'area')}
+          <div className="flex flex-wrap items-center gap-2">
+            {areas.length > 0 ? (
+              <Button
+                variant={showFullGrid ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => setShowFullGrid((value) => !value)}
+                title="Toggle between the numbered areas view and the full raw grid"
               >
-                <option value="zone">Zone</option>
-                {purposes.length > 0 ? <option value="purpose">Purpose</option> : null}
-                {areas.length > 0 ? <option value="area">Area</option> : null}
-              </NativeSelect>
-            </div>
-          ) : null}
-          {selectedArray.length === 1 ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const target = levelLocations.find((l) => l.id === selectedArray[0]) ?? null;
-                setRenameTarget(target);
-              }}
-            >
-              Rename
-            </Button>
-          ) : null}
+                {showFullGrid ? 'Areas view' : 'Full grid'}
+              </Button>
+            ) : null}
+            {purposes.length > 0 || areas.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Tint by</span>
+                <NativeSelect
+                  className="h-9 w-28"
+                  value={tintBy}
+                  onChange={(event) => setTintBy(event.target.value as 'zone' | 'purpose' | 'area')}
+                >
+                  <option value="zone">Zone</option>
+                  {purposes.length > 0 ? <option value="purpose">Purpose</option> : null}
+                  {areas.length > 0 ? <option value="area">Area</option> : null}
+                </NativeSelect>
+              </div>
+            ) : null}
+            {selectedArray.length === 1 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const target = levelLocations.find((l) => l.id === selectedArray[0]) ?? null;
+                  setRenameTarget(target);
+                }}
+              >
+                Rename
+              </Button>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent>
           <WarehouseGrid
