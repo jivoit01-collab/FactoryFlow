@@ -7,13 +7,16 @@ import type { BSTBoxScan, BSTTransferItem } from '../../types';
 
 type Tally = { qty: number; boxes: number; itemName: string; uom: string };
 
+type BillLine = { expected: number; qty: number; uom: string; itemName: string };
+
 /**
- * The transfer's SAP line items (the "bill") with live scanned progress per item,
- * styled like the sales-dispatch BillItemsTable. The bill's target is a **box
- * count** (line quantity ÷ pieces-per-carton, from SAP) — each scanned box is one
- * carton. Scanning is restricted to the bill (only its items, up to its box count),
- * so the "Over +N" / "Not on bill" rows are defensive and shouldn't normally
- * appear. Shared by the BST scan, review, gate-out, and detail screens.
+ * The transfer's combined SAP bill with live scanned progress per item. A BST
+ * entry can span several SAP documents; lines are aggregated by item code so the
+ * box target and scanned progress match the scan rule (which caps each item at
+ * the total box count summed across every document). The bill's target is a
+ * **box count** (line quantity ÷ pieces-per-carton, from SAP) — each scanned box
+ * is one carton. The "Over +N" / "Not on bill" rows are defensive and shouldn't
+ * normally appear. Shared by the BST scan, review, gate-out, and detail screens.
  */
 export function BSTBillTable({
   items,
@@ -31,7 +34,18 @@ export function BSTBillTable({
     scannedByItem.set(s.item_code, cur);
   }
 
-  const billCodes = new Set(items.map((i) => i.item_code));
+  // Aggregate the bill by item code across all documents.
+  const billByItem = new Map<string, BillLine>();
+  for (const it of items) {
+    const cur =
+      billByItem.get(it.item_code) ?? { expected: 0, qty: 0, uom: it.uom, itemName: it.item_name };
+    cur.expected += it.expected_boxes ?? 0;
+    cur.qty += Number(it.quantity) || 0;
+    billByItem.set(it.item_code, cur);
+  }
+  const billLines = [...billByItem.entries()];
+
+  const billCodes = new Set(billByItem.keys());
   const offBill = [...scannedByItem.entries()].filter(([code]) => !billCodes.has(code));
 
   return (
@@ -47,18 +61,18 @@ export function BSTBillTable({
           </tr>
         </thead>
         <tbody>
-          {items.map((it) => {
-            const scanned = scannedByItem.get(it.item_code);
+          {billLines.map(([code, bill]) => {
+            const scanned = scannedByItem.get(code);
             const scannedQty = scanned?.qty ?? 0;
             const boxes = scanned?.boxes ?? 0;
-            const expectedBoxes = it.expected_boxes ?? 0;
+            const expectedBoxes = bill.expected;
             const over = expectedBoxes > 0 && boxes > expectedBoxes;
             const complete = expectedBoxes > 0 && boxes >= expectedBoxes;
             const progress =
               expectedBoxes > 0 ? Math.min(100, Math.round((boxes / expectedBoxes) * 100)) : null;
             return (
               <tr
-                key={it.id}
+                key={code}
                 className={cn(
                   'border-b last:border-b-0',
                   over && 'bg-orange-50/70',
@@ -67,18 +81,17 @@ export function BSTBillTable({
                 )}
               >
                 <td className="whitespace-nowrap p-3 align-top font-mono text-xs font-semibold">
-                  {it.item_code}
+                  {code}
                 </td>
                 <td className="p-3 align-top">
-                  <div className="font-medium">{it.item_name}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">Line {it.line_num + 1}</div>
+                  <div className="font-medium">{bill.itemName}</div>
                 </td>
                 <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
                   <div className="font-medium">
                     {expectedBoxes} box{expectedBoxes === 1 ? '' : 'es'}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {it.quantity} {it.uom}
+                    {bill.qty} {bill.uom}
                   </div>
                 </td>
                 <td className="p-3 align-top">
@@ -86,7 +99,7 @@ export function BSTBillTable({
                     {boxes} of {expectedBoxes} box{expectedBoxes === 1 ? '' : 'es'}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {scannedQty > 0 ? `${scannedQty} ${it.uom}` : '-'}
+                    {scannedQty > 0 ? `${scannedQty} ${bill.uom}` : '-'}
                   </div>
                   {progress !== null ? (
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">

@@ -66,7 +66,12 @@ function TransferTable({
                   {t.sap_to_warehouse || '—'}
                 </span>
               </td>
-              <td className="py-2 px-3">{t.sap_doc_num || '—'}</td>
+              <td className="py-2 px-3">
+                {t.sap_doc_num || '—'}
+                {t.doc_count > 1 && (
+                  <span className="ml-1 text-xs text-muted-foreground">+{t.doc_count - 1}</span>
+                )}
+              </td>
               <td className="py-2 px-3 text-right">{t.scanned_box_count}</td>
               <td className="py-2 px-3">{formatBstDateTime(t.dispatched_at)}</td>
               <td className="py-2 px-3">{formatBstDateTime(t.received_at)}</td>

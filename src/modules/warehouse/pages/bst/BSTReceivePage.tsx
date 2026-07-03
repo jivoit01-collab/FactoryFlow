@@ -137,7 +137,9 @@ export default function BSTReceivePage() {
     <div className="space-y-6">
       <DashboardHeader
         title={`Receive — ${transfer.entry_no}`}
-        description={`${transfer.sap_from_warehouse || '—'} → ${transfer.sap_to_warehouse || '—'} · SAP #${transfer.sap_doc_num}`}
+        description={`${transfer.sap_from_warehouse || '—'} → ${transfer.sap_to_warehouse || '—'} · ${
+          transfer.doc_count > 1 ? `${transfer.doc_count} SAP documents` : `SAP #${transfer.sap_doc_num}`
+        }`}
       >
         <BSTStatusBadge status={transfer.status} />
       </DashboardHeader>

@@ -16,6 +16,7 @@ import { getErrorMessage } from '@/shared/utils';
 import { useBSTTransfer, useCancelBST } from '../../api';
 import type { BSTReceiveStatus } from '../../types';
 import { BSTBillTable } from './BSTBillTable';
+import { BSTDocList } from './BSTDocList';
 import { formatBstDateTime } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
 
@@ -65,7 +66,7 @@ export default function BSTDetailPage() {
 
   const infoRows: Array<[string, string]> = [
     ['Company', `${t.company_name} (${t.company_code})`],
-    ['SAP Doc', t.sap_doc_num || '—'],
+    ['SAP Documents', t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—'],
     ['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`],
     ['Invoice / Ref', t.invoice_no || '—'],
     ['Vehicle', t.vehicle_number || '—'],
@@ -106,6 +107,16 @@ export default function BSTDetailPage() {
           ))}
         </CardContent>
       </Card>
+
+      {/* SAP documents (only when the entry combines more than one) */}
+      {t.docs.length > 1 && (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="font-medium mb-3">SAP documents ({t.docs.length})</p>
+            <BSTDocList docs={t.docs} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Items + scan progress */}
       <Card>
