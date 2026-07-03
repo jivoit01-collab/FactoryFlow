@@ -65,6 +65,18 @@ export default function WmsWarehouseEditorPage() {
   const zones = bundle?.zones ?? [];
   const purposes = bundle?.purposes ?? [];
   const areas = useMemo(() => bundle?.warehouse.areas ?? [], [bundle]);
+  // One entry per logical area (blocks sharing a groupId), for "add to existing".
+  const areaGroups = useMemo(() => {
+    const seen = new Set<string>();
+    const groups: { groupId: string; name: string; prefix: string; color: string }[] = [];
+    for (const area of areas) {
+      const key = area.groupId ?? area.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      groups.push({ groupId: key, name: area.name, prefix: area.prefix, color: area.color });
+    }
+    return groups;
+  }, [areas]);
   const locations = useMemo(() => bundle?.locations ?? [], [bundle]);
 
   const [level, setLevel] = useState(0);
@@ -196,6 +208,7 @@ export default function WmsWarehouseEditorPage() {
             name: value.name,
             prefix: value.prefix,
             color: value.color,
+            groupId: value.groupId,
             ...selectedRect,
           });
           return rebuildWarehouseCodes({
@@ -206,7 +219,9 @@ export default function WmsWarehouseEditorPage() {
             },
           });
         }),
-      `Created area "${value.name}" and renumbered its cells.`,
+      value.groupId
+        ? `Added a block to "${value.name}" and renumbered.`
+        : `Created area "${value.name}" and renumbered its cells.`,
     );
     setAreaDialogOpen(false);
     setTintBy('area');
@@ -622,6 +637,7 @@ export default function WmsWarehouseEditorPage() {
         open={areaDialogOpen}
         onOpenChange={setAreaDialogOpen}
         cellCount={selectedArray.length}
+        existingAreas={areaGroups}
         rectLabel={
           selectedRect
             ? `${axisLabel(warehouse.namingScheme.columnStyle, selectedRect.startColumn, warehouse.columns)}${axisLabel(warehouse.namingScheme.rowStyle, selectedRect.startRow, warehouse.rows)} → ${axisLabel(warehouse.namingScheme.columnStyle, selectedRect.endColumn, warehouse.columns)}${axisLabel(warehouse.namingScheme.rowStyle, selectedRect.endRow, warehouse.rows)}`

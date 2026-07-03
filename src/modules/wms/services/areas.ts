@@ -142,23 +142,25 @@ export function buildAreaCodeMap(
   if (areas.length === 0) return result;
 
   const naming = warehouse.namingScheme;
-  // Assign each location to the first area that contains it.
-  const byArea = new Map<number, WarehouseLocation[]>();
+  const groupKey = (area: WarehouseArea) => area.groupId ?? area.id;
+  // Assign each location to the first area that contains it, then group blocks
+  // that share a groupId so they number continuously as one area.
+  const byGroup = new Map<string, { area: WarehouseArea; cells: WarehouseLocation[] }>();
   for (const location of locations) {
-    const index = areas.findIndex((area) => areaContains(area, location.column, location.row));
-    if (index === -1) {
+    const area = areas.find((a) => areaContains(a, location.column, location.row));
+    if (!area) {
       result.set(location.id, null); // outside every area
       continue;
     }
-    const list = byArea.get(index);
-    if (list) list.push(location);
-    else byArea.set(index, [location]);
+    const key = groupKey(area);
+    const group = byGroup.get(key);
+    if (group) group.cells.push(location);
+    else byGroup.set(key, { area, cells: [location] });
   }
 
   const isEnabled = (l: WarehouseLocation) => l.enabled !== false;
 
-  for (const [index, cells] of byArea) {
-    const area = areas[index]!;
+  for (const { area, cells } of byGroup.values()) {
     const enabled = cells.filter(isEnabled);
     // Counted rows/columns = those with at least one enabled cell (any level).
     const rows = [...new Set(enabled.map((c) => c.row))].sort((a, b) => a - b);

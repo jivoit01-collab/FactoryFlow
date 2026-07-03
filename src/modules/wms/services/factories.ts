@@ -219,6 +219,8 @@ export interface WarehouseAreaInput {
   name: string;
   prefix?: string;
   color: string;
+  /** When set, this block joins an existing area (shared numbering). */
+  groupId?: string;
   startColumn: number;
   startRow: number;
   endColumn: number;
@@ -226,8 +228,10 @@ export interface WarehouseAreaInput {
 }
 
 export function makeWarehouseArea(input: WarehouseAreaInput): WarehouseArea {
+  const id = createWmsId();
   return {
-    id: createWmsId(),
+    id,
+    groupId: input.groupId || id,
     name: input.name.trim(),
     prefix: (input.prefix ?? '').trim(),
     color: input.color,

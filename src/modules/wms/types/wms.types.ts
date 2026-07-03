@@ -92,6 +92,12 @@ export type WarehouseType = 'OWN' | 'SAP';
  */
 export interface WarehouseArea {
   id: WmsId;
+  /**
+   * Areas that share a `groupId` are one logical area made of several blocks:
+   * their cells are numbered together, continuously. Absent means the area is
+   * its own group (a single block).
+   */
+  groupId?: WmsId;
   name: string;
   /** Code prefix that identifies this area; empty for the primary area. */
   prefix: string;

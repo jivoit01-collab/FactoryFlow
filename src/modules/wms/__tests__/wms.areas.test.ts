@@ -206,6 +206,35 @@ describe('buildAreaCodeMap — continuous numbering that skips disabled cells', 
     expect(map.get(inside.id)).toBe('A-01');
     expect(map.get(outside.id)).toBeNull();
   });
+
+  it('numbers blocks that share a groupId continuously (one logical area)', () => {
+    const blockA = makeWarehouseArea({
+      name: 'FG',
+      color: '#000',
+      startColumn: 0,
+      startRow: 0,
+      endColumn: 0,
+      endRow: 1,
+    });
+    // Second block joins the first (same groupId), sitting further down the column.
+    const blockB = makeWarehouseArea({
+      name: 'FG',
+      color: '#000',
+      groupId: blockA.groupId,
+      startColumn: 0,
+      startRow: 3,
+      endColumn: 0,
+      endRow: 4,
+    });
+    const w = wh({ columns: 1, rows: 5, levels: 1, areas: [blockA, blockB] });
+    const cells = [loc(0, 0), loc(0, 1), loc(0, 3), loc(0, 4)];
+    const map = buildAreaCodeMap(w, cells);
+    // Numbering flows across both blocks: A-01, A-02, then A-03, A-04 (not restarting).
+    expect(map.get(cells[0]!.id)).toBe('A-01');
+    expect(map.get(cells[1]!.id)).toBe('A-02');
+    expect(map.get(cells[2]!.id)).toBe('A-03');
+    expect(map.get(cells[3]!.id)).toBe('A-04');
+  });
 });
 
 describe('rectsOverlap', () => {
