@@ -41,6 +41,7 @@ import type { DisplayStatus } from '../services';
 import {
   buildOccupancyIndex,
   DISPLAY_STATUS_META,
+  outsideLocationIds,
   palletMoveItem,
   palletsLocatedAt,
   suggestPutaway,
@@ -112,9 +113,13 @@ export default function WmsMapPage() {
     () => new Map(purposes.map((purpose) => [purpose.id, purpose])),
     [purposes],
   );
+  const outsideIds = useMemo(
+    () => (warehouse ? outsideLocationIds(warehouse, locations) : new Set<string>()),
+    [warehouse, locations],
+  );
   const occupancy = useMemo(
-    () => buildOccupancyIndex(locations, inventory, pallets, purposeById),
-    [locations, inventory, pallets, purposeById],
+    () => buildOccupancyIndex(locations, inventory, pallets, purposeById, outsideIds),
+    [locations, inventory, pallets, purposeById, outsideIds],
   );
   const zoneById = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
   const locationByCode = useMemo(() => {
@@ -175,6 +180,7 @@ export default function WmsMapPage() {
     const valid = new Set<string>();
     for (const location of levelLocations) {
       if (location.id === moveSession.currentLocationId) continue;
+      if (outsideIds.has(location.id)) continue;
       const result = validatePalletMove({
         settings,
         pallet: moveSession,
@@ -187,7 +193,7 @@ export default function WmsMapPage() {
       if (result.ok) valid.add(location.id);
     }
     return valid;
-  }, [moveSession, settings, levelLocations, moveProfile, inventory, pallets, purposeById]);
+  }, [moveSession, settings, levelLocations, moveProfile, inventory, pallets, purposeById, outsideIds]);
 
   const suggestedIds = useMemo(() => {
     if (!moveSession || !settings) return new Set<string>();
@@ -196,20 +202,24 @@ export default function WmsMapPage() {
       item: palletMoveItem(moveSession, moveProfile),
       quantity: moveSession.totalUnits ?? 1,
       added: { pallets: 1, units: moveSession.totalUnits ?? 0, weight: 0, volume: 0 },
-      locations: levelLocations.filter((l) => l.id !== moveSession.currentLocationId),
+      locations: levelLocations.filter(
+        (l) => l.id !== moveSession.currentLocationId && !outsideIds.has(l.id),
+      ),
       inventory,
       pallets,
       purposesById: purposeById,
       limit: 5,
     });
     return new Set(suggestions.map((s) => s.location.id));
-  }, [moveSession, settings, moveProfile, levelLocations, inventory, pallets, purposeById]);
+  }, [moveSession, settings, moveProfile, levelLocations, inventory, pallets, purposeById, outsideIds]);
 
   function colorFor(
     location: WarehouseLocation,
     zone: Zone | undefined,
     purpose: CellPurpose | undefined,
   ): { color: string; hatch: boolean } {
+    // Cells outside every numbered area are shown as muted, uncounted space.
+    if (outsideIds.has(location.id)) return { color: '#e5e7eb', hatch: false };
     const occ = occupancy.get(location.id);
     if (viewMode === 'purpose') {
       return { color: purpose?.color ?? '#cbd5e1', hatch: !location.enabled };
@@ -242,6 +252,7 @@ export default function WmsMapPage() {
         const occ = occupancy.get(location.id);
         const zone = location.zoneId ? zoneById.get(location.zoneId) : undefined;
         const purpose = location.purposeId ? purposeById.get(location.purposeId) : undefined;
+        const isOutsideCell = outsideIds.has(location.id);
         const { color, hatch } = colorFor(location, zone, purpose);
 
         if (moveSession) {
@@ -267,6 +278,20 @@ export default function WmsMapPage() {
           };
         }
 
+        if (isOutsideCell) {
+          return {
+            id: location.id,
+            column: location.column,
+            row: location.row,
+            code: '',
+            color,
+            hatch,
+            occupancyPct: 0,
+            dimmed: true,
+            tooltip: 'Outside the warehouse area',
+          };
+        }
+
         const passesFilter = matchesFilters(location);
         const isMatch = matchedIds.has(location.id);
         return {
@@ -286,7 +311,7 @@ export default function WmsMapPage() {
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [levelLocations, occupancy, zoneById, purposeById, viewMode, zoneFilter, statusFilter, matchedIds, searchText, moveSession, validDestinationIds, suggestedIds],
+    [levelLocations, occupancy, zoneById, purposeById, outsideIds, viewMode, zoneFilter, statusFilter, matchedIds, searchText, moveSession, validDestinationIds, suggestedIds],
   );
 
   function openDetail(id: string) {
@@ -401,8 +426,9 @@ export default function WmsMapPage() {
       inventory,
       pallets,
       purposesById: purposeById,
+      destinationOutside: outsideIds.has(pendingMove.destination.id),
     });
-  }, [pendingMove, settings, materialByItem, inventory, pallets, purposeById]);
+  }, [pendingMove, settings, materialByItem, inventory, pallets, purposeById, outsideIds]);
 
   async function confirmMove() {
     if (!pendingMove || !pendingValidation?.ok) return;

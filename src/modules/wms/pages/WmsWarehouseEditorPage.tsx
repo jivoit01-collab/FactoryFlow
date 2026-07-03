@@ -24,6 +24,7 @@ import {
 } from '@/shared/components/ui';
 
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
+import { AreaDialog, type AreaFormValue } from '../components/AreaDialog';
 import { LocationPropertiesPanel } from '../components/LocationPropertiesPanel';
 import { TextPromptDialog } from '../components/TextPromptDialog';
 import { type GridCell,WarehouseGrid } from '../components/WarehouseGrid';
@@ -36,8 +37,13 @@ import {
   addRow,
   applyLocationDraft,
   axisLabel,
+  boundingRect,
   buildLocationsCsv,
   buildTemplate,
+  findArea,
+  makeWarehouseArea,
+  outsideLocationIds,
+  rebuildWarehouseCodes,
   removeColumn,
   removeLevel,
   removeRow,
@@ -56,12 +62,14 @@ export default function WmsWarehouseEditorPage() {
   const warehouse = bundle?.warehouse ?? null;
   const zones = bundle?.zones ?? [];
   const purposes = bundle?.purposes ?? [];
+  const areas = useMemo(() => bundle?.warehouse.areas ?? [], [bundle]);
   const locations = useMemo(() => bundle?.locations ?? [], [bundle]);
 
   const [level, setLevel] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<{ column: number; row: number } | null>(null);
-  const [tintBy, setTintBy] = useState<'zone' | 'purpose'>('zone');
+  const [tintBy, setTintBy] = useState<'zone' | 'purpose' | 'area'>('zone');
+  const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<WarehouseLocation | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [propsTargets, setPropsTargets] = useState<WarehouseLocation[]>([]);
@@ -69,6 +77,10 @@ export default function WmsWarehouseEditorPage() {
 
   const zoneById = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
   const purposeById = useMemo(() => new Map(purposes.map((purpose) => [purpose.id, purpose])), [purposes]);
+  const outsideIds = useMemo(
+    () => (warehouse ? outsideLocationIds(warehouse, locations) : new Set<string>()),
+    [warehouse, locations],
+  );
   const safeLevel = warehouse ? Math.min(level, Math.max(0, warehouse.levels - 1)) : 0;
 
   const levelLocations = useMemo(
@@ -88,14 +100,21 @@ export default function WmsWarehouseEditorPage() {
           tintBy === 'purpose' && location.purposeId
             ? purposeById.get(location.purposeId)?.color ?? null
             : null,
+        areaColor:
+          tintBy === 'area' ? findArea(areas, location.column, location.row)?.color ?? null : null,
+        outside: outsideIds.has(location.id),
         enabled: location.enabled,
         status: location.status,
       })),
-    [levelLocations, zoneById, purposeById, tintBy],
+    [levelLocations, zoneById, purposeById, areas, outsideIds, tintBy],
   );
 
   const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
   const isSelected = (id: string) => selectedIds.has(id);
+  const selectedRect = useMemo(
+    () => boundingRect(locations.filter((location) => selectedIds.has(location.id))),
+    [locations, selectedIds],
+  );
 
   function clearSelection() {
     setSelectedIds(new Set());
@@ -141,6 +160,50 @@ export default function WmsWarehouseEditorPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Action failed.');
     }
+  }
+
+  // -- areas (per-area numbering) -------------------------------------------
+
+  function handleCreateArea(value: AreaFormValue) {
+    if (!warehouse || !selectedRect) return;
+    void run(
+      () =>
+        mutate((current) => {
+          const area = makeWarehouseArea({
+            name: value.name,
+            prefix: value.prefix,
+            color: value.color,
+            ...selectedRect,
+          });
+          return rebuildWarehouseCodes({
+            ...current,
+            warehouse: {
+              ...current.warehouse,
+              areas: [...(current.warehouse.areas ?? []), area],
+            },
+          });
+        }),
+      `Created area "${value.name}" and renumbered its cells.`,
+    );
+    setAreaDialogOpen(false);
+    setTintBy('area');
+  }
+
+  function removeArea(areaId: string) {
+    void run(
+      () =>
+        mutate((current) =>
+          rebuildWarehouseCodes({
+            ...current,
+            warehouse: {
+              ...current.warehouse,
+              areas: (current.warehouse.areas ?? []).filter((area) => area.id !== areaId),
+            },
+          }),
+        ),
+      'Area removed.',
+      true,
+    );
   }
 
   // -- selection-based edits (all undoable via mutate) ----------------------
@@ -394,22 +457,47 @@ export default function WmsWarehouseEditorPage() {
         </div>
       ) : null}
 
+      {/* Area legend */}
+      {areas.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {areas.map((area) => (
+            <Badge key={area.id} variant="outline" className="gap-1.5 pr-1">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: area.color }} />
+              {area.name}
+              {area.prefix ? (
+                <span className="font-mono text-[10px] text-muted-foreground">· {area.prefix}-</span>
+              ) : null}
+              <button
+                type="button"
+                title="Remove area"
+                disabled={busy}
+                onClick={() => removeArea(area.id)}
+                className="rounded-sm px-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+              >
+                ×
+              </button>
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+
       {/* Grid */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Click to select · shift-click for a range · click a header for a column/row
           </CardTitle>
-          {purposes.length > 0 ? (
+          {purposes.length > 0 || areas.length > 0 ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Tint by</span>
               <NativeSelect
                 className="h-9 w-28"
                 value={tintBy}
-                onChange={(event) => setTintBy(event.target.value as 'zone' | 'purpose')}
+                onChange={(event) => setTintBy(event.target.value as 'zone' | 'purpose' | 'area')}
               >
                 <option value="zone">Zone</option>
-                <option value="purpose">Purpose</option>
+                {purposes.length > 0 ? <option value="purpose">Purpose</option> : null}
+                {areas.length > 0 ? <option value="area">Area</option> : null}
               </NativeSelect>
             </div>
           ) : null}
@@ -456,6 +544,14 @@ export default function WmsWarehouseEditorPage() {
             >
               Properties
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || !selectedRect}
+              onClick={() => setAreaDialogOpen(true)}
+            >
+              Create area
+            </Button>
             <WmsPrintLabelButton
               label="Print labels"
               documentTitle="Location labels"
@@ -481,6 +577,17 @@ export default function WmsWarehouseEditorPage() {
         </Card>
       ) : null}
 
+      <AreaDialog
+        open={areaDialogOpen}
+        onOpenChange={setAreaDialogOpen}
+        cellCount={selectedArray.length}
+        rectLabel={
+          selectedRect
+            ? `${axisLabel(warehouse.namingScheme.columnStyle, selectedRect.startColumn, warehouse.columns)}${axisLabel(warehouse.namingScheme.rowStyle, selectedRect.startRow, warehouse.rows)} → ${axisLabel(warehouse.namingScheme.columnStyle, selectedRect.endColumn, warehouse.columns)}${axisLabel(warehouse.namingScheme.rowStyle, selectedRect.endRow, warehouse.rows)}`
+            : undefined
+        }
+        onSubmit={handleCreateArea}
+      />
       <TextPromptDialog
         open={renameTarget !== null}
         onOpenChange={(open) => !open && setRenameTarget(null)}

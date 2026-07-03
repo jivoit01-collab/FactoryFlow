@@ -21,6 +21,10 @@ export interface GridCell {
   zoneColor?: string | null;
   /** Purpose tint; when set it takes precedence over the zone colour. */
   purposeColor?: string | null;
+  /** Area tint; when set it takes precedence over zone/purpose. */
+  areaColor?: string | null;
+  /** Whether the cell falls outside every numbered area (rendered muted). */
+  outside?: boolean;
   enabled?: boolean;
   status?: LocationStatus;
 }
@@ -149,12 +153,12 @@ function Row({
         }
         const selected = selectedIds?.has(cell.id) ?? false;
         const disabled = cell.enabled === false || cell.status === 'BLOCKED' || cell.status === 'DAMAGED';
-        const tint = cell.purposeColor ?? cell.zoneColor;
+        const tint = cell.outside ? null : cell.areaColor ?? cell.purposeColor ?? cell.zoneColor;
         return (
           <button
             key={cell.id}
             type="button"
-            title={cell.code}
+            title={cell.outside ? 'Outside the warehouse area' : cell.code}
             disabled={!selectable}
             onClick={(event) => onCellClick?.(cell, event.shiftKey)}
             onDoubleClick={() => onCellDoubleClick?.(cell)}
@@ -164,9 +168,10 @@ function Row({
               selectable && 'cursor-pointer hover:ring-1 hover:ring-ring',
               selected && 'ring-2 ring-primary ring-offset-1',
               disabled && 'bg-muted text-muted-foreground line-through opacity-60',
+              cell.outside && 'border-dashed bg-muted/40 text-muted-foreground/40',
             )}
           >
-            <span className="truncate">{cell.code}</span>
+            <span className="truncate">{cell.outside ? '·' : cell.code}</span>
           </button>
         );
       })}

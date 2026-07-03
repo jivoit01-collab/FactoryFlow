@@ -1,16 +1,28 @@
+export {
+  areaContains,
+  boundingRect,
+  codeForCell,
+  findArea,
+  isOutside,
+  outsideLocationIds,
+  warehouseAreas,
+} from './areas';
 export { buildLocationsCsv, parseCsv, parseWarehouseCsv } from './csv';
 export type {
   CellPurposeInput,
   InventoryInput,
   MovementInput,
   PalletInput,
+  WarehouseAreaInput,
   ZoneInput,
 } from './factories';
 export {
+  AREA_COLOR_PRESETS,
   makeCellPurpose,
   makeInventoryRecord,
   makeMovement,
   makePallet,
+  makeWarehouseArea,
   makeWarehouseLocation,
   makeZone,
   PURPOSE_COLOR_PRESETS,
@@ -30,6 +42,7 @@ export {
   addColumn,
   addLevel,
   addRow,
+  rebuildWarehouseCodes,
   removeAxis,
   removeColumn,
   removeLevel,

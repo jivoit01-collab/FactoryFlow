@@ -83,6 +83,26 @@ export interface WarehouseNamingScheme {
  */
 export type WarehouseType = 'OWN' | 'SAP';
 
+/**
+ * A rectangular section of the grid with its own numbering. Its top-left cell is
+ * the area's origin (labelled A-01), and `prefix` distinguishes its codes from
+ * other areas (e.g. a side strip prefixed `S` → `S-A-01`). Cells that fall in no
+ * area are "outside": they carry no code and are excluded from occupancy, moves,
+ * and putaway. Grid coordinates are 0-based and inclusive of both corners.
+ */
+export interface WarehouseArea {
+  id: WmsId;
+  name: string;
+  /** Code prefix that identifies this area; empty for the primary area. */
+  prefix: string;
+  /** Hex colour used to tint the area on the grid. */
+  color: string;
+  startColumn: number;
+  startRow: number;
+  endColumn: number;
+  endRow: number;
+}
+
 export interface Warehouse extends WmsRecordBase {
   code: string;
   name: string;
@@ -101,6 +121,11 @@ export interface Warehouse extends WmsRecordBase {
   /** Vertical levels; `1` means a single-level warehouse. */
   levels: number;
   namingScheme: WarehouseNamingScheme;
+  /**
+   * Named rectangular areas that define where numbering starts/stops. Absent or
+   * empty means the whole grid is numbered from its origin (legacy behaviour).
+   */
+  areas?: WarehouseArea[];
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
 }

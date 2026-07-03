@@ -37,6 +37,11 @@ export interface LocationOccupancy {
    * obstacles, offices — are excluded from occupancy statistics and colouring.
    */
   isStorage: boolean;
+  /**
+   * Whether this cell is inside a numbered area. Cells outside every area carry
+   * no code and are excluded from occupancy statistics, moves, and putaway.
+   */
+  counted: boolean;
 }
 
 /**
@@ -92,6 +97,7 @@ export function computeOccupancy(
   inventoryHere: InventoryRecord[],
   palletsHere: Pallet[],
   holdsStock = true,
+  counted = true,
 ): LocationOccupancy {
   const units = inventoryHere.reduce((sum, record) => sum + (record.quantity || 0), 0);
   const weight = inventoryHere.reduce((sum, record) => sum + (record.weight || 0), 0);
@@ -134,9 +140,10 @@ export function computeOccupancy(
     unitRatio,
     weightRatio,
     volumeRatio,
-    occupancyPct: holdsStock ? occupancyPct : 0,
+    occupancyPct: holdsStock && counted ? occupancyPct : 0,
     status,
     isStorage: holdsStock,
+    counted,
   };
 }
 
@@ -172,6 +179,7 @@ export function buildOccupancyIndex(
   inventory: InventoryRecord[],
   pallets: Pallet[],
   purposesById?: Map<string, CellPurpose>,
+  outsideIds?: ReadonlySet<string>,
 ): Map<string, LocationOccupancy> {
   const inventoryByLocation = new Map<string, InventoryRecord[]>();
   for (const record of inventory) {
@@ -196,6 +204,7 @@ export function buildOccupancyIndex(
         inventoryByLocation.get(location.id) ?? [],
         palletsByLocation.get(location.id) ?? [],
         locationHoldsStock(location, purposesById),
+        !outsideIds?.has(location.id),
       ),
     );
   }

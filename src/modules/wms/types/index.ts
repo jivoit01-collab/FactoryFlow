@@ -19,6 +19,7 @@ export type {
   TemperatureClass,
   ViolationMode,
   Warehouse,
+  WarehouseArea,
   WarehouseLocation,
   WarehouseNamingScheme,
   WarehouseType,

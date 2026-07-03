@@ -28,9 +28,9 @@ import type { WmsLabelData } from '../components/WmsPrintLabel';
 import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
 import { WmsScanButton } from '../components/WmsScanButton';
 import type { MoveItem, PutawaySuggestion, ValidationResult } from '../services';
-import { locationHoldsStock, suggestPutaway, validateMove } from '../services';
+import { locationHoldsStock, outsideLocationIds, suggestPutaway, validateMove } from '../services';
 import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
-import type { MaterialWarehouseProfile, WarehouseLocation } from '../types';
+import type { MaterialWarehouseProfile } from '../types';
 import { notifyFail, notifyOk } from '../utils';
 
 export default function WmsReceivePage() {
@@ -53,18 +53,25 @@ export default function WmsReceivePage() {
   const [boxCount, setBoxCount] = useState(1);
   const [unitsPerBox, setUnitsPerBox] = useState<number | ''>('');
   const [uom, setUom] = useState('EA');
-  const [destQuery, setDestQuery] = useState('');
+  const [spaceQuery, setSpaceQuery] = useState('');
   const [destLocationId, setDestLocationId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // The label for the most recently received pallet, so it can be printed.
   const [lastPalletLabel, setLastPalletLabel] = useState<WmsLabelData | null>(null);
 
   const activeWarehouseId = warehouseId || warehouses[0]?.id || '';
-  const putawayMode = settings?.putawayMode ?? 'HYBRID';
 
   const warehouseLocations = useMemo(
     () => locations.filter((location) => location.warehouseId === activeWarehouseId),
     [locations, activeWarehouseId],
+  );
+  const activeWarehouse = useMemo(
+    () => warehouses.find((wh) => wh.id === activeWarehouseId) ?? null,
+    [warehouses, activeWarehouseId],
+  );
+  const outsideIds = useMemo(
+    () => (activeWarehouse ? outsideLocationIds(activeWarehouse, warehouseLocations) : new Set<string>()),
+    [activeWarehouse, warehouseLocations],
   );
   const purposeById = useMemo(
     () => new Map(purposes.map((purpose) => [purpose.id, purpose])),
@@ -110,20 +117,37 @@ export default function WmsReceivePage() {
 
   const ready = itemCode.trim().length > 0 && quantity > 0;
 
-  const suggestions: PutawaySuggestion[] = useMemo(() => {
-    if (!ready || !settings || putawayMode === 'MANUAL') return [];
+  // Every legal destination for this item, ranked best-first. This is the pool of
+  // "available spaces" the operator picks from — the putaway engine already vets
+  // capacity, material rules, temperature, hazmat and area membership.
+  const availableSpaces: PutawaySuggestion[] = useMemo(() => {
+    if (!ready || !settings) return [];
     return suggestPutaway({
       settings,
       item,
       quantity,
       added,
-      locations: warehouseLocations,
+      locations: warehouseLocations.filter((l) => !outsideIds.has(l.id)),
       inventory,
       pallets,
       purposesById: purposeById,
-      limit: 4,
+      limit: warehouseLocations.length,
     });
-  }, [ready, settings, putawayMode, item, quantity, added, warehouseLocations, inventory, pallets, purposeById]);
+  }, [ready, settings, item, quantity, added, warehouseLocations, inventory, pallets, purposeById, outsideIds]);
+
+  // The engine's top picks, highlighted with a ★ in the list.
+  const recommendedIds = useMemo(
+    () => new Set(availableSpaces.slice(0, 3).map((s) => s.location.id)),
+    [availableSpaces],
+  );
+
+  const SPACE_LIMIT = 90;
+  const filteredSpaces = useMemo(() => {
+    const query = spaceQuery.trim().toLowerCase();
+    if (!query) return availableSpaces;
+    return availableSpaces.filter((s) => s.location.code.toLowerCase().includes(query));
+  }, [availableSpaces, spaceQuery]);
+  const shownSpaces = filteredSpaces.slice(0, SPACE_LIMIT);
 
   const destLocation = destLocationId
     ? warehouseLocations.find((location) => location.id === destLocationId) ?? null
@@ -140,8 +164,9 @@ export default function WmsReceivePage() {
       quantity,
       added,
       destinationHoldsStock: locationHoldsStock(destLocation, purposeById),
+      destinationCounted: !outsideIds.has(destLocation.id),
     });
-  }, [destLocation, settings, ready, inventory, pallets, item, quantity, added, purposeById]);
+  }, [destLocation, settings, ready, inventory, pallets, item, quantity, added, purposeById, outsideIds]);
 
   function applyScan(override?: string) {
     const query = (override ?? scanQuery).trim();
@@ -162,16 +187,18 @@ export default function WmsReceivePage() {
     }
   }
 
-  function pickSuggestion(location: WarehouseLocation) {
-    setDestLocationId(location.id);
-    setDestQuery(location.code);
-  }
-
-  function resolveDestination(override?: string) {
-    const code = (override ?? destQuery).trim().toLowerCase();
-    const location = warehouseLocations.find((l) => l.code.toLowerCase() === code);
-    if (location) setDestLocationId(location.id);
-    else toast.error('No destination location matched that code.');
+  /** Scanning a bin code jumps straight to it (selecting even if it's invalid,
+   * so the validation panel can explain why). */
+  function selectSpaceByCode(code: string) {
+    const key = code.trim().toLowerCase();
+    if (!key) return;
+    const location = warehouseLocations.find((l) => l.code.toLowerCase() === key);
+    if (location) {
+      setDestLocationId(location.id);
+      setSpaceQuery('');
+    } else {
+      toast.error('No space matched that code.');
+    }
   }
 
   function reset() {
@@ -183,7 +210,7 @@ export default function WmsReceivePage() {
     setLicensePlate('');
     setBoxCount(1);
     setUnitsPerBox('');
-    setDestQuery('');
+    setSpaceQuery('');
     setDestLocationId(null);
   }
 
@@ -252,7 +279,7 @@ export default function WmsReceivePage() {
             onChange={(event) => {
               setWarehouseId(event.target.value);
               setDestLocationId(null);
-              setDestQuery('');
+              setSpaceQuery('');
             }}
           >
             {warehouses.map((wh) => (
@@ -386,54 +413,73 @@ export default function WmsReceivePage() {
       {/* 2. Putaway */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">2 · Put away</CardTitle>
+          <CardTitle className="text-base">2 · Choose a space</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {putawayMode !== 'MANUAL' && suggestions.length > 0 ? (
-            <div className="space-y-2">
-              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Sparkles className="h-3.5 w-3.5" /> Suggested locations
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.location.id}
-                    type="button"
-                    onClick={() => pickSuggestion(suggestion.location)}
-                    className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                      destLocationId === suggestion.location.id
-                        ? 'border-primary ring-2 ring-primary/30'
-                        : 'hover:bg-muted/50'
-                    }`}
-                  >
-                    <span className="font-mono">{suggestion.location.code}</span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {Math.round(suggestion.occupancyPct)}% full
-                    </span>
-                  </button>
-                ))}
+          {!ready ? (
+            <p className="text-sm text-muted-foreground">
+              Identify the item above to see the spaces it can go into.
+            </p>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <Input
+                  value={spaceQuery}
+                  placeholder="Search spaces, or scan a bin"
+                  onChange={(event) => setSpaceQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && spaceQuery.trim()) selectSpaceByCode(spaceQuery);
+                  }}
+                />
+                <WmsScanButton label="Scan" onScan={selectSpaceByCode} />
               </div>
-            </div>
-          ) : null}
 
-          <div className="flex gap-2">
-            <Input
-              value={destQuery}
-              placeholder="Scan destination location"
-              onChange={(event) => setDestQuery(event.target.value)}
-              onKeyDown={(event) => event.key === 'Enter' && resolveDestination()}
-            />
-            <WmsScanButton
-              label="Scan"
-              onScan={(code) => {
-                setDestQuery(code);
-                resolveDestination(code);
-              }}
-            />
-            <Button variant="outline" onClick={() => resolveDestination()}>
-              <ScanLine className="mr-2 h-4 w-4" /> Find
-            </Button>
-          </div>
+              {availableSpaces.length === 0 ? (
+                <p className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                  No available spaces — every block is full, restricted for this item, or outside a
+                  numbered area.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {filteredSpaces.length} available space{filteredSpaces.length === 1 ? '' : 's'} ·
+                    ★ = recommended
+                  </p>
+                  <div className="grid max-h-64 grid-cols-2 gap-2 overflow-auto rounded-md border p-2 sm:grid-cols-3">
+                    {shownSpaces.map((space) => {
+                      const selected = destLocationId === space.location.id;
+                      const recommended = recommendedIds.has(space.location.id);
+                      return (
+                        <button
+                          key={space.location.id}
+                          type="button"
+                          onClick={() => setDestLocationId(space.location.id)}
+                          className={`flex flex-col items-start rounded-md border px-2.5 py-1.5 text-left transition ${
+                            selected ? 'border-primary ring-2 ring-primary/30' : 'hover:bg-muted/50'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1 font-mono text-sm">
+                            {recommended ? <span className="text-emerald-600">★</span> : null}
+                            {space.location.code}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round(space.occupancyPct)}% full
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {filteredSpaces.length > shownSpaces.length ? (
+                    <p className="text-xs text-muted-foreground">
+                      Showing the top {shownSpaces.length} of {filteredSpaces.length} — search to
+                      narrow down.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </>
+          )}
 
           {validation ? (
             <div className="space-y-2">

@@ -6,6 +6,7 @@ import type {
   MovementType,
   Pallet,
   PalletStatus,
+  WarehouseArea,
   WarehouseLocation,
   WmsId,
   Zone,
@@ -213,6 +214,39 @@ export function makeMovement(input: MovementInput): MovementLogEntry {
     createdAt: nowIso(),
   };
 }
+
+export interface WarehouseAreaInput {
+  name: string;
+  prefix?: string;
+  color: string;
+  startColumn: number;
+  startRow: number;
+  endColumn: number;
+  endRow: number;
+}
+
+export function makeWarehouseArea(input: WarehouseAreaInput): WarehouseArea {
+  return {
+    id: createWmsId(),
+    name: input.name.trim(),
+    prefix: (input.prefix ?? '').trim(),
+    color: input.color,
+    startColumn: input.startColumn,
+    startRow: input.startRow,
+    endColumn: input.endColumn,
+    endRow: input.endRow,
+  };
+}
+
+/** Preset area colours offered in the editor. */
+export const AREA_COLOR_PRESETS: readonly string[] = [
+  '#2563eb', // blue
+  '#16a34a', // green
+  '#f59e0b', // amber
+  '#7c3aed', // violet
+  '#0891b2', // cyan
+  '#db2777', // pink
+];
 
 /** Preset cell-purpose colours offered in the editor. */
 export const PURPOSE_COLOR_PRESETS: readonly string[] = [

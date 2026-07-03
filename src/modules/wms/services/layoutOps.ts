@@ -10,24 +10,27 @@
  */
 import type { WmsId } from '../types';
 import { nowIso } from '../utils';
+import { codeForCell } from './areas';
 import { makeWarehouseLocation } from './factories';
-import { buildLocationCode, type LayoutParams } from './layout';
 import type { WarehouseBundle } from './warehouseIO';
 
 type Axis = 'column' | 'row' | 'level';
 
-function dims(bundle: WarehouseBundle): LayoutParams {
-  const { columns, rows, levels, namingScheme } = bundle.warehouse;
-  return { columns, rows, levels, naming: namingScheme };
-}
-
-/** Recompute every location's code/barcode from the warehouse's current dims. */
+/**
+ * Recompute every location's code/barcode from the warehouse's areas (or its
+ * grid origin when no areas are defined). Cells that fall outside every area get
+ * a blank code — they are "outside" and are not counted anywhere.
+ */
 function rebuildCodes(bundle: WarehouseBundle): WarehouseBundle {
-  const params = dims(bundle);
+  const { warehouse } = bundle;
   const timestamp = nowIso();
   const seen = new Set<string>();
   const locations = bundle.locations.map((location) => {
-    let code = buildLocationCode(params, location.column, location.row, location.level);
+    const generated = codeForCell(warehouse, location.column, location.row, location.level);
+    if (generated == null) {
+      return { ...location, code: '', barcode: '', updatedAt: timestamp };
+    }
+    let code = generated;
     if (seen.has(code)) {
       let suffix = 2;
       while (seen.has(`${code}#${suffix}`)) suffix += 1;
@@ -37,6 +40,11 @@ function rebuildCodes(bundle: WarehouseBundle): WarehouseBundle {
     return { ...location, code, barcode: code, updatedAt: timestamp };
   });
   return { ...bundle, locations };
+}
+
+/** Rebuild every code (public entry for area edits that change numbering). */
+export function rebuildWarehouseCodes(bundle: WarehouseBundle): WarehouseBundle {
+  return rebuildCodes(bundle);
 }
 
 function axisCount(bundle: WarehouseBundle, axis: Axis): number {

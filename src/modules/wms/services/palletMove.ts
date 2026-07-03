@@ -38,11 +38,13 @@ export interface ValidatePalletMoveParams {
   pallets: Pallet[];
   /** Purpose lookup so non-storage destinations (paths, obstacles…) are rejected. */
   purposesById?: Map<string, CellPurpose>;
+  /** True when the destination is outside every numbered area (rejects the move). */
+  destinationOutside?: boolean;
 }
 
 /** Validate moving an entire pallet into `destination`. */
 export function validatePalletMove(params: ValidatePalletMoveParams): ValidationResult {
-  const { settings, pallet, profile, destination, inventory, pallets, purposesById } = params;
+  const { settings, pallet, profile, destination, inventory, pallets, purposesById, destinationOutside } = params;
   const destinationInventory = inventory.filter((record) => record.locationId === destination.id);
   // Don't count the pallet against its own destination capacity.
   const destinationPalletCount = pallets.filter(
@@ -58,5 +60,6 @@ export function validatePalletMove(params: ValidatePalletMoveParams): Validation
     quantity: pallet.totalUnits ?? 1,
     added: { pallets: 1, units: pallet.totalUnits ?? 0, weight: 0, volume: 0 },
     destinationHoldsStock: locationHoldsStock(destination, purposesById),
+    destinationCounted: !destinationOutside,
   });
 }
