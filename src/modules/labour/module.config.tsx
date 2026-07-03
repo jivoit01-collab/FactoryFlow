@@ -1,7 +1,7 @@
 import { Users } from 'lucide-react';
 import { lazy } from 'react';
 
-import { GATE_PERMISSIONS } from '@/config/permissions';
+import { LABOUR_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 // The Labour entry screen physically lives in the gate module (it reuses
@@ -10,10 +10,8 @@ import type { ModuleConfig } from '@/core/types';
 // marked out from the gate's "Labour Out" screen (Gate Out section).
 const LabourModulePage = lazy(() => import('@/modules/gate/pages/labourGatePages/LabourModulePage'));
 
-const LABOUR_PERMISSIONS = [
-  GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN,
-  GATE_PERMISSIONS.LABOUR_GATE.VIEW,
-];
+// Submitting labour counts (or viewing) is enough to reach the Labour module screen.
+const LABOUR_MODULE_PERMISSIONS = [LABOUR_PERMISSIONS.SUBMIT, LABOUR_PERMISSIONS.VIEW];
 
 /**
  * Labour module configuration — record casual-labour headcount per
@@ -27,7 +25,7 @@ export const labourModuleConfig: ModuleConfig = {
       path: '/labour',
       element: <LabourModulePage />,
       layout: 'main',
-      permissions: LABOUR_PERMISSIONS,
+      permissions: LABOUR_MODULE_PERMISSIONS,
       breadcrumb: { label: 'Labour' },
     },
   ],
@@ -37,7 +35,7 @@ export const labourModuleConfig: ModuleConfig = {
       title: 'Labour',
       icon: Users,
       showInSidebar: true,
-      permissions: LABOUR_PERMISSIONS,
+      permissions: LABOUR_MODULE_PERMISSIONS,
     },
   ],
 };

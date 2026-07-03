@@ -15,6 +15,13 @@ export { ADMIN_MODULE_PREFIX, ADMIN_PERMISSIONS, type AdminPermission } from './
 // Gate Module
 export { GATE_MODULE_PREFIX, GATE_PERMISSIONS, type GatePermission } from './gate.permissions';
 
+// Labour Module (standalone; backed by the `labour_gate` Django app)
+export {
+  LABOUR_MODULE_PREFIX,
+  LABOUR_PERMISSIONS,
+  type LabourPermission,
+} from './labour.permissions';
+
 // Quality Control Module
 export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permissions';
 
