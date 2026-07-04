@@ -1020,11 +1020,6 @@ export const gateModuleConfig: ModuleConfig = {
           title: 'Barcode Dispatch Reports',
           permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
         },
-        {
-          path: '/gate/bst-out',
-          title: 'BST Out',
-          permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
-        },
       ],
     },
   ],

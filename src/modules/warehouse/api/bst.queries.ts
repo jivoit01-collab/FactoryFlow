@@ -161,10 +161,14 @@ export function useCompleteBSTReceive() {
 // Gate
 // ============================================================================
 
-export function useBSTGateOutwards(params?: BSTListParams) {
+export function useBSTGateOutwards(
+  params?: BSTListParams,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: BST_QUERY_KEYS.gateOutwards(params),
     queryFn: () => bstApi.listGateOutwards(params),
+    enabled: options?.enabled ?? true,
   });
 }
 

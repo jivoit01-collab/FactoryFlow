@@ -7,6 +7,7 @@ import { GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import type { DateRange } from '@/core/store/filtersSlice';
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { useBSTGateOutwards } from '@/modules/warehouse/api';
 import { Card, CardContent, Input } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
@@ -429,14 +430,7 @@ function useGateDashboardStats(
     },
     { enabled: isVisible('sales-dispatch') },
   );
-  const bstOutDockingEntries = useSalesDispatchEntries(
-    {
-      from_date: dateRange.from,
-      to_date: dateRange.to,
-      document_type: 'STOCK_TRANSFER',
-    },
-    { enabled: isVisible('bst-out') },
-  );
+  const bstOutEntries = useBSTGateOutwards(dateParams, { enabled: isVisible('bst-out') });
 
   const customerReturnEntries = useMemo(
     () =>
@@ -598,21 +592,12 @@ function useGateDashboardStats(
       ],
     },
     'bst-out': {
-      isLoading: bstOutDockingEntries.isLoading,
-      stats: buildEntryArrayStats(bstOutDockingEntries.data || [], {
-        openLabel: 'Pending',
-        isOpen: (entry) => entry.status === 'PRINT_COMMITTED',
-        isCompleted: (entry) => entry.status === 'DISPATCHED',
-        extraStats: [
-          {
-            label: 'Docking',
-            value: (bstOutDockingEntries.data || []).filter(
-              (entry) =>
-                !['PRINT_COMMITTED', 'DISPATCHED', 'CANCELLED', 'REJECTED'].includes(entry.status),
-            ).length,
-            tone: 'info',
-          },
-        ],
+      isLoading: bstOutEntries.isLoading,
+      stats: buildEntryArrayStats(bstOutEntries.data || [], {
+        openLabel: 'Awaiting',
+        isOpen: (entry) => entry.status === 'AWAITING_GATE_OUT',
+        isCompleted: (entry) =>
+          entry.status !== 'AWAITING_GATE_OUT' && entry.status !== 'CANCELLED',
       }),
     },
     'sales-dispatch': {
