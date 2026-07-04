@@ -506,6 +506,7 @@ export interface LabelPrintLog {
   reprint_reason: string;
   printed_by: number | null;
   printed_by_name: string;
+  printed_by_email: string;
   printed_at: string;
   printer_name: string;
 }
