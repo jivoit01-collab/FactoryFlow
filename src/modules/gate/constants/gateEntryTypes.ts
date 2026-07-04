@@ -133,7 +133,9 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     vehicleMode: 'non_vehicle',
     dashboardRoute: '/gate/labour-in',
     newEntryRoute: '/gate/labour-in',
-    viewPermissions: [GATE_PERMISSIONS.LABOUR_GATE.VIEW, GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN],
+    // Gate-person screen: gated on RECORD_IN only. LABOUR_GATE.VIEW is deliberately
+    // excluded so an HOD (who holds VIEW to reach /labour) does NOT trip the Gate menu.
+    viewPermissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN],
     createPermissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN],
     icon: UserPlus,
     colorClassName: 'text-red-600',
@@ -147,7 +149,8 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     vehicleMode: 'non_vehicle',
     dashboardRoute: '/gate/labour-out',
     newEntryRoute: '/gate/labour-out',
-    viewPermissions: [GATE_PERMISSIONS.LABOUR_GATE.VIEW, GATE_PERMISSIONS.LABOUR_GATE.RECORD_OUT],
+    // Gate-person screen: gated on RECORD_OUT only (see labour-in note above).
+    viewPermissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_OUT],
     createPermissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_OUT],
     icon: UserMinus,
     colorClassName: 'text-blue-700',

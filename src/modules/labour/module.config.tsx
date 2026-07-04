@@ -10,8 +10,10 @@ import type { ModuleConfig } from '@/core/types';
 // marked out from the gate's "Labour Out" screen (Gate Out section).
 const LabourModulePage = lazy(() => import('@/modules/gate/pages/labourGatePages/LabourModulePage'));
 
-// Submitting labour counts (or viewing) is enough to reach the Labour module screen.
-const LABOUR_MODULE_PERMISSIONS = [LABOUR_PERMISSIONS.SUBMIT, LABOUR_PERMISSIONS.VIEW];
+// The Labour module is the HOD department-allocation screen. Allocating (or just
+// viewing) the split is what grants access — the gate person's raw in/out
+// permissions deliberately do NOT light up this module.
+const LABOUR_MODULE_PERMISSIONS = [LABOUR_PERMISSIONS.ALLOCATE, LABOUR_PERMISSIONS.VIEW];
 
 /**
  * Labour module configuration — record casual-labour headcount per

@@ -236,10 +236,12 @@ export const GATE_PERMISSIONS = {
   LABOUR_GATE: {
     /** View labour gate in/out entries */
     VIEW: 'labour_gate.view_labourgateentry',
-    /** Record how many labourers a contractor brought in */
+    /** Record how many labourers a contractor brought in (gate person) */
     RECORD_IN: 'labour_gate.can_record_labour_in',
-    /** Record labour leaving at the gate */
+    /** Record labour leaving at the gate (gate person) */
     RECORD_OUT: 'labour_gate.can_record_labour_out',
+    /** Split a contractor's gate labour across departments (HOD / Labour module) */
+    ALLOCATE: 'labour_gate.can_allocate_labour_department',
   },
 
   // ============================================
