@@ -184,6 +184,8 @@ export interface SalesDispatchGateOut {
   company_name?: string;
   /** Cross-company arrival this docking shares (the physical truck trip). */
   arrival?: number | null;
+  /** Arrival number (ARV-…) — the vehicle-grouping key on the docking board. */
+  arrival_no?: string | null;
   /** The truck's real in/out state (INSIDE / LOADING / DEPARTED), not the docking's. */
   arrival_status?: string | null;
   /** >1 = a multi-company truck: dispatching one docking dispatches the whole truck. */

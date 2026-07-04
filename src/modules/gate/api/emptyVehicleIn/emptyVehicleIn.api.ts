@@ -36,6 +36,10 @@ export interface EmptyVehicleGateInEntry {
   entry_no: string;
   company_code?: string;
   company_name?: string;
+  /** Cross-company arrival (physical truck trip) — the vehicle-grouping key. */
+  arrival?: number | null;
+  /** Arrival number (ARV-…) shown on the grouped Empty Vehicle Entries row. */
+  arrival_no?: string | null;
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;
