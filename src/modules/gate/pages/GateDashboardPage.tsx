@@ -12,8 +12,6 @@ import { Card, CardContent, Input } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import {
-  useBSTGateInEntries,
-  useBSTGateReturnEntries,
   useEmptyVehicleEligibleEntries,
   useEmptyVehicleGateInEntries,
   useEmptyVehicleGateOutEntries,
@@ -402,6 +400,13 @@ function useGateDashboardStats(
     },
     { enabled: isVisible('construction') },
   );
+  const fixedAssetsCounts = useVehicleEntriesCount(
+    {
+      ...dateParams,
+      entry_type: ENTRY_TYPES.FIXED_ASSET,
+    },
+    { enabled: isVisible('fixed-assets') },
+  );
   const personDashboard = usePersonGateInDashboard(dateParams, {
     enabled: isVisible('visitor-labour'),
   });
@@ -413,10 +418,6 @@ function useGateDashboardStats(
   });
   const emptyVehicleOutEntries = useEmptyVehicleGateOutEntries(dateParams, {
     enabled: isVisible('empty-vehicle-out'),
-  });
-  const bstInEntries = useBSTGateInEntries(dateParams, { enabled: isVisible('bst-in') });
-  const bstReturnEntries = useBSTGateReturnEntries(dateParams, {
-    enabled: isVisible('bst-return'),
   });
   const rejectedQCReturnEntries = useRejectedQCReturnEntries(dateParams, {
     enabled: isVisible('rejected-qc-return'),
@@ -497,6 +498,10 @@ function useGateDashboardStats(
       isLoading: constructionCounts.isLoading,
       stats: buildVehicleCountStats(constructionCounts.data?.total_vehicle_entries),
     },
+    'fixed-assets': {
+      isLoading: fixedAssetsCounts.isLoading,
+      stats: buildVehicleCountStats(fixedAssetsCounts.data?.total_vehicle_entries),
+    },
     'visitor-labour': {
       isLoading: personDashboard.isLoading,
       stats: [
@@ -524,14 +529,6 @@ function useGateDashboardStats(
         isOpen: (entry) => !['COMPLETED', 'CANCELLED'].includes(entry.vehicle_entry_status),
         isCompleted: (entry) => entry.vehicle_entry_status === 'COMPLETED',
       }),
-    },
-    'bst-in': {
-      isLoading: bstInEntries.isLoading,
-      stats: buildEntryArrayStats(bstInEntries.data || []),
-    },
-    'bst-return': {
-      isLoading: bstReturnEntries.isLoading,
-      stats: buildEntryArrayStats(bstReturnEntries.data || [], { openLabel: 'Returned' }),
     },
     'customer-return': {
       stats: buildEntryArrayStats(customerReturnEntries, {
