@@ -31,14 +31,12 @@ import {
   draftFromLocations,
   HAZMAT_CLASS_SUGGESTIONS,
   makeCellPurpose,
-  makeZone,
   MATERIAL_TYPE_SUGGESTIONS,
   validateLocationDraft,
 } from '../services';
-import type { CellPurpose, TemperatureClass, WarehouseLocation, Zone } from '../types';
+import type { CellPurpose, TemperatureClass, WarehouseLocation } from '../types';
 import { PurposeDialog } from './PurposeDialog';
 import { TagInput } from './TagInput';
-import { ZoneDialog } from './ZoneDialog';
 
 const LOCATION_TYPE_SUGGESTIONS = ['RACK', 'FLOOR', 'BIN', 'SHELF', 'BULK', 'DOCK'];
 
@@ -46,12 +44,10 @@ interface LocationPropertiesPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locations: WarehouseLocation[];
-  zones: Zone[];
   purposes: CellPurpose[];
   onSave: (
     draft: LocationDraft,
     touched: Set<LocationDraftField>,
-    newZones: Zone[],
     newPurposes: CellPurpose[],
   ) => void | Promise<void>;
 }
@@ -60,7 +56,6 @@ export function LocationPropertiesPanel({
   open,
   onOpenChange,
   locations,
-  zones,
   purposes,
   onSave,
 }: LocationPropertiesPanelProps) {
@@ -70,14 +65,11 @@ export function LocationPropertiesPanel({
 
   const [draft, setDraft] = useState<LocationDraft>(() => draftFromLocations(locations));
   const [touched, setTouched] = useState<Set<LocationDraftField>>(new Set());
-  // Zones / purposes created inline but not yet persisted — saved atomically
-  // with the property changes when the user clicks Save.
-  const [newZones, setNewZones] = useState<Zone[]>([]);
+  // Purposes created inline but not yet persisted — saved atomically with the
+  // property changes when the user clicks Save.
   const [newPurposes, setNewPurposes] = useState<CellPurpose[]>([]);
 
-  const allZones = useMemo(() => [...zones, ...newZones], [zones, newZones]);
   const allPurposes = useMemo(() => [...purposes, ...newPurposes], [purposes, newPurposes]);
-  const zoneName = allZones.find((zone) => zone.id === draft.zoneId)?.name;
   const purposeName = allPurposes.find((purpose) => purpose.id === draft.purposeId)?.name;
 
   // Re-seed the form whenever the drawer opens for a different target set.
@@ -85,7 +77,6 @@ export function LocationPropertiesPanel({
     if (open && locations.length) {
       setDraft(draftFromLocations(locations));
       setTouched(new Set());
-      setNewZones([]);
       setNewPurposes([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,7 +92,7 @@ export function LocationPropertiesPanel({
 
   function handleSave() {
     if (hasErrors || touched.size === 0) return;
-    void onSave(draft, touched, newZones, newPurposes);
+    void onSave(draft, touched, newPurposes);
   }
 
   if (!locations.length) return null;
@@ -136,37 +127,6 @@ export function LocationPropertiesPanel({
                 </Field>
               </>
             ) : null}
-            <SearchableSelect<Zone>
-              inputId="location-zone"
-              label="Zone"
-              items={allZones}
-              value={draft.zoneId ?? ''}
-              defaultDisplayText={zoneName}
-              isLoading={false}
-              placeholder="No zone"
-              getItemKey={(zone) => zone.id}
-              getItemLabel={(zone) => zone.name}
-              loadingText="Loading zones…"
-              emptyText="No zones yet — add one."
-              notFoundText="No matching zone."
-              addNewLabel="Add new zone"
-              onItemSelect={(zone) => set('zoneId', zone.id)}
-              onClear={() => set('zoneId', null)}
-              renderCreateDialog={(dialogOpen, onDialogOpenChange, updateSelection) => (
-                <ZoneDialog
-                  open={dialogOpen}
-                  onOpenChange={onDialogOpenChange}
-                  locationCount={locations.length}
-                  onSubmit={(value) => {
-                    const zone = makeZone(warehouseId, value);
-                    setNewZones((previous) => [...previous, zone]);
-                    set('zoneId', zone.id);
-                    updateSelection(zone.id, zone.name);
-                    onDialogOpenChange(false);
-                  }}
-                />
-              )}
-            />
             <SearchableSelect<CellPurpose>
               inputId="location-purpose"
               label="Purpose"

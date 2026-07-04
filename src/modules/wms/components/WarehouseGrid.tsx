@@ -6,7 +6,7 @@
  * rectangular range) to apply bulk changes or group them into a zone. Cells are
  * tinted by their zone colour; the live occupancy colouring arrives in Step 5.
  */
-import { useMemo } from 'react';
+import { type CSSProperties, useMemo } from 'react';
 
 import { cn } from '@/shared/utils';
 
@@ -18,11 +18,12 @@ export interface GridCell {
   column: number;
   row: number;
   code: string;
-  zoneColor?: string | null;
-  /** Purpose tint; when set it takes precedence over the zone colour. */
+  /** Purpose colour — the single fill tint for a cell. */
   purposeColor?: string | null;
-  /** Area tint; when set it takes precedence over zone/purpose. */
+  /** Area colour, drawn as an outline (not a fill) on the region's edges. */
   areaColor?: string | null;
+  /** Which sides of this cell sit on its area's boundary (for the outline). */
+  areaEdges?: { top: boolean; right: boolean; bottom: boolean; left: boolean };
   /** Whether the cell falls outside every numbered area (rendered muted). */
   outside?: boolean;
   enabled?: boolean;
@@ -153,7 +154,24 @@ function Row({
         }
         const selected = selectedIds?.has(cell.id) ?? false;
         const disabled = cell.enabled === false || cell.status === 'BLOCKED' || cell.status === 'DAMAGED';
-        const tint = cell.outside ? null : cell.areaColor ?? cell.purposeColor ?? cell.zoneColor;
+        const fill = cell.outside ? null : cell.purposeColor;
+        const style: CSSProperties = {};
+        if (fill) {
+          style.backgroundColor = `${fill}55`;
+          style.borderColor = fill;
+        }
+        // Draw the area boundary as an inset outline. Skipped when the cell is
+        // selected so the selection ring stays visible (both use box-shadow).
+        if (!selected && !cell.outside && cell.areaColor && cell.areaEdges) {
+          const { top, right, bottom, left } = cell.areaEdges;
+          const c = cell.areaColor;
+          const shadows: string[] = [];
+          if (top) shadows.push(`inset 0 2px 0 0 ${c}`);
+          if (bottom) shadows.push(`inset 0 -2px 0 0 ${c}`);
+          if (left) shadows.push(`inset 2px 0 0 0 ${c}`);
+          if (right) shadows.push(`inset -2px 0 0 0 ${c}`);
+          if (shadows.length) style.boxShadow = shadows.join(', ');
+        }
         return (
           <button
             key={cell.id}
@@ -162,7 +180,7 @@ function Row({
             disabled={!selectable}
             onClick={(event) => onCellClick?.(cell, event.shiftKey)}
             onDoubleClick={() => onCellDoubleClick?.(cell)}
-            style={tint ? { borderColor: tint, backgroundColor: `${tint}55` } : undefined}
+            style={Object.keys(style).length ? style : undefined}
             className={cn(
               'flex h-10 items-center justify-center overflow-hidden rounded-sm border bg-background px-0.5 text-[10px] font-medium leading-none transition',
               selectable && 'cursor-pointer hover:ring-1 hover:ring-ring',

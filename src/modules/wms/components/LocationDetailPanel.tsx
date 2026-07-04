@@ -21,7 +21,7 @@ import {
 
 import type { LocationOccupancy } from '../services';
 import { DISPLAY_STATUS_META } from '../services';
-import type { CellPurpose, InventoryRecord, Pallet, WarehouseLocation, Zone } from '../types';
+import type { CellPurpose, InventoryRecord, Pallet, WarehouseLocation } from '../types';
 import { WmsPrintLabelButton } from './WmsPrintLabelButton';
 import { WmsScanButton } from './WmsScanButton';
 
@@ -29,7 +29,6 @@ interface LocationDetailPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   location: WarehouseLocation | null;
-  zone: Zone | null;
   purpose: CellPurpose | null;
   occupancy: LocationOccupancy | null;
   palletsHere: Pallet[];
@@ -63,7 +62,6 @@ export function LocationDetailPanel({
   open,
   onOpenChange,
   location,
-  zone,
   purpose,
   occupancy,
   palletsHere,
@@ -95,7 +93,6 @@ export function LocationDetailPanel({
           </SheetTitle>
           <SheetDescription>
             {location.type}
-            {zone ? ` · ${zone.name}` : ''}
             {isStorage && occupancy ? ` · ${Math.round(occupancy.occupancyPct)}% full` : ''}
             {!isStorage ? ' · non-storage cell' : ''}
           </SheetDescription>

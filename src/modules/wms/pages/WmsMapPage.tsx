@@ -61,11 +61,10 @@ import type {
   MaterialWarehouseProfile,
   Pallet,
   WarehouseLocation,
-  Zone,
 } from '../types';
 import { notifyFail, notifyOk } from '../utils';
 
-type ViewMode = 'status' | 'zone' | 'occupancy' | 'purpose';
+type ViewMode = 'status' | 'occupancy' | 'purpose';
 
 interface PendingMove {
   pallet: Pallet;
@@ -90,7 +89,7 @@ export default function WmsMapPage() {
     ? requested
     : warehouses[0]?.id ?? null;
 
-  const { warehouse, zones, purposes, locations } = useWarehouseLayout(selectedId);
+  const { warehouse, purposes, locations } = useWarehouseLayout(selectedId);
   const { data: inventory } = useWmsCollection('inventory');
   const { data: pallets } = useWmsCollection('pallets');
   const { data: materials } = useWmsCollection('materials');
@@ -98,7 +97,6 @@ export default function WmsMapPage() {
 
   const [level, setLevel] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('status');
-  const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<DisplayStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -121,7 +119,6 @@ export default function WmsMapPage() {
     () => buildOccupancyIndex(locations, inventory, pallets, purposeById, outsideIds),
     [locations, inventory, pallets, purposeById, outsideIds],
   );
-  const zoneById = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
   const locationByCode = useMemo(() => {
     const map = new Map<string, WarehouseLocation>();
     for (const location of locations) map.set(location.code.toLowerCase(), location);
@@ -215,7 +212,6 @@ export default function WmsMapPage() {
 
   function colorFor(
     location: WarehouseLocation,
-    zone: Zone | undefined,
     purpose: CellPurpose | undefined,
   ): { color: string; hatch: boolean } {
     // Cells outside every numbered area are shown as muted, uncounted space.
@@ -229,7 +225,6 @@ export default function WmsMapPage() {
     if (purpose && !purpose.holdsStock) {
       return { color: purpose.color, hatch: !location.enabled };
     }
-    if (viewMode === 'zone') return { color: zone?.color ?? '#cbd5e1', hatch: !location.enabled };
     if (viewMode === 'occupancy') {
       return { color: DISPLAY_STATUS_META[occupancyBucket(occ?.occupancyPct ?? 0)].color, hatch: false };
     }
@@ -239,21 +234,16 @@ export default function WmsMapPage() {
 
   function matchesFilters(location: WarehouseLocation): boolean {
     const occ = occupancy.get(location.id);
-    const zoneOk =
-      zoneFilter === 'all' ||
-      (zoneFilter === 'none' ? location.zoneId == null : location.zoneId === zoneFilter);
-    const statusOk = statusFilter === 'all' || occ?.status === statusFilter;
-    return zoneOk && statusOk;
+    return statusFilter === 'all' || occ?.status === statusFilter;
   }
 
   const cells: MapCell[] = useMemo(
     () =>
       levelLocations.map((location) => {
         const occ = occupancy.get(location.id);
-        const zone = location.zoneId ? zoneById.get(location.zoneId) : undefined;
         const purpose = location.purposeId ? purposeById.get(location.purposeId) : undefined;
         const isOutsideCell = outsideIds.has(location.id);
-        const { color, hatch } = colorFor(location, zone, purpose);
+        const { color, hatch } = colorFor(location, purpose);
 
         if (moveSession) {
           // In move mode the highlight channels show destination validity.
@@ -307,11 +297,11 @@ export default function WmsMapPage() {
           tooltip:
             purpose && !purpose.holdsStock
               ? `${location.code} · ${purpose.name}`
-              : `${location.code} · ${DISPLAY_STATUS_META[occ?.status ?? 'EMPTY'].label} · ${Math.round(occ?.occupancyPct ?? 0)}%${zone ? ` · ${zone.name}` : ''}${purpose ? ` · ${purpose.name}` : ''}`,
+              : `${location.code} · ${DISPLAY_STATUS_META[occ?.status ?? 'EMPTY'].label} · ${Math.round(occ?.occupancyPct ?? 0)}%${purpose ? ` · ${purpose.name}` : ''}`,
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [levelLocations, occupancy, zoneById, purposeById, outsideIds, viewMode, zoneFilter, statusFilter, matchedIds, searchText, moveSession, validDestinationIds, suggestedIds],
+    [levelLocations, occupancy, purposeById, outsideIds, viewMode, statusFilter, matchedIds, searchText, moveSession, validDestinationIds, suggestedIds],
   );
 
   function openDetail(id: string) {
@@ -542,20 +532,8 @@ export default function WmsMapPage() {
           <Control label="Colour by">
             <NativeSelect className="w-full sm:w-auto" value={viewMode} onChange={(event) => setViewMode(event.target.value as ViewMode)}>
               <option value="status">Status</option>
-              <option value="zone">Zone</option>
               <option value="occupancy">Occupancy</option>
               <option value="purpose">Purpose</option>
-            </NativeSelect>
-          </Control>
-          <Control label="Zone">
-            <NativeSelect className="w-full sm:w-auto" value={zoneFilter} onChange={(event) => setZoneFilter(event.target.value)}>
-              <option value="all">All zones</option>
-              <option value="none">No zone</option>
-              {zones.map((zone) => (
-                <option key={zone.id} value={zone.id}>
-                  {zone.name}
-                </option>
-              ))}
             </NativeSelect>
           </Control>
           <Control label="Status">
@@ -647,7 +625,6 @@ export default function WmsMapPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         location={detailLocation}
-        zone={detailLocation?.zoneId ? zoneById.get(detailLocation.zoneId) ?? null : null}
         purpose={detailLocation?.purposeId ? purposeById.get(detailLocation.purposeId) ?? null : null}
         occupancy={detailLocation ? occupancy.get(detailLocation.id) ?? null : null}
         palletsHere={detailLocation ? palletsLocatedAt(detailLocation.id, pallets, inventory) : []}

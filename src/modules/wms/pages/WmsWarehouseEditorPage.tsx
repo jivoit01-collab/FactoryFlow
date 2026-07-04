@@ -52,7 +52,7 @@ import {
   renameLocation,
 } from '../services';
 import { useWarehouseEditor, useWmsEnabled, useWmsRole, wmsStore } from '../store';
-import type { CellPurpose, WarehouseLocation, Zone } from '../types';
+import type { CellPurpose, WarehouseLocation } from '../types';
 
 export default function WmsWarehouseEditorPage() {
   const { warehouseId = '' } = useParams();
@@ -62,7 +62,6 @@ export default function WmsWarehouseEditorPage() {
   const { bundle, loading, busy, canUndo, canRedo, mutate, undo, redo } = editor;
 
   const warehouse = bundle?.warehouse ?? null;
-  const zones = bundle?.zones ?? [];
   const purposes = bundle?.purposes ?? [];
   const areas = useMemo(() => bundle?.warehouse.areas ?? [], [bundle]);
   // One entry per logical area (blocks sharing a groupId), for "add to existing".
@@ -82,7 +81,6 @@ export default function WmsWarehouseEditorPage() {
   const [level, setLevel] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<{ column: number; row: number } | null>(null);
-  const [tintBy, setTintBy] = useState<'zone' | 'purpose' | 'area'>('zone');
   const [showFullGrid, setShowFullGrid] = useState(false);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<WarehouseLocation | null>(null);
@@ -90,7 +88,6 @@ export default function WmsWarehouseEditorPage() {
   const [propsTargets, setPropsTargets] = useState<WarehouseLocation[]>([]);
   const [propsOpen, setPropsOpen] = useState(false);
 
-  const zoneById = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
   const purposeById = useMemo(() => new Map(purposes.map((purpose) => [purpose.id, purpose])), [purposes]);
   const outsideIds = useMemo(
     () => (warehouse ? outsideLocationIds(warehouse, locations) : new Set<string>()),
@@ -103,9 +100,16 @@ export default function WmsWarehouseEditorPage() {
     [locations, safeLevel],
   );
 
-  const cells: GridCell[] = useMemo(
-    () =>
-      levelLocations.map((location) => ({
+  const cells: GridCell[] = useMemo(() => {
+    // Group key of the area covering a cell (null when outside) — for outlines.
+    const areaKeyAt = (column: number, row: number) => {
+      const area = findArea(areas, column, row);
+      return area ? area.groupId ?? area.id : null;
+    };
+    return levelLocations.map((location) => {
+      const area = showFullGrid ? null : findArea(areas, location.column, location.row);
+      const key = area ? area.groupId ?? area.id : null;
+      return {
         id: location.id,
         column: location.column,
         row: location.row,
@@ -124,18 +128,24 @@ export default function WmsWarehouseEditorPage() {
                 location.level,
               )
             : location.code,
-        zoneColor: location.zoneId ? zoneById.get(location.zoneId)?.color ?? null : null,
-        purposeColor:
-          tintBy === 'purpose' && location.purposeId
-            ? purposeById.get(location.purposeId)?.color ?? null
-            : null,
-        areaColor:
-          tintBy === 'area' ? findArea(areas, location.column, location.row)?.color ?? null : null,
+        // Purpose is the single colour axis for a cell.
+        purposeColor: location.purposeId ? purposeById.get(location.purposeId)?.color ?? null : null,
+        // Area is shown as an outline around its region, not a fill.
+        areaColor: area?.color ?? null,
+        areaEdges: area
+          ? {
+              top: areaKeyAt(location.column, location.row - 1) !== key,
+              bottom: areaKeyAt(location.column, location.row + 1) !== key,
+              left: areaKeyAt(location.column - 1, location.row) !== key,
+              right: areaKeyAt(location.column + 1, location.row) !== key,
+            }
+          : undefined,
         outside: showFullGrid ? false : outsideIds.has(location.id),
         enabled: location.enabled,
         status: location.status,
-      })),
-    [levelLocations, zoneById, purposeById, areas, outsideIds, tintBy, showFullGrid, warehouse],
+      };
+    });
+  }, [levelLocations, purposeById, areas, outsideIds, showFullGrid, warehouse],
   );
 
   const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
@@ -224,7 +234,6 @@ export default function WmsWarehouseEditorPage() {
         : `Created area "${value.name}" and renumbered its cells.`,
     );
     setAreaDialogOpen(false);
-    setTintBy('area');
   }
 
   function removeArea(areaId: string) {
@@ -273,7 +282,6 @@ export default function WmsWarehouseEditorPage() {
   function handleSaveProperties(
     draft: LocationDraft,
     touched: Set<LocationDraftField>,
-    newZones: Zone[],
     newPurposes: CellPurpose[],
   ) {
     const ids = new Set(propsTargets.map((location) => location.id));
@@ -281,8 +289,7 @@ export default function WmsWarehouseEditorPage() {
       () =>
         mutate((current) => ({
           ...current,
-          // Persist any zones/purposes created inline in the drawer.
-          zones: newZones.length ? [...current.zones, ...newZones] : current.zones,
+          // Persist any purposes created inline in the drawer.
           purposes: newPurposes.length ? [...current.purposes, ...newPurposes] : current.purposes,
           locations: current.locations.map((location) =>
             ids.has(location.id) ? applyLocationDraft(location, draft, touched) : location,
@@ -290,7 +297,6 @@ export default function WmsWarehouseEditorPage() {
         })),
       ids.size > 1 ? `Updated ${ids.size} locations.` : 'Location updated.',
     );
-    if (newPurposes.length) setTintBy('purpose');
     setPropsOpen(false);
   }
 
@@ -465,21 +471,6 @@ export default function WmsWarehouseEditorPage() {
         </CardContent>
       </Card>
 
-      {/* Zone legend */}
-      {zones.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {zones.map((zone) => (
-            <Badge key={zone.id} variant="outline" className="gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: zone.color }} />
-              {zone.name}
-              {zone.temperatureClass ? (
-                <span className="text-[10px] text-muted-foreground">· {zone.temperatureClass}</span>
-              ) : null}
-            </Badge>
-          ))}
-        </div>
-      ) : null}
-
       {/* Purpose legend */}
       {purposes.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -541,20 +532,6 @@ export default function WmsWarehouseEditorPage() {
               >
                 {showFullGrid ? 'Areas view' : 'Full grid'}
               </Button>
-            ) : null}
-            {purposes.length > 0 || areas.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Tint by</span>
-                <NativeSelect
-                  className="h-9 w-28"
-                  value={tintBy}
-                  onChange={(event) => setTintBy(event.target.value as 'zone' | 'purpose' | 'area')}
-                >
-                  <option value="zone">Zone</option>
-                  {purposes.length > 0 ? <option value="purpose">Purpose</option> : null}
-                  {areas.length > 0 ? <option value="area">Area</option> : null}
-                </NativeSelect>
-              </div>
             ) : null}
             {selectedArray.length === 1 ? (
               <Button
@@ -627,7 +604,7 @@ export default function WmsWarehouseEditorPage() {
               Clear
             </Button>
             <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
-              Assign zone, purpose &amp; enabled state in <span className="font-medium">Properties</span>
+              Set purpose &amp; enabled state in <span className="font-medium">Properties</span>
             </span>
           </CardContent>
         </Card>
@@ -668,7 +645,6 @@ export default function WmsWarehouseEditorPage() {
         open={propsOpen}
         onOpenChange={setPropsOpen}
         locations={propsTargets}
-        zones={zones}
         purposes={purposes}
         onSave={handleSaveProperties}
       />
