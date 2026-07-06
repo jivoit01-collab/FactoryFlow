@@ -19,7 +19,6 @@ export interface MeasureOption {
 }
 
 export const MEASURE_OPTIONS: readonly MeasureOption[] = [
-  { key: 'amount', label: 'Amount (₹)', short: '₹', unit: '' },
   { key: 'weight', label: 'Weight (kg)', short: 'Weight', unit: 'kg' },
   { key: 'litres', label: 'Litres', short: 'Litres', unit: 'L' },
   { key: 'boxes', label: 'Boxes', short: 'Boxes', unit: '' },

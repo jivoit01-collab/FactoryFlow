@@ -1,7 +1,8 @@
 // Dispatch Fulfilment dashboard — request/response DTOs.
 // Mirrors GET /api/v1/dispatch-plans/dashboard/summary/
 
-export type DispatchMeasure = 'amount' | 'weight' | 'litres' | 'boxes';
+/** Quantity measures for the toggle (money is always shown separately). */
+export type DispatchMeasure = 'weight' | 'litres' | 'boxes';
 
 export interface DispatchFulfilmentFilters {
   /** inclusive start date, YYYY-MM-DD */
@@ -10,39 +11,27 @@ export interface DispatchFulfilmentFilters {
   to: string;
 }
 
-export interface BilledTotals {
-  count: number;
-  amount: number;
-}
-
-export interface PlannedTotals {
-  count: number;
-  amount: number;
-  weight: number;
-  litres: number;
-  /** plans do not store a box count */
-  boxes: number | null;
-}
-
 export interface DispatchedTotals {
+  /** trucks that left the gate in the window */
   count: number;
+  /** distinct invoices shipped */
+  bills: number;
+  /** Σ SAP invoice DocTotal — the value billed & dispatched */
   amount: number;
   weight: number;
   litres: number;
   boxes: number;
 }
 
-export interface FulfilmentRate {
-  amount: number | null;
-  weight: number | null;
-  litres: number | null;
+export interface BacklogTotals {
+  count: number;
+  amount: number;
+  weight: number;
 }
 
 export interface DispatchTotals {
-  billed: BilledTotals;
-  planned: PlannedTotals;
   dispatched: DispatchedTotals;
-  fulfillment_rate: FulfilmentRate;
+  backlog: BacklogTotals;
 }
 
 export interface StatusRow {
@@ -55,35 +44,27 @@ export interface StatusRow {
 
 export interface TrendRow {
   date: string;
-  planned_amount: number;
-  planned_weight: number;
-  planned_litres: number;
-  billed_amount: number;
   dispatched_amount: number;
   dispatched_weight: number;
   dispatched_litres: number;
   dispatched_boxes: number;
+  trucks: number;
 }
 
 export interface CustomerRow {
   customer_code: string;
   customer_name: string;
-  planned_amount: number;
-  planned_weight: number;
-  planned_litres: number;
-  planned_count: number;
   dispatched_amount: number;
   dispatched_weight: number;
   dispatched_litres: number;
   dispatched_boxes: number;
-  dispatched_count: number;
-  fulfillment_rate: number | null;
+  trucks: number;
 }
 
 export interface DispatchFulfilmentResponse {
   filters: {
-    company_code: string;
-    company_name: string;
+    company_codes: string[];
+    company_count: number;
     from: string;
     to: string;
   };
