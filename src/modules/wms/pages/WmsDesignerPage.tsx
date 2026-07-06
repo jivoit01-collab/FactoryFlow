@@ -116,7 +116,7 @@ export default function WmsDesignerPage() {
       const locations = isOwn
         ? generated.map((cell) => makeWarehouseLocation(warehouse.id, cell))
         : [];
-      await wmsStore.saveWarehouseBundle({ warehouse, zones: [], locations });
+      await wmsStore.saveWarehouseBundle({ warehouse, zones: [], purposes: [], locations });
       toast.success(
         isOwn
           ? `Created "${warehouse.name}" with ${locations.length} locations.`
@@ -151,7 +151,8 @@ export default function WmsDesignerPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Warehouse Designer</h1>
         <p className="text-sm text-muted-foreground">
-          Build a grid of storage locations, then refine zones and properties in the editor.
+          Build a grid where each cell is one pallet slot, then mark cells as paths, damaged-goods
+          areas, and more — and refine zones and properties — in the editor.
         </p>
       </div>
 
@@ -213,7 +214,9 @@ export default function WmsDesignerPage() {
           <Card>
             <CardHeader>
               <CardTitle>Grid</CardTitle>
-              <CardDescription>{total} locations</CardDescription>
+              <CardDescription>
+                {total} pallet{total === 1 ? '' : 's'} — one per cell
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
@@ -221,6 +224,9 @@ export default function WmsDesignerPage() {
                 <NumberField id="wh-rows" label="Rows" value={rows} onChange={setRows} />
                 <NumberField id="wh-levels" label="Levels" value={levels} onChange={setLevels} />
               </div>
+              <p className="text-xs text-muted-foreground">
+                Each cell is one pallet slot. Total pallet capacity = columns × rows × levels.
+              </p>
             </CardContent>
           </Card>
           ) : null}

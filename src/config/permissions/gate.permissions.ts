@@ -78,12 +78,14 @@ export const GATE_PERMISSIONS = {
   },
 
   BST_OUT: {
+    // Dedicated BST gate permission (warehouse BSTTransfer model), so gate staff
+    // can be granted just the gate-out step without any other gate/dashboard access.
     /** View BST gate-out entries */
-    VIEW: 'person_gatein.can_view_dashboard',
+    VIEW: 'warehouse.can_gate_bst',
     /** Create BST gate-out entries */
-    CREATE: 'person_gatein.can_view_dashboard',
-    /** Complete BST gate-out entries */
-    COMPLETE: 'person_gatein.can_view_dashboard',
+    CREATE: 'warehouse.can_gate_bst',
+    /** Mark the vehicle out (complete BST gate-out) */
+    COMPLETE: 'warehouse.can_gate_bst',
   },
 
   BST_IN: {
@@ -236,10 +238,12 @@ export const GATE_PERMISSIONS = {
   LABOUR_GATE: {
     /** View labour gate in/out entries */
     VIEW: 'labour_gate.view_labourgateentry',
-    /** Record how many labourers a contractor brought in */
+    /** Record how many labourers a contractor brought in (gate person) */
     RECORD_IN: 'labour_gate.can_record_labour_in',
-    /** Record labour leaving at the gate */
+    /** Record labour leaving at the gate (gate person) */
     RECORD_OUT: 'labour_gate.can_record_labour_out',
+    /** Split a contractor's gate labour across departments (HOD / Labour module) */
+    ALLOCATE: 'labour_gate.can_allocate_labour_department',
   },
 
   // ============================================

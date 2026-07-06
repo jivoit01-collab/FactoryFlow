@@ -116,7 +116,12 @@ export default function PrintHistoryPage() {
                       <td className="p-3 text-xs text-muted-foreground max-w-[200px] truncate">
                         {log.reprint_reason || '—'}
                       </td>
-                      <td className="p-3 text-xs">{log.printed_by_name || '—'}</td>
+                      <td className="p-3 text-xs">
+                        <div>{log.printed_by_name || '—'}</div>
+                        {log.printed_by_email && (
+                          <div className="text-muted-foreground">{log.printed_by_email}</div>
+                        )}
+                      </td>
                       <td className="p-3 text-xs text-muted-foreground">
                         {new Date(log.printed_at).toLocaleString()}
                       </td>

@@ -27,7 +27,7 @@ import {
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsScanButton } from '../components/WmsScanButton';
 import type { MoveItem, ValidationResult } from '../services';
-import { validateMove } from '../services';
+import { locationHoldsStock, validateMove } from '../services';
 import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import type {
   InventoryRecord,
@@ -45,6 +45,7 @@ export default function WmsTransferPage() {
   const enabled = useWmsEnabled();
   const { settings } = useWmsSettings();
   const { data: locations } = useWmsCollection('locations');
+  const { data: purposes } = useWmsCollection('cellPurposes');
   const { data: inventory } = useWmsCollection('inventory');
   const { data: pallets } = useWmsCollection('pallets');
   const { data: materials } = useWmsCollection('materials');
@@ -69,6 +70,11 @@ export default function WmsTransferPage() {
     for (const material of materials) map.set(material.itemCode, material);
     return map;
   }, [materials]);
+
+  const purposeById = useMemo(
+    () => new Map(purposes.map((purpose) => [purpose.id, purpose])),
+    [purposes],
+  );
 
   const sourceLocation = sourceLocationId ? locations.find((l) => l.id === sourceLocationId) ?? null : null;
   const destLocation = destLocationId ? locations.find((l) => l.id === destLocationId) ?? null : null;
@@ -183,8 +189,9 @@ export default function WmsTransferPage() {
       quantity: qty,
       added,
       source,
+      destinationHoldsStock: locationHoldsStock(destLocation, purposeById),
     });
-  }, [subject, destLocation, settings, quantity, inventory, pallets, materialByItem, sourceLocation]);
+  }, [subject, destLocation, settings, quantity, inventory, pallets, materialByItem, sourceLocation, purposeById]);
 
   async function confirm() {
     if (!subject || !destLocationId || !validation?.ok) return;

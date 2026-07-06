@@ -7,7 +7,7 @@
  * drives the map's colour. Pure and side-effect-free so it is easy to test and
  * cheap to recompute. Everything reads as empty until later steps add stock.
  */
-import type { InventoryRecord, Pallet, WarehouseLocation } from '../types';
+import type { CellPurpose, InventoryRecord, Pallet, WarehouseLocation } from '../types';
 
 export type DisplayStatus =
   | 'EMPTY'
@@ -32,6 +32,30 @@ export interface LocationOccupancy {
   /** Highest of the available ratios, as a percentage (0 when nothing applies). */
   occupancyPct: number;
   status: DisplayStatus;
+  /**
+   * Whether this cell holds stock (from its purpose). Non-storage cells — paths,
+   * obstacles, offices — are excluded from occupancy statistics and colouring.
+   */
+  isStorage: boolean;
+  /**
+   * Whether this cell is inside a numbered area. Cells outside every area carry
+   * no code and are excluded from occupancy statistics, moves, and putaway.
+   */
+  counted: boolean;
+}
+
+/**
+ * Whether a location holds stock, from its assigned purpose. A location with no
+ * purpose (or a purpose that is missing/holds stock) is treated as storage, so
+ * existing layouts behave exactly as before.
+ */
+export function locationHoldsStock(
+  location: WarehouseLocation,
+  purposesById?: Map<string, CellPurpose>,
+): boolean {
+  if (!location.purposeId || !purposesById) return true;
+  const purpose = purposesById.get(location.purposeId);
+  return purpose ? purpose.holdsStock : true;
 }
 
 /** Occupancy thresholds (percent). At/above FULL is treated as full. */
@@ -72,6 +96,8 @@ export function computeOccupancy(
   location: WarehouseLocation,
   inventoryHere: InventoryRecord[],
   palletsHere: Pallet[],
+  holdsStock = true,
+  counted = true,
 ): LocationOccupancy {
   const units = inventoryHere.reduce((sum, record) => sum + (record.quantity || 0), 0);
   const weight = inventoryHere.reduce((sum, record) => sum + (record.weight || 0), 0);
@@ -96,11 +122,13 @@ export function computeOccupancy(
       : 0;
 
   // Status precedence: manual lifecycle / reservation override occupancy colour.
+  // Non-storage cells never derive an occupancy status from stock.
   let status: DisplayStatus;
   if (!location.enabled) status = 'DISABLED';
   else if (location.status === 'BLOCKED' || location.status === 'DAMAGED') status = 'BLOCKED';
   else if (location.status === 'MAINTENANCE') status = 'MAINTENANCE';
   else if (location.status === 'RESERVED' || location.reservation.isReserved) status = 'RESERVED';
+  else if (!holdsStock) status = 'EMPTY';
   else status = occupancyStatus(occupancyPct);
 
   return {
@@ -112,8 +140,10 @@ export function computeOccupancy(
     unitRatio,
     weightRatio,
     volumeRatio,
-    occupancyPct,
+    occupancyPct: holdsStock && counted ? occupancyPct : 0,
     status,
+    isStorage: holdsStock,
+    counted,
   };
 }
 
@@ -148,6 +178,8 @@ export function buildOccupancyIndex(
   locations: WarehouseLocation[],
   inventory: InventoryRecord[],
   pallets: Pallet[],
+  purposesById?: Map<string, CellPurpose>,
+  outsideIds?: ReadonlySet<string>,
 ): Map<string, LocationOccupancy> {
   const inventoryByLocation = new Map<string, InventoryRecord[]>();
   for (const record of inventory) {
@@ -171,6 +203,8 @@ export function buildOccupancyIndex(
         location,
         inventoryByLocation.get(location.id) ?? [],
         palletsByLocation.get(location.id) ?? [],
+        locationHoldsStock(location, purposesById),
+        !outsideIds?.has(location.id),
       ),
     );
   }

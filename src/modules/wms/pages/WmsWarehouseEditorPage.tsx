@@ -24,12 +24,12 @@ import {
 } from '@/shared/components/ui';
 
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
+import { AreaDialog, type AreaFormValue } from '../components/AreaDialog';
 import { LocationPropertiesPanel } from '../components/LocationPropertiesPanel';
 import { TextPromptDialog } from '../components/TextPromptDialog';
 import { type GridCell,WarehouseGrid } from '../components/WarehouseGrid';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
-import { ZoneDialog, type ZoneFormValue } from '../components/ZoneDialog';
 import type { LocationDraft, LocationDraftField } from '../services';
 import {
   addColumn,
@@ -37,17 +37,22 @@ import {
   addRow,
   applyLocationDraft,
   axisLabel,
+  boundingRect,
+  buildLocationCode,
   buildLocationsCsv,
   buildTemplate,
-  makeZone,
+  findArea,
+  makeWarehouseArea,
+  outsideLocationIds,
+  rebuildWarehouseCodes,
+  rectsOverlap,
   removeColumn,
   removeLevel,
   removeRow,
   renameLocation,
 } from '../services';
 import { useWarehouseEditor, useWmsEnabled, useWmsRole, wmsStore } from '../store';
-import type { WarehouseLocation } from '../types';
-import { nowIso } from '../utils';
+import type { CellPurpose, WarehouseLocation } from '../types';
 
 export default function WmsWarehouseEditorPage() {
   const { warehouseId = '' } = useParams();
@@ -57,19 +62,37 @@ export default function WmsWarehouseEditorPage() {
   const { bundle, loading, busy, canUndo, canRedo, mutate, undo, redo } = editor;
 
   const warehouse = bundle?.warehouse ?? null;
-  const zones = bundle?.zones ?? [];
+  const purposes = bundle?.purposes ?? [];
+  const areas = useMemo(() => bundle?.warehouse.areas ?? [], [bundle]);
+  // One entry per logical area (blocks sharing a groupId), for "add to existing".
+  const areaGroups = useMemo(() => {
+    const seen = new Set<string>();
+    const groups: { groupId: string; name: string; prefix: string; color: string }[] = [];
+    for (const area of areas) {
+      const key = area.groupId ?? area.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      groups.push({ groupId: key, name: area.name, prefix: area.prefix, color: area.color });
+    }
+    return groups;
+  }, [areas]);
   const locations = useMemo(() => bundle?.locations ?? [], [bundle]);
 
   const [level, setLevel] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<{ column: number; row: number } | null>(null);
-  const [zoneDialogOpen, setZoneDialogOpen] = useState(false);
+  const [showFullGrid, setShowFullGrid] = useState(false);
+  const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<WarehouseLocation | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [propsTargets, setPropsTargets] = useState<WarehouseLocation[]>([]);
   const [propsOpen, setPropsOpen] = useState(false);
 
-  const zoneById = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
+  const purposeById = useMemo(() => new Map(purposes.map((purpose) => [purpose.id, purpose])), [purposes]);
+  const outsideIds = useMemo(
+    () => (warehouse ? outsideLocationIds(warehouse, locations) : new Set<string>()),
+    [warehouse, locations],
+  );
   const safeLevel = warehouse ? Math.min(level, Math.max(0, warehouse.levels - 1)) : 0;
 
   const levelLocations = useMemo(
@@ -77,22 +100,60 @@ export default function WmsWarehouseEditorPage() {
     [locations, safeLevel],
   );
 
-  const cells: GridCell[] = useMemo(
-    () =>
-      levelLocations.map((location) => ({
+  const cells: GridCell[] = useMemo(() => {
+    // Group key of the area covering a cell (null when outside) — for outlines.
+    const areaKeyAt = (column: number, row: number) => {
+      const area = findArea(areas, column, row);
+      return area ? area.groupId ?? area.id : null;
+    };
+    return levelLocations.map((location) => {
+      const area = showFullGrid ? null : findArea(areas, location.column, location.row);
+      const key = area ? area.groupId ?? area.id : null;
+      return {
         id: location.id,
         column: location.column,
         row: location.row,
-        code: location.code,
-        zoneColor: location.zoneId ? zoneById.get(location.zoneId)?.color ?? null : null,
+        // Full-grid view shows every cell's raw grid code (as before areas).
+        code:
+          showFullGrid && warehouse
+            ? buildLocationCode(
+                {
+                  columns: warehouse.columns,
+                  rows: warehouse.rows,
+                  levels: warehouse.levels,
+                  naming: warehouse.namingScheme,
+                },
+                location.column,
+                location.row,
+                location.level,
+              )
+            : location.code,
+        // Purpose is the single colour axis for a cell.
+        purposeColor: location.purposeId ? purposeById.get(location.purposeId)?.color ?? null : null,
+        // Area is shown as an outline around its region, not a fill.
+        areaColor: area?.color ?? null,
+        areaEdges: area
+          ? {
+              top: areaKeyAt(location.column, location.row - 1) !== key,
+              bottom: areaKeyAt(location.column, location.row + 1) !== key,
+              left: areaKeyAt(location.column - 1, location.row) !== key,
+              right: areaKeyAt(location.column + 1, location.row) !== key,
+            }
+          : undefined,
+        outside: showFullGrid ? false : outsideIds.has(location.id),
         enabled: location.enabled,
         status: location.status,
-      })),
-    [levelLocations, zoneById],
+      };
+    });
+  }, [levelLocations, purposeById, areas, outsideIds, showFullGrid, warehouse],
   );
 
   const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
   const isSelected = (id: string) => selectedIds.has(id);
+  const selectedRect = useMemo(
+    () => boundingRect(locations.filter((location) => selectedIds.has(location.id))),
+    [locations, selectedIds],
+  );
 
   function clearSelection() {
     setSelectedIds(new Set());
@@ -140,55 +201,59 @@ export default function WmsWarehouseEditorPage() {
     }
   }
 
-  // -- selection-based edits (all undoable via mutate) ----------------------
+  // -- areas (per-area numbering) -------------------------------------------
 
-  function handleCreateZone(value: ZoneFormValue) {
-    if (!warehouse) return;
-    const ids = new Set(selectedArray);
+  function handleCreateArea(value: AreaFormValue) {
+    if (!warehouse || !selectedRect) return;
+    const clash = areas.find((area) => rectsOverlap(area, selectedRect));
+    if (clash) {
+      toast.error(`Selection overlaps area "${clash.name}". Areas can't overlap — remove it first.`);
+      setAreaDialogOpen(false);
+      return;
+    }
     void run(
       () =>
         mutate((current) => {
-          const zone = makeZone(current.warehouse.id, value);
-          return {
-            warehouse: current.warehouse,
-            zones: [...current.zones, zone],
-            locations: current.locations.map((location) =>
-              ids.has(location.id) ? { ...location, zoneId: zone.id, updatedAt: nowIso() } : location,
-            ),
-          };
+          const area = makeWarehouseArea({
+            name: value.name,
+            prefix: value.prefix,
+            color: value.color,
+            groupId: value.groupId,
+            ...selectedRect,
+          });
+          return rebuildWarehouseCodes({
+            ...current,
+            warehouse: {
+              ...current.warehouse,
+              areas: [...(current.warehouse.areas ?? []), area],
+            },
+          });
         }),
-      `Created zone "${value.name}" over ${ids.size} locations.`,
+      value.groupId
+        ? `Added a block to "${value.name}" and renumbered.`
+        : `Created area "${value.name}" and renumbered its cells.`,
     );
-    setZoneDialogOpen(false);
+    setAreaDialogOpen(false);
   }
 
-  function assignZone(zoneId: string | null) {
-    const ids = new Set(selectedArray);
+  function removeArea(areaId: string) {
     void run(
       () =>
-        mutate((current) => ({
-          ...current,
-          locations: current.locations.map((location) =>
-            ids.has(location.id) ? { ...location, zoneId, updatedAt: nowIso() } : location,
-          ),
-        })),
-      zoneId ? 'Zone assigned.' : 'Zone cleared.',
+        mutate((current) =>
+          rebuildWarehouseCodes({
+            ...current,
+            warehouse: {
+              ...current.warehouse,
+              areas: (current.warehouse.areas ?? []).filter((area) => area.id !== areaId),
+            },
+          }),
+        ),
+      'Area removed.',
+      true,
     );
   }
 
-  function setEnabledForSelection(value: boolean) {
-    const ids = new Set(selectedArray);
-    void run(
-      () =>
-        mutate((current) => ({
-          ...current,
-          locations: current.locations.map((location) =>
-            ids.has(location.id) ? { ...location, enabled: value, updatedAt: nowIso() } : location,
-          ),
-        })),
-      value ? 'Locations enabled.' : 'Locations disabled.',
-    );
-  }
+  // -- selection-based edits (all undoable via mutate) ----------------------
 
   function deleteSelected() {
     if (!window.confirm(`Delete ${selectedArray.length} location(s)?`)) return;
@@ -214,12 +279,18 @@ export default function WmsWarehouseEditorPage() {
     setPropsOpen(true);
   }
 
-  function handleSaveProperties(draft: LocationDraft, touched: Set<LocationDraftField>) {
+  function handleSaveProperties(
+    draft: LocationDraft,
+    touched: Set<LocationDraftField>,
+    newPurposes: CellPurpose[],
+  ) {
     const ids = new Set(propsTargets.map((location) => location.id));
     void run(
       () =>
         mutate((current) => ({
           ...current,
+          // Persist any purposes created inline in the drawer.
+          purposes: newPurposes.length ? [...current.purposes, ...newPurposes] : current.purposes,
           locations: current.locations.map((location) =>
             ids.has(location.id) ? applyLocationDraft(location, draft, touched) : location,
           ),
@@ -400,16 +471,46 @@ export default function WmsWarehouseEditorPage() {
         </CardContent>
       </Card>
 
-      {/* Zone legend */}
-      {zones.length > 0 ? (
+      {/* Purpose legend */}
+      {purposes.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
-          {zones.map((zone) => (
-            <Badge key={zone.id} variant="outline" className="gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: zone.color }} />
-              {zone.name}
-              {zone.temperatureClass ? (
-                <span className="text-[10px] text-muted-foreground">· {zone.temperatureClass}</span>
+          {purposes.map((purpose) => (
+            <Badge key={purpose.id} variant="outline" className="gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: purpose.color }} />
+              {purpose.name}
+              <span className="text-[10px] text-muted-foreground">
+                · {purpose.holdsStock ? 'storage' : 'no stock'}
+              </span>
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Area legend */}
+      {areas.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {areas.map((area) => (
+            <Badge key={area.id} variant="outline" className="gap-1.5 pr-1">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: area.color }} />
+              {area.name}
+              {area.prefix ? (
+                <span className="font-mono text-[10px] text-muted-foreground">· {area.prefix}-</span>
               ) : null}
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {axisLabel(warehouse.namingScheme.columnStyle, area.startColumn, warehouse.columns)}
+                {axisLabel(warehouse.namingScheme.rowStyle, area.startRow, warehouse.rows)}–
+                {axisLabel(warehouse.namingScheme.columnStyle, area.endColumn, warehouse.columns)}
+                {axisLabel(warehouse.namingScheme.rowStyle, area.endRow, warehouse.rows)}
+              </span>
+              <button
+                type="button"
+                title="Remove area"
+                disabled={busy}
+                onClick={() => removeArea(area.id)}
+                className="rounded-sm px-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+              >
+                ×
+              </button>
             </Badge>
           ))}
         </div>
@@ -421,18 +522,30 @@ export default function WmsWarehouseEditorPage() {
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Click to select · shift-click for a range · click a header for a column/row
           </CardTitle>
-          {selectedArray.length === 1 ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const target = levelLocations.find((l) => l.id === selectedArray[0]) ?? null;
-                setRenameTarget(target);
-              }}
-            >
-              Rename
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {areas.length > 0 ? (
+              <Button
+                variant={showFullGrid ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => setShowFullGrid((value) => !value)}
+                title="Toggle between the numbered areas view and the full raw grid"
+              >
+                {showFullGrid ? 'Areas view' : 'Full grid'}
+              </Button>
+            ) : null}
+            {selectedArray.length === 1 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const target = levelLocations.find((l) => l.id === selectedArray[0]) ?? null;
+                  setRenameTarget(target);
+                }}
+              >
+                Rename
+              </Button>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent>
           <WarehouseGrid
@@ -464,32 +577,13 @@ export default function WmsWarehouseEditorPage() {
             >
               Properties
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setZoneDialogOpen(true)}>
-              Create zone
-            </Button>
-            <NativeSelect
-              className="h-9 w-32 sm:w-40"
-              value=""
-              disabled={busy || zones.length === 0}
-              onChange={(event) => {
-                if (event.target.value) assignZone(event.target.value);
-              }}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || !selectedRect}
+              onClick={() => setAreaDialogOpen(true)}
             >
-              <option value="">Assign zone…</option>
-              {zones.map((zone) => (
-                <option key={zone.id} value={zone.id}>
-                  {zone.name}
-                </option>
-              ))}
-            </NativeSelect>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => assignZone(null)}>
-              Clear zone
-            </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setEnabledForSelection(true)}>
-              Enable
-            </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setEnabledForSelection(false)}>
-              Disable
+              Create area
             </Button>
             <WmsPrintLabelButton
               label="Print labels"
@@ -503,31 +597,30 @@ export default function WmsWarehouseEditorPage() {
                   subtitle: l.type,
                 }))}
             />
-            {selectedArray.length === 1 ? (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => setRenameTarget(levelLocations.find((l) => isSelected(l.id)) ?? null)}
-              >
-                Rename
-              </Button>
-            ) : null}
             <Button size="sm" variant="destructive" disabled={busy} onClick={deleteSelected}>
               Delete
             </Button>
             <Button size="sm" variant="ghost" disabled={busy} onClick={clearSelection}>
               Clear
             </Button>
+            <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
+              Set purpose &amp; enabled state in <span className="font-medium">Properties</span>
+            </span>
           </CardContent>
         </Card>
       ) : null}
 
-      <ZoneDialog
-        open={zoneDialogOpen}
-        onOpenChange={setZoneDialogOpen}
-        locationCount={selectedArray.length}
-        onSubmit={handleCreateZone}
+      <AreaDialog
+        open={areaDialogOpen}
+        onOpenChange={setAreaDialogOpen}
+        cellCount={selectedArray.length}
+        existingAreas={areaGroups}
+        rectLabel={
+          selectedRect
+            ? `${axisLabel(warehouse.namingScheme.columnStyle, selectedRect.startColumn, warehouse.columns)}${axisLabel(warehouse.namingScheme.rowStyle, selectedRect.startRow, warehouse.rows)} → ${axisLabel(warehouse.namingScheme.columnStyle, selectedRect.endColumn, warehouse.columns)}${axisLabel(warehouse.namingScheme.rowStyle, selectedRect.endRow, warehouse.rows)}`
+            : undefined
+        }
+        onSubmit={handleCreateArea}
       />
       <TextPromptDialog
         open={renameTarget !== null}
@@ -552,7 +645,7 @@ export default function WmsWarehouseEditorPage() {
         open={propsOpen}
         onOpenChange={setPropsOpen}
         locations={propsTargets}
-        zones={zones}
+        purposes={purposes}
         onSave={handleSaveProperties}
       />
     </div>

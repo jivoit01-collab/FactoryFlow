@@ -7,12 +7,11 @@ import { GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import type { DateRange } from '@/core/store/filtersSlice';
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { useBSTGateOutwards } from '@/modules/warehouse/api';
 import { Card, CardContent, Input } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import {
-  useBSTGateInEntries,
-  useBSTGateReturnEntries,
   useEmptyVehicleEligibleEntries,
   useEmptyVehicleGateInEntries,
   useEmptyVehicleGateOutEntries,
@@ -401,6 +400,13 @@ function useGateDashboardStats(
     },
     { enabled: isVisible('construction') },
   );
+  const fixedAssetsCounts = useVehicleEntriesCount(
+    {
+      ...dateParams,
+      entry_type: ENTRY_TYPES.FIXED_ASSET,
+    },
+    { enabled: isVisible('fixed-assets') },
+  );
   const personDashboard = usePersonGateInDashboard(dateParams, {
     enabled: isVisible('visitor-labour'),
   });
@@ -412,10 +418,6 @@ function useGateDashboardStats(
   });
   const emptyVehicleOutEntries = useEmptyVehicleGateOutEntries(dateParams, {
     enabled: isVisible('empty-vehicle-out'),
-  });
-  const bstInEntries = useBSTGateInEntries(dateParams, { enabled: isVisible('bst-in') });
-  const bstReturnEntries = useBSTGateReturnEntries(dateParams, {
-    enabled: isVisible('bst-return'),
   });
   const rejectedQCReturnEntries = useRejectedQCReturnEntries(dateParams, {
     enabled: isVisible('rejected-qc-return'),
@@ -429,14 +431,7 @@ function useGateDashboardStats(
     },
     { enabled: isVisible('sales-dispatch') },
   );
-  const bstOutDockingEntries = useSalesDispatchEntries(
-    {
-      from_date: dateRange.from,
-      to_date: dateRange.to,
-      document_type: 'STOCK_TRANSFER',
-    },
-    { enabled: isVisible('bst-out') },
-  );
+  const bstOutEntries = useBSTGateOutwards(dateParams, { enabled: isVisible('bst-out') });
 
   const customerReturnEntries = useMemo(
     () =>
@@ -503,6 +498,10 @@ function useGateDashboardStats(
       isLoading: constructionCounts.isLoading,
       stats: buildVehicleCountStats(constructionCounts.data?.total_vehicle_entries),
     },
+    'fixed-assets': {
+      isLoading: fixedAssetsCounts.isLoading,
+      stats: buildVehicleCountStats(fixedAssetsCounts.data?.total_vehicle_entries),
+    },
     'visitor-labour': {
       isLoading: personDashboard.isLoading,
       stats: [
@@ -530,14 +529,6 @@ function useGateDashboardStats(
         isOpen: (entry) => !['COMPLETED', 'CANCELLED'].includes(entry.vehicle_entry_status),
         isCompleted: (entry) => entry.vehicle_entry_status === 'COMPLETED',
       }),
-    },
-    'bst-in': {
-      isLoading: bstInEntries.isLoading,
-      stats: buildEntryArrayStats(bstInEntries.data || []),
-    },
-    'bst-return': {
-      isLoading: bstReturnEntries.isLoading,
-      stats: buildEntryArrayStats(bstReturnEntries.data || [], { openLabel: 'Returned' }),
     },
     'customer-return': {
       stats: buildEntryArrayStats(customerReturnEntries, {
@@ -598,21 +589,12 @@ function useGateDashboardStats(
       ],
     },
     'bst-out': {
-      isLoading: bstOutDockingEntries.isLoading,
-      stats: buildEntryArrayStats(bstOutDockingEntries.data || [], {
-        openLabel: 'Pending',
-        isOpen: (entry) => entry.status === 'PRINT_COMMITTED',
-        isCompleted: (entry) => entry.status === 'DISPATCHED',
-        extraStats: [
-          {
-            label: 'Docking',
-            value: (bstOutDockingEntries.data || []).filter(
-              (entry) =>
-                !['PRINT_COMMITTED', 'DISPATCHED', 'CANCELLED', 'REJECTED'].includes(entry.status),
-            ).length,
-            tone: 'info',
-          },
-        ],
+      isLoading: bstOutEntries.isLoading,
+      stats: buildEntryArrayStats(bstOutEntries.data || [], {
+        openLabel: 'Awaiting',
+        isOpen: (entry) => entry.status === 'AWAITING_GATE_OUT',
+        isCompleted: (entry) =>
+          entry.status !== 'AWAITING_GATE_OUT' && entry.status !== 'CANCELLED',
       }),
     },
     'sales-dispatch': {

@@ -10,17 +10,14 @@ import {
   FileText,
   Home,
   PackageCheck,
-  ShieldCheck,
   Truck,
   User,
   Wrench,
-  XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_STATUS } from '@/config/constants';
-import type { ApiError } from '@/core/api/types';
 import { GateStatusBadge } from '@/modules/gate/components';
 import { EntryTimeSummary } from '@/shared/components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui';
@@ -37,7 +34,6 @@ import {
   useMaintenanceFullView,
   useReceiveMaintenanceSpare,
 } from '../../api/maintenance/maintenance.queries';
-import { securityCheckApi } from '../../api/securityCheck/securityCheck.api';
 import { useEntryId, useEntryStepTracker } from '../../hooks';
 
 // Status badge component
@@ -66,15 +62,6 @@ function UrgencyBadge({ level }: { level: string }) {
     <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getUrgencyColor())}>
       {level}
     </span>
-  );
-}
-
-// Check/Cross icon
-function BooleanIcon({ value }: { value: boolean }) {
-  return value ? (
-    <CheckCircle2 className="h-5 w-5 text-green-500" />
-  ) : (
-    <XCircle className="h-5 w-5 text-red-500" />
   );
 }
 
@@ -145,10 +132,8 @@ export default function ReviewPage() {
   const { entryId, entryIdNumber, isEditMode } = useEntryId();
   useEntryStepTracker();
 
-  const [isSubmittingSecurity, setIsSubmittingSecurity] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [securityJustSubmitted, setSecurityJustSubmitted] = useState(false);
 
   const handleNavigateToList = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
@@ -179,44 +164,6 @@ export default function ReviewPage() {
       navigate(`/gate/maintenance/edit/${entryId}/attachments`);
     } else {
       navigate(`/gate/maintenance/new/attachments?entryId=${entryId}`);
-    }
-  };
-
-  const handleSubmitSecurity = async () => {
-    if (!entryId) {
-      setApiErrors({ general: 'Entry ID is missing.' });
-      return;
-    }
-
-    setApiErrors({});
-    setIsSubmittingSecurity(true);
-
-    try {
-      // Get security data to retrieve the security ID
-      const securityData = await securityCheckApi.get(entryIdNumber!);
-
-      if (!securityData.id) {
-        setApiErrors({
-          general: 'Security check data not found. Please complete security check first.',
-        });
-        setIsSubmittingSecurity(false);
-        return;
-      }
-
-      // Submit security check (this locks Step 2 from updates)
-      await securityCheckApi.submit(securityData.id);
-
-      // Mark that security was just submitted so we can show Complete Entry button
-      setSecurityJustSubmitted(true);
-
-      // Refresh the gate entry data
-      queryClient.invalidateQueries({ queryKey: ['maintenanceFullView', entryIdNumber] });
-    } catch (error) {
-      const apiError = error as ApiError & { detail?: string };
-      const errorMessage = apiError.message || apiError.detail || 'Failed to submit security check';
-      setApiErrors({ general: errorMessage });
-    } finally {
-      setIsSubmittingSecurity(false);
     }
   };
 
@@ -449,43 +396,6 @@ export default function ReviewPage() {
           </CardContent>
         </Card>
 
-        {/* Security Check */}
-        {gateEntry.security_check && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5" />
-                Security Check
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="flex items-center gap-2">
-                  <BooleanIcon value={gateEntry.security_check.vehicle_condition_ok} />
-                  <span className="text-sm">Vehicle Condition OK</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <BooleanIcon value={gateEntry.security_check.tyre_condition_ok} />
-                  <span className="text-sm">Tyre Condition OK</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <BooleanIcon value={gateEntry.security_check.alcohol_test_passed} />
-                  <span className="text-sm">Alcohol Test Passed</span>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Inspected By</Label>
-                  <p className="font-medium">{gateEntry.security_check.inspected_by}</p>
-                </div>
-              </div>
-              {gateEntry.security_check.remarks && (
-                <div className="mt-4 pt-4 border-t">
-                  <Label className="text-muted-foreground text-xs">Remarks</Label>
-                  <p className="text-sm">{gateEntry.security_check.remarks}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         {/* Maintenance Details */}
         {maintenanceDetails && (
@@ -703,30 +613,6 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* Security Inspection Status */}
-        {!isAlreadyCompleted && (
-          <Card className="border-primary/50">
-            <CardContent className="pt-6">
-              {gateEntry.security_check?.is_submitted || securityJustSubmitted ? (
-                <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span className="font-medium">
-                    Security check submitted. Ready to complete entry.
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-base font-medium">Security Inspection Pending</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Submit security check to proceed with completing the entry
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Entry Time Summary */}
@@ -734,7 +620,7 @@ export default function ReviewPage() {
         return (
           <EntryTimeSummary
             startedAt={gateEntry.gate_entry.created_at}
-            completedAt={gateEntry.maintenance_details?.created_at || gateEntry.security_check?.created_at || gateEntry.gate_entry.created_at}
+            completedAt={gateEntry.maintenance_details?.created_at || gateEntry.gate_entry.created_at}
           />
         )
       })()}
@@ -750,23 +636,10 @@ export default function ReviewPage() {
             Cancel
           </Button>
           {!isAlreadyCompleted && (
-            <>
-              {!gateEntry?.security_check?.is_submitted && !securityJustSubmitted ? (
-                <Button
-                  type="button"
-                  onClick={handleSubmitSecurity}
-                  disabled={isSubmittingSecurity}
-                >
-                  <ShieldCheck className="h-4 w-4 mr-2" />
-                  {isSubmittingSecurity ? 'Submitting...' : 'Submit Security'}
-                </Button>
-              ) : (
-                <Button type="button" onClick={handleComplete} disabled={isCompleting}>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  {isCompleting ? 'Completing...' : 'Complete Entry'}
-                </Button>
-              )}
-            </>
+            <Button type="button" onClick={handleComplete} disabled={isCompleting}>
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {isCompleting ? 'Completing...' : 'Complete Entry'}
+            </Button>
           )}
           {isAlreadyCompleted && (
             <Button

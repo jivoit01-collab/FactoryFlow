@@ -6,6 +6,7 @@
  * REST API (`ApiAdapter`); this interface is the single seam they share.
  */
 import type {
+  CellPurpose,
   InventoryRecord,
   LayoutTemplate,
   MaterialWarehouseProfile,
@@ -25,6 +26,7 @@ import type {
 export interface WmsCollectionMap {
   warehouses: Warehouse;
   zones: Zone;
+  cellPurposes: CellPurpose;
   locations: WarehouseLocation;
   materials: MaterialWarehouseProfile;
   pallets: Pallet;
@@ -40,6 +42,7 @@ export type WmsCollection = keyof WmsCollectionMap;
 export const WMS_COLLECTIONS: readonly WmsCollection[] = [
   'warehouses',
   'zones',
+  'cellPurposes',
   'locations',
   'materials',
   'pallets',

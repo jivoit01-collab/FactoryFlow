@@ -48,6 +48,8 @@ import type {
   MaintenanceWorkOrderPhoto,
   MaintenanceWorkOrderPhotoUploadPayload,
   MaintenanceWorkOrderStatusPayload,
+  OrgDepartmentOption,
+  OrgDepartmentPayload,
   PMExecutionCompletePayload,
   PMExecutionSkipPayload,
   PMGenerateDuePayload,
@@ -683,6 +685,16 @@ export const maintenanceApi = {
   ): Promise<AssetDepartment> {
     const response = await apiClient.put<AssetDepartment>(
       EP.ASSET_DEPARTMENT_DETAIL(departmentId),
+      payload,
+    );
+    return response.data;
+  },
+
+  // Global org department (accounts.Department) — the department that assets and
+  // work orders actually reference. Created via the shared accounts endpoint.
+  async createOrgDepartment(payload: OrgDepartmentPayload): Promise<OrgDepartmentOption> {
+    const response = await apiClient.post<OrgDepartmentOption>(
+      API_ENDPOINTS.ACCOUNTS.DEPARTMENTS,
       payload,
     );
     return response.data;

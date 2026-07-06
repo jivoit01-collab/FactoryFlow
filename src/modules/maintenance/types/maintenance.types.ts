@@ -1024,9 +1024,23 @@ export interface MaintenanceOptions {
   categories: AssetCategory[];
   locations: AssetLocation[];
   departments: AssetDepartment[];
+  /** Global org departments (accounts.Department) used by the asset & work-order forms. */
+  org_departments: OrgDepartmentOption[];
   spare_categories: SpareCategory[];
   users: MaintenanceUserOption[];
   production_machines: ProductionMachineOption[];
+}
+
+export interface OrgDepartmentOption {
+  id: number;
+  name: string;
+  description: string;
+  assets_count?: number;
+}
+
+export interface OrgDepartmentPayload {
+  name: string;
+  description?: string;
 }
 
 export interface MaintenanceDashboardSummary {

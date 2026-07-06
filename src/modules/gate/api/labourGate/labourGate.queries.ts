@@ -73,3 +73,11 @@ export function useUndoLabourOut() {
     },
   });
 }
+
+export function useLabourEntryAudit(id: number | null) {
+  return useQuery({
+    queryKey: ['labourGateAudit', id],
+    queryFn: () => labourGateApi.audit(id as number),
+    enabled: id !== null,
+  });
+}

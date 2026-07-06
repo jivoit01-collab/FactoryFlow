@@ -21,7 +21,7 @@ import {
 
 import type { LocationOccupancy } from '../services';
 import { DISPLAY_STATUS_META } from '../services';
-import type { InventoryRecord, Pallet, WarehouseLocation, Zone } from '../types';
+import type { CellPurpose, InventoryRecord, Pallet, WarehouseLocation } from '../types';
 import { WmsPrintLabelButton } from './WmsPrintLabelButton';
 import { WmsScanButton } from './WmsScanButton';
 
@@ -29,7 +29,7 @@ interface LocationDetailPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   location: WarehouseLocation | null;
-  zone: Zone | null;
+  purpose: CellPurpose | null;
   occupancy: LocationOccupancy | null;
   palletsHere: Pallet[];
   inventoryHere: InventoryRecord[];
@@ -62,7 +62,7 @@ export function LocationDetailPanel({
   open,
   onOpenChange,
   location,
-  zone,
+  purpose,
   occupancy,
   palletsHere,
   inventoryHere,
@@ -71,6 +71,7 @@ export function LocationDetailPanel({
 }: LocationDetailPanelProps) {
   if (!location) return null;
   const meta = occupancy ? DISPLAY_STATUS_META[occupancy.status] : null;
+  const isStorage = purpose ? purpose.holdsStock : true;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -78,7 +79,12 @@ export function LocationDetailPanel({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             {location.code}
-            {meta ? (
+            {purpose ? (
+              <Badge variant="outline" className="gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: purpose.color }} />
+                {purpose.name}
+              </Badge>
+            ) : meta ? (
               <Badge variant="outline" className="gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.color }} />
                 {meta.label}
@@ -87,8 +93,8 @@ export function LocationDetailPanel({
           </SheetTitle>
           <SheetDescription>
             {location.type}
-            {zone ? ` · ${zone.name}` : ''}
-            {occupancy ? ` · ${Math.round(occupancy.occupancyPct)}% full` : ''}
+            {isStorage && occupancy ? ` · ${Math.round(occupancy.occupancyPct)}% full` : ''}
+            {!isStorage ? ' · non-storage cell' : ''}
           </SheetDescription>
           <div className="pt-1">
             <WmsPrintLabelButton
@@ -108,7 +114,7 @@ export function LocationDetailPanel({
 
         <div className="flex-1 space-y-5 py-4">
           {/* Capacity vs usage */}
-          {occupancy ? (
+          {occupancy && isStorage ? (
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">Capacity</h3>
               <Usage label="Pallets" used={occupancy.pallets} max={location.capacity.maxPallets} />
@@ -177,7 +183,7 @@ export function LocationDetailPanel({
         </div>
 
         {/* Scan-driven actions */}
-        {onPlacePalletHere ? (
+        {onPlacePalletHere && isStorage ? (
           <div className="flex flex-col gap-2 border-t pt-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <PackagePlus className="h-4 w-4" /> Place a pallet here

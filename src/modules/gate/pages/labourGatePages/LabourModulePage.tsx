@@ -1,4 +1,4 @@
-import { Building2, ChevronDown, RotateCcw, Save, Trash2, UserPlus, Users } from 'lucide-react';
+import { Building2, ChevronDown, History, RotateCcw, Save, Trash2, UserPlus, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -34,6 +34,7 @@ import type { Contractor } from '../../api/personGateIn/personGateIn.api';
 import { useContractors } from '../../api/personGateIn/personGateIn.queries';
 import { CreateContractorDialog } from '../../components/CreateContractorDialog';
 import { DepartmentSelect } from '../../components/DepartmentSelect';
+import { LabourHistoryDialog } from './LabourHistoryDialog';
 import { AuditLine } from './labourShared';
 import { fmtDateTime, todayLocal } from './labourUtils';
 
@@ -54,6 +55,7 @@ export default function LabourModulePage() {
   const [editCounts, setEditCounts] = useState<Record<number, string>>({});
   const [openDepts, setOpenDepts] = useState<Set<number>>(new Set());
   const [overAlloc, setOverAlloc] = useState<OverAlloc | null>(null);
+  const [historyEntry, setHistoryEntry] = useState<LabourGateEntry | null>(null);
 
   const { data: allEntries = [], isLoading } = useLabourGateDay(workDate);
   const { data: contractors = [] } = useContractors(true);
@@ -453,6 +455,15 @@ export default function LabourModulePage() {
                                     type="button"
                                     variant="ghost"
                                     size="sm"
+                                    onClick={() => setHistoryEntry(entry)}
+                                    title="History"
+                                  >
+                                    <History className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => handleRemove(entry.id)}
                                     disabled={busy}
                                     title="Delete"
@@ -499,6 +510,15 @@ export default function LabourModulePage() {
                   <span className="text-sm font-medium text-muted-foreground">
                     {entry.count_in} released
                   </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHistoryEntry(entry)}
+                    title="History"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
                   {entry.can_restore && (
                     <Button
                       type="button"
@@ -557,6 +577,20 @@ export default function LabourModulePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Per-entry audit trail */}
+      <LabourHistoryDialog
+        entryId={historyEntry?.id ?? null}
+        title={
+          historyEntry
+            ? `${historyEntry.contractor_name ?? `#${historyEntry.contractor}`}${
+                historyEntry.department_name ? ` · ${historyEntry.department_name}` : ''
+              }`
+            : ''
+        }
+        open={historyEntry != null}
+        onOpenChange={(o) => !o && setHistoryEntry(null)}
+      />
     </div>
   );
 }

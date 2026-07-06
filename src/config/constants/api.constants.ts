@@ -277,8 +277,6 @@ export const API_ENDPOINTS = {
     CHEMIST_DECISION: (id: number) => `/quality-control/inspections/${id}/chemist-decision/`,
     MANAGER_DECISION: (id: number) => `/quality-control/inspections/${id}/manager-decision/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
-    FACTORY_HEAD_DECISION: (id: number) =>
-      `/quality-control/inspections/${id}/factory-head-decision/`,
 
     // Production QC
     PRODUCTION_QC_LIST: '/quality-control/production-qc/',
@@ -475,6 +473,36 @@ export const API_ENDPOINTS = {
       `/maintenance/spare-requests/${requestId}/return-unused/`,
     SPARE_REQUEST_CANCEL: (requestId: number) => `/maintenance/spare-requests/${requestId}/cancel/`,
     SPARE_MOVEMENTS: '/maintenance/spare-movements/',
+    // Fire department store — mirrors the spare store contract with its own data.
+    FIRE_CATEGORIES: '/maintenance/fire-categories/',
+    FIRE_CATEGORY_DETAIL: (categoryId: number) => `/maintenance/fire-categories/${categoryId}/`,
+    FIRE_ITEMS: '/maintenance/fire/',
+    FIRE_ITEM_DETAIL: (itemId: number) => `/maintenance/fire/${itemId}/`,
+    FIRE_ITEMS_LOW_STOCK: '/maintenance/fire/low-stock/',
+    FIRE_ITEM_ADJUST_STOCK: (itemId: number) => `/maintenance/fire/${itemId}/adjust-stock/`,
+    FIRE_REQUESTS: '/maintenance/fire-requests/',
+    FIRE_REQUEST_DETAIL: (requestId: number) => `/maintenance/fire-requests/${requestId}/`,
+    FIRE_REQUEST_ISSUE: (requestId: number) => `/maintenance/fire-requests/${requestId}/issue/`,
+    FIRE_REQUEST_CONSUME: (requestId: number) => `/maintenance/fire-requests/${requestId}/consume/`,
+    FIRE_REQUEST_RETURN_UNUSED: (requestId: number) =>
+      `/maintenance/fire-requests/${requestId}/return-unused/`,
+    FIRE_REQUEST_CANCEL: (requestId: number) => `/maintenance/fire-requests/${requestId}/cancel/`,
+    FIRE_MOVEMENTS: '/maintenance/fire-movements/',
+    // Fire shift reports — daily/shift equipment inspection with photos.
+    FIRE_REPORTS: '/maintenance/fire-reports/',
+    FIRE_REPORT_DETAIL: (reportId: number) => `/maintenance/fire-reports/${reportId}/`,
+    FIRE_REPORT_REVIEW: (reportId: number) => `/maintenance/fire-reports/${reportId}/review/`,
+    FIRE_REPORT_ITEMS: '/maintenance/fire-report-items/',
+    FIRE_REPORT_ITEM_DETAIL: (itemId: number) => `/maintenance/fire-report-items/${itemId}/`,
+    FIRE_REPORT_PHOTOS: '/maintenance/fire-report-photos/',
+    FIRE_REPORT_PHOTO_DETAIL: (photoId: number) => `/maintenance/fire-report-photos/${photoId}/`,
+    FIRE_REPORT_ATTACHMENTS: '/maintenance/fire-report-attachments/',
+    FIRE_REPORT_ATTACHMENT_DETAIL: (attachmentId: number) =>
+      `/maintenance/fire-report-attachments/${attachmentId}/`,
+    // Fire equipment issue / return register.
+    FIRE_ISSUES: '/maintenance/fire-issues/',
+    FIRE_ISSUE_DETAIL: (issueId: number) => `/maintenance/fire-issues/${issueId}/`,
+    FIRE_ISSUE_RETURN: (issueId: number) => `/maintenance/fire-issues/${issueId}/return/`,
     VENDOR_VISITS: '/maintenance/vendor-visits/',
     VENDOR_VISIT_DETAIL: (visitId: number) => `/maintenance/vendor-visits/${visitId}/`,
     VENDOR_VISIT_START: (visitId: number) => `/maintenance/vendor-visits/${visitId}/start/`,

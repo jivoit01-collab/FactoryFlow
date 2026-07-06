@@ -1,4 +1,5 @@
 import { AlertCircle, ClipboardCheck, Loader2, Trash2, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,7 +17,7 @@ import {
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { bstApi, useBSTTransfer, useRemoveBSTScan } from '../../api';
+import { bstApi, BST_QUERY_KEYS, useBSTTransfer, useRemoveBSTScan } from '../../api';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTBillTable } from './BSTBillTable';
 import { BSTStatusBadge } from './bstStatus';
@@ -28,6 +29,7 @@ export default function BSTScanPage() {
 
   const { data: transfer, isLoading, refetch } = useBSTTransfer(transferId);
   const removeMut = useRemoveBSTScan();
+  const queryClient = useQueryClient();
 
   const [manualBarcode, setManualBarcode] = useState('');
 
@@ -37,6 +39,11 @@ export default function BSTScanPage() {
   // What this BST is supposed to move (the SAP lines), shown with live progress.
   const items = transfer?.items ?? [];
   const billItemCodes = new Set(items.map((it) => it.item_code));
+  // Boxes to scan = the bill's total box count (line qty ÷ pieces-per-carton).
+  const totalBoxes = useMemo(
+    () => items.reduce((n, it) => n + (it.expected_boxes ?? 0), 0),
+    [items],
+  );
 
   const isAlreadyScanned = useCallback(
     (barcode: string) =>
@@ -53,7 +60,8 @@ export default function BSTScanPage() {
         return { duplicate: result.created_count === 0 && result.duplicate_count > 0 };
       },
       isAlreadyScanned,
-      onDrained: () => refetch(),
+      // Refresh the detail AND the dashboard/list counts (scanned_box_count).
+      onDrained: () => queryClient.invalidateQueries({ queryKey: BST_QUERY_KEYS.all }),
       onDuplicate: (barcode) => toast.warning(`${barcode}: already scanned`),
       onAlreadyInList: () => toast.warning('This box is already in the scan list'),
     });
@@ -90,7 +98,9 @@ export default function BSTScanPage() {
     <div className="space-y-6">
       <DashboardHeader
         title={`Scan Boxes — ${transfer.entry_no}`}
-        description={`${transfer.sap_from_warehouse || '—'} → ${transfer.sap_to_warehouse || '—'} · SAP #${transfer.sap_doc_num}`}
+        description={`${transfer.sap_from_warehouse || '—'} → ${transfer.sap_to_warehouse || '—'} · ${
+          transfer.doc_count > 1 ? `${transfer.doc_count} SAP documents` : `SAP #${transfer.sap_doc_num}`
+        }`}
       >
         <BSTStatusBadge status={transfer.status} />
       </DashboardHeader>
@@ -101,7 +111,7 @@ export default function BSTScanPage() {
           <div className="flex items-center justify-between">
             <p className="font-medium">Stock to transfer</p>
             <Badge variant="outline">
-              {scans.length} box{scans.length === 1 ? '' : 'es'} scanned
+              {scans.length} of {totalBoxes} box{totalBoxes === 1 ? '' : 'es'} scanned
             </Badge>
           </div>
           <BSTBillTable items={items} scans={scans} />
@@ -148,7 +158,7 @@ export default function BSTScanPage() {
                         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Syncing {pendingCount}…
                       </span>
                     ) : null}
-                    <span>Boxes are checked against this transfer&apos;s items and source warehouse.</span>
+                    <span>Only the bill&apos;s items are accepted, up to the bill box count, from the source warehouse.</span>
                   </p>
                   {scanner.error && <p className="text-xs text-red-600">{scanner.error}</p>}
                 </form>

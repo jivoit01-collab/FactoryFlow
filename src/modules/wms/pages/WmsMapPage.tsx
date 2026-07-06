@@ -41,6 +41,7 @@ import type { DisplayStatus } from '../services';
 import {
   buildOccupancyIndex,
   DISPLAY_STATUS_META,
+  outsideLocationIds,
   palletMoveItem,
   palletsLocatedAt,
   suggestPutaway,
@@ -55,15 +56,15 @@ import {
   wmsStore,
 } from '../store';
 import type {
+  CellPurpose,
   InventoryRecord,
   MaterialWarehouseProfile,
   Pallet,
   WarehouseLocation,
-  Zone,
 } from '../types';
 import { notifyFail, notifyOk } from '../utils';
 
-type ViewMode = 'status' | 'zone' | 'occupancy';
+type ViewMode = 'status' | 'occupancy' | 'purpose';
 
 interface PendingMove {
   pallet: Pallet;
@@ -88,7 +89,7 @@ export default function WmsMapPage() {
     ? requested
     : warehouses[0]?.id ?? null;
 
-  const { warehouse, zones, locations } = useWarehouseLayout(selectedId);
+  const { warehouse, purposes, locations } = useWarehouseLayout(selectedId);
   const { data: inventory } = useWmsCollection('inventory');
   const { data: pallets } = useWmsCollection('pallets');
   const { data: materials } = useWmsCollection('materials');
@@ -96,7 +97,6 @@ export default function WmsMapPage() {
 
   const [level, setLevel] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('status');
-  const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<DisplayStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -107,11 +107,18 @@ export default function WmsMapPage() {
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const occupancy = useMemo(
-    () => buildOccupancyIndex(locations, inventory, pallets),
-    [locations, inventory, pallets],
+  const purposeById = useMemo(
+    () => new Map(purposes.map((purpose) => [purpose.id, purpose])),
+    [purposes],
   );
-  const zoneById = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
+  const outsideIds = useMemo(
+    () => (warehouse ? outsideLocationIds(warehouse, locations) : new Set<string>()),
+    [warehouse, locations],
+  );
+  const occupancy = useMemo(
+    () => buildOccupancyIndex(locations, inventory, pallets, purposeById, outsideIds),
+    [locations, inventory, pallets, purposeById, outsideIds],
+  );
   const locationByCode = useMemo(() => {
     const map = new Map<string, WarehouseLocation>();
     for (const location of locations) map.set(location.code.toLowerCase(), location);
@@ -170,6 +177,7 @@ export default function WmsMapPage() {
     const valid = new Set<string>();
     for (const location of levelLocations) {
       if (location.id === moveSession.currentLocationId) continue;
+      if (outsideIds.has(location.id)) continue;
       const result = validatePalletMove({
         settings,
         pallet: moveSession,
@@ -177,11 +185,12 @@ export default function WmsMapPage() {
         destination: location,
         inventory,
         pallets,
+        purposesById: purposeById,
       });
       if (result.ok) valid.add(location.id);
     }
     return valid;
-  }, [moveSession, settings, levelLocations, moveProfile, inventory, pallets]);
+  }, [moveSession, settings, levelLocations, moveProfile, inventory, pallets, purposeById, outsideIds]);
 
   const suggestedIds = useMemo(() => {
     if (!moveSession || !settings) return new Set<string>();
@@ -190,17 +199,32 @@ export default function WmsMapPage() {
       item: palletMoveItem(moveSession, moveProfile),
       quantity: moveSession.totalUnits ?? 1,
       added: { pallets: 1, units: moveSession.totalUnits ?? 0, weight: 0, volume: 0 },
-      locations: levelLocations.filter((l) => l.id !== moveSession.currentLocationId),
+      locations: levelLocations.filter(
+        (l) => l.id !== moveSession.currentLocationId && !outsideIds.has(l.id),
+      ),
       inventory,
       pallets,
+      purposesById: purposeById,
       limit: 5,
     });
     return new Set(suggestions.map((s) => s.location.id));
-  }, [moveSession, settings, moveProfile, levelLocations, inventory, pallets]);
+  }, [moveSession, settings, moveProfile, levelLocations, inventory, pallets, purposeById, outsideIds]);
 
-  function colorFor(location: WarehouseLocation, zone: Zone | undefined): { color: string; hatch: boolean } {
+  function colorFor(
+    location: WarehouseLocation,
+    purpose: CellPurpose | undefined,
+  ): { color: string; hatch: boolean } {
+    // Cells outside every numbered area are shown as muted, uncounted space.
+    if (outsideIds.has(location.id)) return { color: '#e5e7eb', hatch: false };
     const occ = occupancy.get(location.id);
-    if (viewMode === 'zone') return { color: zone?.color ?? '#cbd5e1', hatch: !location.enabled };
+    if (viewMode === 'purpose') {
+      return { color: purpose?.color ?? '#cbd5e1', hatch: !location.enabled };
+    }
+    // Non-storage cells (paths, obstacles…) always show their purpose colour so
+    // they never masquerade as empty storage in the status/occupancy views.
+    if (purpose && !purpose.holdsStock) {
+      return { color: purpose.color, hatch: !location.enabled };
+    }
     if (viewMode === 'occupancy') {
       return { color: DISPLAY_STATUS_META[occupancyBucket(occ?.occupancyPct ?? 0)].color, hatch: false };
     }
@@ -210,19 +234,16 @@ export default function WmsMapPage() {
 
   function matchesFilters(location: WarehouseLocation): boolean {
     const occ = occupancy.get(location.id);
-    const zoneOk =
-      zoneFilter === 'all' ||
-      (zoneFilter === 'none' ? location.zoneId == null : location.zoneId === zoneFilter);
-    const statusOk = statusFilter === 'all' || occ?.status === statusFilter;
-    return zoneOk && statusOk;
+    return statusFilter === 'all' || occ?.status === statusFilter;
   }
 
   const cells: MapCell[] = useMemo(
     () =>
       levelLocations.map((location) => {
         const occ = occupancy.get(location.id);
-        const zone = location.zoneId ? zoneById.get(location.zoneId) : undefined;
-        const { color, hatch } = colorFor(location, zone);
+        const purpose = location.purposeId ? purposeById.get(location.purposeId) : undefined;
+        const isOutsideCell = outsideIds.has(location.id);
+        const { color, hatch } = colorFor(location, purpose);
 
         if (moveSession) {
           // In move mode the highlight channels show destination validity.
@@ -247,6 +268,20 @@ export default function WmsMapPage() {
           };
         }
 
+        if (isOutsideCell) {
+          return {
+            id: location.id,
+            column: location.column,
+            row: location.row,
+            code: '',
+            color,
+            hatch,
+            occupancyPct: 0,
+            dimmed: true,
+            tooltip: 'Outside the warehouse area',
+          };
+        }
+
         const passesFilter = matchesFilters(location);
         const isMatch = matchedIds.has(location.id);
         return {
@@ -259,11 +294,14 @@ export default function WmsMapPage() {
           occupancyPct: occ?.occupancyPct ?? 0,
           highlighted: searchText.length > 0 && isMatch,
           dimmed: !passesFilter || (searchText.length > 0 && !isMatch),
-          tooltip: `${location.code} · ${DISPLAY_STATUS_META[occ?.status ?? 'EMPTY'].label} · ${Math.round(occ?.occupancyPct ?? 0)}%${zone ? ` · ${zone.name}` : ''}`,
+          tooltip:
+            purpose && !purpose.holdsStock
+              ? `${location.code} · ${purpose.name}`
+              : `${location.code} · ${DISPLAY_STATUS_META[occ?.status ?? 'EMPTY'].label} · ${Math.round(occ?.occupancyPct ?? 0)}%${purpose ? ` · ${purpose.name}` : ''}`,
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [levelLocations, occupancy, zoneById, viewMode, zoneFilter, statusFilter, matchedIds, searchText, moveSession, validDestinationIds, suggestedIds],
+    [levelLocations, occupancy, purposeById, outsideIds, viewMode, statusFilter, matchedIds, searchText, moveSession, validDestinationIds, suggestedIds],
   );
 
   function openDetail(id: string) {
@@ -377,8 +415,10 @@ export default function WmsMapPage() {
       destination: pendingMove.destination,
       inventory,
       pallets,
+      purposesById: purposeById,
+      destinationOutside: outsideIds.has(pendingMove.destination.id),
     });
-  }, [pendingMove, settings, materialByItem, inventory, pallets]);
+  }, [pendingMove, settings, materialByItem, inventory, pallets, purposeById, outsideIds]);
 
   async function confirmMove() {
     if (!pendingMove || !pendingValidation?.ok) return;
@@ -492,19 +532,8 @@ export default function WmsMapPage() {
           <Control label="Colour by">
             <NativeSelect className="w-full sm:w-auto" value={viewMode} onChange={(event) => setViewMode(event.target.value as ViewMode)}>
               <option value="status">Status</option>
-              <option value="zone">Zone</option>
               <option value="occupancy">Occupancy</option>
-            </NativeSelect>
-          </Control>
-          <Control label="Zone">
-            <NativeSelect className="w-full sm:w-auto" value={zoneFilter} onChange={(event) => setZoneFilter(event.target.value)}>
-              <option value="all">All zones</option>
-              <option value="none">No zone</option>
-              {zones.map((zone) => (
-                <option key={zone.id} value={zone.id}>
-                  {zone.name}
-                </option>
-              ))}
+              <option value="purpose">Purpose</option>
             </NativeSelect>
           </Control>
           <Control label="Status">
@@ -548,7 +577,7 @@ export default function WmsMapPage() {
         </CardContent>
       </Card>
 
-      <MapLegend />
+      <MapLegend purposes={viewMode === 'purpose' ? purposes : undefined} />
 
       {/* Map (desktop) */}
       {warehouse ? (
@@ -596,7 +625,7 @@ export default function WmsMapPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         location={detailLocation}
-        zone={detailLocation?.zoneId ? zoneById.get(detailLocation.zoneId) ?? null : null}
+        purpose={detailLocation?.purposeId ? purposeById.get(detailLocation.purposeId) ?? null : null}
         occupancy={detailLocation ? occupancy.get(detailLocation.id) ?? null : null}
         palletsHere={detailLocation ? palletsLocatedAt(detailLocation.id, pallets, inventory) : []}
         inventoryHere={detailLocation ? inventoryByLocation.get(detailLocation.id) ?? [] : []}

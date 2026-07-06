@@ -40,11 +40,10 @@ describe('GRPO Module Config — Exports', () => {
     expect(content).toContain('ModuleConfig');
   });
 
-  it('imports GRPO_PERMISSIONS and GRPO_MODULE_PREFIX from @/config/permissions', () => {
+  it('imports GRPO_PERMISSIONS from @/config/permissions', () => {
     const content = readSource();
     expect(content).toContain("from '@/config/permissions'");
     expect(content).toContain('GRPO_PERMISSIONS');
-    expect(content).toContain('GRPO_MODULE_PREFIX');
   });
 });
 
@@ -53,10 +52,10 @@ describe('GRPO Module Config — Exports', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('GRPO Module Config — Lazy Pages', () => {
-  it('lazy loads GRPODashboardPage', () => {
+  it('lazy loads MaterialGRPOPage', () => {
     const content = readSource();
     expect(content).toContain(
-      "const GRPODashboardPage = lazy(() => import('./pages/GRPODashboardPage'))",
+      "const MaterialGRPOPage = lazy(() => import('./pages/MaterialGRPOPage'))",
     );
   });
 
@@ -171,28 +170,14 @@ describe('GRPO Module Config — Navigation', () => {
     expect(content).toContain('showInSidebar: true');
   });
 
-  it('navigation item has submenu enabled', () => {
+  it('navigation points at the single Material GRPO page', () => {
     const content = readSource();
-    expect(content).toContain('hasSubmenu: true');
+    expect(content).toContain("path: '/grpo/material'");
   });
 
-  it('navigation item uses GRPO_MODULE_PREFIX', () => {
+  it('navigation is a single item without a submenu', () => {
     const content = readSource();
-    expect(content).toContain('modulePrefix: GRPO_MODULE_PREFIX');
-  });
-
-  it('navigation children include Dashboard', () => {
-    const content = readSource();
-    expect(content).toContain("title: 'Dashboard'");
-  });
-
-  it('navigation children include Pending Entries', () => {
-    const content = readSource();
-    expect(content).toContain("title: 'Pending Entries'");
-  });
-
-  it('navigation children include Posting History', () => {
-    const content = readSource();
-    expect(content).toContain("title: 'Posting History'");
+    expect(content).not.toContain('hasSubmenu');
+    expect(content).not.toContain('children:');
   });
 });

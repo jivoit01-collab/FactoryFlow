@@ -1,5 +1,7 @@
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Clock,
   FileText,
   Plus,
@@ -8,7 +10,7 @@ import {
   Truck,
   User,
 } from 'lucide-react';
-import { type KeyboardEvent, useMemo, useRef, useState } from 'react';
+import { Fragment, type KeyboardEvent, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -31,7 +33,9 @@ import {
 import { cn } from '@/shared/utils';
 
 import {
+  buildEmptyVehicleGroups,
   buildExpectedDispatchVehicles,
+  type EmptyVehicleGroup,
   formatDispatchNumber,
 } from './emptyVehicleInDispatch';
 
@@ -140,6 +144,110 @@ export default function EmptyVehicleInPage() {
       ].some((value) => String(value || '').toLowerCase().includes(query))
     ));
   }, [entries, searchTerm, statusFilter]);
+
+  // One expandable row per physical truck (arrival, else vehicle) so a
+  // cross-company gate-in shows as a single vehicle entry; single-entry groups
+  // render exactly as before.
+  const vehicleGroups = useMemo(() => buildEmptyVehicleGroups(filteredEntries), [filteredEntries]);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
+  const toggleGroup = (key: string) =>
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const renderEntryRow = (entry: EmptyVehicleGateInEntry, indent: boolean) => (
+    <tr
+      key={entry.id}
+      className={cn(
+        'cursor-pointer border-t',
+        getPipelineStageRowClass(entry.pipeline_status?.stage) || 'hover:bg-muted/40',
+      )}
+      onClick={() => navigate(`/gate/empty-vehicle-in/new?gateInId=${entry.id}`)}
+    >
+      <td className={cn('whitespace-nowrap p-3 text-sm font-medium', indent && 'pl-9')}>
+        {entry.entry_no}
+      </td>
+      <td className="whitespace-nowrap p-3 text-sm">
+        {entry.company_name || entry.company_code ? (
+          <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+            {entry.company_name || entry.company_code}
+          </span>
+        ) : (
+          '-'
+        )}
+      </td>
+      <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_number}</td>
+      <td className="whitespace-nowrap p-3 text-sm">
+        <span className="inline-flex items-center gap-1">
+          <User className="h-3.5 w-3.5 text-muted-foreground" />
+          {entry.driver_name}
+        </span>
+      </td>
+      <td className="whitespace-nowrap p-3 text-sm">
+        {entry.pipeline_status ? (
+          <PipelineStatusBadge status={entry.pipeline_status} />
+        ) : (
+          <GateStatusBadge status={entry.vehicle_entry_status} />
+        )}
+      </td>
+      <td className="whitespace-nowrap p-3 text-sm">
+        <Badge variant="outline">{entry.reason_display}</Badge>
+      </td>
+      <td className="whitespace-nowrap p-3 text-sm">
+        <DocumentCell entry={entry} />
+      </td>
+      <td className="whitespace-nowrap p-3 text-sm">{entry.gate_in_date}</td>
+      <td className="whitespace-nowrap p-3 text-sm">{entry.in_time}</td>
+      <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
+        {entry.security_name || '-'}
+      </td>
+    </tr>
+  );
+
+  const renderGroupRow = (group: EmptyVehicleGroup) => {
+    const isOpen = expandedGroups.has(group.key);
+    return (
+      <tr
+        className="cursor-pointer border-t bg-muted/30 font-medium hover:bg-muted/50"
+        onClick={() => toggleGroup(group.key)}
+      >
+        <td className="whitespace-nowrap p-3 text-sm font-medium">
+          <div className="flex items-center gap-1.5">
+            {isOpen ? (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )}
+            <span>{group.subEntries.length} gate-ins</span>
+          </div>
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <div className="flex flex-wrap gap-1">
+            {group.companies.map((company) => (
+              <span
+                key={company}
+                className="inline-flex whitespace-nowrap rounded-full border bg-background px-2 py-0.5 text-xs font-medium"
+              >
+                {company}
+              </span>
+            ))}
+          </div>
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <div className="font-semibold">{group.vehicleNumber || '-'}</div>
+          {group.arrivalNo ? (
+            <div className="text-xs text-muted-foreground">{group.arrivalNo}</div>
+          ) : null}
+        </td>
+        <td className="p-3 text-sm text-muted-foreground" colSpan={7}>
+          {group.subEntries.length} entries — expand to view each company
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -386,60 +494,18 @@ export default function EmptyVehicleInPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEntries.map((entry) => (
-                    <tr
-                      key={entry.id}
-                      className={cn(
-                        'cursor-pointer border-t',
-                        getPipelineStageRowClass(entry.pipeline_status?.stage) || 'hover:bg-muted/40',
-                      )}
-                      onClick={() => navigate(`/gate/empty-vehicle-in/new?gateInId=${entry.id}`)}
-                    >
-                      <td className="whitespace-nowrap p-3 text-sm font-medium">
-                        {entry.entry_no}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {entry.company_name || entry.company_code ? (
-                          <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
-                            {entry.company_name || entry.company_code}
-                          </span>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {entry.vehicle_number}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        <span className="inline-flex items-center gap-1">
-                          <User className="h-3.5 w-3.5 text-muted-foreground" />
-                          {entry.driver_name}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {entry.pipeline_status ? (
-                          <PipelineStatusBadge status={entry.pipeline_status} />
-                        ) : (
-                          <GateStatusBadge status={entry.vehicle_entry_status} />
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        <Badge variant="outline">{entry.reason_display}</Badge>
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        <DocumentCell entry={entry} />
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {entry.gate_in_date}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {entry.in_time}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
-                        {entry.security_name || '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {vehicleGroups.map((group) =>
+                    group.subEntries.length === 1 ? (
+                      renderEntryRow(group.subEntries[0], false)
+                    ) : (
+                      <Fragment key={group.key}>
+                        {renderGroupRow(group)}
+                        {expandedGroups.has(group.key)
+                          ? group.subEntries.map((entry) => renderEntryRow(entry, true))
+                          : null}
+                      </Fragment>
+                    ),
+                  )}
                 </tbody>
               </table>
             </div>

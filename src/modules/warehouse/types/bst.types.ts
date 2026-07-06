@@ -29,6 +29,10 @@ export interface SAPStockTransferLine {
   uom: string;
   from_warehouse: string;
   to_warehouse: string;
+  /** Pieces per carton (SAP item-master sales factor). */
+  pcs_per_carton?: number;
+  /** Box count = quantity ÷ pieces-per-carton (the bill's box count). */
+  box_count?: number;
 }
 
 export interface SAPStockTransfer {
@@ -46,6 +50,10 @@ export interface SAPStockTransfer {
 
 export interface BSTTransferItem {
   id: number;
+  /** The BSTTransferDoc this line came from (for grouping the bill by document). */
+  doc: number | null;
+  /** SAP document number this line belongs to. */
+  sap_doc_num: string;
   line_num: number;
   item_code: string;
   item_name: string;
@@ -54,6 +62,18 @@ export interface BSTTransferItem {
   from_warehouse: string;
   to_warehouse: string;
   expected_boxes: number;
+}
+
+/** One SAP stock-transfer document included in a BST entry. */
+export interface BSTTransferDoc {
+  id: number;
+  sap_doc_entry: number;
+  sap_doc_num: string;
+  sap_doc_date: string | null;
+  sap_reference: string;
+  invoice_no: string;
+  item_count: number;
+  expected_box_count: number;
 }
 
 export interface BSTBoxScan {
@@ -95,6 +115,8 @@ export interface BSTTransferListItem {
   requires_gate: boolean;
   scanned_box_count: number;
   item_count: number;
+  /** Number of SAP documents combined into this entry. */
+  doc_count: number;
   scan_approved_at: string | null;
   dispatched_at: string | null;
   received_at: string | null;
@@ -112,13 +134,15 @@ export interface BSTTransferDetail extends BSTTransferListItem {
   received_by_name: string;
   accepted_count: number;
   rejected_count: number;
+  docs: BSTTransferDoc[];
   items: BSTTransferItem[];
   box_scans: BSTBoxScan[];
   updated_at: string;
 }
 
 export interface BSTCreatePayload {
-  sap_doc_entry: number;
+  /** One or more SAP documents; they must share the same source & destination warehouse. */
+  sap_doc_entries: number[];
   // Required only when requires_gate (the vehicle leaves the factory).
   vehicle?: number | null;
   driver?: number | null;

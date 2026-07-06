@@ -169,7 +169,7 @@ export function AssetFormDialog({
   const mastersReady =
     (options?.categories.length ?? 0) > 0 &&
     (options?.locations.length ?? 0) > 0 &&
-    (options?.departments.length ?? 0) > 0;
+    (options?.org_departments.length ?? 0) > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -240,7 +240,7 @@ export function AssetFormDialog({
                 required
               >
                 <SelectOption value="">Select department</SelectOption>
-                {options?.departments.map((department) => (
+                {options?.org_departments.map((department) => (
                   <SelectOption key={department.id} value={String(department.id)}>
                     {department.name}
                   </SelectOption>

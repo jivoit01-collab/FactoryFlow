@@ -141,3 +141,52 @@ export function formatDispatchNumber(value: number, fractionDigits = 2) {
     maximumFractionDigits: fractionDigits,
   });
 }
+
+/**
+ * One physical truck's gate-in rows, grouped so the "Empty Vehicle Entries"
+ * board can show a single expandable entry per vehicle instead of one row per
+ * company gate-in. Grouping is presentational only — each company keeps its own
+ * `EmptyVehicleGateIn` record underneath. Preferred key is the cross-company
+ * arrival (keeps distinct trips apart, folds cross-company siblings together);
+ * falls back to the vehicle for legacy/arrival-less gate-ins.
+ */
+export interface EmptyVehicleGroup {
+  key: string;
+  vehicleNumber: string;
+  arrivalNo: string | null;
+  companies: string[];
+  subEntries: EmptyVehicleGateInEntry[];
+}
+
+export function buildEmptyVehicleGroups(
+  entries: EmptyVehicleGateInEntry[],
+): EmptyVehicleGroup[] {
+  const groups = new Map<string, EmptyVehicleGroup>();
+  const order: string[] = [];
+  for (const entry of entries) {
+    const key =
+      entry.arrival != null
+        ? `arv:${entry.arrival}`
+        : entry.vehicle != null
+          ? `veh:${entry.vehicle}`
+          : `vno:${entry.vehicle_number ?? ''}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        key,
+        vehicleNumber: entry.vehicle_number || '',
+        arrivalNo: entry.arrival_no ?? null,
+        companies: [],
+        subEntries: [],
+      };
+      groups.set(key, group);
+      order.push(key);
+    }
+    group.subEntries.push(entry);
+    if (!group.vehicleNumber && entry.vehicle_number) group.vehicleNumber = entry.vehicle_number;
+    if (!group.arrivalNo && entry.arrival_no) group.arrivalNo = entry.arrival_no;
+    const company = entry.company_name || entry.company_code;
+    if (company && !group.companies.includes(company)) group.companies.push(company);
+  }
+  return order.map((key) => groups.get(key)!);
+}

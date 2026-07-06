@@ -1,10 +1,12 @@
 /** Builders that turn lightweight input into fully-formed WMS records. */
 import type {
+  CellPurpose,
   InventoryRecord,
   MovementLogEntry,
   MovementType,
   Pallet,
   PalletStatus,
+  WarehouseArea,
   WarehouseLocation,
   WmsId,
   Zone,
@@ -12,10 +14,14 @@ import type {
 import { createWmsId, nowIso } from '../utils';
 import type { GeneratedLocation } from './layout';
 
-/** Empty capacity / rules so a freshly generated block is unconstrained until edited (Step 4). */
+/**
+ * Default capacity / rules for a freshly generated block. Each grid cell
+ * represents a single pallet slot, so pallet capacity defaults to 1; the other
+ * dimensions stay unconstrained until edited (Step 4).
+ */
 function emptyLocationConfig() {
   return {
-    capacity: { maxPallets: null, maxUnits: null, maxWeight: null, maxVolume: null },
+    capacity: { maxPallets: 1, maxUnits: null, maxWeight: null, maxVolume: null },
     dimensions: { length: null, width: null, height: null },
     materialRules: {
       allowedMaterialTypes: [],
@@ -41,6 +47,7 @@ export function makeWarehouseLocation(
     id: createWmsId(),
     warehouseId,
     zoneId,
+    purposeId: null,
     code: generated.code,
     barcode: generated.barcode,
     column: generated.column,
@@ -51,6 +58,28 @@ export function makeWarehouseLocation(
     status: 'ACTIVE',
     enabled: true,
     notes: '',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+export interface CellPurposeInput {
+  name: string;
+  code?: string;
+  color: string;
+  holdsStock: boolean;
+}
+
+export function makeCellPurpose(warehouseId: WmsId, input: CellPurposeInput): CellPurpose {
+  const timestamp = nowIso();
+  return {
+    id: createWmsId(),
+    warehouseId,
+    code: input.code?.trim() || input.name.trim().toUpperCase().replace(/\s+/g, '-'),
+    name: input.name.trim(),
+    color: input.color,
+    holdsStock: input.holdsStock,
+    enabled: true,
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -185,6 +214,55 @@ export function makeMovement(input: MovementInput): MovementLogEntry {
     createdAt: nowIso(),
   };
 }
+
+export interface WarehouseAreaInput {
+  name: string;
+  prefix?: string;
+  color: string;
+  /** When set, this block joins an existing area (shared numbering). */
+  groupId?: string;
+  startColumn: number;
+  startRow: number;
+  endColumn: number;
+  endRow: number;
+}
+
+export function makeWarehouseArea(input: WarehouseAreaInput): WarehouseArea {
+  const id = createWmsId();
+  return {
+    id,
+    groupId: input.groupId || id,
+    name: input.name.trim(),
+    prefix: (input.prefix ?? '').trim(),
+    color: input.color,
+    startColumn: input.startColumn,
+    startRow: input.startRow,
+    endColumn: input.endColumn,
+    endRow: input.endRow,
+  };
+}
+
+/** Preset area colours offered in the editor. */
+export const AREA_COLOR_PRESETS: readonly string[] = [
+  '#2563eb', // blue
+  '#16a34a', // green
+  '#f59e0b', // amber
+  '#7c3aed', // violet
+  '#0891b2', // cyan
+  '#db2777', // pink
+];
+
+/** Preset cell-purpose colours offered in the editor. */
+export const PURPOSE_COLOR_PRESETS: readonly string[] = [
+  '#64748b', // slate — walkable path / aisle
+  '#dc2626', // red — damaged goods
+  '#f59e0b', // amber — staging
+  '#0891b2', // cyan — receiving / dock
+  '#7c3aed', // violet — quarantine
+  '#16a34a', // green — storage
+  '#a16207', // brown — obstacle / wall
+  '#db2777', // pink — returns
+];
 
 /** Preset zone colours offered in the designer. */
 export const ZONE_COLOR_PRESETS: readonly string[] = [

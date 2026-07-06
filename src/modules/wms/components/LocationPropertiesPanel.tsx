@@ -9,6 +9,7 @@
  */
 import { type ReactNode,useEffect, useMemo, useState } from 'react';
 
+import { SearchableSelect } from '@/shared/components';
 import {
   Button,
   Input,
@@ -29,10 +30,12 @@ import type { LocationDraft, LocationDraftField } from '../services';
 import {
   draftFromLocations,
   HAZMAT_CLASS_SUGGESTIONS,
+  makeCellPurpose,
   MATERIAL_TYPE_SUGGESTIONS,
   validateLocationDraft,
 } from '../services';
-import type { TemperatureClass, WarehouseLocation, Zone } from '../types';
+import type { CellPurpose, TemperatureClass, WarehouseLocation } from '../types';
+import { PurposeDialog } from './PurposeDialog';
 import { TagInput } from './TagInput';
 
 const LOCATION_TYPE_SUGGESTIONS = ['RACK', 'FLOOR', 'BIN', 'SHELF', 'BULK', 'DOCK'];
@@ -41,28 +44,40 @@ interface LocationPropertiesPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locations: WarehouseLocation[];
-  zones: Zone[];
-  onSave: (draft: LocationDraft, touched: Set<LocationDraftField>) => void | Promise<void>;
+  purposes: CellPurpose[];
+  onSave: (
+    draft: LocationDraft,
+    touched: Set<LocationDraftField>,
+    newPurposes: CellPurpose[],
+  ) => void | Promise<void>;
 }
 
 export function LocationPropertiesPanel({
   open,
   onOpenChange,
   locations,
-  zones,
+  purposes,
   onSave,
 }: LocationPropertiesPanelProps) {
   const isBulk = locations.length > 1;
   const signature = locations.map((location) => location.id).join(',');
+  const warehouseId = locations[0]?.warehouseId ?? '';
 
   const [draft, setDraft] = useState<LocationDraft>(() => draftFromLocations(locations));
   const [touched, setTouched] = useState<Set<LocationDraftField>>(new Set());
+  // Purposes created inline but not yet persisted — saved atomically with the
+  // property changes when the user clicks Save.
+  const [newPurposes, setNewPurposes] = useState<CellPurpose[]>([]);
+
+  const allPurposes = useMemo(() => [...purposes, ...newPurposes], [purposes, newPurposes]);
+  const purposeName = allPurposes.find((purpose) => purpose.id === draft.purposeId)?.name;
 
   // Re-seed the form whenever the drawer opens for a different target set.
   useEffect(() => {
     if (open && locations.length) {
       setDraft(draftFromLocations(locations));
       setTouched(new Set());
+      setNewPurposes([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, signature]);
@@ -77,7 +92,7 @@ export function LocationPropertiesPanel({
 
   function handleSave() {
     if (hasErrors || touched.size === 0) return;
-    void onSave(draft, touched);
+    void onSave(draft, touched, newPurposes);
   }
 
   if (!locations.length) return null;
@@ -112,19 +127,43 @@ export function LocationPropertiesPanel({
                 </Field>
               </>
             ) : null}
-            <Field label="Zone">
-              <NativeSelect
-                value={draft.zoneId ?? ''}
-                onChange={(event) => set('zoneId', event.target.value || null)}
-              >
-                <option value="">No zone</option>
-                {zones.map((zone) => (
-                  <option key={zone.id} value={zone.id}>
-                    {zone.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
+            <SearchableSelect<CellPurpose>
+              inputId="location-purpose"
+              label="Purpose"
+              items={allPurposes}
+              value={draft.purposeId ?? ''}
+              defaultDisplayText={purposeName}
+              isLoading={false}
+              placeholder="Storage (default)"
+              getItemKey={(purpose) => purpose.id}
+              getItemLabel={(purpose) => purpose.name}
+              renderItem={(purpose) => (
+                <span className="text-sm">
+                  {purpose.name}
+                  {purpose.holdsStock ? '' : ' · no stock'}
+                </span>
+              )}
+              loadingText="Loading purposes…"
+              emptyText="No purposes yet — add one."
+              notFoundText="No matching purpose."
+              addNewLabel="Add new purpose"
+              onItemSelect={(purpose) => set('purposeId', purpose.id)}
+              onClear={() => set('purposeId', null)}
+              renderCreateDialog={(dialogOpen, onDialogOpenChange, updateSelection) => (
+                <PurposeDialog
+                  open={dialogOpen}
+                  onOpenChange={onDialogOpenChange}
+                  locationCount={locations.length}
+                  onSubmit={(value) => {
+                    const purpose = makeCellPurpose(warehouseId, value);
+                    setNewPurposes((previous) => [...previous, purpose]);
+                    set('purposeId', purpose.id);
+                    updateSelection(purpose.id, purpose.name);
+                    onDialogOpenChange(false);
+                  }}
+                />
+              )}
+            />
             <Field label="Type">
               <Input
                 list="location-type-suggestions"

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, PackageCheck, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -15,7 +16,7 @@ import {
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { bstApi, useBSTIncomingDetail, useCompleteBSTReceive } from '../../api';
+import { bstApi, BST_QUERY_KEYS, useBSTIncomingDetail, useCompleteBSTReceive } from '../../api';
 import type { BSTReceiveStatus } from '../../types';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTStatusBadge } from './bstStatus';
@@ -40,8 +41,14 @@ export default function BSTReceivePage() {
   const transferId = Number(idParam);
   const navigate = useNavigate();
 
-  const { data: transfer, isLoading, refetch } = useBSTIncomingDetail(transferId);
+  const { data: transfer, isLoading } = useBSTIncomingDetail(transferId);
   const completeMut = useCompleteBSTReceive();
+  const queryClient = useQueryClient();
+
+  const refreshBst = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: BST_QUERY_KEYS.all }),
+    [queryClient],
+  );
 
   const [manualBarcode, setManualBarcode] = useState('');
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
@@ -81,7 +88,7 @@ export default function BSTReceivePage() {
     useBoxScanQueue({
       scanOne: (barcode) => decide(barcode, 'ACCEPTED'),
       isAlreadyScanned: isAlreadyAccepted,
-      onDrained: () => refetch(),
+      onDrained: refreshBst,
       onAlreadyInList: () => toast.info('Box already accepted'),
     });
 
@@ -97,7 +104,7 @@ export default function BSTReceivePage() {
     setDecidingBarcode(barcode);
     try {
       await decide(barcode, decision, reason);
-      await refetch();
+      await refreshBst();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not update box'));
     } finally {
@@ -130,7 +137,9 @@ export default function BSTReceivePage() {
     <div className="space-y-6">
       <DashboardHeader
         title={`Receive — ${transfer.entry_no}`}
-        description={`${transfer.sap_from_warehouse || '—'} → ${transfer.sap_to_warehouse || '—'} · SAP #${transfer.sap_doc_num}`}
+        description={`${transfer.sap_from_warehouse || '—'} → ${transfer.sap_to_warehouse || '—'} · ${
+          transfer.doc_count > 1 ? `${transfer.doc_count} SAP documents` : `SAP #${transfer.sap_doc_num}`
+        }`}
       >
         <BSTStatusBadge status={transfer.status} />
       </DashboardHeader>

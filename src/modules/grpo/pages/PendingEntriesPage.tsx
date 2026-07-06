@@ -1,9 +1,10 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, ShieldX } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, Search, ShieldX, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { getEntryStatusClasses } from '@/config/constants';
 import type { ApiError } from '@/core/api/types';
-import { Button } from '@/shared/components/ui';
+import { Button, Input } from '@/shared/components/ui';
 
 import { usePendingGRPOEntries } from '../api';
 
@@ -38,36 +39,63 @@ const formatDate = (dateStr?: string | null) => {
   }
 };
 
-export default function PendingEntriesPage() {
+export default function PendingEntriesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const { data: pendingEntries = [], isLoading, refetch, error } = usePendingGRPOEntries();
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
+  const [search, setSearch] = useState('');
+
+  const filteredEntries = useMemo(() => {
+    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return pendingEntries;
+    return pendingEntries.filter((entry) => {
+      const suppliers = entry.suppliers ?? [];
+      const haystack = [
+        entry.entry_no,
+        entry.status,
+        ...suppliers.flatMap((s) => [
+          s.supplier_name,
+          s.supplier_code,
+          ...s.po_receipts.map((r) => r.po_number),
+        ]),
+      ]
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .join(' ')
+        .toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    });
+  }, [pendingEntries, search]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/grpo/material')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">Pending Entries</h2>
+      {!embedded && (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => navigate('/grpo/material')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <h2 className="text-3xl font-bold tracking-tight">Pending Entries</h2>
+            </div>
+            <p className="text-muted-foreground">
+              Gate entries with POs pending GRPO posting to SAP
+            </p>
           </div>
-          <p className="text-muted-foreground">Gate entries with POs pending GRPO posting to SAP</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
+      )}
 
       {/* Permission Error */}
       {isPermissionError && (
@@ -118,12 +146,38 @@ export default function PendingEntriesPage() {
       {/* Entries Table */}
       {!isLoading && !error && pendingEntries.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Pending ({pendingEntries.length})
+          <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search entry, supplier, PO, status…"
+                className="pl-9 pr-9"
+                aria-label="Search pending entries"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <h3 className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+              Pending ({filteredEntries.length}
+              {filteredEntries.length !== pendingEntries.length ? ` of ${pendingEntries.length}` : ''})
             </h3>
           </div>
 
+          {filteredEntries.length === 0 ? (
+            <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
+              No entries match your search.
+            </div>
+          ) : (
           <div className="rounded-md border overflow-hidden">
             <div className="overflow-x-auto max-w-full">
               <table className="w-full min-w-[800px]">
@@ -140,7 +194,7 @@ export default function PendingEntriesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingEntries.map((entry) => {
+                  {filteredEntries.map((entry) => {
                     const suppliers = entry.suppliers ?? [];
                     const poNumbers = suppliers.flatMap((s) =>
                       s.po_receipts.map((r) => r.po_number),
@@ -216,6 +270,7 @@ export default function PendingEntriesPage() {
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

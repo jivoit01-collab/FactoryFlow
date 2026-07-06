@@ -9,7 +9,7 @@ import {
   validateLayoutParams,
 } from '../services/layout';
 import { rekeyWarehouseBundle } from '../services/warehouseIO';
-import { makeWarehouseLocation, makeZone } from '../services/factories';
+import { makeCellPurpose, makeWarehouseLocation, makeZone } from '../services/factories';
 import type { WarehouseNamingScheme } from '../types';
 
 describe('axisLabel', () => {
@@ -65,9 +65,11 @@ describe('validateLayoutParams', () => {
 });
 
 describe('rekeyWarehouseBundle', () => {
-  it('re-ids the warehouse and re-links zone references', () => {
+  it('re-ids the warehouse and re-links zone + purpose references', () => {
     const zone = makeZone('wh-1', { name: 'Cold', type: 'BULK', temperatureClass: 'FROZEN', color: '#000' });
+    const purpose = makeCellPurpose('wh-1', { name: 'Walkway', color: '#64748b', holdsStock: false });
     const location = makeWarehouseLocation('wh-1', { code: 'A-01', barcode: 'A-01', column: 0, row: 0, level: 0 }, zone.id);
+    location.purposeId = purpose.id;
     const warehouse = {
       id: 'wh-1',
       code: 'WH1',
@@ -83,15 +85,17 @@ describe('rekeyWarehouseBundle', () => {
     };
 
     const rekeyed = rekeyWarehouseBundle(
-      { warehouse, zones: [zone], locations: [location] },
+      { warehouse, zones: [zone], purposes: [purpose], locations: [location] },
       { name: 'Copy', code: 'COPY' },
     );
 
     expect(rekeyed.warehouse.id).not.toBe('wh-1');
     expect(rekeyed.warehouse.name).toBe('Copy');
     expect(rekeyed.zones[0]?.id).not.toBe(zone.id);
-    // The location's zoneId now points at the NEW zone id, not the old one.
+    expect(rekeyed.purposes[0]?.id).not.toBe(purpose.id);
+    // The location's zoneId/purposeId now point at the NEW ids, not the old ones.
     expect(rekeyed.locations[0]?.zoneId).toBe(rekeyed.zones[0]?.id);
+    expect(rekeyed.locations[0]?.purposeId).toBe(rekeyed.purposes[0]?.id);
     expect(rekeyed.locations[0]?.warehouseId).toBe(rekeyed.warehouse.id);
   });
 });

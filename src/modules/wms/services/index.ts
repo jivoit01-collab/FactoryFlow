@@ -1,11 +1,33 @@
-export { buildLocationsCsv, parseCsv, parseWarehouseCsv } from './csv';
-export type { InventoryInput, MovementInput, PalletInput,ZoneInput } from './factories';
 export {
+  areaContains,
+  boundingRect,
+  buildAreaCodeMap,
+  codeForCell,
+  findArea,
+  isOutside,
+  outsideLocationIds,
+  rectsOverlap,
+  warehouseAreas,
+} from './areas';
+export { buildLocationsCsv, parseCsv, parseWarehouseCsv } from './csv';
+export type {
+  CellPurposeInput,
+  InventoryInput,
+  MovementInput,
+  PalletInput,
+  WarehouseAreaInput,
+  ZoneInput,
+} from './factories';
+export {
+  AREA_COLOR_PRESETS,
+  makeCellPurpose,
   makeInventoryRecord,
   makeMovement,
   makePallet,
+  makeWarehouseArea,
   makeWarehouseLocation,
   makeZone,
+  PURPOSE_COLOR_PRESETS,
   ZONE_COLOR_PRESETS,
 } from './factories';
 export type { AxisStyle, GeneratedLocation, LayoutParams } from './layout';
@@ -22,6 +44,7 @@ export {
   addColumn,
   addLevel,
   addRow,
+  rebuildWarehouseCodes,
   removeAxis,
   removeColumn,
   removeLevel,
@@ -42,6 +65,7 @@ export {
   buildOccupancyIndex,
   computeOccupancy,
   DISPLAY_STATUS_META,
+  locationHoldsStock,
   OCCUPANCY_THRESHOLDS,
   palletsLocatedAt,
 } from './occupancy';

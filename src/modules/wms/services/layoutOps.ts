@@ -8,26 +8,37 @@
  * (`renameLocation`) is the one edit that sets a custom code and is therefore
  * NOT a structural op.
  */
-import type { WarehouseBundle } from './warehouseIO';
-import { buildLocationCode, type LayoutParams } from './layout';
-import { makeWarehouseLocation } from './factories';
 import type { WmsId } from '../types';
 import { nowIso } from '../utils';
+import { buildAreaCodeMap, codeForCell, warehouseAreas } from './areas';
+import { makeWarehouseLocation } from './factories';
+import type { WarehouseBundle } from './warehouseIO';
 
 type Axis = 'column' | 'row' | 'level';
 
-function dims(bundle: WarehouseBundle): LayoutParams {
-  const { columns, rows, levels, namingScheme } = bundle.warehouse;
-  return { columns, rows, levels, naming: namingScheme };
-}
-
-/** Recompute every location's code/barcode from the warehouse's current dims. */
+/**
+ * Recompute every location's code/barcode.
+ *
+ * With areas defined, each area is numbered from its corner, skipping disabled
+ * cells so codes are gapless (see `buildAreaCodeMap`); cells outside every area
+ * or disabled get a blank code. With no areas, the whole grid is numbered from
+ * its origin (legacy behaviour).
+ */
 function rebuildCodes(bundle: WarehouseBundle): WarehouseBundle {
-  const params = dims(bundle);
+  const { warehouse } = bundle;
   const timestamp = nowIso();
   const seen = new Set<string>();
+  const codeMap = warehouseAreas(warehouse).length
+    ? buildAreaCodeMap(warehouse, bundle.locations)
+    : null;
   const locations = bundle.locations.map((location) => {
-    let code = buildLocationCode(params, location.column, location.row, location.level);
+    const generated = codeMap
+      ? codeMap.get(location.id) ?? null
+      : codeForCell(warehouse, location.column, location.row, location.level);
+    if (generated == null) {
+      return { ...location, code: '', barcode: '', updatedAt: timestamp };
+    }
+    let code = generated;
     if (seen.has(code)) {
       let suffix = 2;
       while (seen.has(`${code}#${suffix}`)) suffix += 1;
@@ -37,6 +48,11 @@ function rebuildCodes(bundle: WarehouseBundle): WarehouseBundle {
     return { ...location, code, barcode: code, updatedAt: timestamp };
   });
   return { ...bundle, locations };
+}
+
+/** Rebuild every code (public entry for area edits that change numbering). */
+export function rebuildWarehouseCodes(bundle: WarehouseBundle): WarehouseBundle {
+  return rebuildCodes(bundle);
 }
 
 function axisCount(bundle: WarehouseBundle, axis: Axis): number {
@@ -78,6 +94,7 @@ export function addAxis(bundle: WarehouseBundle, axis: Axis): WarehouseBundle {
   return rebuildCodes({
     warehouse,
     zones: bundle.zones,
+    purposes: bundle.purposes,
     locations: [...bundle.locations, ...newLocations],
   });
 }
@@ -104,7 +121,7 @@ export function removeAxis(bundle: WarehouseBundle, axis: Axis, index: number): 
       return { ...location, level: shifted };
     });
 
-  return rebuildCodes({ warehouse, zones: bundle.zones, locations });
+  return rebuildCodes({ warehouse, zones: bundle.zones, purposes: bundle.purposes, locations });
 }
 
 export const addColumn = (bundle: WarehouseBundle) => addAxis(bundle, 'column');

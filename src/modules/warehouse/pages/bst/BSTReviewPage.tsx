@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/shared/utils';
 
 import { useApproveBST, useBSTTransfer } from '../../api';
 import { BSTBillTable } from './BSTBillTable';
+import { BSTDocList } from './BSTDocList';
 import { BSTStatusBadge } from './bstStatus';
 
 export default function BSTReviewPage() {
@@ -43,7 +44,9 @@ export default function BSTReviewPage() {
     <div className="space-y-6">
       <DashboardHeader
         title={`Review — ${t.entry_no}`}
-        description={`${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'} · SAP #${t.sap_doc_num}`}
+        description={`${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'} · ${
+          t.doc_count > 1 ? `${t.doc_count} SAP documents` : `SAP #${t.sap_doc_num}`
+        }`}
       >
         <BSTStatusBadge status={t.status} />
       </DashboardHeader>
@@ -53,7 +56,7 @@ export default function BSTReviewPage() {
         <CardContent className="pt-6 grid gap-x-8 gap-y-2 sm:grid-cols-2 text-sm">
           {(
             [
-              ['SAP Doc', t.sap_doc_num || '—'],
+              ['SAP Documents', t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—'],
               ['Invoice / Ref', t.invoice_no || '—'],
               ['Scanned boxes', String(totalBoxes)],
               ['Leaves on a vehicle', t.requires_gate ? 'Yes' : 'No'],
@@ -68,6 +71,16 @@ export default function BSTReviewPage() {
           ))}
         </CardContent>
       </Card>
+
+      {/* SAP documents (only when the entry combines more than one) */}
+      {t.docs.length > 1 && (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="font-medium mb-3">SAP documents ({t.docs.length})</p>
+            <BSTDocList docs={t.docs} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Bill vs scanned */}
       <Card>

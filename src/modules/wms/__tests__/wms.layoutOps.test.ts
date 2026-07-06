@@ -39,7 +39,7 @@ function makeBundle(columns = 3, rows = 2, levels = 1): WarehouseBundle {
   const locations = generateLayout({ columns, rows, levels, naming: DEFAULT_NAMING_SCHEME }).map((cell) =>
     makeWarehouseLocation(id, cell),
   );
-  return { warehouse, zones: [], locations };
+  return { warehouse, zones: [], purposes: [], locations };
 }
 
 describe('structural layout ops', () => {

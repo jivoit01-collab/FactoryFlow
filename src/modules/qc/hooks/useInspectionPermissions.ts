@@ -44,9 +44,18 @@ export function useInspectionPermissions(inspection: Inspection | null | undefin
     const isSubmitted = inspection?.workflow_status === WORKFLOW_STATUS.SUBMITTED;
     const isChemistApproved = inspection?.workflow_status === WORKFLOW_STATUS.QA_CHEMIST_APPROVED;
     const isLocked = inspection?.is_locked ?? false;
+    const isManagerDecided = inspection?.workflow_status === WORKFLOW_STATUS.QAM_APPROVED;
     const isCompleted =
       inspection?.workflow_status === WORKFLOW_STATUS.QAM_APPROVED ||
       inspection?.workflow_status === WORKFLOW_STATUS.REJECTED;
+
+    // The QA Manager's decision is final, but they may revise it until the
+    // outcome is committed downstream: once a GRPO is posted, or the rejected
+    // material has left the gate, it's locked. Mirrors the backend guards in
+    // InspectionApproveQAMAPI.
+    const grpoDone = Boolean(inspection?.is_grpo_done);
+    const materialSentOut = Boolean(inspection?.rejected_qc_return_entry_id);
+    const canManagerRedecide = isManagerDecided && !grpoDone && !materialSentOut;
 
     // Contextual permissions (combining permission + workflow state)
     return {
@@ -68,8 +77,12 @@ export function useInspectionPermissions(inspection: Inspection | null | undefin
       /** Show chemist approval section - inspection is SUBMITTED and user has chemist approval permission */
       showChemistApproval: isSubmitted && canApproveAsChemist,
 
-      /** Show QAM approval section - inspection is QA_CHEMIST_APPROVED and user has QAM approval permission */
-      showQAMApproval: isChemistApproved && canApproveAsQAM,
+      /**
+       * Show QAM approval section - inspection is awaiting the manager
+       * (QA_CHEMIST_APPROVED) OR already decided but still changeable
+       * (canManagerRedecide), and the user has QAM approval permission.
+       */
+      showQAMApproval: (isChemistApproved || canManagerRedecide) && canApproveAsQAM,
 
       /** Show reject button - inspection is in approvable state and user has reject permission */
       showRejectButton: (isSubmitted || isChemistApproved) && canReject,

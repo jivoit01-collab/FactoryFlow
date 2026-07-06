@@ -1,5 +1,7 @@
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Clock,
   Download,
   FileText,
@@ -12,7 +14,7 @@ import {
   Truck,
   Unlock,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -45,6 +47,10 @@ import { cn, getErrorMessage } from '@/shared/utils';
 
 import { ExpectedVehiclesSection } from './ExpectedVehiclesSection';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
+import {
+  buildDockingVehicleGroups,
+  type DockingVehicleGroup,
+} from './salesDispatchVehicleGrouping';
 
 const GATE_OUT_PENDING_STATUS = 'PRINT_COMMITTED';
 const GATE_OUT_COMPLETED_STATUS = 'DISPATCHED';
@@ -453,6 +459,184 @@ function DispatchTable({
     return byId ?? openDockingByVehicle.get(`no:${booking.vehicle_no}`);
   };
 
+  // One expandable row per physical truck (arrival, else vehicle). A single-entry
+  // group renders exactly as before; a multi-entry group collapses its
+  // per-company docking rows under one vehicle summary.
+  const vehicleGroups = useMemo(() => buildDockingVehicleGroups(entries), [entries]);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
+  const toggleGroup = (key: string) =>
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const renderSubRow = (entry: SalesDispatchDashboardEntry, indent: boolean) => {
+    const itemSummary = entry.item_summary || summarizeItems(getEntryItems(entry));
+    const plannedDispatchDate = getPlannedDispatchDate(entry);
+    const actualGateOut = getActualGateOut(entry);
+    const openDocking =
+      onAddToDocking && isPendingBookingEntry(entry) ? findOpenDocking(entry) : undefined;
+
+    return (
+      <tr
+        key={entry.id}
+        className={cn(
+          'cursor-pointer border-t align-top transition-colors',
+          getSalesDispatchDashboardRowClassName(entry),
+        )}
+        onClick={() => {
+          navigate(
+            getSalesDispatchDashboardEntryPath(
+              entry,
+              newEntryPath,
+              detailPath,
+              weighmentPath,
+              gatepassPath,
+              isGateOutMode,
+            ),
+          );
+        }}
+      >
+        <td className={cn('whitespace-nowrap p-3 text-sm font-medium', indent && 'pl-9')}>
+          <div className="space-y-1">
+            <span>{isPendingBookingEntry(entry) ? 'Pending' : entry.entry_no}</span>
+            {openDocking ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 w-full whitespace-nowrap px-2 text-xs font-normal"
+                disabled={isAddingToDocking}
+                title={`This bill's truck is already docked as ${openDocking.entry_no}. Add it to that load.`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onAddToDocking?.(entry as SalesDispatchPendingBooking, openDocking);
+                }}
+              >
+                + Add to {openDocking.entry_no}
+              </Button>
+            ) : null}
+          </div>
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          {entry.company_name || entry.company_code ? (
+            <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+              {entry.company_name || entry.company_code}
+            </span>
+          ) : (
+            '-'
+          )}
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <PipelineStatusBadge
+            status={buildPipelineStatusFromStage(getSalesDispatchDashboardEntryStage(entry))}
+          />
+        </td>
+        <td className="p-3 text-sm" title={formatDocumentNumbers(entry)}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium leading-5">{formatDocumentNumbers(entry)}</span>
+            {getDocumentCount(entry) > 1 ? (
+              <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                {getDocumentCount(entry)} docs
+              </span>
+            ) : null}
+          </div>
+          <div className="text-xs text-muted-foreground">{formatDocumentType(entry.document_type)}</div>
+        </td>
+        <td className="p-3 text-sm">
+          <div className="truncate whitespace-nowrap font-medium">{entry.customer_name || '-'}</div>
+          <div className="truncate whitespace-nowrap text-xs text-muted-foreground">
+            {entry.customer_code || entry.place_of_supply || '-'}
+          </div>
+        </td>
+        <td className="p-3 text-sm" title={itemSummary}>
+          <div className="truncate whitespace-nowrap">{itemSummary}</div>
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">{formatDate(plannedDispatchDate)}</td>
+        <td className="whitespace-nowrap p-3 text-sm">{actualGateOut}</td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <GateStatusBadge
+            status={entry.gatepass_no ? 'PRINTED' : 'PENDING'}
+            label={entry.gatepass_no || 'Pending'}
+          />
+        </td>
+      </tr>
+    );
+  };
+
+  const renderGroupRow = (group: DockingVehicleGroup) => {
+    const isOpen = expandedGroups.has(group.key);
+    const docCount = group.subEntries.reduce((sum, entry) => sum + getDocumentCount(entry), 0);
+    const docNumbers = group.subEntries.flatMap((entry) => getDashboardDocumentNumbers(entry));
+    const customers = Array.from(
+      new Set(
+        group.subEntries
+          .map((entry) => entry.customer_name)
+          .filter((name): name is string => Boolean(name)),
+      ),
+    );
+    return (
+      <tr
+        className="cursor-pointer border-t bg-muted/30 align-top font-medium transition-colors hover:bg-muted/50"
+        onClick={() => toggleGroup(group.key)}
+      >
+        <td className="whitespace-nowrap p-3 text-sm font-medium">
+          <div className="flex items-center gap-1.5">
+            {isOpen ? (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )}
+            <span>{group.subEntries.length} dockings</span>
+          </div>
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <div className="flex flex-wrap gap-1">
+            {group.companies.map((company) => (
+              <span
+                key={company}
+                className="inline-flex whitespace-nowrap rounded-full border bg-background px-2 py-0.5 text-xs font-medium"
+              >
+                {company}
+              </span>
+            ))}
+          </div>
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <div className="font-semibold">{group.vehicleNo || '-'}</div>
+          {group.arrivalNo ? (
+            <div className="text-xs text-muted-foreground">{group.arrivalNo}</div>
+          ) : null}
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
+          {group.subEntries.length} entries
+        </td>
+        <td className="p-3 text-sm" title={docNumbers.join(', ')}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-medium leading-5">{docNumbers.join(', ') || '-'}</span>
+            {docCount > 1 ? (
+              <span className="inline-flex whitespace-nowrap rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
+                {docCount} docs
+              </span>
+            ) : null}
+          </div>
+        </td>
+        <td className="p-3 text-sm">
+          <div className="truncate whitespace-nowrap font-medium">
+            {customers.length ? customers.join(', ') : '-'}
+          </div>
+        </td>
+        <td className="p-3 text-sm text-muted-foreground">—</td>
+        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
+        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
+        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
+      </tr>
+    );
+  };
+
   return (
     <div className="overflow-hidden rounded-md border">
       <div className="max-h-[520px] overflow-auto">
@@ -486,108 +670,18 @@ function DispatchTable({
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => {
-              const itemSummary = entry.item_summary || summarizeItems(getEntryItems(entry));
-              const plannedDispatchDate = getPlannedDispatchDate(entry);
-              const actualGateOut = getActualGateOut(entry);
-              const openDocking =
-                onAddToDocking && isPendingBookingEntry(entry) ? findOpenDocking(entry) : undefined;
-
-              return (
-                <tr
-                  key={entry.id}
-                  className={cn(
-                    'cursor-pointer border-t align-top transition-colors',
-                    getSalesDispatchDashboardRowClassName(entry),
-                  )}
-                  onClick={() => {
-                    navigate(
-                      getSalesDispatchDashboardEntryPath(
-                        entry,
-                        newEntryPath,
-                        detailPath,
-                        weighmentPath,
-                        gatepassPath,
-                        isGateOutMode,
-                      ),
-                    );
-                  }}
-                >
-                  <td className="whitespace-nowrap p-3 text-sm font-medium">
-                    <div className="space-y-1">
-                      <span>{isPendingBookingEntry(entry) ? 'Pending' : entry.entry_no}</span>
-                      {openDocking ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-full whitespace-nowrap px-2 text-xs font-normal"
-                          disabled={isAddingToDocking}
-                          title={`This bill's truck is already docked as ${openDocking.entry_no}. Add it to that load.`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onAddToDocking?.(entry as SalesDispatchPendingBooking, openDocking);
-                          }}
-                        >
-                          + Add to {openDocking.entry_no}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap p-3 text-sm">
-                    {entry.company_name || entry.company_code ? (
-                      <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
-                        {entry.company_name || entry.company_code}
-                      </span>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
-                  <td className="whitespace-nowrap p-3 text-sm">
-                    <PipelineStatusBadge
-                      status={buildPipelineStatusFromStage(
-                        getSalesDispatchDashboardEntryStage(entry),
-                      )}
-                    />
-                  </td>
-                  <td className="p-3 text-sm" title={formatDocumentNumbers(entry)}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium leading-5">{formatDocumentNumbers(entry)}</span>
-                      {getDocumentCount(entry) > 1 ? (
-                        <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          {getDocumentCount(entry)} docs
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDocumentType(entry.document_type)}
-                    </div>
-                  </td>
-                  <td className="p-3 text-sm">
-                    <div className="truncate whitespace-nowrap font-medium">
-                      {entry.customer_name || '-'}
-                    </div>
-                    <div className="truncate whitespace-nowrap text-xs text-muted-foreground">
-                      {entry.customer_code || entry.place_of_supply || '-'}
-                    </div>
-                  </td>
-                  <td className="p-3 text-sm" title={itemSummary}>
-                    <div className="truncate whitespace-nowrap">{itemSummary}</div>
-                  </td>
-                  <td className="whitespace-nowrap p-3 text-sm">
-                    {formatDate(plannedDispatchDate)}
-                  </td>
-                  <td className="whitespace-nowrap p-3 text-sm">{actualGateOut}</td>
-                  <td className="whitespace-nowrap p-3 text-sm">
-                    <GateStatusBadge
-                      status={entry.gatepass_no ? 'PRINTED' : 'PENDING'}
-                      label={entry.gatepass_no || 'Pending'}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
+            {vehicleGroups.map((group) =>
+              group.subEntries.length === 1 ? (
+                renderSubRow(group.subEntries[0], false)
+              ) : (
+                <Fragment key={group.key}>
+                  {renderGroupRow(group)}
+                  {expandedGroups.has(group.key)
+                    ? group.subEntries.map((entry) => renderSubRow(entry, true))
+                    : null}
+                </Fragment>
+              ),
+            )}
           </tbody>
         </table>
       </div>

@@ -96,12 +96,13 @@ DRAFT ─▶ SCANNING ─▶ (approve)
   - it is **physically at the source warehouse** (`current_warehouse ==
     sap_from_warehouse`),
   - it isn't already committed to another active BST.
-- **The transfer is not restricted to the SAP bill** — the warehouse may send
-  items that aren't on the bill and any quantity. These deviations are **flagged,
-  not blocked**: the page leads with the **bill** (`BSTBillTable`) where each SAP
-  item shows Bill Qty vs live Scanned Qty / Boxes with an Open / Partial /
-  Complete / **Over +N** status, off-bill items are appended as **"Not on bill"**
-  rows, and off-bill boxes are badged in the scanned list.
+- **Scanning is restricted to the SAP bill** — the box's item must be on the bill,
+  and the scanned **box count** for an item may **not exceed the bill's box count**
+  (`expected_boxes` = SAP line quantity ÷ pieces-per-carton, where pieces-per-carton
+  comes from the item master's sales factor). Off-bill items and over-count are
+  **blocked** (rejected onto the failed-scan queue), not merely flagged. The page
+  leads with the **bill** (`BSTBillTable`) showing **boxes scanned of boxes to scan**
+  per item, and the scan header shows the running total against the bill's box count.
 
 ### 3. Review & approve (warehouse) — `BSTReviewPage`, `/warehouse/bst/:id/review`
 
@@ -126,7 +127,8 @@ Only for transfers that leave on a vehicle.
 - The destination sees the transfer under **Incoming**
   (`GET /warehouse/bst/incoming/`, and on the Warehouse home page).
 - Scan arriving boxes to **accept** them; per-box **reject** (with a reason) is
-  available; boxes the sender never dispatched are flagged **unexpected**
+  available; a box the sender **never dispatched on this transfer is rejected** —
+  receiving is restricted to the dispatched set
   (`POST /warehouse/bst/:id/receive-scans/`).
 - **Finalize** (`POST /warehouse/bst/:id/receive/complete/`):
   - accepted boxes' `current_warehouse` moves to `sap_to_warehouse` and a

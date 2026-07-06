@@ -83,6 +83,32 @@ export interface WarehouseNamingScheme {
  */
 export type WarehouseType = 'OWN' | 'SAP';
 
+/**
+ * A rectangular section of the grid with its own numbering. Its top-left cell is
+ * the area's origin (labelled A-01), and `prefix` distinguishes its codes from
+ * other areas (e.g. a side strip prefixed `S` → `S-A-01`). Cells that fall in no
+ * area are "outside": they carry no code and are excluded from occupancy, moves,
+ * and putaway. Grid coordinates are 0-based and inclusive of both corners.
+ */
+export interface WarehouseArea {
+  id: WmsId;
+  /**
+   * Areas that share a `groupId` are one logical area made of several blocks:
+   * their cells are numbered together, continuously. Absent means the area is
+   * its own group (a single block).
+   */
+  groupId?: WmsId;
+  name: string;
+  /** Code prefix that identifies this area; empty for the primary area. */
+  prefix: string;
+  /** Hex colour used to tint the area on the grid. */
+  color: string;
+  startColumn: number;
+  startRow: number;
+  endColumn: number;
+  endRow: number;
+}
+
 export interface Warehouse extends WmsRecordBase {
   code: string;
   name: string;
@@ -101,6 +127,11 @@ export interface Warehouse extends WmsRecordBase {
   /** Vertical levels; `1` means a single-level warehouse. */
   levels: number;
   namingScheme: WarehouseNamingScheme;
+  /**
+   * Named rectangular areas that define where numbering starts/stops. Absent or
+   * empty means the whole grid is numbered from its origin (legacy behaviour).
+   */
+  areas?: WarehouseArea[];
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
 }
@@ -118,6 +149,33 @@ export interface Zone extends WmsRecordBase {
   temperatureClass: TemperatureClass | null;
   /** Hex colour used to tint the zone on the map. */
   color: string;
+  enabled: boolean;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+}
+
+// ============================================================================
+// Cell purpose (what a grid cell IS — storage, walkable path, damaged goods…)
+// ============================================================================
+
+/**
+ * A user-defined classification of what a grid cell is used for. Orthogonal to
+ * zones (a cell can belong to a zone AND have a purpose) and to the derived
+ * occupancy status. `holdsStock` is the behavioural flag: cells whose purpose
+ * does not hold stock (walkable paths, obstacles, offices…) are excluded from
+ * occupancy statistics and rejected as move/putaway destinations.
+ *
+ * A location with `purposeId === null` behaves as ordinary storage, so existing
+ * layouts keep working with no migration.
+ */
+export interface CellPurpose extends WmsRecordBase {
+  warehouseId: WmsId;
+  code: string;
+  name: string;
+  /** Hex colour used to paint cells of this purpose on the map. */
+  color: string;
+  /** Whether cells of this purpose hold pallets/stock (true for storage-like). */
+  holdsStock: boolean;
   enabled: boolean;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
@@ -171,6 +229,8 @@ export interface LocationReservation {
 export interface WarehouseLocation extends WmsRecordBase {
   warehouseId: WmsId;
   zoneId: WmsId | null;
+  /** User-assigned cell purpose; null means ordinary storage. */
+  purposeId: WmsId | null;
   code: string;
   barcode: string;
   /** Grid coordinates (0-based) within the warehouse layout. */
