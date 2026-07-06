@@ -385,6 +385,10 @@ export const API_ENDPOINTS = {
   DISPATCH_PIPELINE: {
     BOARD: '/dispatch-plans/pipeline/',
   },
+  // Dispatch Fulfilment Dashboard (billed vs planned vs dispatched)
+  DISPATCH_FULFILMENT: {
+    SUMMARY: '/dispatch-plans/dashboard/summary/',
+  },
   // Dispatch
   DISPATCH: {
     OPEN_BILTIES: '/dispatch/open-bilties/',

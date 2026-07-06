@@ -25,6 +25,9 @@ const ProductionMovementDashboardPage = lazy(
 const DispatchPipelineDashboardPage = lazy(
   () => import('./dispatch-pipeline/pages/DispatchPipelineDashboardPage'),
 );
+const DispatchFulfilmentDashboardPage = lazy(
+  () => import('./dispatch-fulfilment/pages/DispatchFulfilmentDashboardPage'),
+);
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
   routes: [
@@ -40,6 +43,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
+        DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       ],
     },
     {
@@ -98,6 +102,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE],
       breadcrumb: { label: 'Dispatch Pipeline' },
     },
+    {
+      path: '/dashboards/dispatch-fulfilment',
+      element: <DispatchFulfilmentDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS],
+      breadcrumb: { label: 'Dispatch Fulfilment' },
+    },
   ],
   navigation: [
     {
@@ -113,6 +124,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
+        DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       ],
       hasSubmenu: true,
       children: [
@@ -150,6 +162,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/dispatch-pipeline',
           title: 'Dispatch Pipeline',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE],
+        },
+        {
+          path: '/dashboards/dispatch-fulfilment',
+          title: 'Dispatch Fulfilment',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS],
         },
       ],
     },
