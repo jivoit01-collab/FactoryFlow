@@ -92,3 +92,64 @@ export interface DispatchFulfilmentResponse {
   trend: TrendRow[];
   by_customer: CustomerRow[];
 }
+
+// -------------------------------------------------------------------------- //
+// Bill-wise drill-down
+// -------------------------------------------------------------------------- //
+export interface BillDispatch {
+  sap_doc_num: string;
+  status: string;
+  gatepass_no: string;
+  amount: number;
+  weight: number;
+  boxes: number;
+  vehicle_no: string;
+  gate_out_date: string | null;
+  dispatched_at: string | null;
+}
+
+export interface BillRow {
+  id: number;
+  invoice_number: string;
+  sap_doc_entry: number;
+  sap_doc_num: string;
+  customer_code: string;
+  customer_name: string;
+  dispatch_date: string | null;
+  booking_status: string;
+  billed_amount: number;
+  planned_weight: number;
+  planned_litres: number;
+  dispatched_amount: number;
+  dispatched_weight: number;
+  dispatched_boxes: number;
+  fulfillment_rate: number | null;
+  dispatch_stage: string | null;
+  gatepass_no: string | null;
+  gateout_count: number;
+  last_dispatched_at: string | null;
+  place_of_supply: string;
+  transporter_name: string;
+  vehicle_no: string;
+  eway_bill: string;
+  priority: string;
+  product_variety: string;
+  dispatches: BillDispatch[];
+}
+
+export interface BillsResponse {
+  count: number;
+  limit: number;
+  offset: number;
+  status_counts: Record<string, number>;
+  results: BillRow[];
+}
+
+export interface DispatchBillFilters {
+  from: string;
+  to: string;
+  status?: string;
+  search?: string;
+  limit: number;
+  offset: number;
+}

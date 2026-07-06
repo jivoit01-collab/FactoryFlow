@@ -388,6 +388,7 @@ export const API_ENDPOINTS = {
   // Dispatch Fulfilment Dashboard (billed vs planned vs dispatched)
   DISPATCH_FULFILMENT: {
     SUMMARY: '/dispatch-plans/dashboard/summary/',
+    BILLS: '/dispatch-plans/dashboard/bills/',
   },
   // Dispatch
   DISPATCH: {

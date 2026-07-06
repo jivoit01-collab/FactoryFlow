@@ -1,9 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '@/core/auth';
 
 import { DISPATCH_FULFILMENT_STALE_TIME } from '../constants';
-import type { DispatchFulfilmentFilters } from '../types';
+import type { DispatchBillFilters, DispatchFulfilmentFilters } from '../types';
 import { dispatchFulfilmentApi } from './dispatch-fulfilment.api';
 
 export const DISPATCH_FULFILMENT_QUERY_KEYS = {
@@ -35,5 +35,24 @@ export function useDispatchFulfilment(filters: DispatchFulfilmentFilters) {
     staleTime: DISPATCH_FULFILMENT_STALE_TIME,
     retry: sapRetry,
     enabled: !!filters.from && !!filters.to,
+  });
+}
+
+export function useDispatchBills(filters: DispatchBillFilters) {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: [
+      ...DISPATCH_FULFILMENT_QUERY_KEYS.all,
+      'bills',
+      currentCompany?.company_id,
+      filters,
+    ] as const,
+    queryFn: () => dispatchFulfilmentApi.getBills(filters),
+    staleTime: DISPATCH_FULFILMENT_STALE_TIME,
+    retry: sapRetry,
+    enabled: !!filters.from && !!filters.to,
+    // keep the current page visible while the next one loads
+    placeholderData: keepPreviousData,
   });
 }

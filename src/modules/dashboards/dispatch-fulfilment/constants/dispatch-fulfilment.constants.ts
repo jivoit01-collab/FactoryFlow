@@ -40,3 +40,14 @@ export const STATUS_COLORS: Record<string, string> = {
   PENDING: '#eda100',
   CANCELLED: '#e34948',
 };
+
+// Bill-list status tabs. Empty key = All.
+export const BILL_STATUS_TABS: readonly { key: string; label: string; countKey: string }[] = [
+  { key: '', label: 'All', countKey: 'ALL' },
+  { key: 'PENDING', label: 'Pending', countKey: 'PENDING' },
+  { key: 'BOOKED', label: 'Booked', countKey: 'BOOKED' },
+  { key: 'DISPATCHED', label: 'Dispatched', countKey: 'DISPATCHED' },
+  { key: 'CANCELLED', label: 'Cancelled', countKey: 'CANCELLED' },
+] as const;
+
+export const BILL_PAGE_SIZE = 25;

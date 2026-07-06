@@ -26,7 +26,7 @@ import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/share
 import { cn, formatCurrency, formatNumber, getErrorMessage } from '@/shared/utils';
 
 import { useDispatchFulfilment } from '../api';
-import { DispatchFulfilmentFilters } from '../components';
+import { DispatchBillsTable, DispatchFulfilmentFilters } from '../components';
 import {
   createDefaultFulfilmentFilters,
   MEASURE_OPTIONS,
@@ -120,6 +120,14 @@ function abbreviate(n: number): string {
 
 function compact(value: number, m: DispatchMeasure): string {
   return m === 'amount' ? `₹${abbreviate(value)}` : abbreviate(value);
+}
+
+// Short value for the KPI tiles so big numbers never overflow the card.
+function formatTile(value: number | null | undefined, m: DispatchMeasure): string {
+  if (value === null || value === undefined) return '—';
+  if (m === 'amount') return `₹${abbreviate(value)}`;
+  const unit = unitFor(m);
+  return `${abbreviate(value)}${unit ? ` ${unit}` : ''}`;
 }
 
 function percent(rate: number | null): string {
@@ -221,19 +229,19 @@ export default function DispatchFulfilmentDashboardPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard
               title="Billed"
-              value={formatCurrency(data.totals.billed.amount)}
+              value={formatTile(data.totals.billed.amount, 'amount')}
               icon={IndianRupee}
               details={[{ label: 'Invoices', value: data.totals.billed.count }]}
             />
             <SummaryCard
               title={`Planned${measure === 'amount' ? '' : ` (${unitFor(measurable) || 'qty'})`}`}
-              value={formatMeasure(plannedMeasure(data.totals.planned, measurable), measurable)}
+              value={formatTile(plannedMeasure(data.totals.planned, measurable), measurable)}
               icon={Target}
               details={[{ label: 'Plans', value: data.totals.planned.count }]}
             />
             <SummaryCard
               title={`Dispatched${measure === 'amount' ? '' : ` (${unitFor(measure) || 'qty'})`}`}
-              value={formatMeasure(dispatchedMeasure(data.totals.dispatched, measure), measure)}
+              value={formatTile(dispatchedMeasure(data.totals.dispatched, measure), measure)}
               icon={Truck}
               details={[{ label: 'Trucks out', value: data.totals.dispatched.count }]}
             />
@@ -439,6 +447,9 @@ export default function DispatchFulfilmentDashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* bill-wise drill-down */}
+          <DispatchBillsTable from={filters.from} to={filters.to} />
 
           <p className="text-xs text-muted-foreground">
             {data.filters.company_name} · {data.filters.from} → {data.filters.to}. This is an
