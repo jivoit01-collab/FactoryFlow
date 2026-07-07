@@ -35,7 +35,11 @@ export function useDispatchLinkingPlans(
 function invalidateDispatchLinkingQueries(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: DISPATCH_LINKING_QUERY_KEYS.all });
   queryClient.invalidateQueries({ queryKey: ['dispatch-plans'] });
-  queryClient.invalidateQueries({ queryKey: ['salesDispatchGateOuts'] });
+  // Linking a bill changes the docking board (pending bookings) and the pipeline
+  // board. The real salesDispatch key root is ['salesDispatch'] (the previous
+  // ['salesDispatchGateOuts'] matched nothing, so the board never refreshed).
+  queryClient.invalidateQueries({ queryKey: ['salesDispatch'] });
+  queryClient.invalidateQueries({ queryKey: ['dispatch-pipeline'] });
 }
 
 export function useLinkDispatchVehicle() {

@@ -10,6 +10,11 @@ function invalidateDispatch(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ['salesDispatch'] });
   queryClient.invalidateQueries({ queryKey: ['dispatch-plans'] });
   queryClient.invalidateQueries({ queryKey: ['emptyVehicleIn'] });
+  // Removing a bill changes the truck's per-company readiness/can-depart and the
+  // gate-out vehicle entries — refresh the arrival panel and vehicle-entry views.
+  queryClient.invalidateQueries({ queryKey: ['arrivals'] });
+  queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
+  queryClient.invalidateQueries({ queryKey: ['dispatch-pipeline'] });
 }
 
 export function useRemoveDispatchDocument() {

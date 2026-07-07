@@ -48,6 +48,12 @@ function invalidateSalesDispatch(queryClient: ReturnType<typeof useQueryClient>)
   queryClient.invalidateQueries({ queryKey: SALES_DISPATCH_QUERY_KEYS.all });
   queryClient.invalidateQueries({ queryKey: ['vehicleEntries'] });
   queryClient.invalidateQueries({ queryKey: ['dispatch-plans'] });
+  // Dock/dispatch/cancel/reject also change the cross-company arrival panel and
+  // the empty-vehicle board (per-company readiness, can-depart, "inside" state).
+  // These were missing, so those views showed stale status after a mutation.
+  queryClient.invalidateQueries({ queryKey: ['arrivals'] });
+  queryClient.invalidateQueries({ queryKey: ['emptyVehicleIn'] });
+  queryClient.invalidateQueries({ queryKey: ['dispatch-pipeline'] });
 }
 
 export function useSalesDispatchDocuments(

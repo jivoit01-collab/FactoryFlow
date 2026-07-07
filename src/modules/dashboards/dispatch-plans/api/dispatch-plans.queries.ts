@@ -53,6 +53,10 @@ export function useUpdateDispatchPlan() {
       dispatchPlansApi.updatePlan(docEntry, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DISPATCH_PLANS_QUERY_KEYS.all });
+      // A plan edit changes what the docking board's pending-bookings and the
+      // pipeline board show — invalidate them too, not just the plans list.
+      queryClient.invalidateQueries({ queryKey: ['salesDispatch'] });
+      queryClient.invalidateQueries({ queryKey: ['dispatch-pipeline'] });
     },
   });
 }
