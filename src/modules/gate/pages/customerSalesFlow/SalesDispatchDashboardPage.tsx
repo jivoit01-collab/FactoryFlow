@@ -781,7 +781,10 @@ function countSalesDispatchDashboardEntries(
   entries: SalesDispatchDashboardEntry[],
   filter: DashboardFilter,
 ) {
-  return entries.filter((entry) => matchesSalesDispatchDashboardFilter(entry, filter)).length;
+  // Count vehicle groups, not raw entries, so the stat matches the grouped rows
+  // the table renders (a cross-company truck is one visible row, not N).
+  const matched = entries.filter((entry) => matchesSalesDispatchDashboardFilter(entry, filter));
+  return buildDockingVehicleGroups(matched).length;
 }
 
 function matchesSalesDispatchDashboardFilter(
@@ -818,12 +821,17 @@ function matchesSalesDispatchDashboardFilter(
 
 function buildDockingDateBucketCounts(entries: SalesDispatchDashboardEntry[]): DockingBucketCounts {
   const todayKey = getLocalDateKey(new Date());
+  // Count vehicle groups per bucket so the badges match the grouped rows shown
+  // when that bucket is selected (one row per truck, not per company record).
+  const countGroups = (bucket: DockingDateBucket) =>
+    buildDockingVehicleGroups(
+      entries.filter((entry) => matchesDockingDateBucket(entry, bucket, todayKey)),
+    ).length;
   return {
-    today: entries.filter((entry) => matchesDockingDateBucket(entry, 'today', todayKey)).length,
-    overdue: entries.filter((entry) => matchesDockingDateBucket(entry, 'overdue', todayKey)).length,
-    upcoming: entries.filter((entry) => matchesDockingDateBucket(entry, 'upcoming', todayKey))
-      .length,
-    all: entries.length,
+    today: countGroups('today'),
+    overdue: countGroups('overdue'),
+    upcoming: countGroups('upcoming'),
+    all: buildDockingVehicleGroups(entries).length,
   };
 }
 

@@ -287,7 +287,11 @@ export function DispatchLinkingSheet({
       sac_code: bill.plan.sac_code || '',
       vehicle_id: form.vehicle_id,
       transporter_id: form.transporter_id,
-      booking_status: 'BOOKED',
+      // Only promote a fresh (PENDING) bill to BOOKED on link. Editing the link
+      // of an already-advanced bill must NOT demote its status back to BOOKED
+      // (booking_status is a lock-guarded field, so that would also 400 on a
+      // gated-in bill).
+      booking_status: bill.plan.booking_status === 'PENDING' ? 'BOOKED' : bill.plan.booking_status,
       dispatch_date: bill.plan.dispatch_date,
       transporter_name: form.transporter_name.trim(),
       transporter_gstin: form.transporter_gstin.trim(),
