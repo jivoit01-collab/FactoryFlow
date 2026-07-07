@@ -500,6 +500,22 @@ export const API_ENDPOINTS = {
     FIRE_ISSUES: '/maintenance/fire-issues/',
     FIRE_ISSUE_DETAIL: (issueId: number) => `/maintenance/fire-issues/${issueId}/`,
     FIRE_ISSUE_RETURN: (issueId: number) => `/maintenance/fire-issues/${issueId}/return/`,
+    // Work permit (permit-to-work) — hazardous job clearance workflow.
+    WORK_PERMITS: '/maintenance/work-permits/',
+    WORK_PERMIT_DETAIL: (permitId: number) => `/maintenance/work-permits/${permitId}/`,
+    WORK_PERMIT_SUBMIT: (permitId: number) => `/maintenance/work-permits/${permitId}/submit/`,
+    WORK_PERMIT_APPROVE: (permitId: number) => `/maintenance/work-permits/${permitId}/approve/`,
+    WORK_PERMIT_START: (permitId: number) => `/maintenance/work-permits/${permitId}/start/`,
+    WORK_PERMIT_RENEW: (permitId: number) => `/maintenance/work-permits/${permitId}/renew/`,
+    WORK_PERMIT_COMPLETE: (permitId: number) => `/maintenance/work-permits/${permitId}/complete/`,
+    WORK_PERMIT_CLOSE: (permitId: number) => `/maintenance/work-permits/${permitId}/close/`,
+    WORK_PERMIT_CANCEL: (permitId: number) => `/maintenance/work-permits/${permitId}/cancel/`,
+    WORK_PERMIT_WORKERS: '/maintenance/work-permit-workers/',
+    WORK_PERMIT_WORKER_DETAIL: (workerId: number) =>
+      `/maintenance/work-permit-workers/${workerId}/`,
+    WORK_PERMIT_ATTACHMENTS: '/maintenance/work-permit-attachments/',
+    WORK_PERMIT_ATTACHMENT_DETAIL: (attachmentId: number) =>
+      `/maintenance/work-permit-attachments/${attachmentId}/`,
     VENDOR_VISITS: '/maintenance/vendor-visits/',
     VENDOR_VISIT_DETAIL: (visitId: number) => `/maintenance/vendor-visits/${visitId}/`,
     VENDOR_VISIT_START: (visitId: number) => `/maintenance/vendor-visits/${visitId}/start/`,

@@ -6,3 +6,5 @@ export { fireReportApi } from './fireReport.api';
 export * from './fireReport.queries';
 export { fireIssueApi } from './fireIssue.api';
 export * from './fireIssue.queries';
+export { workPermitApi } from './workPermit.api';
+export * from './workPermit.queries';

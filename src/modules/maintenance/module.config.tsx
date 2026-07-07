@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Package,
   Settings,
+  ShieldCheck,
   Wrench,
 } from 'lucide-react';
 import { lazy } from 'react';
@@ -35,6 +36,7 @@ const MaintenanceSparesPage = lazy(() => import('./pages/MaintenanceSparesPage')
 const MaintenanceFirePage = lazy(() => import('./pages/MaintenanceFirePage'));
 const MaintenanceFireReportsPage = lazy(() => import('./pages/MaintenanceFireReportsPage'));
 const MaintenanceFireIssuePage = lazy(() => import('./pages/MaintenanceFireIssuePage'));
+const MaintenanceWorkPermitsPage = lazy(() => import('./pages/MaintenanceWorkPermitsPage'));
 const MaintenanceWorkOrdersPage = lazy(() => import('./pages/MaintenanceWorkOrdersPage'));
 const MaintenanceWorkOrderDetailPage = lazy(() => import('./pages/MaintenanceWorkOrderDetailPage'));
 
@@ -105,6 +107,13 @@ export const maintenanceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Fire Equipment Issue / Return' },
     },
     {
+      path: '/maintenance/work-permits',
+      element: <MaintenanceWorkPermitsPage />,
+      layout: 'main',
+      permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
+      breadcrumb: { label: 'Work Permits' },
+    },
+    {
       path: '/maintenance/pm',
       element: <MaintenancePMPage />,
       layout: 'main',
@@ -153,6 +162,7 @@ export const maintenanceModuleConfig: ModuleConfig = {
         MAINTENANCE_PERMISSIONS.VIEW_FIRE,
         MAINTENANCE_PERMISSIONS.VIEW_FIRE_REPORT,
         MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE,
+        MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT,
         MAINTENANCE_PERMISSIONS.VIEW_PM,
         MAINTENANCE_PERMISSIONS.VIEW_REPORTS,
         MAINTENANCE_PERMISSIONS.VIEW_ASSET_CATEGORY,
@@ -213,6 +223,12 @@ export const maintenanceModuleConfig: ModuleConfig = {
           title: 'Fire Equipment Issue / Return',
           icon: HardHat,
           permissions: [MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE],
+        },
+        {
+          path: '/maintenance/work-permits',
+          title: 'Work Permits',
+          icon: ShieldCheck,
+          permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
         },
         {
           path: '/maintenance/pm',

@@ -1,4 +1,4 @@
-import type { AssetStatus, WorkOrderStatus } from '../types';
+import type { AssetStatus, WorkOrderStatus, WorkPermitStatus } from '../types';
 
 const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   RUNNING: 'Running',
@@ -44,6 +44,28 @@ const WORK_ORDER_STATUS_CLASSES: Record<WorkOrderStatus, string> = {
   CLOSED: 'border-neutral-200 bg-neutral-50 text-neutral-700',
 };
 
+const WORK_PERMIT_STATUS_LABELS: Record<WorkPermitStatus, string> = {
+  DRAFT: 'Draft',
+  SUBMITTED: 'Submitted',
+  APPROVED: 'Approved',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
+  CLOSED: 'Closed',
+  CANCELLED: 'Cancelled',
+  EXPIRED: 'Expired',
+};
+
+const WORK_PERMIT_STATUS_CLASSES: Record<WorkPermitStatus, string> = {
+  DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
+  SUBMITTED: 'border-sky-200 bg-sky-50 text-sky-700',
+  APPROVED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+  IN_PROGRESS: 'border-amber-200 bg-amber-50 text-amber-700',
+  COMPLETED: 'border-teal-200 bg-teal-50 text-teal-700',
+  CLOSED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  CANCELLED: 'border-rose-200 bg-rose-50 text-rose-700',
+  EXPIRED: 'border-red-200 bg-red-50 text-red-700',
+};
+
 export function getAssetStatusLabel(status: AssetStatus) {
   return ASSET_STATUS_LABELS[status] ?? status;
 }
@@ -58,4 +80,12 @@ export function getWorkOrderStatusLabel(status: WorkOrderStatus) {
 
 export function getWorkOrderStatusClass(status: WorkOrderStatus) {
   return WORK_ORDER_STATUS_CLASSES[status];
+}
+
+export function getWorkPermitStatusLabel(status: WorkPermitStatus) {
+  return WORK_PERMIT_STATUS_LABELS[status] ?? status;
+}
+
+export function getWorkPermitStatusClass(status: WorkPermitStatus) {
+  return WORK_PERMIT_STATUS_CLASSES[status];
 }
