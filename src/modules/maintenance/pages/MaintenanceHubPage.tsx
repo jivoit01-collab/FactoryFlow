@@ -13,6 +13,7 @@ import {
   type LucideIcon,
   Package,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -80,6 +81,13 @@ const SUB_MODULES: SubModule[] = [
     to: '/maintenance/fire-issue',
     icon: HardHat,
     permissions: [MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE],
+  },
+  {
+    title: 'Work Permits',
+    description: 'Permit-to-work clearance for hazardous jobs, with approvals and sign-off.',
+    to: '/maintenance/work-permits',
+    icon: ShieldCheck,
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
   },
   {
     title: 'PM / Checklist',
