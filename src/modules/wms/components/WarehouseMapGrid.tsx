@@ -34,15 +34,33 @@ export interface MapCell {
 const HATCH =
   'repeating-linear-gradient(45deg, rgba(0,0,0,0.18) 0 4px, transparent 4px 8px)';
 
+/** A rectangular area, used only to hide the (mismatched) global headers and
+ * mark where each area's independent A-01 numbering begins. */
+export interface MapArea {
+  name: string;
+  startColumn: number;
+  startRow: number;
+  endColumn: number;
+  endRow: number;
+}
+
 interface WarehouseMapGridProps {
   columns: number;
   rows: number;
   naming: WarehouseNamingScheme;
   cells: MapCell[];
+  areas?: MapArea[];
   onCellClick?: (id: string) => void;
 }
 
-export function WarehouseMapGrid({ columns, rows, naming, cells, onCellClick }: WarehouseMapGridProps) {
+export function WarehouseMapGrid({
+  columns,
+  rows,
+  naming,
+  cells,
+  areas = [],
+  onCellClick,
+}: WarehouseMapGridProps) {
   const cellByPos = useMemo(() => {
     const map = new Map<string, MapCell>();
     for (const cell of cells) map.set(`${cell.column}:${cell.row}`, cell);
@@ -58,24 +76,66 @@ export function WarehouseMapGrid({ columns, rows, naming, cells, onCellClick }: 
     [rows, naming.rowStyle],
   );
 
+  // Each area numbers independently from its own top-left corner, so a single
+  // set of grid-wide headers can never match every area's codes. When areas
+  // exist we hide those headers and instead badge each area's A-01 origin —
+  // the actual top-left *named* cell of the area (skipping disabled/outside
+  // cells, which carry no code).
+  const hasAreas = areas.length > 0;
+  const originLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!hasAreas) return map;
+    for (const area of areas) {
+      let origin: MapCell | undefined;
+      for (const cell of cells) {
+        if (!cell.code) continue;
+        if (
+          cell.column < area.startColumn ||
+          cell.column > area.endColumn ||
+          cell.row < area.startRow ||
+          cell.row > area.endRow
+        )
+          continue;
+        if (
+          !origin ||
+          cell.row < origin.row ||
+          (cell.row === origin.row && cell.column < origin.column)
+        )
+          origin = cell;
+      }
+      if (origin) map.set(origin.id, area.name || 'Area');
+    }
+    return map;
+  }, [areas, cells, hasAreas]);
+
+  const gridTemplateColumns = hasAreas
+    ? `repeat(${columns}, minmax(3rem, 1fr))`
+    : `auto repeat(${columns}, minmax(3rem, 1fr))`;
+
   return (
     <div className="overflow-auto rounded-md border bg-muted/20 p-3">
-      <div
-        className="grid gap-1"
-        style={{ gridTemplateColumns: `auto repeat(${columns}, minmax(3rem, 1fr))` }}
-      >
-        <div />
-        {columnLabels.map((label, c) => (
-          <div key={`col-${c}`} className="px-1 text-center text-xs font-semibold text-muted-foreground">
-            {label}
-          </div>
-        ))}
+      <div className="grid gap-1" style={{ gridTemplateColumns }}>
+        {!hasAreas && (
+          <>
+            <div />
+            {columnLabels.map((label, c) => (
+              <div
+                key={`col-${c}`}
+                className="px-1 text-center text-xs font-semibold text-muted-foreground"
+              >
+                {label}
+              </div>
+            ))}
+          </>
+        )}
 
         {rowLabels.map((rowLabel, r) => (
           <div key={`row-${r}`} className="contents">
-            <div className="flex items-center pr-1 text-xs font-semibold text-muted-foreground">
-              {rowLabel}
-            </div>
+            {!hasAreas && (
+              <div className="flex items-center pr-1 text-xs font-semibold text-muted-foreground">
+                {rowLabel}
+              </div>
+            )}
             {Array.from({ length: columns }, (_, c) => {
               const cell = cellByPos.get(`${c}:${r}`);
               if (!cell) {
@@ -111,6 +171,13 @@ export function WarehouseMapGrid({ columns, rows, naming, cells, onCellClick }: 
                   {cell.current ? (
                     <span className="absolute left-0.5 top-0.5 rounded-sm bg-sky-500/90 px-0.5 text-[7px] font-bold leading-tight text-white">
                       HERE
+                    </span>
+                  ) : originLabelById.has(cell.id) ? (
+                    <span
+                      className="absolute left-0.5 top-0.5 max-w-[92%] truncate rounded-sm bg-black/55 px-0.5 text-[7px] font-bold uppercase leading-tight text-white"
+                      title={`${originLabelById.get(cell.id)} — numbering starts here (A-01)`}
+                    >
+                      ⌜ {originLabelById.get(cell.id)}
                     </span>
                   ) : null}
                   <span className="truncate drop-shadow-sm">{cell.code}</span>

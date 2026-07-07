@@ -588,11 +588,25 @@ export default function WmsMapPage() {
               rows={warehouse.rows}
               naming={warehouse.namingScheme}
               cells={cells}
+              areas={(warehouse.areas ?? []).map((a) => ({
+                name: a.name,
+                startColumn: a.startColumn,
+                startRow: a.startRow,
+                endColumn: a.endColumn,
+                endRow: a.endRow,
+              }))}
               onCellClick={(id) => {
                 if (moveSession) requestMove(moveSession, locations.find((l) => l.id === id)!);
                 else openDetail(id);
               }}
             />
+            {(warehouse.areas ?? []).length > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Each area is numbered independently — codes start at{' '}
+                <span className="font-semibold">A-01</span> from the ⌜ marked top-left corner of
+                every area.
+              </p>
+            )}
           </div>
 
           {/* Card/list fallback (mobile) */}
