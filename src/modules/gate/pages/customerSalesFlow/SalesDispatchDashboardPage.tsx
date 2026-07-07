@@ -581,7 +581,16 @@ function DispatchTable({
     return (
       <tr
         className="cursor-pointer border-t bg-muted/30 align-top font-medium transition-colors hover:bg-muted/50"
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
         onClick={() => toggleGroup(group.key)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleGroup(group.key);
+          }
+        }}
       >
         <td className="whitespace-nowrap p-3 text-sm font-medium">
           <div className="flex items-center gap-1.5">
@@ -590,7 +599,8 @@ function DispatchTable({
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0" />
             )}
-            <span>{group.subEntries.length} dockings</span>
+            {/* "entries", not "dockings": a group can include a pending booking. */}
+            <span>{group.subEntries.length} entries</span>
           </div>
         </td>
         <td className="whitespace-nowrap p-3 text-sm">

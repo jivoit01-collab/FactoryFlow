@@ -43,8 +43,13 @@ function formatDate(value: string | null): string {
   return value;
 }
 
-function formatNumber(value: number, fractionDigits = 2): string {
-  return value.toLocaleString('en-IN', {
+function formatNumber(value: number | string | null | undefined, fractionDigits = 2): string {
+  // SAP DecimalFields serialize as strings (or null); coerce + guard so a null/NaN
+  // value renders "-" instead of throwing on .toLocaleString and crashing the table.
+  if (value === null || value === undefined || value === '') return '-';
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '-';
+  return numeric.toLocaleString('en-IN', {
     maximumFractionDigits: fractionDigits,
   });
 }

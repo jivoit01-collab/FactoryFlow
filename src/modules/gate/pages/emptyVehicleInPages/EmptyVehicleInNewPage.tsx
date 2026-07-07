@@ -87,8 +87,10 @@ export default function EmptyVehicleInNewPage() {
   const { data: reasons = [], isLoading: isReasonsLoading } = useEmptyVehicleGateInReasons();
   const { data: existingEntry, isLoading: isExistingLoading } = useEmptyVehicleGateIn(gateInId);
   const {
+    // Cross-company: a truck already inside under a sibling company must still flag
+    // "already inside" here, so match the dashboard and pass all_companies.
     data: activeDispatchEntries = [],
-  } = useEmptyVehicleGateInEntries({ reason: 'DISPATCH', inside_only: true });
+  } = useEmptyVehicleGateInEntries({ reason: 'DISPATCH', inside_only: true, all_companies: 1 });
   const { data: expectedVehicleDetails } = useVehicleById(
     expectedVehicleId,
     isExpectedDispatchEntry && Boolean(expectedVehicleId),
@@ -97,6 +99,7 @@ export default function EmptyVehicleInNewPage() {
     date_from: dateRange.from,
     date_to: dateRange.to,
     booking_status: 'BOOKED',
+    all_companies: true,
     limit: 200,
   });
   const createEmptyGateIn = useCreateEmptyVehicleGateIn();
