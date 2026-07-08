@@ -9,8 +9,9 @@
  *
  * Pure and side-effect-free so it is trivial to unit-test and cheap to recompute.
  */
-import type { Warehouse, WarehouseArea, WarehouseLocation } from '../types';
+import type { CellPurpose, Warehouse, WarehouseArea, WarehouseLocation } from '../types';
 import { axisLabel, buildLocationCode } from './layout';
+import { locationHoldsStock } from './occupancy';
 
 /** Whether a grid cell lies within an area (corners inclusive). */
 export function areaContains(area: WarehouseArea, column: number, row: number): boolean {
@@ -122,13 +123,18 @@ export function rectsOverlap(
 }
 
 /**
- * Build the code for every location, area-aware and **skipping disabled cells**.
+ * Build the code for every location, area-aware and **numbering only cells that
+ * hold stock**.
  *
- * Within each area only enabled cells are numbered, consecutively: fully-disabled
- * rows and columns (walls, aisles) are skipped so codes stay gapless — e.g. the
- * cell after A-15 across a disabled band is A-16, not A-21. Disabled cells and
- * cells outside every area get `null` (no code). Each cell belongs to the first
- * area that contains it, so areas should not overlap.
+ * Within each area only cells that are enabled *and* whose purpose holds stock
+ * are numbered, consecutively: disabled cells and non-storage cells (paths,
+ * gates, cabins, obstacles) are skipped so codes stay gapless — e.g. the cell
+ * after A-15 across an aisle band is A-16, not A-21. Skipped cells and cells
+ * outside every area get `null` (no code). Each cell belongs to the first area
+ * that contains it, so areas should not overlap.
+ *
+ * Pass `purposesById` to honour per-cell purposes; without it every cell is
+ * treated as storage (legacy behaviour).
  *
  * Returns a Map from location id to its code (or null). Empty when no areas are
  * defined — the caller then falls back to whole-grid numbering.
@@ -136,6 +142,7 @@ export function rectsOverlap(
 export function buildAreaCodeMap(
   warehouse: Warehouse,
   locations: readonly WarehouseLocation[],
+  purposesById?: Map<string, CellPurpose>,
 ): Map<string, string | null> {
   const areas = warehouseAreas(warehouse);
   const result = new Map<string, string | null>();
@@ -158,20 +165,22 @@ export function buildAreaCodeMap(
     else byGroup.set(key, { area, cells: [location] });
   }
 
-  const isEnabled = (l: WarehouseLocation) => l.enabled !== false;
+  // A cell is numbered only when it is enabled AND actually holds stock —
+  // disabled cells and non-storage cells (paths, gates, cabins) carry no code.
+  const isCoded = (l: WarehouseLocation) => l.enabled !== false && locationHoldsStock(l, purposesById);
 
   for (const { area, cells } of byGroup.values()) {
-    const enabled = cells.filter(isEnabled);
-    // Counted rows/columns = those with at least one enabled cell (any level).
-    const rows = [...new Set(enabled.map((c) => c.row))].sort((a, b) => a - b);
-    const columns = [...new Set(enabled.map((c) => c.column))].sort((a, b) => a - b);
+    const coded = cells.filter(isCoded);
+    // Counted rows/columns = those with at least one coded cell (any level).
+    const rows = [...new Set(coded.map((c) => c.row))].sort((a, b) => a - b);
+    const columns = [...new Set(coded.map((c) => c.column))].sort((a, b) => a - b);
     const rowIndex = new Map(rows.map((r, i) => [r, i]));
     const colIndex = new Map(columns.map((c, i) => [c, i]));
     const prefix = (area.prefix || '').trim() || (naming.prefix || '').trim();
 
     for (const cell of cells) {
-      if (!isEnabled(cell)) {
-        result.set(cell.id, null); // disabled → no code
+      if (!isCoded(cell)) {
+        result.set(cell.id, null); // disabled or non-storage → no code
         continue;
       }
       const ci = colIndex.get(cell.column);
