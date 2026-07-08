@@ -6,6 +6,7 @@ import {
   buildOccupancyIndex,
   codeForCell,
   isOutside,
+  makeCellPurpose,
   makePallet,
   makeWarehouseArea,
   makeWarehouseLocation,
@@ -205,6 +206,38 @@ describe('buildAreaCodeMap — continuous numbering that skips disabled cells', 
     const map = buildAreaCodeMap(wh({ areas: [area] }), [inside, outside]);
     expect(map.get(inside.id)).toBe('A-01');
     expect(map.get(outside.id)).toBeNull();
+  });
+
+  it('names only stock-holding cells, staying gapless across a non-storage cell', () => {
+    const area = makeWarehouseArea({
+      name: 'Main',
+      color: '#000',
+      startColumn: 0,
+      startRow: 0,
+      endColumn: 0,
+      endRow: 4,
+    });
+    const w = wh({ columns: 1, rows: 5, levels: 1, areas: [area] });
+    const path = makeCellPurpose('wh', { name: 'Walkway', color: '#64748b', holdsStock: false });
+    const rack = makeCellPurpose('wh', { name: 'Racking', color: '#22c55e', holdsStock: true });
+    const purposesById = new Map([
+      [path.id, path],
+      [rack.id, rack],
+    ]);
+    const cells = [
+      { ...loc(0, 0), purposeId: rack.id },
+      { ...loc(0, 1), purposeId: rack.id },
+      { ...loc(0, 2), purposeId: path.id }, // walkway — no name
+      { ...loc(0, 3), purposeId: rack.id },
+      { ...loc(0, 4) }, // no purpose → storage
+    ];
+    const map = buildAreaCodeMap(w, cells, purposesById);
+    const at = (r: number) => map.get(cells[r]!.id);
+    expect(at(0)).toBe('A-01');
+    expect(at(1)).toBe('A-02');
+    expect(at(2)).toBeNull(); // non-storage → no code
+    expect(at(3)).toBe('A-03'); // continues from A-02, NOT A-04
+    expect(at(4)).toBe('A-04');
   });
 
   it('numbers blocks that share a groupId continuously (one logical area)', () => {

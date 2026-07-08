@@ -38,7 +38,6 @@ import {
   applyLocationDraft,
   axisLabel,
   boundingRect,
-  buildLocationCode,
   buildLocationsCsv,
   buildTemplate,
   findArea,
@@ -113,21 +112,9 @@ export default function WmsWarehouseEditorPage() {
         id: location.id,
         column: location.column,
         row: location.row,
-        // Full-grid view shows every cell's raw grid code (as before areas).
-        code:
-          showFullGrid && warehouse
-            ? buildLocationCode(
-                {
-                  columns: warehouse.columns,
-                  rows: warehouse.rows,
-                  levels: warehouse.levels,
-                  naming: warehouse.namingScheme,
-                },
-                location.column,
-                location.row,
-                location.level,
-              )
-            : location.code,
+        // The persisted code is the single source of truth, shown identically in
+        // both the areas view and the full grid — toggling never renumbers a cell.
+        code: location.code,
         // Purpose is the single colour axis for a cell.
         purposeColor: location.purposeId ? purposeById.get(location.purposeId)?.color ?? null : null,
         // Area is shown as an outline around its region, not a fill.
@@ -145,7 +132,7 @@ export default function WmsWarehouseEditorPage() {
         status: location.status,
       };
     });
-  }, [levelLocations, purposeById, areas, outsideIds, showFullGrid, warehouse],
+  }, [levelLocations, purposeById, areas, outsideIds, showFullGrid],
   );
 
   const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
@@ -285,16 +272,26 @@ export default function WmsWarehouseEditorPage() {
     newPurposes: CellPurpose[],
   ) {
     const ids = new Set(propsTargets.map((location) => location.id));
+    // Purpose / enabled decide whether a cell is named at all (only stock-holding,
+    // enabled cells get a code), so those changes must renumber the layout —
+    // unless the user set a manual code in the same save, which we must not clobber.
+    const renumber =
+      (touched.has('purposeId') || touched.has('enabled')) &&
+      !touched.has('code') &&
+      !touched.has('barcode');
     void run(
       () =>
-        mutate((current) => ({
-          ...current,
-          // Persist any purposes created inline in the drawer.
-          purposes: newPurposes.length ? [...current.purposes, ...newPurposes] : current.purposes,
-          locations: current.locations.map((location) =>
-            ids.has(location.id) ? applyLocationDraft(location, draft, touched) : location,
-          ),
-        })),
+        mutate((current) => {
+          const next = {
+            ...current,
+            // Persist any purposes created inline in the drawer.
+            purposes: newPurposes.length ? [...current.purposes, ...newPurposes] : current.purposes,
+            locations: current.locations.map((location) =>
+              ids.has(location.id) ? applyLocationDraft(location, draft, touched) : location,
+            ),
+          };
+          return renumber ? rebuildWarehouseCodes(next) : next;
+        }),
       ids.size > 1 ? `Updated ${ids.size} locations.` : 'Location updated.',
     );
     setPropsOpen(false);

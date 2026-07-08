@@ -12,6 +12,7 @@ import type { WmsId } from '../types';
 import { nowIso } from '../utils';
 import { buildAreaCodeMap, codeForCell, warehouseAreas } from './areas';
 import { makeWarehouseLocation } from './factories';
+import { locationHoldsStock } from './occupancy';
 import type { WarehouseBundle } from './warehouseIO';
 
 type Axis = 'column' | 'row' | 'level';
@@ -19,22 +20,26 @@ type Axis = 'column' | 'row' | 'level';
 /**
  * Recompute every location's code/barcode.
  *
- * With areas defined, each area is numbered from its corner, skipping disabled
- * cells so codes are gapless (see `buildAreaCodeMap`); cells outside every area
- * or disabled get a blank code. With no areas, the whole grid is numbered from
- * its origin (legacy behaviour).
+ * Only cells that hold stock are named. With areas defined, each area is
+ * numbered from its corner, skipping disabled and non-storage cells so codes are
+ * gapless (see `buildAreaCodeMap`); cells outside every area get a blank code.
+ * With no areas, the whole grid is numbered from its origin (legacy behaviour),
+ * still blanking non-storage cells (paths, gates, cabins).
  */
 function rebuildCodes(bundle: WarehouseBundle): WarehouseBundle {
   const { warehouse } = bundle;
   const timestamp = nowIso();
   const seen = new Set<string>();
+  const purposesById = new Map(bundle.purposes.map((purpose) => [purpose.id, purpose]));
   const codeMap = warehouseAreas(warehouse).length
-    ? buildAreaCodeMap(warehouse, bundle.locations)
+    ? buildAreaCodeMap(warehouse, bundle.locations, purposesById)
     : null;
   const locations = bundle.locations.map((location) => {
     const generated = codeMap
       ? codeMap.get(location.id) ?? null
-      : codeForCell(warehouse, location.column, location.row, location.level);
+      : locationHoldsStock(location, purposesById)
+        ? codeForCell(warehouse, location.column, location.row, location.level)
+        : null; // non-storage cell with no areas → no code
     if (generated == null) {
       return { ...location, code: '', barcode: '', updatedAt: timestamp };
     }
