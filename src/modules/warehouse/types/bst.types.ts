@@ -21,6 +21,10 @@ export type BSTTransferStatus =
 
 export type BSTReceiveStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
+// What SAP document a BST is sourced from — a stock transfer (intra-company) or
+// an invoice / "dispatch bill" (a cross-company sale, e.g. JIVO OIL → JIVO MART).
+export type BSTSourceType = 'STOCK_TRANSFER' | 'INVOICE';
+
 export interface SAPStockTransferLine {
   line_num: number;
   item_code: string;
@@ -35,16 +39,27 @@ export interface SAPStockTransferLine {
   box_count?: number;
 }
 
+// A SAP source document for a BST — a stock transfer OR an invoice. The
+// invoice-only fields are empty for stock transfers, and `to_warehouse` is empty
+// for invoices (the destination is a company/customer, not a warehouse).
 export interface SAPStockTransfer {
+  document_type?: BSTSourceType;
   doc_entry: number;
   doc_num: string;
   doc_date: string | null;
   from_warehouse: string;
   to_warehouse: string;
+  /** All source warehouses on the document, comma-separated (display). */
+  warehouses?: string;
   comments: string;
   reference: string;
+  /** Invoice customer (INVOICE documents only). */
+  card_code?: string;
+  card_name?: string;
   line_count: number;
   total_quantity: number;
+  /** Bill box count (INVOICE documents; stock transfers carry it per line). */
+  total_boxes?: number;
   lines?: SAPStockTransferLine[];
 }
 
@@ -101,8 +116,16 @@ export interface BSTTransferListItem {
   id: number;
   entry_no: string;
   status: BSTTransferStatus;
+  source_type: BSTSourceType;
   company_code: string;
   company_name: string;
+  /** Receiving company for an INVOICE (cross-company) transfer; null otherwise. */
+  destination_company: number | null;
+  destination_company_code: string;
+  destination_company_name: string;
+  /** Invoice customer snapshot (INVOICE transfers only). */
+  customer_code: string;
+  customer_name: string;
   sap_doc_entry: number | null;
   sap_doc_num: string;
   sap_doc_date: string | null;
@@ -141,8 +164,15 @@ export interface BSTTransferDetail extends BSTTransferListItem {
 }
 
 export interface BSTCreatePayload {
-  /** One or more SAP documents; they must share the same source & destination warehouse. */
+  /** STOCK_TRANSFER (default) or INVOICE (cross-company dispatch bill). */
+  document_type?: BSTSourceType;
+  /**
+   * One or more SAP documents. STOCK_TRANSFER docs must share the same source &
+   * destination warehouse; INVOICE docs the same source warehouse and customer.
+   */
   sap_doc_entries: number[];
+  /** Required for an INVOICE transfer: the receiving company. */
+  destination_company?: number | null;
   // Required only when requires_gate (the vehicle leaves the factory).
   vehicle?: number | null;
   driver?: number | null;

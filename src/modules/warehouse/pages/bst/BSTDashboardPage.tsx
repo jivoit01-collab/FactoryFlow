@@ -63,8 +63,15 @@ function TransferTable({
                 <span className="inline-flex items-center gap-1">
                   {t.sap_from_warehouse || '—'}
                   <ArrowLeftRight className="h-3 w-3 text-muted-foreground" />
-                  {t.sap_to_warehouse || '—'}
+                  {t.source_type === 'INVOICE'
+                    ? t.destination_company_code || t.customer_name || t.customer_code || '—'
+                    : t.sap_to_warehouse || '—'}
                 </span>
+                {t.source_type === 'INVOICE' && (
+                  <span className="ml-1 rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-700">
+                    invoice
+                  </span>
+                )}
               </td>
               <td className="py-2 px-3">
                 {t.sap_doc_num || '—'}

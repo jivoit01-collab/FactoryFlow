@@ -64,10 +64,25 @@ export default function BSTDetailPage() {
     }
   };
 
+  const isInvoice = t.source_type === 'INVOICE';
   const infoRows: Array<[string, string]> = [
+    ['Type', isInvoice ? 'Invoice — cross-company sale' : 'Stock transfer'],
     ['Company', `${t.company_name} (${t.company_code})`],
+    ...(isInvoice
+      ? ([
+          [
+            'Destination company',
+            t.destination_company_name
+              ? `${t.destination_company_name} (${t.destination_company_code})`
+              : '—',
+          ],
+          ['Customer', t.customer_name || t.customer_code || '—'],
+          ['Source warehouse', t.sap_from_warehouse || '—'],
+        ] as Array<[string, string]>)
+      : ([['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`]] as Array<
+          [string, string]
+        >)),
     ['SAP Documents', t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—'],
-    ['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`],
     ['Invoice / Ref', t.invoice_no || '—'],
     ['Vehicle', t.vehicle_number || '—'],
     ['Driver', t.driver_name || '—'],
@@ -83,6 +98,11 @@ export default function BSTDetailPage() {
     <div className="space-y-6">
       <DashboardHeader title={t.entry_no} description="Branch stock transfer detail">
         <div className="flex items-center gap-2">
+          {isInvoice && (
+            <Badge variant="outline" className="text-blue-700">
+              Invoice · cross-company
+            </Badge>
+          )}
           <BSTStatusBadge status={t.status} />
           {canResume && (
             <Button onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}>
