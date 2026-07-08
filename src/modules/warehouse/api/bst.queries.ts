@@ -22,7 +22,8 @@ export const BST_QUERY_KEYS = {
   gateOutwards: (params?: BSTListParams) =>
     [...BST_QUERY_KEYS.all, 'gate', 'outwards', params ?? {}] as const,
   gateInwards: () => [...BST_QUERY_KEYS.all, 'gate', 'inwards'] as const,
-  sapTransfers: (search?: string) => [...BST_QUERY_KEYS.all, 'sap-transfers', { search }] as const,
+  sapTransfers: (search?: string, documentType?: string) =>
+    [...BST_QUERY_KEYS.all, 'sap-transfers', { search, documentType }] as const,
   sapTransfer: (docEntry: number) => [...BST_QUERY_KEYS.all, 'sap-transfer', docEntry] as const,
 };
 
@@ -30,10 +31,14 @@ export const BST_QUERY_KEYS = {
 // SAP stock-transfer lookup
 // ============================================================================
 
-export function useBSTSapTransfers(search?: string, enabled = true) {
+export function useBSTSapTransfers(search?: string, enabled = true, documentType?: string) {
   return useQuery({
-    queryKey: BST_QUERY_KEYS.sapTransfers(search),
-    queryFn: () => bstApi.listSapTransfers(search ? { search } : undefined),
+    queryKey: BST_QUERY_KEYS.sapTransfers(search, documentType),
+    queryFn: () =>
+      bstApi.listSapTransfers({
+        ...(search ? { search } : {}),
+        ...(documentType ? { document_type: documentType } : {}),
+      }),
     enabled,
   });
 }

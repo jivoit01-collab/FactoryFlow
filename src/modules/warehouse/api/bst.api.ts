@@ -16,8 +16,9 @@ import type {
 const EP = API_ENDPOINTS.WAREHOUSE;
 
 export const bstApi = {
-  // ---- SAP stock-transfer lookup ----
+  // ---- SAP source-document lookup (stock transfers or invoices) ----
   async listSapTransfers(params?: {
+    document_type?: string;
     search?: string;
     from_date?: string;
     to_date?: string;
@@ -27,8 +28,10 @@ export const bstApi = {
     return res.data;
   },
 
-  async getSapTransfer(docEntry: number): Promise<SAPStockTransfer> {
-    const res = await apiClient.get<SAPStockTransfer>(EP.BST_SAP_TRANSFER_DETAIL(docEntry));
+  async getSapTransfer(docEntry: number, documentType?: string): Promise<SAPStockTransfer> {
+    const res = await apiClient.get<SAPStockTransfer>(EP.BST_SAP_TRANSFER_DETAIL(docEntry), {
+      params: documentType ? { document_type: documentType } : undefined,
+    });
     return res.data;
   },
 
