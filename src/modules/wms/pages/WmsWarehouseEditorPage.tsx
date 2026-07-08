@@ -517,9 +517,11 @@ export default function WmsWarehouseEditorPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            {!showFullGrid && areas.length > 0
-              ? 'Click to select · shift-click for a range · each area numbers from its ⌜ A-01 corner'
-              : 'Click to select · shift-click for a range · click a header for a column/row'}
+            {showFullGrid
+              ? 'Click to select · shift-click for a range · every cell shows its saved code'
+              : areas.length > 0
+                ? 'Click to select · shift-click for a range · each area numbers from its ⌜ A-01 corner'
+                : 'Click to select · shift-click for a range · click a header for a column/row'}
           </CardTitle>
           <div className="flex flex-wrap items-center gap-2">
             {areas.length > 0 ? (
@@ -553,6 +555,7 @@ export default function WmsWarehouseEditorPage() {
             naming={warehouse.namingScheme}
             cells={cells}
             areas={showFullGrid ? [] : areas}
+            hideHeaders={showFullGrid}
             selectable
             selectedIds={selectedIds}
             onCellClick={handleCellClick}

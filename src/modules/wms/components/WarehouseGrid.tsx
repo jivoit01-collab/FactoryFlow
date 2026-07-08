@@ -54,6 +54,9 @@ interface WarehouseGridProps {
   cells: GridCell[];
   /** When non-empty, global headers are hidden and area origins are badged. */
   areas?: GridArea[];
+  /** Force-hide the global coordinate headers even without areas (e.g. the
+   * full-grid view, where cells show area-relative codes the axes can't match). */
+  hideHeaders?: boolean;
   selectable?: boolean;
   selectedIds?: ReadonlySet<string>;
   onCellClick?: (cell: GridCell, shiftKey: boolean) => void;
@@ -70,6 +73,7 @@ export function WarehouseGrid({
   naming,
   cells,
   areas = [],
+  hideHeaders = false,
   selectable = false,
   selectedIds,
   onCellClick,
@@ -83,6 +87,9 @@ export function WarehouseGrid({
   }, [cells]);
 
   const hasAreas = areas.length > 0;
+  // Coordinate headers are shown only when they can match the cell codes: no
+  // areas (whole grid numbers from one origin) and not explicitly suppressed.
+  const headersShown = !hasAreas && !hideHeaders;
 
   const columnLabels = useMemo(
     () => Array.from({ length: columns }, (_, c) => axisLabel(naming.columnStyle, c, columns)),
@@ -121,15 +128,15 @@ export function WarehouseGrid({
     return map;
   }, [areas, cells, hasAreas]);
 
-  const gridTemplateColumns = hasAreas
-    ? `repeat(${columns}, minmax(2.75rem, 1fr))`
-    : `auto repeat(${columns}, minmax(2.75rem, 1fr))`;
+  const gridTemplateColumns = headersShown
+    ? `auto repeat(${columns}, minmax(2.75rem, 1fr))`
+    : `repeat(${columns}, minmax(2.75rem, 1fr))`;
 
   return (
     <div className="overflow-auto rounded-md border bg-muted/20 p-3">
       <div className="grid gap-1" style={{ gridTemplateColumns }}>
         {/* Header row: empty corner + column labels (only when headers match) */}
-        {!hasAreas && (
+        {headersShown && (
           <>
             <div />
             {columnLabels.map((label, c) => (
@@ -154,7 +161,7 @@ export function WarehouseGrid({
           <Row
             key={`row-${r}`}
             rowLabel={rowLabel}
-            showHeader={!hasAreas}
+            showHeader={headersShown}
             row={r}
             columns={columns}
             cellByPos={cellByPos}
