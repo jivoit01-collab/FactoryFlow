@@ -4,6 +4,7 @@ import { Badge } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import type { BSTBoxScan, BSTTransferItem } from '../../types';
+import { expectedBstItemBoxes } from './bstBoxCounts';
 
 type Tally = { qty: number; boxes: number; itemName: string; uom: string };
 
@@ -39,7 +40,7 @@ export function BSTBillTable({
   for (const it of items) {
     const cur =
       billByItem.get(it.item_code) ?? { expected: 0, qty: 0, uom: it.uom, itemName: it.item_name };
-    cur.expected += it.expected_boxes ?? 0;
+    cur.expected += expectedBstItemBoxes(it);
     cur.qty += Number(it.quantity) || 0;
     billByItem.set(it.item_code, cur);
   }

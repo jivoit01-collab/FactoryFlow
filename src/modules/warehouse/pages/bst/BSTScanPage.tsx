@@ -1,5 +1,5 @@
-import { AlertCircle, ClipboardCheck, Loader2, Trash2, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, ClipboardCheck, Loader2, Trash2, X } from 'lucide-react';
 import { type FormEvent, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,9 +17,10 @@ import {
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { bstApi, BST_QUERY_KEYS, useBSTTransfer, useRemoveBSTScan } from '../../api';
+import { BST_QUERY_KEYS, bstApi, useBSTTransfer, useRemoveBSTScan } from '../../api';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTBillTable } from './BSTBillTable';
+import { expectedBstItemBoxes } from './bstBoxCounts';
 import { BSTStatusBadge } from './bstStatus';
 
 export default function BSTScanPage() {
@@ -37,11 +38,12 @@ export default function BSTScanPage() {
   const scans = useMemo(() => transfer?.box_scans ?? [], [transfer]);
 
   // What this BST is supposed to move (the SAP lines), shown with live progress.
-  const items = transfer?.items ?? [];
+  const items = useMemo(() => transfer?.items ?? [], [transfer]);
   const billItemCodes = new Set(items.map((it) => it.item_code));
-  // Boxes to scan = the bill's total box count (line qty ÷ pieces-per-carton).
+  // Boxes to scan = the bill's total box count (line qty ÷ pieces-per-carton),
+  // with a pack-size-from-name fallback for lines whose stored count is 0.
   const totalBoxes = useMemo(
-    () => items.reduce((n, it) => n + (it.expected_boxes ?? 0), 0),
+    () => items.reduce((n, it) => n + expectedBstItemBoxes(it), 0),
     [items],
   );
 
