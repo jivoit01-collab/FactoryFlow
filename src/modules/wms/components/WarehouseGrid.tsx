@@ -251,15 +251,16 @@ function Row({
             borderRadius: regionRadius(shape.edges),
           };
           if (!selected) {
-            // A soft inset outline only on the region's outer edges keeps the
-            // interior seamless; a faint inner highlight adds a crisp lift.
+            // Outline ONLY the region's outer edges so the interior stays fully
+            // seamless (no striping between merged cells); a faint highlight on
+            // the top edge adds a crisp lift.
             const line = 'rgba(15,23,42,0.22)';
-            const shadows: string[] = ['inset 0 1px 0 0 rgba(255,255,255,0.18)'];
-            if (shape.edges.top) shadows.push(`inset 0 1.5px 0 0 ${line}`);
+            const shadows: string[] = [];
+            if (shape.edges.top) shadows.push('inset 0 1px 0 0 rgba(255,255,255,0.2)', `inset 0 1.5px 0 0 ${line}`);
             if (shape.edges.bottom) shadows.push(`inset 0 -1.5px 0 0 ${line}`);
             if (shape.edges.left) shadows.push(`inset 1.5px 0 0 0 ${line}`);
             if (shape.edges.right) shadows.push(`inset -1.5px 0 0 0 ${line}`);
-            regionStyle.boxShadow = shadows.join(', ');
+            if (shadows.length) regionStyle.boxShadow = shadows.join(', ');
           }
           return (
             <button
@@ -271,7 +272,10 @@ function Row({
               onDoubleClick={() => onCellDoubleClick?.(cell)}
               style={regionStyle}
               className={cn(
-                'relative flex h-10 items-center justify-center overflow-visible px-0.5 transition',
+                // min-height (not fixed h-10) so the cell stretches to fill the
+                // row — otherwise the boxes' margin makes rows taller and the
+                // region shows horizontal gaps between its cells.
+                'relative flex min-h-[2.5rem] items-center justify-center overflow-visible px-0.5 transition',
                 selectable && 'cursor-pointer hover:brightness-[1.06]',
                 selected && 'z-10 ring-2 ring-primary ring-offset-1',
                 cell.enabled === false && 'opacity-60',
