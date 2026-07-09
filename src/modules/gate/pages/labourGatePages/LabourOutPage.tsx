@@ -1,12 +1,13 @@
 import {
   Building2,
   ChevronDown,
+  HardHat,
   LogIn,
   LogOut,
   Undo2,
   UserCheck,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { SearchableSelect } from '@/shared/components';
@@ -21,6 +22,10 @@ import {
   CollapsibleTrigger,
   Input,
   Label,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
@@ -33,6 +38,13 @@ import {
 import { ProgressBar, SummaryStat } from './labourShared';
 import { fmtTime, pctOf, todayLocal } from './labourUtils';
 
+interface BreakdownGroup {
+  id: number;
+  name: string;
+  total: number;
+  rows: { key: number; label: string; count: number }[];
+}
+
 interface AuditRow {
   batchId: number;
   entryId: number;
@@ -43,11 +55,78 @@ interface AuditRow {
   canUndo: boolean;
 }
 
+function BreakdownList({
+  groups,
+  openIds,
+  onToggle,
+  icon,
+  emptyText,
+  renderMeta,
+}: {
+  groups: BreakdownGroup[];
+  openIds: Set<number>;
+  onToggle: (id: number) => void;
+  icon: ReactNode;
+  emptyText: string;
+  renderMeta?: (group: BreakdownGroup) => ReactNode;
+}) {
+  if (groups.length === 0) {
+    return <p className="text-sm text-muted-foreground py-2">{emptyText}</p>;
+  }
+  return (
+    <div className="space-y-2">
+      {groups.map((g) => {
+        const open = openIds.has(g.id);
+        return (
+          <Collapsible key={g.id} open={open} onOpenChange={() => onToggle(g.id)}>
+            <div className="rounded-lg border">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-muted/40"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    {icon}
+                    {g.name}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {renderMeta?.(g)}
+                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold">
+                      {g.total}
+                    </span>
+                    <ChevronDown
+                      className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
+                    />
+                  </span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="divide-y border-t">
+                  {g.rows.map((row) => (
+                    <div
+                      key={row.key}
+                      className="flex items-center justify-between gap-4 p-3 text-sm"
+                    >
+                      <span className="font-medium">{row.label}</span>
+                      <span className="font-semibold">{row.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function LabourOutPage() {
   const [workDate, setWorkDate] = useState<string>(todayLocal());
   const [outContractorId, setOutContractorId] = useState<number | null>(null);
   const [outCount, setOutCount] = useState('');
   const [openDepts, setOpenDepts] = useState<Set<number>>(new Set());
+  const [openContractors, setOpenContractors] = useState<Set<number>>(new Set());
 
   const { data: allEntries = [], isLoading } = useLabourGateDay(workDate);
   const addOut = useAddLabourOut();
@@ -68,18 +147,45 @@ export default function LabourOutPage() {
   const totalInside = totalIn - totalOut;
   const allCleared = totalIn > 0 && totalInside === 0;
 
-  // Department-wise read-only breakdown (from the Labour module).
-  const departmentGroups = useMemo(() => {
-    const map = new Map<number, { id: number; name: string; total: number; rows: LabourGateEntry[] }>();
+  // Department-wise read-only breakdown (from the Labour module): department → contractors.
+  const departmentGroups = useMemo<BreakdownGroup[]>(() => {
+    const map = new Map<number, BreakdownGroup>();
     moduleEntries.forEach((e) => {
       const id = e.department as number;
       if (!map.has(id)) map.set(id, { id, name: e.department_name ?? `#${id}`, total: 0, rows: [] });
       const g = map.get(id)!;
-      g.rows.push(e);
+      g.rows.push({ key: e.id, label: e.contractor_name ?? `#${e.contractor}`, count: e.count_in });
       g.total += e.count_in;
     });
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [moduleEntries]);
+
+  // The inverse view: contractor → departments they have labour allocated to.
+  const contractorGroups = useMemo<BreakdownGroup[]>(() => {
+    const map = new Map<number, BreakdownGroup>();
+    moduleEntries.forEach((e) => {
+      const id = e.contractor;
+      if (!map.has(id)) map.set(id, { id, name: e.contractor_name ?? `#${id}`, total: 0, rows: [] });
+      const g = map.get(id)!;
+      g.rows.push({ key: e.id, label: e.department_name ?? `#${e.department}`, count: e.count_in });
+      g.total += e.count_in;
+    });
+    map.forEach((g) => g.rows.sort((a, b) => a.label.localeCompare(b.label)));
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [moduleEntries]);
+
+  const totalAllocated = useMemo(
+    () => contractorGroups.reduce((s, g) => s + g.total, 0),
+    [contractorGroups],
+  );
+
+  // Gate-recorded count_in per contractor, so each contractor row can show
+  // how much of what came in through the gate is still unallocated.
+  const gateInByContractor = useMemo(() => {
+    const map = new Map<number, number>();
+    gateEntries.forEach((e) => map.set(e.contractor, (map.get(e.contractor) ?? 0) + e.count_in));
+    return map;
+  }, [gateEntries]);
 
   // Contractors with labour still inside — the out form's options.
   const outableEntries = useMemo(() => gateEntries.filter((e) => e.remaining > 0), [gateEntries]);
@@ -114,13 +220,16 @@ export default function LabourOutPage() {
     );
   }, [gateEntries]);
 
-  const toggleDept = (id: number) =>
-    setOpenDepts((prev) => {
+  const toggleIn = (setter: typeof setOpenDepts) => (id: number) =>
+    setter((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+
+  const toggleDept = toggleIn(setOpenDepts);
+  const toggleContractor = toggleIn(setOpenContractors);
 
   const handleOut = async () => {
     if (!selectedEntry) {
@@ -163,7 +272,7 @@ export default function LabourOutPage() {
             Labour Out
           </h2>
           <p className="text-muted-foreground">
-            Mark labour out per contractor as they leave. The department breakdown below is
+            Mark labour out per contractor as they leave. The allocation breakdown below is
             informational.
           </p>
         </div>
@@ -213,67 +322,61 @@ export default function LabourOutPage() {
             </CardContent>
           </Card>
 
-          {/* Department-wise info (read-only) */}
+          {/* Allocation info (read-only), viewable either way round */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Building2 className="h-5 w-5" />
-                Department Breakdown
+                Allocation Breakdown
                 <span className="text-xs font-normal text-muted-foreground">(from Labour module)</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {departmentGroups.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  No department split entered in the Labour module.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {departmentGroups.map((g) => {
-                    const open = openDepts.has(g.id);
-                    return (
-                      <Collapsible key={g.id} open={open} onOpenChange={() => toggleDept(g.id)}>
-                        <div className="rounded-lg border">
-                          <CollapsibleTrigger asChild>
-                            <button
-                              type="button"
-                              className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-muted/40"
-                            >
-                              <span className="flex items-center gap-2 font-medium">
-                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                {g.name}
-                              </span>
-                              <span className="flex items-center gap-2">
-                                <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold">
-                                  {g.total}
-                                </span>
-                                <ChevronDown
-                                  className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
-                                />
-                              </span>
-                            </button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="divide-y border-t">
-                              {g.rows.map((entry) => (
-                                <div
-                                  key={entry.id}
-                                  className="flex items-center justify-between gap-4 p-3 text-sm"
-                                >
-                                  <span className="font-medium">
-                                    {entry.contractor_name ?? `#${entry.contractor}`}
-                                  </span>
-                                  <span className="font-semibold">{entry.count_in}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </CollapsibleContent>
-                        </div>
-                      </Collapsible>
-                    );
-                  })}
+              <Tabs defaultValue="department">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <TabsList>
+                    <TabsTrigger value="department">
+                      <Building2 className="h-4 w-4 mr-1.5" /> By Department
+                    </TabsTrigger>
+                    <TabsTrigger value="contractor">
+                      <HardHat className="h-4 w-4 mr-1.5" /> By Contractor
+                    </TabsTrigger>
+                  </TabsList>
+                  <p className="text-sm text-muted-foreground">
+                    Total allocated:{' '}
+                    <span className="font-semibold text-foreground">{totalAllocated}</span> of{' '}
+                    {totalIn} in
+                  </p>
                 </div>
-              )}
+
+                <TabsContent value="department" className="mt-4">
+                  <BreakdownList
+                    groups={departmentGroups}
+                    openIds={openDepts}
+                    onToggle={toggleDept}
+                    icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
+                    emptyText="No department split entered in the Labour module."
+                  />
+                </TabsContent>
+
+                <TabsContent value="contractor" className="mt-4">
+                  <BreakdownList
+                    groups={contractorGroups}
+                    openIds={openContractors}
+                    onToggle={toggleContractor}
+                    icon={<HardHat className="h-4 w-4 text-muted-foreground" />}
+                    emptyText="No contractor allocation entered in the Labour module."
+                    renderMeta={(g) => {
+                      const gateIn = gateInByContractor.get(g.id);
+                      if (gateIn == null || gateIn <= g.total) return null;
+                      return (
+                        <span className="text-xs text-muted-foreground">
+                          {gateIn - g.total} unallocated
+                        </span>
+                      );
+                    }}
+                  />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 

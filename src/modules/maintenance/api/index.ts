@@ -10,3 +10,5 @@ export { workPermitApi } from './workPermit.api';
 export * from './workPermit.queries';
 export { safetyFineApi } from './safetyFine.api';
 export * from './safetyFine.queries';
+export { returnableGatePassApi } from './returnableGatePass.api';
+export * from './returnableGatePass.queries';

@@ -87,6 +87,13 @@ export {
   type MaintenancePermission,
 } from './maintenance.permissions';
 
+// Returnable Items Module (department + gate stages of the returnable gate pass)
+export {
+  RETURNABLE_MODULE_PREFIX,
+  RETURNABLE_PERMISSIONS,
+  type ReturnablePermission,
+} from './returnable.permissions';
+
 // Warehouse Ops (WMS) Module
 export {
   WMS_ACCESS,

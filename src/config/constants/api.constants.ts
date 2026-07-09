@@ -534,6 +534,47 @@ export const API_ENDPOINTS = {
     VENDOR_VISIT_COMPLETE: (visitId: number) => `/maintenance/vendor-visits/${visitId}/complete/`,
     VENDOR_VISIT_CANCEL: (visitId: number) => `/maintenance/vendor-visits/${visitId}/cancel/`,
   },
+  // Returnable Items — material that leaves the gate temporarily and must come back.
+  // Raised by a department, approved by a higher authority, gated out and gated
+  // back in by the gate, then closed by the department.
+  RETURNABLE: {
+    GATEPASSES: '/returnable-items/returnable-gatepasses/',
+    GATEPASS_DETAIL: (passId: number) => `/returnable-items/returnable-gatepasses/${passId}/`,
+    // Stage 1 — department sends the pass to the higher authority.
+    SUBMIT: (passId: number) => `/returnable-items/returnable-gatepasses/${passId}/submit/`,
+    // Stage 2 — higher authority signs off, or sends it back to the department.
+    // The gate never sees an unapproved pass.
+    APPROVE: (passId: number) => `/returnable-items/returnable-gatepasses/${passId}/approve/`,
+    REJECT: (passId: number) => `/returnable-items/returnable-gatepasses/${passId}/reject/`,
+    // Stage 3 — gate fills vehicle details and lets the material out, or bounces it back.
+    GATE_OUT: (passId: number) => `/returnable-items/returnable-gatepasses/${passId}/gate-out/`,
+    REJECT_AT_GATE: (passId: number) =>
+      `/returnable-items/returnable-gatepasses/${passId}/reject-at-gate/`,
+    // Stage 4 — gate records a return trip (partial returns allowed, several per pass).
+    RECORD_RETURN: (passId: number) =>
+      `/returnable-items/returnable-gatepasses/${passId}/record-return/`,
+    // Stage 5 — department collects from the gate, then closes.
+    ACKNOWLEDGE: (passId: number) =>
+      `/returnable-items/returnable-gatepasses/${passId}/acknowledge/`,
+    CLOSE: (passId: number) => `/returnable-items/returnable-gatepasses/${passId}/close/`,
+    SHORT_CLOSE: (passId: number) =>
+      `/returnable-items/returnable-gatepasses/${passId}/short-close/`,
+    CANCEL: (passId: number) => `/returnable-items/returnable-gatepasses/${passId}/cancel/`,
+    TIMELINE: (passId: number) => `/returnable-items/returnable-gatepasses/${passId}/timeline/`,
+    // Queues.
+    PENDING_APPROVAL: '/returnable-items/returnable-gatepasses/pending-approval/',
+    PENDING_GATE_OUT: '/returnable-items/returnable-gatepasses/pending-gate-out/',
+    PENDING_GATE_IN: '/returnable-items/returnable-gatepasses/pending-gate-in/',
+    ITEMS: '/returnable-items/returnable-gatepass-items/',
+    ITEM_DETAIL: (itemId: number) => `/returnable-items/returnable-gatepass-items/${itemId}/`,
+    RETURN_EVENTS: '/returnable-items/returnable-return-events/',
+    ATTACHMENTS: '/returnable-items/returnable-attachments/',
+    ATTACHMENT_DETAIL: (attachmentId: number) =>
+      `/returnable-items/returnable-attachments/${attachmentId}/`,
+    DASHBOARD: '/returnable-items/dashboard/',
+    REPORTS: '/returnable-items/reports/',
+    OPTIONS: '/returnable-items/options/',
+  },
   // Production Execution
   PRODUCTION_EXECUTION: {
     // Production Lines
