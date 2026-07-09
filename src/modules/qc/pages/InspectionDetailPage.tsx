@@ -246,6 +246,13 @@ export default function InspectionDetailPage() {
   // Send-back state
   const [sendBackRemarks, setSendBackRemarks] = useState('');
 
+  // Out-of-spec remark prompt shown at submit (the backend requires a remark
+  // when a parameter is out of spec; a submit-only user has no editable Remarks
+  // field, so it is captured inline here).
+  const [isSubmitRemarkDialogOpen, setIsSubmitRemarkDialogOpen] = useState(false);
+  const [submitRemark, setSubmitRemark] = useState('');
+  const [submitRemarkError, setSubmitRemarkError] = useState('');
+
   // Populate the form (and parameter results) from the persisted inspection.
   // Used both on initial load and to revert unsaved edits when cancelling.
   const populateFormFromInspection = useCallback(() => {
@@ -616,21 +623,31 @@ export default function InspectionDetailPage() {
     }
   };
 
-  const handleSubmit = async () => {
+  const runSubmit = async (remarks?: string): Promise<boolean> => {
     if (!inspection) {
       setApiErrors({ general: 'Please save the inspection first' });
-      return;
+      return false;
     }
     if (qcAttachmentFiles.length > 0) {
       setApiErrors({ general: 'Please save selected QC attachments before submitting' });
-      return;
+      return false;
     }
 
     try {
       setApiErrors({});
-      await submitInspection.mutateAsync(inspection.id);
+      await submitInspection.mutateAsync({ id: inspection.id, remarks });
+      return true;
     } catch (error) {
       const apiError = error as ApiError;
+      // Out-of-spec parameters need a remark. A submit-only user can't edit the
+      // Remarks field, so prompt for it inline and resubmit with it.
+      const remarkError = apiError.errors?.remarks?.[0];
+      if (remarkError) {
+        setSubmitRemark((prev) => prev || formData.remarks || '');
+        setSubmitRemarkError(remarkError);
+        setIsSubmitRemarkDialogOpen(true);
+        return false;
+      }
       if (apiError.errors) {
         const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
@@ -640,6 +657,22 @@ export default function InspectionDetailPage() {
       } else {
         setApiErrors({ general: apiError.message || 'Failed to submit inspection' });
       }
+      return false;
+    }
+  };
+
+  const handleSubmit = () => runSubmit();
+
+  const handleConfirmSubmitRemark = async () => {
+    if (!submitRemark.trim()) {
+      setSubmitRemarkError('A remark is required when any parameter is out of spec.');
+      return;
+    }
+    const ok = await runSubmit(submitRemark.trim());
+    if (ok) {
+      setIsSubmitRemarkDialogOpen(false);
+      setSubmitRemark('');
+      setSubmitRemarkError('');
     }
   };
 
@@ -938,6 +971,52 @@ export default function InspectionDetailPage() {
               disabled={!selectedMaterialTypeForLink || linkMaterialTypeSAPItem.isPending}
             >
               {linkMaterialTypeSAPItem.isPending ? 'Linking...' : 'Link Material Type'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Out-of-spec remark prompt (shown when submit is blocked for a remark) */}
+      <Dialog open={isSubmitRemarkDialogOpen} onOpenChange={setIsSubmitRemarkDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Remark required</DialogTitle>
+            <DialogDescription>
+              A parameter is out of spec. Add a remark explaining it before submitting.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>
+              Remarks <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              value={submitRemark}
+              onChange={(e) => {
+                setSubmitRemark(e.target.value);
+                if (submitRemarkError) setSubmitRemarkError('');
+              }}
+              placeholder="Explain the out-of-spec result..."
+              rows={4}
+            />
+            {submitRemarkError && (
+              <p className="text-sm text-destructive">{submitRemarkError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsSubmitRemarkDialogOpen(false)}
+              disabled={submitInspection.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmSubmitRemark}
+              disabled={submitInspection.isPending}
+            >
+              {submitInspection.isPending ? 'Submitting...' : 'Submit with Remark'}
             </Button>
           </DialogFooter>
         </DialogContent>
