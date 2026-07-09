@@ -9,7 +9,7 @@
  * Every edit persists immediately and is undoable.
  */
 import { ArrowLeft, Download, Loader2, Map as MapIcon, Redo2, Save, Undo2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -41,6 +41,7 @@ import {
   buildLocationsCsv,
   buildTemplate,
   findArea,
+  locationHoldsStock,
   makeWarehouseArea,
   outsideLocationIds,
   rebuildWarehouseCodes,
@@ -61,7 +62,7 @@ export default function WmsWarehouseEditorPage() {
   const { bundle, loading, busy, canUndo, canRedo, mutate, undo, redo } = editor;
 
   const warehouse = bundle?.warehouse ?? null;
-  const purposes = bundle?.purposes ?? [];
+  const purposes = useMemo(() => bundle?.purposes ?? [], [bundle]);
   const areas = useMemo(() => bundle?.warehouse.areas ?? [], [bundle]);
   // One entry per logical area (blocks sharing a groupId), for "add to existing".
   const areaGroups = useMemo(() => {
@@ -93,6 +94,24 @@ export default function WmsWarehouseEditorPage() {
     [warehouse, locations],
   );
   const safeLevel = warehouse ? Math.min(level, Math.max(0, warehouse.levels - 1)) : 0;
+
+  // One-time self-heal: warehouses saved before storage cells were always
+  // numbered may have enabled storage locations left blank (e.g. storage that
+  // sits outside every area). Renumber once on open so every storage location
+  // shows its code. Guarded per warehouse so it runs at most once, and only when
+  // something is actually missing (so normal warehouses are untouched).
+  const healedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!bundle || !warehouse || busy) return;
+    if (healedRef.current === warehouse.id) return;
+    const byId = new Map(purposes.map((purpose) => [purpose.id, purpose]));
+    const missing = locations.some(
+      (location) => location.enabled !== false && locationHoldsStock(location, byId) && !location.code,
+    );
+    if (!missing) return;
+    healedRef.current = warehouse.id;
+    void mutate((current) => rebuildWarehouseCodes(current));
+  }, [bundle, warehouse, busy, purposes, locations, mutate]);
 
   const levelLocations = useMemo(
     () => locations.filter((location) => location.level === safeLevel),
@@ -134,7 +153,9 @@ export default function WmsWarehouseEditorPage() {
               right: areaKeyAt(location.column + 1, location.row) !== key,
             }
           : undefined,
-        outside: showFullGrid ? false : outsideIds.has(location.id),
+        // A cell with a code is a real, labelled location — never shown as
+        // "outside" (out-of-area storage cells now get a grid-position code).
+        outside: showFullGrid ? false : outsideIds.has(location.id) && !location.code,
         enabled: location.enabled,
         status: location.status,
       };

@@ -111,7 +111,7 @@ describe('isOutside / outsideLocationIds', () => {
 });
 
 describe('rebuildWarehouseCodes', () => {
-  it('applies per-area codes and blanks cells outside every area', () => {
+  it('applies per-area codes and codes outside storage cells by grid position', () => {
     const area = makeWarehouseArea({
       name: 'M',
       color: '#000',
@@ -124,10 +124,12 @@ describe('rebuildWarehouseCodes', () => {
     const locations = [loc(0, 0), loc(1, 0), loc(2, 1)];
     const rebuilt = rebuildWarehouseCodes({ warehouse: w, zones: [], purposes: [], locations });
     const at = (c: number, r: number) => rebuilt.locations.find((l) => l.column === c && l.row === r)!;
-    expect(at(0, 0).code).toBe(''); // outside
     expect(at(1, 0).code).toBe('A-01'); // area origin
     expect(at(2, 1).code).toBe('B-02');
     expect(at(1, 0).barcode).toBe('A-01');
+    // The outside storage cell is still labelled (grid position, de-duped).
+    expect(at(0, 0).code).toBeTruthy();
+    expect(at(0, 0).code).not.toBe('A-01');
   });
 });
 
@@ -192,7 +194,7 @@ describe('buildAreaCodeMap — continuous numbering that skips disabled cells', 
     expect(at(4)).toBe('A-04');
   });
 
-  it('leaves cells outside every area uncoded', () => {
+  it('codes outside storage cells by grid position but leaves outside non-storage blank', () => {
     const area = makeWarehouseArea({
       name: 'Main',
       color: '#000',
@@ -201,11 +203,19 @@ describe('buildAreaCodeMap — continuous numbering that skips disabled cells', 
       endColumn: 2,
       endRow: 2,
     });
+    const aisle = makeCellPurpose('wh', { name: 'Aisle', color: '#000', holdsStock: false });
     const inside = loc(1, 1);
-    const outside = loc(0, 0);
-    const map = buildAreaCodeMap(wh({ areas: [area] }), [inside, outside]);
-    expect(map.get(inside.id)).toBe('A-01');
-    expect(map.get(outside.id)).toBeNull();
+    const outsideStorage = loc(4, 4); // storage, outside every area
+    const outsideAisle = { ...loc(0, 0), purposeId: aisle.id }; // non-storage, outside
+    const purposesById = new Map([[aisle.id, aisle]]);
+    const map = buildAreaCodeMap(
+      wh({ columns: 5, rows: 5, areas: [area] }),
+      [inside, outsideStorage, outsideAisle],
+      purposesById,
+    );
+    expect(map.get(inside.id)).toBe('A-01'); // area-relative
+    expect(map.get(outsideStorage.id)).toBe('E-05'); // whole-grid position
+    expect(map.get(outsideAisle.id)).toBeNull(); // non-storage → still blank
   });
 
   it('names only stock-holding cells, staying gapless across a non-storage cell', () => {

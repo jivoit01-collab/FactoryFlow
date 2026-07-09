@@ -242,7 +242,9 @@ export default function WmsMapPage() {
       levelLocations.map((location) => {
         const occ = occupancy.get(location.id);
         const purpose = location.purposeId ? purposeById.get(location.purposeId) : undefined;
-        const isOutsideCell = outsideIds.has(location.id);
+        // A cell with a code is a real, labelled location — never treated as
+        // "outside" (out-of-area storage cells now get a grid-position code).
+        const isOutsideCell = outsideIds.has(location.id) && !location.code;
         const { color, hatch } = colorFor(location, purpose);
         // Non-storage cells (paths, gates, cabins…) merge into a named plan area.
         const isStorage = purpose ? purpose.holdsStock : true;
