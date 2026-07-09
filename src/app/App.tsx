@@ -1,4 +1,5 @@
 import { AuthInitializer } from '@/core/auth/components/AuthInitializer';
+import { AppVersionWatcher } from '@/core/pwa/AppVersionWatcher';
 import { PWAInstallPrompt } from '@/core/pwa/PWAInstallPrompt';
 import { ErrorBoundary } from '@/shared/components';
 
@@ -17,6 +18,7 @@ function App() {
           <AppRoutes />
         </AuthInitializer>
         <PWAInstallPrompt />
+        <AppVersionWatcher />
       </AppProviders>
     </ErrorBoundary>
   );
