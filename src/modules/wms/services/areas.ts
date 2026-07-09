@@ -151,12 +151,14 @@ export function buildAreaCodeMap(
   const naming = warehouse.namingScheme;
   const groupKey = (area: WarehouseArea) => area.groupId ?? area.id;
   // Assign each location to the first area that contains it, then group blocks
-  // that share a groupId so they number continuously as one area.
+  // that share a groupId so they number continuously as one area. Cells that
+  // fall in no area are collected separately (numbered by grid position below).
   const byGroup = new Map<string, { area: WarehouseArea; cells: WarehouseLocation[] }>();
+  const outsideCells: WarehouseLocation[] = [];
   for (const location of locations) {
     const area = areas.find((a) => areaContains(a, location.column, location.row));
     if (!area) {
-      result.set(location.id, null); // outside every area
+      outsideCells.push(location);
       continue;
     }
     const key = groupKey(area);
@@ -168,6 +170,20 @@ export function buildAreaCodeMap(
   // A cell is numbered only when it is enabled AND actually holds stock —
   // disabled cells and non-storage cells (paths, gates, cabins) carry no code.
   const isCoded = (l: WarehouseLocation) => l.enabled !== false && locationHoldsStock(l, purposesById);
+
+  // Keep every assigned code unique across the whole warehouse: area cells claim
+  // theirs first, then outside cells de-dupe around them.
+  const seen = new Set<string>();
+  const unique = (base: string): string => {
+    let code = base;
+    if (seen.has(code)) {
+      let suffix = 2;
+      while (seen.has(`${code}#${suffix}`)) suffix += 1;
+      code = `${code}#${suffix}`;
+    }
+    seen.add(code);
+    return code;
+  };
 
   for (const { area, cells } of byGroup.values()) {
     const coded = cells.filter(isCoded);
@@ -196,8 +212,29 @@ export function buildAreaCodeMap(
       if (warehouse.levels > 1) {
         segments.push(axisLabel(naming.levelStyle, cell.level, warehouse.levels));
       }
-      result.set(cell.id, segments.join(naming.separator || '-'));
+      result.set(cell.id, unique(segments.join(naming.separator || '-')));
     }
+  }
+
+  // Storage cells that fall outside every area still get a code — numbered by
+  // their whole-grid position — so no storage location is ever unlabelled.
+  // Non-storage or disabled outside cells stay blank.
+  for (const location of outsideCells) {
+    if (!isCoded(location)) {
+      result.set(location.id, null);
+      continue;
+    }
+    result.set(
+      location.id,
+      unique(
+        buildLocationCode(
+          { columns: warehouse.columns, rows: warehouse.rows, levels: warehouse.levels, naming },
+          location.column,
+          location.row,
+          location.level,
+        ),
+      ),
+    );
   }
 
   return result;
