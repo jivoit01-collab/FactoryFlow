@@ -150,6 +150,10 @@ const RepairPartsOutDashboardPage = lazy(
 const RepairPartsOutFormPage = lazy(
   () => import('./pages/repairMovementPages/RepairPartsOutFormPage'),
 );
+const ReturnOutListPage = lazy(() => import('./pages/returnablePages/ReturnOutListPage'));
+const ReturnOutFormPage = lazy(() => import('./pages/returnablePages/ReturnOutFormPage'));
+const ReturnInListPage = lazy(() => import('./pages/returnablePages/ReturnInListPage'));
+const ReturnInFormPage = lazy(() => import('./pages/returnablePages/ReturnInFormPage'));
 const RepairPartsDetailPage = lazy(
   () => import('./pages/repairMovementPages/RepairPartsDetailPage'),
 );
@@ -182,6 +186,10 @@ const GATE_NAVIGATION_PERMISSIONS = Array.from(
     ...GATE_DASHBOARD_ACCESS_PERMISSIONS,
     ...GATE_ENTRY_CREATE_PERMISSIONS,
     BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS,
+    // A gate operator whose only job is the returnable queues still needs the
+    // Gate menu to appear in the sidebar.
+    GATE_PERMISSIONS.RETURNABLE.GATE_OUT,
+    GATE_PERMISSIONS.RETURNABLE.GATE_IN,
   ]),
 );
 
@@ -929,6 +937,35 @@ export const gateModuleConfig: ModuleConfig = {
       permissions: [GATE_PERMISSIONS.REPAIR_MOVEMENT.VIEW, GATE_PERMISSIONS.REPAIR_MOVEMENT.CREATE],
       breadcrumb: { label: 'Repair Parts Out Entry' },
     },
+    // Returnable gate pass — the gate-side halves of a document the department owns.
+    {
+      path: '/gate/return-out',
+      element: <ReturnOutListPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
+      breadcrumb: { label: 'Returnable Gate Out' },
+    },
+    {
+      path: '/gate/return-out/:passId',
+      element: <ReturnOutFormPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
+      breadcrumb: { label: 'Gate Out Returnable' },
+    },
+    {
+      path: '/gate/return-in',
+      element: <ReturnInListPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
+      breadcrumb: { label: 'Returnable Gate In' },
+    },
+    {
+      path: '/gate/return-in/:passId',
+      element: <ReturnInFormPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
+      breadcrumb: { label: 'Record Returnable Return' },
+    },
     {
       path: '/gate/repair-parts-in',
       element: <RepairPartsInDashboardPage />,
@@ -1019,6 +1056,16 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/sales-dispatch/barcode-reports',
           title: 'Barcode Dispatch Reports',
           permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
+        },
+        {
+          path: '/gate/return-out',
+          title: 'Returnable Out',
+          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
+        },
+        {
+          path: '/gate/return-in',
+          title: 'Returnable In',
+          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
         },
       ],
     },

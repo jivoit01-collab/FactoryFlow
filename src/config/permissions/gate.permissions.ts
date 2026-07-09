@@ -187,6 +187,22 @@ export const GATE_PERMISSIONS = {
   },
 
   // ============================================
+  // RETURNABLE GATE PASS (gate-side stages)
+  // Backed by the `returnable_items` Django app. The pass is raised by a
+  // department; the gate records the vehicle out and the items back in.
+  // ============================================
+  RETURNABLE: {
+    /** View returnable gate passes at the gate */
+    VIEW: 'returnable_items.can_view_returnable_gatepass',
+    /** Record vehicle details and let the material out */
+    GATE_OUT: 'returnable_items.can_gate_out_returnable',
+    /** Check the returning items and accept them back in */
+    GATE_IN: 'returnable_items.can_gate_in_returnable',
+    /** Bounce a mismatched pass back to the department */
+    REJECT: 'returnable_items.can_reject_returnable_at_gate',
+  },
+
+  // ============================================
   // CONSTRUCTION GATE-IN PERMISSIONS
   // ============================================
   CONSTRUCTION: {
@@ -313,6 +329,7 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.DAILY_NEEDS)[keyof typeof GATE_PERMISSIONS.DAILY_NEEDS]
   | (typeof GATE_PERMISSIONS.MAINTENANCE)[keyof typeof GATE_PERMISSIONS.MAINTENANCE]
   | (typeof GATE_PERMISSIONS.REPAIR_MOVEMENT)[keyof typeof GATE_PERMISSIONS.REPAIR_MOVEMENT]
+  | (typeof GATE_PERMISSIONS.RETURNABLE)[keyof typeof GATE_PERMISSIONS.RETURNABLE]
   | (typeof GATE_PERMISSIONS.CONSTRUCTION)[keyof typeof GATE_PERMISSIONS.CONSTRUCTION]
   | (typeof GATE_PERMISSIONS.FIXED_ASSET)[keyof typeof GATE_PERMISSIONS.FIXED_ASSET]
   | (typeof GATE_PERMISSIONS.LABOUR_COUNT)[keyof typeof GATE_PERMISSIONS.LABOUR_COUNT]

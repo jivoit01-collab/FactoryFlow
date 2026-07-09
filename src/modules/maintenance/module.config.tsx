@@ -11,9 +11,12 @@ import {
   HardHat,
   LayoutDashboard,
   Package,
+  PackageOpen,
   BadgeIndianRupee,
   Settings,
   ShieldCheck,
+  Truck,
+  Undo2,
   Wrench,
 } from 'lucide-react';
 import { lazy } from 'react';
@@ -22,6 +25,7 @@ import {
   GATE_PERMISSIONS,
   MAINTENANCE_MODULE_PREFIX,
   MAINTENANCE_PERMISSIONS,
+  RETURNABLE_PERMISSIONS,
 } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
@@ -41,6 +45,10 @@ const MaintenanceWorkPermitsPage = lazy(() => import('./pages/MaintenanceWorkPer
 const MaintenanceSafetyFinePage = lazy(() => import('./pages/MaintenanceSafetyFinePage'));
 const MaintenanceWorkOrdersPage = lazy(() => import('./pages/MaintenanceWorkOrdersPage'));
 const MaintenanceWorkOrderDetailPage = lazy(() => import('./pages/MaintenanceWorkOrderDetailPage'));
+const MaintenanceReturnablePage = lazy(() => import('./pages/MaintenanceReturnablePage'));
+const MaintenanceReturnableDetailPage = lazy(
+  () => import('./pages/MaintenanceReturnableDetailPage'),
+);
 
 export const maintenanceModuleConfig: ModuleConfig = {
   name: 'maintenance',
@@ -123,6 +131,20 @@ export const maintenanceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Safety Fines' },
     },
     {
+      path: '/maintenance/returnable',
+      element: <MaintenanceReturnablePage />,
+      layout: 'main',
+      permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
+      breadcrumb: { label: 'Returnable Items' },
+    },
+    {
+      path: '/maintenance/returnable/:passId',
+      element: <MaintenanceReturnableDetailPage />,
+      layout: 'main',
+      permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
+      breadcrumb: { label: 'Returnable Gate Pass' },
+    },
+    {
       path: '/maintenance/pm',
       element: <MaintenancePMPage />,
       layout: 'main',
@@ -179,6 +201,7 @@ export const maintenanceModuleConfig: ModuleConfig = {
         MAINTENANCE_PERMISSIONS.VIEW_ASSET_LOCATION,
         MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
         MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
+        RETURNABLE_PERMISSIONS.VIEW_GATEPASS,
       ],
       breadcrumb: { label: 'Maintenance' },
     },
@@ -247,6 +270,12 @@ export const maintenanceModuleConfig: ModuleConfig = {
           permissions: [MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE],
         },
         {
+          path: '/maintenance/returnable',
+          title: 'Returnable Items',
+          icon: PackageOpen,
+          permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
+        },
+        {
           path: '/maintenance/pm',
           title: 'PM / Checklist',
           icon: CalendarCheck,
@@ -289,6 +318,18 @@ export const maintenanceModuleConfig: ModuleConfig = {
             GATE_PERMISSIONS.REPAIR_MOVEMENT.VIEW,
             GATE_PERMISSIONS.REPAIR_MOVEMENT.CREATE,
           ],
+        },
+        {
+          path: '/gate/return-out',
+          title: 'Returnable Gate Out',
+          icon: Truck,
+          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
+        },
+        {
+          path: '/gate/return-in',
+          title: 'Returnable Gate In',
+          icon: Undo2,
+          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
         },
       ],
     },

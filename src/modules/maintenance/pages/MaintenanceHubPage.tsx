@@ -13,12 +13,17 @@ import {
   type LucideIcon,
   BadgeIndianRupee,
   Package,
+  PackageOpen,
   Settings,
   ShieldCheck,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { GATE_PERMISSIONS, MAINTENANCE_PERMISSIONS } from '@/config/permissions';
+import {
+  GATE_PERMISSIONS,
+  MAINTENANCE_PERMISSIONS,
+  RETURNABLE_PERMISSIONS,
+} from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
@@ -89,6 +94,13 @@ const SUB_MODULES: SubModule[] = [
     to: '/maintenance/work-permits',
     icon: ShieldCheck,
     permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
+  },
+  {
+    title: 'Returnable Items',
+    description: 'Send material out for repair or exchange and track it until it comes back.',
+    to: '/maintenance/returnable',
+    icon: PackageOpen,
+    permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
   },
   {
     title: 'Safety Fines',

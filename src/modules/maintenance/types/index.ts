@@ -4,3 +4,4 @@ export * from './fireReport.types';
 export * from './fireIssue.types';
 export * from './workPermit.types';
 export * from './safetyFine.types';
+export * from './returnableGatePass.types';
