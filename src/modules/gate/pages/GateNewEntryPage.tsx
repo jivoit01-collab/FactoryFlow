@@ -21,7 +21,11 @@ export default function GateNewEntryPage() {
   const [selectedEntryTypeId, setSelectedEntryTypeId] = useState<string>();
 
   const creatableEntryTypes = useMemo(
-    () => GATE_ENTRY_TYPES.filter((entryType) => hasAnyPermission(entryType.createPermissions)),
+    () =>
+      GATE_ENTRY_TYPES.filter(
+        (entryType) =>
+          !entryType.hideFromNewEntry && hasAnyPermission(entryType.createPermissions),
+      ),
     [hasAnyPermission],
   );
 

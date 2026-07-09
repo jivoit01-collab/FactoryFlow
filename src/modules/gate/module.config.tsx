@@ -186,10 +186,6 @@ const GATE_NAVIGATION_PERMISSIONS = Array.from(
     ...GATE_DASHBOARD_ACCESS_PERMISSIONS,
     ...GATE_ENTRY_CREATE_PERMISSIONS,
     BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS,
-    // A gate operator whose only job is the returnable queues still needs the
-    // Gate menu to appear in the sidebar.
-    GATE_PERMISSIONS.RETURNABLE.GATE_OUT,
-    GATE_PERMISSIONS.RETURNABLE.GATE_IN,
   ]),
 );
 
@@ -1056,16 +1052,6 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/sales-dispatch/barcode-reports',
           title: 'Barcode Dispatch Reports',
           permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
-        },
-        {
-          path: '/gate/return-out',
-          title: 'Returnable Out',
-          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
-        },
-        {
-          path: '/gate/return-in',
-          title: 'Returnable In',
-          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
         },
       ],
     },
