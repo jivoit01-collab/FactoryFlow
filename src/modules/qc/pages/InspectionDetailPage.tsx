@@ -168,12 +168,29 @@ export default function InspectionDetailPage() {
   const sapItemCode = (formData.sap_code || arrivalSlip?.po_item_code || '').trim().toUpperCase();
   const shouldResolveMaterialType = isNewInspection || isEditing;
   const {
-    data: linkedMaterialType,
+    data: linkedMaterialTypes = [],
     isFetching: isResolvingMaterialType,
     isError: isMaterialTypeLookupError,
   } = useMaterialTypeBySapItem(sapItemCode || null, shouldResolveMaterialType);
-  const resolvedMaterialType = linkedMaterialType || manualLinkedMaterialType;
-  const isUnmappedMaterialType = isMaterialTypeLookupError && !manualLinkedMaterialType;
+
+  // A SAP code can be linked to several material types. A single candidate is
+  // auto-selected; when there are several the user picks one (material_type_id).
+  const candidateMaterialTypes = linkedMaterialTypes;
+  const hasMultipleMaterialTypes = candidateMaterialTypes.length > 1;
+  const chosenCandidate =
+    candidateMaterialTypes.find((type) => type.id === formData.material_type_id) ?? null;
+  const autoSelectedMaterialType =
+    candidateMaterialTypes.length === 1 ? candidateMaterialTypes[0] : null;
+  const resolvedMaterialType = chosenCandidate ?? autoSelectedMaterialType ?? manualLinkedMaterialType;
+
+  // "Unmapped" now means the lookup finished with no candidates (or errored) and
+  // the user hasn't linked one manually — the empty-list case the backend
+  // returns instead of a 404.
+  const isUnmappedMaterialType =
+    !manualLinkedMaterialType &&
+    !isResolvingMaterialType &&
+    Boolean(sapItemCode) &&
+    (isMaterialTypeLookupError || candidateMaterialTypes.length === 0);
   const materialTypeDisplay = resolvedMaterialType
     ? getMaterialTypeLabel(resolvedMaterialType)
     : formData.material_type_id && inspection?.material_type_name
@@ -456,7 +473,9 @@ export default function InspectionDetailPage() {
       if (isResolvingMaterialType) {
         errors.material_type_id = 'Material type mapping is still loading';
       } else if (!selectedMaterialTypeId || isUnmappedMaterialType) {
-        errors.material_type_id = materialTypeMappingError || 'No linked material type found';
+        errors.material_type_id = hasMultipleMaterialTypes
+          ? 'Select a material type'
+          : materialTypeMappingError || 'No linked material type found';
       }
       // Validate mandatory parameters have result values
       const mandatoryParams = qcParameters.filter((p) => p.is_mandatory);
@@ -733,6 +752,10 @@ export default function InspectionDetailPage() {
     isUnmappedMaterialType &&
     !isResolvingMaterialType &&
     !isSaving;
+
+  // Show a picker (instead of the read-only field) when the SAP code maps to
+  // more than one material type, so the user can choose which one applies.
+  const showMaterialTypePicker = hasMultipleMaterialTypes && canEdit && !canOpenMaterialTypeLink;
 
 
   // Show animated success screen after approval
@@ -1020,6 +1043,23 @@ export default function InspectionDetailPage() {
                   </span>
                   <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </button>
+              ) : showMaterialTypePicker ? (
+                <SearchableSelect<MaterialType>
+                  inputId="inspection-material-type"
+                  value={selectedMaterialTypeId ? String(selectedMaterialTypeId) : undefined}
+                  items={candidateMaterialTypes}
+                  isLoading={false}
+                  disabled={isSaving}
+                  placeholder="Select material type..."
+                  getItemKey={(type) => type.id}
+                  getItemLabel={getMaterialTypeLabel}
+                  loadingText="Loading..."
+                  emptyText="No linked material types"
+                  notFoundText="No matching material type"
+                  error={materialTypeInlineError}
+                  onItemSelect={(type) => handleInputChange('material_type_id', type.id)}
+                  onClear={() => handleInputChange('material_type_id', 0)}
+                />
               ) : (
                 <Input
                   value={materialTypeDisplay}
@@ -1033,11 +1073,15 @@ export default function InspectionDetailPage() {
                   }
                 />
               )}
-              {materialTypeInlineError && (
+              {materialTypeInlineError && !showMaterialTypePicker && (
                 <p className="text-sm text-destructive">{materialTypeInlineError}</p>
               )}
               {isResolvingMaterialType ? (
                 <p className="text-xs text-muted-foreground">Resolving from SAP item...</p>
+              ) : showMaterialTypePicker ? (
+                <p className="text-xs text-muted-foreground">
+                  SAP item {sapItemCode} is linked to multiple material types — select one.
+                </p>
               ) : resolvedMaterialType && shouldResolveMaterialType ? (
                 <p className="text-xs text-muted-foreground">
                   Auto-loaded from SAP item {sapItemCode}

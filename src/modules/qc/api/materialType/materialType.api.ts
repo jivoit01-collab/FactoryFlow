@@ -35,9 +35,9 @@ export const materialTypeApi = {
     return response.data;
   },
 
-  // Get material type linked to a SAP item
-  async getBySapItem(itemCode: string): Promise<MaterialType> {
-    const response = await apiClient.get<MaterialType>(
+  // Get the material types linked to a SAP item (a code can map to several).
+  async getBySapItem(itemCode: string): Promise<MaterialType[]> {
+    const response = await apiClient.get<MaterialType[]>(
       API_ENDPOINTS.QUALITY_CONTROL_V2.MATERIAL_TYPE_BY_SAP_ITEM(itemCode),
     );
     return response.data;

@@ -39,7 +39,7 @@ export function useMaterialType(id: number | null) {
   });
 }
 
-// Get material type by linked SAP item
+// Get the material types linked to a SAP item (a code can map to several)
 export function useMaterialTypeBySapItem(itemCode: string | null, enabled = true) {
   const normalizedItemCode = itemCode?.trim().toUpperCase() || '';
 
