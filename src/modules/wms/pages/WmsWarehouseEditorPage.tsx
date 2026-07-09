@@ -153,9 +153,12 @@ export default function WmsWarehouseEditorPage() {
               right: areaKeyAt(location.column + 1, location.row) !== key,
             }
           : undefined,
-        // A cell with a code is a real, labelled location — never shown as
-        // "outside" (out-of-area storage cells now get a grid-position code).
-        outside: showFullGrid ? false : outsideIds.has(location.id) && !location.code,
+        // Only a truly unconfigured cell (no code AND no purpose) is shown as
+        // "outside" (dashed ·). Any cell the user has configured — a coded
+        // storage location, or a purposed non-storage cell — shows its config
+        // even when it falls outside a drawn area.
+        outside:
+          showFullGrid ? false : outsideIds.has(location.id) && !location.code && !location.purposeId,
         enabled: location.enabled,
         status: location.status,
       };
