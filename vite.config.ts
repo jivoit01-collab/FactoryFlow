@@ -5,9 +5,27 @@ import react from '@vitejs/plugin-react-swc'
 import path from 'path'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// A unique id per build, baked into the bundle (__BUILD_ID__) and written to
+// /version.json. The app polls version.json to detect a newer deploy and offer
+// a refresh — no service worker involved, so push notifications are unaffected.
+const BUILD_ID = Date.now().toString()
+
 export default defineConfig({
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   plugins: [
     react(),
+    {
+      name: 'emit-version-json',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'version.json',
+          source: JSON.stringify({ version: BUILD_ID }),
+        })
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
