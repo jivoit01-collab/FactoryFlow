@@ -216,7 +216,8 @@ export function useUpdateParameterResults() {
 export function useSubmitInspection() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => inspectionApi.submit(id),
+    mutationFn: ({ id, remarks }: { id: number; remarks?: string }) =>
+      inspectionApi.submit(id, remarks),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: INSPECTION_QUERY_KEYS.detail(result.id) });

@@ -177,10 +177,13 @@ export const inspectionApi = {
     return response.data;
   },
 
-  // Submit inspection for approval
-  async submit(id: number): Promise<Inspection> {
+  // Submit inspection for approval. An optional remark is sent inline so a
+  // submit-only user can satisfy the out-of-spec remark requirement without
+  // needing edit permission on the form.
+  async submit(id: number, remarks?: string): Promise<Inspection> {
     const response = await apiClient.post<Inspection>(
       API_ENDPOINTS.QUALITY_CONTROL_V2.INSPECTION_SUBMIT(id),
+      remarks ? { remarks } : undefined,
     );
     return response.data;
   },
