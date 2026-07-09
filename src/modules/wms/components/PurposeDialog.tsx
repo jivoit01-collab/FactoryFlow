@@ -94,7 +94,7 @@ export function PurposeDialog({ open, onOpenChange, locationCount, onSubmit }: P
 
           <div className="space-y-1.5">
             <Label>Colour</Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {PURPOSE_COLOR_PRESETS.map((preset) => (
                 <button
                   key={preset}
@@ -104,10 +104,24 @@ export function PurposeDialog({ open, onOpenChange, locationCount, onSubmit }: P
                   style={{ backgroundColor: preset }}
                   className={cn(
                     'h-7 w-7 rounded-full border-2 transition',
-                    color === preset ? 'border-foreground ring-2 ring-ring' : 'border-transparent',
+                    color.toLowerCase() === preset.toLowerCase()
+                      ? 'border-foreground ring-2 ring-ring'
+                      : 'border-transparent',
                   )}
                 />
               ))}
+              <label
+                className="flex h-7 items-center gap-1.5 rounded-full border px-2 text-xs text-muted-foreground"
+                title="Pick any colour"
+              >
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(event) => setColor(event.target.value)}
+                  className="h-4 w-4 cursor-pointer border-0 bg-transparent p-0"
+                />
+                Custom
+              </label>
             </div>
           </div>
 
