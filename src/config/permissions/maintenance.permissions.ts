@@ -51,6 +51,8 @@ export const MAINTENANCE_PERMISSIONS = {
   REVIEW_FIRE_REPORT: 'maintenance.can_review_fire_report',
   VIEW_FIRE_ISSUE: 'maintenance.can_view_fire_issue',
   MANAGE_FIRE_ISSUE: 'maintenance.can_manage_fire_issue',
+  VIEW_SAFETY_FINE: 'maintenance.can_view_safety_fine',
+  MANAGE_SAFETY_FINE: 'maintenance.can_manage_safety_fine',
   VIEW_WORK_PERMIT: 'maintenance.can_view_work_permit',
   MANAGE_WORK_PERMIT: 'maintenance.can_manage_work_permit',
   ISSUE_WORK_PERMIT: 'maintenance.can_issue_work_permit',

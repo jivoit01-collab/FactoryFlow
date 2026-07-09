@@ -11,6 +11,7 @@ import {
   HardHat,
   LayoutDashboard,
   type LucideIcon,
+  BadgeIndianRupee,
   Package,
   Settings,
   ShieldCheck,
@@ -88,6 +89,13 @@ const SUB_MODULES: SubModule[] = [
     to: '/maintenance/work-permits',
     icon: ShieldCheck,
     permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
+  },
+  {
+    title: 'Safety Fines',
+    description: 'Record PPE violations on the floor and issue fines.',
+    to: '/maintenance/safety-fines',
+    icon: BadgeIndianRupee,
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE],
   },
   {
     title: 'PM / Checklist',

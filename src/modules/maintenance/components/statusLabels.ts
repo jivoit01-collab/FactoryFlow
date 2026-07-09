@@ -1,4 +1,4 @@
-import type { AssetStatus, WorkOrderStatus, WorkPermitStatus } from '../types';
+import type { AssetStatus, SafetyFineStatus, WorkOrderStatus, WorkPermitStatus } from '../types';
 
 const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   RUNNING: 'Running',
@@ -88,4 +88,24 @@ export function getWorkPermitStatusLabel(status: WorkPermitStatus) {
 
 export function getWorkPermitStatusClass(status: WorkPermitStatus) {
   return WORK_PERMIT_STATUS_CLASSES[status];
+}
+
+const SAFETY_FINE_STATUS_LABELS: Record<SafetyFineStatus, string> = {
+  PENDING: 'Pending',
+  PAID: 'Paid',
+  WAIVED: 'Waived',
+};
+
+const SAFETY_FINE_STATUS_CLASSES: Record<SafetyFineStatus, string> = {
+  PENDING: 'border-amber-200 bg-amber-50 text-amber-700',
+  PAID: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  WAIVED: 'border-slate-200 bg-slate-50 text-slate-700',
+};
+
+export function getSafetyFineStatusLabel(status: SafetyFineStatus) {
+  return SAFETY_FINE_STATUS_LABELS[status] ?? status;
+}
+
+export function getSafetyFineStatusClass(status: SafetyFineStatus) {
+  return SAFETY_FINE_STATUS_CLASSES[status];
 }
