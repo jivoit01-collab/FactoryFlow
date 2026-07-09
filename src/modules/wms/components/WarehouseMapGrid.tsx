@@ -13,6 +13,7 @@ import { cn } from '@/shared/utils';
 
 import { axisLabel } from '../services/layout';
 import type { WarehouseNamingScheme } from '../types';
+import { regionRadius, regionShapeAt } from './planRegion';
 
 export interface MapCell {
   id: string;
@@ -22,6 +23,12 @@ export interface MapCell {
   color: string;
   hatch?: boolean;
   occupancyPct: number;
+  /** Whether the cell holds stock. Non-storage cells merge into a plan area. */
+  storage?: boolean;
+  /** Purpose id — merge key for joining adjacent non-storage cells. */
+  purposeId?: string | null;
+  /** Purpose name — labelled once at each merged region's top-left. */
+  purposeName?: string | null;
   highlighted?: boolean;
   dimmed?: boolean;
   tooltip?: string;
@@ -112,16 +119,26 @@ export function WarehouseMapGrid({
     ? `repeat(${columns}, minmax(3rem, 1fr))`
     : `auto repeat(${columns}, minmax(3rem, 1fr))`;
 
+  // Merge key for a cell: its purpose id when non-storage (so adjacent cells of
+  // the same purpose join into one plan area), else null (stands alone).
+  const mergeKeyAt = (column: number, r: number): string | null => {
+    const cc = cellByPos.get(`${column}:${r}`);
+    if (!cc || cc.storage !== false) return null;
+    return cc.purposeId ?? '__nostock__';
+  };
+
   return (
     <div className="overflow-auto rounded-md border bg-muted/20 p-3">
-      <div className="grid gap-1" style={{ gridTemplateColumns }}>
+      {/* gap-0 so non-storage plan areas merge seamlessly; boxes re-create their
+          spacing with a small margin instead. */}
+      <div className="grid gap-0" style={{ gridTemplateColumns }}>
         {!hasAreas && (
           <>
             <div />
             {columnLabels.map((label, c) => (
               <div
                 key={`col-${c}`}
-                className="px-1 text-center text-xs font-semibold text-muted-foreground"
+                className="mx-0.5 px-1 text-center text-xs font-semibold text-muted-foreground"
               >
                 {label}
               </div>
@@ -132,7 +149,7 @@ export function WarehouseMapGrid({
         {rowLabels.map((rowLabel, r) => (
           <div key={`row-${r}`} className="contents">
             {!hasAreas && (
-              <div className="flex items-center pr-1 text-xs font-semibold text-muted-foreground">
+              <div className="my-0.5 flex items-center pr-1 text-xs font-semibold text-muted-foreground">
                 {rowLabel}
               </div>
             )}
@@ -140,9 +157,55 @@ export function WarehouseMapGrid({
               const cell = cellByPos.get(`${c}:${r}`);
               if (!cell) {
                 return (
-                  <div key={`empty-${c}-${r}`} className="h-12 rounded-sm border border-dashed border-border/40" />
+                  <div key={`empty-${c}-${r}`} className="m-0.5 h-12 rounded-sm border border-dashed border-border/40" />
                 );
               }
+
+              // Non-storage cells render edge-to-edge; contiguous same-purpose
+              // cells merge into one solid, named plan area.
+              if (cell.storage === false) {
+                const shape = regionShapeAt(mergeKeyAt, c, r);
+                // A soft inset outline only on the region's outer edges keeps the
+                // interior seamless; a faint inner highlight adds a crisp lift.
+                const line = 'rgba(15,23,42,0.24)';
+                const shadows: string[] = ['inset 0 1px 0 0 rgba(255,255,255,0.18)'];
+                if (shape.edges.top) shadows.push(`inset 0 1.5px 0 0 ${line}`);
+                if (shape.edges.bottom) shadows.push(`inset 0 -1.5px 0 0 ${line}`);
+                if (shape.edges.left) shadows.push(`inset 1.5px 0 0 0 ${line}`);
+                if (shape.edges.right) shadows.push(`inset -1.5px 0 0 0 ${line}`);
+                return (
+                  <button
+                    key={cell.id}
+                    type="button"
+                    title={cell.tooltip ?? cell.purposeName ?? 'Non-storage area'}
+                    onClick={() => onCellClick?.(cell.id)}
+                    style={{
+                      backgroundColor: cell.color,
+                      backgroundImage: cell.hatch ? HATCH : undefined,
+                      borderRadius: regionRadius(shape.edges),
+                      boxShadow: shadows.join(', '),
+                    }}
+                    className={cn(
+                      'relative flex h-12 items-center justify-center overflow-visible px-0.5 transition',
+                      'hover:brightness-[1.06]',
+                      cell.dimmed && 'opacity-25',
+                    )}
+                  >
+                    {shape.labelHere && cell.purposeName ? (
+                      <span
+                        className={cn(
+                          'pointer-events-none absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded bg-black/25 px-1.5 py-0.5 text-[9px] font-semibold uppercase leading-none tracking-wide text-white shadow-sm',
+                          // Wide regions let the label run across; narrow ones clip it.
+                          shape.edges.right ? 'max-w-[calc(100%-0.5rem)] truncate' : 'whitespace-nowrap',
+                        )}
+                      >
+                        {cell.purposeName}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              }
+
               const fill = Math.max(0, Math.min(100, cell.occupancyPct));
               return (
                 <button
@@ -155,7 +218,7 @@ export function WarehouseMapGrid({
                     backgroundImage: cell.hatch ? HATCH : undefined,
                   }}
                   className={cn(
-                    'relative flex h-12 flex-col items-center justify-center overflow-hidden rounded-sm border border-black/10 px-0.5 text-[10px] font-semibold leading-none text-white/95 transition',
+                    'relative m-0.5 flex h-12 flex-col items-center justify-center overflow-hidden rounded-md border border-black/10 px-0.5 text-[10px] font-semibold leading-none text-white/95 shadow-sm transition',
                     'hover:ring-2 hover:ring-foreground/40',
                     cell.highlighted && 'ring-2 ring-foreground ring-offset-1',
                     cell.suggested && 'ring-2 ring-emerald-500 ring-offset-1',

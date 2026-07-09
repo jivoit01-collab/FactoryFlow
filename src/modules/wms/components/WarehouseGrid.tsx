@@ -19,6 +19,7 @@ import { cn } from '@/shared/utils';
 
 import { axisLabel } from '../services/layout';
 import type { LocationStatus, WarehouseNamingScheme } from '../types';
+import { regionRadius, regionShapeAt } from './planRegion';
 
 export interface GridCell {
   id: string;
@@ -27,6 +28,12 @@ export interface GridCell {
   code: string;
   /** Purpose colour — the single fill tint for a cell. */
   purposeColor?: string | null;
+  /** Whether the cell holds stock. Non-storage cells merge into a plan area. */
+  storage?: boolean;
+  /** Purpose id — the merge key: adjacent non-storage cells with the same id join. */
+  purposeId?: string | null;
+  /** Purpose name — labelled once at each merged region's top-left. */
+  purposeName?: string | null;
   /** Area colour, drawn as an outline (not a fill) on the region's edges. */
   areaColor?: string | null;
   /** Which sides of this cell sit on its area's boundary (for the outline). */
@@ -134,7 +141,9 @@ export function WarehouseGrid({
 
   return (
     <div className="overflow-auto rounded-md border bg-muted/20 p-3">
-      <div className="grid gap-1" style={{ gridTemplateColumns }}>
+      {/* gap-0 so non-storage plan areas can merge seamlessly; boxes re-create
+          their spacing with a small margin instead. */}
+      <div className="grid gap-0" style={{ gridTemplateColumns }}>
         {/* Header row: empty corner + column labels (only when headers match) */}
         {headersShown && (
           <>
@@ -146,7 +155,7 @@ export function WarehouseGrid({
                 disabled={!onHeaderClick}
                 onClick={() => onHeaderClick?.('column', c)}
                 className={cn(
-                  'px-1 text-center text-xs font-semibold text-muted-foreground',
+                  'mx-0.5 px-1 text-center text-xs font-semibold text-muted-foreground',
                   onHeaderClick && 'cursor-pointer rounded hover:bg-muted hover:text-foreground',
                 )}
               >
@@ -203,6 +212,13 @@ function Row({
   onCellDoubleClick?: (cell: GridCell) => void;
   onHeaderClick?: (axis: 'column' | 'row', index: number) => void;
 }) {
+  // Merge key for a cell: its purpose id when non-storage (so adjacent cells of
+  // the same purpose join into one plan area), else null (stands alone).
+  const mergeKeyAt = (column: number, r: number): string | null => {
+    const cc = cellByPos.get(`${column}:${r}`);
+    if (!cc || cc.outside || cc.storage !== false) return null;
+    return cc.purposeId ?? '__nostock__';
+  };
   return (
     <>
       {showHeader && (
@@ -211,7 +227,7 @@ function Row({
           disabled={!onHeaderClick}
           onClick={() => onHeaderClick?.('row', row)}
           className={cn(
-            'flex items-center pr-1 text-xs font-semibold text-muted-foreground',
+            'my-0.5 flex items-center pr-1 text-xs font-semibold text-muted-foreground',
             onHeaderClick && 'cursor-pointer rounded hover:bg-muted hover:text-foreground',
           )}
         >
@@ -221,9 +237,62 @@ function Row({
       {Array.from({ length: columns }, (_, c) => {
         const cell = cellByPos.get(`${c}:${row}`);
         if (!cell) {
-          return <div key={`empty-${c}-${row}`} className="h-10 rounded-sm border border-dashed border-border/50" />;
+          return <div key={`empty-${c}-${row}`} className="m-0.5 h-10 rounded-sm border border-dashed border-border/50" />;
         }
         const selected = selectedIds?.has(cell.id) ?? false;
+
+        // Non-storage cells render edge-to-edge; contiguous same-purpose cells
+        // merge into one solid, named plan area (paths, gates, cabins…).
+        if (!cell.outside && cell.storage === false) {
+          const shape = regionShapeAt(mergeKeyAt, c, row);
+          const color = cell.purposeColor ?? '#94a3b8';
+          const regionStyle: CSSProperties = {
+            backgroundColor: color,
+            borderRadius: regionRadius(shape.edges),
+          };
+          if (!selected) {
+            // A soft inset outline only on the region's outer edges keeps the
+            // interior seamless; a faint inner highlight adds a crisp lift.
+            const line = 'rgba(15,23,42,0.22)';
+            const shadows: string[] = ['inset 0 1px 0 0 rgba(255,255,255,0.18)'];
+            if (shape.edges.top) shadows.push(`inset 0 1.5px 0 0 ${line}`);
+            if (shape.edges.bottom) shadows.push(`inset 0 -1.5px 0 0 ${line}`);
+            if (shape.edges.left) shadows.push(`inset 1.5px 0 0 0 ${line}`);
+            if (shape.edges.right) shadows.push(`inset -1.5px 0 0 0 ${line}`);
+            regionStyle.boxShadow = shadows.join(', ');
+          }
+          return (
+            <button
+              key={cell.id}
+              type="button"
+              title={cell.purposeName ?? 'Non-storage area'}
+              disabled={!selectable}
+              onClick={(event) => onCellClick?.(cell, event.shiftKey)}
+              onDoubleClick={() => onCellDoubleClick?.(cell)}
+              style={regionStyle}
+              className={cn(
+                'relative flex h-10 items-center justify-center overflow-visible px-0.5 transition',
+                selectable && 'cursor-pointer hover:brightness-[1.06]',
+                selected && 'z-10 ring-2 ring-primary ring-offset-1',
+                cell.enabled === false && 'opacity-60',
+              )}
+            >
+              {shape.labelHere && cell.purposeName ? (
+                <span
+                  className={cn(
+                    'pointer-events-none absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded bg-black/25 px-1.5 py-0.5 text-[9px] font-semibold uppercase leading-none tracking-wide text-white shadow-sm',
+                    // A wide (horizontal) region lets its label run across it; a
+                    // narrow one keeps the label clipped so it can't spill over.
+                    shape.edges.right ? 'max-w-[calc(100%-0.5rem)] truncate' : 'whitespace-nowrap',
+                  )}
+                >
+                  {cell.purposeName}
+                </span>
+              ) : null}
+            </button>
+          );
+        }
+
         const disabled = cell.enabled === false || cell.status === 'BLOCKED' || cell.status === 'DAMAGED';
         const originName = originLabelById.get(cell.id);
         const fill = cell.outside ? null : cell.purposeColor;
@@ -260,7 +329,7 @@ function Row({
             onDoubleClick={() => onCellDoubleClick?.(cell)}
             style={Object.keys(style).length ? style : undefined}
             className={cn(
-              'relative flex h-10 items-center justify-center overflow-hidden rounded-sm border bg-background px-0.5 text-[10px] font-medium leading-none transition',
+              'relative m-0.5 flex h-10 items-center justify-center overflow-hidden rounded-md border bg-background px-0.5 text-[10px] font-medium leading-none shadow-sm transition',
               selectable && 'cursor-pointer hover:ring-1 hover:ring-ring',
               selected && 'ring-2 ring-primary ring-offset-1',
               disabled && 'bg-muted text-muted-foreground line-through opacity-60',
