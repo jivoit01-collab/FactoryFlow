@@ -92,6 +92,35 @@ const CLOSED_STATUSES = new Set<DispatchSessionStatus>([
   'SAP_SYNC_FAILED',
 ]);
 
+type DispatchTone = 'slate' | 'emerald' | 'amber' | 'rose' | 'cyan' | 'indigo';
+
+const SURFACE_CLASS = 'rounded-md border bg-card text-card-foreground shadow-sm';
+
+const BADGE_TONE_CLASS: Record<DispatchTone, string> = {
+  slate:
+    'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200',
+  emerald:
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200',
+  amber:
+    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-200',
+  rose:
+    'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800/70 dark:bg-rose-950/40 dark:text-rose-200',
+  cyan:
+    'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800/70 dark:bg-cyan-950/40 dark:text-cyan-200',
+  indigo:
+    'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/70 dark:bg-indigo-950/40 dark:text-indigo-200',
+};
+
+const STAT_TONE_CLASS: Record<Exclude<DispatchTone, 'indigo'>, string> = {
+  slate: 'border-border bg-card',
+  emerald:
+    'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/70 dark:bg-emerald-950/30',
+  amber:
+    'border-amber-200 bg-amber-50/70 dark:border-amber-800/70 dark:bg-amber-950/30',
+  rose: 'border-rose-200 bg-rose-50/70 dark:border-rose-800/70 dark:bg-rose-950/30',
+  cyan: 'border-cyan-200 bg-cyan-50/70 dark:border-cyan-800/70 dark:bg-cyan-950/30',
+};
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return '-';
   return new Date(value).toLocaleString('en-IN');
@@ -154,14 +183,12 @@ function getProgress(session: DispatchSession | null) {
 }
 
 function statusBadgeClass(status: DispatchSessionStatus) {
-  if (status === 'COMPLETED') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (status === 'READY_TO_DISPATCH') return 'border-cyan-200 bg-cyan-50 text-cyan-700';
-  if (status === 'SAP_SYNC_FAILED' || status === 'CANCELLED') {
-    return 'border-rose-200 bg-rose-50 text-rose-700';
-  }
-  if (status === 'CLOSED') return 'border-slate-200 bg-slate-50 text-slate-700';
-  if (status === 'PARTIAL') return 'border-amber-200 bg-amber-50 text-amber-700';
-  return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+  if (status === 'COMPLETED') return BADGE_TONE_CLASS.emerald;
+  if (status === 'READY_TO_DISPATCH') return BADGE_TONE_CLASS.cyan;
+  if (status === 'SAP_SYNC_FAILED' || status === 'CANCELLED') return BADGE_TONE_CLASS.rose;
+  if (status === 'CLOSED') return BADGE_TONE_CLASS.slate;
+  if (status === 'PARTIAL') return BADGE_TONE_CLASS.amber;
+  return BADGE_TONE_CLASS.indigo;
 }
 
 function StatTile({
@@ -173,16 +200,10 @@ function StatTile({
   value: string;
   tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'cyan';
 }) {
-  const toneClass = {
-    slate: 'border-slate-200 bg-white',
-    emerald: 'border-emerald-200 bg-emerald-50/70',
-    amber: 'border-amber-200 bg-amber-50/70',
-    rose: 'border-rose-200 bg-rose-50/70',
-    cyan: 'border-cyan-200 bg-cyan-50/70',
-  }[tone];
+  const toneClass = STAT_TONE_CLASS[tone];
 
   return (
-    <div className={cn('min-w-0 rounded-md border p-3', toneClass)}>
+    <div className={cn('min-w-0 rounded-md border p-3 text-card-foreground', toneClass)}>
       <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 truncate text-lg font-semibold leading-tight">{value}</p>
     </div>
@@ -191,7 +212,7 @@ function StatTile({
 
 function ProgressBar({ value, className }: { value: number; className?: string }) {
   return (
-    <div className={cn('h-2 overflow-hidden rounded-full bg-slate-200', className)}>
+    <div className={cn('h-2 overflow-hidden rounded-full bg-muted', className)}>
       <div
         className="h-full rounded-full bg-emerald-500 transition-all"
         style={{ width: `${Math.max(0, Math.min(value, 100))}%` }}
@@ -205,15 +226,13 @@ function BillLookupSummary({ bill }: { bill: DispatchBillLookupResponse }) {
   const totalBoxes = bill.lines.reduce((sum, line) => sum + toNumber(line.total_boxes), 0);
 
   return (
-    <section className="rounded-md border bg-white p-4 shadow-sm">
+    <section className={cn(SURFACE_CLASS, 'p-4')}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="border-cyan-200 bg-cyan-50 text-cyan-700">SAP bill loaded</Badge>
+            <Badge className={BADGE_TONE_CLASS.cyan}>SAP bill loaded</Badge>
             {bill.already_dispatched && (
-              <Badge className="border-amber-200 bg-amber-50 text-amber-700">
-                Already dispatched
-              </Badge>
+              <Badge className={BADGE_TONE_CLASS.amber}>Already dispatched</Badge>
             )}
           </div>
           <h2 className="mt-2 truncate text-xl font-semibold">{bill.bill_number}</h2>
@@ -244,7 +263,7 @@ function BillLinePreview({ lines }: { lines: DispatchBillLine[] }) {
       {lines.map((line) => (
         <div
           key={`${line.sap_line_no}-${line.sequence_no}`}
-          className="grid gap-2 rounded-md border bg-slate-50/60 p-3 md:grid-cols-[72px_minmax(0,1fr)_140px_120px]"
+          className="grid gap-2 rounded-md border bg-muted/40 p-3 md:grid-cols-[72px_minmax(0,1fr)_140px_120px]"
         >
           <div>
             <p className="text-xs text-muted-foreground">Seq</p>
@@ -275,12 +294,10 @@ function BillLinePreview({ lines }: { lines: DispatchBillLine[] }) {
 function SessionHero({ session }: { session: DispatchSession | null }) {
   if (!session) {
     return (
-      <section className="rounded-md border bg-white p-6 shadow-sm">
+      <section className={cn(SURFACE_CLASS, 'p-6')}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <Badge className="border-slate-200 bg-slate-50 text-slate-700">
-              No active bill selected
-            </Badge>
+            <Badge className={BADGE_TONE_CLASS.slate}>No active bill selected</Badge>
             <h2 className="mt-3 text-2xl font-semibold">Dispatch cockpit</h2>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Select an active dispatch or create one from a SAP bill to begin warehouse scanning.
@@ -302,7 +319,7 @@ function SessionHero({ session }: { session: DispatchSession | null }) {
   const pendingBoxes = getSessionBoxes(session, 'pending_boxes');
 
   return (
-    <section className="rounded-md border bg-white p-5 shadow-sm">
+    <section className={cn(SURFACE_CLASS, 'p-5')}>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -354,14 +371,14 @@ function SessionHero({ session }: { session: DispatchSession | null }) {
 function ActiveLineFocus({ activeLine }: { activeLine: DispatchSessionLine | null }) {
   if (!activeLine) {
     return (
-      <section className="rounded-md border border-emerald-200 bg-emerald-50 p-5">
+      <section className="rounded-md border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800/70 dark:bg-emerald-950/30">
         <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-6 w-6 text-emerald-700" />
+          <CheckCircle2 className="h-6 w-6 text-emerald-700 dark:text-emerald-300" />
           <div>
-            <h3 className="text-lg font-semibold text-emerald-900">
+            <h3 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100">
               Ready for dispatch confirmation
             </h3>
-            <p className="text-sm text-emerald-800">
+            <p className="text-sm text-emerald-800 dark:text-emerald-200">
               All bill lines have reached the required scanned quantity.
             </p>
           </div>
@@ -374,10 +391,10 @@ function ActiveLineFocus({ activeLine }: { activeLine: DispatchSessionLine | nul
   const progress = getLineProgress(activeLine);
 
   return (
-    <section className="rounded-md border bg-white p-5 shadow-sm">
+    <section className={cn(SURFACE_CLASS, 'p-5')}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-semibold text-cyan-700">
+          <div className="flex items-center gap-2 text-sm font-semibold text-cyan-700 dark:text-cyan-300">
             <ScanLine className="h-4 w-4" />
             Active line {activeLine.sequence_no}
           </div>
@@ -438,7 +455,7 @@ function ScannerDock({
   };
 
   return (
-    <section className="rounded-md border border-cyan-200 bg-cyan-50/70 p-4 shadow-sm">
+    <section className="rounded-md border border-cyan-200 bg-cyan-50/70 p-4 shadow-sm dark:border-cyan-800/70 dark:bg-cyan-950/30">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-md bg-cyan-600 text-white">
@@ -450,9 +467,9 @@ function ScannerDock({
           </div>
         </div>
         {disabled ? (
-          <Badge className="border-slate-200 bg-white text-slate-700">Locked</Badge>
+          <Badge className={BADGE_TONE_CLASS.slate}>Locked</Badge>
         ) : (
-          <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Ready</Badge>
+          <Badge className={BADGE_TONE_CLASS.emerald}>Ready</Badge>
         )}
       </div>
       <form onSubmit={submit} className="flex gap-2">
@@ -461,7 +478,7 @@ function ScannerDock({
           value={value}
           disabled={disabled || loading}
           onChange={(event) => setValue(event.target.value)}
-          className="h-12 flex-1 bg-white font-mono text-base"
+          className="h-12 flex-1 font-mono text-base"
           placeholder={disabled ? 'Scanner locked' : 'Scan barcode'}
           autoFocus
         />
@@ -485,7 +502,6 @@ function ScannerDock({
           <Button
             type="button"
             variant="outline"
-            className="bg-white"
             onClick={startScanning}
             disabled={disabled || loading}
           >
@@ -493,19 +509,19 @@ function ScannerDock({
             Camera scan
           </Button>
         ) : (
-          <Button type="button" variant="outline" className="bg-white" onClick={stopScanning}>
+          <Button type="button" variant="outline" onClick={stopScanning}>
             <CameraOff className="h-4 w-4" />
             Stop camera
           </Button>
         )}
-        <div className="flex items-center rounded-md border bg-white px-3 text-xs text-muted-foreground">
+        <div className="flex items-center rounded-md border bg-background px-3 text-xs text-muted-foreground">
           {isScanning
             ? 'Point camera at QR or barcode'
             : 'Use handheld scanner, keyboard, or camera'}
         </div>
       </div>
 
-      {error && <p className="mt-2 text-sm text-rose-700">{error}</p>}
+      {error && <p className="mt-2 text-sm text-rose-700 dark:text-rose-300">{error}</p>}
     </section>
   );
 }
@@ -536,9 +552,9 @@ function ActionPanel({
   const closed = CLOSED_STATUSES.has(session.status);
 
   return (
-    <section className="rounded-md border bg-white p-4 shadow-sm">
+    <section className={cn(SURFACE_CLASS, 'p-4')}>
       <div className="flex items-center gap-2">
-        <ShieldCheck className="h-4 w-4 text-emerald-700" />
+        <ShieldCheck className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
         <h3 className="text-base font-semibold">Dispatch control</h3>
       </div>
 
@@ -614,11 +630,11 @@ function LineBoard({
   onSelectLine: (line: DispatchSessionLine) => void;
 }) {
   return (
-    <section className="rounded-md border bg-white shadow-sm">
+    <section className={SURFACE_CLASS}>
       <div className="border-b p-4">
         <h3 className="text-base font-semibold">Bill lines</h3>
       </div>
-      <div className="divide-y">
+      <div className="divide-y divide-border">
         {session.lines.map((line) => (
           <LineRow
             key={line.id}
@@ -654,8 +670,8 @@ function LineRow({
       onClick={canSelect ? onSelect : undefined}
       className={cn(
         'grid w-full gap-3 p-4 text-left lg:grid-cols-[80px_minmax(0,1fr)_260px]',
-        active && 'bg-cyan-50/50 ring-1 ring-inset ring-cyan-300',
-        canSelect && 'transition hover:bg-cyan-50/40',
+        active && 'bg-cyan-50/50 ring-1 ring-inset ring-cyan-300 dark:bg-cyan-950/30 dark:ring-cyan-800/60',
+        canSelect && 'transition hover:bg-cyan-50/40 dark:hover:bg-cyan-950/20',
       )}
     >
       <div>
@@ -665,9 +681,9 @@ function LineRow({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate font-mono text-sm font-semibold">{line.material_code}</p>
-          {active && <Badge className="border-cyan-200 bg-cyan-50 text-cyan-700">Active</Badge>}
+          {active && <Badge className={BADGE_TONE_CLASS.cyan}>Active</Badge>}
           {complete && (
-            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Complete</Badge>
+            <Badge className={BADGE_TONE_CLASS.emerald}>Complete</Badge>
           )}
         </div>
         <p className="mt-1 truncate text-sm text-muted-foreground">
@@ -709,14 +725,14 @@ function RecentScanStream({ logs }: { logs: DispatchScanLog[] }) {
   const recentLogs = useMemo(() => logs.slice(0, 8), [logs]);
 
   return (
-    <section className="rounded-md border bg-white shadow-sm">
+    <section className={SURFACE_CLASS}>
       <div className="flex items-center justify-between border-b p-4">
         <h3 className="text-base font-semibold">Recent scans</h3>
-        <Badge className="border-slate-200 bg-slate-50 text-slate-700">
+        <Badge className={BADGE_TONE_CLASS.slate}>
           {logs.length.toLocaleString('en-IN')}
         </Badge>
       </div>
-      <div className="divide-y">
+      <div className="divide-y divide-border">
         {recentLogs.length === 0 && (
           <div className="p-5 text-sm text-muted-foreground">
             No scans recorded for this dispatch.
@@ -729,9 +745,9 @@ function RecentScanStream({ logs }: { logs: DispatchScanLog[] }) {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   {accepted ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-rose-700" />
+                    <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-300" />
                   )}
                   <p className="truncate font-mono text-sm font-semibold">{log.raw_barcode}</p>
                 </div>
@@ -743,8 +759,8 @@ function RecentScanStream({ logs }: { logs: DispatchScanLog[] }) {
                 <Badge
                   className={
                     accepted
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-rose-200 bg-rose-50 text-rose-700'
+                      ? BADGE_TONE_CLASS.emerald
+                      : BADGE_TONE_CLASS.rose
                   }
                 >
                   {log.result}
@@ -801,7 +817,7 @@ function ScannedBoxesSection({
   };
 
   return (
-    <section className="rounded-md border bg-white shadow-sm">
+    <section className={SURFACE_CLASS}>
       <div className="border-b p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -835,7 +851,7 @@ function ScannedBoxesSection({
       {boxes.length === 0 ? (
         <div className="p-5 text-sm text-muted-foreground">No boxes scanned yet.</div>
       ) : (
-        <div className="divide-y">
+        <div className="divide-y divide-border">
           {boxes.map((unit) => {
             const totalQty = toNumber(unit.total_box_qty);
             const dispatchQty = toNumber(unit.dispatch_qty);
@@ -851,8 +867,8 @@ function ScannedBoxesSection({
                 id={`scanned-box-${unit.id}`}
                 className={cn(
                   'grid gap-4 p-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_220px]',
-                  highlighted && 'bg-amber-50 ring-2 ring-inset ring-amber-300',
-                  removed && 'bg-slate-50 opacity-75',
+                  highlighted && 'bg-amber-50 ring-2 ring-inset ring-amber-300 dark:bg-amber-950/30 dark:ring-amber-800/70',
+                  removed && 'bg-muted/40 opacity-75',
                 )}
               >
                 <div className="min-w-0">
@@ -863,10 +879,10 @@ function ScannedBoxesSection({
                     <Badge
                       className={
                         removed
-                          ? 'border-slate-200 bg-slate-50 text-slate-700'
+                          ? BADGE_TONE_CLASS.slate
                           : partial
-                            ? 'border-amber-200 bg-amber-50 text-amber-700'
-                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            ? BADGE_TONE_CLASS.amber
+                            : BADGE_TONE_CLASS.emerald
                       }
                     >
                       {removed
@@ -998,13 +1014,13 @@ function SessionQueue({
   empty: string;
 }) {
   return (
-    <section className="rounded-md border bg-white shadow-sm">
+    <section className={SURFACE_CLASS}>
       {loading && <div className="p-5 text-sm text-muted-foreground">Loading dispatches...</div>}
       {!loading && rows.length === 0 && (
         <div className="p-5 text-sm text-muted-foreground">{empty}</div>
       )}
       {!loading && rows.length > 0 && (
-        <div className="divide-y">
+        <div className="divide-y divide-border">
           {rows.map((session) => {
             const progress = getProgress(session);
             const scannedBoxes = getSessionBoxes(session, 'scanned_boxes');
@@ -1015,8 +1031,8 @@ function SessionQueue({
                 type="button"
                 onClick={() => onOpen(session.id)}
                 className={cn(
-                  'block w-full p-4 text-left transition hover:bg-slate-50',
-                  selectedId === session.id && 'bg-cyan-50/70',
+                  'block w-full p-4 text-left transition hover:bg-muted/50',
+                  selectedId === session.id && 'bg-cyan-50/70 dark:bg-cyan-950/30',
                 )}
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -1086,16 +1102,16 @@ function DispatchSettingsPanel() {
   ];
 
   return (
-    <section className="rounded-md border bg-white p-4 shadow-sm">
+    <section className={cn(SURFACE_CLASS, 'p-4')}>
       <div className="flex items-center gap-2">
-        <Settings className="h-4 w-4 text-slate-700" />
+        <Settings className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-base font-semibold">Controls</h3>
       </div>
       <div className="mt-4 grid gap-2">
         {rows.map(([key, label]) => (
           <div
             key={key}
-            className="flex items-center justify-between gap-3 rounded-md border bg-slate-50/60 p-3"
+            className="flex items-center justify-between gap-3 rounded-md border bg-muted/40 p-3"
           >
             <span className="text-sm font-medium">{label}</span>
             <Switch
@@ -1350,7 +1366,7 @@ export default function BarcodeDispatchPage() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
         <main className="space-y-5">
-          <section className="rounded-md border bg-white p-4 shadow-sm">
+          <section className={cn(SURFACE_CLASS, 'p-4')}>
             <form onSubmit={handleLookup} className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
               <div className="space-y-2">
                 <Label htmlFor="dispatch-bill-number">SAP bill number</Label>
@@ -1397,7 +1413,7 @@ export default function BarcodeDispatchPage() {
           {lookupBill && <BillLookupSummary bill={lookupBill} />}
 
           {sessionQuery.isLoading && selectedSessionId && (
-            <section className="rounded-md border bg-white p-5 text-sm text-muted-foreground shadow-sm">
+            <section className={cn(SURFACE_CLASS, 'p-5 text-sm text-muted-foreground')}>
               Loading dispatch details...
             </section>
           )}
@@ -1449,9 +1465,9 @@ export default function BarcodeDispatchPage() {
             </>
           )}
 
-          <section className="rounded-md border bg-white p-4 shadow-sm">
+          <section className={cn(SURFACE_CLASS, 'p-4')}>
             <div className="mb-3 flex items-center gap-2">
-              <TimerReset className="h-4 w-4 text-slate-700" />
+              <TimerReset className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-base font-semibold">Dispatch queue</h3>
             </div>
             <div className="grid grid-cols-2 gap-2">

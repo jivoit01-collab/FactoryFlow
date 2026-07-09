@@ -51,6 +51,32 @@ import type {
 
 type ReportTab = 'dispatch' | 'pallets' | 'boxes' | 'rejected';
 type CsvRow = Record<string, string | number | boolean | null | undefined>;
+type ReportTone = 'slate' | 'emerald' | 'amber' | 'rose' | 'cyan';
+
+const SURFACE_CLASS = 'rounded-md border bg-card text-card-foreground shadow-sm';
+
+const BADGE_TONE_CLASS: Record<ReportTone, string> = {
+  slate:
+    'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200',
+  emerald:
+    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200',
+  amber:
+    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-200',
+  rose:
+    'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800/70 dark:bg-rose-950/40 dark:text-rose-200',
+  cyan:
+    'border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-800/70 dark:bg-cyan-950/40 dark:text-cyan-200',
+};
+
+const SUMMARY_TONE_CLASS: Record<ReportTone, string> = {
+  slate: 'border-border bg-card',
+  emerald:
+    'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/70 dark:bg-emerald-950/30',
+  amber:
+    'border-amber-200 bg-amber-50/70 dark:border-amber-800/70 dark:bg-amber-950/30',
+  rose: 'border-rose-200 bg-rose-50/70 dark:border-rose-800/70 dark:bg-rose-950/30',
+  cyan: 'border-cyan-200 bg-cyan-50/70 dark:border-cyan-800/70 dark:bg-cyan-950/30',
+};
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return '-';
@@ -105,16 +131,10 @@ function SummaryTile({
   icon: ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'cyan';
 }) {
-  const toneClass = {
-    slate: 'border-slate-200 bg-white',
-    emerald: 'border-emerald-200 bg-emerald-50/70',
-    amber: 'border-amber-200 bg-amber-50/70',
-    rose: 'border-rose-200 bg-rose-50/70',
-    cyan: 'border-cyan-200 bg-cyan-50/70',
-  }[tone];
+  const toneClass = SUMMARY_TONE_CLASS[tone];
 
   return (
-    <div className={cn('rounded-md border p-4', toneClass)}>
+    <div className={cn('rounded-md border p-4 text-card-foreground', toneClass)}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
         <span className="text-muted-foreground">{icon}</span>
@@ -136,9 +156,9 @@ function FilterPanel({
   };
 
   return (
-    <section className="rounded-md border bg-white p-4 shadow-sm">
+    <section className={cn(SURFACE_CLASS, 'p-4')}>
       <div className="mb-4 flex items-center gap-2">
-        <Filter className="h-4 w-4 text-slate-700" />
+        <Filter className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-base font-semibold">Filters</h2>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
@@ -257,9 +277,9 @@ function ReportShell({
     <Card className="rounded-md">
       <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4 text-slate-700" />
+          <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-base font-semibold">{title}</h2>
-          <Badge className="border-slate-200 bg-slate-50 text-slate-700">{count.toLocaleString('en-IN')}</Badge>
+          <Badge className={BADGE_TONE_CLASS.slate}>{count.toLocaleString('en-IN')}</Badge>
         </div>
         <Button variant="outline" size="sm" onClick={onExport}>
           <Download className="h-4 w-4" />
@@ -286,22 +306,23 @@ function DispatchSummaryList({
   if (!rows.length) return <EmptyState />;
 
   return (
-    <div className="divide-y">
+    <div className="divide-y divide-border">
       {rows.map((row) => (
         <button
           key={row.session_id}
           type="button"
           onClick={() => onSelect(row.session_id)}
           className={cn(
-            'grid w-full gap-4 p-4 text-left transition hover:bg-slate-50 xl:grid-cols-[minmax(0,1.2fr)_420px]',
-            selectedSessionId === row.session_id && 'bg-cyan-50/60 ring-1 ring-inset ring-cyan-200',
+            'grid w-full gap-4 p-4 text-left transition hover:bg-muted/50 xl:grid-cols-[minmax(0,1.2fr)_420px]',
+            selectedSessionId === row.session_id &&
+              'bg-cyan-50/60 ring-1 ring-inset ring-cyan-200 dark:bg-cyan-950/30 dark:ring-cyan-800/60',
           )}
         >
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-mono text-sm font-semibold">{row.bill_number}</p>
               <Badge>{row.status}</Badge>
-              <Badge className="border-cyan-200 bg-cyan-50 text-cyan-800">
+              <Badge className={BADGE_TONE_CLASS.cyan}>
                 <Eye className="mr-1 h-3 w-3" />
                 Full report
               </Badge>
@@ -331,7 +352,7 @@ function PalletReportList({ rows, loading }: { rows: DispatchPalletReportRow[]; 
   return (
     <div className="grid gap-3 p-4 lg:grid-cols-2">
       {rows.map((row) => (
-        <div key={row.pallet_id} className="rounded-md border bg-slate-50/50 p-4">
+        <div key={row.pallet_id} className="rounded-md border bg-muted/40 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate font-mono text-sm font-semibold">{row.pallet_barcode}</p>
@@ -356,7 +377,7 @@ function BoxReportList({ rows, loading }: { rows: DispatchBoxReportRow[]; loadin
   if (!rows.length) return <EmptyState />;
 
   return (
-    <div className="divide-y">
+    <div className="divide-y divide-border">
       {rows.map((row) => (
         <div key={row.box_id} className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
@@ -364,7 +385,7 @@ function BoxReportList({ rows, loading }: { rows: DispatchBoxReportRow[]; loadin
               <p className="truncate font-mono text-sm font-semibold">{row.box_barcode}</p>
               <Badge>{row.box_status}</Badge>
               {row.removed_from_pallet && (
-                <Badge className="border-amber-200 bg-amber-50 text-amber-700">Removed from pallet</Badge>
+                <Badge className={BADGE_TONE_CLASS.amber}>Removed from pallet</Badge>
               )}
             </div>
             <p className="mt-1 truncate text-sm text-muted-foreground">
@@ -387,12 +408,12 @@ function RejectedReportList({ rows, loading }: { rows: DispatchRejectedScanRepor
   if (!rows.length) return <EmptyState />;
 
   return (
-    <div className="divide-y">
+    <div className="divide-y divide-border">
       {rows.map((row) => (
         <div key={row.scan_id} className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-rose-700" />
+              <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-300" />
               <p className="truncate font-mono text-sm font-semibold">{row.barcode}</p>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -400,7 +421,7 @@ function RejectedReportList({ rows, loading }: { rows: DispatchRejectedScanRepor
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <Badge className="border-rose-200 bg-rose-50 text-rose-700">{row.scan_type}</Badge>
+            <Badge className={BADGE_TONE_CLASS.rose}>{row.scan_type}</Badge>
             <span className="text-xs text-muted-foreground">{row.bill_number}</span>
             <span className="text-xs text-muted-foreground">{formatDateTime(row.scan_time)}</span>
           </div>
@@ -432,13 +453,13 @@ function DispatchDetailPanel({
   const palletUnits = detail.scanned_units.filter((unit) => unit.pallet_barcode);
 
   return (
-    <Card className="rounded-md border-cyan-200">
+    <Card className="rounded-md border-cyan-200 dark:border-cyan-800/70">
       <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold">Full dispatch report</h2>
             <Badge>{detail.session.status}</Badge>
-            <Badge className="border-slate-200 bg-slate-50 text-slate-700">{detail.session.bill_number}</Badge>
+            <Badge className={BADGE_TONE_CLASS.slate}>{detail.session.bill_number}</Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {detail.session.customer_name || detail.session.customer_code || '-'} · Completed by{' '}
@@ -463,7 +484,7 @@ function DispatchDetailPanel({
         <section>
           <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Bill items</h3>
           <div className="overflow-x-auto rounded-md border">
-            <div className="grid min-w-[760px] grid-cols-[120px_minmax(220px,1fr)_110px_110px_110px_80px] bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+            <div className="grid min-w-[760px] grid-cols-[120px_minmax(220px,1fr)_110px_110px_110px_80px] bg-muted/60 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
               <span>Item Code</span>
               <span>Item Name</span>
               <span>Expected</span>
@@ -490,11 +511,17 @@ function DispatchDetailPanel({
           </h3>
           <div className="grid gap-3">
             {detail.scanned_units.map((unit) => (
-              <div key={unit.id} className="rounded-md border bg-white p-3">
+              <div key={unit.id} className="rounded-md border bg-card p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge className={unit.status_after_scan === 'Partial Dispatch' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}>
+                      <Badge
+                        className={
+                          unit.status_after_scan === 'Partial Dispatch'
+                            ? BADGE_TONE_CLASS.amber
+                            : BADGE_TONE_CLASS.emerald
+                        }
+                      >
                         {unit.status_after_scan}
                       </Badge>
                       <span className="font-mono text-sm font-semibold">
