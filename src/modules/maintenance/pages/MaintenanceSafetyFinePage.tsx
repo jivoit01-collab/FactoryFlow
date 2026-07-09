@@ -659,14 +659,19 @@ export default function MaintenanceSafetyFinePage() {
           <RefreshCw className="h-4 w-4" />
           Refresh
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setTypesOpen(true)} disabled={!canManage}>
-          <Settings className="h-4 w-4" />
-          Violation Types
-        </Button>
-        <Button size="sm" onClick={() => setCreateOpen(true)} disabled={!canManage}>
-          <Plus className="h-4 w-4" />
-          New Fine
-        </Button>
+        {/* Only the Fire Department Head (manage permission) can define types or issue fines. */}
+        {canManage && (
+          <>
+            <Button variant="outline" size="sm" onClick={() => setTypesOpen(true)}>
+              <Settings className="h-4 w-4" />
+              Violation Types
+            </Button>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              New Fine
+            </Button>
+          </>
+        )}
       </DashboardHeader>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
