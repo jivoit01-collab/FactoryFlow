@@ -108,6 +108,9 @@ export default function WmsWarehouseEditorPage() {
     return levelLocations.map((location) => {
       const area = showFullGrid ? null : findArea(areas, location.column, location.row);
       const key = area ? area.groupId ?? area.id : null;
+      const purpose = location.purposeId ? purposeById.get(location.purposeId) : undefined;
+      // No purpose (or a missing one) is treated as storage, like everywhere else.
+      const storage = purpose ? purpose.holdsStock : true;
       return {
         id: location.id,
         column: location.column,
@@ -116,7 +119,11 @@ export default function WmsWarehouseEditorPage() {
         // both the areas view and the full grid — toggling never renumbers a cell.
         code: location.code,
         // Purpose is the single colour axis for a cell.
-        purposeColor: location.purposeId ? purposeById.get(location.purposeId)?.color ?? null : null,
+        purposeColor: purpose?.color ?? null,
+        // Non-storage cells merge into a named plan area (paths, gates, cabins…).
+        storage,
+        purposeId: location.purposeId,
+        purposeName: purpose?.name ?? null,
         // Area is shown as an outline around its region, not a fill.
         areaColor: area?.color ?? null,
         areaEdges: area

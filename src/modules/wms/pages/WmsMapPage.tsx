@@ -244,12 +244,20 @@ export default function WmsMapPage() {
         const purpose = location.purposeId ? purposeById.get(location.purposeId) : undefined;
         const isOutsideCell = outsideIds.has(location.id);
         const { color, hatch } = colorFor(location, purpose);
+        // Non-storage cells (paths, gates, cabins…) merge into a named plan area.
+        const isStorage = purpose ? purpose.holdsStock : true;
+        const region = {
+          storage: isStorage,
+          purposeId: location.purposeId,
+          purposeName: purpose?.name ?? null,
+        };
 
         if (moveSession) {
           // In move mode the highlight channels show destination validity.
           const isCurrent = location.id === moveSession.currentLocationId;
           const isValid = validDestinationIds.has(location.id);
           return {
+            ...region,
             id: location.id,
             column: location.column,
             row: location.row,
@@ -285,6 +293,7 @@ export default function WmsMapPage() {
         const passesFilter = matchesFilters(location);
         const isMatch = matchedIds.has(location.id);
         return {
+          ...region,
           id: location.id,
           column: location.column,
           row: location.row,
