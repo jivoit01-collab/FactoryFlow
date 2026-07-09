@@ -1,4 +1,4 @@
-import { AlertCircle, ExternalLink, FileText, LogOut, Paperclip, Upload } from 'lucide-react';
+import { AlertCircle, ExternalLink, FileText, LogOut, Paperclip, Scale, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -23,8 +23,16 @@ import {
   type RequiredWeighmentValues,
   validateRequiredWeighment,
 } from '@/modules/gate/utils';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
-import { getErrorMessage, isNotFoundError as checkNotFoundError } from '@/shared/utils';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from '@/shared/components/ui';
+import { cn, getErrorMessage, isNotFoundError as checkNotFoundError } from '@/shared/utils';
 
 import {
   buildEmptyOutSideEffectMessage,
@@ -37,6 +45,7 @@ export default function EmptyVehicleOutWeighmentPage() {
   const navigate = useNavigate();
   const [draft] = useState<EmptyVehicleOutDraft | null>(() => readEmptyVehicleOutDraft());
   const [values, setValues] = useState<RequiredWeighmentValues>(EMPTY_REQUIRED_WEIGHMENT);
+  const [challanWeight, setChallanWeight] = useState('');
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const createWeighment = useCreateWeighment(draft?.vehicleEntryId || 0);
@@ -64,6 +73,9 @@ export default function EmptyVehicleOutWeighmentPage() {
         ? existingWeighment.second_weighment_time.slice(11, 16)
         : '',
     });
+    setChallanWeight(
+      existingWeighment.challan_weight != null ? String(existingWeighment.challan_weight) : '',
+    );
   }, [existingWeighment]);
 
   const handleValueChange = (field: keyof RequiredWeighmentValues, value: string) => {
@@ -102,10 +114,20 @@ export default function EmptyVehicleOutWeighmentPage() {
       return;
     }
 
+    let challanWeightValue: number | null = null;
+    if (challanWeight.trim() !== '') {
+      challanWeightValue = Number(challanWeight);
+      if (!Number.isFinite(challanWeightValue) || challanWeightValue < 0) {
+        setError('Enter a valid challan weight, or leave it blank.');
+        return;
+      }
+    }
+
     try {
       const requestData: CreateWeighmentRequest = {
         gross_weight: parseFloat(values.grossWeight),
         tare_weight: parseFloat(values.tareWeight),
+        challan_weight: challanWeightValue,
         weighbridge_slip_no: values.weighbridgeSlipNo,
         first_weighment_time: buildRequiredWeighmentDateTime(values.firstWeighmentTime),
         second_weighment_time: buildRequiredWeighmentDateTime(values.secondWeighmentTime),
@@ -159,6 +181,10 @@ export default function EmptyVehicleOutWeighmentPage() {
     draft.releaseCancelsDocking ?? false,
   );
 
+  const grossNum = toFiniteNumber(values.grossWeight);
+  const tareNum = toFiniteNumber(values.tareWeight);
+  const netWeight = grossNum !== null && tareNum !== null ? grossNum - tareNum : null;
+
   return (
     <div className="space-y-6 pb-6">
       <StepHeader
@@ -186,6 +212,16 @@ export default function EmptyVehicleOutWeighmentPage() {
       <RequiredWeighmentForm
         values={values}
         onChange={handleValueChange}
+        disabled={createWeighment.isPending || createGateOut.isPending}
+      />
+
+      <ChallanWeightCard
+        value={challanWeight}
+        onChange={(next) => {
+          setChallanWeight(next);
+          setError('');
+        }}
+        net={netWeight}
         disabled={createWeighment.isPending || createGateOut.isPending}
       />
 
@@ -281,4 +317,106 @@ function InfoItem({ label, value }: { label: string; value?: string | number | n
       <p className="mt-1 font-medium">{value || '-'}</p>
     </div>
   );
+}
+
+const VARIANCE_TONE = {
+  good: { box: 'border-emerald-200 bg-emerald-50 text-emerald-800', label: 'Within tolerance' },
+  warn: { box: 'border-amber-200 bg-amber-50 text-amber-800', label: 'Check the load' },
+  bad: { box: 'border-red-200 bg-red-50 text-red-800', label: 'Large weight mismatch' },
+} as const;
+
+function getVarianceTone(pct: number): keyof typeof VARIANCE_TONE {
+  const abs = Math.abs(pct);
+  if (abs <= 2) return 'good';
+  if (abs <= 5) return 'warn';
+  return 'bad';
+}
+
+function ChallanWeightCard({
+  value,
+  onChange,
+  net,
+  disabled,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  net: number | null;
+  disabled?: boolean;
+}) {
+  const challan = toFiniteNumber(value);
+  const hasChallan = challan !== null && challan > 0;
+  const variance = net !== null && hasChallan ? net - challan : null;
+  const variancePct = variance !== null && hasChallan ? (variance / challan) * 100 : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Scale className="h-5 w-5" />
+          Challan Weight
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Enter the weight declared on the delivery challan to check it against the weighbridge net
+          weight. Leave it blank if there is no challan.
+        </p>
+        <div className="grid gap-2 sm:max-w-xs">
+          <Label htmlFor="challan-weight">Challan Weight (kg)</Label>
+          <Input
+            id="challan-weight"
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="any"
+            value={value}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder="e.g. 2450"
+          />
+        </div>
+
+        {net === null ? (
+          <p className="text-xs text-muted-foreground">
+            Enter gross and tare weight to compare the net weight against the challan.
+          </p>
+        ) : !hasChallan ? (
+          <p className="text-xs text-muted-foreground">
+            Net weight is {formatKg(net)}. Enter a challan weight above to compare.
+          </p>
+        ) : (
+          <div
+            className={cn(
+              'flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm',
+              VARIANCE_TONE[getVarianceTone(variancePct ?? 0)].box,
+            )}
+          >
+            <span className="font-medium">
+              {VARIANCE_TONE[getVarianceTone(variancePct ?? 0)].label}
+            </span>
+            <span>
+              Net {formatKg(net)} vs Challan {formatKg(challan)} ·{' '}
+              <span className="font-semibold">
+                {variance !== null && variance >= 0 ? '+' : ''}
+                {variance !== null ? formatKg(variance) : '—'}
+                {variancePct !== null
+                  ? ` (${variancePct >= 0 ? '+' : ''}${variancePct.toFixed(1)}%)`
+                  : ''}
+              </span>
+            </span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function toFiniteNumber(value?: string | number | null) {
+  if (value === null || value === undefined || value === '') return null;
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function formatKg(value: number) {
+  return `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(value)} kg`;
 }

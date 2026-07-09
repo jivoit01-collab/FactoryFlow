@@ -6,6 +6,7 @@ export interface Weighment {
   gross_weight: string; // API returns as string (e.g., "18500.000")
   tare_weight: string; // API returns as string (e.g., "324.000")
   net_weight: string; // API returns as string (e.g., "18176.000")
+  challan_weight?: string | null; // Weight declared on the delivery challan
   weighbridge_slip_no?: string;
   first_weighment_time?: string | null;
   second_weighment_time?: string | null;
@@ -17,6 +18,7 @@ export interface Weighment {
 export interface CreateWeighmentRequest {
   gross_weight?: number;
   tare_weight?: number;
+  challan_weight?: number | null;
   weighbridge_slip_no?: string;
   first_weighment_time?: string;
   second_weighment_time?: string;
