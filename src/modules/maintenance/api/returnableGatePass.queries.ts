@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   ReturnableAcknowledgePayload,
+  ReturnableApprovePayload,
   ReturnableFilters,
   ReturnableGateOutPayload,
   ReturnableGatePassPayload,
@@ -16,6 +17,7 @@ export const RETURNABLE_QUERY_KEYS = {
   list: (filters?: ReturnableFilters) => [...RETURNABLE_QUERY_KEYS.all, 'list', filters ?? {}] as const,
   detail: (passId: number) => [...RETURNABLE_QUERY_KEYS.all, 'detail', passId] as const,
   timeline: (passId: number) => [...RETURNABLE_QUERY_KEYS.all, 'timeline', passId] as const,
+  pendingApproval: () => [...RETURNABLE_QUERY_KEYS.all, 'pending-approval'] as const,
   pendingGateOut: () => [...RETURNABLE_QUERY_KEYS.all, 'pending-gate-out'] as const,
   pendingGateIn: () => [...RETURNABLE_QUERY_KEYS.all, 'pending-gate-in'] as const,
   dashboard: () => [...RETURNABLE_QUERY_KEYS.all, 'dashboard'] as const,
@@ -52,6 +54,14 @@ export function useReturnableTimeline(passId: number | null) {
     queryKey: RETURNABLE_QUERY_KEYS.timeline(passId!),
     queryFn: () => returnableGatePassApi.getTimeline(passId!),
     enabled: passId !== null,
+  });
+}
+
+export function useReturnablePendingApproval(enabled = true) {
+  return useQuery({
+    queryKey: RETURNABLE_QUERY_KEYS.pendingApproval(),
+    queryFn: () => returnableGatePassApi.getPendingApproval(),
+    enabled,
   });
 }
 
@@ -110,6 +120,24 @@ export function useSubmitReturnableGatePass() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (passId: number) => returnableGatePassApi.submit(passId),
+    onSuccess: () => invalidateReturnables(queryClient),
+  });
+}
+
+export function useApproveReturnable() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ passId, payload }: { passId: number; payload?: ReturnableApprovePayload }) =>
+      returnableGatePassApi.approve(passId, payload),
+    onSuccess: () => invalidateReturnables(queryClient),
+  });
+}
+
+export function useRejectReturnable() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ passId, payload }: { passId: number; payload: ReturnableReasonPayload }) =>
+      returnableGatePassApi.reject(passId, payload),
     onSuccess: () => invalidateReturnables(queryClient),
   });
 }

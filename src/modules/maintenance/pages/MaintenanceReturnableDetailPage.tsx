@@ -1,4 +1,15 @@
-import { ArrowLeft, Ban, CheckCircle2, HandCoins, Lock, Pencil, Send } from 'lucide-react';
+import {
+  ArrowLeft,
+  Ban,
+  CheckCircle2,
+  HandCoins,
+  Lock,
+  Paperclip,
+  Pencil,
+  Send,
+  ThumbsUp,
+  XCircle,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,8 +26,10 @@ import {
 
 import {
   useAcknowledgeReturnable,
+  useApproveReturnable,
   useCancelReturnable,
   useCloseReturnable,
+  useRejectReturnable,
   useReturnableGatePass,
   useShortCloseReturnable,
   useSubmitReturnableGatePass,
@@ -29,7 +42,7 @@ import {
 } from '../components/returnable';
 import { OUTSTANDING_STATUSES, RETURN_CONDITION_STYLES } from '../constants/returnable.constants';
 
-type ReasonAction = 'cancel' | 'short-close' | null;
+type ReasonAction = 'cancel' | 'short-close' | 'reject' | null;
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -52,6 +65,8 @@ export default function MaintenanceReturnableDetailPage() {
   const [reasonAction, setReasonAction] = useState<ReasonAction>(null);
 
   const submitMutation = useSubmitReturnableGatePass();
+  const approveMutation = useApproveReturnable();
+  const rejectMutation = useRejectReturnable();
   const acknowledgeMutation = useAcknowledgeReturnable();
   const closeMutation = useCloseReturnable();
   const shortCloseMutation = useShortCloseReturnable();
@@ -59,6 +74,7 @@ export default function MaintenanceReturnableDetailPage() {
 
   const canManage = hasPermission(RETURNABLE_PERMISSIONS.MANAGE_GATEPASS);
   const canSubmit = hasPermission(RETURNABLE_PERMISSIONS.SUBMIT_GATEPASS);
+  const canApprove = hasPermission(RETURNABLE_PERMISSIONS.APPROVE_GATEPASS);
   const canAcknowledge = hasPermission(RETURNABLE_PERMISSIONS.ACKNOWLEDGE);
   const canClose = hasPermission(RETURNABLE_PERMISSIONS.CLOSE);
   const canShortClose = hasPermission(RETURNABLE_PERMISSIONS.SHORT_CLOSE);
@@ -116,13 +132,38 @@ export default function MaintenanceReturnableDetailPage() {
           {pass.status === 'DRAFT' && canSubmit ? (
             <Button
               onClick={() =>
-                run(() => submitMutation.mutateAsync(id), 'Sent to the gate for gate out.')
+                run(() => submitMutation.mutateAsync(id), 'Sent to the approver for sign-off.')
               }
               disabled={submitMutation.isPending}
             >
               <Send className="mr-2 h-4 w-4" />
-              Send to Gate
+              Send for Approval
             </Button>
+          ) : null}
+
+          {pass.status === 'PENDING_APPROVAL' && canApprove ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setReasonAction('reject')}
+                disabled={rejectMutation.isPending}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Reject
+              </Button>
+              <Button
+                onClick={() =>
+                  run(
+                    () => approveMutation.mutateAsync({ passId: id }),
+                    `${pass.pass_no} approved and sent to the gate.`,
+                  )
+                }
+                disabled={approveMutation.isPending}
+              >
+                <ThumbsUp className="mr-2 h-4 w-4" />
+                Approve
+              </Button>
+            </>
           ) : null}
 
           {unacknowledged.length > 0 && canAcknowledge ? (
@@ -157,7 +198,9 @@ export default function MaintenanceReturnableDetailPage() {
             </Button>
           ) : null}
 
-          {['DRAFT', 'PENDING_GATE_OUT', 'OUT', 'PARTIALLY_RETURNED'].includes(pass.status) &&
+          {['DRAFT', 'PENDING_APPROVAL', 'PENDING_GATE_OUT', 'OUT', 'PARTIALLY_RETURNED'].includes(
+            pass.status,
+          ) &&
           pass.return_events.length === 0 &&
           canCancel ? (
             <Button variant="destructive" onClick={() => setReasonAction('cancel')}>
@@ -167,6 +210,14 @@ export default function MaintenanceReturnableDetailPage() {
           ) : null}
         </div>
       </div>
+
+      {pass.approval_rejected_reason && pass.status === 'DRAFT' ? (
+        <Card className="border-rose-200 bg-rose-50">
+          <CardContent className="p-4 text-sm text-rose-900">
+            <strong>Rejected by the approver:</strong> {pass.approval_rejected_reason}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {pass.rejected_reason && pass.status === 'DRAFT' ? (
         <Card className="border-rose-200 bg-rose-50">
@@ -206,6 +257,15 @@ export default function MaintenanceReturnableDetailPage() {
                 <Field label="Linked Asset" value={pass.asset_name} />
                 <Field label="Work Order" value={pass.work_order_no} />
                 <Field label="Purpose Detail" value={pass.purpose_detail} />
+                <Field label="Submitted By" value={pass.submitted_by_name} />
+                <Field
+                  label="Approved By"
+                  value={
+                    pass.approved_at
+                      ? `${pass.approved_by_name} · ${new Date(pass.approved_at).toLocaleDateString()}`
+                      : ''
+                  }
+                />
               </dl>
             </CardContent>
           </Card>
@@ -288,6 +348,36 @@ export default function MaintenanceReturnableDetailPage() {
             </CardContent>
           </Card>
 
+          {pass.attachments.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Attachments ({pass.attachments.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {pass.attachments.map((attachment) => (
+                    <li key={attachment.id} className="flex items-center gap-2 text-sm">
+                      <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <a
+                        href={attachment.file}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="truncate font-medium underline-offset-2 hover:underline"
+                      >
+                        {attachment.caption || attachment.file.split('/').pop()}
+                      </a>
+                      <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                        {attachment.doc_type_display}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ) : null}
+
           {pass.return_events.length > 0 ? (
             <Card>
               <CardHeader>
@@ -350,6 +440,22 @@ export default function MaintenanceReturnableDetailPage() {
       </div>
 
       <ReturnableFormDialog open={isEditOpen} onOpenChange={setIsEditOpen} gatePass={pass} />
+
+      <ReturnableReasonDialog
+        open={reasonAction === 'reject'}
+        onOpenChange={(open) => setReasonAction(open ? 'reject' : null)}
+        title={`Reject ${pass.pass_no}`}
+        description="The pass goes back to the department as a draft. The gate never sees it."
+        confirmLabel="Reject"
+        destructive
+        isPending={rejectMutation.isPending}
+        onConfirm={(reason) =>
+          run(
+            () => rejectMutation.mutateAsync({ passId: id, payload: { reason } }),
+            `${pass.pass_no} sent back to the department.`,
+          )
+        }
+      />
 
       <ReturnableReasonDialog
         open={reasonAction === 'cancel'}

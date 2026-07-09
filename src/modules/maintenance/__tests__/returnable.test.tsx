@@ -2,7 +2,11 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { ReturnableStatusBadge } from '../components/returnable/ReturnableStatusBadge';
-import { OUTSTANDING_STATUSES, RETURNABLE_STATUS_LABELS } from '../constants/returnable.constants';
+import {
+  OUTSTANDING_STATUSES,
+  RETURNABLE_STATUS_LABELS,
+  RETURNABLE_STATUS_OPTIONS,
+} from '../constants/returnable.constants';
 import {
   reasonSchema,
   returnableGateOutSchema,
@@ -33,8 +37,21 @@ describe('returnable constants', () => {
     expect(OUTSTANDING_STATUSES).not.toContain('RETURNED');
   });
 
-  it('labels every status', () => {
-    expect(Object.keys(RETURNABLE_STATUS_LABELS)).toHaveLength(7);
+  it('labels every status, including the approval stage', () => {
+    expect(Object.keys(RETURNABLE_STATUS_LABELS)).toHaveLength(8);
+    expect(RETURNABLE_STATUS_LABELS.PENDING_APPROVAL).toBe('Pending Approval');
+  });
+});
+
+describe('approval stage', () => {
+  it('renders the pending-approval badge', () => {
+    render(<ReturnableStatusBadge status="PENDING_APPROVAL" />);
+    expect(screen.getByText('Pending Approval')).toBeInTheDocument();
+  });
+
+  it('offers pending approval as a filter option ahead of pending gate out', () => {
+    const values = RETURNABLE_STATUS_OPTIONS.map((option) => option.value);
+    expect(values.indexOf('PENDING_APPROVAL')).toBeLessThan(values.indexOf('PENDING_GATE_OUT'));
   });
 });
 

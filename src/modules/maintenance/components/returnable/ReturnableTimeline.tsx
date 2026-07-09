@@ -9,6 +9,7 @@ import {
   Lock,
   PackageCheck,
   Send,
+  ThumbsUp,
   Truck,
   Undo2,
   XCircle,
@@ -23,6 +24,8 @@ const ACTION_ICONS: Record<ReturnableLogAction, LucideIcon> = {
   CREATED: FilePlus2,
   UPDATED: FilePlus2,
   SUBMITTED: Send,
+  APPROVED: ThumbsUp,
+  APPROVAL_REJECTED: XCircle,
   GATE_OUT: Truck,
   REJECTED_AT_GATE: XCircle,
   RETURN_RECORDED: Undo2,
@@ -35,6 +38,8 @@ const ACTION_ICONS: Record<ReturnableLogAction, LucideIcon> = {
 };
 
 const ACTION_TONES: Partial<Record<ReturnableLogAction, string>> = {
+  APPROVED: 'text-emerald-600',
+  APPROVAL_REJECTED: 'text-rose-600',
   REJECTED_AT_GATE: 'text-rose-600',
   CANCELLED: 'text-rose-600',
   OVERDUE_FLAGGED: 'text-rose-600',

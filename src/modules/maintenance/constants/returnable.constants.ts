@@ -36,6 +36,7 @@ export const RETURN_CONDITION_OPTIONS: { value: ItemReturnCondition; label: stri
 export const RETURNABLE_STATUS_OPTIONS: { value: ReturnableStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'All Statuses' },
   { value: 'DRAFT', label: 'Draft' },
+  { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
   { value: 'PENDING_GATE_OUT', label: 'Pending Gate Out' },
   { value: 'OUT', label: 'Out' },
   { value: 'PARTIALLY_RETURNED', label: 'Partially Returned' },
@@ -46,6 +47,7 @@ export const RETURNABLE_STATUS_OPTIONS: { value: ReturnableStatus | 'ALL'; label
 
 export const RETURNABLE_STATUS_LABELS: Record<ReturnableStatus, string> = {
   DRAFT: 'Draft',
+  PENDING_APPROVAL: 'Pending Approval',
   PENDING_GATE_OUT: 'Pending Gate Out',
   OUT: 'Out',
   PARTIALLY_RETURNED: 'Partially Returned',
@@ -57,6 +59,7 @@ export const RETURNABLE_STATUS_LABELS: Record<ReturnableStatus, string> = {
 /** Tailwind classes for the status badge, one per status. */
 export const RETURNABLE_STATUS_STYLES: Record<ReturnableStatus, string> = {
   DRAFT: 'bg-muted text-muted-foreground border-border',
+  PENDING_APPROVAL: 'bg-purple-100 text-purple-800 border-purple-200',
   PENDING_GATE_OUT: 'bg-amber-100 text-amber-800 border-amber-200',
   OUT: 'bg-blue-100 text-blue-800 border-blue-200',
   PARTIALLY_RETURNED: 'bg-indigo-100 text-indigo-800 border-indigo-200',

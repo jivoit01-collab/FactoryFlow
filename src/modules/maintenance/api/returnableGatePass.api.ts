@@ -3,6 +3,7 @@ import { apiClient } from '@/core/api';
 
 import type {
   ReturnableAcknowledgePayload,
+  ReturnableApprovePayload,
   ReturnableDashboard,
   ReturnableFilters,
   ReturnableGateOutPayload,
@@ -14,6 +15,7 @@ import type {
   ReturnableGatePassUpdatePayload,
   ReturnableReasonPayload,
   ReturnableRecordReturnPayload,
+  StagedAttachment,
 } from '../types';
 
 const EP = API_ENDPOINTS.RETURNABLE;
@@ -63,13 +65,28 @@ export const returnableGatePassApi = {
   // ---- Workflow transitions (each stamps user + timestamp server-side,
   //      writes a timeline row, and notifies the other side of the handoff) ----
 
-  /** Stage 1 — department sends the pass to the gate. */
+  /** Stage 1 — department sends the pass to the higher authority for approval. */
   async submit(passId: number): Promise<ReturnableGatePass> {
     const response = await apiClient.post<ReturnableGatePass>(EP.SUBMIT(passId));
     return response.data;
   },
 
-  /** Stage 2 — gate records its own vehicle/driver details and lets the material out. */
+  /**
+   * Stage 2 — the higher authority signs off. Only now does the pass reach the
+   * gate's queue. The backend refuses if you are approving your own submission.
+   */
+  async approve(passId: number, payload: ReturnableApprovePayload = {}): Promise<ReturnableGatePass> {
+    const response = await apiClient.post<ReturnableGatePass>(EP.APPROVE(passId), payload);
+    return response.data;
+  },
+
+  /** The approver sends the pass back to the department as a draft. */
+  async reject(passId: number, payload: ReturnableReasonPayload): Promise<ReturnableGatePass> {
+    const response = await apiClient.post<ReturnableGatePass>(EP.REJECT(passId), payload);
+    return response.data;
+  },
+
+  /** Stage 3 — gate records its own vehicle/driver details and lets the material out. */
   async gateOut(passId: number, payload: ReturnableGateOutPayload): Promise<ReturnableGatePass> {
     const response = await apiClient.post<ReturnableGatePass>(EP.GATE_OUT(passId), payload);
     return response.data;
@@ -124,7 +141,12 @@ export const returnableGatePassApi = {
     return response.data;
   },
 
-  // ---- Gate queues ----
+  // ---- Queues ----
+
+  async getPendingApproval(): Promise<ReturnableGatePassListItem[]> {
+    const response = await apiClient.get<ReturnableGatePassListItem[]>(EP.PENDING_APPROVAL);
+    return response.data;
+  },
 
   async getPendingGateOut(): Promise<ReturnableGatePassListItem[]> {
     const response = await apiClient.get<ReturnableGatePassListItem[]>(EP.PENDING_GATE_OUT);
@@ -153,6 +175,24 @@ export const returnableGatePassApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
+  },
+
+  /**
+   * Upload files staged in the create/edit form. Sequential rather than parallel
+   * so a partial failure leaves an obvious prefix uploaded rather than a random
+   * subset.
+   */
+  async uploadAttachments(
+    passId: number,
+    staged: StagedAttachment[],
+  ): Promise<ReturnableGatePassAttachment[]> {
+    const uploaded: ReturnableGatePassAttachment[] = [];
+    for (const item of staged) {
+      uploaded.push(
+        await returnableGatePassApi.uploadAttachment(passId, item.file, item.doc_type, item.caption),
+      );
+    }
+    return uploaded;
   },
 
   async deleteAttachment(attachmentId: number): Promise<void> {

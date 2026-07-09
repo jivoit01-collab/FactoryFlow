@@ -15,8 +15,10 @@ export const RETURNABLE_PERMISSIONS = {
   VIEW_GATEPASS: 'returnable_items.can_view_returnable_gatepass',
   /** Department: create / edit / delete a draft gate pass */
   MANAGE_GATEPASS: 'returnable_items.can_manage_returnable_gatepass',
-  /** Department: send the pass to the gate */
+  /** Department: send the pass to the higher authority for approval */
   SUBMIT_GATEPASS: 'returnable_items.can_submit_returnable_gatepass',
+  /** Higher authority: approve or reject a submitted pass before the gate sees it */
+  APPROVE_GATEPASS: 'returnable_items.can_approve_returnable_gatepass',
   /** Gate: fill vehicle details and let the material out */
   GATE_OUT: 'returnable_items.can_gate_out_returnable',
   /** Gate: check the returning items and accept them back in */

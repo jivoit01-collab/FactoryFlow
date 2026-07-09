@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   Send,
+  ThumbsUp,
   Truck,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -53,6 +54,7 @@ export default function MaintenanceReturnablePage() {
     const rows = passes ?? [];
     return {
       draft: rows.filter((row) => row.status === 'DRAFT').length,
+      pendingApproval: rows.filter((row) => row.status === 'PENDING_APPROVAL').length,
       pendingGateOut: rows.filter((row) => row.status === 'PENDING_GATE_OUT').length,
       out: rows.filter((row) => row.status === 'OUT' || row.status === 'PARTIALLY_RETURNED').length,
       returned: rows.filter((row) => row.status === 'RETURNED').length,
@@ -79,8 +81,9 @@ export default function MaintenanceReturnablePage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <SummaryCard title="Draft" value={counts.draft} icon={FileText} />
+        <SummaryCard title="Pending Approval" value={counts.pendingApproval} icon={ThumbsUp} />
         <SummaryCard title="Pending Gate Out" value={counts.pendingGateOut} icon={Send} />
         <SummaryCard title="Out with Party" value={counts.out} icon={Truck} />
         <SummaryCard title="Back at Gate" value={counts.returned} icon={CheckCircle2} />

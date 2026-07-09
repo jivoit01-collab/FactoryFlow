@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -19,6 +19,7 @@ import {
   Textarea,
 } from '@/shared/components/ui';
 
+import { returnableGatePassApi } from '../../api/returnableGatePass.api';
 import {
   useCreateReturnableGatePass,
   useUpdateReturnableGatePass,
@@ -31,7 +32,8 @@ import {
   type ReturnableGatePassFormValues,
   returnableGatePassSchema,
 } from '../../schemas/returnable.schema';
-import type { ReturnableGatePass, ReturnableGatePassPayload } from '../../types';
+import type { ReturnableGatePass, ReturnableGatePassPayload, StagedAttachment } from '../../types';
+import { ReturnableAttachmentsField } from './ReturnableAttachmentsField';
 
 interface ReturnableFormDialogProps {
   open: boolean;
@@ -99,7 +101,9 @@ export function ReturnableFormDialog({
   const isEdit = Boolean(gatePass);
   const createMutation = useCreateReturnableGatePass();
   const updateMutation = useUpdateReturnableGatePass();
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const [attachments, setAttachments] = useState<StagedAttachment[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const isPending = createMutation.isPending || updateMutation.isPending || isUploading;
 
   const {
     register,
@@ -115,7 +119,10 @@ export function ReturnableFormDialog({
   const { fields, append, remove } = useFieldArray({ control, name: 'items_input' });
 
   useEffect(() => {
-    if (open) reset(toFormValues(gatePass));
+    if (open) {
+      reset(toFormValues(gatePass));
+      setAttachments([]);
+    }
   }, [open, gatePass, reset]);
 
   const submit = handleSubmit(async (values) => {
@@ -128,19 +135,37 @@ export function ReturnableFormDialog({
       })),
     };
 
+    let saved: ReturnableGatePass;
     try {
-      const saved = isEdit
+      saved = isEdit
         ? await updateMutation.mutateAsync({ passId: gatePass!.id, payload })
         : await createMutation.mutateAsync(payload);
-      toast.success(isEdit ? `${saved.pass_no} updated` : `Gate pass ${saved.pass_no} created`);
-      onOpenChange(false);
-      onSaved?.(saved.id);
     } catch (error) {
       const detail =
         (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
         'Could not save the gate pass.';
       toast.error(detail);
+      return;
     }
+
+    // Files can only be uploaded once the pass has an id. The pass itself is
+    // already saved, so an upload failure is a warning, not a rollback.
+    if (attachments.length) {
+      setIsUploading(true);
+      try {
+        await returnableGatePassApi.uploadAttachments(saved.id, attachments);
+      } catch {
+        toast.warning(
+          `${saved.pass_no} was saved, but some attachments failed to upload. Add them again from the pass.`,
+        );
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
+    toast.success(isEdit ? `${saved.pass_no} updated` : `Gate pass ${saved.pass_no} created`);
+    onOpenChange(false);
+    onSaved?.(saved.id);
   });
 
   return (
@@ -326,6 +351,12 @@ export function ReturnableFormDialog({
               </table>
             </div>
           </section>
+
+          <ReturnableAttachmentsField
+            value={attachments}
+            onChange={setAttachments}
+            disabled={isPending}
+          />
         </div>
 
         <DialogFooter>
@@ -333,7 +364,13 @@ export function ReturnableFormDialog({
             Cancel
           </Button>
           <Button type="button" onClick={submit} disabled={isPending}>
-            {isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Gate Pass'}
+            {isUploading
+              ? 'Uploading attachments…'
+              : isPending
+                ? 'Saving…'
+                : isEdit
+                  ? 'Save Changes'
+                  : 'Create Gate Pass'}
           </Button>
         </DialogFooter>
       </DialogContent>

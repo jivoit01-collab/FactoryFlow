@@ -8,6 +8,7 @@
 
 export type ReturnableStatus =
   | 'DRAFT'
+  | 'PENDING_APPROVAL'
   | 'PENDING_GATE_OUT'
   | 'OUT'
   | 'PARTIALLY_RETURNED'
@@ -39,6 +40,8 @@ export type ReturnableLogAction =
   | 'CREATED'
   | 'UPDATED'
   | 'SUBMITTED'
+  | 'APPROVED'
+  | 'APPROVAL_REJECTED'
   | 'GATE_OUT'
   | 'REJECTED_AT_GATE'
   | 'RETURN_RECORDED'
@@ -211,6 +214,9 @@ export interface ReturnableGatePass {
   submitted_by: number | null;
   submitted_by_name: string;
   submitted_at: string | null;
+  approved_by: number | null;
+  approved_by_name: string;
+  approved_at: string | null;
   gate_out_by: number | null;
   gate_out_by_name: string;
   gate_out_at: string | null;
@@ -221,6 +227,8 @@ export interface ReturnableGatePass {
   cancelled_by: number | null;
   cancelled_at: string | null;
   cancel_reason: string;
+  /** Why the approver sent it back. Distinct from rejected_reason (the gate). */
+  approval_rejected_reason: string;
   rejected_reason: string;
   short_close_reason: string;
 
@@ -321,6 +329,17 @@ export interface ReturnableAcknowledgePayload {
   event?: number;
 }
 
+export interface ReturnableApprovePayload {
+  remarks?: string;
+}
+
+/** A file staged in the create/edit form, uploaded once the pass has an id. */
+export interface StagedAttachment {
+  file: File;
+  doc_type: AttachmentDocType;
+  caption: string;
+}
+
 export interface ReturnableFilters {
   status?: ReturnableStatus | 'ALL' | string;
   purpose?: ReturnablePurpose | 'ALL';
@@ -337,6 +356,7 @@ export interface ReturnableDashboard {
   overdue_count: number;
   due_today_count: number;
   outstanding_count: number;
+  pending_approval_count: number;
   pending_gate_out_count: number;
   outstanding_value: string | number;
   ageing_buckets: {
