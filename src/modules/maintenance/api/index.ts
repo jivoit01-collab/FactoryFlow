@@ -8,3 +8,5 @@ export { fireIssueApi } from './fireIssue.api';
 export * from './fireIssue.queries';
 export { workPermitApi } from './workPermit.api';
 export * from './workPermit.queries';
+export { safetyFineApi } from './safetyFine.api';
+export * from './safetyFine.queries';

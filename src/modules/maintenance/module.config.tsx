@@ -11,6 +11,7 @@ import {
   HardHat,
   LayoutDashboard,
   Package,
+  BadgeIndianRupee,
   Settings,
   ShieldCheck,
   Wrench,
@@ -37,6 +38,7 @@ const MaintenanceFirePage = lazy(() => import('./pages/MaintenanceFirePage'));
 const MaintenanceFireReportsPage = lazy(() => import('./pages/MaintenanceFireReportsPage'));
 const MaintenanceFireIssuePage = lazy(() => import('./pages/MaintenanceFireIssuePage'));
 const MaintenanceWorkPermitsPage = lazy(() => import('./pages/MaintenanceWorkPermitsPage'));
+const MaintenanceSafetyFinePage = lazy(() => import('./pages/MaintenanceSafetyFinePage'));
 const MaintenanceWorkOrdersPage = lazy(() => import('./pages/MaintenanceWorkOrdersPage'));
 const MaintenanceWorkOrderDetailPage = lazy(() => import('./pages/MaintenanceWorkOrderDetailPage'));
 
@@ -114,6 +116,13 @@ export const maintenanceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Work Permits' },
     },
     {
+      path: '/maintenance/safety-fines',
+      element: <MaintenanceSafetyFinePage />,
+      layout: 'main',
+      permissions: [MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE],
+      breadcrumb: { label: 'Safety Fines' },
+    },
+    {
       path: '/maintenance/pm',
       element: <MaintenancePMPage />,
       layout: 'main',
@@ -163,6 +172,7 @@ export const maintenanceModuleConfig: ModuleConfig = {
         MAINTENANCE_PERMISSIONS.VIEW_FIRE_REPORT,
         MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE,
         MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT,
+        MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE,
         MAINTENANCE_PERMISSIONS.VIEW_PM,
         MAINTENANCE_PERMISSIONS.VIEW_REPORTS,
         MAINTENANCE_PERMISSIONS.VIEW_ASSET_CATEGORY,
@@ -229,6 +239,12 @@ export const maintenanceModuleConfig: ModuleConfig = {
           title: 'Work Permits',
           icon: ShieldCheck,
           permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
+        },
+        {
+          path: '/maintenance/safety-fines',
+          title: 'Safety Fines',
+          icon: BadgeIndianRupee,
+          permissions: [MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE],
         },
         {
           path: '/maintenance/pm',

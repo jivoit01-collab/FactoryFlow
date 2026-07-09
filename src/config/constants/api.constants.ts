@@ -500,6 +500,15 @@ export const API_ENDPOINTS = {
     FIRE_ISSUES: '/maintenance/fire-issues/',
     FIRE_ISSUE_DETAIL: (issueId: number) => `/maintenance/fire-issues/${issueId}/`,
     FIRE_ISSUE_RETURN: (issueId: number) => `/maintenance/fire-issues/${issueId}/return/`,
+    // Safety fines — PPE violations recorded by the Fire Department Head.
+    SAFETY_VIOLATION_TYPES: '/maintenance/safety-violation-types/',
+    SAFETY_VIOLATION_TYPE_DETAIL: (typeId: number) =>
+      `/maintenance/safety-violation-types/${typeId}/`,
+    SAFETY_FINES: '/maintenance/safety-fines/',
+    SAFETY_FINE_DETAIL: (fineId: number) => `/maintenance/safety-fines/${fineId}/`,
+    SAFETY_FINE_SETTLE: (fineId: number) => `/maintenance/safety-fines/${fineId}/settle/`,
+    SAFETY_FINE_PHOTOS: '/maintenance/safety-fine-photos/',
+    SAFETY_FINE_PHOTO_DETAIL: (photoId: number) => `/maintenance/safety-fine-photos/${photoId}/`,
     // Work permit (permit-to-work) — hazardous job clearance workflow.
     WORK_PERMITS: '/maintenance/work-permits/',
     WORK_PERMIT_DETAIL: (permitId: number) => `/maintenance/work-permits/${permitId}/`,
