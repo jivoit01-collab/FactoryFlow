@@ -52,7 +52,8 @@ import {
   renameLocation,
 } from '../services';
 import { useWarehouseEditor, useWmsEnabled, useWmsRole, wmsStore } from '../store';
-import type { CellPurpose, WarehouseLocation } from '../types';
+import type { CellPurpose, WarehouseArea, WarehouseLocation } from '../types';
+import { nowIso } from '../utils';
 
 export default function WmsWarehouseEditorPage() {
   const { warehouseId = '' } = useParams();
@@ -267,6 +268,41 @@ export default function WmsWarehouseEditorPage() {
           }),
         ),
       'Area removed.',
+      true,
+    );
+  }
+
+  // -- colour customisation (recolour an existing purpose / area) -----------
+
+  function updatePurposeColor(purposeId: string, color: string) {
+    void run(
+      () =>
+        mutate((current) => ({
+          ...current,
+          purposes: current.purposes.map((purpose) =>
+            purpose.id === purposeId ? { ...purpose, color, updatedAt: nowIso() } : purpose,
+          ),
+        })),
+      undefined,
+      true,
+    );
+  }
+
+  function updateAreaColor(target: WarehouseArea, color: string) {
+    // Recolour every block of the logical area (blocks sharing a groupId).
+    const key = target.groupId ?? target.id;
+    void run(
+      () =>
+        mutate((current) => ({
+          ...current,
+          warehouse: {
+            ...current.warehouse,
+            areas: (current.warehouse.areas ?? []).map((area) =>
+              (area.groupId ?? area.id) === key ? { ...area, color } : area,
+            ),
+          },
+        })),
+      undefined,
       true,
     );
   }
@@ -504,7 +540,15 @@ export default function WmsWarehouseEditorPage() {
         <div className="flex flex-wrap items-center gap-2">
           {purposes.map((purpose) => (
             <Badge key={purpose.id} variant="outline" className="gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: purpose.color }} />
+              <input
+                type="color"
+                value={purpose.color}
+                disabled={busy}
+                onChange={(event) => updatePurposeColor(purpose.id, event.target.value)}
+                title={`Change ${purpose.name} colour`}
+                aria-label={`Change ${purpose.name} colour`}
+                className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded-sm border-0 bg-transparent p-0"
+              />
               {purpose.name}
               <span className="text-[10px] text-muted-foreground">
                 · {purpose.holdsStock ? 'storage' : 'no stock'}
@@ -519,7 +563,15 @@ export default function WmsWarehouseEditorPage() {
         <div className="flex flex-wrap items-center gap-2">
           {areas.map((area) => (
             <Badge key={area.id} variant="outline" className="gap-1.5 pr-1">
-              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: area.color }} />
+              <input
+                type="color"
+                value={area.color}
+                disabled={busy}
+                onChange={(event) => updateAreaColor(area, event.target.value)}
+                title={`Change ${area.name} colour`}
+                aria-label={`Change ${area.name} colour`}
+                className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded-sm border-0 bg-transparent p-0"
+              />
               {area.name}
               {area.prefix ? (
                 <span className="font-mono text-[10px] text-muted-foreground">· {area.prefix}-</span>
