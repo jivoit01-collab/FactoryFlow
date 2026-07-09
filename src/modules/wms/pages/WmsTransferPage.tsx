@@ -22,12 +22,13 @@ import {
   CardTitle,
   Input,
   Label,
+  NativeSelect,
 } from '@/shared/components/ui';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsScanButton } from '../components/WmsScanButton';
 import type { MoveItem, ValidationResult } from '../services';
-import { locationHoldsStock, validateMove } from '../services';
+import { buildOccupancyIndex, findArea, locationHoldsStock, validateMove } from '../services';
 import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import type {
   InventoryRecord,
@@ -50,6 +51,7 @@ export default function WmsTransferPage() {
   const { data: pallets } = useWmsCollection('pallets');
   const { data: materials } = useWmsCollection('materials');
   const { data: movements } = useWmsCollection('movements');
+  const { data: warehouses } = useWmsCollection('warehouses');
   const syncToBarcode = useSyncPalletToBarcode();
 
   const [sourceQuery, setSourceQuery] = useState('');
@@ -74,6 +76,43 @@ export default function WmsTransferPage() {
   const purposeById = useMemo(
     () => new Map(purposes.map((purpose) => [purpose.id, purpose])),
     [purposes],
+  );
+
+  const occupancy = useMemo(
+    () => buildOccupancyIndex(locations, inventory, pallets, purposeById),
+    [locations, inventory, pallets, purposeById],
+  );
+
+  // Empty destination locations, grouped by section (their area) so the operator
+  // can pick where to place the item instead of scanning. Only enabled,
+  // stock-holding, currently-empty locations qualify; the source is excluded.
+  const emptyBySection = useMemo(() => {
+    const areasByWarehouse = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse.areas ?? []]));
+    const groups = new Map<string, { label: string; locations: WarehouseLocation[] }>();
+    for (const location of locations) {
+      if (location.id === sourceLocationId) continue;
+      if (location.enabled === false) continue;
+      if (!locationHoldsStock(location, purposeById)) continue;
+      if ((occupancy.get(location.id)?.occupancyPct ?? 0) > 0) continue; // only empty
+      const areas = areasByWarehouse.get(location.warehouseId) ?? [];
+      const area = findArea(areas, location.column, location.row);
+      const key = area ? `${location.warehouseId}:${area.groupId ?? area.id}` : `${location.warehouseId}:none`;
+      const label = area?.name ?? 'Unassigned';
+      const group = groups.get(key) ?? { label, locations: [] };
+      group.locations.push(location);
+      groups.set(key, group);
+    }
+    const sections = [...groups.entries()].map(([key, group]) => ({
+      key,
+      label: group.label,
+      locations: group.locations.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })),
+    }));
+    return sections.sort((a, b) => a.label.localeCompare(b.label));
+  }, [locations, warehouses, sourceLocationId, purposeById, occupancy]);
+
+  const totalEmpty = useMemo(
+    () => emptyBySection.reduce((sum, section) => sum + section.locations.length, 0),
+    [emptyBySection],
   );
 
   const sourceLocation = sourceLocationId ? locations.find((l) => l.id === sourceLocationId) ?? null : null;
@@ -361,6 +400,42 @@ export default function WmsTransferPage() {
               <Button variant="outline" onClick={() => resolveDestination()}>
                 <ScanLine className="mr-2 h-4 w-4" /> Find
               </Button>
+            </div>
+
+            {/* Pick an empty location by section instead of scanning. */}
+            <div className="space-y-1.5">
+              <Label htmlFor="dest-select">
+                Or pick an empty location
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  ({totalEmpty} available)
+                </span>
+              </Label>
+              <NativeSelect
+                id="dest-select"
+                value={destLocationId ?? ''}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  setDestLocationId(id || null);
+                  const chosen = locations.find((location) => location.id === id);
+                  setDestQuery(chosen?.code ?? '');
+                }}
+              >
+                <option value="">Select an empty location…</option>
+                {emptyBySection.map((section) => (
+                  <optgroup key={section.key} label={section.label}>
+                    {section.locations.map((location) => (
+                      <option key={location.id} value={location.id}>
+                        {location.code}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </NativeSelect>
+              {totalEmpty === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No empty locations available — every stock-holding location is occupied.
+                </p>
+              ) : null}
             </div>
 
             {destLocation ? (
