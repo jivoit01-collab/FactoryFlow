@@ -7,6 +7,7 @@ import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import {
   ReturnableReasonDialog,
+  ReturnableStatusBadge,
   ReturnableTimeline,
   ReturnableTypeBadge,
 } from '@/modules/maintenance/components/returnable';
@@ -32,6 +33,15 @@ import {
   EMPTY_VEHICLE_FORM,
   type ReturnableVehicleFormData,
 } from '../../components/returnable/returnableVehicleForm';
+
+function ReadOnlyField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm">{value || '—'}</dd>
+    </div>
+  );
+}
 
 /**
  * Stage 2 of the returnable flow. The gate confirms the items physically match
@@ -69,20 +79,9 @@ export default function ReturnOutFormPage() {
     return <div className="p-6 text-muted-foreground">Loading gate pass…</div>;
   }
 
-  if (pass.status !== 'PENDING_GATE_OUT') {
-    return (
-      <div className="space-y-4 p-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/gate/return-out')}>
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to queue
-        </Button>
-        <p className="text-muted-foreground">
-          {pass.pass_no} is <strong>{pass.status_display}</strong> and is no longer waiting for gate
-          out.
-        </p>
-      </div>
-    );
-  }
+  // Already handled. Show it read-only rather than a dead end — the gate still
+  // needs to look up what left, on which vehicle, and what happened since.
+  const isAwaitingGateOut = pass.status === 'PENDING_GATE_OUT';
 
   const validate = () => {
     // A hand-carried pass has no vehicle to validate — only a carrier.
@@ -159,8 +158,15 @@ export default function ReturnOutFormPage() {
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to queue
         </Button>
-        <h1 className="mt-2 text-2xl font-semibold">Gate Out — {pass.pass_no}</h1>
+        <h1 className="mt-2 text-2xl font-semibold">
+          {isAwaitingGateOut ? 'Gate Out' : 'Gate Pass'} — {pass.pass_no}
+        </h1>
         <div className="mt-1 flex flex-wrap items-center gap-2">
+          <ReturnableStatusBadge
+            status={pass.status}
+            isOverdue={pass.is_overdue}
+            daysOverdue={pass.days_overdue}
+          />
           <ReturnableTypeBadge isReturnable={pass.is_returnable} />
           <p className="text-sm text-muted-foreground">
             {pass.purpose_display} · {pass.destination}
@@ -171,7 +177,7 @@ export default function ReturnOutFormPage() {
         </div>
       </div>
 
-      {!pass.is_returnable ? (
+      {!pass.is_returnable && isAwaitingGateOut ? (
         <div className="flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Non-returnable — this material is not coming back. Gating it out closes the pass, and it
@@ -181,11 +187,15 @@ export default function ReturnOutFormPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Verify Items Leaving ({pass.items.length})</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Check each line against what is physically loaded. If anything does not match, reject
-            the pass instead of gating it out.
-          </p>
+          <CardTitle className="text-base">
+            {isAwaitingGateOut ? 'Verify Items Leaving' : 'Items'} ({pass.items.length})
+          </CardTitle>
+          {isAwaitingGateOut ? (
+            <p className="text-sm text-muted-foreground">
+              Check each line against what is physically loaded. If anything does not match, reject
+              the pass instead of gating it out.
+            </p>
+          ) : null}
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -237,6 +247,8 @@ export default function ReturnOutFormPage() {
         </CardContent>
       </Card>
 
+      {isAwaitingGateOut ? (
+        <>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">How is it leaving?</CardTitle>
@@ -317,6 +329,44 @@ export default function ReturnOutFormPage() {
           />
         </CardContent>
       </Card>
+        </>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Gate Out Record</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-4 sm:grid-cols-3">
+              {pass.is_hand_carried ? (
+                <>
+                  <ReadOnlyField label="Conveyance" value="Hand-carried (no vehicle)" />
+                  <ReadOnlyField label="Carried By" value={pass.carried_by_name} />
+                </>
+              ) : (
+                <>
+                  <ReadOnlyField
+                    label="Vehicle"
+                    value={pass.vehicle_number || pass.vehicle_number_manual}
+                  />
+                  <ReadOnlyField
+                    label="Driver"
+                    value={pass.driver_name || pass.driver_name_manual}
+                  />
+                  <ReadOnlyField label="Driver Mobile" value={pass.driver_mobile} />
+                  <ReadOnlyField label="Transporter" value={pass.transporter_name} />
+                </>
+              )}
+              <ReadOnlyField label="Security" value={pass.security_name} />
+              <ReadOnlyField
+                label="Gated Out At"
+                value={pass.gate_out_at ? new Date(pass.gate_out_at).toLocaleString() : ''}
+              />
+              <ReadOnlyField label="Gated Out By" value={pass.gate_out_by_name} />
+              <ReadOnlyField label="Remarks" value={pass.out_remarks} />
+            </dl>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Audit trail — who raised, submitted, approved and rejected this pass,
           and when. The gate should see the whole story before letting it out. */}
@@ -335,6 +385,7 @@ export default function ReturnOutFormPage() {
         </CardContent>
       </Card>
 
+      {isAwaitingGateOut ? (
       <div className="flex flex-wrap justify-end gap-2">
         {canReject ? (
           <Button variant="destructive" onClick={() => setIsRejectOpen(true)}>
@@ -349,6 +400,7 @@ export default function ReturnOutFormPage() {
           </Button>
         ) : null}
       </div>
+      ) : null}
 
       <ReturnableReasonDialog
         open={isRejectOpen}

@@ -5,8 +5,14 @@ import { toast } from 'sonner';
 
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import { ReturnableTimeline } from '@/modules/maintenance/components/returnable';
-import { RETURN_CONDITION_OPTIONS } from '@/modules/maintenance/constants/returnable.constants';
+import {
+  ReturnableStatusBadge,
+  ReturnableTimeline,
+} from '@/modules/maintenance/components/returnable';
+import {
+  RETURN_CONDITION_OPTIONS,
+  RETURN_CONDITION_STYLES,
+} from '@/modules/maintenance/constants/returnable.constants';
 import {
   Button,
   Card,
@@ -78,6 +84,10 @@ export default function ReturnInFormPage() {
     return <div className="p-6 text-muted-foreground">Loading gate pass…</div>;
   }
 
+  // Already fully back or closed. Show it read-only rather than a form that
+  // cannot be submitted — the gate still needs to look the record up.
+  const isOutstanding = pass.status === 'OUT' || pass.status === 'PARTIALLY_RETURNED';
+
   const handleSubmit = async () => {
     const lines: ReturnableReturnLineInput[] = pendingItems
       .map((item) => ({ item, draft: draftFor(item.id, item.pending_return_qty) }))
@@ -134,27 +144,38 @@ export default function ReturnInFormPage() {
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to queue
         </Button>
-        <h1 className="mt-2 text-2xl font-semibold">Record Return — {pass.pass_no}</h1>
-        <p className="text-sm text-muted-foreground">
-          {pass.purpose_display} · {pass.party_name} · Gated out{' '}
-          {pass.gate_out_at ? new Date(pass.gate_out_at).toLocaleDateString() : '—'}
-        </p>
+        <h1 className="mt-2 text-2xl font-semibold">
+          {isOutstanding ? 'Record Return' : 'Gate Pass'} — {pass.pass_no}
+        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <ReturnableStatusBadge
+            status={pass.status}
+            isOverdue={pass.is_overdue}
+            daysOverdue={pass.days_overdue}
+          />
+          <p className="text-sm text-muted-foreground">
+            {pass.purpose_display} · {pass.party_name} · Gated out{' '}
+            {pass.gate_out_at ? new Date(pass.gate_out_at).toLocaleDateString() : '—'}
+          </p>
+        </div>
       </div>
 
-      {pass.is_overdue ? (
+      {pass.is_overdue && isOutstanding ? (
         <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
           <AlertTriangle className="h-4 w-4" />
           This pass is {pass.days_overdue} day(s) past its expected return date.
         </div>
       ) : null}
 
-      {pass.return_events.length > 0 ? (
+      {isOutstanding && pass.return_events.length > 0 ? (
         <div className="rounded-md border bg-muted/30 p-3 text-sm">
           {pass.return_events.length} earlier return trip(s) already recorded.{' '}
           {pass.total_quantity_returned} of {pass.total_quantity_out} units are back.
         </div>
       ) : null}
 
+      {isOutstanding ? (
+        <>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Items Coming Back</CardTitle>
@@ -281,6 +302,57 @@ export default function ReturnInFormPage() {
           />
         </CardContent>
       </Card>
+        </>
+      ) : null}
+
+      {/* Return trips already recorded. On a settled pass this is the record. */}
+      {pass.return_events.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Return Trips ({pass.return_events.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {pass.return_events.map((event) => (
+              <div key={event.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">{event.event_ref}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(event.returned_at).toLocaleString()} · Vehicle{' '}
+                      {event.vehicle_number || '—'} · Verified by {event.verified_by_name}
+                    </p>
+                  </div>
+                  {event.is_acknowledged ? (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                      Collected by {event.acknowledged_by_name}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                      Awaiting collection
+                    </span>
+                  )}
+                </div>
+
+                <ul className="mt-2 space-y-1">
+                  {event.lines.map((line) => (
+                    <li key={line.id} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1">{line.item_name}</span>
+                      <span className="text-muted-foreground">
+                        {line.quantity_returned} {line.uom}
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-xs ${RETURN_CONDITION_STYLES[line.return_condition]}`}
+                      >
+                        {line.return_condition_display}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Audit trail — earlier return trips, who approved the pass, when it went
           out. The gate should see the whole story before accepting material back. */}
@@ -299,6 +371,7 @@ export default function ReturnInFormPage() {
         </CardContent>
       </Card>
 
+      {isOutstanding ? (
       <div className="flex justify-end">
         {canGateIn ? (
           <Button
@@ -310,6 +383,7 @@ export default function ReturnInFormPage() {
           </Button>
         ) : null}
       </div>
+      ) : null}
     </div>
   );
 }
