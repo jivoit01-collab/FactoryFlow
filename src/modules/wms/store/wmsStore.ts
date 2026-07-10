@@ -10,7 +10,7 @@
 import { makeInventoryRecord, makeMovement, makePallet } from '../services/factories';
 import type { WarehouseBundle } from '../services/warehouseIO';
 import type { WmsCollection, WmsCollectionMap, WmsStorageAdapter } from '../storage';
-import { getActiveWmsAdapter } from '../storage';
+import { getActiveWmsAdapter, runWithConcurrency } from '../storage';
 import type { Warehouse, WmsId, WmsSettings } from '../types';
 import { DEFAULT_WMS_SETTINGS, WMS_SETTINGS_ID } from '../types';
 import { nowIso } from '../utils';
@@ -181,31 +181,61 @@ class WmsStore {
     return warehouse;
   }
 
-  /** Delete a warehouse and every zone + location that belongs to it. */
+  /**
+   * Delete a warehouse and everything that belongs to it: its zones, purposes,
+   * locations, and the stock (inventory lines + pallets) sitting in those
+   * locations — which would otherwise be orphaned and corrupt occupancy.
+   *
+   * Deletes run with bounded concurrency: a large warehouse has thousands of
+   * locations, and firing every DELETE at once starved the connection pool, so a
+   * single timeout aborted the cascade and left the warehouse half-deleted (and,
+   * because `remove` used to throw on 404, permanently undeletable on retry).
+   * `remove` is now idempotent, so this whole operation is safe to retry.
+   *
+   * Movements are an append-only audit log and are deliberately kept.
+   */
   async deleteWarehouseCascade(warehouseId: WmsId): Promise<void> {
     const adapter = this.adapter();
-    const [locations, zones, purposes] = await Promise.all([
+    const [locations, zones, purposes, inventory, pallets] = await Promise.all([
       adapter.list('locations'),
       adapter.list('zones'),
       adapter.list('cellPurposes'),
+      adapter.list('inventory'),
+      adapter.list('pallets'),
     ]);
-    await Promise.all([
-      ...locations
-        .filter((location) => location.warehouseId === warehouseId)
-        .map((location) => adapter.remove('locations', location.id)),
+
+    const doomedLocations = locations.filter((location) => location.warehouseId === warehouseId);
+    const doomedLocationIds = new Set(doomedLocations.map((location) => location.id));
+
+    // Stock first, then the locations it pointed at, then the warehouse itself.
+    await runWithConcurrency(
+      inventory
+        .filter((record) => doomedLocationIds.has(record.locationId))
+        .map((record) => () => adapter.remove('inventory', record.id)),
+    );
+    await runWithConcurrency(
+      pallets
+        .filter((pallet) => pallet.currentLocationId && doomedLocationIds.has(pallet.currentLocationId))
+        .map((pallet) => () => adapter.remove('pallets', pallet.id)),
+    );
+    await runWithConcurrency([
+      ...doomedLocations.map((location) => () => adapter.remove('locations', location.id)),
       ...zones
         .filter((zone) => zone.warehouseId === warehouseId)
-        .map((zone) => adapter.remove('zones', zone.id)),
+        .map((zone) => () => adapter.remove('zones', zone.id)),
       ...purposes
         .filter((purpose) => purpose.warehouseId === warehouseId)
-        .map((purpose) => adapter.remove('cellPurposes', purpose.id)),
+        .map((purpose) => () => adapter.remove('cellPurposes', purpose.id)),
     ]);
     await adapter.remove('warehouses', warehouseId);
+
     await Promise.all([
       this.load('warehouses'),
       this.load('zones'),
       this.load('cellPurposes'),
       this.load('locations'),
+      this.load('inventory'),
+      this.load('pallets'),
     ]);
   }
 

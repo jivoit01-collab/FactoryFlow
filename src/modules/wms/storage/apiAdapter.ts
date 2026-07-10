@@ -37,6 +37,35 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
+/**
+ * How many write requests may be in flight at once. Deleting a warehouse can
+ * touch thousands of records; firing them all at once starves the browser's
+ * connection pool and overloads the server, so a single timeout would fail the
+ * whole cascade.
+ */
+export const WRITE_CONCURRENCY = 8;
+
+/**
+ * Run async tasks with a bounded number in flight. Rejects with the first error
+ * (like `Promise.all`) but never floods the network.
+ */
+export async function runWithConcurrency<T>(
+  tasks: readonly (() => Promise<T>)[],
+  limit = WRITE_CONCURRENCY,
+): Promise<T[]> {
+  const results = new Array<T>(tasks.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
+    while (next < tasks.length) {
+      const index = next;
+      next += 1;
+      results[index] = await tasks[index]!();
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 export class ApiAdapter implements WmsStorageAdapter {
   readonly kind = 'api' as const;
 
@@ -82,13 +111,24 @@ export class ApiAdapter implements WmsStorageAdapter {
     return response.data;
   }
 
+  /**
+   * Delete a record. A 404 means it is already gone, which satisfies the intent —
+   * DELETE is idempotent. Without this a cascade that partly failed could never
+   * be retried: the next attempt 404s on the records it already removed, so the
+   * parent (e.g. a warehouse) stays undeletable forever.
+   */
   async remove<K extends WmsCollection>(collection: K, id: WmsId): Promise<void> {
-    await apiClient.delete(collectionUrl(collection, id));
+    try {
+      await apiClient.delete(collectionUrl(collection, id));
+    } catch (error) {
+      if (isNotFound(error)) return;
+      throw error;
+    }
   }
 
   async clear(collection: WmsCollection): Promise<void> {
     const all = await this.list(collection);
-    await Promise.all(all.map((record) => this.remove(collection, record.id)));
+    await runWithConcurrency(all.map((record) => () => this.remove(collection, record.id)));
   }
 
   async clearAll(): Promise<void> {
