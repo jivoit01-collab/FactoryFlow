@@ -20,7 +20,6 @@ import { toast } from 'sonner';
 
 import { useWarehouses } from '@/modules/grpo/api';
 import type { Warehouse as SAPWarehouse } from '@/modules/grpo/types';
-import { useMaintenanceAssets } from '@/modules/maintenance/api';
 import { useProductionQCRunSessions, useRequestFinalProductionQC } from '@/modules/qc/api/productionQC';
 import { useCreateBOMRequest, useCreateFGReceipt, useFGReceipts } from '@/modules/warehouse/api';
 import type { FGReceipt } from '@/modules/warehouse/types';
@@ -156,7 +155,6 @@ function RunDetailPage() {
   const { data: clearances = [] } = useLineClearances(run?.line);
   const { data: wasteLogs = [] } = useWasteLogs(numRunId);
   const { data: lineMachines = [] } = useMachines(run?.line);
-  const { data: maintenanceAssets = [] } = useMaintenanceAssets({ is_active: true });
 
   const { data: qcSessions = [] } = useProductionQCRunSessions(numRunId || null);
   const { data: fgReceipts = [], isLoading: fgReceiptsLoading } = useFGReceipts(
@@ -253,29 +251,12 @@ function RunDetailPage() {
     },
   });
   const selectedBreakdownMachineId = breakdownForm.watch('machine_id');
-  const selectedMaintenanceAssetId = breakdownForm.watch('maintenance_asset_id');
   const createMaintenanceWork = breakdownForm.watch('create_maintenance_work_order') ?? true;
-  const linkedMaintenanceAsset = useMemo(
-    () =>
-      selectedBreakdownMachineId
-        ? maintenanceAssets.find((asset) => asset.production_machine === selectedBreakdownMachineId)
-        : undefined,
-    [maintenanceAssets, selectedBreakdownMachineId],
-  );
-
-  useEffect(() => {
-    if (dialog !== 'breakdown' || !linkedMaintenanceAsset || selectedMaintenanceAssetId) return;
-    breakdownForm.setValue('maintenance_asset_id', linkedMaintenanceAsset.id);
-  }, [breakdownForm, dialog, linkedMaintenanceAsset, selectedMaintenanceAssetId]);
 
   const openBreakdownDialog = () => {
     const defaultMachineId = machineOptions.length === 1 ? machineOptions[0].id : undefined;
-    const defaultAsset = defaultMachineId
-      ? maintenanceAssets.find((asset) => asset.production_machine === defaultMachineId)
-      : undefined;
     breakdownForm.reset({
       machine_id: defaultMachineId,
-      maintenance_asset_id: defaultAsset?.id,
       create_maintenance_work_order: true,
       maintenance_priority: 'CRITICAL',
       produced_cases: '0',
@@ -284,10 +265,6 @@ function RunDetailPage() {
     setDialog('breakdown');
   };
   const onSubmitBreakdown = async (data: AddBreakdownFormData) => {
-    if (data.create_maintenance_work_order !== false && !data.maintenance_asset_id) {
-      toast.error('Select a maintenance asset or turn off maintenance work creation');
-      return;
-    }
     try {
       await addBreakdown.mutateAsync(data);
       toast.success(
@@ -666,11 +643,7 @@ function RunDetailPage() {
                 value={selectedBreakdownMachineId ? String(selectedBreakdownMachineId) : ''}
                 onChange={(event) => {
                   const machineId = event.target.value ? Number(event.target.value) : null;
-                  const linkedAsset = machineId
-                    ? maintenanceAssets.find((asset) => asset.production_machine === machineId)
-                    : undefined;
                   breakdownForm.setValue('machine_id', machineId);
-                  breakdownForm.setValue('maintenance_asset_id', linkedAsset?.id ?? null);
                 }}
               >
                 <SelectOption value="">Line-level breakdown</SelectOption>
@@ -693,33 +666,7 @@ function RunDetailPage() {
                 <Label htmlFor="create_maintenance_work_order">Create maintenance work</Label>
               </div>
               {createMaintenanceWork && (
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="breakdown_asset">Maintenance Asset</Label>
-                    <NativeSelect
-                      id="breakdown_asset"
-                      value={selectedMaintenanceAssetId ? String(selectedMaintenanceAssetId) : ''}
-                      onChange={(event) =>
-                        breakdownForm.setValue(
-                          'maintenance_asset_id',
-                          event.target.value ? Number(event.target.value) : null,
-                        )
-                      }
-                      required
-                    >
-                      <SelectOption value="">Select asset</SelectOption>
-                      {maintenanceAssets.map((asset) => (
-                        <SelectOption key={asset.id} value={String(asset.id)}>
-                          {asset.asset_code} - {asset.name}
-                        </SelectOption>
-                      ))}
-                    </NativeSelect>
-                    {linkedMaintenanceAsset && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Linked asset for selected machine
-                      </div>
-                    )}
-                  </div>
+                <div className="mt-3">
                   <div>
                     <Label htmlFor="breakdown_priority">Maintenance Priority</Label>
                     <NativeSelect
@@ -737,6 +684,9 @@ function RunDetailPage() {
                       <SelectOption value="NORMAL">Normal</SelectOption>
                     </NativeSelect>
                   </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    The work order links to the selected machine&apos;s maintenance asset automatically.
+                  </p>
                 </div>
               )}
             </div>
