@@ -799,6 +799,30 @@ export const API_ENDPOINTS = {
     PRODUCTION_LABELS: (runId: number) => `/barcode/production/${runId}/generate-labels/`,
     PRODUCTION_PALLET: (runId: number) => `/barcode/production/${runId}/create-pallet/`,
   },
+  // Marketplace (Flipkart/Amazon) dispatch, returns, masters & reconciliation
+  MARKETPLACE: {
+    WAREHOUSES: '/marketplace/warehouses/',
+    WAREHOUSE_BY_ID: (id: number) => `/marketplace/warehouses/${id}/`,
+    SKU_MAPPINGS: '/marketplace/sku-mappings/',
+    SKU_MAPPINGS_IMPORT: '/marketplace/sku-mappings/import/',
+    SKU_MAPPING_BY_ID: (id: number) => `/marketplace/sku-mappings/${id}/`,
+    COMBOS: '/marketplace/combos/',
+    COMBO_BY_ID: (id: number) => `/marketplace/combos/${id}/`,
+    ORDERS: '/marketplace/orders/',
+    ORDER_RESOLVE: '/marketplace/orders/resolve/',
+    DISPATCHES: '/marketplace/dispatches/',
+    DISPATCH_BY_ID: (id: number) => `/marketplace/dispatches/${id}/`,
+    DISPATCH_SCANS: (id: number) => `/marketplace/dispatches/${id}/scans/`,
+    DISPATCH_SCAN_BY_ID: (id: number, scanId: number) =>
+      `/marketplace/dispatches/${id}/scans/${scanId}/`,
+    DISPATCH_CONFIRM: (id: number) => `/marketplace/dispatches/${id}/confirm/`,
+    DISPATCH_CANCEL: (id: number) => `/marketplace/dispatches/${id}/cancel/`,
+    RETURNS: '/marketplace/returns/',
+    RETURN_BY_ID: (id: number) => `/marketplace/returns/${id}/`,
+    RETURN_SCANS: (id: number) => `/marketplace/returns/${id}/scans/`,
+    RETURN_SUBMIT: (id: number) => `/marketplace/returns/${id}/submit/`,
+    RECONCILIATION: '/marketplace/reconciliation/',
+  },
 } as const;
 
 export const HTTP_STATUS = {
