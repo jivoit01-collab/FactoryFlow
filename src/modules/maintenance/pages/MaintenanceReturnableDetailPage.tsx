@@ -3,6 +3,7 @@ import {
   Ban,
   CheckCircle2,
   HandCoins,
+  History,
   Lock,
   Paperclip,
   Pencil,
@@ -300,13 +301,22 @@ export default function MaintenanceReturnableDetailPage() {
               </CardHeader>
               <CardContent>
                 <dl className="grid gap-4 sm:grid-cols-3">
-                  <Field
-                    label="Vehicle"
-                    value={pass.vehicle_number || pass.vehicle_number_manual}
-                  />
-                  <Field label="Driver" value={pass.driver_name || pass.driver_name_manual} />
-                  <Field label="Driver Mobile" value={pass.driver_mobile} />
-                  <Field label="Transporter" value={pass.transporter_name} />
+                  {pass.is_hand_carried ? (
+                    <>
+                      <Field label="Conveyance" value="Hand-carried (no vehicle)" />
+                      <Field label="Carried By" value={pass.carried_by_name} />
+                    </>
+                  ) : (
+                    <>
+                      <Field
+                        label="Vehicle"
+                        value={pass.vehicle_number || pass.vehicle_number_manual}
+                      />
+                      <Field label="Driver" value={pass.driver_name || pass.driver_name_manual} />
+                      <Field label="Driver Mobile" value={pass.driver_mobile} />
+                      <Field label="Transporter" value={pass.transporter_name} />
+                    </>
+                  )}
                   <Field label="Security" value={pass.security_name} />
                   <Field label="Gated Out At" value={new Date(pass.gate_out_at).toLocaleString()} />
                   <Field label="Gated Out By" value={pass.gate_out_by_name} />
@@ -331,8 +341,14 @@ export default function MaintenanceReturnableDetailPage() {
                     <tr>
                       <th className="px-3 py-2 text-left font-medium">#</th>
                       <th className="px-3 py-2 text-left font-medium">Item</th>
-                      <th className="px-3 py-2 text-left font-medium">Serial</th>
-                      <th className="px-3 py-2 text-left font-medium">Condition Out</th>
+                      {/* Serial, make/model and condition only exist on a
+                          returnable line — a non-returnable pass never captures them. */}
+                      {pass.is_returnable ? (
+                        <>
+                          <th className="px-3 py-2 text-left font-medium">Serial</th>
+                          <th className="px-3 py-2 text-left font-medium">Condition Out</th>
+                        </>
+                      ) : null}
                       <th className="px-3 py-2 text-right font-medium">Out</th>
                       {pass.is_returnable ? (
                         <>
@@ -349,11 +365,20 @@ export default function MaintenanceReturnableDetailPage() {
                         <td className="px-3 py-2">
                           <div className="font-medium">{item.item_name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {[item.item_code, item.make_model].filter(Boolean).join(' · ')}
+                            {(pass.is_returnable
+                              ? [item.item_code, item.make_model]
+                              : [item.item_code]
+                            )
+                              .filter(Boolean)
+                              .join(' · ')}
                           </div>
                         </td>
-                        <td className="px-3 py-2">{item.serial_no || '—'}</td>
-                        <td className="px-3 py-2">{item.condition_out_display}</td>
+                        {pass.is_returnable ? (
+                          <>
+                            <td className="px-3 py-2">{item.serial_no || '—'}</td>
+                            <td className="px-3 py-2">{item.condition_out_display}</td>
+                          </>
+                        ) : null}
                         <td className="px-3 py-2 text-right">
                           {item.quantity_out} {item.uom}
                         </td>
@@ -462,9 +487,17 @@ export default function MaintenanceReturnableDetailPage() {
           ) : null}
         </div>
 
+        {/* Audit trail. The backend has no simple-history, so the module keeps
+            its own append-only log of every action taken on the pass. */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-base">Timeline</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-4 w-4" />
+              Audit History
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Every action taken on {pass.pass_no}, newest first.
+            </p>
           </CardHeader>
           <CardContent>
             <ReturnableTimeline passId={id} />

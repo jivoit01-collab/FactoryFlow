@@ -1,10 +1,11 @@
-import { AlertTriangle, ArrowLeft, Undo2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, History, Undo2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { ReturnableTimeline } from '@/modules/maintenance/components/returnable';
 import { RETURN_CONDITION_OPTIONS } from '@/modules/maintenance/constants/returnable.constants';
 import {
   Button,
@@ -278,6 +279,23 @@ export default function ReturnInFormPage() {
             placeholder="Condition of the consignment, missing paperwork, anything worth recording."
             onChange={(event) => setRemarks(event.target.value)}
           />
+        </CardContent>
+      </Card>
+
+      {/* Audit trail — earlier return trips, who approved the pass, when it went
+          out. The gate should see the whole story before accepting material back. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <History className="h-4 w-4" />
+            Audit History
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Every action taken on {pass.pass_no}, newest first.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ReturnableTimeline passId={id} />
         </CardContent>
       </Card>
 
