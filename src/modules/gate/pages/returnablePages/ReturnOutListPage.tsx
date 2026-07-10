@@ -17,8 +17,8 @@ export default function ReturnOutListPage() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <DashboardHeader
-        title="Returnable — Gate Out"
-        description="Gate passes waiting to leave. Verify the items physically, record the vehicle, then gate out."
+        title="Material Out"
+        description="Approved gate passes waiting to leave. Verify the items physically, record the vehicle, then gate out."
       />
 
       <div className="overflow-x-auto rounded-md border">

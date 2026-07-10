@@ -18,16 +18,24 @@ describe('returnable gate entry types', () => {
     expect(returnableIn).toBeDefined();
   });
 
-  it('puts Returnable Out in the Gate Out section', () => {
+  it('puts Material Out in the Gate Out section', () => {
     // The dashboard groups by direction: 'out' -> Gate Out.
+    expect(returnableOut!.title).toBe('Material Out');
     expect(returnableOut!.direction).toBe('out');
     expect(returnableOut!.dashboardRoute).toBe('/gate/return-out');
   });
 
-  it('puts Returnable In in the Gate In section', () => {
+  it('puts Material In in the Gate In section', () => {
     // Both 'in' and 'return' land under Gate In on the dashboard.
+    expect(returnableIn!.title).toBe('Material In');
     expect(returnableIn!.direction).toBe('return');
     expect(returnableIn!.dashboardRoute).toBe('/gate/return-in');
+  });
+
+  it('keeps both cards findable by searching "returnable"', () => {
+    // The visible titles no longer say "returnable"; the keywords must.
+    expect(returnableOut!.keywords).toContain('returnable');
+    expect(returnableIn!.keywords).toContain('returnable');
   });
 
   it('hides both from the New Entry picker — the gate never raises a pass', () => {

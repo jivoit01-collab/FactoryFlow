@@ -287,7 +287,7 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     // The gate-side halves of the Returnable Gate Pass. The document itself is
     // raised and closed by a department; the gate only records the movement.
     id: 'returnable-out',
-    title: 'Returnable Out',
+    title: 'Material Out',
     description: 'Approved returnable gate passes waiting to leave for repair, exchange or job work.',
     direction: 'out',
     vehicleMode: 'vehicle',
@@ -297,12 +297,12 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     createPermissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
     icon: PackageOpen,
     colorClassName: 'text-indigo-600',
-    keywords: ['returnable', 'rgp', 'gate pass', 'repair', 'exchange', 'out'],
+    keywords: ['material', 'returnable', 'non-returnable', 'rgp', 'gate pass', 'repair', 'exchange', 'out'],
     hideFromNewEntry: true,
   },
   {
     id: 'returnable-in',
-    title: 'Returnable In',
+    title: 'Material In',
     description: 'Material out with a party, coming back against a returnable gate pass.',
     direction: 'return',
     vehicleMode: 'vehicle',
@@ -312,7 +312,7 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     createPermissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
     icon: Undo2,
     colorClassName: 'text-indigo-700',
-    keywords: ['returnable', 'rgp', 'gate pass', 'return', 'back', 'overdue', 'in'],
+    keywords: ['material', 'returnable', 'non-returnable', 'rgp', 'gate pass', 'return', 'back', 'overdue', 'in'],
     hideFromNewEntry: true,
   },
   {
