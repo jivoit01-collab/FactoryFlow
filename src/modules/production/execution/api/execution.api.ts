@@ -179,8 +179,10 @@ export const executionApi = {
     return res.data;
   },
 
-  async searchSAPItems(search: string): Promise<SAPItem[]> {
-    const res = await apiClient.get<SAPItem[]>(EP.SAP_ITEMS, { params: { search } });
+  async searchSAPItems(search: string, producedOnly = false): Promise<SAPItem[]> {
+    const params: Record<string, string> = { search };
+    if (producedOnly) params.produced_only = 'true';
+    const res = await apiClient.get<SAPItem[]>(EP.SAP_ITEMS, { params });
     return res.data;
   },
 

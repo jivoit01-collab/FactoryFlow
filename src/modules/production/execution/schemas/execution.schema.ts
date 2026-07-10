@@ -8,7 +8,7 @@ export const createRunSchema = z.object({
   sap_doc_entry: z.number().nullable().optional(),
   line_id: z.number({ required_error: 'Production line is required' }),
   date: z.string().min(1, 'Date is required'),
-  product: z.string().optional().default(''),
+  product: z.string().min(1, 'Product SKU is required'),
   required_qty: z.string().optional(),
   rated_speed: z.string().optional(),
   electricity_cost_per_unit: z.string().optional(),

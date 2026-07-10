@@ -255,10 +255,10 @@ export function useSAPOrderDetail(docEntry: number | null) {
   });
 }
 
-export function useSearchSAPItems(search: string) {
+export function useSearchSAPItems(search: string, producedOnly = false) {
   return useQuery({
-    queryKey: [...EXECUTION_QUERY_KEYS.all, 'sap-items', search] as const,
-    queryFn: () => executionApi.searchSAPItems(search),
+    queryKey: [...EXECUTION_QUERY_KEYS.all, 'sap-items', search, producedOnly] as const,
+    queryFn: () => executionApi.searchSAPItems(search, producedOnly),
     enabled: search.length >= 2,
     staleTime: 30 * 1000,
   });

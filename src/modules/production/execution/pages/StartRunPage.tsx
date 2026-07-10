@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Loader2, Settings2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -25,15 +25,15 @@ import {
 import { useScrollToError } from '@/shared/hooks';
 
 import {
+  useAutoFillConfig,
   useBOMPreview,
   useCreateRun,
   useLineConfigs,
   useLines,
-  useSAPOrderDetail,
-  useSAPOrders,
+  useSearchSAPItems,
 } from '../api';
 import { type CreateRunFormData, createRunSchema } from '../schemas';
-import type { LineSkuConfig, SAPProductionOrder } from '../types';
+import type { LineSkuConfig, SAPItem } from '../types';
 
 const parseCost = (value: string | number | null | undefined) => {
   const parsed = Number(value ?? 0);
@@ -49,94 +49,18 @@ const getPresetLabourCost = (config: LineSkuConfig) =>
   config.labour_count * parseCost(config.labour_cost_per_hour);
 
 // ============================================================================
-// SAP Order Detail Popover Content
-// ============================================================================
-
-function SAPOrderPopoverContent({ docEntry }: { docEntry: number | null }) {
-  const { data: detail, isLoading } = useSAPOrderDetail(docEntry);
-
-  if (!docEntry) {
-    return <p className="text-sm text-muted-foreground">Select an order to view details.</p>;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-4">
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        <span className="text-sm text-muted-foreground">Loading details...</span>
-      </div>
-    );
-  }
-
-  if (!detail) {
-    return <p className="text-sm text-muted-foreground">No details available.</p>;
-  }
-
-  const { header, components } = detail;
-
-  return (
-    <div className="space-y-3 text-sm">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-        <span className="text-muted-foreground">Doc Num:</span>
-        <span className="font-medium">#{header.DocNum}</span>
-        <span className="text-muted-foreground">Item Code:</span>
-        <span className="font-medium">{header.ItemCode}</span>
-        <span className="text-muted-foreground">Item Name:</span>
-        <span className="font-medium">{header.ProdName}</span>
-        <span className="text-muted-foreground">Planned Qty:</span>
-        <span className="font-medium">{header.PlannedQty}</span>
-        <span className="text-muted-foreground">Completed:</span>
-        <span className="font-medium">{header.CmpltQty}</span>
-        <span className="text-muted-foreground">Remaining:</span>
-        <span className="font-medium">{header.RemainingQty}</span>
-        <span className="text-muted-foreground">Start Date:</span>
-        <span className="font-medium">{header.StartDate}</span>
-        <span className="text-muted-foreground">Due Date:</span>
-        <span className="font-medium">{header.DueDate}</span>
-        <span className="text-muted-foreground">Warehouse:</span>
-        <span className="font-medium">{header.Warehouse}</span>
-      </div>
-
-      {components && components.length > 0 && (
-        <div>
-          <p className="font-medium mb-1">Components</p>
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-1">Item Code</th>
-                <th className="text-left py-1">Item Name</th>
-                <th className="text-right py-1">Planned</th>
-                <th className="text-right py-1">Issued</th>
-              </tr>
-            </thead>
-            <tbody>
-              {components.map((c, i) => (
-                <tr key={i} className="border-b last:border-0">
-                  <td className="py-1">{c.ItemCode}</td>
-                  <td className="py-1">{c.ItemName}</td>
-                  <td className="text-right py-1">{c.PlannedQty}</td>
-                  <td className="text-right py-1">{c.IssuedQty}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
 // Start Run Page
 // ============================================================================
 
 function StartRunPage() {
   const navigate = useNavigate();
-  const { data: sapOrders, isLoading: loadingSAP, isError: sapError } = useSAPOrders();
   const { data: lines } = useLines(true);
   const createRun = useCreateRun();
 
-  const [selectedDocEntry, setSelectedDocEntry] = useState<number | null>(null);
+  // SKU (SAP item) search — server-side, min 2 chars, restricted to producible finished goods
+  const [skuSearch, setSkuSearch] = useState('');
+  const { data: skuItems = [], isLoading: loadingSKU } = useSearchSAPItems(skuSearch, true);
+
   const [selectedItemCode, setSelectedItemCode] = useState<string | null>(null);
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
   const { data: bomData, isLoading: loadingBOM } = useBOMPreview(selectedItemCode);
@@ -177,7 +101,7 @@ function StartRunPage() {
 
   const watchedRequiredQty = form.watch('required_qty');
 
-  // Store raw BOM when SAP order changes
+  // Store raw BOM when the selected SKU changes
   const lastPopulatedItemCode = useRef<string | null>(null);
   useEffect(() => {
     if (
@@ -230,7 +154,21 @@ function StartRunPage() {
     setSelectedConfigId('');
   }, [selectedLineId]);
 
-  // Apply selected config to form fields
+  // Write a config preset's values into the form fields
+  const applyConfigValues = useCallback(
+    (cfg: LineSkuConfig) => {
+      form.setValue('rated_speed', cfg.rated_speed || '');
+      form.setValue('labour_count', cfg.labour_count);
+      form.setValue('other_manpower_count', cfg.other_manpower_count);
+      form.setValue('electricity_cost_per_unit', cfg.electricity_cost_per_unit || '');
+      form.setValue('labour_cost_per_hour', cfg.labour_cost_per_hour || '');
+      form.setValue('supervisor', cfg.supervisor || '');
+      form.setValue('operators', cfg.operators || '');
+    },
+    [form],
+  );
+
+  // Manual preset selection from the dropdown
   const applyConfig = (configId: string) => {
     setSelectedConfigId(configId);
     if (!configId) return;
@@ -238,15 +176,25 @@ function StartRunPage() {
     const cfg = lineConfigs.find((c) => String(c.id) === configId);
     if (!cfg) return;
 
-    form.setValue('rated_speed', cfg.rated_speed || '');
-    form.setValue('labour_count', cfg.labour_count);
-    form.setValue('other_manpower_count', cfg.other_manpower_count);
-    form.setValue('electricity_cost_per_unit', cfg.electricity_cost_per_unit || '');
-    form.setValue('labour_cost_per_hour', cfg.labour_cost_per_hour || '');
-    form.setValue('supervisor', cfg.supervisor || '');
-    form.setValue('operators', cfg.operators || '');
+    applyConfigValues(cfg);
     toast.success(`Applied config: ${cfg.config_name}`);
   };
+
+  // Auto-fill the best-matching config for the selected line + SKU
+  // (exact SKU match > line-level default). Applies once per line/SKU combo so
+  // it never clobbers a preset the user picked or fields they edited afterwards.
+  const { data: autoFillData } = useAutoFillConfig(selectedLineId, selectedItemCode ?? undefined);
+  const autoFilledKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const cfg = autoFillData?.config;
+    if (!cfg || !selectedLineId) return;
+    const key = `${selectedLineId}:${selectedItemCode ?? ''}`;
+    if (autoFilledKeyRef.current === key) return;
+    autoFilledKeyRef.current = key;
+    applyConfigValues(cfg);
+    setSelectedConfigId(String(cfg.id));
+    toast.success(`Auto-filled config: ${cfg.config_name}`);
+  }, [autoFillData, selectedLineId, selectedItemCode, applyConfigValues]);
 
   const onSubmit = async (data: CreateRunFormData) => {
     try {
@@ -264,7 +212,7 @@ function StartRunPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Start Production Run"
-        description="Create a new production run from a SAP order"
+        description="Create a new production run from a product SKU"
       />
 
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
@@ -275,58 +223,50 @@ function StartRunPage() {
         <input type="hidden" {...form.register('electricity_cost_per_unit')} />
         <input type="hidden" {...form.register('labour_cost_per_hour')} />
 
-        {/* SAP Order Card */}
+        {/* Product SKU Card */}
         <Card>
           <CardHeader>
-            <CardTitle>SAP Order</CardTitle>
+            <CardTitle>Product SKU</CardTitle>
           </CardHeader>
           <CardContent>
-            <SearchableSelect<SAPProductionOrder>
-              items={sapOrders ?? []}
-              isLoading={loadingSAP}
-              isError={sapError}
-              getItemKey={(o) => o.DocEntry}
-              getItemLabel={(o) => `#${o.DocNum} - ${o.ProdName}`}
-              filterFn={(item, search) =>
-                `${item.DocNum} ${item.ProdName} ${item.ItemCode}`
-                  .toLowerCase()
-                  .includes(search.toLowerCase())
-              }
+            <SearchableSelect<SAPItem>
+              items={skuItems}
+              isLoading={loadingSKU && skuSearch.length >= 2}
+              getItemKey={(item) => item.ItemCode}
+              getItemLabel={(item) => `${item.ItemCode} - ${item.ItemName}`}
+              filterFn={() => true}
               renderItem={(item) => (
-                <div>
-                  <span className="font-medium">#{item.DocNum}</span>{' '}
-                  <span className="text-muted-foreground">- {item.ProdName}</span>{' '}
-                  <span className="text-xs text-muted-foreground">
-                    ({item.RemainingQty} remaining)
-                  </span>
+                <div className="flex items-center justify-between w-full gap-3">
+                  <div className="min-w-0">
+                    <span className="font-mono text-xs">{item.ItemCode}</span>
+                    <span className="ml-2">{item.ItemName}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">{item.UomCode}</span>
                 </div>
               )}
-              placeholder="Search by order number or product..."
-              label="SAP Production Order"
+              placeholder="Search product by SKU code or name..."
+              label="Product SKU"
               required
-              inputId="sap-order"
-              loadingText="Loading SAP orders..."
-              emptyText="No SAP orders available"
-              notFoundText="No matching orders found"
-              onItemSelect={(order) => {
-                form.setValue('sap_doc_entry', order.DocEntry);
-                form.setValue('product', order.ProdName);
-                setSelectedItemCode(order.ItemCode);
+              inputId="sku-item"
+              loadingText="Searching..."
+              emptyText="Type at least 2 characters to search"
+              notFoundText="No products found"
+              onSearchChange={(s) => setSkuSearch(s)}
+              onItemSelect={(item) => {
+                form.setValue('product', item.ItemName, { shouldValidate: true });
+                form.setValue('sap_doc_entry', undefined);
+                setSelectedItemCode(item.ItemCode);
               }}
               onClear={() => {
-                form.setValue('sap_doc_entry', undefined);
                 form.setValue('product', '');
                 setSelectedItemCode(null);
                 lastPopulatedItemCode.current = null;
+                setRawBOM([]);
                 replace([]);
               }}
-              onSelectedKeyChange={(key) => setSelectedDocEntry(key as number | null)}
-              renderPopoverContent={() => <SAPOrderPopoverContent docEntry={selectedDocEntry} />}
             />
-            {form.formState.errors.sap_doc_entry && (
-              <p className="text-sm text-red-500 mt-1">
-                {form.formState.errors.sap_doc_entry.message}
-              </p>
+            {form.formState.errors.product && (
+              <p className="text-sm text-red-500 mt-1">{form.formState.errors.product.message}</p>
             )}
           </CardContent>
         </Card>
@@ -382,7 +322,7 @@ function StartRunPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Product</Label>
-                <Input {...form.register('product')} placeholder="Auto-filled from SAP order" />
+                <Input {...form.register('product')} placeholder="Auto-filled from selected SKU" />
                 {form.formState.errors.product && (
                   <p className="text-sm text-red-500 mt-1">
                     {form.formState.errors.product.message}
@@ -521,7 +461,7 @@ function StartRunPage() {
               <p className="text-sm text-muted-foreground">
                 {selectedItemCode
                   ? 'No BOM components found for this item.'
-                  : 'Select a SAP order to auto-load BOM materials.'}
+                  : 'Select a product SKU to auto-load BOM materials.'}
               </p>
             )}
 
