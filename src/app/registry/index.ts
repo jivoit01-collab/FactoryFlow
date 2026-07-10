@@ -13,6 +13,7 @@ import { gateModuleConfig } from '@/modules/gate/module.config';
 import { grpoModuleConfig } from '@/modules/grpo/module.config';
 import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
+import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
@@ -41,6 +42,7 @@ export const moduleRegistry: ModuleConfig[] = [
   warehouseModuleConfig,
   wmsModuleConfig,
   barcodeModuleConfig,
+  marketplaceModuleConfig,
   notificationsModuleConfig,
   settingsModuleConfig,
 ];

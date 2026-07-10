@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  BarcodeTraceability,
   Box,
   BoxDetail,
   BoxFilters,
@@ -29,11 +30,10 @@ import type {
   DispatchSettings,
   DispatchSummaryReportRow,
   GenerateBoxesPayload,
-  BarcodeTraceability,
   IntercompanyDashboard,
   IntercompanyReversePayload,
-  IntercompanyScanPayload,
   IntercompanyScannedBarcode,
+  IntercompanyScanPayload,
   IntercompanyTransfer,
   IntercompanyTransferPayload,
   LabelData,
@@ -51,8 +51,16 @@ import type {
   PalletDetail,
   PalletFilters,
   PalletMovePayload,
+  PalletReconcilePayload,
+  PalletReconcileResult,
   PalletRemoveBoxesPayload,
   PalletSplitPayload,
+  PalletVerifyRequestCancelPayload,
+  PalletVerifyRequestCreatePayload,
+  PalletVerifyRequestDetail,
+  PalletVerifyRequestFilters,
+  PalletVerifyRequestListItem,
+  PalletVerifyRequestResolvePayload,
   PrintHistoryFilters,
   PrintRequestPayload,
   ProductionReleaseOilRow,
@@ -199,6 +207,71 @@ export const barcodeApi = {
 
   async transferBoxes(data: BoxTransferPayload): Promise<Box[]> {
     const res = await apiClient.post<Box[]>(EP.TRANSFER_BOX, data);
+    return res.data;
+  },
+
+  async reconcilePallet(
+    palletId: number,
+    data: PalletReconcilePayload,
+  ): Promise<PalletReconcileResult> {
+    const res = await apiClient.post<PalletReconcileResult>(EP.PALLET_RECONCILE(palletId), data);
+    return res.data;
+  },
+
+  // =========================================================================
+  // Pallet Verify Requests
+  // =========================================================================
+
+  async getVerifyRequests(
+    params?: PalletVerifyRequestFilters,
+  ): Promise<PalletVerifyRequestListItem[]> {
+    const res = await apiClient.get<ListResponse<PalletVerifyRequestListItem>>(EP.VERIFY_REQUESTS, {
+      params,
+    });
+    return unwrapList(res.data);
+  },
+
+  async getVerifyRequest(requestId: number): Promise<PalletVerifyRequestDetail> {
+    const res = await apiClient.get<PalletVerifyRequestDetail>(
+      EP.VERIFY_REQUEST_DETAIL(requestId),
+    );
+    return res.data;
+  },
+
+  async createVerifyRequest(
+    data: PalletVerifyRequestCreatePayload,
+  ): Promise<PalletVerifyRequestDetail> {
+    const res = await apiClient.post<PalletVerifyRequestDetail>(EP.VERIFY_REQUESTS, data);
+    return res.data;
+  },
+
+  async startVerifyRequest(requestId: number): Promise<PalletVerifyRequestDetail> {
+    const res = await apiClient.post<PalletVerifyRequestDetail>(
+      EP.VERIFY_REQUEST_START(requestId),
+      {},
+    );
+    return res.data;
+  },
+
+  async resolveVerifyRequest(
+    requestId: number,
+    data: PalletVerifyRequestResolvePayload,
+  ): Promise<PalletVerifyRequestDetail> {
+    const res = await apiClient.post<PalletVerifyRequestDetail>(
+      EP.VERIFY_REQUEST_RESOLVE(requestId),
+      data,
+    );
+    return res.data;
+  },
+
+  async cancelVerifyRequest(
+    requestId: number,
+    data: PalletVerifyRequestCancelPayload,
+  ): Promise<PalletVerifyRequestDetail> {
+    const res = await apiClient.post<PalletVerifyRequestDetail>(
+      EP.VERIFY_REQUEST_CANCEL(requestId),
+      data,
+    );
     return res.data;
   },
 

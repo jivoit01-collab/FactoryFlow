@@ -102,3 +102,12 @@ export {
   WMS_PERMISSIONS,
   type WmsPermission,
 } from './wms.permissions';
+
+// Marketplace (Flipkart/Amazon) Module
+export {
+  MARKETPLACE_ACCESS,
+  MARKETPLACE_ADMIN_ACCESS,
+  MARKETPLACE_MODULE_PREFIX,
+  MARKETPLACE_PERMISSIONS,
+  type MarketplacePermission,
+} from './marketplace.permissions';

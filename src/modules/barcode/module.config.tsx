@@ -9,6 +9,11 @@ const PalletListPage = lazy(() => import('./pages/PalletListPage'));
 const PalletDetailPage = lazy(() => import('./pages/PalletDetailPage'));
 const BoxListPage = lazy(() => import('./pages/BoxListPage'));
 const BoxDetailPage = lazy(() => import('./pages/BoxDetailPage'));
+const PalletVerifyPage = lazy(() => import('./pages/PalletVerifyPage'));
+const PalletVerifyNewPage = lazy(() => import('./pages/PalletVerifyNewPage'));
+const PalletVerifyRequestDetailPage = lazy(
+  () => import('./pages/PalletVerifyRequestDetailPage'),
+);
 
 // Phase 2 — Label & Print
 const LabelGeneratePage = lazy(() => import('./pages/LabelGeneratePage'));
@@ -67,6 +72,24 @@ export const barcodeModuleConfig: ModuleConfig = {
       element: <BoxDetailPage />,
       layout: 'main',
       permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
+    },
+    {
+      path: '/barcode/verify',
+      element: <PalletVerifyPage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
+    },
+    {
+      path: '/barcode/verify/new',
+      element: <PalletVerifyNewPage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
+    },
+    {
+      path: '/barcode/verify/:requestId',
+      element: <PalletVerifyRequestDetailPage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
     },
     // Phase 2 — Label & Print
     {
@@ -201,6 +224,11 @@ export const barcodeModuleConfig: ModuleConfig = {
           path: '/barcode/boxes',
           title: 'Boxes',
           permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
+        },
+        {
+          path: '/barcode/verify',
+          title: 'Verify Pallet',
+          permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
         },
         {
           path: '/barcode/scan',

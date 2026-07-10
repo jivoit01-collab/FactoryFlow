@@ -12,6 +12,9 @@ const DispatchPlansDashboardPage = lazy(
 const DispatchVehicleLinkingPage = lazy(
   () => import('@/modules/vehicle-management/pages/DispatchVehicleLinkingPage'),
 );
+const InsideVehicleManagerPage = lazy(
+  () => import('@/modules/vehicle-management/pages/InsideVehicleManagerPage'),
+);
 const ServiceGRPODashboardPage = lazy(
   () => import('@/modules/grpo/pages/ServiceGRPODashboardPage'),
 );
@@ -105,6 +108,13 @@ export const dispatchModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
       breadcrumb: { label: 'Vehicle Linking' },
+    },
+    {
+      path: '/dispatch/inside-vehicles',
+      element: <InsideVehicleManagerPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW],
+      breadcrumb: { label: 'Inside Vehicle Manager' },
     },
     {
       path: '/dispatch/docking',
@@ -284,6 +294,11 @@ export const dispatchModuleConfig: ModuleConfig = {
           path: '/dispatch/vehicle-linking',
           title: 'Vehicle Linking',
           permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
+        },
+        {
+          path: '/dispatch/inside-vehicles',
+          title: 'Inside Vehicle Manager',
+          permissions: [DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW],
         },
         {
           path: '/dispatch/docking',

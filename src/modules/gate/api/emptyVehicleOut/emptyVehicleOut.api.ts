@@ -14,6 +14,13 @@ export interface EmptyVehicleEligibleEntry {
   driver_name: string;
   driver_mobile: string;
   remarks?: string;
+  // Cross-company context (populated when the board aggregates all companies).
+  company_id?: number;
+  company_code?: string | null;
+  company_name?: string | null;
+  /** Shared physical-trip id; sibling company entries share the same arrival. */
+  arrival?: number | null;
+  arrival_no?: string | null;
   // Side effects of marking this vehicle out empty.
   release_invoice_count: number;
   release_cancels_docking: boolean;
@@ -47,6 +54,8 @@ export interface EmptyVehicleGateOutParams {
   from_date?: string;
   to_date?: string;
   entry_type?: string;
+  /** 1 = aggregate eligible entries across every company the user belongs to. */
+  all_companies?: number;
 }
 
 export interface EmptyVehicleGateOutCreateRequest {
@@ -67,6 +76,9 @@ function buildQuery(params?: EmptyVehicleGateOutParams) {
   if (params?.from_date) queryParams.append('from_date', params.from_date);
   if (params?.to_date) queryParams.append('to_date', params.to_date);
   if (params?.entry_type) queryParams.append('entry_type', params.entry_type);
+  if (params?.all_companies) {
+    queryParams.append('all_companies', String(params.all_companies));
+  }
 
   return queryParams.toString();
 }

@@ -276,8 +276,11 @@ export default function EmptyVehicleInNewPage() {
         await updateEmptyGateIn.mutateAsync({
           id: existingEntry.id,
           data: {
-            document_reference: documentReference,
-            document_notes: documentNotes,
+            // DISPATCH reference/notes are derived server-side from the bills;
+            // don't submit them (the backend ignores them for DISPATCH anyway).
+            ...(isDispatchReason
+              ? {}
+              : { document_reference: documentReference, document_notes: documentNotes }),
             security_name: securityName,
             remarks,
           },
@@ -294,8 +297,10 @@ export default function EmptyVehicleInNewPage() {
         reason,
         gate_in_date: gateInDate,
         in_time: inTime,
-        document_reference: documentReference,
-        document_notes: documentNotes,
+        // DISPATCH reference/notes are derived server-side from the linked bills.
+        ...(isDispatchReason
+          ? {}
+          : { document_reference: documentReference, document_notes: documentNotes }),
         security_name: securityName,
         remarks,
       });
@@ -456,36 +461,52 @@ export default function EmptyVehicleInNewPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="document-reference">Document Reference</Label>
-                <Input
-                  id="document-reference"
-                  value={documentReference}
-                  onChange={(event) => setDocumentReference(event.target.value)}
-                  readOnly={isDispatchReason}
-                  className={isDispatchReason ? lockedInputClassName : undefined}
-                  placeholder="Invoice, delivery note, job card, or other reference"
-                />
-                {isDispatchReason && (
-                  <p className="text-xs text-muted-foreground">
-                    Auto-filled from the linked bills.
+            {isDispatchReason ? (
+              // DISPATCH reference/notes are derived from the linked bills on the
+              // server and never stored on the gate-in, so they are shown as plain
+              // read-only text (not editable fields that would submit redundant,
+              // drift-prone data).
+              <>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Document Reference</p>
+                  <p className="whitespace-pre-line text-sm text-muted-foreground">
+                    {documentReference || 'Auto-filled from the linked bills.'}
                   </p>
-                )}
-              </div>
-            </div>
+                </div>
+                {documentNotes ? (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Document Notes</p>
+                    <p className="whitespace-pre-line text-sm text-muted-foreground">
+                      {documentNotes}
+                    </p>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="document-reference">Document Reference</Label>
+                    <Input
+                      id="document-reference"
+                      value={documentReference}
+                      onChange={(event) => setDocumentReference(event.target.value)}
+                      placeholder="Invoice, delivery note, job card, or other reference"
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="document-notes">Document Notes</Label>
-              <Textarea
-                id="document-notes"
-                value={documentNotes}
-                onChange={(event) => setDocumentNotes(event.target.value)}
-                readOnly={isDispatchReason}
-                className={isDispatchReason ? lockedInputClassName : undefined}
-                placeholder="Optional document notes"
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="document-notes">Document Notes</Label>
+                  <Textarea
+                    id="document-notes"
+                    value={documentNotes}
+                    onChange={(event) => setDocumentNotes(event.target.value)}
+                    placeholder="Optional document notes"
+                  />
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

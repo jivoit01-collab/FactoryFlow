@@ -8,6 +8,13 @@ export const DISPATCH_PERMISSIONS = {
   POST_BILTY_GRPO: 'dispatch_plans.can_post_bilty_service_grpo',
   VIEW_TRANSPORTER_AP_INVOICE: 'dispatch_plans.can_view_transporter_ap_invoice',
   POST_TRANSPORTER_AP_INVOICE: 'dispatch_plans.can_post_transporter_ap_invoice',
+  // Inside Vehicle Manager (dispatch correction console) — one per action/button.
+  INSIDE_VEHICLE_VIEW: 'dispatch_plans.can_view_inside_vehicle_manager',
+  INSIDE_VEHICLE_ADD_BILL: 'dispatch_plans.can_add_bill_inside_vehicle',
+  INSIDE_VEHICLE_REMOVE_BILL: 'dispatch_plans.can_remove_bill_inside_vehicle',
+  INSIDE_VEHICLE_MOVE_BILL: 'dispatch_plans.can_move_bill_inside_vehicle',
+  INSIDE_VEHICLE_UNLINK_ALL: 'dispatch_plans.can_unlink_bills_inside_vehicle',
+  INSIDE_VEHICLE_MARK_OUT: 'dispatch_plans.can_mark_out_inside_vehicle',
 } as const;
 
 export type DispatchPermission =

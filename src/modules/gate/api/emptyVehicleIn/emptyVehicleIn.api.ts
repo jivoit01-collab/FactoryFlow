@@ -110,6 +110,65 @@ export interface EmptyVehicleGateInUpdateRequest {
   remarks?: string;
 }
 
+export interface AddBillToInsideVehicleRequest {
+  /** VehicleEntry id of the inside dispatch gate-in to add the bill to. */
+  vehicle_entry_id: number;
+  /** SAP doc_entry of the dispatch bill to add. */
+  sap_doc_entry: number;
+}
+
+export interface AddBillToInsideVehicleResponse {
+  detail: string;
+  vehicle_entry_id: number;
+  sap_doc_entry: number;
+}
+
+export interface InsideVehicleBill {
+  sap_doc_entry: number;
+  sap_doc_num: string;
+  dispatch_plan_id: number | null;
+  booking_status: string | null;
+  /** False when the bill's load is committed (scanned / photo-locked / dispatched). */
+  removable: boolean;
+  not_removable_reason: string | null;
+  /** entry_nos of OTHER gate-ins also carrying this bill (stale duplicate covers). */
+  duplicate_on: string[];
+}
+
+export interface InsideDispatchVehicle {
+  gate_in_id: number;
+  entry_no: string;
+  gate_in_date: string | null;
+  in_time: string | null;
+  vehicle_entry_id: number;
+  vehicle_id: number;
+  vehicle_number: string;
+  company_id: number;
+  company_code: string;
+  company_name: string;
+  arrival: number | null;
+  arrival_no: string | null;
+  driver_name: string;
+  driver_mobile: string;
+  bills: InsideVehicleBill[];
+}
+
+export interface RemoveBillFromInsideVehicleRequest {
+  vehicle_entry_id: number;
+  sap_doc_entry: number;
+}
+
+export interface MoveBillBetweenVehiclesRequest {
+  from_vehicle_entry_id: number;
+  /** Destination physical truck (any inside truck — trucks are not company-scoped). */
+  to_vehicle_id: number;
+  sap_doc_entry: number;
+}
+
+export interface UnlinkAllBillsRequest {
+  vehicle_entry_id: number;
+}
+
 function buildQuery(params?: EmptyVehicleGateInParams) {
   const queryParams = new URLSearchParams();
 
@@ -175,6 +234,54 @@ export const emptyVehicleInApi = {
     const response = await apiClient.post<EmptyVehicleGateInEntry>(
       API_ENDPOINTS.GATE_CORE.EMPTY_VEHICLE_IN_COMPLETE_BY_ID(id),
     );
+    return response.data;
+  },
+
+  async addBillToInsideVehicle(
+    data: AddBillToInsideVehicleRequest,
+  ): Promise<AddBillToInsideVehicleResponse> {
+    const response = await apiClient.post<AddBillToInsideVehicleResponse>(
+      API_ENDPOINTS.GATE_CORE.INSIDE_VEHICLE_ADD_BILL,
+      data,
+    );
+    return response.data;
+  },
+
+  async listInsideDispatchVehicles(): Promise<InsideDispatchVehicle[]> {
+    const response = await apiClient.get<InsideDispatchVehicle[]>(
+      API_ENDPOINTS.GATE_CORE.INSIDE_DISPATCH_VEHICLES,
+    );
+    return response.data;
+  },
+
+  async removeBillFromInsideVehicle(
+    data: RemoveBillFromInsideVehicleRequest,
+  ): Promise<{ detail: string }> {
+    const response = await apiClient.post<{ detail: string }>(
+      API_ENDPOINTS.GATE_CORE.INSIDE_VEHICLE_REMOVE_BILL,
+      data,
+    );
+    return response.data;
+  },
+
+  async moveBillBetweenVehicles(
+    data: MoveBillBetweenVehiclesRequest,
+  ): Promise<{ detail: string }> {
+    const response = await apiClient.post<{ detail: string }>(
+      API_ENDPOINTS.GATE_CORE.INSIDE_VEHICLE_MOVE_BILL,
+      data,
+    );
+    return response.data;
+  },
+
+  async unlinkAllBills(
+    data: UnlinkAllBillsRequest,
+  ): Promise<{ detail: string; removed: unknown[]; skipped: unknown[] }> {
+    const response = await apiClient.post<{
+      detail: string;
+      removed: unknown[];
+      skipped: unknown[];
+    }>(API_ENDPOINTS.GATE_CORE.INSIDE_VEHICLE_UNLINK_ALL, data);
     return response.data;
   },
 };
