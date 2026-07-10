@@ -114,10 +114,10 @@ export function ProductionTimeline({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">Production Timeline</h3>
         {showAddBreakdown && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={onStopProduction}>
               <Clock className="mr-1.5 h-4 w-4" />
               Stop Production
@@ -165,21 +165,21 @@ function SegmentCard({ segment, now, ratedSpeed, onClick }: { segment: Productio
   return (
     <div className="rounded-lg border bg-green-50 border-green-200 p-4 dark:bg-green-950/30 dark:border-green-800 cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
       {/* Row 1: Title + duration */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Play className="h-4 w-4 text-green-600 dark:text-green-400" />
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Play className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
           <span className="text-lg font-bold text-green-800 dark:text-green-200">
             Running
           </span>
           {segment.is_active && (
-            <span className="relative flex h-2.5 w-2.5">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
             </span>
           )}
           <RemarksBadge remarks={remarks} tone="green" />
         </div>
-        <span className="text-sm text-muted-foreground">
+        <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">
           {formatDuration(duration)}
         </span>
       </div>
@@ -201,9 +201,9 @@ function SegmentCard({ segment, now, ratedSpeed, onClick }: { segment: Productio
       </div>
 
       {/* Row 3: Times */}
-      <div className="mt-2 flex items-center justify-between text-sm text-green-700 dark:text-green-300">
-        <span>Start Time: {formatTime(segment.start_time)}</span>
-        <span>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-sm text-green-700 dark:text-green-300">
+        <span className="whitespace-nowrap">Start Time: {formatTime(segment.start_time)}</span>
+        <span className="whitespace-nowrap">
           End Time:{' '}
           {segment.end_time ? formatTime(segment.end_time) : '--:--'}
         </span>
@@ -237,9 +237,9 @@ function BreakdownCard({
   return (
     <div className="rounded-lg border bg-red-50 border-red-200 p-4 dark:bg-red-950/30 dark:border-red-800 cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
       {/* Row 1: Title + duration */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Wrench className="h-4 w-4 text-red-600 dark:text-red-400" />
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Wrench className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
           <span className="text-lg font-bold text-red-800 dark:text-red-200">
             Breakdown
           </span>
@@ -250,13 +250,13 @@ function BreakdownCard({
           )}
           <RemarksBadge remarks={remarks} tone="red" />
         </div>
-        <span className="text-sm text-muted-foreground">
+        <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">
           {formatDuration(duration)}
         </span>
       </div>
 
       {/* Row 2: Category + reason */}
-      <p className="mt-1 text-sm text-red-700 dark:text-red-300">
+      <p className="mt-1 break-words text-sm text-red-700 dark:text-red-300">
         <span className="font-bold uppercase">
           {breakdown.breakdown_category_name}
         </span>{' '}
@@ -264,9 +264,9 @@ function BreakdownCard({
       </p>
 
       {/* Row 3: Times */}
-      <div className="mt-2 flex items-center justify-between text-sm text-red-700 dark:text-red-300">
-        <span>Start Time: {formatTime(breakdown.start_time)}</span>
-        <span>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-sm text-red-700 dark:text-red-300">
+        <span className="whitespace-nowrap">Start Time: {formatTime(breakdown.start_time)}</span>
+        <span className="whitespace-nowrap">
           End Time:{' '}
           {breakdown.end_time ? formatTime(breakdown.end_time) : '--:--'}
         </span>
