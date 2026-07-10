@@ -104,6 +104,8 @@ export interface DispatchBill {
   item_summary: string;
   base_refs: string;
   plan: DispatchPlan;
+  /** Owning company code — only set on the cross-company (all_companies) bills feed. */
+  company_code?: string | null;
 }
 
 export interface DispatchPlansMeta {

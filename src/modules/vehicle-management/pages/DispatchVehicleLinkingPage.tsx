@@ -16,6 +16,7 @@ import {
   SelectOption,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
+import { getErrorMessage } from '@/shared/utils/error';
 
 import {
   useDispatchLinkingPlans,
@@ -96,8 +97,11 @@ export default function DispatchVehicleLinkingPage() {
       setIsSheetOpen(false);
       setSelectedBill(null);
       setSelectedDocEntries(new Set());
-    } catch {
-      toast.error('Failed to link vehicle');
+    } catch (error) {
+      // Surface backend guard messages (e.g. "vehicle is already inside — add
+      // bills from the 'Add Bills to Inside Vehicle' page") instead of a generic
+      // failure, so the gate/planning user knows the correct next step.
+      toast.error(getErrorMessage(error, 'Failed to link vehicle'));
     }
   };
 
@@ -108,8 +112,8 @@ export default function DispatchVehicleLinkingPage() {
       setIsSheetOpen(false);
       setSelectedBill(null);
       setSelectedDocEntries(new Set());
-    } catch {
-      toast.error('Failed to unlink vehicle');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to unlink vehicle'));
     }
   };
 

@@ -73,7 +73,7 @@ export default function EmptyVehicleOutPage() {
     data: eligibleEntries = [],
     isLoading: isEligibleLoading,
     refetch: refetchEligible,
-  } = useEmptyVehicleEligibleEntries(queryParams);
+  } = useEmptyVehicleEligibleEntries({ ...queryParams, all_companies: 1 });
   const {
     data: entries = [],
     isLoading: isEntriesLoading,

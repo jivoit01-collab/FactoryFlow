@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowLeft, LogOut, RefreshCw, ShieldCheck, Truck } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -99,6 +99,8 @@ const lockedDateTimeInputClassName =
 
 export default function EmptyVehicleOutNewPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectEntryId = searchParams.get('entry');
   const [selectedEntryId, setSelectedEntryId] = useState('');
   const [selectedEntrySnapshot, setSelectedEntrySnapshot] =
     useState<EmptyVehicleEligibleEntry | null>(null);
@@ -113,13 +115,24 @@ export default function EmptyVehicleOutNewPage() {
     isLoading: isEligibleLoading,
     isError: isEligibleError,
     refetch,
-  } = useEmptyVehicleEligibleEntries();
+  } = useEmptyVehicleEligibleEntries({ all_companies: 1 });
   const selectedEntry = useMemo(
     () =>
       selectedEntrySnapshot ||
       eligibleEntries.find((entry) => String(entry.id) === selectedEntryId),
     [eligibleEntries, selectedEntryId, selectedEntrySnapshot],
   );
+  // Preselect a vehicle handed over from the Inside Vehicle Manager (?entry=<id>).
+  useEffect(() => {
+    if (!preselectEntryId || selectedEntryId) return;
+    const match = eligibleEntries.find((entry) => String(entry.id) === preselectEntryId);
+    if (match) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Seeding the preselected vehicle handed over from the Inside Vehicle Manager matches the gate step pattern.
+      setSelectedEntryId(String(match.id));
+      setSelectedEntrySnapshot(match);
+    }
+  }, [preselectEntryId, eligibleEntries, selectedEntryId]);
+
   const sideEffectMessage = selectedEntry
     ? buildEmptyOutSideEffectMessage(
         selectedEntry.release_invoice_count,
@@ -229,6 +242,7 @@ export default function EmptyVehicleOutNewPage() {
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
                       {[
+                        entry.company_name,
                         formatEntryType(entry.entry_type),
                         entry.driver_name,
                         formatEntryTime(entry.entry_time),
@@ -302,6 +316,7 @@ export default function EmptyVehicleOutNewPage() {
               </CardHeader>
               <CardContent className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
                 <InfoItem label="Entry No." value={selectedEntry.entry_no} />
+                <InfoItem label="Company" value={selectedEntry.company_name || ''} />
                 <InfoItem label="Entry Type" value={formatEntryType(selectedEntry.entry_type)} />
                 <InfoItem label="Vehicle" value={selectedEntry.vehicle_number} />
                 <InfoItem label="Vehicle Type" value={selectedEntry.vehicle_type || ''} />
@@ -314,6 +329,18 @@ export default function EmptyVehicleOutNewPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {selectedEntry?.arrival_no && (
+            <div className="flex items-start gap-3 rounded-md border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
+              <Truck className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                This truck arrived under multiple companies (arrival{' '}
+                {selectedEntry.arrival_no}). Marking it out empty will also mark
+                out and release the sibling companies&apos; entries for the same
+                physical trip.
+              </span>
+            </div>
           )}
 
           {sideEffectMessage && (
