@@ -21,32 +21,52 @@ export const returnableItemSchema = z.object({
   remarks: z.string().optional(),
 });
 
-export const returnableGatePassSchema = z.object({
-  // Plain number, not z.coerce — coercion widens the *input* type to unknown,
-  // which makes zodResolver incompatible with the form's field types.
-  department: z.number().nullable().optional(),
-  requested_by_name: z.string().optional(),
-  contact_no: z.string().optional(),
-  purpose: z.enum([
-    'REPAIR',
-    'EXCHANGE',
-    'CALIBRATION',
-    'JOB_WORK',
-    'WARRANTY_CLAIM',
-    'TESTING',
-    'DEMO_TRIAL',
-    'OTHER',
-  ]),
-  purpose_detail: z.string().optional(),
-  party_name: z.string().min(1, 'Party name is required').max(200),
-  party_contact: z.string().optional(),
-  party_address: z.string().optional(),
-  party_gstin: z.string().optional(),
-  expected_return_date: z.string().min(1, 'Expected return date is required'),
-  asset: z.number().nullable().optional(),
-  work_order: z.number().nullable().optional(),
-  items_input: z.array(returnableItemSchema).min(1, 'Add at least one item'),
-});
+export const returnableGatePassSchema = z
+  .object({
+    /** The toggle. Fixed at creation — the pass number encodes RGP vs NRGP. */
+    is_returnable: z.boolean(),
+    // Plain number, not z.coerce — coercion widens the *input* type to unknown,
+    // which makes zodResolver incompatible with the form's field types.
+    department: z.number().nullable().optional(),
+    requested_by_name: z.string().optional(),
+    contact_no: z.string().optional(),
+    purpose: z.enum([
+      'REPAIR',
+      'EXCHANGE',
+      'CALIBRATION',
+      'JOB_WORK',
+      'WARRANTY_CLAIM',
+      'TESTING',
+      'DEMO_TRIAL',
+      'OTHER',
+    ]),
+    purpose_detail: z.string().optional(),
+    party_name: z.string().max(200).optional(),
+    party_contact: z.string().optional(),
+    party_address: z.string().optional(),
+    party_gstin: z.string().optional(),
+    recipient_name: z.string().max(200).optional(),
+    recipient_contact: z.string().optional(),
+    recipient_department: z.string().optional(),
+    expected_return_date: z.string().optional(),
+    asset: z.number().nullable().optional(),
+    work_order: z.number().nullable().optional(),
+    items_input: z.array(returnableItemSchema).min(1, 'Add at least one item'),
+  })
+  // A returnable pass goes to a vendor and must come back by a date. A
+  // non-returnable one goes to a person and never comes back.
+  .refine((data) => !data.is_returnable || Boolean(data.party_name?.trim()), {
+    message: 'Party name is required',
+    path: ['party_name'],
+  })
+  .refine((data) => !data.is_returnable || Boolean(data.expected_return_date?.trim()), {
+    message: 'Expected return date is required',
+    path: ['expected_return_date'],
+  })
+  .refine((data) => data.is_returnable || Boolean(data.recipient_name?.trim()), {
+    message: 'Name the person receiving the material',
+    path: ['recipient_name'],
+  });
 
 export type ReturnableGatePassFormValues = z.infer<typeof returnableGatePassSchema>;
 

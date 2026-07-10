@@ -1,11 +1,14 @@
-import { ArrowLeft, Truck, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Truck, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import { ReturnableReasonDialog } from '@/modules/maintenance/components/returnable';
+import {
+  ReturnableReasonDialog,
+  ReturnableTypeBadge,
+} from '@/modules/maintenance/components/returnable';
 import {
   Button,
   Card,
@@ -100,7 +103,11 @@ export default function ReturnOutFormPage() {
           out_remarks: remarks,
         },
       });
-      toast.success(`${pass.pass_no} gated out. The department has been notified.`);
+      toast.success(
+        pass.is_returnable
+          ? `${pass.pass_no} gated out. The department has been notified.`
+          : `${pass.pass_no} gated out and closed — non-returnable.`,
+      );
       navigate('/gate/return-out');
     } catch (error) {
       const detail =
@@ -129,11 +136,24 @@ export default function ReturnOutFormPage() {
           Back to queue
         </Button>
         <h1 className="mt-2 text-2xl font-semibold">Gate Out — {pass.pass_no}</h1>
-        <p className="text-sm text-muted-foreground">
-          {pass.purpose_display} · {pass.party_name} · Expected back{' '}
-          {new Date(pass.expected_return_date).toLocaleDateString()}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <ReturnableTypeBadge isReturnable={pass.is_returnable} />
+          <p className="text-sm text-muted-foreground">
+            {pass.purpose_display} · {pass.destination}
+            {pass.expected_return_date
+              ? ` · Expected back ${new Date(pass.expected_return_date).toLocaleDateString()}`
+              : ''}
+          </p>
+        </div>
       </div>
+
+      {!pass.is_returnable ? (
+        <div className="flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Non-returnable — this material is not coming back. Gating it out closes the pass, and it
+          will not appear in the Material In queue.
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>

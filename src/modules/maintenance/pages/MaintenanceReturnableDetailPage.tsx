@@ -35,10 +35,10 @@ import {
   useSubmitReturnableGatePass,
 } from '../api/returnableGatePass.queries';
 import {
-  ReturnableFormDialog,
   ReturnableReasonDialog,
   ReturnableStatusBadge,
   ReturnableTimeline,
+  ReturnableTypeBadge,
 } from '../components/returnable';
 import { OUTSTANDING_STATUSES, RETURN_CONDITION_STYLES } from '../constants/returnable.constants';
 
@@ -61,7 +61,6 @@ export default function MaintenanceReturnableDetailPage() {
   const id = passId ? Number(passId) : null;
   const { data: pass, isLoading } = useReturnableGatePass(id);
 
-  const [isEditOpen, setIsEditOpen] = useState(false);
   const [reasonAction, setReasonAction] = useState<ReasonAction>(null);
 
   const submitMutation = useSubmitReturnableGatePass();
@@ -85,7 +84,8 @@ export default function MaintenanceReturnableDetailPage() {
   }
 
   const unacknowledged = pass.return_events.filter((event) => !event.is_acknowledged);
-  const isOutstanding = OUTSTANDING_STATUSES.includes(pass.status);
+  // A non-returnable pass closes at the gate: nothing to return, collect or short close.
+  const isOutstanding = pass.is_returnable && OUTSTANDING_STATUSES.includes(pass.status);
 
   const run = async (action: () => Promise<unknown>, successMessage: string) => {
     try {
@@ -109,21 +109,25 @@ export default function MaintenanceReturnableDetailPage() {
             Back
           </Button>
           <h1 className="mt-2 text-2xl font-semibold">{pass.pass_no}</h1>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <ReturnableTypeBadge isReturnable={pass.is_returnable} />
             <ReturnableStatusBadge
               status={pass.status}
               isOverdue={pass.is_overdue}
               daysOverdue={pass.days_overdue}
             />
             <span className="text-sm text-muted-foreground">
-              {pass.purpose_display} · {pass.party_name}
+              {pass.purpose_display} · {pass.destination}
             </span>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           {pass.status === 'DRAFT' && canManage ? (
-            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/maintenance/returnable/${id}/edit`)}
+            >
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>
@@ -166,7 +170,7 @@ export default function MaintenanceReturnableDetailPage() {
             </>
           ) : null}
 
-          {unacknowledged.length > 0 && canAcknowledge ? (
+          {pass.is_returnable && unacknowledged.length > 0 && canAcknowledge ? (
             <Button
               onClick={() =>
                 run(
@@ -181,7 +185,7 @@ export default function MaintenanceReturnableDetailPage() {
             </Button>
           ) : null}
 
-          {pass.status === 'RETURNED' && unacknowledged.length === 0 && canClose ? (
+          {pass.is_returnable && pass.status === 'RETURNED' && unacknowledged.length === 0 && canClose ? (
             <Button
               onClick={() => run(() => closeMutation.mutateAsync(id), `${pass.pass_no} closed.`)}
               disabled={closeMutation.isPending}
@@ -247,13 +251,32 @@ export default function MaintenanceReturnableDetailPage() {
                 <Field label="Department" value={pass.department_name} />
                 <Field label="Requested By" value={pass.requested_by_name} />
                 <Field label="Contact" value={pass.contact_no} />
-                <Field label="Party" value={pass.party_name} />
-                <Field label="Party Contact" value={pass.party_contact} />
-                <Field label="Party GSTIN" value={pass.party_gstin} />
-                <Field
-                  label="Expected Return"
-                  value={new Date(pass.expected_return_date).toLocaleDateString()}
-                />
+
+                {pass.is_returnable ? (
+                  <>
+                    <Field label="Party" value={pass.party_name} />
+                    <Field label="Party Contact" value={pass.party_contact} />
+                    <Field label="Party GSTIN" value={pass.party_gstin} />
+                    <Field
+                      label="Expected Return"
+                      value={
+                        pass.expected_return_date
+                          ? new Date(pass.expected_return_date).toLocaleDateString()
+                          : ''
+                      }
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Field
+                      label="Issued To"
+                      value={pass.recipient_display_name || pass.recipient_name}
+                    />
+                    <Field label="Recipient Contact" value={pass.recipient_contact} />
+                    <Field label="Recipient Department" value={pass.recipient_department} />
+                    <Field label="Destination / Firm" value={pass.party_name} />
+                  </>
+                )}
                 <Field label="Linked Asset" value={pass.asset_name} />
                 <Field label="Work Order" value={pass.work_order_no} />
                 <Field label="Purpose Detail" value={pass.purpose_detail} />
@@ -296,7 +319,9 @@ export default function MaintenanceReturnableDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Items ({pass.total_quantity_returned} of {pass.total_quantity_out} returned)
+                {pass.is_returnable
+                  ? `Items (${pass.total_quantity_returned} of ${pass.total_quantity_out} returned)`
+                  : `Items Issued (${pass.total_quantity_out})`}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -309,8 +334,12 @@ export default function MaintenanceReturnableDetailPage() {
                       <th className="px-3 py-2 text-left font-medium">Serial</th>
                       <th className="px-3 py-2 text-left font-medium">Condition Out</th>
                       <th className="px-3 py-2 text-right font-medium">Out</th>
-                      <th className="px-3 py-2 text-right font-medium">Returned</th>
-                      <th className="px-3 py-2 text-right font-medium">Pending</th>
+                      {pass.is_returnable ? (
+                        <>
+                          <th className="px-3 py-2 text-right font-medium">Returned</th>
+                          <th className="px-3 py-2 text-right font-medium">Pending</th>
+                        </>
+                      ) : null}
                     </tr>
                   </thead>
                   <tbody>
@@ -319,27 +348,31 @@ export default function MaintenanceReturnableDetailPage() {
                         <td className="px-3 py-2 text-muted-foreground">{item.line_num}</td>
                         <td className="px-3 py-2">
                           <div className="font-medium">{item.item_name}</div>
-                          {item.make_model ? (
-                            <div className="text-xs text-muted-foreground">{item.make_model}</div>
-                          ) : null}
+                          <div className="text-xs text-muted-foreground">
+                            {[item.item_code, item.make_model].filter(Boolean).join(' · ')}
+                          </div>
                         </td>
                         <td className="px-3 py-2">{item.serial_no || '—'}</td>
                         <td className="px-3 py-2">{item.condition_out_display}</td>
                         <td className="px-3 py-2 text-right">
                           {item.quantity_out} {item.uom}
                         </td>
-                        <td className="px-3 py-2 text-right">{item.quantity_returned}</td>
-                        <td className="px-3 py-2 text-right">
-                          <span
-                            className={
-                              Number(item.pending_return_qty) > 0
-                                ? 'font-medium text-amber-700'
-                                : 'text-emerald-700'
-                            }
-                          >
-                            {item.pending_return_qty}
-                          </span>
-                        </td>
+                        {pass.is_returnable ? (
+                          <>
+                            <td className="px-3 py-2 text-right">{item.quantity_returned}</td>
+                            <td className="px-3 py-2 text-right">
+                              <span
+                                className={
+                                  Number(item.pending_return_qty) > 0
+                                    ? 'font-medium text-amber-700'
+                                    : 'text-emerald-700'
+                                }
+                              >
+                                {item.pending_return_qty}
+                              </span>
+                            </td>
+                          </>
+                        ) : null}
                       </tr>
                     ))}
                   </tbody>
@@ -438,8 +471,6 @@ export default function MaintenanceReturnableDetailPage() {
           </CardContent>
         </Card>
       </div>
-
-      <ReturnableFormDialog open={isEditOpen} onOpenChange={setIsEditOpen} gatePass={pass} />
 
       <ReturnableReasonDialog
         open={reasonAction === 'reject'}

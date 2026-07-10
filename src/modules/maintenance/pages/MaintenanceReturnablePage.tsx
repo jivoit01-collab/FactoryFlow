@@ -26,7 +26,7 @@ import {
 } from '@/shared/components/ui';
 
 import { useReturnableGatePasses } from '../api/returnableGatePass.queries';
-import { ReturnableFormDialog, ReturnableStatusBadge } from '../components/returnable';
+import { ReturnableStatusBadge, ReturnableTypeBadge } from '../components/returnable';
 import {
   RETURNABLE_PURPOSE_OPTIONS,
   RETURNABLE_STATUS_OPTIONS,
@@ -40,11 +40,15 @@ export default function MaintenanceReturnablePage() {
 
   const [filters, setFilters] = useState<ReturnableFilters>({ status: 'ALL', purpose: 'ALL' });
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'RETURNABLE' | 'NON_RETURNABLE'>('ALL');
 
   const queryFilters = useMemo<ReturnableFilters>(
-    () => ({ ...filters, overdue: showOverdueOnly ? true : undefined }),
-    [filters, showOverdueOnly],
+    () => ({
+      ...filters,
+      overdue: showOverdueOnly ? true : undefined,
+      is_returnable: typeFilter === 'ALL' ? undefined : typeFilter === 'RETURNABLE',
+    }),
+    [filters, showOverdueOnly, typeFilter],
   );
 
   const { data: passes, isLoading } = useReturnableGatePasses(queryFilters);
@@ -73,9 +77,9 @@ export default function MaintenanceReturnablePage() {
         primaryAction={
           canManage
             ? {
-                label: 'New Returnable Pass',
+                label: 'New Gate Pass',
                 icon: <Plus className="mr-2 h-4 w-4" />,
-                onClick: () => setIsFormOpen(true),
+                onClick: () => navigate('/maintenance/returnable/new'),
               }
             : undefined
         }
@@ -122,6 +126,16 @@ export default function MaintenanceReturnablePage() {
 
           <NativeSelect
             className="sm:w-52"
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value as typeof typeFilter)}
+          >
+            <SelectOption value="ALL">Returnable &amp; Non-returnable</SelectOption>
+            <SelectOption value="RETURNABLE">Returnable only</SelectOption>
+            <SelectOption value="NON_RETURNABLE">Non-returnable only</SelectOption>
+          </NativeSelect>
+
+          <NativeSelect
+            className="sm:w-52"
             value={filters.purpose ?? 'ALL'}
             onChange={(event) =>
               updateFilter('purpose', event.target.value as ReturnableFilters['purpose'])
@@ -147,13 +161,14 @@ export default function MaintenanceReturnablePage() {
       </Card>
 
       <div className="overflow-x-auto rounded-md border">
-        <table className="w-full min-w-[1000px] text-sm">
+        <table className="w-full min-w-[1120px] text-sm">
           <thead className="bg-muted/40">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Pass No</th>
+              <th className="px-3 py-2 text-left font-medium">Type</th>
               <th className="px-3 py-2 text-left font-medium">Status</th>
               <th className="px-3 py-2 text-left font-medium">Purpose</th>
-              <th className="px-3 py-2 text-left font-medium">Party</th>
+              <th className="px-3 py-2 text-left font-medium">Going To</th>
               <th className="px-3 py-2 text-left font-medium">Items</th>
               <th className="px-3 py-2 text-left font-medium">Pending Qty</th>
               <th className="px-3 py-2 text-left font-medium">Expected Back</th>
@@ -163,13 +178,13 @@ export default function MaintenanceReturnablePage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
                   Loading gate passes…
                 </td>
               </tr>
             ) : !passes?.length ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
                   <PackageOpen className="mx-auto mb-2 h-8 w-8 opacity-40" />
                   No returnable gate passes match these filters.
                 </td>
@@ -183,6 +198,9 @@ export default function MaintenanceReturnablePage() {
                 >
                   <td className="px-3 py-2 font-medium">{pass.pass_no}</td>
                   <td className="px-3 py-2">
+                    <ReturnableTypeBadge isReturnable={pass.is_returnable} />
+                  </td>
+                  <td className="px-3 py-2">
                     <ReturnableStatusBadge
                       status={pass.status}
                       isOverdue={pass.is_overdue}
@@ -190,14 +208,18 @@ export default function MaintenanceReturnablePage() {
                     />
                   </td>
                   <td className="px-3 py-2">{pass.purpose_display}</td>
-                  <td className="px-3 py-2">{pass.party_name}</td>
+                  <td className="px-3 py-2">{pass.destination}</td>
                   <td className="px-3 py-2">{pass.item_count}</td>
-                  <td className="px-3 py-2">{pass.pending_return_qty}</td>
+                  <td className="px-3 py-2">{pass.is_returnable ? pass.pending_return_qty : '—'}</td>
                   <td className="px-3 py-2">
-                    <span className="inline-flex items-center gap-1.5">
-                      <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-                      {new Date(pass.expected_return_date).toLocaleDateString()}
-                    </span>
+                    {pass.expected_return_date ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+                        {new Date(pass.expected_return_date).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{pass.created_by_name}</td>
                 </tr>
@@ -206,12 +228,6 @@ export default function MaintenanceReturnablePage() {
           </tbody>
         </table>
       </div>
-
-      <ReturnableFormDialog
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        onSaved={(passId) => navigate(`/maintenance/returnable/${passId}`)}
-      />
     </div>
   );
 }

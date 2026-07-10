@@ -15,8 +15,6 @@ import {
   PackageOpen,
   Settings,
   ShieldCheck,
-  Truck,
-  Undo2,
   Wrench,
 } from 'lucide-react';
 import { lazy } from 'react';
@@ -49,6 +47,7 @@ const MaintenanceReturnablePage = lazy(() => import('./pages/MaintenanceReturnab
 const MaintenanceReturnableDetailPage = lazy(
   () => import('./pages/MaintenanceReturnableDetailPage'),
 );
+const MaintenanceReturnableFormPage = lazy(() => import('./pages/MaintenanceReturnableFormPage'));
 
 export const maintenanceModuleConfig: ModuleConfig = {
   name: 'maintenance',
@@ -136,6 +135,21 @@ export const maintenanceModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
       breadcrumb: { label: 'Returnable / Non-returnable' },
+    },
+    {
+      // Declared before `:passId` so "new" is never read as a pass id.
+      path: '/maintenance/returnable/new',
+      element: <MaintenanceReturnableFormPage />,
+      layout: 'main',
+      permissions: [RETURNABLE_PERMISSIONS.MANAGE_GATEPASS],
+      breadcrumb: { label: 'New Gate Pass' },
+    },
+    {
+      path: '/maintenance/returnable/:passId/edit',
+      element: <MaintenanceReturnableFormPage />,
+      layout: 'main',
+      permissions: [RETURNABLE_PERMISSIONS.MANAGE_GATEPASS],
+      breadcrumb: { label: 'Edit Gate Pass' },
     },
     {
       path: '/maintenance/returnable/:passId',
@@ -318,18 +332,6 @@ export const maintenanceModuleConfig: ModuleConfig = {
             GATE_PERMISSIONS.REPAIR_MOVEMENT.VIEW,
             GATE_PERMISSIONS.REPAIR_MOVEMENT.CREATE,
           ],
-        },
-        {
-          path: '/gate/return-out',
-          title: 'Material Out (Gate)',
-          icon: Truck,
-          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
-        },
-        {
-          path: '/gate/return-in',
-          title: 'Material In (Gate)',
-          icon: Undo2,
-          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
         },
       ],
     },

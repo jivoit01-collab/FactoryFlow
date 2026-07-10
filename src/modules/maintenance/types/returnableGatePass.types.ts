@@ -54,6 +54,13 @@ export type ReturnableLogAction =
 
 export type AttachmentDocType = 'CHALLAN' | 'PHOTO' | 'INVOICE' | 'OTHER';
 
+/** One row of the SAP item master (OITM), as returned by the omni-search. */
+export interface SapItem {
+  item_code: string;
+  item_name: string;
+  uom: string;
+}
+
 export interface ReturnableGatePassItem {
   id: number;
   company: number;
@@ -152,12 +159,17 @@ export interface ReturnableGatePassListItem {
   pass_no: string;
   status: ReturnableStatus;
   status_display: string;
+  /** False for material issued out that never comes back. */
+  is_returnable: boolean;
   purpose: ReturnablePurpose;
   purpose_display: string;
   department: number | null;
   department_name: string;
   party_name: string;
-  expected_return_date: string;
+  recipient_name: string;
+  /** Vendor on a returnable pass, person on a non-returnable one. */
+  destination: string;
+  expected_return_date: string | null;
   is_overdue: boolean;
   days_overdue: number;
   item_count: number;
@@ -174,6 +186,7 @@ export interface ReturnableGatePass {
   pass_no: string;
   status: ReturnableStatus;
   status_display: string;
+  is_returnable: boolean;
 
   department: number | null;
   department_name: string;
@@ -189,7 +202,16 @@ export interface ReturnableGatePass {
   party_address: string;
   party_gstin: string;
 
-  expected_return_date: string;
+  /** Who receives the material on a non-returnable pass. */
+  recipient: number | null;
+  recipient_name: string;
+  recipient_display_name: string;
+  recipient_contact: string;
+  recipient_department: string;
+  destination: string;
+
+  /** Null on a non-returnable pass — nothing is coming back. */
+  expected_return_date: string | null;
   is_overdue: boolean;
   days_overdue: number;
 
@@ -270,16 +292,24 @@ export interface ReturnableItemInput {
 }
 
 export interface ReturnableGatePassPayload {
+  /** Fixed at creation — the pass number encodes RGP vs NRGP. */
+  is_returnable: boolean;
   department?: number | null;
   requested_by_name?: string;
   contact_no?: string;
   purpose: ReturnablePurpose;
   purpose_detail?: string;
-  party_name: string;
+  /** Required when returnable. */
+  party_name?: string;
   party_contact?: string;
   party_address?: string;
   party_gstin?: string;
-  expected_return_date: string;
+  /** Required when non-returnable. */
+  recipient_name?: string;
+  recipient_contact?: string;
+  recipient_department?: string;
+  /** Required when returnable; ignored otherwise. */
+  expected_return_date?: string | null;
   asset?: number | null;
   work_order?: number | null;
   items_input: ReturnableItemInput[];
@@ -342,6 +372,8 @@ export interface StagedAttachment {
 
 export interface ReturnableFilters {
   status?: ReturnableStatus | 'ALL' | string;
+  /** true = returnable only, false = non-returnable only, omit for both. */
+  is_returnable?: boolean;
   purpose?: ReturnablePurpose | 'ALL';
   department?: number;
   party?: string;
@@ -358,6 +390,8 @@ export interface ReturnableDashboard {
   outstanding_count: number;
   pending_approval_count: number;
   pending_gate_out_count: number;
+  returnable_count: number;
+  non_returnable_count: number;
   outstanding_value: string | number;
   ageing_buckets: {
     '0_7': number;
