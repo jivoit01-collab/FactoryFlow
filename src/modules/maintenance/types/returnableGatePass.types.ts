@@ -232,6 +232,9 @@ export interface ReturnableGatePass {
   driver_mobile: string;
   security_name: string;
   out_remarks: string;
+  /** Material walked out by hand — no vehicle was recorded. */
+  is_hand_carried: boolean;
+  carried_by_name: string;
 
   submitted_by: number | null;
   submitted_by_name: string;
@@ -327,6 +330,10 @@ export interface ReturnableGateOutPayload {
   driver_mobile?: string;
   security_name?: string;
   out_remarks?: string;
+  /** When true the backend ignores and clears every vehicle field. */
+  is_hand_carried?: boolean;
+  /** Required when `is_hand_carried` is true. */
+  carried_by_name?: string;
 }
 
 export interface ReturnableReturnLineInput {

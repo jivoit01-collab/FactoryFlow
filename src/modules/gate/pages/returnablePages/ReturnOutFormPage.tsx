@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, Truck, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Footprints, History, Truck, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import {
   ReturnableReasonDialog,
+  ReturnableTimeline,
   ReturnableTypeBadge,
 } from '@/modules/maintenance/components/returnable';
 import {
@@ -15,6 +16,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Checkbox,
+  Input,
+  Label,
   Textarea,
 } from '@/shared/components/ui';
 
@@ -49,6 +53,11 @@ export default function ReturnOutFormPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof ReturnableVehicleFormData, string>>>({});
   const [remarks, setRemarks] = useState('');
   const [isRejectOpen, setIsRejectOpen] = useState(false);
+  // Some material simply walks out — a gauge carried to a workshop across the
+  // road. There is no vehicle, so the gate records who carried it instead.
+  const [isHandCarried, setIsHandCarried] = useState(false);
+  const [carriedBy, setCarriedBy] = useState('');
+  const [carriedByError, setCarriedByError] = useState('');
 
   const gateOutMutation = useGateOutReturnable();
   const rejectMutation = useRejectReturnableAtGate();
@@ -76,6 +85,13 @@ export default function ReturnOutFormPage() {
   }
 
   const validate = () => {
+    // A hand-carried pass has no vehicle to validate — only a carrier.
+    if (isHandCarried) {
+      const nextError = carriedBy.trim() ? '' : 'Name the person carrying the material out';
+      setCarriedByError(nextError);
+      return !nextError;
+    }
+
     const nextErrors: Partial<Record<keyof ReturnableVehicleFormData, string>> = {};
     if (!vehicle.vehicleId && !vehicle.vehicleNumber.trim()) {
       nextErrors.vehicleNumber = 'Select a vehicle or enter the vehicle number';
@@ -92,16 +108,24 @@ export default function ReturnOutFormPage() {
     try {
       await gateOutMutation.mutateAsync({
         passId: id,
-        payload: {
-          vehicle: vehicle.vehicleId || null,
-          driver: vehicle.driverId || null,
-          transporter: vehicle.transporterId || null,
-          vehicle_number_manual: vehicle.vehicleId ? '' : vehicle.vehicleNumber,
-          driver_name_manual: vehicle.driverId ? '' : vehicle.driverName,
-          driver_mobile: vehicle.driverMobile,
-          security_name: vehicle.securityName,
-          out_remarks: remarks,
-        },
+        payload: isHandCarried
+          ? {
+              is_hand_carried: true,
+              carried_by_name: carriedBy.trim(),
+              security_name: vehicle.securityName,
+              out_remarks: remarks,
+            }
+          : {
+              is_hand_carried: false,
+              vehicle: vehicle.vehicleId || null,
+              driver: vehicle.driverId || null,
+              transporter: vehicle.transporterId || null,
+              vehicle_number_manual: vehicle.vehicleId ? '' : vehicle.vehicleNumber,
+              driver_name_manual: vehicle.driverId ? '' : vehicle.driverName,
+              driver_mobile: vehicle.driverMobile,
+              security_name: vehicle.securityName,
+              out_remarks: remarks,
+            },
       });
       toast.success(
         pass.is_returnable
@@ -170,8 +194,15 @@ export default function ReturnOutFormPage() {
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">#</th>
                   <th className="px-3 py-2 text-left font-medium">Item</th>
-                  <th className="px-3 py-2 text-left font-medium">Serial</th>
-                  <th className="px-3 py-2 text-left font-medium">Condition</th>
+                  {/* A non-returnable line carries no serial, make/model or condition. */}
+                  {pass.is_returnable ? (
+                    <>
+                      <th className="px-3 py-2 text-left font-medium">Serial</th>
+                      <th className="px-3 py-2 text-left font-medium">Condition</th>
+                    </>
+                  ) : (
+                    <th className="px-3 py-2 text-left font-medium">SAP Code</th>
+                  )}
                   <th className="px-3 py-2 text-right font-medium">Quantity</th>
                 </tr>
               </thead>
@@ -181,12 +212,20 @@ export default function ReturnOutFormPage() {
                     <td className="px-3 py-2 text-muted-foreground">{item.line_num}</td>
                     <td className="px-3 py-2">
                       <div className="font-medium">{item.item_name}</div>
-                      {item.make_model ? (
+                      {pass.is_returnable && item.make_model ? (
                         <div className="text-xs text-muted-foreground">{item.make_model}</div>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2">{item.serial_no || '—'}</td>
-                    <td className="px-3 py-2">{item.condition_out_display}</td>
+                    {pass.is_returnable ? (
+                      <>
+                        <td className="px-3 py-2">{item.serial_no || '—'}</td>
+                        <td className="px-3 py-2">{item.condition_out_display}</td>
+                      </>
+                    ) : (
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                        {item.item_code || '—'}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-right">
                       {item.quantity_out} {item.uom}
                     </td>
@@ -198,13 +237,72 @@ export default function ReturnOutFormPage() {
         </CardContent>
       </Card>
 
-      <ReturnableVehicleFields
-        title="Outgoing Vehicle"
-        description="Which vehicle is carrying these items out of the gate."
-        value={vehicle}
-        onChange={setVehicle}
-        errors={errors}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">How is it leaving?</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <label className="flex cursor-pointer items-start gap-3">
+            <Checkbox
+              checked={isHandCarried}
+              onCheckedChange={(checked) => {
+                setIsHandCarried(checked === true);
+                setCarriedByError('');
+              }}
+            />
+            <span>
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <Footprints className="h-4 w-4" />
+                Carried out by hand — no vehicle
+              </span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                For material walked out to a nearby workshop. No vehicle or driver is recorded.
+              </span>
+            </span>
+          </label>
+
+          {isHandCarried ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="carried-by">Carried By</Label>
+                <Input
+                  id="carried-by"
+                  placeholder="Ramesh Kumar"
+                  value={carriedBy}
+                  onChange={(event) => {
+                    setCarriedBy(event.target.value);
+                    if (carriedByError) setCarriedByError('');
+                  }}
+                />
+                {carriedByError ? (
+                  <p className="text-sm text-destructive">{carriedByError}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="security-name-hand">Security Guard Name</Label>
+                <Input
+                  id="security-name-hand"
+                  value={vehicle.securityName}
+                  onChange={(event) =>
+                    setVehicle({ ...vehicle, securityName: event.target.value })
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {!isHandCarried ? (
+        <ReturnableVehicleFields
+          title="Outgoing Vehicle"
+          description="Which vehicle is carrying these items out of the gate."
+          value={vehicle}
+          onChange={setVehicle}
+          errors={errors}
+        />
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -217,6 +315,23 @@ export default function ReturnOutFormPage() {
             placeholder="Anything the gate wants on record about this movement."
             onChange={(event) => setRemarks(event.target.value)}
           />
+        </CardContent>
+      </Card>
+
+      {/* Audit trail — who raised, submitted, approved and rejected this pass,
+          and when. The gate should see the whole story before letting it out. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <History className="h-4 w-4" />
+            Audit History
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Every action taken on {pass.pass_no}, newest first.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ReturnableTimeline passId={id} />
         </CardContent>
       </Card>
 
