@@ -726,7 +726,14 @@ export const API_ENDPOINTS = {
     PALLET_SPLIT: (palletId: number) => `/barcode/pallets/${palletId}/split/`,
     PALLET_ADD_BOXES: (palletId: number) => `/barcode/pallets/${palletId}/add-boxes/`,
     PALLET_REMOVE_BOXES: (palletId: number) => `/barcode/pallets/${palletId}/remove-boxes/`,
+    PALLET_RECONCILE: (palletId: number) => `/barcode/pallets/${palletId}/reconcile/`,
     PALLET_HISTORY: (palletId: number) => `/barcode/pallets/${palletId}/history/`,
+    // Pallet Verify Requests (ticket workflow)
+    VERIFY_REQUESTS: '/barcode/verify-requests/',
+    VERIFY_REQUEST_DETAIL: (requestId: number) => `/barcode/verify-requests/${requestId}/`,
+    VERIFY_REQUEST_START: (requestId: number) => `/barcode/verify-requests/${requestId}/start/`,
+    VERIFY_REQUEST_RESOLVE: (requestId: number) => `/barcode/verify-requests/${requestId}/resolve/`,
+    VERIFY_REQUEST_CANCEL: (requestId: number) => `/barcode/verify-requests/${requestId}/cancel/`,
     TRANSFER_BOX: '/barcode/transfers/box/',
     // Print
     PRINT_BOX: (boxId: number) => `/barcode/print/box/${boxId}/`,

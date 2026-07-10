@@ -24,8 +24,13 @@ import type {
   PalletClearPayload,
   PalletFilters,
   PalletMovePayload,
+  PalletReconcilePayload,
   PalletRemoveBoxesPayload,
   PalletSplitPayload,
+  PalletVerifyRequestCancelPayload,
+  PalletVerifyRequestCreatePayload,
+  PalletVerifyRequestFilters,
+  PalletVerifyRequestResolvePayload,
   PrintHistoryFilters,
   PrintRequestPayload,
   ProductionReleaseOilRow,
@@ -91,6 +96,9 @@ export const BARCODE_QUERY_KEYS = {
   intercompanyTransfer: (id: number) =>
     [...BARCODE_QUERY_KEYS.all, 'intercompany-transfer', id] as const,
   barcodeTrace: (search: string) => [...BARCODE_QUERY_KEYS.all, 'barcode-trace', search] as const,
+  verifyRequests: (filters?: PalletVerifyRequestFilters) =>
+    [...BARCODE_QUERY_KEYS.all, 'verify-requests', filters] as const,
+  verifyRequest: (id: number) => [...BARCODE_QUERY_KEYS.all, 'verify-request', id] as const,
 };
 
 // ============================================================================
@@ -281,6 +289,98 @@ export function useTransferBoxes() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: BoxTransferPayload) => barcodeApi.transferBoxes(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
+    },
+  });
+}
+
+// Read-only reconciliation — no cache invalidation (does not mutate stock).
+// Used for the live scan loop, which fires on every scan.
+export function useReconcilePallet() {
+  return useMutation({
+    mutationFn: ({ palletId, data }: { palletId: number; data: PalletReconcilePayload }) =>
+      barcodeApi.reconcilePallet(palletId, data),
+  });
+}
+
+// Applying a reconcile moves stock — invalidate so pallet/box views refresh.
+export function useApplyPalletReconcile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ palletId, data }: { palletId: number; data: PalletReconcilePayload }) =>
+      barcodeApi.reconcilePallet(palletId, { ...data, apply: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
+    },
+  });
+}
+
+// ============================================================================
+// Pallet Verify Requests (ticket workflow)
+// ============================================================================
+
+export function useVerifyRequests(filters?: PalletVerifyRequestFilters) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.verifyRequests(filters),
+    queryFn: () => barcodeApi.getVerifyRequests(filters),
+  });
+}
+
+export function useVerifyRequest(requestId: number | null) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.verifyRequest(requestId!),
+    queryFn: () => barcodeApi.getVerifyRequest(requestId!),
+    enabled: requestId !== null,
+  });
+}
+
+export function useCreateVerifyRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PalletVerifyRequestCreatePayload) => barcodeApi.createVerifyRequest(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useStartVerifyRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) => barcodeApi.startVerifyRequest(requestId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useResolveVerifyRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      data,
+    }: {
+      requestId: number;
+      data: PalletVerifyRequestResolvePayload;
+    }) => barcodeApi.resolveVerifyRequest(requestId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useCancelVerifyRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      data,
+    }: {
+      requestId: number;
+      data: PalletVerifyRequestCancelPayload;
+    }) => barcodeApi.cancelVerifyRequest(requestId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
     },

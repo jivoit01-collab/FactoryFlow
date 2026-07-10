@@ -180,6 +180,136 @@ export interface PalletBoxHistory {
 }
 
 // ============================================================================
+// Pallet Reconcile / Verify
+// ============================================================================
+
+export type PalletReconcileForeignReason =
+  | 'ON_OTHER_PALLET'
+  | 'UNPALLETIZED'
+  | 'DISPATCHED'
+  | 'VOID'
+  | 'PALLET_LABEL'
+  | 'NOT_FOUND';
+
+export interface PalletReconcileBoxBrief {
+  id: number;
+  box_barcode: string;
+  item_code: string;
+  item_name: string;
+  batch_number: string;
+  qty: string;
+  uom: string;
+  status: string;
+  current_warehouse: string;
+  pallet_id: string | null;
+}
+
+export interface PalletReconcileForeign {
+  barcode: string;
+  box: PalletReconcileBoxBrief | null;
+  current_pallet_code: string | null;
+  reason: PalletReconcileForeignReason;
+  item_matches_pallet: boolean;
+}
+
+export interface PalletReconcileApplied {
+  pulled: string[];
+  dropped: string[];
+  skipped: { barcode: string; reason: PalletReconcileForeignReason }[];
+  reason: string;
+}
+
+export interface PalletReconcileResult {
+  pallet: {
+    id: number;
+    pallet_id: string;
+    item_code: string;
+    item_name: string;
+    batch_number: string;
+    status: PalletStatus;
+    box_count: number;
+  };
+  expected_count: number;
+  scanned_count: number;
+  matched: PalletReconcileBoxBrief[];
+  missing: PalletReconcileBoxBrief[];
+  foreign: PalletReconcileForeign[];
+  unlabeled_count: number;
+  is_fully_reconciled: boolean;
+  recover: {
+    unlabeled_count: number;
+    eligible: boolean;
+    boxes: PalletReconcileBoxBrief[];
+  };
+  /** Present only on an apply request — a summary of what was moved. */
+  applied?: PalletReconcileApplied;
+}
+
+export interface PalletReconcilePayload {
+  scanned_barcodes: string[];
+  unlabeled_count?: number;
+  apply?: boolean;
+  pull_foreign?: boolean;
+  drop_missing?: boolean;
+  reason?: string;
+}
+
+// ============================================================================
+// Pallet Verify Requests (ticket workflow)
+// ============================================================================
+
+export type PalletVerifyRequestStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CANCELLED';
+export type PalletVerifyRequestSource = 'MANUAL' | 'DISPATCH';
+
+export interface PalletVerifyRequestListItem {
+  id: number;
+  pallet: number;
+  pallet_code: string;
+  item_code: string;
+  item_name: string;
+  status: PalletVerifyRequestStatus;
+  source: PalletVerifyRequestSource;
+  source_reference: string;
+  reason: string;
+  requested_by: number | null;
+  requested_by_name: string;
+  requested_at: string;
+  resolved_by: number | null;
+  resolved_by_name: string;
+  resolved_at: string | null;
+  resolution_note: string;
+  missing_count: number;
+  foreign_count: number;
+  updated_at: string;
+}
+
+export interface PalletVerifyRequestDetail extends PalletVerifyRequestListItem {
+  findings: PalletReconcileResult;
+}
+
+export interface PalletVerifyRequestCreatePayload {
+  pallet_id: number;
+  reason?: string;
+  source?: PalletVerifyRequestSource;
+  source_reference?: string;
+  scanned_barcodes?: string[];
+  unlabeled_count?: number;
+}
+
+export interface PalletVerifyRequestResolvePayload {
+  resolution_note?: string;
+}
+
+export interface PalletVerifyRequestCancelPayload {
+  reason?: string;
+}
+
+export interface PalletVerifyRequestFilters extends PaginationParams {
+  status?: string;
+  pallet_id?: string;
+}
+
+// ============================================================================
 // Request Payloads
 // ============================================================================
 

@@ -52,6 +52,7 @@ import {
   useUpdateDispatchScannedBoxQty,
   useUpdateDispatchSettings,
 } from '../api';
+import PalletVerifyDialog from '../components/verify/PalletVerifyDialog';
 import { useScanner } from '../hooks/useScanner';
 import type {
   DispatchBillLine,
@@ -503,6 +504,11 @@ function ScannerDock({
             ? 'Point camera at QR or barcode'
             : 'Use handheld scanner, keyboard, or camera'}
         </div>
+      </div>
+
+      {/* Fallback when a box label has fallen off / won't scan. */}
+      <div className="mt-2">
+        <PalletVerifyDialog triggerClassName="w-full bg-white" />
       </div>
 
       {error && <p className="mt-2 text-sm text-rose-700">{error}</p>}

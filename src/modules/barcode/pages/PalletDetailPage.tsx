@@ -1,4 +1,13 @@
-import { ArrowLeft, Boxes, Clock, Printer, Scissors, Trash2, XCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Boxes,
+  ClipboardCheck,
+  Clock,
+  Printer,
+  Scissors,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -82,9 +91,20 @@ export default function PalletDetailPage() {
         }`}
       />
 
-      <Button variant="ghost" size="sm" onClick={() => navigate('/barcode/pallets')}>
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back to pallets
-      </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/barcode/pallets')}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to pallets
+        </Button>
+        {!isEmpty && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/barcode/verify/new?palletId=${pallet.id}`)}
+          >
+            <ClipboardCheck className="h-4 w-4 mr-1" /> Verify / Reconcile
+          </Button>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
