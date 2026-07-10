@@ -7,6 +7,7 @@ import {
   LogIn,
   LogOut,
   Package,
+  PackageOpen,
   PackageX,
   RotateCcw,
   Send,
@@ -38,6 +39,12 @@ export interface GateEntryTypeConfig {
   keywords: readonly string[];
   requiresWeighment?: boolean;
   requiresGatepass?: boolean;
+  /**
+   * Hide from the "New Entry" picker. For flows the gate acts on but does not
+   * originate — a returnable gate pass is raised by a department, and the gate
+   * only works its queue.
+   */
+  hideFromNewEntry?: boolean;
 }
 
 export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
@@ -275,6 +282,38 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     colorClassName: 'text-slate-600',
     keywords: ['repair', 'parts', 'vendor', 'out'],
     requiresGatepass: true,
+  },
+  {
+    // The gate-side halves of the Returnable Gate Pass. The document itself is
+    // raised and closed by a department; the gate only records the movement.
+    id: 'returnable-out',
+    title: 'Material Out',
+    description: 'Approved returnable gate passes waiting to leave for repair, exchange or job work.',
+    direction: 'out',
+    vehicleMode: 'vehicle',
+    dashboardRoute: '/gate/return-out',
+    newEntryRoute: '/gate/return-out',
+    viewPermissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
+    createPermissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
+    icon: PackageOpen,
+    colorClassName: 'text-indigo-600',
+    keywords: ['material', 'returnable', 'non-returnable', 'rgp', 'gate pass', 'repair', 'exchange', 'out'],
+    hideFromNewEntry: true,
+  },
+  {
+    id: 'returnable-in',
+    title: 'Material In',
+    description: 'Material out with a party, coming back against a returnable gate pass.',
+    direction: 'return',
+    vehicleMode: 'vehicle',
+    dashboardRoute: '/gate/return-in',
+    newEntryRoute: '/gate/return-in',
+    viewPermissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
+    createPermissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
+    icon: Undo2,
+    colorClassName: 'text-indigo-700',
+    keywords: ['material', 'returnable', 'non-returnable', 'rgp', 'gate pass', 'return', 'back', 'overdue', 'in'],
+    hideFromNewEntry: true,
   },
   {
     id: 'job-work',

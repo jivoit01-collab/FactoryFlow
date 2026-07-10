@@ -1,4 +1,5 @@
 import {
+  BadgeIndianRupee,
   BarChart3,
   Bell,
   Boxes,
@@ -11,7 +12,6 @@ import {
   HardHat,
   LayoutDashboard,
   type LucideIcon,
-  BadgeIndianRupee,
   Package,
   PackageOpen,
   Settings,
@@ -96,7 +96,7 @@ const SUB_MODULES: SubModule[] = [
     permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
   },
   {
-    title: 'Returnable Items',
+    title: 'Returnable / Non-returnable',
     description: 'Send material out for repair or exchange and track it until it comes back.',
     to: '/maintenance/returnable',
     icon: PackageOpen,

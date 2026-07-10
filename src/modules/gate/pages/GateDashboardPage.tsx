@@ -21,6 +21,7 @@ import {
   useSalesDispatchEntries,
   useVehicleEntriesCount,
 } from '../api';
+import { useReturnableGatePasses } from '../api/returnable';
 import { DateRangePicker } from '../components';
 import { GATE_ENTRY_TYPES, type GateEntryTypeConfig } from '../constants/gateEntryTypes';
 import { getJobWorkDisplayStatus, hasLinkedJobWorkProductionOrder } from '../utils';
@@ -423,6 +424,25 @@ function useGateDashboardStats(
     enabled: isVisible('rejected-qc-return'),
   });
   const jobWorkEntries = useJobWorkGateInEntries(dateParams, { enabled: isVisible('job-work') });
+
+  // Both returnable cards read the same list. The gate pass has no gate-entry
+  // date to filter on — a pass raised months ago can still be outstanding today
+  // — so this deliberately ignores the dashboard date range.
+  const returnablePasses = useReturnableGatePasses(
+    undefined,
+    isVisible('returnable-out') || isVisible('returnable-in'),
+  );
+  const returnableRows = returnablePasses.data ?? [];
+  const returnableAwaitingGateOut = returnableRows.filter(
+    (row) => row.status === 'PENDING_GATE_OUT',
+  );
+  const returnableOutstanding = returnableRows.filter(
+    (row) => row.status === 'OUT' || row.status === 'PARTIALLY_RETURNED',
+  );
+  const returnableBack = returnableRows.filter(
+    (row) => row.status === 'RETURNED' || row.status === 'CLOSED',
+  );
+  const returnableOverdue = returnableOutstanding.filter((row) => row.is_overdue);
   const salesDispatchOutEntries = useSalesDispatchEntries(
     {
       from_date: dateRange.from,
@@ -629,6 +649,41 @@ function useGateDashboardStats(
           label: 'Total',
           value: repairPartsOutEntries.length,
           tone: 'total',
+        },
+      ],
+    },
+    'returnable-out': {
+      isLoading: returnablePasses.isLoading,
+      stats: [
+        {
+          label: 'Awaiting Gate Out',
+          value: returnableAwaitingGateOut.length,
+          tone: 'open',
+        },
+        {
+          label: 'Gated Out',
+          value: returnableOutstanding.length + returnableBack.length,
+          tone: 'completed',
+        },
+      ],
+    },
+    'returnable-in': {
+      isLoading: returnablePasses.isLoading,
+      stats: [
+        {
+          label: 'Out with Party',
+          value: returnableOutstanding.length,
+          tone: 'open',
+        },
+        {
+          label: 'Overdue',
+          value: returnableOverdue.length,
+          tone: returnableOverdue.length > 0 ? 'cancelled' : 'total',
+        },
+        {
+          label: 'Back',
+          value: returnableBack.length,
+          tone: 'completed',
         },
       ],
     },

@@ -1,4 +1,5 @@
 import {
+  BadgeIndianRupee,
   BarChart3,
   Bell,
   Boxes,
@@ -12,7 +13,6 @@ import {
   LayoutDashboard,
   Package,
   PackageOpen,
-  BadgeIndianRupee,
   Settings,
   ShieldCheck,
   Truck,
@@ -135,14 +135,14 @@ export const maintenanceModuleConfig: ModuleConfig = {
       element: <MaintenanceReturnablePage />,
       layout: 'main',
       permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
-      breadcrumb: { label: 'Returnable Items' },
+      breadcrumb: { label: 'Returnable / Non-returnable' },
     },
     {
       path: '/maintenance/returnable/:passId',
       element: <MaintenanceReturnableDetailPage />,
       layout: 'main',
       permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
-      breadcrumb: { label: 'Returnable Gate Pass' },
+      breadcrumb: { label: 'Gate Pass' },
     },
     {
       path: '/maintenance/pm',
@@ -271,7 +271,7 @@ export const maintenanceModuleConfig: ModuleConfig = {
         },
         {
           path: '/maintenance/returnable',
-          title: 'Returnable Items',
+          title: 'Returnable / Non-returnable',
           icon: PackageOpen,
           permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
         },
@@ -321,13 +321,13 @@ export const maintenanceModuleConfig: ModuleConfig = {
         },
         {
           path: '/gate/return-out',
-          title: 'Returnable Gate Out',
+          title: 'Material Out (Gate)',
           icon: Truck,
           permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
         },
         {
           path: '/gate/return-in',
-          title: 'Returnable Gate In',
+          title: 'Material In (Gate)',
           icon: Undo2,
           permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
         },

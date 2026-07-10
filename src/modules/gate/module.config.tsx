@@ -186,10 +186,6 @@ const GATE_NAVIGATION_PERMISSIONS = Array.from(
     ...GATE_DASHBOARD_ACCESS_PERMISSIONS,
     ...GATE_ENTRY_CREATE_PERMISSIONS,
     BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS,
-    // A gate operator whose only job is the returnable queues still needs the
-    // Gate menu to appear in the sidebar.
-    GATE_PERMISSIONS.RETURNABLE.GATE_OUT,
-    GATE_PERMISSIONS.RETURNABLE.GATE_IN,
   ]),
 );
 
@@ -943,28 +939,28 @@ export const gateModuleConfig: ModuleConfig = {
       element: <ReturnOutListPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
-      breadcrumb: { label: 'Returnable Gate Out' },
+      breadcrumb: { label: 'Material Out' },
     },
     {
       path: '/gate/return-out/:passId',
       element: <ReturnOutFormPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
-      breadcrumb: { label: 'Gate Out Returnable' },
+      breadcrumb: { label: 'Gate Out' },
     },
     {
       path: '/gate/return-in',
       element: <ReturnInListPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
-      breadcrumb: { label: 'Returnable Gate In' },
+      breadcrumb: { label: 'Material In' },
     },
     {
       path: '/gate/return-in/:passId',
       element: <ReturnInFormPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
-      breadcrumb: { label: 'Record Returnable Return' },
+      breadcrumb: { label: 'Record Return' },
     },
     {
       path: '/gate/repair-parts-in',
@@ -1056,16 +1052,6 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/sales-dispatch/barcode-reports',
           title: 'Barcode Dispatch Reports',
           permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
-        },
-        {
-          path: '/gate/return-out',
-          title: 'Returnable Out',
-          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_OUT],
-        },
-        {
-          path: '/gate/return-in',
-          title: 'Returnable In',
-          permissions: [GATE_PERMISSIONS.RETURNABLE.GATE_IN],
         },
       ],
     },

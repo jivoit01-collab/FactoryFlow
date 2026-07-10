@@ -21,7 +21,7 @@ export default function ReturnInListPage() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <DashboardHeader
-        title="Returnable — Gate In"
+        title="Material In"
         description="Material currently outside the gate. Record what comes back, in what quantity and what condition."
       />
 
