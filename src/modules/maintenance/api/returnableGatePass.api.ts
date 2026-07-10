@@ -15,6 +15,7 @@ import type {
   ReturnableGatePassUpdatePayload,
   ReturnableReasonPayload,
   ReturnableRecordReturnPayload,
+  SapItem,
   StagedAttachment,
 } from '../types';
 
@@ -203,6 +204,19 @@ export const returnableGatePassApi = {
 
   async getDashboard(): Promise<ReturnableDashboard> {
     const response = await apiClient.get<ReturnableDashboard>(EP.DASHBOARD);
+    return response.data;
+  },
+
+  // ---- SAP item master ----
+
+  /**
+   * Server-side omni-search over SAP `OITM` by item code or name. The backend
+   * returns an empty list for terms shorter than two characters.
+   */
+  async searchSapItems(search: string, limit = 50): Promise<SapItem[]> {
+    const response = await apiClient.get<SapItem[]>(EP.SAP_ITEMS, {
+      params: { search, limit },
+    });
     return response.data;
   },
 };

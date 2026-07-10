@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { ReturnableStatusBadge } from '../components/returnable/ReturnableStatusBadge';
+import { ReturnableTypeBadge } from '../components/returnable/ReturnableTypeBadge';
 import {
   OUTSTANDING_STATUSES,
   RETURNABLE_STATUS_LABELS,
@@ -57,6 +58,7 @@ describe('approval stage', () => {
 
 describe('returnableGatePassSchema', () => {
   const validPass = {
+    is_returnable: true,
     purpose: 'REPAIR' as const,
     party_name: 'Sharma Motors',
     expected_return_date: '2026-08-01',
@@ -113,6 +115,79 @@ describe('returnableGateOutSchema', () => {
   it('rejects gate out with no driver identified at all', () => {
     const result = returnableGateOutSchema.safeParse({ vehicle_number_manual: 'GJ01AB1234' });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('returnable vs non-returnable', () => {
+  const items = [{ item_name: 'Crude Palm Oil', quantity_out: '5' }];
+
+  it('renders the type badge for both kinds', () => {
+    const { unmount } = render(<ReturnableTypeBadge isReturnable />);
+    expect(screen.getByText('Returnable')).toBeInTheDocument();
+    unmount();
+
+    render(<ReturnableTypeBadge isReturnable={false} />);
+    expect(screen.getByText('Non-returnable')).toBeInTheDocument();
+  });
+
+  it('accepts a non-returnable pass with a recipient and no return date', () => {
+    const result = returnableGatePassSchema.safeParse({
+      is_returnable: false,
+      purpose: 'OTHER',
+      recipient_name: 'Suresh Patel',
+      items_input: items,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a non-returnable pass with no recipient', () => {
+    const result = returnableGatePassSchema.safeParse({
+      is_returnable: false,
+      purpose: 'OTHER',
+      items_input: items,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('does not demand a party or return date on a non-returnable pass', () => {
+    const result = returnableGatePassSchema.safeParse({
+      is_returnable: false,
+      purpose: 'OTHER',
+      recipient_name: 'Suresh Patel',
+      party_name: '',
+      expected_return_date: '',
+      items_input: items,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('still demands a party and return date on a returnable pass', () => {
+    const missingDate = returnableGatePassSchema.safeParse({
+      is_returnable: true,
+      purpose: 'REPAIR',
+      party_name: 'Sharma Motors',
+      items_input: items,
+    });
+    expect(missingDate.success).toBe(false);
+
+    const missingParty = returnableGatePassSchema.safeParse({
+      is_returnable: true,
+      purpose: 'REPAIR',
+      expected_return_date: '2026-08-01',
+      items_input: items,
+    });
+    expect(missingParty.success).toBe(false);
+  });
+
+  it('does not require a recipient on a returnable pass', () => {
+    const result = returnableGatePassSchema.safeParse({
+      is_returnable: true,
+      purpose: 'REPAIR',
+      party_name: 'Sharma Motors',
+      expected_return_date: '2026-08-01',
+      items_input: items,
+    });
+    expect(result.success).toBe(true);
   });
 });
 

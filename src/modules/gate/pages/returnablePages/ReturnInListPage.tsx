@@ -74,7 +74,9 @@ export default function ReturnInListPage() {
                   <td className="px-3 py-2">
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-                      {new Date(pass.expected_return_date).toLocaleDateString()}
+                      {pass.expected_return_date
+                        ? new Date(pass.expected_return_date).toLocaleDateString()
+                        : '—'}
                       {pass.is_overdue ? (
                         <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-xs font-medium text-rose-800">
                           {pass.days_overdue}d late

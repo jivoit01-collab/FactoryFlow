@@ -1,4 +1,4 @@
-import { Paperclip, Trash2, Upload } from 'lucide-react';
+import { Trash2, Upload } from 'lucide-react';
 import { useRef } from 'react';
 
 import { Button, Input, Label, NativeSelect, SelectOption } from '@/shared/components/ui';
@@ -48,17 +48,9 @@ export function ReturnableAttachmentsField({
   const remove = (index: number) => onChange(value.filter((_, i) => i !== index));
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-            <Paperclip className="h-4 w-4" />
-            Attachments
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Delivery challan, photos of the item before it leaves, vendor quotation.
-          </p>
-        </div>
+    // The heading lives in the parent section; this renders only the control.
+    <div className="space-y-3">
+      <div className="flex justify-end">
         <Button
           type="button"
           variant="outline"
@@ -133,6 +125,6 @@ export function ReturnableAttachmentsField({
           ))}
         </ul>
       )}
-    </section>
+    </div>
   );
 }

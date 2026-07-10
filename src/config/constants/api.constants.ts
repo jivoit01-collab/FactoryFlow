@@ -579,6 +579,8 @@ export const API_ENDPOINTS = {
     DASHBOARD: '/returnable-items/dashboard/',
     REPORTS: '/returnable-items/reports/',
     OPTIONS: '/returnable-items/options/',
+    /** Omni-search over the SAP item master (OITM), live from HANA. */
+    SAP_ITEMS: '/returnable-items/sap-items/',
   },
   // Production Execution
   PRODUCTION_EXECUTION: {

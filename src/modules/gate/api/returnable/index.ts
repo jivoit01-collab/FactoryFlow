@@ -27,4 +27,5 @@ export type {
   ReturnableRecordReturnPayload,
   ReturnableReturnLineInput,
   ReturnableStatus,
+  SapItem,
 } from '@/modules/maintenance/types';

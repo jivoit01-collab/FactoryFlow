@@ -21,6 +21,7 @@ export const RETURNABLE_QUERY_KEYS = {
   pendingGateOut: () => [...RETURNABLE_QUERY_KEYS.all, 'pending-gate-out'] as const,
   pendingGateIn: () => [...RETURNABLE_QUERY_KEYS.all, 'pending-gate-in'] as const,
   dashboard: () => [...RETURNABLE_QUERY_KEYS.all, 'dashboard'] as const,
+  sapItems: (search: string) => [...RETURNABLE_QUERY_KEYS.all, 'sap-items', search] as const,
 };
 
 /**
@@ -86,6 +87,19 @@ export function useReturnableDashboard(enabled = true) {
     queryKey: RETURNABLE_QUERY_KEYS.dashboard(),
     queryFn: () => returnableGatePassApi.getDashboard(),
     enabled,
+  });
+}
+
+/**
+ * SAP item omni-search. Held for 30s because the item master barely moves, and
+ * skipped entirely below two characters — that is what the backend enforces.
+ */
+export function useSapItemSearch(search: string) {
+  return useQuery({
+    queryKey: RETURNABLE_QUERY_KEYS.sapItems(search),
+    queryFn: () => returnableGatePassApi.searchSapItems(search),
+    enabled: search.trim().length >= 2,
+    staleTime: 30_000,
   });
 }
 
