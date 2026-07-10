@@ -185,7 +185,10 @@ const GATE_NAVIGATION_PERMISSIONS = Array.from(
   new Set([
     ...GATE_DASHBOARD_ACCESS_PERMISSIONS,
     ...GATE_ENTRY_CREATE_PERMISSIONS,
-    BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS,
+    // NOTE: barcode.can_view_barcode_dispatch_reports intentionally NOT included
+    // here — it would surface the whole Gate module to barcode-only users. The
+    // report stays reachable via the Barcode module (/barcode/dispatch/reports)
+    // and via the gate sales-dispatch child for users with gate perms.
   ]),
 );
 
