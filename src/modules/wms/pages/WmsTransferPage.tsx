@@ -28,7 +28,13 @@ import {
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsScanButton } from '../components/WmsScanButton';
 import type { MoveItem, ValidationResult } from '../services';
-import { buildOccupancyIndex, findArea, locationHoldsStock, validateMove } from '../services';
+import {
+  buildOccupancyIndex,
+  countEmptyLocations,
+  groupEmptyLocationsBySection,
+  locationHoldsStock,
+  validateMove,
+} from '../services';
 import { useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import type {
   InventoryRecord,
@@ -84,36 +90,20 @@ export default function WmsTransferPage() {
   );
 
   // Empty destination locations, grouped by section (their area) so the operator
-  // can pick where to place the item instead of scanning. Only enabled,
-  // stock-holding, currently-empty locations qualify; the source is excluded.
-  const emptyBySection = useMemo(() => {
-    const areasByWarehouse = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse.areas ?? []]));
-    const groups = new Map<string, { label: string; locations: WarehouseLocation[] }>();
-    for (const location of locations) {
-      if (location.id === sourceLocationId) continue;
-      if (location.enabled === false) continue;
-      if (!locationHoldsStock(location, purposeById)) continue;
-      if ((occupancy.get(location.id)?.occupancyPct ?? 0) > 0) continue; // only empty
-      const areas = areasByWarehouse.get(location.warehouseId) ?? [];
-      const area = findArea(areas, location.column, location.row);
-      const key = area ? `${location.warehouseId}:${area.groupId ?? area.id}` : `${location.warehouseId}:none`;
-      const label = area?.name ?? 'Unassigned';
-      const group = groups.get(key) ?? { label, locations: [] };
-      group.locations.push(location);
-      groups.set(key, group);
-    }
-    const sections = [...groups.entries()].map(([key, group]) => ({
-      key,
-      label: group.label,
-      locations: group.locations.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })),
-    }));
-    return sections.sort((a, b) => a.label.localeCompare(b.label));
-  }, [locations, warehouses, sourceLocationId, purposeById, occupancy]);
-
-  const totalEmpty = useMemo(
-    () => emptyBySection.reduce((sum, section) => sum + section.locations.length, 0),
-    [emptyBySection],
+  // can pick where to place the item instead of scanning. The source is excluded.
+  const emptyBySection = useMemo(
+    () =>
+      groupEmptyLocationsBySection({
+        locations,
+        warehouses,
+        occupancy,
+        purposesById: purposeById,
+        excludeLocationId: sourceLocationId,
+      }),
+    [locations, warehouses, occupancy, purposeById, sourceLocationId],
   );
+
+  const totalEmpty = useMemo(() => countEmptyLocations(emptyBySection), [emptyBySection]);
 
   const sourceLocation = sourceLocationId ? locations.find((l) => l.id === sourceLocationId) ?? null : null;
   const destLocation = destLocationId ? locations.find((l) => l.id === destLocationId) ?? null : null;

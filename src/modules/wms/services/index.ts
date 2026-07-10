@@ -10,6 +10,12 @@ export {
   warehouseAreas,
 } from './areas';
 export { buildLocationsCsv, parseCsv, parseWarehouseCsv } from './csv';
+export type { EmptyLocationsInput, LocationSection } from './emptyLocations';
+export {
+  countEmptyLocations,
+  groupEmptyLocationsBySection,
+  isEmptyDestination,
+} from './emptyLocations';
 export type {
   CellPurposeInput,
   InventoryInput,

@@ -28,7 +28,15 @@ import type { WmsLabelData } from '../components/WmsPrintLabel';
 import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
 import { WmsScanButton } from '../components/WmsScanButton';
 import type { MoveItem, PutawaySuggestion, ValidationResult } from '../services';
-import { locationHoldsStock, outsideLocationIds, suggestPutaway, validateMove } from '../services';
+import {
+  buildOccupancyIndex,
+  countEmptyLocations,
+  groupEmptyLocationsBySection,
+  locationHoldsStock,
+  outsideLocationIds,
+  suggestPutaway,
+  validateMove,
+} from '../services';
 import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsSettings, wmsStore } from '../store';
 import type { MaterialWarehouseProfile } from '../types';
 import { notifyFail, notifyOk } from '../utils';
@@ -140,6 +148,25 @@ export default function WmsReceivePage() {
     () => new Set(availableSpaces.slice(0, 3).map((s) => s.location.id)),
     [availableSpaces],
   );
+
+  const occupancy = useMemo(
+    () => buildOccupancyIndex(warehouseLocations, inventory, pallets, purposeById),
+    [warehouseLocations, inventory, pallets, purposeById],
+  );
+
+  // Empty spaces only, grouped by section — the dropdown the operator picks from.
+  // Restricted to spaces the putaway engine already deemed legal for this item.
+  const emptyBySection = useMemo(() => {
+    const legalIds = new Set(availableSpaces.map((space) => space.location.id));
+    return groupEmptyLocationsBySection({
+      locations: warehouseLocations.filter((location) => legalIds.has(location.id)),
+      warehouses,
+      occupancy,
+      purposesById: purposeById,
+    });
+  }, [availableSpaces, warehouseLocations, warehouses, occupancy, purposeById]);
+
+  const totalEmpty = useMemo(() => countEmptyLocations(emptyBySection), [emptyBySection]);
 
   const SPACE_LIMIT = 90;
   const filteredSpaces = useMemo(() => {
@@ -422,6 +449,38 @@ export default function WmsReceivePage() {
             </p>
           ) : (
             <>
+              {/* Pick an empty space by section — no scanning needed. */}
+              <div className="space-y-1.5">
+                <Label htmlFor="empty-space-select">
+                  Pick an empty location
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    ({totalEmpty} empty)
+                  </span>
+                </Label>
+                <NativeSelect
+                  id="empty-space-select"
+                  value={destLocationId ?? ''}
+                  onChange={(event) => setDestLocationId(event.target.value || null)}
+                >
+                  <option value="">Select an empty location…</option>
+                  {emptyBySection.map((section) => (
+                    <optgroup key={section.key} label={section.label}>
+                      {section.locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.code}
+                          {recommendedIds.has(location.id) ? ' ★' : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </NativeSelect>
+                {totalEmpty === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No empty locations for this item — the spaces below are partly filled.
+                  </p>
+                ) : null}
+              </div>
+
               <div className="flex gap-2">
                 <Input
                   value={spaceQuery}
