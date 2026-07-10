@@ -128,7 +128,7 @@ A page the user can access calls another module's **enforced** API without holdi
 
 ## Prioritized recommendations (for the fix phase)
 
-1. **B1 — barcode backend enforcement (High).** ~50 endpoints open; add permission classes mapping to the existing `barcode.*` perms the frontend already gates on. Largest authorization gap.
+1. **B1 — barcode backend enforcement (High, but larger/riskier than first estimated).** ~55 independent APIViews (no shared base) are open. **Complication found during the fix phase:** barcode endpoints are called **cross-module** by gate (sales-dispatch scan), wms (labels/scan), and warehouse **BST** (box scan) — whose users hold no `barcode.*` perms. A blanket lock-down would create a wave of *new* Class C 403s (breaking BST scanning, WMS labels, gate dispatch scan). Correct fix = per-endpoint enforcement that OR-accepts each legitimate caller's permission (the C2 pattern), which requires enumerating every endpoint's callers first. **Recommend a dedicated session with per-endpoint caller analysis + testing** rather than a rushed pass.
 2. **A5 — gate leaks to barcode users (Medium).** Remove `barcode.can_view_barcode_dispatch_reports` from `GATE_NAVIGATION_PERMISSIONS`; relocate the report.
 3. **R1 — BST Gate reachability (Medium).** Ensure the 6 BST-Gate users can reach `/gate/bst-out` (add a `can_gate_bst`-gated nav entry, or confirm existing reachability).
 4. ~~**B2 — notifications SEND.**~~ **Resolved on verification — send endpoints already enforce `CanSendNotification`/`CanSendBulkNotification`; not a gap.**
