@@ -56,12 +56,10 @@ const DockingDetailPage = lazy(
 const dispatchViewPermissions = [
   DISPATCH_PERMISSIONS.VIEW_PLANS,
   DISPATCH_PERMISSIONS.LINK_VEHICLE,
+  // Service GRPO (transporter bilty) is a dispatch function — gate the module on
+  // the dispatch-owned can_post_bilty_service_grpo, NOT the material-GRPO app
+  // perms, so material-GRPO clerks don't see the whole Dispatch module (A7a).
   DISPATCH_PERMISSIONS.POST_BILTY_GRPO,
-  GRPO_PERMISSIONS.VIEW_PENDING,
-  GRPO_PERMISSIONS.PREVIEW,
-  GRPO_PERMISSIONS.POST,
-  GRPO_PERMISSIONS.VIEW_HISTORY,
-  GRPO_PERMISSIONS.VIEW_POSTING,
   DISPATCH_PERMISSIONS.VIEW_OPEN_BILTIES,
   DISPATCH_PERMISSIONS.VIEW_TRANSPORTER_AP_INVOICE,
   DISPATCH_PERMISSIONS.POST_TRANSPORTER_AP_INVOICE,
@@ -71,13 +69,11 @@ const dispatchViewPermissions = [
   GATE_PERMISSIONS.SALES_DISPATCH.VIEW_REPORTS,
 ] as const;
 
+// Nav gate for the Service GRPO submenu: dispatch-owned perm only, so it shows
+// for dispatch/service-GRPO staff but not material-GRPO clerks. The routes below
+// still accept grpo.* as an alternative, matching the backend's OR-permission.
 const serviceGRPOViewPermissions = [
   DISPATCH_PERMISSIONS.POST_BILTY_GRPO,
-  GRPO_PERMISSIONS.VIEW_PENDING,
-  GRPO_PERMISSIONS.PREVIEW,
-  GRPO_PERMISSIONS.POST,
-  GRPO_PERMISSIONS.VIEW_HISTORY,
-  GRPO_PERMISSIONS.VIEW_POSTING,
 ] as const;
 
 function RedirectWithSearch({ to }: { to: string }) {
