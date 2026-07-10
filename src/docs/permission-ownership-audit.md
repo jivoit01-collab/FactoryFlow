@@ -100,7 +100,7 @@ The production→warehouse/gate/dashboards/QC fix exposed a recurring bug class:
 | gate_core | ⚠️ Mixed (**B6**) | job-work (our fix) + sales-dispatch-lock enforced; most gate-entry views open — large surface, own sub-audit |
 | docking_admin | ⚠️ Partial (**B3**) | approve/review use `HasRequiredDjangoPermission`; list/view open |
 | maintenance | ⚠️ Partial | some `CanViewMaintenanceModule`; verify per-endpoint |
-| notifications | ❌ Open (**B2**) | views `[IsAuthenticated]` only; confirm SEND requires `can_send_notification` |
+| notifications | ✅ Enforced | send endpoints use `CanSendNotification`/`CanSendBulkNotification` ([notifications/views.py:327,374,405](../../../../factory_app/notifications/views.py)); the `[IsAuthenticated]`-only views are self-scoped (own devices/list/mark-read/prefs) — correctly open. **B2 was a false alarm.** |
 | barcode | ❌ Open (**B1**) | **every** view `[IsAuthenticated, HasCompanyContext]`; ~12 gated frontend perms unenforced |
 | marketplace | ✅ Enforced | `MpBaseView.get_permissions()` applies `read_perms`/`write_perms` → `marketplace.*` classes ([marketplace/permissions.py](../../../../factory_app/marketplace/permissions.py)) |
 
@@ -131,7 +131,7 @@ A page the user can access calls another module's **enforced** API without holdi
 1. **B1 — barcode backend enforcement (High).** ~50 endpoints open; add permission classes mapping to the existing `barcode.*` perms the frontend already gates on. Largest authorization gap.
 2. **A5 — gate leaks to barcode users (Medium).** Remove `barcode.can_view_barcode_dispatch_reports` from `GATE_NAVIGATION_PERMISSIONS`; relocate the report.
 3. **R1 — BST Gate reachability (Medium).** Ensure the 6 BST-Gate users can reach `/gate/bst-out` (add a `can_gate_bst`-gated nav entry, or confirm existing reachability).
-4. **B2 — notifications SEND (Medium).** Enforce `can_send_notification`/`can_send_bulk_notification` on the send endpoints; add `HasCompanyContext`.
+4. ~~**B2 — notifications SEND.**~~ **Resolved on verification — send endpoints already enforce `CanSendNotification`/`CanSendBulkNotification`; not a gap.**
 5. **B6 — gate_core enforcement sub-audit (Medium).** Many gate-entry write endpoints are open; scope a dedicated pass (mirrors the job-work fix).
 6. **A7 / A6 — dispatch & gate aggregation (Low, decision).** Confirm whether Service-GRPO / Docking / returnable-gate audiences should see the whole Dispatch/Gate module, or be split out.
 7. **C1 — RunDetail maintenance-assets 403 (High, confirmed).** Delete the redundant `useMaintenanceAssets` client fetch + mandatory asset selection; the breakdown-create backend already resolves machine→asset server-side. Frontend-only, no new perms.
