@@ -185,6 +185,10 @@ const GATE_NAVIGATION_PERMISSIONS = Array.from(
   new Set([
     ...GATE_DASHBOARD_ACCESS_PERMISSIONS,
     ...GATE_ENTRY_CREATE_PERMISSIONS,
+    // BST gate-out is a gate-stage function (the permission lives in the warehouse
+    // app for model cohesion). Include it so the dedicated "BST Gate" role
+    // (warehouse.can_gate_bst) can see the Gate module and reach its BST Out page.
+    GATE_PERMISSIONS.BST_OUT.VIEW,
     // NOTE: barcode.can_view_barcode_dispatch_reports intentionally NOT included
     // here — it would surface the whole Gate module to barcode-only users. The
     // report stays reachable via the Barcode module (/barcode/dispatch/reports)
@@ -1050,6 +1054,11 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/arrivals',
           title: 'Cross-Company Arrivals',
           permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
+        },
+        {
+          path: '/gate/bst-out',
+          title: 'BST Out',
+          permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
         },
         {
           path: '/gate/sales-dispatch/barcode-reports',
