@@ -199,12 +199,11 @@ export const qcModuleConfig: ModuleConfig = {
       title: 'Quality Control',
       icon: FlaskConical,
       showInSidebar: true,
-      permissions: [
-        QC_PERMISSIONS.INSPECTION.VIEW,
-        QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
-        QC_PERMISSIONS.PRODUCTION_QC.VIEW,
-        ...lineClearanceQCPermissions,
-      ],
+      // Gate the QC module on inspection/arrival-slip permissions only. Production
+      // QC + line-clearance QC are omitted here so the QC module does not appear
+      // for production users (who hold those perms for in-run QC); QC-team members
+      // reach those pages via the children below.
+      permissions: [QC_PERMISSIONS.INSPECTION.VIEW, QC_PERMISSIONS.ARRIVAL_SLIP.VIEW],
       hasSubmenu: true,
       children: [
         {

@@ -287,11 +287,11 @@ export const GATE_PERMISSIONS = {
   // ============================================
   JOB_WORK: {
     /** View job-work gate entries */
-    VIEW: 'production_execution.view_productionrun',
+    VIEW: 'gate_core.can_view_job_work',
     /** Create job-work gate entries */
-    CREATE: 'production_execution.add_productionrun',
+    CREATE: 'gate_core.can_create_job_work',
     /** Complete job-work gate entries */
-    COMPLETE: 'production_execution.add_productionrun',
+    COMPLETE: 'gate_core.can_complete_job_work',
   },
 } as const;
 

@@ -122,7 +122,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
         DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
         DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
-        DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
+        // Production Movement intentionally omitted from the module gate so the
+        // Dashboards module doesn't appear for production-only users; it is
+        // surfaced under the Production module instead (still route-accessible here).
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       ],

@@ -280,6 +280,13 @@ export const productionModuleConfig: ModuleConfig = {
           permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
         },
         {
+          // Production Movement report — route lives in the Dashboards module but
+          // is surfaced here so production users reach it without the Dashboards nav.
+          path: '/dashboards/production-movement',
+          title: 'Production Movement',
+          permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+        },
+        {
           path: '/production/execution/line-management',
           title: 'Line Management',
           permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
