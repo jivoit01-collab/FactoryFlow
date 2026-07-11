@@ -10,7 +10,6 @@ import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
 import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
-import { grpoModuleConfig } from '@/modules/grpo/module.config';
 import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
@@ -36,7 +35,6 @@ export const moduleRegistry: ModuleConfig[] = [
   labourModuleConfig,
   vehicleManagementModuleConfig,
   qcModuleConfig,
-  grpoModuleConfig,
   productionModuleConfig,
   maintenanceModuleConfig,
   warehouseModuleConfig,

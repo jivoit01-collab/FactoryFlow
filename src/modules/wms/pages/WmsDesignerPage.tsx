@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { WarehouseSelect } from '@/modules/grpo/components';
+import { WarehouseSelect } from '@/modules/warehouse/grpo/components';
 import {
   Button,
   Card,

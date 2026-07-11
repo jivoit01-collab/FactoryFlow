@@ -1,4 +1,4 @@
-import type { AttachmentStatus } from '@/modules/grpo/types';
+import type { AttachmentStatus } from '@/modules/warehouse/grpo/types';
 
 export type TransporterAPInvoiceStatus = 'PENDING' | 'POSTED' | 'FAILED' | 'CANCELLED';
 

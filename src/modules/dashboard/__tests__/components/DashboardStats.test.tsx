@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 // ═══════════════════════════════════════════════════════════════
 // DashboardStats — File Content & Logic Verification
 // (Direct import hangs due to deep transitive dependency chains
-// through @/core/auth and @/app/modules barrels. Same approach
+// through @/core/auth and @/app/registry barrels. Same approach
 // as shared/__tests__/exports.test.ts and module.config.test.tsx.)
 // ═══════════════════════════════════════════════════════════════
 
@@ -44,10 +44,10 @@ describe('DashboardStats', () => {
     expect(content).toContain("'@/core/auth'");
   });
 
-  it('imports getAllNavigation from @/app/modules', () => {
+  it('imports getAllNavigation from @/app/registry', () => {
     const content = readDashboardStats();
     expect(content).toContain('getAllNavigation');
-    expect(content).toContain("'@/app/modules'");
+    expect(content).toContain("'@/app/registry'");
   });
 
   it('imports Card components from @/shared/components/ui', () => {
@@ -126,12 +126,6 @@ describe('DashboardStats', () => {
     const content = readDashboardStats();
     expect(content).toContain("'/qc'");
     expect(content).toContain('Inspections, approvals, and master data management');
-  });
-
-  it('has hardcoded description for /grpo path', () => {
-    const content = readDashboardStats();
-    expect(content).toContain("'/grpo'");
-    expect(content).toContain('Goods receipt and purchase order posting');
   });
 
   it('falls back to module title when path has no hardcoded description', () => {

@@ -1,173 +1,94 @@
-import {
-  AlertTriangle,
-  ArrowLeftRight,
-  ArrowRight,
-  ClipboardList,
-  Clock,
-  PackageCheck,
-  Truck,
-} from 'lucide-react';
+import { ArrowLeftRight, Boxes, ClipboardList, PackageCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import { GRPO_PERMISSIONS, WAREHOUSE_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Card, CardContent } from '@/shared/components/ui';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
 
-import { useBOMRequests, useBSTIncoming, useBSTTransfers, useFGReceipts } from '../api';
-
-const BST_TERMINAL = ['RECEIVED', 'PARTIALLY_RECEIVED', 'CLOSED', 'CANCELLED'];
+/**
+ * Warehouse landing sections — one card per child of the "Warehouse" sidebar group.
+ * Each card is shown only when the user holds its permission; the dashboard itself is
+ * reachable by everyone (see the `/warehouse` route in module.config).
+ */
+const WAREHOUSE_SECTIONS = [
+  {
+    title: 'BOM Requests',
+    description: 'Review and approve material requests from production',
+    icon: ClipboardList,
+    path: '/warehouse/bom-requests',
+    permission: WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
+  },
+  {
+    title: 'FG Receipts',
+    description: 'Receive finished goods and post them to SAP',
+    icon: PackageCheck,
+    path: '/warehouse/fg-receipts',
+    permission: WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
+  },
+  {
+    title: 'Branch Transfer',
+    description: 'Create and receive branch stock transfers',
+    icon: ArrowLeftRight,
+    path: '/warehouse/bst',
+    permission: WAREHOUSE_PERMISSIONS.VIEW_BST,
+  },
+  {
+    title: 'Material GRPO',
+    description: 'Post goods receipts against purchase orders',
+    icon: Boxes,
+    path: '/warehouse/grpo/material',
+    permission: GRPO_PERMISSIONS.VIEW_PENDING,
+  },
+] as const;
 
 export default function WarehouseDashboardPage() {
   const navigate = useNavigate();
-  const { data: pendingBOM = [] } = useBOMRequests('PENDING');
-  const { data: allBOM = [] } = useBOMRequests();
-  const { data: pendingFG = [] } = useFGReceipts('PENDING');
-  const { data: receivedFG = [] } = useFGReceipts('RECEIVED');
-  const { data: outgoingBST = [] } = useBSTTransfers();
-  const { data: incomingBST = [] } = useBSTIncoming();
+  const { hasPermission, permissionsLoaded } = usePermission();
 
-  const activeBST = outgoingBST.filter((t) => !BST_TERMINAL.includes(t.status));
+  if (!permissionsLoaded) return null;
 
-  const cards = [
-    {
-      title: 'Pending BOM Requests',
-      value: pendingBOM.length,
-      icon: Clock,
-      color: 'text-amber-600 bg-amber-50',
-      path: '/warehouse/bom-requests?status=PENDING',
-    },
-    {
-      title: 'Total BOM Requests',
-      value: allBOM.length,
-      icon: ClipboardList,
-      color: 'text-blue-600 bg-blue-50',
-      path: '/warehouse/bom-requests',
-    },
-    {
-      title: 'FG Pending Receipt',
-      value: pendingFG.length,
-      icon: AlertTriangle,
-      color: 'text-orange-600 bg-orange-50',
-      path: '/warehouse/fg-receipts?status=PENDING',
-    },
-    {
-      title: 'FG Ready for SAP',
-      value: receivedFG.length,
-      icon: PackageCheck,
-      color: 'text-green-600 bg-green-50',
-      path: '/warehouse/fg-receipts?status=RECEIVED',
-    },
-    {
-      title: 'Branch Transfers (active)',
-      value: activeBST.length,
-      icon: ArrowLeftRight,
-      color: 'text-indigo-600 bg-indigo-50',
-      path: '/warehouse/bst',
-    },
-    {
-      title: 'Incoming to Receive',
-      value: incomingBST.length,
-      icon: Truck,
-      color: 'text-teal-600 bg-teal-50',
-      path: '/warehouse/bst?tab=incoming',
-    },
-  ];
+  const sections = WAREHOUSE_SECTIONS.filter((section) => hasPermission(section.permission));
 
   return (
     <div className="space-y-6">
       <DashboardHeader
         title="Warehouse"
-        subtitle="Material requests, stock management, finished goods, and branch transfers"
+        description="Material requests, finished goods, branch transfers, and goods receipts"
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <Card
-              key={card.title}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate(card.path)}
-            >
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${card.color}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{card.value}</p>
-                  <p className="text-xs text-muted-foreground">{card.title}</p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Incoming branch transfers awaiting receipt */}
-      {incomingBST.length > 0 && (
+      {sections.length === 0 ? (
         <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Truck className="h-4 w-4 text-teal-600" />
-              Incoming Branch Transfers
-            </h3>
-            <div className="space-y-2">
-              {incomingBST.slice(0, 5).map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between p-2 bg-muted/50 rounded cursor-pointer hover:bg-muted"
-                  onClick={() => navigate(`/warehouse/bst/incoming/${t.id}`)}
-                >
-                  <div>
-                    <p className="text-sm font-medium">{t.entry_no}</p>
-                    <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                      {t.sap_from_warehouse || '—'}
-                      <ArrowRight className="h-3 w-3" />
-                      {t.sap_to_warehouse || '—'}
-                      {t.sap_doc_num ? ` · SAP #${t.sap_doc_num}` : ''}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {t.scanned_box_count} box{t.scanned_box_count === 1 ? '' : 'es'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
+          <CardHeader>
+            <CardTitle className="text-lg">No warehouse sections available</CardTitle>
+            <CardDescription>
+              You have no warehouse sections available. Contact an administrator if you need access.
+            </CardDescription>
+          </CardHeader>
         </Card>
-      )}
-
-      {/* Pending BOM approvals */}
-      {pendingBOM.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-600" />
-              Pending Approvals
-            </h3>
-            <div className="space-y-2">
-              {pendingBOM.slice(0, 5).map((req) => (
-                <div
-                  key={req.id}
-                  className="flex items-center justify-between p-2 bg-muted/50 rounded cursor-pointer hover:bg-muted"
-                  onClick={() => navigate(`/warehouse/bom-requests/${req.id}`)}
-                >
-                  <div>
-                    <p className="text-sm font-medium">
-                      BOM #{req.id} — Run #{req.run_number}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {req.product} &middot; Qty: {req.required_qty} &middot; {req.lines_count}{' '}
-                      materials
-                    </p>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {sections.map((section) => {
+            const Icon = section.icon;
+            return (
+              <Card
+                key={section.path}
+                className="cursor-pointer transition-colors hover:bg-accent"
+                onClick={() => navigate(section.path)}
+              >
+                <CardHeader className="flex flex-row items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <Icon className="h-6 w-6 text-primary" />
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {req.requested_by_name}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                  <div>
+                    <CardTitle className="text-lg">{section.title}</CardTitle>
+                    <CardDescription>{section.description}</CardDescription>
+                  </div>
+                </CardHeader>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );

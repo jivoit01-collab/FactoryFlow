@@ -16,15 +16,15 @@ const InsideVehicleManagerPage = lazy(
   () => import('@/modules/vehicle-management/pages/InsideVehicleManagerPage'),
 );
 const ServiceGRPODashboardPage = lazy(
-  () => import('@/modules/grpo/pages/ServiceGRPODashboardPage'),
+  () => import('@/modules/warehouse/grpo/pages/ServiceGRPODashboardPage'),
 );
 const ServicePendingEntriesPage = lazy(
-  () => import('@/modules/grpo/pages/ServicePendingEntriesPage'),
+  () => import('@/modules/warehouse/grpo/pages/ServicePendingEntriesPage'),
 );
-const ServiceGRPOPreviewPage = lazy(() => import('@/modules/grpo/pages/ServiceGRPOPreviewPage'));
-const ServiceGRPOHistoryPage = lazy(() => import('@/modules/grpo/pages/ServiceGRPOHistoryPage'));
+const ServiceGRPOPreviewPage = lazy(() => import('@/modules/warehouse/grpo/pages/ServiceGRPOPreviewPage'));
+const ServiceGRPOHistoryPage = lazy(() => import('@/modules/warehouse/grpo/pages/ServiceGRPOHistoryPage'));
 const ServiceGRPOHistoryDetailPage = lazy(
-  () => import('@/modules/grpo/pages/ServiceGRPOHistoryDetailPage'),
+  () => import('@/modules/warehouse/grpo/pages/ServiceGRPOHistoryDetailPage'),
 );
 const OpenBiltiesPage = lazy(() => import('./pages/OpenBiltiesPage'));
 const TransporterInvoicesPage = lazy(() => import('./pages/TransporterInvoicesPage'));

@@ -1,8 +1,10 @@
 import { LayoutDashboard,Warehouse } from 'lucide-react';
 import { lazy } from 'react';
 
-import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
+import { GRPO_PERMISSIONS,WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
+
+import { grpoNavChildren, grpoRoutes } from './grpo/module.config';
 
 const WarehouseDashboardPage = lazy(() => import('./pages/WarehouseDashboardPage'));
 const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
@@ -30,10 +32,11 @@ export const warehouseModuleConfig: ModuleConfig = {
   name: 'warehouse',
   routes: [
     {
+      // Warehouse landing dashboard — reachable by every authenticated user. The cards
+      // inside filter by permission, so a user only sees the sections they can access.
       path: '/warehouse',
       element: <WarehouseDashboardPage />,
       layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
     },
     {
       path: '/warehouse/bom-requests',
@@ -133,6 +136,8 @@ export const warehouseModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
     },
+    // GRPO submodule routes (/warehouse/grpo/*, plus legacy /grpo/* redirect)
+    ...grpoRoutes,
   ],
   navigation: [
     {
@@ -141,8 +146,15 @@ export const warehouseModuleConfig: ModuleConfig = {
       icon: Warehouse,
       showInSidebar: true,
       // Any of these shows the Warehouse group; the children filter individually,
-      // so a BST-only user sees the group with just "Branch Transfer".
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST, WAREHOUSE_PERMISSIONS.VIEW_BST],
+      // so an FG-only user sees the group with just "FG Receipts", a BST-only user
+      // with just "Branch Transfer", and a GRPO-only user with just "Material GRPO".
+      // Keep this list in sync with the union of the children's permissions below.
+      permissions: [
+        WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
+        WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
+        WAREHOUSE_PERMISSIONS.VIEW_BST,
+        GRPO_PERMISSIONS.VIEW_PENDING,
+      ],
       hasSubmenu: true,
       children: [
         {
@@ -160,6 +172,8 @@ export const warehouseModuleConfig: ModuleConfig = {
           title: 'Branch Transfer',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
         },
+        // GRPO submodule — nested under the Warehouse group
+        ...grpoNavChildren,
       ],
     },
     {

@@ -10,7 +10,6 @@ const descriptions: Record<string, string> = {
   '/gate':
     'Manage gate entries for raw materials, daily needs, maintenance, construction, and visitors',
   '/qc': 'Inspections, approvals, and master data management',
-  '/grpo': 'Goods receipt and purchase order posting',
   '/production': 'Production execution, line clearance, waste, and reports',
   '/barcode': 'Pallets, boxes, labels, scanning, and dispatch barcode operations',
 };

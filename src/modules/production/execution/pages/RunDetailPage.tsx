@@ -18,10 +18,10 @@ import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { useWarehouses } from '@/modules/grpo/api';
-import type { Warehouse as SAPWarehouse } from '@/modules/grpo/types';
 import { useProductionQCRunSessions, useRequestFinalProductionQC } from '@/modules/qc/api/productionQC';
 import { useCreateBOMRequest, useCreateFGReceipt, useFGReceipts } from '@/modules/warehouse/api';
+import { useWarehouses } from '@/modules/warehouse/grpo/api';
+import type { Warehouse as SAPWarehouse } from '@/modules/warehouse/grpo/types';
 import type { FGReceipt } from '@/modules/warehouse/types';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {

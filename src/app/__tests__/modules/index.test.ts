@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
-// Module Registry (src/app/modules/index.ts) — File Content Verification
+// Module Registry (src/app/registry/index.ts) — File Content Verification
 //
-// Imports all 6 module configs (each imports lucide-react icons,
+// Imports every module config (each imports lucide-react icons,
 // lazy-loaded pages, etc.), so direct import would hang.
 // ═══════════════════════════════════════════════════════════════
 
 function readSource(): string {
   const { readFileSync } = require('node:fs');
   const { resolve } = require('node:path');
-  return readFileSync(resolve(process.cwd(), 'src/app/modules/index.ts'), 'utf-8');
+  return readFileSync(resolve(process.cwd(), 'src/app/registry/index.ts'), 'utf-8');
 }
 
 describe('Module Registry', () => {
@@ -61,10 +61,16 @@ describe('Module Registry', () => {
     );
   });
 
-  it('imports grpoModuleConfig from @/modules/grpo/module.config', () => {
+  it('does not register grpo as a top-level module (now a Warehouse submodule)', () => {
+    const content = readSource();
+    expect(content).not.toContain('grpoModuleConfig');
+    expect(content).not.toContain("@/modules/grpo/module.config");
+  });
+
+  it('imports warehouseModuleConfig from @/modules/warehouse/module.config', () => {
     const content = readSource();
     expect(content).toMatch(
-      /import\s*\{[^}]*grpoModuleConfig[^}]*\}\s*from\s*['"]@\/modules\/grpo\/module\.config['"]/,
+      /import\s*\{[^}]*warehouseModuleConfig[^}]*\}\s*from\s*['"]@\/modules\/warehouse\/module\.config['"]/,
     );
   });
 
@@ -82,7 +88,7 @@ describe('Module Registry', () => {
     expect(content).toMatch(/export\s+const\s+moduleRegistry:\s*ModuleConfig\[\]/);
   });
 
-  it('registry contains all 6 modules in correct order', () => {
+  it('registry lists core modules in the expected relative order', () => {
     const content = readSource();
     const registryMatch = content.match(/moduleRegistry:\s*ModuleConfig\[\]\s*=\s*\[([\s\S]*?)\]/);
     expect(registryMatch).not.toBeNull();
@@ -93,15 +99,15 @@ describe('Module Registry', () => {
     const dashIdx = registryContent.indexOf('dashboardModuleConfig');
     const gateIdx = registryContent.indexOf('gateModuleConfig');
     const qcIdx = registryContent.indexOf('qcModuleConfig');
-    const grpoIdx = registryContent.indexOf('grpoModuleConfig');
+    const warehouseIdx = registryContent.indexOf('warehouseModuleConfig');
     const notiIdx = registryContent.indexOf('notificationsModuleConfig');
 
     expect(authIdx).toBeGreaterThan(-1);
     expect(dashIdx).toBeGreaterThan(authIdx);
     expect(gateIdx).toBeGreaterThan(dashIdx);
     expect(qcIdx).toBeGreaterThan(gateIdx);
-    expect(grpoIdx).toBeGreaterThan(qcIdx);
-    expect(notiIdx).toBeGreaterThan(grpoIdx);
+    expect(warehouseIdx).toBeGreaterThan(qcIdx);
+    expect(notiIdx).toBeGreaterThan(warehouseIdx);
   });
 
   // ─── getAllRoutes ───────────────────────────────────────

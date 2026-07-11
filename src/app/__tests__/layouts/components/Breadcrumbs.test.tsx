@@ -98,10 +98,10 @@ describe('Breadcrumbs', () => {
     expect(content).toContain("'/qc/pending'");
   });
 
-  it('redirects /grpo/preview to /grpo/pending', () => {
+  it('redirects the GRPO preview breadcrumb to the pending list', () => {
     const content = readSource();
-    expect(content).toContain("path === '/grpo/preview'");
-    expect(content).toContain("'/grpo/pending'");
+    expect(content).toContain("path === '/warehouse/grpo/material/preview'");
+    expect(content).toContain("'/warehouse/grpo/material/pending'");
   });
 
   // ─── Overflow Collapsing ──────────────────────────────────

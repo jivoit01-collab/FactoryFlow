@@ -33,7 +33,7 @@ export interface SummaryCardProps {
  *   title="Pending GRPO"
  *   value={25}
  *   icon={PackageCheck}
- *   onClick={() => navigate('/grpo/pending')}
+ *   onClick={() => navigate('/warehouse/grpo/material/pending')}
  *   details={[
  *     { label: 'Total POs', value: 45 },
  *     { label: 'Entries', value: 12 },
