@@ -32,7 +32,10 @@ function tableFor(name: string) {
   return table;
 }
 function parse(url: string) {
-  const parts = url.split('/').filter(Boolean); // ['wms', collection, tail?]
+  // Route by path only; a query string (e.g. ?warehouseId=) is a filter, not a
+  // record id — same as the real backend.
+  const path = url.split('?')[0]!;
+  const parts = path.split('/').filter(Boolean); // ['wms', collection, tail?]
   return { collection: parts[1], tail: parts[2] as string | undefined };
 }
 

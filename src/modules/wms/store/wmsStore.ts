@@ -54,6 +54,15 @@ class WmsStore {
   private inFlight = new Map<WmsCollection, Promise<unknown[]>>();
   private listeners = new Set<Listener>();
 
+  // Warehouse-scoped caches (keyed by ``collection::warehouseId``). A warehouse
+  // screen only needs its own warehouse's rows, so it loads a scoped slice instead
+  // of the whole company's collection (Jivo Oil had 5,197 locations across 3
+  // warehouses). Parallel to the global cache above; the same subscribe/emit drives
+  // both, so ``useSyncExternalStore`` consumers of either re-render on any change.
+  private scopedCache = new Map<string, unknown[]>();
+  private scopedLoaded = new Set<string>();
+  private scopedInFlight = new Map<string, Promise<unknown[]>>();
+
   private adapter(): WmsStorageAdapter {
     return getActiveWmsAdapter();
   }
@@ -108,6 +117,64 @@ class WmsStore {
     });
     this.inFlight.set(collection, promise as Promise<unknown[]>);
     return promise;
+  }
+
+  // -- warehouse-scoped loading ---------------------------------------------
+
+  private scopedKey(collection: WmsCollection, warehouseId: WmsId): string {
+    return `${collection}::${warehouseId}`;
+  }
+
+  isLoadedScoped(collection: WmsCollection, warehouseId: WmsId): boolean {
+    return this.scopedLoaded.has(this.scopedKey(collection, warehouseId));
+  }
+
+  /** Cached rows for a collection scoped to one warehouse (stable reference). */
+  getScopedSnapshot<K extends WmsCollection>(
+    collection: K,
+    warehouseId: WmsId,
+  ): WmsCollectionMap[K][] {
+    return (
+      (this.scopedCache.get(this.scopedKey(collection, warehouseId)) as
+        | WmsCollectionMap[K][]
+        | undefined) ?? (EMPTY as unknown as WmsCollectionMap[K][])
+    );
+  }
+
+  /** Force a warehouse-scoped reload from the adapter (the backend filters by id). */
+  async loadScoped<K extends WmsCollection>(
+    collection: K,
+    warehouseId: WmsId,
+  ): Promise<WmsCollectionMap[K][]> {
+    const records = await this.adapter().list(collection, { warehouseId });
+    const key = this.scopedKey(collection, warehouseId);
+    this.scopedCache.set(key, records);
+    this.scopedLoaded.add(key);
+    this.emit();
+    return records;
+  }
+
+  /** Load a warehouse-scoped collection once; concurrent callers share the load. */
+  ensureLoadedScoped<K extends WmsCollection>(
+    collection: K,
+    warehouseId: WmsId,
+  ): Promise<WmsCollectionMap[K][]> {
+    const key = this.scopedKey(collection, warehouseId);
+    if (this.scopedLoaded.has(key)) {
+      return Promise.resolve(this.getScopedSnapshot(collection, warehouseId));
+    }
+    const existing = this.scopedInFlight.get(key);
+    if (existing) return existing as Promise<WmsCollectionMap[K][]>;
+    const promise = this.loadScoped(collection, warehouseId).finally(() => {
+      this.scopedInFlight.delete(key);
+    });
+    this.scopedInFlight.set(key, promise as Promise<unknown[]>);
+    return promise;
+  }
+
+  /** Mark a global collection stale so its next consumer refetches (no eager load). */
+  private invalidateGlobal(collection: WmsCollection): void {
+    this.loaded.delete(collection);
   }
 
   // -- CRUD (delegates to the adapter, then refreshes the cache) -------------
@@ -225,26 +292,18 @@ class WmsStore {
     const adapter = this.adapter();
     const id = bundle.warehouse.id;
 
-    // Current persisted state for this warehouse (from the cache — no network).
+    // Current persisted state for THIS warehouse only — scoped fetches, so the diff
+    // never pulls the whole company's zones/purposes/locations.
     await Promise.all([
       this.ensureLoaded('warehouses'),
-      this.ensureLoaded('zones'),
-      this.ensureLoaded('cellPurposes'),
-      this.ensureLoaded('locations'),
+      this.ensureLoadedScoped('zones', id),
+      this.ensureLoadedScoped('cellPurposes', id),
+      this.ensureLoadedScoped('locations', id),
     ]);
     const prevWarehouse = this.getSnapshot('warehouses').find((w) => w.id === id) ?? null;
-    const zoneDiff = diffById(
-      this.getSnapshot('zones').filter((z) => z.warehouseId === id),
-      bundle.zones,
-    );
-    const purposeDiff = diffById(
-      this.getSnapshot('cellPurposes').filter((p) => p.warehouseId === id),
-      bundle.purposes,
-    );
-    const locationDiff = diffById(
-      this.getSnapshot('locations').filter((l) => l.warehouseId === id),
-      bundle.locations,
-    );
+    const zoneDiff = diffById(this.getScopedSnapshot('zones', id), bundle.zones);
+    const purposeDiff = diffById(this.getScopedSnapshot('cellPurposes', id), bundle.purposes);
+    const locationDiff = diffById(this.getScopedSnapshot('locations', id), bundle.locations);
     const warehouseChanged =
       !prevWarehouse || JSON.stringify(prevWarehouse) !== JSON.stringify(bundle.warehouse);
 
@@ -261,12 +320,23 @@ class WmsStore {
     for (const removedId of locationDiff.removedIds) writes.push(adapter.remove('locations', removedId));
     await Promise.all(writes);
 
-    // Refresh only the collections we changed.
+    // Refresh only what changed: the warehouse-scoped caches (so the editor/map
+    // re-render), and mark the matching global caches stale so other screens
+    // refetch fresh on their next mount instead of paying a full reload here.
     const reloads: Promise<unknown>[] = [];
     if (warehouseChanged) reloads.push(this.load('warehouses'));
-    if (zoneDiff.upserts.length || zoneDiff.removedIds.length) reloads.push(this.load('zones'));
-    if (purposeDiff.upserts.length || purposeDiff.removedIds.length) reloads.push(this.load('cellPurposes'));
-    if (locationDiff.upserts.length || locationDiff.removedIds.length) reloads.push(this.load('locations'));
+    if (zoneDiff.upserts.length || zoneDiff.removedIds.length) {
+      reloads.push(this.loadScoped('zones', id));
+      this.invalidateGlobal('zones');
+    }
+    if (purposeDiff.upserts.length || purposeDiff.removedIds.length) {
+      reloads.push(this.loadScoped('cellPurposes', id));
+      this.invalidateGlobal('cellPurposes');
+    }
+    if (locationDiff.upserts.length || locationDiff.removedIds.length) {
+      reloads.push(this.loadScoped('locations', id));
+      this.invalidateGlobal('locations');
+    }
     await Promise.all(reloads);
   }
 
@@ -275,17 +345,13 @@ class WmsStore {
     const adapter = this.adapter();
     const warehouse = await adapter.get('warehouses', warehouseId);
     if (!warehouse) return null;
-    const [allZones, allPurposes, allLocations] = await Promise.all([
-      adapter.list('zones'),
-      adapter.list('cellPurposes'),
-      adapter.list('locations'),
+    // Scoped fetches: the backend returns only this warehouse's rows.
+    const [zones, purposes, locations] = await Promise.all([
+      adapter.list('zones', { warehouseId }),
+      adapter.list('cellPurposes', { warehouseId }),
+      adapter.list('locations', { warehouseId }),
     ]);
-    return {
-      warehouse,
-      zones: allZones.filter((zone) => zone.warehouseId === warehouseId),
-      purposes: allPurposes.filter((purpose) => purpose.warehouseId === warehouseId),
-      locations: allLocations.filter((location) => location.warehouseId === warehouseId),
-    };
+    return { warehouse, zones, purposes, locations };
   }
 
   // -- stock movement (Step 6) ----------------------------------------------

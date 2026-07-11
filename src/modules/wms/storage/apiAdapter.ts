@@ -40,8 +40,14 @@ function isNotFound(error: unknown): boolean {
 export class ApiAdapter implements WmsStorageAdapter {
   readonly kind = 'api' as const;
 
-  async list<K extends WmsCollection>(collection: K): Promise<WmsCollectionMap[K][]> {
-    const response = await apiClient.get(collectionUrl(collection));
+  async list<K extends WmsCollection>(
+    collection: K,
+    params?: { warehouseId?: WmsId },
+  ): Promise<WmsCollectionMap[K][]> {
+    const query = params?.warehouseId
+      ? `?warehouseId=${encodeURIComponent(params.warehouseId)}`
+      : '';
+    const response = await apiClient.get(`${collectionUrl(collection)}${query}`);
     return unwrapList<WmsCollectionMap[K]>(response.data);
   }
 

@@ -42,9 +42,16 @@ function notFound(): never {
   throw { response: { status: 404 } };
 }
 
-function parse(url: string): { collection: string; tail?: string } {
-  const parts = url.split('/').filter(Boolean); // ['wms', collection, tail?]
-  return { collection: parts[1], tail: parts[2] };
+function parse(url: string): { collection: string; tail?: string; warehouseId?: string } {
+  // Route by path only; a query string (e.g. ?warehouseId=) is a warehouse filter,
+  // not a record id — same as the real backend.
+  const [path = '', query = ''] = url.split('?');
+  const parts = path.split('/').filter(Boolean); // ['wms', collection, tail?]
+  return {
+    collection: parts[1],
+    tail: parts[2],
+    warehouseId: new URLSearchParams(query).get('warehouseId') ?? undefined,
+  };
 }
 
 function store(record: Doc, table: Map<string, Doc>): Doc {
@@ -55,9 +62,16 @@ function store(record: Doc, table: Map<string, Doc>): Doc {
 }
 
 async function get(url: string) {
-  const { collection, tail } = parse(url);
+  const { collection, tail, warehouseId } = parse(url);
   const table = tableFor(collection);
-  if (!tail) return { data: Array.from(table.values()) };
+  if (!tail) {
+    const rows = Array.from(table.values());
+    return {
+      data: warehouseId
+        ? rows.filter((doc) => (doc as { warehouseId?: string }).warehouseId === warehouseId)
+        : rows,
+    };
+  }
   const doc = table.get(tail);
   if (!doc) notFound();
   return { data: doc };

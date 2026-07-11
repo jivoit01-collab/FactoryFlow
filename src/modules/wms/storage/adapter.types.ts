@@ -61,7 +61,16 @@ export interface WmsStorageAdapter {
   /** Which implementation this instance is (always the backend API). */
   readonly kind: 'api';
 
-  list<K extends WmsCollection>(collection: K): Promise<WmsCollectionMap[K][]>;
+  /**
+   * List a collection. Pass ``{ warehouseId }`` to have the backend return only
+   * that warehouse's rows (locations/zones/… carry a ``warehouseId``); omit it for
+   * the full company-wide list. Server-side scoping keeps a warehouse screen from
+   * pulling every warehouse's rows.
+   */
+  list<K extends WmsCollection>(
+    collection: K,
+    params?: { warehouseId?: WmsId },
+  ): Promise<WmsCollectionMap[K][]>;
 
   get<K extends WmsCollection>(
     collection: K,

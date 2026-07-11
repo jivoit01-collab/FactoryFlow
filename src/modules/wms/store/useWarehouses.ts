@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 
 import type { CellPurpose, Warehouse, WarehouseLocation, WmsId, Zone } from '../types';
-import { useWmsCollection } from './useWmsStore';
+import { useWmsCollection, useWmsWarehouseCollection } from './useWmsStore';
 
 export function useWarehouses(): { warehouses: Warehouse[]; loading: boolean } {
   const { data, loading } = useWmsCollection('warehouses');
@@ -20,9 +20,11 @@ export interface WarehouseLayout {
 /** Everything needed to render/edit one warehouse, filtered from the caches. */
 export function useWarehouseLayout(warehouseId: WmsId | null): WarehouseLayout {
   const warehouses = useWmsCollection('warehouses');
-  const zones = useWmsCollection('zones');
-  const purposes = useWmsCollection('cellPurposes');
-  const locations = useWmsCollection('locations');
+  // Per-warehouse collections are loaded scoped to this warehouse (server-filtered)
+  // so opening one warehouse doesn't pull every warehouse's zones/purposes/locations.
+  const zones = useWmsWarehouseCollection('zones', warehouseId);
+  const purposes = useWmsWarehouseCollection('cellPurposes', warehouseId);
+  const locations = useWmsWarehouseCollection('locations', warehouseId);
 
   return useMemo(() => {
     const warehouse = warehouseId
