@@ -7,6 +7,7 @@ import {
   PackagePlus,
   Plus,
   Scale,
+  ShieldCheck,
   Trash2,
   Truck,
 } from 'lucide-react';
@@ -302,6 +303,7 @@ export default function SalesDispatchGateOutWeighmentPage() {
   const sapInvoiceWeight = parsePositiveNumber(entry.total_weight);
   const invoiceBoxes = parsePositiveNumber(entry.total_boxes);
   const scanSkipApproved = Boolean(entry.gatepass_readiness?.scan_skip_approved);
+  const partialScanApproved = Boolean(entry.gatepass_readiness?.partial_scan_approved);
 
   const enteredChallanWeight = toFiniteNumber(challanWeight);
   const isManualChallanWeight = enteredChallanWeight !== null && enteredChallanWeight > 0;
@@ -322,6 +324,13 @@ export default function SalesDispatchGateOutWeighmentPage() {
         totalSteps={GATE_OUT_WEIGHMENT_TOTAL_STEPS}
         title="Sales Dispatch Out"
         error={error || contextError || null}
+      />
+
+      <ScanApprovalNotice
+        scanSkipApproved={scanSkipApproved}
+        partialScanApproved={partialScanApproved}
+        scannedBoxes={scannedBoxes}
+        expectedBoxes={expectedBoxes}
       />
 
       <Card>
@@ -419,6 +428,42 @@ export default function SalesDispatchGateOutWeighmentPage() {
         isSaving={isSaving}
         nextLabel={isSaving ? 'Saving...' : 'Save and Continue to Gate Out'}
       />
+    </div>
+  );
+}
+
+// Tell the gate, before it records the gross weight and dispatches, that this vehicle is
+// leaving with an admin-approved scan waiver: a full skip ("fully approved on request" —
+// no boxes scanned) or a partial scan ("partially approved" — some boxes scanned, the
+// shortfall waived). Read from the same gatepass_readiness flags the scan gate enforces.
+function ScanApprovalNotice({
+  scanSkipApproved,
+  partialScanApproved,
+  scannedBoxes,
+  expectedBoxes,
+}: {
+  scanSkipApproved: boolean;
+  partialScanApproved: boolean;
+  scannedBoxes: number;
+  expectedBoxes: number;
+}) {
+  if (!scanSkipApproved && !partialScanApproved) return null;
+  const isFullSkip = scanSkipApproved && scannedBoxes === 0;
+  return (
+    <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
+      <div className="space-y-0.5">
+        <p className="font-medium">
+          {isFullSkip ? 'Box scan waived — approved' : 'Partial dispatch — approved'}
+        </p>
+        <p className="text-sm">
+          {isFullSkip
+            ? 'This vehicle is dispatching without box scanning, approved by admin on request. No boxes were scanned for this load.'
+            : `This vehicle is dispatching with a partial box scan${
+                expectedBoxes > 0 ? ` (${scannedBoxes} of ${formatNumber(expectedBoxes)} boxes)` : ''
+              }, approved by admin on request.`}
+        </p>
+      </div>
     </div>
   );
 }
