@@ -12,14 +12,16 @@ import {
   useRemoveLabourIn,
   useUpdateLabourIn,
 } from '../../api/labourGate/labourGate.queries';
+import type { LabourShift } from '../../api/labourGate/labourGate.api';
 import type { Contractor } from '../../api/personGateIn/personGateIn.api';
 import { useContractors } from '../../api/personGateIn/personGateIn.queries';
 import { CreateContractorDialog } from '../../components/CreateContractorDialog';
-import { ProgressBar, SummaryStat } from './labourShared';
-import { pctOf, todayLocal } from './labourUtils';
+import { ProgressBar, ShiftToggle, SummaryStat } from './labourShared';
+import { defaultShift, pctOf, todayLocal } from './labourUtils';
 
 export default function GateLabourInPage() {
   const [workDate, setWorkDate] = useState<string>(todayLocal());
+  const [shift, setShift] = useState<LabourShift>(defaultShift());
   const [contractor, setContractor] = useState<Contractor | null>(null);
   const [addCount, setAddCount] = useState('');
   const [editCounts, setEditCounts] = useState<Record<number, string>>({});
@@ -35,10 +37,10 @@ export default function GateLabourInPage() {
 
   const activeContractors = useMemo(() => contractors.filter((c) => c.is_active), [contractors]);
 
-  // Gate Labour In owns the department-less rows.
+  // Gate Labour In owns the department-less rows, scoped to the selected shift.
   const entries = useMemo(
-    () => allEntries.filter((e) => e.department == null && !e.is_deleted),
-    [allEntries],
+    () => allEntries.filter((e) => e.department == null && !e.is_deleted && e.shift === shift),
+    [allEntries, shift],
   );
 
   const totalIn = useMemo(() => entries.reduce((s, e) => s + e.count_in, 0), [entries]);
@@ -56,7 +58,12 @@ export default function GateLabourInPage() {
       return;
     }
     try {
-      await recordIn.mutateAsync({ contractor: contractor.id, work_date: workDate, count_in: n });
+      await recordIn.mutateAsync({
+        contractor: contractor.id,
+        work_date: workDate,
+        shift,
+        count_in: n,
+      });
       toast.success(`${contractor.contractor_name}: ${n} in`);
       setContractor(null);
       setAddCount('');
@@ -107,15 +114,23 @@ export default function GateLabourInPage() {
             leave.
           </p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="workDate">Date</Label>
-          <Input
-            id="workDate"
-            type="date"
-            value={workDate}
-            onChange={(e) => setWorkDate(e.target.value)}
-            className="border-2 font-medium sm:w-44"
-          />
+        <div className="flex items-end gap-4">
+          <div className="space-y-2">
+            <Label>Shift</Label>
+            <div>
+              <ShiftToggle value={shift} onChange={setShift} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="workDate">Date</Label>
+            <Input
+              id="workDate"
+              type="date"
+              value={workDate}
+              onChange={(e) => setWorkDate(e.target.value)}
+              className="border-2 font-medium sm:w-44"
+            />
+          </div>
         </div>
       </div>
 

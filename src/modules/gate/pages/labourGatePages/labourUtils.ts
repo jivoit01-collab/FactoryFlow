@@ -23,3 +23,9 @@ export function pctOf(part: number, whole: number): number {
   if (whole <= 0) return 0;
   return Math.min(100, Math.max(0, Math.round((part / whole) * 100)));
 }
+
+/** Sensible default shift for the forms: Day from 06:00–17:59, Night otherwise. */
+export function defaultShift(): 'DAY' | 'NIGHT' {
+  const hour = new Date().getHours();
+  return hour >= 6 && hour < 18 ? 'DAY' : 'NIGHT';
+}
