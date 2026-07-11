@@ -146,7 +146,6 @@ function NewWorkPermitDialog({
   const [serviceDetail, setServiceDetail] = useState('');
   const [processIso, setProcessIso] = useState(false);
   const [processDetail, setProcessDetail] = useState('');
-  const [ppe, setPpe] = useState<string[]>([]);
   const [precautions, setPrecautions] = useState<string[]>([]);
   const [workers, setWorkers] = useState<WorkerDraft[]>([{ name: '', role: '' }]);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -194,7 +193,7 @@ function NewWorkPermitDialog({
         service_isolation_detail: serviceDetail.trim(),
         process_isolation_required: processIso,
         process_isolation_detail: processDetail.trim(),
-        ppe,
+        // PPE is chosen by the Fire Department Head at approval, not by the requester.
         precautions,
         workers_input: workers
           .filter((w) => w.name.trim())
@@ -393,15 +392,6 @@ function NewWorkPermitDialog({
             ))}
           </section>
 
-          {/* PPE */}
-          <section className="space-y-2">
-            <Label>PPE to be used</Label>
-            <CheckboxGrid
-              options={PPE_OPTIONS}
-              selected={ppe}
-              onToggle={(value) => setPpe((current) => toggle(current, value))}
-            />
-          </section>
 
           {/* Precautions — searchable multi-select ("omni search") across all groups. */}
           <section className="space-y-2">
@@ -574,6 +564,7 @@ function WorkPermitDetailDialog({
   const deleteAttachment = useDeleteWorkPermitAttachment();
 
   const [approvalRemarks, setApprovalRemarks] = useState('');
+  const [approvalPpe, setApprovalPpe] = useState<string[]>([]);
   const [attachmentTitle, setAttachmentTitle] = useState('');
 
   const permit = permitQuery.data;
@@ -795,9 +786,17 @@ function WorkPermitDetailDialog({
                 </Button>
               )}
 
-              {/* 2. Fire Department Head approves */}
+              {/* 2. Fire Department Head sets the required PPE and approves */}
               {permit.status === 'SUBMITTED' && canApprove && (
-                <div className="space-y-2">
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">PPE to be used (set by Fire Department)</Label>
+                    <CheckboxGrid
+                      options={PPE_OPTIONS}
+                      selected={approvalPpe}
+                      onToggle={(value) => setApprovalPpe((current) => toggle(current, value))}
+                    />
+                  </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Approval remarks (optional)</Label>
                     <Textarea
@@ -808,11 +807,16 @@ function WorkPermitDetailDialog({
                   <Button
                     type="button"
                     onClick={async () => {
+                      if (approvalPpe.length === 0) {
+                        toast.error('Select the PPE to be used before approving.');
+                        return;
+                      }
                       await approvePermit.mutateAsync({
                         permitId,
-                        payload: { remarks: approvalRemarks.trim() },
+                        payload: { remarks: approvalRemarks.trim(), ppe: approvalPpe },
                       });
                       setApprovalRemarks('');
+                      setApprovalPpe([]);
                       toast.success('Permit approved');
                     }}
                     disabled={approvePermit.isPending}
