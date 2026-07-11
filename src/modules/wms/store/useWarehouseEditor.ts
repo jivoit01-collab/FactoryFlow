@@ -58,13 +58,20 @@ export function useWarehouseEditor(warehouseId: WmsId | null): WarehouseEditor {
 
   const mutate = useCallback(
     async (transform: (current: WarehouseBundle) => WarehouseBundle) => {
-      if (!bundle) return;
+      // Never persist off a partially-loaded layout: `bundle` is assembled from
+      // four independently-loaded collections (warehouse, zones, purposes,
+      // locations) and turns non-null as soon as just the warehouse loads. If a
+      // mutation ran while a collection were still empty (mid-fetch),
+      // `replaceWarehouseBundle` would diff that empty array against the loaded
+      // cache and delete every record it thinks was "removed" — wiping the
+      // design. Waiting for a fully-loaded layout makes every diff sound.
+      if (!bundle || layout.loading) return;
       const next = transform(bundle);
       setUndoStack((stack) => [...stack, bundle].slice(-HISTORY_LIMIT));
       setRedoStack([]);
       await persist(next);
     },
-    [bundle, persist],
+    [bundle, layout.loading, persist],
   );
 
   const undo = useCallback(async () => {

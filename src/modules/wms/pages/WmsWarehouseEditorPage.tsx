@@ -103,7 +103,14 @@ export default function WmsWarehouseEditorPage() {
   // something is actually missing (so normal warehouses are untouched).
   const healedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!bundle || !warehouse || busy) return;
+    // Only ever run once the WHOLE layout (warehouses + zones + purposes +
+    // locations) has loaded. This effect is declared above the `if (loading)`
+    // render guard, so without this check it would fire on the intermediate
+    // renders while some collections are still empty (mid-fetch) — and the
+    // resulting `mutate` would persist a bundle missing those collections,
+    // making `replaceWarehouseBundle` delete every zone/purpose/location that
+    // had not loaded yet. That silently wiped freshly-designed warehouses.
+    if (loading || !bundle || !warehouse || busy) return;
     if (healedRef.current === warehouse.id) return;
     const byId = new Map(purposes.map((purpose) => [purpose.id, purpose]));
     const missing = locations.some(
@@ -112,7 +119,7 @@ export default function WmsWarehouseEditorPage() {
     if (!missing) return;
     healedRef.current = warehouse.id;
     void mutate((current) => rebuildWarehouseCodes(current));
-  }, [bundle, warehouse, busy, purposes, locations, mutate]);
+  }, [loading, bundle, warehouse, busy, purposes, locations, mutate]);
 
   const levelLocations = useMemo(
     () => locations.filter((location) => location.level === safeLevel),
