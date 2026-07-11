@@ -104,6 +104,11 @@ const UPLOAD_PANELS: UploadPanelConfig[] = [
   },
 ];
 
+// Docking statuses where box scanning is still the active gate. Only these are subject
+// to the scan-lock redirect; from GATEPASS_PRINTED onward the load has already moved
+// forward (and older loads may pre-date the stricter box count), so they stay viewable.
+const SCAN_LOCK_OPEN_STATUSES: string[] = ['DOCKED', 'PHOTO_ATTACHED', 'READY_FOR_GATEPASS'];
+
 export default function SalesDispatchAttachmentsPage() {
   const navigate = useNavigate();
   const { hasPermission } = usePermission();
@@ -159,6 +164,21 @@ export default function SalesDispatchAttachmentsPage() {
       panel.type === 'BILTY' ||
       (panel.type === 'EWAY_BILL' && ewayBillRequired),
   }));
+
+  // Hard scan-lock: an un-cleared docking load may not sit on the attachments step.
+  // If box scanning isn't complete/approved yet, bounce back to the scanning step where
+  // the operator scans or requests skip / partial-dispatch approval. Never in review mode,
+  // and only for the open pre-print statuses so already-printed loads stay viewable.
+  useEffect(() => {
+    if (!entry || isReview) return;
+    if (!SCAN_LOCK_OPEN_STATUSES.includes(entry.status)) return;
+    if (entry.gatepass_readiness?.has_box_scans === false) {
+      toast.warning(
+        'Finish box scanning — or get skip / partial-dispatch approval — before adding attachments.',
+      );
+      navigate(DOCKING_ROUTES.barcodeScan(entryId || entry.vehicle_entry), { replace: true });
+    }
+  }, [entry, isReview, entryId, navigate]);
 
   useEffect(() => {
     if (!entry) {

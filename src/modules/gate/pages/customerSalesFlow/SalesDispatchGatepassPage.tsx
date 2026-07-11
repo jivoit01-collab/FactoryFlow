@@ -99,6 +99,11 @@ interface ItemScanStats {
   uom: string;
 }
 
+// Docking statuses where box scanning is still the active gate. Only these are subject
+// to the scan-lock redirect; from GATEPASS_PRINTED onward the load has already moved
+// forward (and older loads may pre-date the stricter box count), so they stay viewable.
+const SCAN_LOCK_OPEN_STATUSES: string[] = ['DOCKED', 'PHOTO_ATTACHED', 'READY_FOR_GATEPASS'];
+
 export default function SalesDispatchGatepassPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -150,6 +155,21 @@ export default function SalesDispatchGatepassPage() {
       printFrontendGatepass();
     }, 0);
   }, [entryToPrint, pendingFrontendPrint, printFrontendGatepass]);
+
+  // Hard scan-lock (docking flow only): a load whose box scanning isn't complete/approved
+  // may not reach the gatepass step. Bounce back to scanning so the operator scans or
+  // requests skip / partial-dispatch approval. Skipped for the gate-out flows (no scan
+  // gate there), in review mode, and for loads already at/after gatepass print.
+  useEffect(() => {
+    if (isGateOutMode || isReview || !entry) return;
+    if (!SCAN_LOCK_OPEN_STATUSES.includes(entry.status)) return;
+    if (entry.gatepass_readiness?.has_box_scans === false) {
+      toast.warning(
+        'Finish box scanning — or get skip / partial-dispatch approval — before printing the gatepass.',
+      );
+      navigate(routes.barcodeScan(entryId || entry.vehicle_entry), { replace: true });
+    }
+  }, [entry, isReview, isGateOutMode, routes, entryId, navigate]);
 
   const isSaving =
     previewGatepass.isPending ||

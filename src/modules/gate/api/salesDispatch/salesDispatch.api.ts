@@ -63,6 +63,14 @@ export interface SalesDispatchGatepassReadiness {
   has_box_scans: boolean;
   /** True when an admin-approved scan-skip request satisfies the box-scan requirement. */
   scan_skip_approved?: boolean;
+  /** True when an admin-approved partial-scan request satisfies the box-scan requirement. */
+  partial_scan_approved?: boolean;
+  /** True when some (but fewer than expected) boxes are scanned — needs a partial approval. */
+  is_partial_scan?: boolean;
+  /** Boxes scanned so far on this load. */
+  scanned_boxes?: number;
+  /** Pack-size-aware expected box count (matches the scan page). */
+  expected_boxes?: number;
   /**
    * True when box scanning is optional for this entry's company (e.g. Jivo Beverages).
    * Operators can continue past the scan step and print the gatepass without scanning

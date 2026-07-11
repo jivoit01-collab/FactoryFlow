@@ -9,6 +9,7 @@ import {
   Clock3,
   Flashlight,
   Loader2,
+  Lock,
   PackageCheck,
   PackageSearch,
   Plus,
@@ -210,6 +211,27 @@ export default function SalesDispatchBarcodeScanPage() {
   const billGroups = useMemo(() => buildBillGroups(entry, scans), [entry, scans]);
   const progressPercent =
     expectedBoxes > 0 ? Math.min(100, Math.round((scans.length / expectedBoxes) * 100)) : 0;
+
+  // Hard lock on leaving the scanning step. The load may only move forward once one
+  // of three things is true: box scanning is complete, an admin approved skipping the
+  // scan entirely (zero-scan "full approval"), or an admin approved the partial scan.
+  // Companies with scanning turned off (box_scan_optional) are never gated. This is the
+  // visible half of the gate; the backend re-checks the same rule at gatepass print.
+  const scanGateSatisfied =
+    isBoxScanOptional ||
+    (scans.length > 0 && !isPartialScan) ||
+    (scans.length === 0 && isSkipApproved) ||
+    (isPartialScan && isPartialApproved);
+  const isScanLocked = !isReview && !isReadOnly && !scanGateSatisfied;
+  const scanLockMessage = !isScanLocked
+    ? ''
+    : scans.length === 0
+      ? isSkipPending
+        ? 'Locked — box-scan skip is awaiting admin approval. You can continue once it is approved.'
+        : 'Locked — scan at least one box, or request approval to skip scanning (panel above), to continue.'
+      : isPartialPending
+        ? 'Locked — partial dispatch is awaiting admin approval. You can continue once it is approved.'
+        : 'Locked — scan all boxes, or request partial dispatch approval (panel above), to continue.';
 
   // Auto-open the only bill (nothing to choose); multi-bill loads stay collapsed.
   useEffect(() => {
@@ -640,6 +662,13 @@ export default function SalesDispatchBarcodeScanPage() {
         </CardContent>
       </Card>
 
+      {scanLockMessage ? (
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{scanLockMessage}</span>
+        </div>
+      ) : null}
+
       <StepFooter
         onPrevious={() =>
           isReview
@@ -653,6 +682,7 @@ export default function SalesDispatchBarcodeScanPage() {
             : handleNext
         }
         isSaving={isSaving}
+        isNextDisabled={isScanLocked}
         nextLabel={isReview ? 'Next →' : 'Continue to Attachments'}
       />
 
