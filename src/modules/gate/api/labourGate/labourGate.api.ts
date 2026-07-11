@@ -1,5 +1,7 @@
 import { apiClient } from '@/core/api';
 
+export type LabourShift = 'DAY' | 'NIGHT';
+
 export interface LabourOutBatch {
   id: number;
   count: number;
@@ -15,6 +17,7 @@ export interface LabourGateEntry {
   contractor: number;
   contractor_name?: string;
   work_date: string;
+  shift: LabourShift;
   count_in: number;
   total_out: number;
   remaining: number;
@@ -56,6 +59,8 @@ export interface RecordInRequest {
   department?: number | null;
   contractor: number;
   work_date: string;
+  /** Day/night shift the labour belongs to. Defaults to DAY on the backend if omitted. */
+  shift: LabourShift;
   count_in: number;
 }
 

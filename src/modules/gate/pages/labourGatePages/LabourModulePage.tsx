@@ -23,7 +23,7 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import type { LabourGateEntry } from '../../api/labourGate/labourGate.api';
+import type { LabourGateEntry, LabourShift } from '../../api/labourGate/labourGate.api';
 import {
   useLabourGateDay,
   useRecordLabourIn,
@@ -35,8 +35,8 @@ import { useContractors } from '../../api/personGateIn/personGateIn.queries';
 import { CreateContractorDialog } from '../../components/CreateContractorDialog';
 import { DepartmentSelect } from '../../components/DepartmentSelect';
 import { LabourHistoryDialog } from './LabourHistoryDialog';
-import { AuditLine } from './labourShared';
-import { fmtDateTime, todayLocal } from './labourUtils';
+import { AuditLine, ShiftToggle } from './labourShared';
+import { defaultShift, fmtDateTime, todayLocal } from './labourUtils';
 
 interface OverAlloc {
   contractorName: string;
@@ -48,6 +48,7 @@ interface OverAlloc {
 
 export default function LabourModulePage() {
   const [workDate, setWorkDate] = useState<string>(todayLocal());
+  const [shift, setShift] = useState<LabourShift>(defaultShift());
   const [departmentId, setDepartmentId] = useState<number | ''>('');
   const [departmentName, setDepartmentName] = useState('');
   const [contractor, setContractor] = useState<Contractor | null>(null);
@@ -65,15 +66,22 @@ export default function LabourModulePage() {
   const restoreIn = useRestoreLabourIn();
   const busy = recordIn.isPending || removeIn.isPending || restoreIn.isPending;
 
-  // Only contractors that still have labour inside via the gate.
+  // Everything on this screen is scoped to the selected shift: a contractor's day
+  // intake and its department split are independent of the night's.
+  const shiftEntries = useMemo(
+    () => allEntries.filter((e) => e.shift === shift),
+    [allEntries, shift],
+  );
+
+  // Only contractors that still have labour inside via the gate (this shift).
   const insideContractorIds = useMemo(
     () =>
       new Set(
-        allEntries
+        shiftEntries
           .filter((e) => e.department == null && !e.is_deleted && e.remaining > 0)
           .map((e) => e.contractor),
       ),
-    [allEntries],
+    [shiftEntries],
   );
   const selectableContractors = useMemo(
     () => contractors.filter((c) => c.is_active && insideContractorIds.has(c.id)),
@@ -81,12 +89,12 @@ export default function LabourModulePage() {
   );
 
   const moduleEntries = useMemo(
-    () => allEntries.filter((e) => e.department != null && !e.is_deleted),
-    [allEntries],
+    () => shiftEntries.filter((e) => e.department != null && !e.is_deleted),
+    [shiftEntries],
   );
   const deletedEntries = useMemo(
-    () => allEntries.filter((e) => e.department != null && e.is_deleted),
-    [allEntries],
+    () => shiftEntries.filter((e) => e.department != null && e.is_deleted),
+    [shiftEntries],
   );
 
   const departmentGroups = useMemo(() => {
@@ -104,7 +112,7 @@ export default function LabourModulePage() {
   const totalAllocated = useMemo(() => moduleEntries.reduce((s, e) => s + e.count_in, 0), [moduleEntries]);
 
   const gateCountOf = (contractorId: number) =>
-    allEntries.find((e) => e.department == null && !e.is_deleted && e.contractor === contractorId)
+    shiftEntries.find((e) => e.department == null && !e.is_deleted && e.contractor === contractorId)
       ?.count_in ?? 0;
   const usedExcept = (contractorId: number, deptId: number) =>
     moduleEntries
@@ -118,7 +126,7 @@ export default function LabourModulePage() {
     const used = usedExcept(contractor.id, Number(departmentId));
     return { entered, used, left: entered - used };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contractor, departmentId, allEntries, moduleEntries]);
+  }, [contractor, departmentId, shiftEntries, moduleEntries]);
 
   const toggleDept = (id: number) =>
     setOpenDepts((prev) => {
@@ -169,6 +177,7 @@ export default function LabourModulePage() {
         department: Number(departmentId),
         contractor: contractor.id,
         work_date: workDate,
+        shift,
         count_in: n,
       });
       toast.success(`${contractor.contractor_name}: ${n} → ${departmentName}`);
@@ -205,6 +214,7 @@ export default function LabourModulePage() {
         department: entry.department,
         contractor: entry.contractor,
         work_date: workDate,
+        shift: entry.shift,
         count_in: n,
       });
       setEditCounts((prev) => {
@@ -250,15 +260,23 @@ export default function LabourModulePage() {
             exceed what they brought in.
           </p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="workDate">Date</Label>
-          <Input
-            id="workDate"
-            type="date"
-            value={workDate}
-            onChange={(e) => setWorkDate(e.target.value)}
-            className="border-2 font-medium sm:w-44"
-          />
+        <div className="flex items-end gap-4">
+          <div className="space-y-2">
+            <Label>Shift</Label>
+            <div>
+              <ShiftToggle value={shift} onChange={setShift} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="workDate">Date</Label>
+            <Input
+              id="workDate"
+              type="date"
+              value={workDate}
+              onChange={(e) => setWorkDate(e.target.value)}
+              className="border-2 font-medium sm:w-44"
+            />
+          </div>
         </div>
       </div>
 

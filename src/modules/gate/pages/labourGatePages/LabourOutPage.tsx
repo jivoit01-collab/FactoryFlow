@@ -29,14 +29,14 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import type { LabourGateEntry } from '../../api/labourGate/labourGate.api';
+import type { LabourGateEntry, LabourShift } from '../../api/labourGate/labourGate.api';
 import {
   useAddLabourOut,
   useLabourGateDay,
   useUndoLabourOut,
 } from '../../api/labourGate/labourGate.queries';
-import { ProgressBar, SummaryStat } from './labourShared';
-import { fmtTime, pctOf, todayLocal } from './labourUtils';
+import { ProgressBar, ShiftToggle, SummaryStat } from './labourShared';
+import { defaultShift, fmtTime, pctOf, todayLocal } from './labourUtils';
 
 interface BreakdownGroup {
   id: number;
@@ -123,6 +123,7 @@ function BreakdownList({
 
 export default function LabourOutPage() {
   const [workDate, setWorkDate] = useState<string>(todayLocal());
+  const [shift, setShift] = useState<LabourShift>(defaultShift());
   const [outContractorId, setOutContractorId] = useState<number | null>(null);
   const [outCount, setOutCount] = useState('');
   const [openDepts, setOpenDepts] = useState<Set<number>>(new Set());
@@ -134,12 +135,12 @@ export default function LabourOutPage() {
   const busy = addOut.isPending || undoOut.isPending;
 
   const gateEntries = useMemo(
-    () => allEntries.filter((e) => e.department == null && !e.is_deleted),
-    [allEntries],
+    () => allEntries.filter((e) => e.department == null && !e.is_deleted && e.shift === shift),
+    [allEntries, shift],
   );
   const moduleEntries = useMemo(
-    () => allEntries.filter((e) => e.department != null && !e.is_deleted),
-    [allEntries],
+    () => allEntries.filter((e) => e.department != null && !e.is_deleted && e.shift === shift),
+    [allEntries, shift],
   );
 
   const totalIn = useMemo(() => gateEntries.reduce((s, e) => s + e.count_in, 0), [gateEntries]);
@@ -276,15 +277,23 @@ export default function LabourOutPage() {
             informational.
           </p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="workDate">Date</Label>
-          <Input
-            id="workDate"
-            type="date"
-            value={workDate}
-            onChange={(e) => setWorkDate(e.target.value)}
-            className="border-2 font-medium sm:w-44"
-          />
+        <div className="flex items-end gap-4">
+          <div className="space-y-2">
+            <Label>Shift</Label>
+            <div>
+              <ShiftToggle value={shift} onChange={setShift} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="workDate">Date</Label>
+            <Input
+              id="workDate"
+              type="date"
+              value={workDate}
+              onChange={(e) => setWorkDate(e.target.value)}
+              className="border-2 font-medium sm:w-44"
+            />
+          </div>
         </div>
       </div>
 
