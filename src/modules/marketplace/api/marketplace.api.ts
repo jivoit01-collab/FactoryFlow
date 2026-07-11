@@ -8,23 +8,34 @@ import type {
   ConfirmRequest,
   DispatchCreateRequest,
   DispatchListParams,
+  ImportOrdersRequest,
+  ImportPreview,
   MarketplaceChannel,
   MarketplaceDispatch,
+  MarketplaceIssueRequest,
   MarketplaceOrder,
   MarketplaceReturn,
   MarketplaceWarehouse,
   MarketplaceWarehouseUpsert,
   MpReturnScan,
   MpScan,
+  OrderImportBatch,
   OrderListParams,
+  ReceiveRequest,
   ReconciliationParams,
   ReconciliationReport,
   ResolvedOrder,
   ReturnCreateRequest,
   ReturnSubmitRequest,
+  ReviewRequest,
+  SapItem,
+  SapWarehouse,
   ScanRequest,
+  SendIssueRequest,
   SkuMapping,
   SkuMappingUpsert,
+  StockList,
+  WarehouseInsights,
 } from '../types/marketplace.types';
 
 const EP = API_ENDPOINTS.MARKETPLACE;
@@ -173,6 +184,84 @@ export const marketplaceApi = {
     const { data } = await apiClient.get<ReconciliationReport>(
       `${EP.RECONCILIATION}${buildQuery(params)}`,
     );
+    return data;
+  },
+
+  // ── Sheet import + warehouse issue ──────────────────────────────────────────
+  async importPreview(payload: ImportOrdersRequest): Promise<ImportPreview> {
+    const { data } = await apiClient.post<ImportPreview>(EP.ORDER_IMPORT_PREVIEW, payload);
+    return data;
+  },
+  async importOrders(payload: ImportOrdersRequest): Promise<OrderImportBatch> {
+    const { data } = await apiClient.post<OrderImportBatch>(EP.ORDER_IMPORT, payload);
+    return data;
+  },
+  async batches(channel?: MarketplaceChannel): Promise<OrderImportBatch[]> {
+    const { data } = await apiClient.get<OrderImportBatch[]>(`${EP.BATCHES}${buildQuery({ channel })}`);
+    return data;
+  },
+  async batch(id: number): Promise<OrderImportBatch> {
+    const { data } = await apiClient.get<OrderImportBatch>(EP.BATCH_BY_ID(id));
+    return data;
+  },
+  async batchStockList(id: number): Promise<StockList> {
+    const { data } = await apiClient.get<StockList>(EP.BATCH_STOCK_LIST(id));
+    return data;
+  },
+  batchExportUrl(id: number): string {
+    return EP.BATCH_EXPORT(id);
+  },
+  async exportBatchCsv(id: number): Promise<Blob> {
+    const { data } = await apiClient.get(EP.BATCH_EXPORT(id), { responseType: 'blob' });
+    return data as Blob;
+  },
+  async issueRequests(channel?: MarketplaceChannel): Promise<MarketplaceIssueRequest[]> {
+    const { data } = await apiClient.get<MarketplaceIssueRequest[]>(
+      `${EP.ISSUE_REQUESTS}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+  async issueRequest(id: number): Promise<MarketplaceIssueRequest> {
+    const { data } = await apiClient.get<MarketplaceIssueRequest>(EP.ISSUE_REQUEST_BY_ID(id));
+    return data;
+  },
+  async sendIssueRequest(payload: SendIssueRequest): Promise<MarketplaceIssueRequest> {
+    const { data } = await apiClient.post<MarketplaceIssueRequest>(EP.ISSUE_REQUESTS, payload);
+    return data;
+  },
+  async reviewIssue(id: number, payload: ReviewRequest): Promise<MarketplaceIssueRequest> {
+    const { data } = await apiClient.post<MarketplaceIssueRequest>(EP.ISSUE_REVIEW(id), payload);
+    return data;
+  },
+  async rejectIssue(id: number, reason: string): Promise<MarketplaceIssueRequest> {
+    const { data } = await apiClient.post<MarketplaceIssueRequest>(EP.ISSUE_REJECT(id), { reason });
+    return data;
+  },
+  async issueMaterials(id: number): Promise<MarketplaceIssueRequest> {
+    const { data } = await apiClient.post<MarketplaceIssueRequest>(EP.ISSUE_ISSUE(id), {});
+    return data;
+  },
+  async receiveIssue(id: number, payload: ReceiveRequest): Promise<MarketplaceIssueRequest> {
+    const { data } = await apiClient.post<MarketplaceIssueRequest>(EP.ISSUE_RECEIVE(id), payload);
+    return data;
+  },
+
+  // Active warehouses straight from SAP (shared PO endpoint) — used to pick a real
+  // godown code instead of typing one.
+  async sapWarehouses(): Promise<SapWarehouse[]> {
+    const { data } = await apiClient.get<SapWarehouse[]>(API_ENDPOINTS.PO.WAREHOUSES);
+    return data;
+  },
+
+  async warehouseInsights(channel?: MarketplaceChannel): Promise<WarehouseInsights> {
+    const { data } = await apiClient.get<WarehouseInsights>(
+      `${EP.WAREHOUSE_INSIGHTS}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+
+  async sapItems(search: string): Promise<SapItem[]> {
+    const { data } = await apiClient.get<SapItem[]>(`${EP.SAP_ITEMS}${buildQuery({ search })}`);
     return data;
   },
 };

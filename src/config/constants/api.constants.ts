@@ -879,6 +879,21 @@ export const API_ENDPOINTS = {
     RETURN_SCANS: (id: number) => `/marketplace/returns/${id}/scans/`,
     RETURN_SUBMIT: (id: number) => `/marketplace/returns/${id}/submit/`,
     RECONCILIATION: '/marketplace/reconciliation/',
+    // Sheet-driven flow
+    ORDER_IMPORT_PREVIEW: '/marketplace/orders/import/preview/',
+    ORDER_IMPORT: '/marketplace/orders/import/',
+    BATCHES: '/marketplace/batches/',
+    BATCH_BY_ID: (id: number) => `/marketplace/batches/${id}/`,
+    BATCH_STOCK_LIST: (id: number) => `/marketplace/batches/${id}/stock-list/`,
+    BATCH_EXPORT: (id: number) => `/marketplace/batches/${id}/issuance.csv`,
+    ISSUE_REQUESTS: '/marketplace/issue-requests/',
+    ISSUE_REQUEST_BY_ID: (id: number) => `/marketplace/issue-requests/${id}/`,
+    ISSUE_REVIEW: (id: number) => `/marketplace/issue-requests/${id}/review/`,
+    ISSUE_REJECT: (id: number) => `/marketplace/issue-requests/${id}/reject/`,
+    ISSUE_ISSUE: (id: number) => `/marketplace/issue-requests/${id}/issue/`,
+    ISSUE_RECEIVE: (id: number) => `/marketplace/issue-requests/${id}/receive/`,
+    WAREHOUSE_INSIGHTS: '/marketplace/warehouse-insights/',
+    SAP_ITEMS: '/marketplace/sap-items/',
   },
 } as const;
 
