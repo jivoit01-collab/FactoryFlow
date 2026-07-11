@@ -82,8 +82,9 @@ export interface WorkPermit {
   status: WorkPermitStatus;
   status_display: string;
 
-  // 1. Validity
+  // 1. Validity (valid_date = start; valid_to extends across multiple days)
   valid_date: string;
+  valid_to: string | null;
   time_start: string;
   time_end: string;
 
@@ -181,6 +182,7 @@ export interface WorkPermitWorkerInput {
 export interface WorkPermitPayload {
   permit_types: WorkPermitType[];
   valid_date: string;
+  valid_to?: string | null;
   time_start: string;
   time_end: string;
   issuing_dept?: string;

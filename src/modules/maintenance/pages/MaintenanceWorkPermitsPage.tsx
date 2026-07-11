@@ -125,6 +125,7 @@ function NewWorkPermitDialog({
 
   const [permitTypes, setPermitTypes] = useState<WorkPermitType[]>(['GENERAL']);
   const [validDate, setValidDate] = useState(today());
+  const [validTo, setValidTo] = useState('');
   const [timeStart, setTimeStart] = useState('');
   const [timeEnd, setTimeEnd] = useState('');
   const [issuingDept, setIssuingDept] = useState('');
@@ -163,11 +164,16 @@ function NewWorkPermitDialog({
       toast.error('Job location and description are required.');
       return;
     }
+    if (validTo && validTo < validDate) {
+      toast.error('Valid-to date cannot be before the valid-from date.');
+      return;
+    }
     setBusy(true);
     try {
       const permit = await createPermit.mutateAsync({
         permit_types: permitTypes,
         valid_date: validDate,
+        valid_to: validTo || null,
         time_start: timeStart,
         time_end: timeEnd,
         issuing_dept: issuingDept.trim(),
@@ -222,35 +228,51 @@ function NewWorkPermitDialog({
           </section>
 
           {/* Validity */}
-          <section className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="valid_date">Valid date</Label>
-              <Input
-                id="valid_date"
-                type="date"
-                value={validDate}
-                onChange={(e) => setValidDate(e.target.value)}
-                required
-              />
+          <section className="space-y-2">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="valid_date">Valid from</Label>
+                <Input
+                  id="valid_date"
+                  type="date"
+                  value={validDate}
+                  onChange={(e) => setValidDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valid_to">Valid to</Label>
+                <Input
+                  id="valid_to"
+                  type="date"
+                  value={validTo}
+                  min={validDate}
+                  onChange={(e) => setValidTo(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time_start">Daily time start</Label>
+                <Input
+                  id="time_start"
+                  type="time"
+                  value={timeStart}
+                  onChange={(e) => setTimeStart(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time_end">Daily time end</Label>
+                <Input
+                  id="time_end"
+                  type="time"
+                  value={timeEnd}
+                  onChange={(e) => setTimeEnd(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="time_start">Time start</Label>
-              <Input
-                id="time_start"
-                type="time"
-                value={timeStart}
-                onChange={(e) => setTimeStart(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="time_end">Time end</Label>
-              <Input
-                id="time_end"
-                type="time"
-                value={timeEnd}
-                onChange={(e) => setTimeEnd(e.target.value)}
-              />
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Leave “Valid to” empty for a single-day permit. For multi-day work, set the end
+              date — the permit stays valid through that day and auto-expires at the end time.
+            </p>
           </section>
 
           {/* Parties */}
@@ -564,6 +586,7 @@ function WorkPermitDetailDialog({
               <WorkPermitStatusBadge status={permit.status} />
               <span className="text-muted-foreground">
                 {permit.valid_date}
+                {permit.valid_to && permit.valid_to !== permit.valid_date && ` → ${permit.valid_to}`}
                 {permit.time_start && ` · ${permit.time_start}`}
                 {permit.time_end && `–${permit.time_end}`}
               </span>
@@ -1030,7 +1053,14 @@ export default function MaintenanceWorkPermitsPage() {
               permits.map((permit) => (
                 <tr key={permit.id} className="border-b last:border-b-0 hover:bg-muted/40">
                   <td className="px-4 py-3 font-medium">{permit.serial_no || '-'}</td>
-                  <td className="px-4 py-3">{permit.valid_date}</td>
+                  <td className="px-4 py-3">
+                    {permit.valid_date}
+                    {permit.valid_to && permit.valid_to !== permit.valid_date && (
+                      <span className="block text-xs text-muted-foreground">
+                        to {permit.valid_to}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {permit.permit_types.map((t) => getPermitTypeLabel(t)).join(', ') || '-'}
                   </td>
