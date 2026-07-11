@@ -212,6 +212,8 @@ export type WorkPermitUpdatePayload = Partial<WorkPermitPayload>;
 
 export interface WorkPermitApprovePayload {
   remarks?: string;
+  // PPE to be used — chosen by the Fire Department Head at approval.
+  ppe?: string[];
 }
 
 export interface WorkPermitCompletePayload {
