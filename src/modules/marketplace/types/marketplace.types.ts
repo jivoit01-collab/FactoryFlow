@@ -95,6 +95,8 @@ export interface MarketplaceOrder {
   status: 'OPEN' | 'DISPATCHED' | 'RETURNED' | 'PARTIAL';
   lines: MarketplaceOrderLine[];
   created_at?: string;
+  /** True once the warehouse issued this order's materials (annotated by the API). */
+  dispatch_ready?: boolean;
 }
 
 export interface ResolvedLine {
@@ -242,6 +244,8 @@ export interface OrderListParams {
   channel?: MarketplaceChannel;
   status?: string;
   search?: string;
+  /** 1 → only orders whose warehouse materials were issued (Outward). */
+  ready?: number;
 }
 export interface DispatchListParams {
   channel?: MarketplaceChannel;
@@ -252,4 +256,170 @@ export interface ReconciliationParams {
   from_date?: string;
   to_date?: string;
   order_id?: string;
+}
+
+// ── Sheet-driven flow (import batch → stock list → warehouse issue) ───────────
+export type OrderImportBatchStatus =
+  | 'PARSED'
+  | 'RESOLVED'
+  | 'REQUESTED'
+  | 'ISSUED'
+  | 'DISPATCHING'
+  | 'CLOSED';
+
+export interface OrderImportBatch {
+  id: number;
+  channel: MarketplaceChannel;
+  filename: string;
+  status: OrderImportBatchStatus;
+  row_count: number;
+  order_count: number;
+  line_count: number;
+  summary: {
+    created?: number;
+    updated?: number;
+    skipped?: number;
+    duplicates_skipped?: number;
+    orders?: number;
+    lines?: number;
+  };
+  uploaded_by_name?: string;
+  created_at: string;
+  // present on the import response only
+  unmapped_skus?: string[];
+  stock_line_count?: number;
+}
+
+export interface StockListLine {
+  item_code: string;
+  item_name: string;
+  component_type: MpComponentType;
+  uom: string;
+  required_quantity: string;
+  source_skus: string[];
+}
+
+export interface StockList {
+  lines: StockListLine[];
+  unmapped_skus: string[];
+  orders: number;
+}
+
+export type MpIssueStatus =
+  | 'DRAFT'
+  | 'SENT'
+  | 'APPROVED'
+  | 'PARTIALLY_APPROVED'
+  | 'REJECTED'
+  | 'ISSUED'
+  | 'RECEIVED';
+
+export type MpIssueLineStatus = 'PENDING' | 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED';
+
+export interface MarketplaceIssueLine {
+  id: number;
+  item_code: string;
+  item_name: string;
+  component_type: MpComponentType;
+  uom: string;
+  required_qty: string;
+  available_stock: string;
+  approved_qty: string;
+  issued_qty: string;
+  received_qty: string;
+  status: MpIssueLineStatus;
+  reject_reason: string;
+  source_skus: string[];
+}
+
+export interface MarketplaceIssueRequest {
+  id: number;
+  channel: MarketplaceChannel;
+  batch: number;
+  batch_filename?: string;
+  sap_warehouse_code: string;
+  status: MpIssueStatus;
+  reject_reason: string;
+  reviewed_at: string | null;
+  created_at: string;
+  lines?: MarketplaceIssueLine[];
+  sap_issue_doc_entries?: unknown[];
+}
+
+export interface ImportOrdersRequest {
+  text: string;
+  filename: string;
+  skip_duplicates?: boolean;
+}
+
+export interface ImportPreview {
+  row_count: number;
+  total_orders: number;
+  new_count: number;
+  duplicate_count: number;
+  skipped_rows: number;
+  new_order_ids: string[];
+  duplicate_order_ids: string[];
+  unmapped_skus: string[];
+  has_duplicates: boolean;
+}
+
+export interface SendIssueRequest {
+  batch_id: number;
+  warehouse_code?: string;
+}
+
+export interface ReviewLine {
+  line_id: number;
+  approved_qty?: string | number;
+  status?: 'APPROVED' | 'REJECTED';
+  reason?: string;
+}
+
+export interface ReviewRequest {
+  lines: ReviewLine[];
+}
+
+export interface ReceiveRequest {
+  lines?: { line_id: number; received_qty: string | number }[];
+}
+
+export interface SapWarehouse {
+  warehouse_code: string;
+  warehouse_name: string;
+}
+
+// ── Warehouse insights ───────────────────────────────────────────────────────
+export interface InsightItem {
+  item_code: string;
+  item_name: string;
+  component_type: MpComponentType;
+  required: string;
+  approved: string;
+  issued: string;
+  received: string;
+  dispatched: string;
+  in_packing: string;
+}
+
+export interface InsightShortfall {
+  item_code: string;
+  item_name: string;
+  required: string;
+  approved: string;
+  short: string;
+}
+
+export interface WarehouseInsights {
+  requests: { total: number; by_status: Record<string, number> };
+  orders: { awaiting_dispatch: number; dispatched: number };
+  totals: { required: string; approved: string; issued: string; received: string; dispatched: string };
+  by_item: InsightItem[];
+  shortfalls: InsightShortfall[];
+}
+
+export interface SapItem {
+  item_code: string;
+  item_name: string;
+  uom: string;
 }

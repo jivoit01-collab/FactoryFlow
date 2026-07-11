@@ -26,6 +26,12 @@ export const MARKETPLACE_PERMISSIONS = {
   VIEW_MASTER: 'marketplace.view_master',
   CHANGE_MASTER: 'marketplace.change_master',
   VIEW_RECONCILIATION: 'marketplace.view_reconciliation',
+  IMPORT_ORDERS: 'marketplace.import_orders',
+  VIEW_BATCH: 'marketplace.view_batch',
+  SEND_ISSUE_REQUEST: 'marketplace.send_issue_request',
+  REVIEW_ISSUE_REQUEST: 'marketplace.review_issue_request',
+  ISSUE_MATERIALS: 'marketplace.issue_materials',
+  RECEIVE_ISSUE: 'marketplace.receive_issue',
 } as const;
 
 /** Operator-facing access (Outward/Inward/Overview scanning pages). */
@@ -43,6 +49,21 @@ export const MARKETPLACE_ADMIN_ACCESS: readonly string[] = [
   MARKETPLACE_PERMISSIONS.VIEW_MASTER,
   MARKETPLACE_PERMISSIONS.CHANGE_MASTER,
   MARKETPLACE_PERMISSIONS.VIEW_RECONCILIATION,
+];
+
+/** Sheet import + batch review pages. */
+export const MARKETPLACE_SHEET_ACCESS: readonly string[] = [
+  MARKETPLACE_PERMISSIONS.IMPORT_ORDERS,
+  MARKETPLACE_PERMISSIONS.VIEW_BATCH,
+];
+
+/** Warehouse issue-request pages. */
+export const MARKETPLACE_ISSUE_ACCESS: readonly string[] = [
+  MARKETPLACE_PERMISSIONS.VIEW_BATCH,
+  MARKETPLACE_PERMISSIONS.SEND_ISSUE_REQUEST,
+  MARKETPLACE_PERMISSIONS.REVIEW_ISSUE_REQUEST,
+  MARKETPLACE_PERMISSIONS.ISSUE_MATERIALS,
+  MARKETPLACE_PERMISSIONS.RECEIVE_ISSUE,
 ];
 
 export type MarketplacePermission =

@@ -17,11 +17,17 @@ import { lazy } from 'react';
 import {
   MARKETPLACE_ACCESS,
   MARKETPLACE_ADMIN_ACCESS,
+  MARKETPLACE_ISSUE_ACCESS,
   MARKETPLACE_MODULE_PREFIX,
+  MARKETPLACE_SHEET_ACCESS,
 } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 const MpOverviewPage = lazy(() => import('./pages/MpOverviewPage'));
+const MpImportPage = lazy(() => import('./pages/MpImportPage'));
+const MpBatchDetailPage = lazy(() => import('./pages/MpBatchDetailPage'));
+const MpIssueRequestsPage = lazy(() => import('./pages/MpIssueRequestsPage'));
+const MpIssueRequestDetailPage = lazy(() => import('./pages/MpIssueRequestDetailPage'));
 const MpOutwardPage = lazy(() => import('./pages/MpOutwardPage'));
 const MpInwardPage = lazy(() => import('./pages/MpInwardPage'));
 const MpMastersPage = lazy(() => import('./pages/MpMastersPage'));
@@ -36,6 +42,34 @@ export const marketplaceModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: MARKETPLACE_ACCESS,
       breadcrumb: { label: 'Marketplace' },
+    },
+    {
+      path: '/marketplace/import',
+      element: <MpImportPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_SHEET_ACCESS,
+      breadcrumb: { label: 'Import Sheet' },
+    },
+    {
+      path: '/marketplace/batches/:batchId',
+      element: <MpBatchDetailPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_SHEET_ACCESS,
+      breadcrumb: { label: 'Batch' },
+    },
+    {
+      path: '/marketplace/issues',
+      element: <MpIssueRequestsPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_ISSUE_ACCESS,
+      breadcrumb: { label: 'Warehouse Issues' },
+    },
+    {
+      path: '/marketplace/issues/:issueId',
+      element: <MpIssueRequestDetailPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_ISSUE_ACCESS,
+      breadcrumb: { label: 'Issue Request' },
     },
     {
       path: '/marketplace/outward',
@@ -76,6 +110,8 @@ export const marketplaceModuleConfig: ModuleConfig = {
       hasSubmenu: true,
       children: [
         { path: '/marketplace', title: 'Overview', permissions: MARKETPLACE_ACCESS },
+        { path: '/marketplace/import', title: 'Import Sheet', permissions: MARKETPLACE_SHEET_ACCESS },
+        { path: '/marketplace/issues', title: 'Warehouse Issues', permissions: MARKETPLACE_ISSUE_ACCESS },
         { path: '/marketplace/outward', title: 'Outward', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/inward', title: 'Inward', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/masters', title: 'Masters', permissions: MARKETPLACE_ADMIN_ACCESS },

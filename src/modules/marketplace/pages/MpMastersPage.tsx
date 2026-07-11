@@ -29,12 +29,14 @@ import {
   useDeleteSkuMapping,
   useDeleteWarehouse,
   useMpWarehouses,
+  useSapWarehouses,
   useSkuMappings,
   useUpsertCombo,
   useUpsertSkuMapping,
   useUpsertWarehouse,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { SapItemInput } from '../components/SapItemInput';
 import type {
   ComboComponent,
   ComboDefinition,
@@ -100,17 +102,31 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
   const upsert = useUpsertSkuMapping();
   const remove = useDeleteSkuMapping();
   const [editing, setEditing] = useState<SkuMapping | null>(null);
+  const [toDelete, setToDelete] = useState<SkuMapping | null>(null);
 
   function save() {
     if (!editing) return;
+    if (!editing.marketplace_sku.trim()) {
+      toast.error('Enter the marketplace SKU.');
+      return;
+    }
+    if (editing.sku_type === 'RAW' && !editing.fg_item_code?.trim()) {
+      toast.error('Enter the SAP finished-good item code for a raw SKU.');
+      return;
+    }
+    if (editing.sku_type === 'COMBO' && !editing.combo) {
+      toast.error('Pick a combo for a combo SKU.');
+      return;
+    }
     const payload: SkuMappingUpsert = {
       channel: editing.channel,
-      marketplace_sku: editing.marketplace_sku,
+      marketplace_sku: editing.marketplace_sku.trim(),
       sku_name: editing.sku_name,
       sku_type: editing.sku_type,
-      fg_item_code: editing.fg_item_code,
-      fg_item_name: editing.fg_item_name,
-      combo: editing.combo,
+      // Only send the branch that applies, so a RAW→COMBO switch can't leave a stale code.
+      fg_item_code: editing.sku_type === 'RAW' ? editing.fg_item_code : '',
+      fg_item_name: editing.sku_type === 'RAW' ? editing.fg_item_name : '',
+      combo: editing.sku_type === 'COMBO' ? editing.combo : null,
       default_uom: editing.default_uom,
       is_active: editing.is_active,
       ...(editing.id ? { id: editing.id } : {}),
@@ -120,6 +136,18 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
         toast.success('Mapping saved');
         setEditing(null);
       },
+      onError: (e) => toast.error(errMsg(e, 'Could not save mapping')),
+    });
+  }
+
+  function doDelete() {
+    if (!toDelete) return;
+    remove.mutate(toDelete.id, {
+      onSuccess: () => {
+        toast.success('Mapping deleted');
+        setToDelete(null);
+      },
+      onError: (e) => toast.error(errMsg(e, 'Could not delete')),
     });
   }
 
@@ -143,11 +171,19 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
                 {m.sku_type === 'COMBO' ? m.combo_code || `#${m.combo}` : m.fg_item_code}
               </td>
               <td className="py-2 px-2">{m.is_active ? 'Yes' : 'No'}</td>
-              <RowActions onEdit={() => setEditing(m)} onDelete={() => remove.mutate(m.id)} />
+              <RowActions onEdit={() => setEditing(m)} onDelete={() => setToDelete(m)} />
             </tr>
           ))}
         />
       </CardContent>
+
+      <ConfirmDelete
+        open={!!toDelete}
+        label={`SKU “${toDelete?.marketplace_sku ?? ''}”`}
+        pending={remove.isPending}
+        onCancel={() => setToDelete(null)}
+        onConfirm={doDelete}
+      />
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
@@ -180,10 +216,16 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
                 </NativeSelect>
               </Field>
               {editing.sku_type === 'RAW' ? (
-                <Field label="FG item code (SAP)">
-                  <Input
+                <Field label="FG item (SAP)">
+                  <SapItemInput
                     value={editing.fg_item_code ?? ''}
-                    onChange={(e) => setEditing({ ...editing, fg_item_code: e.target.value })}
+                    onChange={(code, name) =>
+                      setEditing({
+                        ...editing,
+                        fg_item_code: code,
+                        fg_item_name: name ?? editing.fg_item_name,
+                      })
+                    }
                   />
                 </Field>
               ) : (
@@ -234,6 +276,19 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
   const upsert = useUpsertCombo();
   const remove = useDeleteCombo();
   const [editing, setEditing] = useState<ComboDefinition | null>(null);
+  const [toDelete, setToDelete] = useState<ComboDefinition | null>(null);
+
+  function doDelete() {
+    if (!toDelete) return;
+    remove.mutate(toDelete.id, {
+      onSuccess: () => {
+        toast.success('Combo deleted');
+        setToDelete(null);
+      },
+      onError: (e) =>
+        toast.error(errMsg(e, 'Could not delete — it may be used by a SKU mapping')),
+    });
+  }
 
   function setComponent(idx: number, patch: Partial<ComboComponent>) {
     if (!editing) return;
@@ -253,10 +308,32 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
   }
   function save() {
     if (!editing) return;
+    if (!editing.code.trim()) {
+      toast.error('Enter a combo code.');
+      return;
+    }
+    if (!editing.name.trim()) {
+      toast.error('Enter a combo name.');
+      return;
+    }
+    if (editing.components.length === 0) {
+      toast.error('Add at least one component.');
+      return;
+    }
+    for (const c of editing.components) {
+      if (!c.item_code.trim()) {
+        toast.error('Every component needs an item code.');
+        return;
+      }
+      if (!(Number(c.quantity) > 0)) {
+        toast.error(`Quantity for ${c.item_code || 'a component'} must be greater than 0.`);
+        return;
+      }
+    }
     const payload: ComboDefinitionUpsert = {
       channel: editing.channel,
-      code: editing.code,
-      name: editing.name,
+      code: editing.code.trim(),
+      name: editing.name.trim(),
       is_active: editing.is_active,
       components: editing.components,
       ...(editing.id ? { id: editing.id } : {}),
@@ -266,6 +343,7 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
         toast.success('Combo saved');
         setEditing(null);
       },
+      onError: (e) => toast.error(errMsg(e, 'Could not save combo')),
     });
   }
 
@@ -286,11 +364,19 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
               <td className="py-2 px-2 text-xs text-muted-foreground">
                 {c.components.map((k) => `${k.item_code}×${k.quantity}`).join(', ')}
               </td>
-              <RowActions onEdit={() => setEditing(c)} onDelete={() => remove.mutate(c.id)} />
+              <RowActions onEdit={() => setEditing(c)} onDelete={() => setToDelete(c)} />
             </tr>
           ))}
         />
       </CardContent>
+
+      <ConfirmDelete
+        open={!!toDelete}
+        label={`combo “${toDelete?.code ?? ''}”`}
+        pending={remove.isPending}
+        onCancel={() => setToDelete(null)}
+        onConfirm={doDelete}
+      />
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-2xl">
@@ -323,10 +409,12 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
                       <SelectOption value="FG">FG</SelectOption>
                       <SelectOption value="PM">PM</SelectOption>
                     </NativeSelect>
-                    <Input
+                    <SapItemInput
                       placeholder="Item code"
                       value={comp.item_code}
-                      onChange={(e) => setComponent(idx, { item_code: e.target.value })}
+                      onChange={(code, name) =>
+                        setComponent(idx, { item_code: code, item_name: name ?? comp.item_name })
+                      }
                     />
                     <Input
                       placeholder="Qty"
@@ -373,17 +461,31 @@ const EMPTY_WH = (channel: MarketplaceChannel): MarketplaceWarehouse => ({
 
 function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
   const { data: warehouses } = useMpWarehouses(channel);
+  const { data: sapWarehouses = [] } = useSapWarehouses();
   const upsert = useUpsertWarehouse();
   const remove = useDeleteWarehouse();
   const [editing, setEditing] = useState<MarketplaceWarehouse | null>(null);
+  const [toDelete, setToDelete] = useState<MarketplaceWarehouse | null>(null);
 
   function save() {
     if (!editing) return;
+    if (!editing.name.trim()) {
+      toast.error('Enter a name.');
+      return;
+    }
+    if (!editing.sap_warehouse_code.trim()) {
+      toast.error('Select the SAP warehouse (godown).');
+      return;
+    }
+    if (!editing.sap_customer_card_code.trim()) {
+      toast.error('Enter the SAP customer CardCode — it is required for the delivery note.');
+      return;
+    }
     const payload: MarketplaceWarehouseUpsert = {
       channel: editing.channel,
-      name: editing.name,
-      sap_warehouse_code: editing.sap_warehouse_code,
-      sap_customer_card_code: editing.sap_customer_card_code,
+      name: editing.name.trim(),
+      sap_warehouse_code: editing.sap_warehouse_code.trim(),
+      sap_customer_card_code: editing.sap_customer_card_code.trim(),
       facility_code: editing.facility_code,
       is_active: editing.is_active,
       ...(editing.id ? { id: editing.id } : {}),
@@ -393,6 +495,18 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
         toast.success('Warehouse saved');
         setEditing(null);
       },
+      onError: (e) => toast.error(errMsg(e, 'Could not save warehouse')),
+    });
+  }
+
+  function doDelete() {
+    if (!toDelete) return;
+    remove.mutate(toDelete.id, {
+      onSuccess: () => {
+        toast.success('Warehouse deleted');
+        setToDelete(null);
+      },
+      onError: (e) => toast.error(errMsg(e, 'Could not delete')),
     });
   }
 
@@ -412,11 +526,19 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
               <td className="py-2 px-2 font-mono">{w.sap_warehouse_code}</td>
               <td className="py-2 px-2 font-mono">{w.sap_customer_card_code || '—'}</td>
               <td className="py-2 px-2">{w.facility_code || '—'}</td>
-              <RowActions onEdit={() => setEditing(w)} onDelete={() => remove.mutate(w.id)} />
+              <RowActions onEdit={() => setEditing(w)} onDelete={() => setToDelete(w)} />
             </tr>
           ))}
         />
       </CardContent>
+
+      <ConfirmDelete
+        open={!!toDelete}
+        label={`warehouse “${toDelete?.name ?? ''}”`}
+        pending={remove.isPending}
+        onCancel={() => setToDelete(null)}
+        onConfirm={doDelete}
+      />
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
@@ -428,11 +550,34 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
               <Field label="Name">
                 <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
               </Field>
-              <Field label="SAP warehouse code">
-                <Input
-                  value={editing.sap_warehouse_code}
-                  onChange={(e) => setEditing({ ...editing, sap_warehouse_code: e.target.value })}
-                />
+              <Field label="SAP warehouse (godown)">
+                {sapWarehouses.length > 0 ? (
+                  <NativeSelect
+                    value={editing.sap_warehouse_code}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const match = sapWarehouses.find((w) => w.warehouse_code === code);
+                      setEditing({
+                        ...editing,
+                        sap_warehouse_code: code,
+                        name: editing.name || match?.warehouse_name || '',
+                      });
+                    }}
+                  >
+                    <option value="">Select SAP warehouse…</option>
+                    {sapWarehouses.map((w) => (
+                      <option key={w.warehouse_code} value={w.warehouse_code}>
+                        {w.warehouse_code} — {w.warehouse_name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                ) : (
+                  <Input
+                    value={editing.sap_warehouse_code}
+                    placeholder="SAP warehouse code (SAP list unavailable)"
+                    onChange={(e) => setEditing({ ...editing, sap_warehouse_code: e.target.value })}
+                  />
+                )}
               </Field>
               <Field label="SAP customer CardCode">
                 <Input
@@ -463,6 +608,43 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
 }
 
 // ── shared bits ──────────────────────────────────────────────────────────────
+function errMsg(e: unknown, fallback: string) {
+  return (e as { message?: string })?.message ?? fallback;
+}
+
+function ConfirmDelete({
+  open,
+  label,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  label: string;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete {label}?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">This can’t be undone.</p>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={pending}>
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function MasterTable({ headers, rows }: { headers: string[]; rows: React.ReactNode[] }) {
   return (
     <div className="overflow-x-auto">

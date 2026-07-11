@@ -1,6 +1,6 @@
-import { Button } from '@/shared/components/ui';
+import { Badge } from '@/shared/components/ui';
 
-import { MARKETPLACE_CHANNELS, type MarketplaceChannel } from '../types/marketplace.types';
+import type { MarketplaceChannel } from '../types/marketplace.types';
 
 interface Props {
   value: MarketplaceChannel;
@@ -8,21 +8,16 @@ interface Props {
   disabled?: boolean;
 }
 
-/** Segmented Flipkart/Amazon selector. Drives every channel-scoped query. */
-export function MpChannelSelect({ value, onChange, disabled }: Props) {
+/**
+ * Channel indicator. Amazon is parked for now — the marketplace flow is
+ * Flipkart-only, so this shows a static "Flipkart" chip instead of a toggle.
+ * (Kept as a component, and pages still default their channel state to
+ * 'FLIPKART', so re-enabling Amazon later is a one-file change.)
+ */
+export function MpChannelSelect(_props: Props) {
   return (
-    <div className="inline-flex gap-1.5">
-      {MARKETPLACE_CHANNELS.map((channel) => (
-        <Button
-          key={channel.value}
-          size="sm"
-          variant={value === channel.value ? 'default' : 'outline'}
-          disabled={disabled}
-          onClick={() => onChange(channel.value)}
-        >
-          {channel.label}
-        </Button>
-      ))}
-    </div>
+    <Badge variant="outline" className="h-8 px-3 text-sm font-medium">
+      Flipkart
+    </Badge>
   );
 }

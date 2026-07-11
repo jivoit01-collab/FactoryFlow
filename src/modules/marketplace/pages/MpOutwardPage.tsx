@@ -30,6 +30,7 @@ import {
   useConfirmDispatch,
   useCreateDispatch,
   useMpDispatch,
+  useMpDispatches,
   useMpOrders,
   useScanDispatch,
 } from '../api/marketplace.queries';
@@ -43,7 +44,9 @@ export default function MpOutwardPage() {
   const [search, setSearch] = useState('');
   const [dispatchId, setDispatchId] = useState<number | null>(null);
 
-  const ordersQuery = useMpOrders({ channel, status: 'OPEN', search });
+  // Only orders whose warehouse materials were issued are dispatchable.
+  const ordersQuery = useMpOrders({ channel, status: 'OPEN', search, ready: 1 });
+  const dispatchedQuery = useMpDispatches({ channel, status: 'CONFIRMED' });
   const createDispatch = useCreateDispatch();
   const dispatchQuery = useMpDispatch(dispatchId);
   const dispatch = dispatchQuery.data;
@@ -53,7 +56,14 @@ export default function MpOutwardPage() {
       { channel, order_id: orderId },
       {
         onSuccess: (d) => setDispatchId(d.id),
-        onError: () => toast.error(`Order ${orderId} not found for ${channel}`),
+        onError: (e: unknown) => {
+          const err = e as { status?: number; message?: string };
+          if (err?.status === 409 && err?.message) {
+            toast.error(err.message); // e.g. "materials have not been issued…"
+          } else {
+            toast.error(`Order ${orderId} not found for ${channel}`);
+          }
+        },
       },
     );
   }
@@ -76,10 +86,13 @@ export default function MpOutwardPage() {
       </header>
 
       {!dispatch ? (
+        <>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Pick an order</CardTitle>
-            <CardDescription>Search open {channel} orders, or scan/type an Order ID.</CardDescription>
+            <CardDescription>
+              Only orders whose materials have been issued from the warehouse are shown.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-2">
@@ -96,7 +109,9 @@ export default function MpOutwardPage() {
             <div className="divide-y rounded-md border">
               {(ordersQuery.data ?? []).length === 0 ? (
                 <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  {ordersQuery.isLoading ? 'Loading…' : 'No open orders.'}
+                  {ordersQuery.isLoading
+                    ? 'Loading…'
+                    : 'No orders ready — issue their materials from the warehouse first.'}
                 </p>
               ) : (
                 (ordersQuery.data ?? []).map((order) => (
@@ -118,6 +133,50 @@ export default function MpOutwardPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Dispatched orders</CardTitle>
+            <CardDescription>Confirmed {channel} dispatches (delivery note posted).</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b text-left text-xs text-muted-foreground">
+                  <tr>
+                    <th className="p-3">Order</th>
+                    <th className="p-3">Buyer</th>
+                    <th className="p-3">Delivery note</th>
+                    <th className="p-3">Bill</th>
+                    <th className="p-3">Dispatched</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(dispatchedQuery.data ?? []).length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                        {dispatchedQuery.isLoading ? 'Loading…' : 'No dispatched orders yet.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    (dispatchedQuery.data ?? []).map((d) => (
+                      <tr key={d.id} className="border-b last:border-0 hover:bg-muted/40">
+                        <td className="p-3 font-mono font-medium">{d.order_id}</td>
+                        <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
+                        <td className="p-3 font-mono">{d.sap_delivery_note_num || '—'}</td>
+                        <td className="p-3 font-mono">{d.internal_billing_num || '—'}</td>
+                        <td className="p-3 text-muted-foreground">
+                          {d.confirmed_at ? new Date(d.confirmed_at).toLocaleString() : '—'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+        </>
       ) : (
         <ActiveDispatch dispatchId={dispatch.id} onClose={reset} channel={channel} />
       )}

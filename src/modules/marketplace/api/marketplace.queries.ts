@@ -6,13 +6,17 @@ import type {
   ConfirmRequest,
   DispatchCreateRequest,
   DispatchListParams,
+  ImportOrdersRequest,
   MarketplaceChannel,
   MarketplaceWarehouseUpsert,
   OrderListParams,
+  ReceiveRequest,
   ReconciliationParams,
   ReturnCreateRequest,
   ReturnSubmitRequest,
+  ReviewRequest,
   ScanRequest,
+  SendIssueRequest,
   SkuMappingUpsert,
 } from '../types/marketplace.types';
 import { marketplaceApi } from './marketplace.api';
@@ -36,6 +40,15 @@ export const MARKETPLACE_QUERY_KEYS = {
   return: (id?: number | null) => [...MARKETPLACE_QUERY_KEYS.all, 'return', id] as const,
   reconciliation: (params?: ReconciliationParams) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'reconciliation', params] as const,
+  batches: (channel?: MarketplaceChannel) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'batches', channel] as const,
+  batch: (id?: number | null) => [...MARKETPLACE_QUERY_KEYS.all, 'batch', id] as const,
+  batchStockList: (id?: number | null) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'batchStockList', id] as const,
+  issueRequests: (channel?: MarketplaceChannel) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'issueRequests', channel] as const,
+  issueRequest: (id?: number | null) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'issueRequest', id] as const,
 };
 
 function invalidateMarketplace(qc: ReturnType<typeof useQueryClient>) {
@@ -239,5 +252,132 @@ export function useSubmitReturn(returnId: number) {
   return useMutation({
     mutationFn: (payload: ReturnSubmitRequest) => marketplaceApi.submitReturn(returnId, payload),
     onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+// ── Sheet import + warehouse issue ───────────────────────────────────────────
+export function useBatches(channel?: MarketplaceChannel) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.batches(channel),
+    queryFn: () => marketplaceApi.batches(channel),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useBatch(id?: number | null) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.batch(id),
+    queryFn: () => marketplaceApi.batch(id!),
+    enabled: !!id,
+    staleTime: 15 * 1000,
+  });
+}
+
+export function useBatchStockList(id?: number | null) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.batchStockList(id),
+    queryFn: () => marketplaceApi.batchStockList(id!),
+    enabled: !!id,
+    staleTime: 15 * 1000,
+  });
+}
+
+export function useImportPreview() {
+  return useMutation({
+    mutationFn: (payload: ImportOrdersRequest) => marketplaceApi.importPreview(payload),
+  });
+}
+
+export function useImportOrders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ImportOrdersRequest) => marketplaceApi.importOrders(payload),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useIssueRequests(channel?: MarketplaceChannel) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.issueRequests(channel),
+    queryFn: () => marketplaceApi.issueRequests(channel),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useIssueRequest(id?: number | null) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.issueRequest(id),
+    queryFn: () => marketplaceApi.issueRequest(id!),
+    enabled: !!id,
+    staleTime: 10 * 1000,
+  });
+}
+
+export function useSendIssueRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SendIssueRequest) => marketplaceApi.sendIssueRequest(payload),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useReviewIssue(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ReviewRequest) => marketplaceApi.reviewIssue(id, payload),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useRejectIssue(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (reason: string) => marketplaceApi.rejectIssue(id, reason),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useIssueMaterials(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marketplaceApi.issueMaterials(id),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useReceiveIssue(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ReceiveRequest) => marketplaceApi.receiveIssue(id, payload),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+/** Active warehouses straight from SAP — for picking a real godown code. */
+export function useSapWarehouses() {
+  return useQuery({
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'sapWarehouses'] as const,
+    queryFn: () => marketplaceApi.sapWarehouses(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useWarehouseInsights(channel?: MarketplaceChannel) {
+  return useQuery({
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'warehouseInsights', channel] as const,
+    queryFn: () => marketplaceApi.warehouseInsights(channel),
+    staleTime: 30 * 1000,
+  });
+}
+
+/** Search the SAP item master (min 2 chars) for a real ItemCode. */
+export function useSapItems(search: string) {
+  return useQuery({
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'sapItems', search] as const,
+    queryFn: () => marketplaceApi.sapItems(search),
+    enabled: search.trim().length >= 2,
+    staleTime: 60 * 1000,
+    retry: false,
   });
 }
