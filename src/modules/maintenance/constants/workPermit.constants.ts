@@ -132,6 +132,16 @@ export const PRECAUTION_GROUPS: Array<{
   },
 ];
 
+// Flattened precautions for a single searchable multi-select — each label is
+// prefixed with its group so an omni-search matches across all task groups.
+export const PRECAUTION_OPTIONS: Array<{ value: string; label: string }> =
+  PRECAUTION_GROUPS.flatMap((group) =>
+    group.options.map((option) => ({
+      value: option.value,
+      label: `${group.group} · ${option.label}`,
+    })),
+  );
+
 export const APPROVAL_ROLE_OPTIONS: Array<{ value: WorkPermitApprovalRole; label: string }> = [
   { value: 'ISSUER', label: 'Issuer' },
   { value: 'AREA_INCHARGE', label: 'Area Incharge' },

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useState } from 'react';
@@ -34,6 +35,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  MultiSelect,
   NativeSelect,
   SelectOption,
   Textarea,
@@ -63,7 +65,7 @@ import {
   HAZARD_OPTIONS,
   PERMIT_TYPE_OPTIONS,
   PPE_OPTIONS,
-  PRECAUTION_GROUPS,
+  PRECAUTION_OPTIONS,
 } from '../constants/workPermit.constants';
 import type {
   WorkPermit,
@@ -401,19 +403,35 @@ function NewWorkPermitDialog({
             />
           </section>
 
-          {/* Precautions */}
-          <section className="space-y-3">
-            <Label>Precautions checklist</Label>
-            {PRECAUTION_GROUPS.map((group) => (
-              <div key={group.group} className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">{group.group}</p>
-                <CheckboxGrid
-                  options={group.options}
-                  selected={precautions}
-                  onToggle={(value) => setPrecautions((current) => toggle(current, value))}
-                />
+          {/* Precautions — searchable multi-select ("omni search") across all groups. */}
+          <section className="space-y-2">
+            <Label htmlFor="precautions">Precautions</Label>
+            <MultiSelect
+              id="precautions"
+              searchable
+              creatable
+              searchPlaceholder="Search or type a new precaution…"
+              placeholder="Search and add precautions…"
+              className="w-full"
+              options={PRECAUTION_OPTIONS}
+              selected={precautions}
+              onChange={setPrecautions}
+            />
+            {precautions.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {precautions.map((code) => (
+                  <Badge key={code} variant="outline" className="gap-1">
+                    {getPrecautionLabel(code)}
+                    <button
+                      type="button"
+                      onClick={() => setPrecautions((current) => current.filter((c) => c !== code))}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
               </div>
-            ))}
+            )}
           </section>
 
           {/* Workers */}
