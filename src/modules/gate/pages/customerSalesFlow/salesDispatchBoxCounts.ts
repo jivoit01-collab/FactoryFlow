@@ -36,8 +36,14 @@ export function getExpectedItemBoxes(item?: SalesDispatchItem | null) {
   if (itemTotal > 0) return itemTotal;
 
   const quantity = parsePositiveNumber(item.quantity);
+  if (quantity <= 0) return 0;
+
   const packSize = parsePackSize(item.item_name);
-  if (quantity <= 0 || packSize <= 0) return 0;
+  // Weight/loose lines (e.g. "CARTON 1 LTR", "... 15 KGS") have no PCS-style pack size;
+  // count one box per invoiced unit instead of 0 so they aren't invisible to the box
+  // total and a genuinely short load can't read as fully scanned. Mirrors the backend
+  // (_expected_item_boxes in sales_dispatch_gatepass.py).
+  if (packSize <= 0) return Math.ceil(quantity);
 
   return Math.ceil(quantity / packSize);
 }

@@ -201,14 +201,26 @@ export default function SalesDispatchBarcodeScanPage() {
   }, [autoFocusBarcode, entry, isReadOnly, canEditDocking, openBillKey]);
 
   const expectedBoxes = getExpectedDispatchBoxes(entry);
-  // Partial = at least one box scanned but fewer than expected. Such a load needs a
-  // partial-dispatch approval (the zero-scan case still uses the scan-skip flow).
-  const isPartialScan = scans.length > 0 && expectedBoxes > 0 && scans.length < expectedBoxes;
   const scannedQuantity = useMemo(
     () => scans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
     [scans],
   );
   const billGroups = useMemo(() => buildBillGroups(entry, scans), [entry, scans]);
+  // Partial = at least one box scanned, but the load still carries unscanned invoiced
+  // goods. Judged PER BILL/LINE on invoiced quantity (the same signal as the bill badges
+  // and the backend gate), OR by the load-wide box total — NOT the load total alone,
+  // which lets a surplus on one bill mask a shortfall on another and can't see
+  // weight/carton lines with no box estimate (e.g. a packing-material bill scanned 0/N
+  // while the rest over-scans to 100%). Mirrors load_scan_status on the backend. Such a
+  // load needs a partial-dispatch approval; the zero-scan case still uses scan-skip.
+  const hasUnscannedBillLine = billGroups.some((bill) =>
+    bill.summary.items.some(
+      (item) => item.expectedQuantity > 0 && item.scannedQuantity < item.expectedQuantity,
+    ),
+  );
+  const isPartialScan =
+    scans.length > 0 &&
+    (hasUnscannedBillLine || (expectedBoxes > 0 && scans.length < expectedBoxes));
   const progressPercent =
     expectedBoxes > 0 ? Math.min(100, Math.round((scans.length / expectedBoxes) * 100)) : 0;
 
