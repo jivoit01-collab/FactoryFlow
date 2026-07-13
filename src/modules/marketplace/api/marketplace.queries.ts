@@ -13,6 +13,7 @@ import type {
   ReceiveRequest,
   ReconciliationParams,
   ReturnCreateRequest,
+  ReturnListParams,
   ReturnSubmitRequest,
   ReviewRequest,
   ScanRequest,
@@ -35,7 +36,7 @@ export const MARKETPLACE_QUERY_KEYS = {
   dispatches: (params?: DispatchListParams) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'dispatches', params] as const,
   dispatch: (id?: number | null) => [...MARKETPLACE_QUERY_KEYS.all, 'dispatch', id] as const,
-  returns: (params?: DispatchListParams) =>
+  returns: (params?: ReturnListParams) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'returns', params] as const,
   return: (id?: number | null) => [...MARKETPLACE_QUERY_KEYS.all, 'return', id] as const,
   reconciliation: (params?: ReconciliationParams) =>
@@ -115,7 +116,7 @@ export function useMpDispatch(id?: number | null) {
   });
 }
 
-export function useMpReturns(params?: DispatchListParams) {
+export function useMpReturns(params?: ReturnListParams) {
   return useQuery({
     queryKey: MARKETPLACE_QUERY_KEYS.returns(params),
     queryFn: () => marketplaceApi.returns(params),

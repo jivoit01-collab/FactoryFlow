@@ -195,13 +195,24 @@ export interface MarketplaceReturn {
   channel: MarketplaceChannel;
   order: number;
   order_id: string;
+  buyer_name?: string;
   status: MpReturnStatus;
+  /** @deprecated use return_note_num */
   internal_credit_doc_num?: string;
+  return_note_num?: string;
   submitted_at?: string | null;
+  submitted_by_name?: string;
   created_at?: string;
   updated_at?: string;
   scans?: MpReturnScan[];
   progress?: MpProgressLine[];
+}
+
+export interface ReturnListParams {
+  channel?: MarketplaceChannel;
+  status?: MpReturnStatus;
+  page?: number;
+  page_size?: number;
 }
 
 // ── Reconciliation ───────────────────────────────────────────────────────────

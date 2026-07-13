@@ -30,6 +30,7 @@ import type {
   ReconciliationReport,
   ResolvedOrder,
   ReturnCreateRequest,
+  ReturnListParams,
   ReturnSubmitRequest,
   ReviewRequest,
   SapItem,
@@ -166,8 +167,10 @@ export const marketplaceApi = {
   },
 
   // ── Returns ────────────────────────────────────────────────────────────────
-  async returns(params?: DispatchListParams): Promise<MarketplaceReturn[]> {
-    const { data } = await apiClient.get<MarketplaceReturn[]>(`${EP.RETURNS}${buildQuery(params)}`);
+  async returns(params?: ReturnListParams): Promise<MpPaginated<MarketplaceReturn>> {
+    const { data } = await apiClient.get<MpPaginated<MarketplaceReturn>>(
+      `${EP.RETURNS}${buildQuery(params)}`,
+    );
     return data;
   },
   async return(id: number): Promise<MarketplaceReturn> {
