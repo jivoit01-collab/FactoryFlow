@@ -48,6 +48,7 @@ export const returnableGatePassSchema = z
     recipient_name: z.string().max(200).optional(),
     recipient_contact: z.string().optional(),
     recipient_department: z.string().optional(),
+    issued_by_name: z.string().max(200).optional(),
     expected_return_date: z.string().optional(),
     asset: z.number().nullable().optional(),
     work_order: z.number().nullable().optional(),

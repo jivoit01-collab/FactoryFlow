@@ -250,11 +250,11 @@ export default function MaintenanceReturnableDetailPage() {
             <CardContent>
               <dl className="grid gap-4 sm:grid-cols-3">
                 <Field label="Department" value={pass.department_name} />
-                <Field label="Requested By" value={pass.requested_by_name} />
-                <Field label="Contact" value={pass.contact_no} />
 
                 {pass.is_returnable ? (
                   <>
+                    <Field label="Requested By" value={pass.requested_by_name} />
+                    <Field label="Contact" value={pass.contact_no} />
                     <Field label="Party" value={pass.party_name} />
                     <Field label="Party Contact" value={pass.party_contact} />
                     <Field label="Party GSTIN" value={pass.party_gstin} />
@@ -269,6 +269,7 @@ export default function MaintenanceReturnableDetailPage() {
                   </>
                 ) : (
                   <>
+                    <Field label="Issued By" value={pass.issued_by_name} />
                     <Field
                       label="Issued To"
                       value={pass.recipient_display_name || pass.recipient_name}

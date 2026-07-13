@@ -208,6 +208,8 @@ export interface ReturnableGatePass {
   recipient_display_name: string;
   recipient_contact: string;
   recipient_department: string;
+  /** Who handed the material over. Non-returnable passes only. */
+  issued_by_name: string;
   destination: string;
 
   /** Null on a non-returnable pass — nothing is coming back. */
@@ -311,6 +313,8 @@ export interface ReturnableGatePassPayload {
   recipient_name?: string;
   recipient_contact?: string;
   recipient_department?: string;
+  /** Non-returnable only — the counterpart to recipient_name. */
+  issued_by_name?: string;
   /** Required when returnable; ignored otherwise. */
   expected_return_date?: string | null;
   asset?: number | null;
