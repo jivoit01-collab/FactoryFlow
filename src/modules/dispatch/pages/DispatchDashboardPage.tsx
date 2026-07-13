@@ -1,4 +1,5 @@
 import {
+  Boxes,
   CalendarDays,
   ClipboardList,
   Link2,
@@ -48,6 +49,14 @@ const dispatchModuleCards: DispatchModuleCard[] = [
     icon: <Link2 className="h-5 w-5" />,
     color: 'text-cyan-700',
     permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
+  },
+  {
+    title: 'Inside Vehicle Manager',
+    description: 'Fix dispatch issues on vehicles already inside — add, remove, or move bills.',
+    route: '/dispatch/inside-vehicles',
+    icon: <Boxes className="h-5 w-5" />,
+    color: 'text-indigo-700',
+    permissions: [DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW],
   },
   {
     title: 'Docking',

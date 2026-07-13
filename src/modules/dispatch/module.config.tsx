@@ -56,6 +56,10 @@ const DockingDetailPage = lazy(
 const dispatchViewPermissions = [
   DISPATCH_PERMISSIONS.VIEW_PLANS,
   DISPATCH_PERMISSIONS.LINK_VEHICLE,
+  // Inside Vehicle Manager view — so a user granted ONLY this page (e.g. an
+  // add-bill-only SCM operator) still sees the Dispatch parent menu and the
+  // /dispatch landing. Every other child's view perm is represented here too.
+  DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW,
   // Service GRPO (transporter bilty) is a dispatch function — gate the module on
   // the dispatch-owned can_post_bilty_service_grpo, NOT the material-GRPO app
   // perms, so material-GRPO clerks don't see the whole Dispatch module (A7a).
