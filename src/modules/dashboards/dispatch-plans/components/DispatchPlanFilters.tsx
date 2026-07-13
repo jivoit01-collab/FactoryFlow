@@ -115,7 +115,7 @@ export function DispatchPlanFilters({
 
       <div className="flex w-full flex-col gap-1.5 sm:w-auto">
         <Label htmlFor="dispatch-plan-limit" className="text-xs">
-          Rows
+          Max rows
         </Label>
         <Select
           id="dispatch-plan-limit"

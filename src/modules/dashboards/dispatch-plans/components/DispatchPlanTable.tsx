@@ -1,8 +1,23 @@
-import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsUpDown,
+  ChevronUp,
+} from 'lucide-react';
 import { type KeyboardEvent, useMemo, useState } from 'react';
 
-import { Card, CardContent } from '@/shared/components/ui';
+import {
+  Button,
+  Card,
+  CardContent,
+  NativeSelect as Select,
+  SelectOption,
+} from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+const DEFAULT_PAGE_SIZE = 50;
 
 import type { DispatchBill } from '../types';
 import { StatusBadge } from './StatusBadge';
@@ -62,6 +77,8 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
     col: 'create_date',
     dir: 'desc',
   });
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
 
   const sorted = useMemo(() => {
     return [...bills].sort((a, b) => {
@@ -72,7 +89,20 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
     });
   }, [bills, sort]);
 
+  // Client-side pagination over the fetched rows. The backend returns the whole
+  // fetched set (up to the "Max rows" cap) in one call and computes the summary
+  // cards over it, so we page locally. When a new data set arrives (filter or
+  // refetch) return to the first page — adjusting state during render is React's
+  // recommended alternative to a setState-in-effect. Sort and page-size changes
+  // reset the page in their own handlers below.
+  const [prevBills, setPrevBills] = useState(bills);
+  if (prevBills !== bills) {
+    setPrevBills(bills);
+    setPage(1);
+  }
+
   function toggleSort(col: SortCol) {
+    setPage(1);
     setSort((prev) =>
       prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' },
     );
@@ -115,6 +145,12 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
     );
   }
 
+  const totalRows = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const pageRows = sorted.slice(startIndex, startIndex + pageSize);
+
   const thClass =
     'cursor-pointer whitespace-nowrap px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground';
   const thRightClass =
@@ -153,7 +189,7 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
               </tr>
             </thead>
             <tbody>
-              {sorted.map((bill) => (
+              {pageRows.map((bill) => (
                 <tr
                   key={bill.doc_entry}
                   className={cn(
@@ -276,6 +312,62 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row">
+          <p className="text-muted-foreground">
+            Showing <span className="font-medium text-foreground">{startIndex + 1}</span>–
+            <span className="font-medium text-foreground">
+              {Math.min(startIndex + pageSize, totalRows)}
+            </span>{' '}
+            of <span className="font-medium text-foreground">{totalRows}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="dispatch-plan-page-size"
+              className="whitespace-nowrap text-xs text-muted-foreground"
+            >
+              Rows per page
+            </label>
+            <Select
+              id="dispatch-plan-page-size"
+              value={String(pageSize)}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+              className="w-20"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectOption key={size} value={String(size)}>
+                  {size}
+                </SelectOption>
+              ))}
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage <= 1}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage >= totalPages}
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

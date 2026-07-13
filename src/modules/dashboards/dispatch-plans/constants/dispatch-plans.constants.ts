@@ -1,4 +1,4 @@
-import { format, startOfDay, subDays } from 'date-fns';
+import { format, startOfDay, subMonths } from 'date-fns';
 
 import type { DispatchPlanFilters } from '../types';
 import type { DispatchPlanStatus } from '../types';
@@ -26,7 +26,9 @@ export const EDIT_BOOKING_STATUS_OPTIONS: Array<{
 export function createDefaultDispatchPlanFilters(): DispatchPlanFilters {
   const today = startOfDay(new Date());
   return {
-    date_from: format(subDays(today, 7), 'yyyy-MM-dd'),
+    // Default window is one month back from today, so the "From" date sits a
+    // month before the "To" date (today) out of the box.
+    date_from: format(subMonths(today, 1), 'yyyy-MM-dd'),
     date_to: format(today, 'yyyy-MM-dd'),
     booking_status: 'all',
     limit: 500,
