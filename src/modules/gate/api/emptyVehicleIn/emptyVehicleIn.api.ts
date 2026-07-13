@@ -123,6 +123,15 @@ export interface AddBillToInsideVehicleResponse {
   sap_doc_entry: number;
 }
 
+export interface AddBillToTruckRequest {
+  /** Physical truck (vehicle id) to add the bill to. */
+  vehicle_id: number;
+  /** The bill's own company — its gate-in chain is created on the truck if absent. */
+  company_code: string;
+  /** SAP doc_entry of the dispatch bill to add. */
+  sap_doc_entry: number;
+}
+
 export interface InsideVehicleBill {
   sap_doc_entry: number;
   sap_doc_num: string;
@@ -242,6 +251,14 @@ export const emptyVehicleInApi = {
   ): Promise<AddBillToInsideVehicleResponse> {
     const response = await apiClient.post<AddBillToInsideVehicleResponse>(
       API_ENDPOINTS.GATE_CORE.INSIDE_VEHICLE_ADD_BILL,
+      data,
+    );
+    return response.data;
+  },
+
+  async addBillToTruck(data: AddBillToTruckRequest): Promise<{ detail: string }> {
+    const response = await apiClient.post<{ detail: string }>(
+      API_ENDPOINTS.GATE_CORE.INSIDE_VEHICLE_ADD_BILL_TO_TRUCK,
       data,
     );
     return response.data;

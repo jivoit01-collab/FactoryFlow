@@ -92,6 +92,8 @@ export const API_ENDPOINTS = {
     EMPTY_VEHICLE_OUT_CANCEL_BY_ID: (id: number) => `/gate-core/empty-vehicle-outs/${id}/cancel/`,
     INSIDE_DISPATCH_VEHICLES: '/gate-core/inside-dispatch-vehicles/',
     INSIDE_VEHICLE_ADD_BILL: '/gate-core/inside-dispatch-vehicles/add-bill/',
+    INSIDE_VEHICLE_ADD_BILL_TO_TRUCK:
+      '/gate-core/inside-dispatch-vehicles/add-bill-to-truck/',
     INSIDE_VEHICLE_REMOVE_BILL: '/gate-core/inside-dispatch-vehicles/remove-bill/',
     INSIDE_VEHICLE_MOVE_BILL: '/gate-core/inside-dispatch-vehicles/move-bill/',
     INSIDE_VEHICLE_UNLINK_ALL: '/gate-core/inside-dispatch-vehicles/unlink-all/',

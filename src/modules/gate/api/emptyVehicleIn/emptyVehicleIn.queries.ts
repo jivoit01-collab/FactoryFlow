@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   type AddBillToInsideVehicleRequest,
+  type AddBillToTruckRequest,
   type EmptyVehicleGateInCreateRequest,
   type EmptyVehicleGateInParams,
   type EmptyVehicleGateInUpdateRequest,
@@ -118,6 +119,16 @@ export function useAddBillToInsideVehicle() {
   return useMutation({
     mutationFn: (data: AddBillToInsideVehicleRequest) =>
       emptyVehicleInApi.addBillToInsideVehicle(data),
+    onSuccess: invalidate,
+  });
+}
+
+/** Add a bill of any company to a physical truck (creates the company's chain). */
+export function useAddBillToTruck() {
+  const invalidate = useInsideVehicleInvalidation();
+
+  return useMutation({
+    mutationFn: (data: AddBillToTruckRequest) => emptyVehicleInApi.addBillToTruck(data),
     onSuccess: invalidate,
   });
 }

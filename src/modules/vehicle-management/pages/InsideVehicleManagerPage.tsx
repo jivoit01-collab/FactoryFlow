@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
+import { useAuth } from '@/core/auth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { useDispatchBills, useLookupDispatchBill } from '@/modules/dashboards/dispatch-plans/api';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
@@ -21,6 +22,7 @@ import {
   type InsideDispatchVehicle,
   type InsideVehicleBill,
   useAddBillToInsideVehicle,
+  useAddBillToTruck,
   useInsideDispatchVehicles,
   useMoveBillBetweenVehicles,
   useRemoveBillFromInsideVehicle,
@@ -40,6 +42,9 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
+  NativeSelect as Select,
+  SelectOption,
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils/error';
 
@@ -185,6 +190,11 @@ export default function InsideVehicleManagerPage() {
   // The debounced search term of the open "Add a bill" picker, used to look a
   // bill up by number on the server when it falls outside the 500-row feed.
   const [addSearch, setAddSearch] = useState('');
+  // Truck-level "add a bill of another company" form: which truck (group key) is
+  // open, the chosen company, and its own picker search term.
+  const [addTruckKey, setAddTruckKey] = useState<string | null>(null);
+  const [addTruckCompany, setAddTruckCompany] = useState<string | null>(null);
+  const [addTruckSearch, setAddTruckSearch] = useState('');
   const [movingBill, setMovingBill] = useState<{ vehicleEntryId: number; docEntry: number } | null>(
     null,
   );
@@ -205,9 +215,11 @@ export default function InsideVehicleManagerPage() {
   const billsQuery = useDispatchBills(billFilters);
 
   const addBill = useAddBillToInsideVehicle();
+  const addBillToTruck = useAddBillToTruck();
   const removeBill = useRemoveBillFromInsideVehicle();
   const moveBill = useMoveBillBetweenVehicles();
   const unlinkAll = useUnlinkAllBills();
+  const { companies } = useAuth();
 
   const vehicles = useMemo(() => vehiclesQuery.data ?? [], [vehiclesQuery.data]);
   const filteredVehicles = useMemo(() => {
@@ -258,6 +270,25 @@ export default function InsideVehicleManagerPage() {
   const lookedUpBill =
     billLookupQuery.data && isBillAddable(billLookupQuery.data) ? billLookupQuery.data : null;
 
+  // Same by-number lookup, scoped to the company chosen in the truck-level
+  // "add another company's bill" form, so its picker also reaches past the feed.
+  const truckBillLookupQuery = useLookupDispatchBill(
+    addTruckSearch,
+    addTruckCompany ?? undefined,
+  );
+  const truckLookedUpBill =
+    truckBillLookupQuery.data && isBillAddable(truckBillLookupQuery.data)
+      ? truckBillLookupQuery.data
+      : null;
+  const truckAddableBills = useMemo(() => {
+    if (!addTruckCompany) return [];
+    const feed = addableBills.filter((b) => b.company_code === addTruckCompany);
+    if (truckLookedUpBill && !feed.some((b) => b.doc_entry === truckLookedUpBill.doc_entry)) {
+      return [{ ...truckLookedUpBill, company_code: addTruckCompany }, ...feed];
+    }
+    return feed;
+  }, [addTruckCompany, addableBills, truckLookedUpBill]);
+
   const handleAdd = async (entry: InsideDispatchVehicle, bill: DispatchBill) => {
     try {
       const res = await addBill.mutateAsync({
@@ -267,6 +298,26 @@ export default function InsideVehicleManagerPage() {
       toast.success(res.detail || 'Bill added');
       setAddForVehicleEntryId(null);
       setAddSearch('');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to add the bill'));
+    }
+  };
+
+  const handleAddToTruck = async (
+    vehicleId: number,
+    companyCode: string,
+    bill: DispatchBill,
+  ) => {
+    try {
+      const res = await addBillToTruck.mutateAsync({
+        vehicle_id: vehicleId,
+        company_code: companyCode,
+        sap_doc_entry: bill.doc_entry,
+      });
+      toast.success(res.detail || 'Bill added');
+      setAddTruckKey(null);
+      setAddTruckCompany(null);
+      setAddTruckSearch('');
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to add the bill'));
     }
@@ -365,7 +416,14 @@ export default function InsideVehicleManagerPage() {
         <EmptyState text="No inside vehicles match this search." />
       ) : (
         <div className="space-y-3">
-          {groups.map((group) => (
+          {groups.map((group) => {
+            const truckVehicleId = group.entries[0]?.vehicle_id;
+            const onTruckCompanyCodes = new Set(group.entries.map((e) => e.company_code));
+            const candidateCompanies = companies.filter(
+              (c) => !onTruckCompanyCodes.has(c.company_code),
+            );
+            const isTruckAddOpen = addTruckKey === group.key;
+            return (
             <Card key={group.key}>
               <CardContent className="space-y-4 p-4">
                 {/* Physical-truck header + vehicle-level actions */}
@@ -391,22 +449,113 @@ export default function InsideVehicleManagerPage() {
                       {group.totalBills} bill(s)
                     </p>
                   </div>
-                  {canMarkOut && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        navigate(
-                          `/gate/empty-vehicle-out/new?entry=${group.entries[0].vehicle_entry_id}`,
-                        )
-                      }
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Mark Out
-                    </Button>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {canAdd && candidateCompanies.length > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setAddTruckCompany(null);
+                          setAddTruckSearch('');
+                          setAddTruckKey(isTruckAddOpen ? null : group.key);
+                        }}
+                      >
+                        <PackagePlus className="mr-2 h-4 w-4" />
+                        Add other bill
+                      </Button>
+                    )}
+                    {canMarkOut && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          navigate(
+                            `/gate/empty-vehicle-out/new?entry=${group.entries[0].vehicle_entry_id}`,
+                          )
+                        }
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Mark Out
+                      </Button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Truck-level add: a bill of a company with no gate-in here yet. */}
+                {isTruckAddOpen && (
+                  <div className="space-y-3 rounded-md border border-dashed p-3">
+                    <p className="text-sm font-medium">Add a bill from another company</p>
+                    <div className="flex w-full flex-col gap-1.5 sm:max-w-xs">
+                      <Label htmlFor={`add-truck-company-${group.key}`} className="text-xs">
+                        Company
+                      </Label>
+                      <Select
+                        id={`add-truck-company-${group.key}`}
+                        value={addTruckCompany ?? ''}
+                        onChange={(event) => {
+                          setAddTruckCompany(event.target.value || null);
+                          setAddTruckSearch('');
+                        }}
+                      >
+                        <SelectOption value="">Select a company…</SelectOption>
+                        {candidateCompanies.map((c) => (
+                          <SelectOption key={c.company_code} value={c.company_code}>
+                            {c.company_name}
+                          </SelectOption>
+                        ))}
+                      </Select>
+                    </div>
+                    {addTruckCompany && (
+                      <div className="rounded-md border bg-muted/30 p-3">
+                        <SearchableSelect<DispatchBill>
+                          inputId={`add-truck-bill-${group.key}`}
+                          label="Add a bill"
+                          value=""
+                          items={truckAddableBills}
+                          isLoading={
+                            billsQuery.isLoading ||
+                            billsQuery.isFetching ||
+                            truckBillLookupQuery.isFetching
+                          }
+                          isError={billsQuery.isError}
+                          placeholder="Search a booked/pending bill by number or customer"
+                          getItemKey={(bill) => bill.doc_entry}
+                          getItemLabel={billLabel}
+                          filterFn={(bill, query) =>
+                            billLabel(bill).toLowerCase().includes(query.trim().toLowerCase())
+                          }
+                          onSearchChange={setAddTruckSearch}
+                          loadingText="Loading bills..."
+                          emptyText="Search a bill to add"
+                          notFoundText="No addable bills found"
+                          errorText="Failed to load bills"
+                          onClear={() => undefined}
+                          onItemSelect={(bill) => {
+                            if (truckVehicleId != null) {
+                              void handleAddToTruck(truckVehicleId, addTruckCompany, bill);
+                            }
+                          }}
+                          renderItem={(bill) => (
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium">
+                                {bill.doc_num} - {compact(bill.card_name)}
+                              </div>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {formatNumber(bill.total_weight, 3)} kg · {bill.plan.booking_status}
+                              </div>
+                            </div>
+                          )}
+                        />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Adds the bill to this truck under a new gate-in for the selected
+                          company. Type a full bill number to find one outside the recent list.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* One panel per company gate-in on this truck */}
                 {group.entries.map((entry) => {
@@ -647,7 +796,8 @@ export default function InsideVehicleManagerPage() {
                 })}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
