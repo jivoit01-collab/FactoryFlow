@@ -31,7 +31,10 @@ export function createDefaultDispatchPlanFilters(): DispatchPlanFilters {
     date_from: format(subMonths(today, 1), 'yyyy-MM-dd'),
     date_to: format(today, 'yyyy-MM-dd'),
     booking_status: 'all',
-    limit: 500,
+    // No user-facing row cap anymore — request the backend maximum so the table
+    // shows the whole filtered window (paginated client-side). 2000 is the
+    // backend's hard ceiling; a wider window that exceeds it needs a backend change.
+    limit: 2000,
     exclude_jivo_mart_transfer: true,
   };
 }

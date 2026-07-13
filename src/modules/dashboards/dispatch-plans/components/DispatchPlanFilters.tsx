@@ -113,28 +113,6 @@ export function DispatchPlanFilters({
         </Select>
       </div>
 
-      <div className="flex w-full flex-col gap-1.5 sm:w-auto">
-        <Label htmlFor="dispatch-plan-limit" className="text-xs">
-          Max rows
-        </Label>
-        <Select
-          id="dispatch-plan-limit"
-          value={String(filters.limit ?? 500)}
-          onChange={(event) =>
-            onFiltersChange({
-              ...filters,
-              limit: Number(event.target.value),
-            })
-          }
-          className="w-full sm:w-28"
-        >
-          <SelectOption value="200">200</SelectOption>
-          <SelectOption value="500">500</SelectOption>
-          <SelectOption value="1000">1000</SelectOption>
-          <SelectOption value="2000">2000</SelectOption>
-        </Select>
-      </div>
-
       <div className="flex w-full items-center gap-2 rounded-md border bg-background px-3 py-2 sm:w-auto">
         <Switch
           id="dispatch-plan-show-jivo-mart"
