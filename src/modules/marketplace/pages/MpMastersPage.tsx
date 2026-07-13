@@ -456,6 +456,9 @@ const EMPTY_WH = (channel: MarketplaceChannel): MarketplaceWarehouse => ({
   sap_warehouse_code: '',
   sap_customer_card_code: '',
   facility_code: '',
+  sap_series: '',
+  sap_tax_code: '',
+  post_goods_issue: true,
   is_active: true,
 });
 
@@ -487,6 +490,9 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
       sap_warehouse_code: editing.sap_warehouse_code.trim(),
       sap_customer_card_code: editing.sap_customer_card_code.trim(),
       facility_code: editing.facility_code,
+      sap_series: editing.sap_series.trim(),
+      sap_tax_code: editing.sap_tax_code.trim(),
+      post_goods_issue: editing.post_goods_issue,
       is_active: editing.is_active,
       ...(editing.id ? { id: editing.id } : {}),
     };
@@ -591,6 +597,37 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
                   onChange={(e) => setEditing({ ...editing, facility_code: e.target.value })}
                 />
               </Field>
+
+              <div className="border-t pt-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                  Delivery note posting (SAP)
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Document series">
+                    <Input
+                      value={editing.sap_series}
+                      placeholder="SAP default"
+                      onChange={(e) => setEditing({ ...editing, sap_series: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Tax code (VatGroup)">
+                    <Input
+                      value={editing.sap_tax_code}
+                      placeholder="e.g. GST18"
+                      onChange={(e) => setEditing({ ...editing, sap_tax_code: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                <label className="mt-3 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={editing.post_goods_issue}
+                    onChange={(e) => setEditing({ ...editing, post_goods_issue: e.target.checked })}
+                  />
+                  Also post packing-material Goods Issue
+                </label>
+              </div>
             </div>
           ) : null}
           <DialogFooter>
