@@ -373,20 +373,21 @@ export default function InsideVehicleManagerPage() {
                       {group.totalBills} bill(s)
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={!canMarkOut}
-                    onClick={() =>
-                      navigate(
-                        `/gate/empty-vehicle-out/new?entry=${group.entries[0].vehicle_entry_id}`,
-                      )
-                    }
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Mark Out
-                  </Button>
+                  {canMarkOut && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        navigate(
+                          `/gate/empty-vehicle-out/new?entry=${group.entries[0].vehicle_entry_id}`,
+                        )
+                      }
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Mark Out
+                    </Button>
+                  )}
                 </div>
 
                 {/* One panel per company gate-in on this truck */}
@@ -409,32 +410,35 @@ export default function InsideVehicleManagerPage() {
                           {entry.bills.length} bill(s)
                         </span>
                         <div className="ml-auto flex gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="default"
-                            disabled={!canAdd}
-                            onClick={() =>
-                              setAddForVehicleEntryId(
-                                addForVehicleEntryId === entry.vehicle_entry_id
-                                  ? null
-                                  : entry.vehicle_entry_id,
-                              )
-                            }
-                          >
-                            <PackagePlus className="mr-2 h-4 w-4" />
-                            Add Bill
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={!canUnlink || entry.bills.length === 0}
-                            onClick={() => setPendingConfirm({ kind: 'unlinkAll', entry })}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Unlink All
-                          </Button>
+                          {canAdd && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="default"
+                              onClick={() =>
+                                setAddForVehicleEntryId(
+                                  addForVehicleEntryId === entry.vehicle_entry_id
+                                    ? null
+                                    : entry.vehicle_entry_id,
+                                )
+                              }
+                            >
+                              <PackagePlus className="mr-2 h-4 w-4" />
+                              Add Bill
+                            </Button>
+                          )}
+                          {canUnlink && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={entry.bills.length === 0}
+                              onClick={() => setPendingConfirm({ kind: 'unlinkAll', entry })}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Unlink All
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -472,52 +476,52 @@ export default function InsideVehicleManagerPage() {
                                   ) : null}
 
                                   <div className="ml-auto flex gap-2">
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      disabled={
-                                        !canMove || !bill.removable || moveTargets.length === 0
-                                      }
-                                      title={
-                                        moveTargets.length === 0
-                                          ? 'No other inside truck to move to'
-                                          : undefined
-                                      }
-                                      onClick={() =>
-                                        setMovingBill(
-                                          isMoving
-                                            ? null
-                                            : {
-                                                vehicleEntryId: entry.vehicle_entry_id,
-                                                docEntry: bill.sap_doc_entry,
-                                              },
-                                        )
-                                      }
-                                    >
-                                      <ArrowRightLeft className="mr-1 h-4 w-4" />
-                                      Move
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-red-600 hover:text-red-700"
-                                      disabled={
-                                        !canRemove || !bill.removable || removeBill.isPending
-                                      }
-                                      title={
-                                        bill.removable
-                                          ? undefined
-                                          : bill.not_removable_reason ?? 'Cannot remove'
-                                      }
-                                      onClick={() =>
-                                        setPendingConfirm({ kind: 'remove', entry, bill })
-                                      }
-                                    >
-                                      <Trash2 className="mr-1 h-4 w-4" />
-                                      Remove
-                                    </Button>
+                                    {canMove && (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        disabled={!bill.removable || moveTargets.length === 0}
+                                        title={
+                                          moveTargets.length === 0
+                                            ? 'No other inside truck to move to'
+                                            : undefined
+                                        }
+                                        onClick={() =>
+                                          setMovingBill(
+                                            isMoving
+                                              ? null
+                                              : {
+                                                  vehicleEntryId: entry.vehicle_entry_id,
+                                                  docEntry: bill.sap_doc_entry,
+                                                },
+                                          )
+                                        }
+                                      >
+                                        <ArrowRightLeft className="mr-1 h-4 w-4" />
+                                        Move
+                                      </Button>
+                                    )}
+                                    {canRemove && (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-red-600 hover:text-red-700"
+                                        disabled={!bill.removable || removeBill.isPending}
+                                        title={
+                                          bill.removable
+                                            ? undefined
+                                            : bill.not_removable_reason ?? 'Cannot remove'
+                                        }
+                                        onClick={() =>
+                                          setPendingConfirm({ kind: 'remove', entry, bill })
+                                        }
+                                      >
+                                        <Trash2 className="mr-1 h-4 w-4" />
+                                        Remove
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
 
