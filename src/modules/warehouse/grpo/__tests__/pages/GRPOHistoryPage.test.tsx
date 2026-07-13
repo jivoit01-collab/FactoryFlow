@@ -106,13 +106,24 @@ describe('GRPOHistoryPage — Header', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('GRPOHistoryPage — Filters', () => {
-  it('defines STATUS_FILTERS with all, pending, posted, failed', () => {
+  it('defines STATUS_FILTERS with all, posted, failed (no pending)', () => {
     const content = readSource();
     expect(content).toContain('STATUS_FILTERS');
     expect(content).toContain("label: 'All'");
-    expect(content).toContain("label: 'Pending'");
     expect(content).toContain("label: 'Posted'");
     expect(content).toContain("label: 'Failed'");
+    expect(content).not.toContain("label: 'Pending'");
+  });
+
+  it('Failed filter excludes superseded (resolved) failures', () => {
+    const content = readSource();
+    expect(content).toContain('!entry.is_superseded');
+  });
+
+  it('offers a Retry action on failed rows that opens the preview to re-post', () => {
+    const content = readSource();
+    expect(content).toContain('Retry');
+    expect(content).toContain('navigate(`/warehouse/grpo/material/preview/${entry.vehicle_entry}`)');
   });
 
   it('gets status filter from URL search params', () => {

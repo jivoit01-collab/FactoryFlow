@@ -252,6 +252,8 @@ export interface GRPOHistoryEntry {
   sap_doc_num: number | null;
   sap_doc_total: string;
   status: GRPOStatus;
+  /** True when a later successful posting for the same PO resolved this failure (hidden from the Failed list). */
+  is_superseded?: boolean;
   error_message: string | null;
   posted_at: string | null;
   posted_by: number | null;

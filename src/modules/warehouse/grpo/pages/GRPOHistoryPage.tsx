@@ -15,18 +15,17 @@ const STATUS_FILTERS = {
     label: 'All',
     filter: () => true,
   },
-  pending: {
-    label: 'Pending',
-    filter: (entry: GRPOHistoryEntry) => entry.status === GRPO_STATUS.PENDING,
-  },
   posted: {
     label: 'Posted',
     filter: (entry: GRPOHistoryEntry) => entry.status === GRPO_STATUS.POSTED,
   },
   failed: {
     label: 'Failed',
+    // A failure that a later successful re-post resolved (is_superseded) drops out of
+    // Failed — it stays visible under "All" for audit.
     filter: (entry: GRPOHistoryEntry) =>
-      entry.status === GRPO_STATUS.FAILED || entry.status === GRPO_STATUS.PARTIALLY_POSTED,
+      (entry.status === GRPO_STATUS.FAILED || entry.status === GRPO_STATUS.PARTIALLY_POSTED) &&
+      !entry.is_superseded,
   },
 } as const;
 
@@ -256,6 +255,22 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
                     )}
                   </div>
                   <div className="flex items-center gap-3">
+                    {(entry.status === GRPO_STATUS.FAILED ||
+                      entry.status === GRPO_STATUS.PARTIALLY_POSTED) &&
+                      !entry.is_superseded && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/warehouse/grpo/material/preview/${entry.vehicle_entry}`);
+                          }}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Retry
+                        </Button>
+                      )}
                     <span className="text-xs text-muted-foreground">
                       {formatDateTime(entry.posted_at || entry.created_at)}
                     </span>
