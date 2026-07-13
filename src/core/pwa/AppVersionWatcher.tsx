@@ -13,7 +13,7 @@ import { toast } from 'sonner';
  * The toast is shown at most once per new version per tab session, so it can
  * never loop even if a reload is served a stale document.
  */
-const CHECK_INTERVAL_MS = 60_000;
+const CHECK_INTERVAL_MS = 3600_000;
 
 async function fetchServerVersion(): Promise<string | null> {
   try {
