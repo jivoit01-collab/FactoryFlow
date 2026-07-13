@@ -873,6 +873,7 @@ export const API_ENDPOINTS = {
     DISPATCH_SCAN_BY_ID: (id: number, scanId: number) =>
       `/marketplace/dispatches/${id}/scans/${scanId}/`,
     DISPATCH_CONFIRM: (id: number) => `/marketplace/dispatches/${id}/confirm/`,
+    DISPATCH_RETRY_DN: (id: number) => `/marketplace/dispatches/${id}/retry-delivery-note/`,
     DISPATCH_CANCEL: (id: number) => `/marketplace/dispatches/${id}/cancel/`,
     RETURNS: '/marketplace/returns/',
     RETURN_BY_ID: (id: number) => `/marketplace/returns/${id}/`,
@@ -894,6 +895,12 @@ export const API_ENDPOINTS = {
     ISSUE_RECEIVE: (id: number) => `/marketplace/issue-requests/${id}/receive/`,
     WAREHOUSE_INSIGHTS: '/marketplace/warehouse-insights/',
     SAP_ITEMS: '/marketplace/sap-items/',
+    PACKING_QUEUE: '/marketplace/packing/queue/',
+    PACKING_OPEN: '/marketplace/packing/open/',
+    PACKING_BY_ID: (id: number) => `/marketplace/packing/${id}/`,
+    PACKING_GENERATE: (id: number) => `/marketplace/packing/${id}/generate/`,
+    PACKING_COMPLETE: (id: number) => `/marketplace/packing/${id}/complete/`,
+    PACK_BARCODE_PRINT: (id: number) => `/marketplace/packing/barcodes/${id}/print/`,
   },
 } as const;
 
