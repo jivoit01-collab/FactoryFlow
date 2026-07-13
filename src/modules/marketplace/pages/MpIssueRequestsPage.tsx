@@ -47,8 +47,8 @@ export default function MpIssueRequestsPage() {
           <CardTitle className="text-base">Requests</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="-mx-2 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[660px] text-sm">
               <thead className="border-b text-left text-xs text-muted-foreground">
                 <tr>
                   <th className="p-3">Request</th>

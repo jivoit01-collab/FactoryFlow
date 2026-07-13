@@ -153,15 +153,15 @@ export default function MpIssueRequestDetailPage() {
       })()}
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">Stock lines</CardTitle>
           <Button size="sm" variant="outline" onClick={download}>
             <Download className="mr-2 h-4 w-4" /> Export CSV
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="-mx-2 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[880px] text-sm">
               <thead className="border-b text-left text-xs text-muted-foreground">
                 <tr>
                   <th className="p-3">Item</th>
@@ -249,7 +249,7 @@ export default function MpIssueRequestDetailPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {editable && (
           <>
             <Button onClick={saveReview} disabled={reviewMut.isPending}>

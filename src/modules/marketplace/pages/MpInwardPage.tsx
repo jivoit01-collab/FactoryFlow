@@ -79,14 +79,14 @@ export default function MpInwardPage() {
               <CardDescription>Scan or type the {channel} Order ID.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   value={orderInput}
                   placeholder="Order ID"
                   onChange={(e) => setOrderInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && orderInput.trim() && load(orderInput.trim())}
                 />
-                <Button onClick={() => orderInput.trim() && load(orderInput.trim())} disabled={createReturn.isPending}>
+                <Button className="w-full sm:w-auto" onClick={() => orderInput.trim() && load(orderInput.trim())} disabled={createReturn.isPending}>
                   Load
                 </Button>
               </div>
@@ -119,8 +119,8 @@ function ReturnsList({
         <CardDescription>Open a return to continue scanning or reprint its note.</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="-mx-2 overflow-x-auto sm:mx-0">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="border-b text-left text-xs text-muted-foreground">
               <tr>
                 <th className="p-3">Order</th>
@@ -223,14 +223,14 @@ function ActiveReturn({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+      <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle className="text-base">
             Order <span className="font-mono">{r.order_id}</span>
           </CardTitle>
           <CardDescription>{channel} return</CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant={submitted ? 'default' : 'secondary'}>{r.status}</Badge>
           <Button size="sm" variant="ghost" onClick={onClose}>
             Change order
@@ -254,13 +254,13 @@ function ActiveReturn({
 
         {!submitted ? (
           <div className="flex justify-end">
-            <Button onClick={handleSubmit} disabled={submit.isPending || (r.scans ?? []).length === 0}>
+            <Button className="w-full sm:w-auto" onClick={handleSubmit} disabled={submit.isPending || (r.scans ?? []).length === 0}>
               <PackageOpen className="mr-2 h-4 w-4" />
               {submit.isPending ? 'Submitting…' : 'Submit return'}
             </Button>
           </div>
         ) : (
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" className="w-full sm:w-auto" onClick={onClose}>
             New return
           </Button>
         )}
