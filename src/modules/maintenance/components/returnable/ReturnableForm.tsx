@@ -464,6 +464,8 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
                     onClear={() => {
                       setValue(`items_input.${index}.item_code`, '');
                       setValue(`items_input.${index}.item_name`, '');
+                      // Don't leave the previous item's unit behind.
+                      setValue(`items_input.${index}.uom`, 'NOS');
                     }}
                   />
                 </div>
@@ -471,7 +473,7 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
                 <Field
                   id={`item-name-${index}`}
                   label="Item Name"
-                  className="sm:col-span-2"
+                  className={isReturnable ? 'sm:col-span-2' : 'sm:col-span-3'}
                   error={errors.items_input?.[index]?.item_name?.message}
                 >
                   <Input
@@ -480,15 +482,32 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
                   />
                 </Field>
 
-                <Field label="SAP Code" className="sm:col-span-1">
+                <Field
+                  label="SAP Code"
+                  className={isReturnable ? 'sm:col-span-1' : 'sm:col-span-2'}
+                >
                   <p className="truncate pt-2 font-mono text-xs text-muted-foreground">
                     {watch(`items_input.${index}.item_code`) || '—'}
                   </p>
                 </Field>
 
+                {/* UOM comes from the SAP item master. Read-only — the unit is a
+                    property of the item, not a choice the clerk makes. */}
+                {!isReturnable ? (
+                  <Field id={`uom-${index}`} label="UOM" className="sm:col-span-2">
+                    <Input
+                      id={`uom-${index}`}
+                      readOnly
+                      placeholder="From SAP"
+                      className="bg-muted/40"
+                      {...register(`items_input.${index}.uom`)}
+                    />
+                  </Field>
+                ) : null}
+
                 <Field
                   id={`qty-${index}`}
-                  label={`Quantity${watch(`items_input.${index}.uom`) ? ` (${watch(`items_input.${index}.uom`)})` : ''}`}
+                  label="Quantity"
                   className="sm:col-span-2"
                   error={errors.items_input?.[index]?.quantity_out?.message}
                 >
