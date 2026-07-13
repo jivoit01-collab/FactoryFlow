@@ -179,7 +179,12 @@ function BoxIcon({ color = '#fff' }: { color?: string }) {
 
 const BoxLabel = forwardRef<HTMLDivElement, BoxLabelProps>(({ data }, ref) => {
   const qrValue = data.qr_payload || data.barcode;
-  const itemName = compactText(data.item_name || data.item_code);
+  const itemCode = data.item_code ? String(data.item_code).trim() : '';
+  const itemName = compactText(
+    [itemCode ? `(${itemCode})` : '', data.item_name ? String(data.item_name).trim() : '']
+      .filter(Boolean)
+      .join(' '),
+  );
   const boxSequence =
     data.box_number && data.box_count ? `${data.box_number}/${data.box_count}` : 'ITEM';
   const boxCount = data.box_count ? compactText(data.box_count) : compactText(data.box_number);

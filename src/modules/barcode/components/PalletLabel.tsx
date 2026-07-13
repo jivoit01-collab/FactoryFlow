@@ -184,7 +184,12 @@ function DetailRow({
 
 const PalletLabel = forwardRef<HTMLDivElement, PalletLabelProps>(({ data }, ref) => {
   const qrValue = data.qr_payload || data.barcode;
-  const itemName = compactText(data.item_name || data.item_code);
+  const itemCode = data.item_code ? String(data.item_code).trim() : '';
+  const itemName = compactText(
+    [itemCode ? `(${itemCode})` : '', data.item_name ? String(data.item_name).trim() : '']
+      .filter(Boolean)
+      .join(' '),
+  );
   const boxCount = compactText(data.box_count);
   const totalQty = joinValue(formatNumber(data.total_qty), data.uom);
 
