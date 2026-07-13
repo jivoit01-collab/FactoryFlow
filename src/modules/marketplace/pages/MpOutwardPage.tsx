@@ -3,7 +3,7 @@
  * Pick an Order ID → resolve products (combo-expanded) → scan finished goods →
  * live summary → confirm → SAP delivery note + internal billing.
  */
-import { AlertTriangle, CheckCircle2, PackageCheck, Truck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, PackageCheck, RefreshCw, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -32,12 +32,13 @@ import {
   useMpDispatch,
   useMpDispatches,
   useMpOrders,
+  useRetryDeliveryNote,
   useScanDispatch,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpProgressTable } from '../components/MpProgressTable';
 import { MpScanPanel } from '../components/MpScanPanel';
-import type { MarketplaceChannel } from '../types/marketplace.types';
+import type { MarketplaceChannel, MarketplaceDispatch } from '../types/marketplace.types';
 
 export default function MpOutwardPage() {
   const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
@@ -91,7 +92,7 @@ export default function MpOutwardPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Pick an order</CardTitle>
             <CardDescription>
-              Only orders whose materials have been issued from the warehouse are shown.
+              Only orders that have been packed are shown.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -111,7 +112,7 @@ export default function MpOutwardPage() {
                 <p className="px-3 py-6 text-center text-sm text-muted-foreground">
                   {ordersQuery.isLoading
                     ? 'Loading…'
-                    : 'No orders ready — issue their materials from the warehouse first.'}
+                    : 'No orders ready — pack them first (Packing section).'}
                 </p>
               ) : (
                 (ordersQuery.data ?? []).map((order) => (
@@ -148,28 +149,19 @@ export default function MpOutwardPage() {
                     <th className="p-3">Buyer</th>
                     <th className="p-3">Delivery note</th>
                     <th className="p-3">Bill</th>
+                    <th className="p-3">DN status</th>
                     <th className="p-3">Dispatched</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(dispatchedQuery.data ?? []).length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                      <td colSpan={6} className="p-6 text-center text-muted-foreground">
                         {dispatchedQuery.isLoading ? 'Loading…' : 'No dispatched orders yet.'}
                       </td>
                     </tr>
                   ) : (
-                    (dispatchedQuery.data ?? []).map((d) => (
-                      <tr key={d.id} className="border-b last:border-0 hover:bg-muted/40">
-                        <td className="p-3 font-mono font-medium">{d.order_id}</td>
-                        <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
-                        <td className="p-3 font-mono">{d.sap_delivery_note_num || '—'}</td>
-                        <td className="p-3 font-mono">{d.internal_billing_num || '—'}</td>
-                        <td className="p-3 text-muted-foreground">
-                          {d.confirmed_at ? new Date(d.confirmed_at).toLocaleString() : '—'}
-                        </td>
-                      </tr>
-                    ))
+                    (dispatchedQuery.data ?? []).map((d) => <DispatchedRow key={d.id} d={d} />)
                   )}
                 </tbody>
               </table>
@@ -181,6 +173,46 @@ export default function MpOutwardPage() {
         <ActiveDispatch dispatchId={dispatch.id} onClose={reset} channel={channel} />
       )}
     </div>
+  );
+}
+
+function DispatchedRow({ d }: { d: MarketplaceDispatch }) {
+  const retry = useRetryDeliveryNote(d.id);
+  const failed = d.sap_post_status === 'FAILED';
+  return (
+    <tr className="border-b last:border-0 hover:bg-muted/40">
+      <td className="p-3 font-mono font-medium">{d.order_id}</td>
+      <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
+      <td className="p-3 font-mono">{d.sap_delivery_note_num || '—'}</td>
+      <td className="p-3 font-mono">{d.internal_billing_num || '—'}</td>
+      <td className="p-3">
+        {failed ? (
+          <div className="flex items-center gap-2">
+            <Badge variant="destructive">FAILED</Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={retry.isPending}
+              onClick={() =>
+                retry.mutate(undefined, {
+                  onSuccess: (r) =>
+                    r.sap_post_status === 'POSTED'
+                      ? toast.success('Delivery note posted')
+                      : toast.error('Still failing — order stays dispatched.'),
+                })
+              }
+            >
+              <RefreshCw className="mr-1 h-3 w-3" /> Retry
+            </Button>
+          </div>
+        ) : (
+          <Badge variant="outline">{d.sap_post_status ?? 'POSTED'}</Badge>
+        )}
+      </td>
+      <td className="p-3 text-muted-foreground">
+        {d.confirmed_at ? new Date(d.confirmed_at).toLocaleString() : '—'}
+      </td>
+    </tr>
   );
 }
 
@@ -196,6 +228,7 @@ function ActiveDispatch({
   const dispatchQuery = useMpDispatch(dispatchId);
   const scan = useScanDispatch(dispatchId);
   const confirm = useConfirmDispatch(dispatchId);
+  const retry = useRetryDeliveryNote(dispatchId);
   const [override, setOverride] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -228,11 +261,15 @@ function ActiveDispatch({
       {
         onSuccess: (result) => {
           setConfirmOpen(false);
-          toast.success(
-            `Dispatched · DN ${result.sap_delivery_note_num || '—'} · Bill ${
-              result.internal_billing_num || '—'
-            }`,
-          );
+          if (result.sap_post_status === 'FAILED') {
+            toast.warning('Order dispatched — delivery note failed to post. Retry available.');
+          } else {
+            toast.success(
+              `Dispatched · DN ${result.sap_delivery_note_num || '—'} · Bill ${
+                result.internal_billing_num || '—'
+              }`,
+            );
+          }
         },
       },
     );
@@ -272,6 +309,35 @@ function ActiveDispatch({
 
           {!confirmed ? (
             <MpScanPanel onScan={handleScan} pending={scan.isPending} />
+          ) : d.sap_post_status === 'FAILED' ? (
+            <div className="space-y-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Order <strong>dispatched</strong>, but the SAP delivery note failed to post.
+                  {d.sap_error ? (
+                    <span className="mt-1 block max-h-16 overflow-auto font-mono text-xs opacity-80">
+                      {d.sap_error}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                onClick={() =>
+                  retry.mutate(undefined, {
+                    onSuccess: (r) =>
+                      r.sap_post_status === 'POSTED'
+                        ? toast.success(`Delivery note posted · ${r.sap_delivery_note_num}`)
+                        : toast.error('Still failing — the order stays dispatched; retry later.'),
+                  })
+                }
+                disabled={retry.isPending}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {retry.isPending ? 'Retrying…' : 'Retry delivery note'}
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2 rounded-md border border-emerald-400 bg-emerald-50 p-3 text-sm text-emerald-800">
               <CheckCircle2 className="h-4 w-4" />

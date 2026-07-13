@@ -19,6 +19,7 @@ import {
   MARKETPLACE_ADMIN_ACCESS,
   MARKETPLACE_ISSUE_ACCESS,
   MARKETPLACE_MODULE_PREFIX,
+  MARKETPLACE_PACKING_ACCESS,
   MARKETPLACE_SHEET_ACCESS,
 } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
@@ -28,6 +29,7 @@ const MpImportPage = lazy(() => import('./pages/MpImportPage'));
 const MpBatchDetailPage = lazy(() => import('./pages/MpBatchDetailPage'));
 const MpIssueRequestsPage = lazy(() => import('./pages/MpIssueRequestsPage'));
 const MpIssueRequestDetailPage = lazy(() => import('./pages/MpIssueRequestDetailPage'));
+const MpPackingPage = lazy(() => import('./pages/MpPackingPage'));
 const MpOutwardPage = lazy(() => import('./pages/MpOutwardPage'));
 const MpInwardPage = lazy(() => import('./pages/MpInwardPage'));
 const MpMastersPage = lazy(() => import('./pages/MpMastersPage'));
@@ -72,6 +74,13 @@ export const marketplaceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Issue Request' },
     },
     {
+      path: '/marketplace/packing',
+      element: <MpPackingPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_PACKING_ACCESS,
+      breadcrumb: { label: 'Packing' },
+    },
+    {
       path: '/marketplace/outward',
       element: <MpOutwardPage />,
       layout: 'main',
@@ -112,6 +121,7 @@ export const marketplaceModuleConfig: ModuleConfig = {
         { path: '/marketplace', title: 'Overview', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/import', title: 'Import Sheet', permissions: MARKETPLACE_SHEET_ACCESS },
         { path: '/marketplace/issues', title: 'Warehouse Issues', permissions: MARKETPLACE_ISSUE_ACCESS },
+        { path: '/marketplace/packing', title: 'Packing', permissions: MARKETPLACE_PACKING_ACCESS },
         { path: '/marketplace/outward', title: 'Outward', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/inward', title: 'Inward', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/masters', title: 'Masters', permissions: MARKETPLACE_ADMIN_ACCESS },

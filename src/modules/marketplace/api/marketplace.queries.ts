@@ -225,6 +225,13 @@ export function useConfirmDispatch(dispatchId: number) {
     onSuccess: () => invalidateMarketplace(qc),
   });
 }
+export function useRetryDeliveryNote(dispatchId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marketplaceApi.retryDeliveryNote(dispatchId),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
 export function useCancelDispatch(dispatchId: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -379,5 +386,43 @@ export function useSapItems(search: string) {
     enabled: search.trim().length >= 2,
     staleTime: 60 * 1000,
     retry: false,
+  });
+}
+
+// ── Packing ──────────────────────────────────────────────────────────────────
+export function usePackingQueue(channel?: MarketplaceChannel) {
+  return useQuery({
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'packingQueue', channel] as const,
+    queryFn: () => marketplaceApi.packingQueue(channel),
+    staleTime: 15 * 1000,
+  });
+}
+
+export function usePacking(id?: number | null) {
+  return useQuery({
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'packing', id] as const,
+    queryFn: () => marketplaceApi.packing(id!),
+    enabled: !!id,
+    staleTime: 10 * 1000,
+  });
+}
+
+export function useOpenPacking() {
+  return useMutation({ mutationFn: (orderId: string) => marketplaceApi.openPacking(orderId) });
+}
+
+export function useGenerateBarcodes(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marketplaceApi.generateBarcodes(id),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useCompletePacking(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marketplaceApi.completePacking(id),
+    onSuccess: () => invalidateMarketplace(qc),
   });
 }

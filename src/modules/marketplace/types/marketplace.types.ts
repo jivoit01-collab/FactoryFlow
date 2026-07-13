@@ -151,6 +151,8 @@ export interface MarketplaceDispatch {
   status: MpDispatchStatus;
   sap_delivery_note_num?: string;
   internal_billing_num?: string;
+  sap_post_status?: 'PENDING' | 'POSTED' | 'FAILED';
+  sap_error?: string;
   confirmed_at?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -422,4 +424,51 @@ export interface SapItem {
   item_code: string;
   item_name: string;
   uom: string;
+}
+
+// ── Packing ──────────────────────────────────────────────────────────────────
+export type MpPackingStatus = 'PENDING' | 'PACKING' | 'PACKED';
+
+export interface MarketplacePackBarcode {
+  id: number;
+  barcode: string;
+  item_code: string;
+  item_name: string;
+  quantity: string;
+  uom: string;
+  source_sku: string;
+  printed: boolean;
+  printed_at: string | null;
+}
+
+export interface MarketplacePacking {
+  id: number;
+  channel: MarketplaceChannel;
+  order: number;
+  order_id: string;
+  buyer_name?: string;
+  status: MpPackingStatus;
+  packed_at: string | null;
+  created_at: string;
+  barcodes: MarketplacePackBarcode[];
+}
+
+export interface PackQueueOrder {
+  order_id: string;
+  buyer_name?: string;
+  line_count: number;
+  packing_status: MpPackingStatus | null;
+}
+
+export interface PackLabelData {
+  type: string;
+  barcode: string;
+  qr_payload: string;
+  order_id: string;
+  buyer_name?: string;
+  item_code: string;
+  item_name: string;
+  quantity: string;
+  uom: string;
+  source_sku: string;
 }
