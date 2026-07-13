@@ -199,11 +199,19 @@ export const qcModuleConfig: ModuleConfig = {
       title: 'Quality Control',
       icon: FlaskConical,
       showInSidebar: true,
-      // Gate the QC module on inspection/arrival-slip permissions only. Production
-      // QC + line-clearance QC are omitted here so the QC module does not appear
-      // for production users (who hold those perms for in-run QC); QC-team members
-      // reach those pages via the children below.
-      permissions: [QC_PERMISSIONS.INSPECTION.VIEW, QC_PERMISSIONS.ARRIVAL_SLIP.VIEW],
+      // Gate the QC module on inspection/arrival-slip perms (QC team) plus the
+      // line-clearance-QC perms (the dedicated Production QC group). Line-clearance
+      // QC — not production-QC — is used as the second gate on purpose: the
+      // shop-floor `production_execution` group holds can_view_production_qc for
+      // in-run QC, so gating on that would wrongly surface the whole QC module to
+      // them; only the Production QC group holds the line-clearance-QC perms.
+      // Children below are still filtered per-permission, so a Production QC user
+      // sees only the Production QC + Line Clearance QA items.
+      permissions: [
+        QC_PERMISSIONS.INSPECTION.VIEW,
+        QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
+        ...lineClearanceQCPermissions,
+      ],
       hasSubmenu: true,
       children: [
         {
