@@ -52,7 +52,7 @@ export default function MpMastersPage() {
   const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
-      <header className="flex items-center gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Marketplace Masters</h1>
           <p className="text-sm text-muted-foreground">
@@ -163,7 +163,7 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
           headers={['SKU', 'Type', 'FG / Combo', 'Active', '']}
           rows={(mappings ?? []).map((m) => (
             <tr key={m.id} className="border-b last:border-0">
-              <td className="py-2 pr-2 font-mono">{m.marketplace_sku}</td>
+              <td className="py-2 px-2 font-mono">{m.marketplace_sku}</td>
               <td className="py-2 px-2">
                 <Badge variant="outline">{m.sku_type}</Badge>
               </td>
@@ -359,7 +359,7 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
           headers={['Code', 'Name', 'Components', '']}
           rows={(combos ?? []).map((c) => (
             <tr key={c.id} className="border-b last:border-0">
-              <td className="py-2 pr-2 font-mono">{c.code}</td>
+              <td className="py-2 px-2 font-mono">{c.code}</td>
               <td className="py-2 px-2">{c.name}</td>
               <td className="py-2 px-2 text-xs text-muted-foreground">
                 {c.components.map((k) => `${k.item_code}×${k.quantity}`).join(', ')}
@@ -379,13 +379,13 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
       />
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editing?.id ? 'Edit' : 'Add'} combo</DialogTitle>
           </DialogHeader>
           {editing ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Code">
                   <Input value={editing.code} onChange={(e) => setEditing({ ...editing, code: e.target.value })} />
                 </Field>
@@ -401,7 +401,7 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
                   </Button>
                 </div>
                 {editing.components.map((comp, idx) => (
-                  <div key={idx} className="grid grid-cols-[90px_1fr_80px_70px_32px] items-center gap-2">
+                  <div key={idx} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[90px_1fr_80px_70px_32px]">
                     <NativeSelect
                       value={comp.component_type}
                       onChange={(e) => setComponent(idx, { component_type: e.target.value as 'FG' | 'PM' })}
@@ -456,6 +456,9 @@ const EMPTY_WH = (channel: MarketplaceChannel): MarketplaceWarehouse => ({
   sap_warehouse_code: '',
   sap_customer_card_code: '',
   facility_code: '',
+  sap_series: '',
+  sap_tax_code: '',
+  post_goods_issue: true,
   is_active: true,
 });
 
@@ -487,6 +490,9 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
       sap_warehouse_code: editing.sap_warehouse_code.trim(),
       sap_customer_card_code: editing.sap_customer_card_code.trim(),
       facility_code: editing.facility_code,
+      sap_series: editing.sap_series.trim(),
+      sap_tax_code: editing.sap_tax_code.trim(),
+      post_goods_issue: editing.post_goods_issue,
       is_active: editing.is_active,
       ...(editing.id ? { id: editing.id } : {}),
     };
@@ -522,7 +528,7 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
           headers={['Name', 'SAP Warehouse', 'Customer', 'Facility', '']}
           rows={(warehouses ?? []).map((w) => (
             <tr key={w.id} className="border-b last:border-0">
-              <td className="py-2 pr-2">{w.name}</td>
+              <td className="py-2 px-2">{w.name}</td>
               <td className="py-2 px-2 font-mono">{w.sap_warehouse_code}</td>
               <td className="py-2 px-2 font-mono">{w.sap_customer_card_code || '—'}</td>
               <td className="py-2 px-2">{w.facility_code || '—'}</td>
@@ -591,6 +597,37 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
                   onChange={(e) => setEditing({ ...editing, facility_code: e.target.value })}
                 />
               </Field>
+
+              <div className="border-t pt-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                  Delivery note posting (SAP)
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Document series">
+                    <Input
+                      value={editing.sap_series}
+                      placeholder="SAP default"
+                      onChange={(e) => setEditing({ ...editing, sap_series: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Tax code (VatGroup)">
+                    <Input
+                      value={editing.sap_tax_code}
+                      placeholder="e.g. GST18"
+                      onChange={(e) => setEditing({ ...editing, sap_tax_code: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                <label className="mt-3 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={editing.post_goods_issue}
+                    onChange={(e) => setEditing({ ...editing, post_goods_issue: e.target.checked })}
+                  />
+                  Also post packing-material Goods Issue
+                </label>
+              </div>
             </div>
           ) : null}
           <DialogFooter>
@@ -647,12 +684,12 @@ function ConfirmDelete({
 
 function MasterTable({ headers, rows }: { headers: string[]; rows: React.ReactNode[] }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="-mx-2 overflow-x-auto sm:mx-0">
+      <table className="w-full min-w-[560px] text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
             {headers.map((h, i) => (
-              <th key={i} className="py-2 px-2 font-medium first:pl-0">
+              <th key={i} className="py-2 px-2 font-medium first:pl-2">
                 {h}
               </th>
             ))}
@@ -676,7 +713,7 @@ function MasterTable({ headers, rows }: { headers: string[]; rows: React.ReactNo
 
 function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   return (
-    <td className="py-2 pl-2 text-right">
+    <td className="py-2 px-2 text-right">
       <div className="flex justify-end gap-1">
         <Button size="icon" variant="ghost" onClick={onEdit}>
           <Pencil className="h-4 w-4" />

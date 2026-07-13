@@ -57,28 +57,30 @@ export default function MpOverviewPage() {
               {dispatchesQuery.isLoading ? 'Loading…' : 'No dispatches yet.'}
             </p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs text-muted-foreground">
-                  <th className="py-2 pr-2 font-medium">Order</th>
-                  <th className="py-2 px-2 font-medium">Status</th>
-                  <th className="py-2 px-2 font-medium">Delivery Note</th>
-                  <th className="py-2 pl-2 font-medium">Internal Bill</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dispatches.map((d) => (
-                  <tr key={d.id} className="border-b last:border-0">
-                    <td className="py-2 pr-2 font-mono">{d.order_id}</td>
-                    <td className="py-2 px-2">
-                      <Badge variant={d.status === 'CONFIRMED' ? 'default' : 'secondary'}>{d.status}</Badge>
-                    </td>
-                    <td className="py-2 px-2 font-mono">{d.sap_delivery_note_num || '—'}</td>
-                    <td className="py-2 pl-2 font-mono">{d.internal_billing_num || '—'}</td>
+            <div className="-mx-2 overflow-x-auto sm:mx-0">
+              <table className="w-full min-w-[440px] text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-muted-foreground">
+                    <th className="py-2 pr-2 pl-2 font-medium">Order</th>
+                    <th className="py-2 px-2 font-medium">Status</th>
+                    <th className="py-2 px-2 font-medium">Delivery Note</th>
+                    <th className="py-2 pl-2 pr-2 font-medium">Internal Bill</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {dispatches.map((d) => (
+                    <tr key={d.id} className="border-b last:border-0">
+                      <td className="py-2 pr-2 pl-2 font-mono">{d.order_id}</td>
+                      <td className="py-2 px-2">
+                        <Badge variant={d.status === 'CONFIRMED' ? 'default' : 'secondary'}>{d.status}</Badge>
+                      </td>
+                      <td className="py-2 px-2 font-mono">{d.sap_delivery_note_num || '—'}</td>
+                      <td className="py-2 pl-2 pr-2 font-mono">{d.internal_billing_num || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>

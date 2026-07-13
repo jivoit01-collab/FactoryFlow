@@ -36,6 +36,10 @@ export interface MarketplaceWarehouse {
   sap_warehouse_code: string;
   sap_customer_card_code: string;
   facility_code: string;
+  // Delivery-note posting config (used directly when posting to SAP)
+  sap_series: string;
+  sap_tax_code: string;
+  post_goods_issue: boolean;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
