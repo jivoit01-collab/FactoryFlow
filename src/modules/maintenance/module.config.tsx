@@ -23,6 +23,7 @@ import {
   GATE_PERMISSIONS,
   MAINTENANCE_MODULE_PREFIX,
   MAINTENANCE_PERMISSIONS,
+  RETURNABLE_MODULE_PREFIX,
   RETURNABLE_PERMISSIONS,
 } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
@@ -226,7 +227,10 @@ export const maintenanceModuleConfig: ModuleConfig = {
       title: 'Maintenance',
       icon: Wrench,
       showInSidebar: true,
-      modulePrefix: MAINTENANCE_MODULE_PREFIX,
+      // The module spans two Django apps: `maintenance` and `returnable_items`.
+      // A user holding only returnable permissions still needs this menu, or the
+      // Returnable / Non-returnable section has nowhere to appear.
+      modulePrefix: [MAINTENANCE_MODULE_PREFIX, RETURNABLE_MODULE_PREFIX],
       hasSubmenu: true,
       children: [
         {
