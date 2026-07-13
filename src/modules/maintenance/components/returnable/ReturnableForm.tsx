@@ -59,6 +59,7 @@ function toFormValues(gatePass?: ReturnableGatePass | null): ReturnableGatePassF
       purpose: 'REPAIR',
       party_name: '',
       recipient_name: '',
+      issued_by_name: '',
       expected_return_date: '',
       items_input: [{ ...EMPTY_LINE }],
     } as ReturnableGatePassFormValues;
@@ -77,6 +78,7 @@ function toFormValues(gatePass?: ReturnableGatePass | null): ReturnableGatePassF
     recipient_name: gatePass.recipient_name,
     recipient_contact: gatePass.recipient_contact,
     recipient_department: gatePass.recipient_department,
+    issued_by_name: gatePass.issued_by_name,
     expected_return_date: gatePass.expected_return_date ?? '',
     asset: gatePass.asset,
     work_order: gatePass.work_order,
@@ -192,6 +194,9 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
       recipient_name: values.is_returnable ? '' : values.recipient_name,
       recipient_contact: values.is_returnable ? '' : values.recipient_contact,
       recipient_department: values.is_returnable ? '' : values.recipient_department,
+      issued_by_name: values.is_returnable ? '' : values.issued_by_name,
+      requested_by_name: values.is_returnable ? values.requested_by_name : '',
+      contact_no: values.is_returnable ? values.contact_no : '',
       items_input: values.items_input.map((item) => ({
         ...item,
         // Empty strings fail the backend's decimal parsing.
@@ -336,6 +341,14 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
               <Field id="party_address" label="Party Address" className="lg:col-span-3">
                 <Textarea id="party_address" rows={2} {...register('party_address')} />
               </Field>
+
+              <Field id="requested_by_name" label="Requested By">
+                <Input id="requested_by_name" {...register('requested_by_name')} />
+              </Field>
+
+              <Field id="contact_no" label="Contact No">
+                <Input id="contact_no" {...register('contact_no')} />
+              </Field>
             </>
           ) : (
             <>
@@ -367,19 +380,21 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
                 />
               </Field>
 
+              {/* Nobody is "requesting" material back on a non-returnable pass —
+                  it is issued. So this replaces Requested By and Contact No. */}
+              <Field id="issued_by_name" label="Issued By">
+                <Input
+                  id="issued_by_name"
+                  placeholder="Storekeeper's name"
+                  {...register('issued_by_name')}
+                />
+              </Field>
+
               <Field id="party_name" label="Destination / Firm (optional)">
                 <Input id="party_name" {...register('party_name')} />
               </Field>
             </>
           )}
-
-          <Field id="requested_by_name" label="Requested By">
-            <Input id="requested_by_name" {...register('requested_by_name')} />
-          </Field>
-
-          <Field id="contact_no" label="Contact No">
-            <Input id="contact_no" {...register('contact_no')} />
-          </Field>
 
           <Field id="purpose_detail" label="Purpose Details" className="sm:col-span-2 lg:col-span-3">
             <Textarea
