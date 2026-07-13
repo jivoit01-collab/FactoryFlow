@@ -10,7 +10,8 @@ const STEPS = [
   { n: 2, label: 'Review & map' },
   { n: 3, label: 'Send to warehouse' },
   { n: 4, label: 'Issue & receive' },
-  { n: 5, label: 'Dispatch' },
+  { n: 5, label: 'Pack' },
+  { n: 6, label: 'Dispatch' },
 ];
 
 export function MpFlowSteps({ current }: { current: number }) {

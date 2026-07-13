@@ -32,6 +32,8 @@ export const MARKETPLACE_PERMISSIONS = {
   REVIEW_ISSUE_REQUEST: 'marketplace.review_issue_request',
   ISSUE_MATERIALS: 'marketplace.issue_materials',
   RECEIVE_ISSUE: 'marketplace.receive_issue',
+  VIEW_PACKING: 'marketplace.view_packing',
+  PACK_ORDER: 'marketplace.pack_order',
 } as const;
 
 /** Operator-facing access (Outward/Inward/Overview scanning pages). */
@@ -64,6 +66,12 @@ export const MARKETPLACE_ISSUE_ACCESS: readonly string[] = [
   MARKETPLACE_PERMISSIONS.REVIEW_ISSUE_REQUEST,
   MARKETPLACE_PERMISSIONS.ISSUE_MATERIALS,
   MARKETPLACE_PERMISSIONS.RECEIVE_ISSUE,
+];
+
+/** Packing page. */
+export const MARKETPLACE_PACKING_ACCESS: readonly string[] = [
+  MARKETPLACE_PERMISSIONS.VIEW_PACKING,
+  MARKETPLACE_PERMISSIONS.PACK_ORDER,
 ];
 
 export type MarketplacePermission =

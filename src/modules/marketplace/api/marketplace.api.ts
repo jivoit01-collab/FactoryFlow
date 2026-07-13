@@ -27,6 +27,9 @@ import type {
   ResolvedOrder,
   ReturnCreateRequest,
   ReturnSubmitRequest,
+  MarketplacePacking,
+  PackLabelData,
+  PackQueueOrder,
   ReviewRequest,
   SapItem,
   SapWarehouse,
@@ -152,6 +155,10 @@ export const marketplaceApi = {
     const { data } = await apiClient.post<MarketplaceDispatch>(EP.DISPATCH_CONFIRM(id), payload);
     return data;
   },
+  async retryDeliveryNote(id: number): Promise<MarketplaceDispatch> {
+    const { data } = await apiClient.post<MarketplaceDispatch>(EP.DISPATCH_RETRY_DN(id), {});
+    return data;
+  },
   async cancelDispatch(id: number, payload: CancelRequest): Promise<MarketplaceDispatch> {
     const { data } = await apiClient.post<MarketplaceDispatch>(EP.DISPATCH_CANCEL(id), payload);
     return data;
@@ -262,6 +269,34 @@ export const marketplaceApi = {
 
   async sapItems(search: string): Promise<SapItem[]> {
     const { data } = await apiClient.get<SapItem[]>(`${EP.SAP_ITEMS}${buildQuery({ search })}`);
+    return data;
+  },
+
+  // ── Packing ─────────────────────────────────────────────────────────────────
+  async packingQueue(channel?: MarketplaceChannel): Promise<PackQueueOrder[]> {
+    const { data } = await apiClient.get<PackQueueOrder[]>(
+      `${EP.PACKING_QUEUE}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+  async openPacking(orderId: string): Promise<MarketplacePacking> {
+    const { data } = await apiClient.post<MarketplacePacking>(EP.PACKING_OPEN, { order_id: orderId });
+    return data;
+  },
+  async packing(id: number): Promise<MarketplacePacking> {
+    const { data } = await apiClient.get<MarketplacePacking>(EP.PACKING_BY_ID(id));
+    return data;
+  },
+  async generateBarcodes(id: number): Promise<MarketplacePacking> {
+    const { data } = await apiClient.post<MarketplacePacking>(EP.PACKING_GENERATE(id), {});
+    return data;
+  },
+  async completePacking(id: number): Promise<MarketplacePacking> {
+    const { data } = await apiClient.post<MarketplacePacking>(EP.PACKING_COMPLETE(id), {});
+    return data;
+  },
+  async printBarcode(id: number): Promise<PackLabelData> {
+    const { data } = await apiClient.post<PackLabelData>(EP.PACK_BARCODE_PRINT(id), {});
     return data;
   },
 };
