@@ -96,14 +96,14 @@ export default function MpOutwardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={search}
                 placeholder="Search or type an Order ID"
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && search.trim() && loadOrder(search.trim())}
               />
-              <Button onClick={() => search.trim() && loadOrder(search.trim())} disabled={createDispatch.isPending}>
+              <Button className="w-full sm:w-auto" onClick={() => search.trim() && loadOrder(search.trim())} disabled={createDispatch.isPending}>
                 Load
               </Button>
             </div>
@@ -141,8 +141,8 @@ export default function MpOutwardPage() {
             <CardDescription>Confirmed {channel} dispatches (delivery note posted).</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="-mx-2 overflow-x-auto sm:mx-0">
+              <table className="w-full min-w-[660px] text-sm">
                 <thead className="border-b text-left text-xs text-muted-foreground">
                   <tr>
                     <th className="p-3">Order</th>
@@ -280,7 +280,7 @@ function ActiveDispatch({
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+        <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">
               Order <span className="font-mono">{d.order_id}</span>
@@ -289,7 +289,7 @@ function ActiveDispatch({
               {channel} · warehouse {d.sap_warehouse_code || '—'}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant={confirmed ? 'default' : 'secondary'}>{d.status}</Badge>
             <Button size="sm" variant="ghost" onClick={onClose}>
               Change order
@@ -358,7 +358,7 @@ function ActiveDispatch({
       </Card>
 
       {!confirmed ? (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
             {allComplete ? (
               <span className="inline-flex items-center gap-1 text-emerald-600">
@@ -370,7 +370,7 @@ function ActiveDispatch({
           </p>
           <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <DialogTrigger asChild>
-              <Button disabled={unmapped.length > 0 || (!allComplete && !override)}>
+              <Button className="w-full sm:w-auto" disabled={unmapped.length > 0 || (!allComplete && !override)}>
                 <PackageCheck className="mr-2 h-4 w-4" /> Confirm dispatch
               </Button>
             </DialogTrigger>
@@ -403,7 +403,7 @@ function ActiveDispatch({
           </Dialog>
         </div>
       ) : (
-        <Button variant="outline" onClick={onClose}>
+        <Button className="w-full sm:w-auto" variant="outline" onClick={onClose}>
           New dispatch
         </Button>
       )}

@@ -137,7 +137,7 @@ export default function MpImportPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button onClick={analyze} disabled={!file || previewMut.isPending}>
               <Search className="mr-2 h-4 w-4" />
               {previewMut.isPending ? 'Checking…' : 'Analyze sheet'}
@@ -257,8 +257,8 @@ export default function MpImportPage() {
           <CardTitle className="text-base">Recent imports</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="-mx-2 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[660px] text-sm">
               <thead className="border-b text-left text-xs text-muted-foreground">
                 <tr>
                   <th className="p-3">Sheet</th>

@@ -66,8 +66,8 @@ export default function MpPackingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="-mx-2 overflow-x-auto sm:mx-0">
+              <table className="w-full min-w-[560px] text-sm">
                 <thead className="border-b text-left text-xs text-muted-foreground">
                   <tr>
                     <th className="p-3">Order</th>
@@ -162,7 +162,7 @@ function ActivePacking({ packingId, onClose }: { packingId: number; onClose: () 
       </Button>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">
               Order <span className="font-mono">{packing.order_id}</span>
@@ -185,6 +185,7 @@ function ActivePacking({ packingId, onClose }: { packingId: number; onClose: () 
                   })
                 }
                 disabled={generate.isPending}
+                className="w-full sm:w-auto"
               >
                 <Barcode className="mr-2 h-4 w-4" /> Generate item barcodes
               </Button>
@@ -199,8 +200,8 @@ function ActivePacking({ packingId, onClose }: { packingId: number; onClose: () 
                   ))}
                 </PrintableLabel>
               </div>
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full text-sm">
+              <div className="-mx-2 overflow-x-auto rounded-md border sm:mx-0">
+                <table className="w-full min-w-[460px] text-sm">
                   <thead className="border-b text-left text-xs text-muted-foreground">
                     <tr>
                       <th className="p-2">Item</th>
@@ -235,6 +236,7 @@ function ActivePacking({ packingId, onClose }: { packingId: number; onClose: () 
 
       {!packed ? (
         <Button
+          className="w-full sm:w-auto"
           disabled={barcodes.length === 0 || complete.isPending}
           onClick={() =>
             complete.mutate(undefined, {

@@ -47,13 +47,13 @@ export default function MpReconciliationPage() {
 
       <Card>
         <CardContent className="flex flex-wrap items-end gap-3 py-4">
-          <div className="space-y-1">
+          <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
             <Label className="text-xs">From</Label>
-            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full" />
           </div>
-          <div className="space-y-1">
+          <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
             <Label className="text-xs">To</Label>
-            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full" />
           </div>
           <Button
             variant={onlyDeviations ? 'default' : 'outline'}
@@ -63,7 +63,7 @@ export default function MpReconciliationPage() {
             Deviations only
           </Button>
           {report ? (
-            <span className="ml-auto text-sm text-muted-foreground">
+            <span className="w-full text-sm text-muted-foreground sm:ml-auto sm:w-auto">
               {report.total_orders} orders · {report.orders_with_deviation} with deviation
             </span>
           ) : null}
@@ -81,24 +81,24 @@ export default function MpReconciliationPage() {
               {query.isLoading ? 'Loading…' : 'No rows.'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="-mx-2 overflow-x-auto sm:mx-0">
+              <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="py-2 pr-2 font-medium">Order</th>
+                    <th className="py-2 pr-2 pl-2 font-medium">Order</th>
                     <th className="py-2 px-2 font-medium">Item</th>
                     <th className="py-2 px-2 text-right font-medium">Portal</th>
                     <th className="py-2 px-2 text-right font-medium">Outward</th>
                     <th className="py-2 px-2 text-right font-medium">Inward</th>
                     <th className="py-2 px-2 text-right font-medium">Physical</th>
                     <th className="py-2 px-2 text-right font-medium">Out−In</th>
-                    <th className="py-2 pl-2 text-right font-medium">Portal−Phys</th>
+                    <th className="py-2 pl-2 pr-2 text-right font-medium">Portal−Phys</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, i) => (
                     <tr key={`${row.order_id}-${row.item_code}-${i}`} className="border-b last:border-0">
-                      <td className="py-2 pr-2 font-mono">{row.order_id}</td>
+                      <td className="py-2 pr-2 pl-2 font-mono">{row.order_id}</td>
                       <td className="py-2 px-2 font-mono">{row.item_code}</td>
                       <td className="py-2 px-2 text-right tabular-nums">{row.portal_quantity}</td>
                       <td className="py-2 px-2 text-right tabular-nums">{row.outward_quantity}</td>
@@ -107,7 +107,7 @@ export default function MpReconciliationPage() {
                       <td className="py-2 px-2 text-right tabular-nums">
                         {row.outward_vs_inward_deviation}
                       </td>
-                      <td className="py-2 pl-2 text-right">
+                      <td className="py-2 pl-2 pr-2 text-right">
                         {row.has_deviation ? (
                           <Badge variant="destructive">{row.portal_vs_physical_deviation}</Badge>
                         ) : (

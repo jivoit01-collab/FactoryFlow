@@ -122,8 +122,8 @@ export default function MpBatchDetailPage() {
           {isLoading ? (
             <div className="p-6 text-center text-muted-foreground">Loading…</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="-mx-2 overflow-x-auto sm:mx-0">
+              <table className="w-full min-w-[560px] text-sm">
                 <thead className="border-b text-left text-xs text-muted-foreground">
                   <tr>
                     <th className="p-3">Item code</th>
@@ -154,13 +154,13 @@ export default function MpBatchDetailPage() {
         <CardHeader>
           <CardTitle className="text-base">Send to warehouse</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1">
+        <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="w-full space-y-1 sm:w-auto">
             <label className="text-xs text-muted-foreground">Warehouse</label>
             <select
               value={warehouse}
               onChange={(e) => setWarehouse(e.target.value)}
-              className="h-9 rounded-md border bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border bg-background px-3 text-sm sm:w-auto"
             >
               <option value="">Select SAP warehouse…</option>
               {warehouses.map((w) => (
@@ -170,7 +170,7 @@ export default function MpBatchDetailPage() {
               ))}
             </select>
           </div>
-          <Button onClick={send} disabled={!canSend || sendMut.isPending}>
+          <Button onClick={send} disabled={!canSend || sendMut.isPending} className="w-full sm:w-auto">
             <Send className="mr-2 h-4 w-4" />
             {sendMut.isPending ? 'Sending…' : 'Send request'}
           </Button>
