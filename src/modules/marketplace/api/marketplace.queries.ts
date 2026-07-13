@@ -390,10 +390,15 @@ export function useSapItems(search: string) {
 }
 
 // ── Packing ──────────────────────────────────────────────────────────────────
-export function usePackingQueue(channel?: MarketplaceChannel) {
+export function usePackingQueue(params?: {
+  channel?: MarketplaceChannel;
+  page?: number;
+  pageSize?: number;
+}) {
+  const { channel, page = 1, pageSize = 25 } = params ?? {};
   return useQuery({
-    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'packingQueue', channel] as const,
-    queryFn: () => marketplaceApi.packingQueue(channel),
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'packingQueue', channel, page, pageSize] as const,
+    queryFn: () => marketplaceApi.packingQueue({ channel, page, page_size: pageSize }),
     staleTime: 15 * 1000,
   });
 }

@@ -14,22 +14,23 @@ import type {
   MarketplaceDispatch,
   MarketplaceIssueRequest,
   MarketplaceOrder,
+  MarketplacePacking,
   MarketplaceReturn,
   MarketplaceWarehouse,
   MarketplaceWarehouseUpsert,
+  MpPaginated,
   MpReturnScan,
   MpScan,
   OrderImportBatch,
   OrderListParams,
+  PackLabelData,
+  PackQueueOrder,
   ReceiveRequest,
   ReconciliationParams,
   ReconciliationReport,
   ResolvedOrder,
   ReturnCreateRequest,
   ReturnSubmitRequest,
-  MarketplacePacking,
-  PackLabelData,
-  PackQueueOrder,
   ReviewRequest,
   SapItem,
   SapWarehouse,
@@ -273,9 +274,13 @@ export const marketplaceApi = {
   },
 
   // ── Packing ─────────────────────────────────────────────────────────────────
-  async packingQueue(channel?: MarketplaceChannel): Promise<PackQueueOrder[]> {
-    const { data } = await apiClient.get<PackQueueOrder[]>(
-      `${EP.PACKING_QUEUE}${buildQuery({ channel })}`,
+  async packingQueue(params?: {
+    channel?: MarketplaceChannel;
+    page?: number;
+    page_size?: number;
+  }): Promise<MpPaginated<PackQueueOrder>> {
+    const { data } = await apiClient.get<MpPaginated<PackQueueOrder>>(
+      `${EP.PACKING_QUEUE}${buildQuery(params)}`,
     );
     return data;
   },

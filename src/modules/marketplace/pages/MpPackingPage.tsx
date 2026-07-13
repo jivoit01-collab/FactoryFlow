@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import PrintableLabel from '@/modules/barcode/components/PrintableLabel';
+import { PaginationControls } from '@/shared/components/PaginationControls';
 import {
   Badge,
   Button,
@@ -30,7 +31,10 @@ import { PackLabel } from '../components/PackLabel';
 
 export default function MpPackingPage() {
   const [packingId, setPackingId] = useState<number | null>(null);
-  const { data: queue = [], isLoading } = usePackingQueue('FLIPKART');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const { data: queuePage, isLoading } = usePackingQueue({ channel: 'FLIPKART', page, pageSize });
+  const queue = queuePage?.results ?? [];
   const openPacking = useOpenPacking();
 
   function open(orderId: string) {
@@ -56,8 +60,10 @@ export default function MpPackingPage() {
       ) : (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Orders ready to pack</CardTitle>
-            <CardDescription>Issued from the warehouse, not yet packed.</CardDescription>
+            <CardTitle className="text-base">Orders to pack</CardTitle>
+            <CardDescription>
+              Issued from the warehouse. Packed orders stay here so their labels can be reprinted.
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -83,25 +89,55 @@ export default function MpPackingPage() {
                       </td>
                     </tr>
                   ) : (
-                    queue.map((o) => (
-                      <tr key={o.order_id} className="border-b last:border-0 hover:bg-muted/40">
-                        <td className="p-3 font-mono font-medium">{o.order_id}</td>
-                        <td className="p-3 text-muted-foreground">{o.buyer_name || '—'}</td>
-                        <td className="p-3">{o.line_count}</td>
-                        <td className="p-3">
-                          <Badge variant="outline">{o.packing_status ?? 'NEW'}</Badge>
-                        </td>
-                        <td className="p-3 text-right">
-                          <Button size="sm" onClick={() => open(o.order_id)} disabled={openPacking.isPending}>
-                            Pack
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
+                    queue.map((o) => {
+                      const packed = o.packing_status === 'PACKED';
+                      return (
+                        <tr key={o.order_id} className="border-b last:border-0 hover:bg-muted/40">
+                          <td className="p-3 font-mono font-medium">{o.order_id}</td>
+                          <td className="p-3 text-muted-foreground">{o.buyer_name || '—'}</td>
+                          <td className="p-3">{o.line_count}</td>
+                          <td className="p-3">
+                            <Badge variant={packed ? 'default' : 'outline'}>
+                              {o.packing_status ?? 'NEW'}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-right">
+                            <Button
+                              size="sm"
+                              variant={packed ? 'outline' : 'default'}
+                              onClick={() => open(o.order_id)}
+                              disabled={openPacking.isPending}
+                            >
+                              {packed ? (
+                                <>
+                                  <Printer className="mr-1.5 h-4 w-4" /> Reprint
+                                </>
+                              ) : (
+                                'Pack'
+                              )}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+            {queuePage && queuePage.count > 0 && (
+              <PaginationControls
+                page={queuePage.page}
+                pageSize={queuePage.page_size}
+                total={queuePage.count}
+                totalPages={queuePage.total_pages}
+                isLoading={isLoading}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+              />
+            )}
           </CardContent>
         </Card>
       )}

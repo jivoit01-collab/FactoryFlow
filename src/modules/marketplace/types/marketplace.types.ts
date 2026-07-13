@@ -13,6 +13,17 @@ export const MARKETPLACE_CHANNELS: { value: MarketplaceChannel; label: string }[
 export type MpComponentType = 'FG' | 'PM';
 export type MpSkuType = 'RAW' | 'COMBO';
 
+/** Paged list envelope — mirrors the DRF `{results, count, page, …}` shape. */
+export interface MpPaginated<T> {
+  results: T[];
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  next: boolean;
+  previous: boolean;
+}
+
 export type MpDispatchStatus = 'DRAFT' | 'SCANNING' | 'READY' | 'CONFIRMED' | 'CANCELLED';
 export type MpReturnStatus = 'DRAFT' | 'SCANNING' | 'SUBMITTED' | 'CANCELLED';
 export type MpProgressStatus = 'PENDING' | 'UNDER' | 'COMPLETE' | 'OVER';
