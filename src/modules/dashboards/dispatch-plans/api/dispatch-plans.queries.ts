@@ -45,6 +45,29 @@ export function useDispatchBills(filters: DispatchPlanFilters) {
   });
 }
 
+/**
+ * Looks up a single bill by exact invoice number, scoped to a company. Used by
+ * the Inside Vehicle Manager "Add a bill" picker so a bill that falls outside
+ * the 500-row feed window is still findable by typing its number. Only fires
+ * once the term looks like a full numeric bill number, to avoid needless SAP
+ * hits on every keystroke.
+ */
+const MIN_BILL_LOOKUP_DIGITS = 6;
+
+export function useLookupDispatchBill(invoiceNumber: string, companyCode?: string) {
+  const term = invoiceNumber.trim();
+  const enabled =
+    !!companyCode && term.length >= MIN_BILL_LOOKUP_DIGITS && /^\d+$/.test(term);
+
+  return useQuery({
+    queryKey: [...DISPATCH_PLANS_QUERY_KEYS.all, 'bill-by-number', companyCode, term],
+    queryFn: () => dispatchPlansApi.getBillByNumber(term, companyCode),
+    enabled,
+    staleTime: DISPATCH_PLAN_STALE_TIME,
+    retry: sapRetry,
+  });
+}
+
 export function useUpdateDispatchPlan() {
   const queryClient = useQueryClient();
 

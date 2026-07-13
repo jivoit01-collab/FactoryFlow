@@ -214,7 +214,10 @@ function createApiClient(): AxiosInstance {
           }
         }
 
-        if (currentCompany?.company_code) {
+        // Respect an explicit per-request Company-Code (e.g. a cross-company
+        // lookup that must target a specific company); otherwise default to the
+        // active company.
+        if (currentCompany?.company_code && !config.headers['Company-Code']) {
           config.headers['Company-Code'] = currentCompany.company_code;
         }
       }

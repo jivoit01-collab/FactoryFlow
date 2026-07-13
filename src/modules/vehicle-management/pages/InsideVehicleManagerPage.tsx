@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import { useDispatchBills } from '@/modules/dashboards/dispatch-plans/api';
+import { useDispatchBills, useLookupDispatchBill } from '@/modules/dashboards/dispatch-plans/api';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
 import {
   type InsideDispatchVehicle,
@@ -53,6 +53,14 @@ function formatNumber(value: number, fractionDigits = 2) {
 
 function billLabel(bill: DispatchBill) {
   return [bill.doc_num, bill.card_name].filter(Boolean).join(' - ');
+}
+
+/** A bill can be added only if it isn't already linked and is still open. */
+function isBillAddable(bill: DispatchBill) {
+  return (
+    !bill.plan.linked_vehicle_entry_id &&
+    (bill.plan.booking_status === 'PENDING' || bill.plan.booking_status === 'BOOKED')
+  );
 }
 
 function formatEntryDateTime(date: string | null, time: string | null) {
@@ -174,6 +182,9 @@ export default function InsideVehicleManagerPage() {
 
   const [search, setSearch] = useState('');
   const [addForVehicleEntryId, setAddForVehicleEntryId] = useState<number | null>(null);
+  // The debounced search term of the open "Add a bill" picker, used to look a
+  // bill up by number on the server when it falls outside the 500-row feed.
+  const [addSearch, setAddSearch] = useState('');
   const [movingBill, setMovingBill] = useState<{ vehicleEntryId: number; docEntry: number } | null>(
     null,
   );
@@ -198,7 +209,7 @@ export default function InsideVehicleManagerPage() {
   const moveBill = useMoveBillBetweenVehicles();
   const unlinkAll = useUnlinkAllBills();
 
-  const vehicles = vehiclesQuery.data ?? [];
+  const vehicles = useMemo(() => vehiclesQuery.data ?? [], [vehiclesQuery.data]);
   const filteredVehicles = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return vehicles;
@@ -232,14 +243,20 @@ export default function InsideVehicleManagerPage() {
   }, [vehicles]);
 
   const addableBills = useMemo(
-    () =>
-      (billsQuery.data?.data ?? []).filter(
-        (b) =>
-          !b.plan.linked_vehicle_entry_id &&
-          (b.plan.booking_status === 'PENDING' || b.plan.booking_status === 'BOOKED'),
-      ),
+    () => (billsQuery.data?.data ?? []).filter(isBillAddable),
     [billsQuery.data],
   );
+
+  // The panel whose "Add a bill" picker is open. Its company scopes the by-number
+  // lookup below, so a bill older than the 500-row feed is still findable by
+  // typing its full number (the feed can't reach that far in high-volume companies).
+  const openEntry = useMemo(
+    () => vehicles.find((v) => v.vehicle_entry_id === addForVehicleEntryId) ?? null,
+    [vehicles, addForVehicleEntryId],
+  );
+  const billLookupQuery = useLookupDispatchBill(addSearch, openEntry?.company_code ?? undefined);
+  const lookedUpBill =
+    billLookupQuery.data && isBillAddable(billLookupQuery.data) ? billLookupQuery.data : null;
 
   const handleAdd = async (entry: InsideDispatchVehicle, bill: DispatchBill) => {
     try {
@@ -249,6 +266,7 @@ export default function InsideVehicleManagerPage() {
       });
       toast.success(res.detail || 'Bill added');
       setAddForVehicleEntryId(null);
+      setAddSearch('');
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to add the bill'));
     }
@@ -392,9 +410,19 @@ export default function InsideVehicleManagerPage() {
 
                 {/* One panel per company gate-in on this truck */}
                 {group.entries.map((entry) => {
-                  const vehicleAddableBills = addableBills.filter(
+                  const isAddOpen = addForVehicleEntryId === entry.vehicle_entry_id;
+                  const feedAddableBills = addableBills.filter(
                     (b) => b.company_code === entry.company_code,
                   );
+                  // When this panel's picker is open, fold in the server-looked-up
+                  // bill (scoped to this company) if it isn't already in the feed —
+                  // this is what lets a bill outside the 500-row window be added.
+                  const vehicleAddableBills =
+                    isAddOpen &&
+                    lookedUpBill &&
+                    !feedAddableBills.some((b) => b.doc_entry === lookedUpBill.doc_entry)
+                      ? [{ ...lookedUpBill, company_code: entry.company_code }, ...feedAddableBills]
+                      : feedAddableBills;
                   const moveTargets = insideTrucks.filter(
                     (t) => t.vehicleId !== entry.vehicle_id,
                   );
@@ -415,13 +443,14 @@ export default function InsideVehicleManagerPage() {
                               type="button"
                               size="sm"
                               variant="default"
-                              onClick={() =>
+                              onClick={() => {
+                                setAddSearch('');
                                 setAddForVehicleEntryId(
                                   addForVehicleEntryId === entry.vehicle_entry_id
                                     ? null
                                     : entry.vehicle_entry_id,
-                                )
-                              }
+                                );
+                              }}
                             >
                               <PackagePlus className="mr-2 h-4 w-4" />
                               Add Bill
@@ -575,7 +604,11 @@ export default function InsideVehicleManagerPage() {
                             label="Add a bill"
                             value=""
                             items={vehicleAddableBills}
-                            isLoading={billsQuery.isLoading || billsQuery.isFetching}
+                            isLoading={
+                              billsQuery.isLoading ||
+                              billsQuery.isFetching ||
+                              billLookupQuery.isFetching
+                            }
                             isError={billsQuery.isError}
                             placeholder="Search a booked/pending bill by number or customer"
                             getItemKey={(bill) => bill.doc_entry}
@@ -583,6 +616,7 @@ export default function InsideVehicleManagerPage() {
                             filterFn={(bill, query) =>
                               billLabel(bill).toLowerCase().includes(query.trim().toLowerCase())
                             }
+                            onSearchChange={setAddSearch}
                             loadingText="Loading bills..."
                             emptyText="Search a bill to add"
                             notFoundText="No addable bills found"
@@ -603,7 +637,8 @@ export default function InsideVehicleManagerPage() {
                           />
                           <p className="mt-2 text-xs text-muted-foreground">
                             Only booked/pending, not-yet-linked bills for {entry.company_name} are
-                            addable. Adding is blocked once the truck photo is taken at docking.
+                            addable. The list shows recent bills; type a full bill number to find an
+                            older one. Adding is blocked once the truck photo is taken at docking.
                           </p>
                         </div>
                       )}

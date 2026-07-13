@@ -1,7 +1,8 @@
 import { API_ENDPOINTS } from '@/config/constants';
-import { apiClient } from '@/core/api';
+import { apiClient, type ApiError } from '@/core/api';
 
 import type {
+  DispatchBill,
   DispatchPlan,
   DispatchPlanFilters,
   DispatchPlansResponse,
@@ -34,6 +35,28 @@ export const dispatchPlansApi = {
       params: buildParams(filters),
     });
     return response.data;
+  },
+
+  /**
+   * Look up a single bill by its exact SAP invoice number. Unlike the list feed,
+   * this bypasses the date window and row cap, so it finds a bill no matter how
+   * far back it is. `companyCode` scopes the lookup to a specific company (the
+   * Inside Vehicle Manager picker is cross-company); the request interceptor
+   * leaves an explicit Company-Code header untouched. Returns null if not found.
+   */
+  async getBillByNumber(
+    invoiceNumber: string,
+    companyCode?: string,
+  ): Promise<DispatchBill | null> {
+    try {
+      const response = await apiClient.get<DispatchBill>(EP.BILL_BY_NUMBER(invoiceNumber), {
+        headers: companyCode ? { 'Company-Code': companyCode } : undefined,
+      });
+      return response.data;
+    } catch (error) {
+      if ((error as ApiError)?.status === 404) return null; // no such invoice
+      throw error;
+    }
   },
 
   async updatePlan(docEntry: number, payload: DispatchPlanUpdatePayload): Promise<DispatchPlan> {
