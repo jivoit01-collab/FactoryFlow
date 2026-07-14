@@ -885,6 +885,13 @@ function exportSalesDispatchDashboard(
 ) {
   const workbook = XLSX.utils.book_new();
   appendDashboardExportSheet(workbook, buildDashboardExportSummary(entries, context), 'Summary');
+  // Primary, report-style sheet (one clean row per dispatch), modelled on the
+  // dispatch tracking sheet. The detailed Entries/Documents/Items sheets follow.
+  appendDashboardExportSheet(
+    workbook,
+    entries.map((entry) => buildDispatchReportRow(entry, context.isGateOutMode)),
+    'Dispatch Report',
+  );
   appendDashboardExportSheet(
     workbook,
     entries.map((entry) => buildDashboardEntryExportRow(entry, context.isGateOutMode)),
@@ -944,6 +951,48 @@ function buildDashboardExportSummary(
       Value: formatExportTimestamp(new Date().toISOString()),
     },
   ];
+}
+
+function buildDispatchReportRow(
+  entry: SalesDispatchDashboardEntry,
+  isGateOutMode: boolean,
+): ExportRow {
+  // Narrow to the gate-out entry for fields a pending booking doesn't carry
+  // (weights, remarks, ship-to address, dispatched time).
+  const gateOut = isPendingBookingEntry(entry) ? null : entry;
+  return {
+    'Dispatch Date': formatDate(getPlannedDispatchDate(entry)),
+    'Invoice Date': exportValue(entry.sap_doc_date),
+    Party: exportValue(entry.customer_name),
+    Location: exportValue(gateOut?.ship_to_address || entry.place_of_supply).replace(
+      /[\r\n]+/g,
+      ', ',
+    ),
+    State: exportValue(entry.place_of_supply),
+    'Invoice No.': formatDocumentNumbers(entry),
+    'Bilty No.': exportValue(entry.bilty_no),
+    'Factory Bilty Date': exportValue(entry.bilty_date),
+    'Vehicle No.': exportValue(entry.vehicle_no),
+    'Transport Name': exportValue(entry.transporter_name),
+    'Mobile No': exportValue(entry.transporter_mobile_no || entry.driver_mobile_no),
+    Driver: exportValue(entry.driver_name),
+    'Oil LTR': exportValue(entry.total_litres),
+    'Total Boxes': exportValue(gateOut?.total_boxes),
+    'Kanta Weight': exportValue(
+      gateOut?.net_weight || gateOut?.gross_weight || gateOut?.challan_weight,
+    ),
+    'Gross Weight': exportValue(gateOut?.gross_weight),
+    'Net Weight': exportValue(gateOut?.net_weight),
+    Freight: exportValue(entry.freight),
+    'Total Freight': exportValue(entry.total_freight),
+    'E-way Bill': exportValue(entry.eway_bill),
+    Items: exportValue(entry.item_summary),
+    'Gatepass No.': exportValue(entry.gatepass_no || 'Pending'),
+    Status: getSalesDispatchDashboardStatusLabel(entry.status, isGateOutMode),
+    'Actual Gate Out': getActualGateOut(entry),
+    'Dispatched At': gateOut ? formatExportTimestamp(gateOut.dispatched_at) : '-',
+    Remarks: exportValue(gateOut?.remarks),
+  };
 }
 
 function buildDashboardEntryExportRow(
