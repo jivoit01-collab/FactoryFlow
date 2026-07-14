@@ -15,6 +15,9 @@ const DispatchPlansDashboardPage = lazy(
 const DispatchVehicleLinkingPage = lazy(
   () => import('@/modules/vehicle-management/pages/DispatchVehicleLinkingPage'),
 );
+const PreviouslyRegisteredVehiclePage = lazy(
+  () => import('@/modules/vehicle-management/pages/PreviouslyRegisteredVehiclePage'),
+);
 const InsideVehicleManagerPage = lazy(
   () => import('@/modules/vehicle-management/pages/InsideVehicleManagerPage'),
 );
@@ -119,6 +122,13 @@ export const dispatchModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
       breadcrumb: { label: 'Vehicle Linking' },
+    },
+    {
+      path: '/dispatch/vehicle-linking/previously-registered',
+      element: <PreviouslyRegisteredVehiclePage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
+      breadcrumb: { label: 'Previously Registered Vehicle' },
     },
     {
       path: '/dispatch/inside-vehicles',

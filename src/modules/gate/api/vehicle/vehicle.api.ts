@@ -22,6 +22,9 @@ export interface Vehicle {
   vehicle_type: VehicleType;
   transporter: Transporter | null;
   capacity_ton: string;
+  length_m: string | null;
+  width_m: string | null;
+  height_m: string | null;
   created_at: string;
 }
 
@@ -30,6 +33,9 @@ export interface CreateVehicleRequest {
   vehicle_type: number;
   transporter: number;
   capacity_ton: string;
+  length_m?: string;
+  width_m?: string;
+  height_m?: string;
 }
 
 export interface UpdateVehicleRequest {
@@ -38,6 +44,9 @@ export interface UpdateVehicleRequest {
   vehicle_type: number;
   transporter: number;
   capacity_ton: string;
+  length_m?: string;
+  width_m?: string;
+  height_m?: string;
 }
 
 export const vehicleApi = {
@@ -80,6 +89,9 @@ export const vehicleApi = {
     formData.append('vehicle_type', data.vehicle_type.toString());
     formData.append('transporter', data.transporter.toString());
     formData.append('capacity_ton', data.capacity_ton);
+    if (data.length_m) formData.append('length_m', data.length_m);
+    if (data.width_m) formData.append('width_m', data.width_m);
+    if (data.height_m) formData.append('height_m', data.height_m);
 
     const response = await apiClient.post<Vehicle>(
       API_ENDPOINTS.VEHICLE.VEHICLES,
@@ -99,6 +111,9 @@ export const vehicleApi = {
     formData.append('vehicle_type', data.vehicle_type.toString());
     formData.append('transporter', data.transporter.toString());
     formData.append('capacity_ton', data.capacity_ton);
+    if (data.length_m) formData.append('length_m', data.length_m);
+    if (data.width_m) formData.append('width_m', data.width_m);
+    if (data.height_m) formData.append('height_m', data.height_m);
 
     const response = await apiClient.put<Vehicle>(
       API_ENDPOINTS.VEHICLE.VEHICLE_BY_ID(data.id),
