@@ -87,6 +87,7 @@ const EMPTY_SKU = (channel: MarketplaceChannel): SkuMapping => ({
   id: 0,
   channel,
   marketplace_sku: '',
+  fsn: '',
   sku_name: '',
   sku_type: 'RAW',
   fg_item_code: '',
@@ -121,6 +122,7 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
     const payload: SkuMappingUpsert = {
       channel: editing.channel,
       marketplace_sku: editing.marketplace_sku.trim(),
+      fsn: editing.fsn?.trim() ?? '',
       sku_name: editing.sku_name,
       sku_type: editing.sku_type,
       // Only send the branch that applies, so a RAW→COMBO switch can't leave a stale code.
@@ -160,9 +162,10 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
           </Button>
         </div>
         <MasterTable
-          headers={['SKU', 'Type', 'FG / Combo', 'Active', '']}
+          headers={['FSN', 'SKU', 'Type', 'FG / Combo', 'Active', '']}
           rows={(mappings ?? []).map((m) => (
             <tr key={m.id} className="border-b last:border-0">
+              <td className="py-2 px-2 font-mono">{m.fsn || '—'}</td>
               <td className="py-2 px-2 font-mono">{m.marketplace_sku}</td>
               <td className="py-2 px-2">
                 <Badge variant="outline">{m.sku_type}</Badge>
@@ -192,7 +195,14 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
           </DialogHeader>
           {editing ? (
             <div className="space-y-3">
-              <Field label="Marketplace SKU (FSN/ASIN)">
+              <Field label="FSN (primary mapping key)">
+                <Input
+                  value={editing.fsn ?? ''}
+                  placeholder="Flipkart FSN — matched to the SAP item first"
+                  onChange={(e) => setEditing({ ...editing, fsn: e.target.value })}
+                />
+              </Field>
+              <Field label="Marketplace SKU (fallback)">
                 <Input
                   value={editing.marketplace_sku}
                   onChange={(e) => setEditing({ ...editing, marketplace_sku: e.target.value })}

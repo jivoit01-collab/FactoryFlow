@@ -76,6 +76,7 @@ export interface SkuMapping {
   id: number;
   channel: MarketplaceChannel;
   marketplace_sku: string;
+  fsn?: string;
   sku_name?: string;
   sku_type: MpSkuType;
   fg_item_code?: string;
