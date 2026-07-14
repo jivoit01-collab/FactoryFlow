@@ -14,6 +14,19 @@ export interface DispatchPlanFilters {
   by_dispatch_date?: boolean;
   /** 1 = aggregate SAP bills across every company the user belongs to (cross-company). */
   all_companies?: boolean;
+  /** 1 = only bills selected on the Bill Selection page (the Plan page uses this). */
+  selected_only?: boolean;
+}
+
+/** Payload for the Bill Selection Submit — reconciles only the shown bills. */
+export interface DispatchBillSelectionPayload {
+  shown_doc_entries: number[];
+  selected_doc_entries: number[];
+}
+
+export interface DispatchBillSelectionResult {
+  selected: number;
+  deselected: number;
 }
 
 export interface DispatchPlan {
@@ -104,6 +117,8 @@ export interface DispatchBill {
   item_summary: string;
   base_refs: string;
   plan: DispatchPlan;
+  /** True when this bill is selected for dispatch planning (Bill Selection page). */
+  is_selected?: boolean;
   /** Owning company code — only set on the cross-company (all_companies) bills feed. */
   company_code?: string | null;
 }

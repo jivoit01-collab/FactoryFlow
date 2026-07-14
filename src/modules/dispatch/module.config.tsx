@@ -6,6 +6,9 @@ import { DISPATCH_PERMISSIONS, GATE_PERMISSIONS, GRPO_PERMISSIONS } from '@/conf
 import type { ModuleConfig } from '@/core/types';
 
 const DispatchDashboardPage = lazy(() => import('./pages/DispatchDashboardPage'));
+const DispatchBillSelectionPage = lazy(
+  () => import('@/modules/dashboards/dispatch-plans/pages/DispatchBillSelectionPage'),
+);
 const DispatchPlansDashboardPage = lazy(
   () => import('@/modules/dashboards/dispatch-plans/pages/DispatchPlansDashboardPage'),
 );
@@ -55,6 +58,7 @@ const DockingDetailPage = lazy(
 
 const dispatchViewPermissions = [
   DISPATCH_PERMISSIONS.VIEW_PLANS,
+  DISPATCH_PERMISSIONS.SELECT_BILLS,
   DISPATCH_PERMISSIONS.LINK_VEHICLE,
   // Inside Vehicle Manager view — so a user granted ONLY this page (e.g. an
   // add-bill-only SCM operator) still sees the Dispatch parent menu and the
@@ -94,6 +98,13 @@ export const dispatchModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: dispatchViewPermissions,
       breadcrumb: { label: 'Dispatch' },
+    },
+    {
+      path: '/dispatch/bill-selection',
+      element: <DispatchBillSelectionPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.SELECT_BILLS],
+      breadcrumb: { label: 'Bill Selection' },
     },
     {
       path: '/dispatch/plans',
@@ -285,6 +296,11 @@ export const dispatchModuleConfig: ModuleConfig = {
       permissions: dispatchViewPermissions,
       hasSubmenu: true,
       children: [
+        {
+          path: '/dispatch/bill-selection',
+          title: 'Bill Selection',
+          permissions: [DISPATCH_PERMISSIONS.SELECT_BILLS],
+        },
         {
           path: '/dispatch/plans',
           title: 'Plans',

@@ -29,7 +29,11 @@ function isSAPError(error: unknown): error is ApiError {
 }
 
 export default function DispatchPlansDashboardPage() {
-  const [filters, setFilters] = useState<DispatchPlanFiltersType>(createDefaultDispatchPlanFilters);
+  // Only bills chosen on the Bill Selection page enter planning here.
+  const [filters, setFilters] = useState<DispatchPlanFiltersType>(() => ({
+    ...createDefaultDispatchPlanFilters(),
+    selected_only: true,
+  }));
   const [selectedBill, setSelectedBill] = useState<DispatchBill | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
