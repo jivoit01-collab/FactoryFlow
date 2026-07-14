@@ -4,6 +4,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   ChevronUp,
+  SquarePen,
 } from 'lucide-react';
 import { type KeyboardEvent, useMemo, useState } from 'react';
 
@@ -160,7 +161,7 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
     <Card>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1340px] text-sm">
+          <table className="w-full min-w-[1450px] text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
                 <th className={thClass} onClick={() => toggleSort('create_date')}>
@@ -186,6 +187,10 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
                 </th>
                 <th className={thClass}>Transport Link</th>
                 <th className={thClass}>Planning</th>
+                {/* Explicit action button — row-click alone doesn't work on every device. */}
+                <th className="whitespace-nowrap px-4 py-3 text-right font-medium text-muted-foreground">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -307,6 +312,27 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
                     >
                       {compactText(bill.plan.remarks)}
                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-right align-top">
+                    {canEdit ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="whitespace-nowrap"
+                        // Stop the row's onClick from firing a second time.
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEdit(bill);
+                        }}
+                        aria-label={`Open dispatch plan ${bill.doc_num}`}
+                      >
+                        <SquarePen className="mr-1.5 h-3.5 w-3.5" />
+                        Open
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
