@@ -30,9 +30,14 @@ export default function DispatchBillSelectionPage() {
   const [filters, setFilters] = useState<DispatchPlanFiltersType>(createDefaultDispatchPlanFilters);
   const billsQuery = useDispatchBills(filters);
 
-  const bills = useMemo<DispatchBill[]>(() => billsQuery.data?.data ?? [], [billsQuery.data]);
-  // Remount the board (reseeding checkboxes from is_selected) when the shown set
-  // of bills changes — avoids seeding state inside an effect.
+  // Show only bills NOT yet selected — once a bill is selected + submitted it
+  // moves to the Plan page and leaves this "bills to add" queue.
+  const bills = useMemo<DispatchBill[]>(
+    () => (billsQuery.data?.data ?? []).filter((b) => !b.is_selected),
+    [billsQuery.data],
+  );
+  // Remount the board when the shown set of bills changes (e.g. after a submit
+  // removes the just-selected bills) — avoids seeding state inside an effect.
   const boardKey = useMemo(() => bills.map((b) => b.doc_entry).join(','), [bills]);
 
   const sapApiError = isSAPError(billsQuery.error) ? billsQuery.error : null;
@@ -41,7 +46,7 @@ export default function DispatchBillSelectionPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Bill Selection"
-        description="Choose which bills enter dispatch planning. Only selected bills appear on the Plan page."
+        description="Pick bills to add to dispatch planning. Submitted bills move to the Plan page and leave this list."
       >
         <Button
           type="button"
@@ -160,7 +165,7 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
               ) : bills.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-6 text-center text-muted-foreground">
-                    No bills in this window.
+                    No bills left to select in this window — all are already added to planning.
                   </td>
                 </tr>
               ) : (
