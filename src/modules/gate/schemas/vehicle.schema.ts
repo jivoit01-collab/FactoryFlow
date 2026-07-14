@@ -20,6 +20,10 @@ export const vehicleSchema = z.object({
       (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
       'Capacity must be a positive number',
     ),
+  // Physical size in metres — optional.
+  length_m: z.string().optional(),
+  width_m: z.string().optional(),
+  height_m: z.string().optional(),
 });
 
 export type VehicleFormData = z.infer<typeof vehicleSchema>;

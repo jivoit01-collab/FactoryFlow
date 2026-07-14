@@ -3,6 +3,8 @@ import { apiClient, type ApiError } from '@/core/api';
 
 import type {
   DispatchBill,
+  DispatchBillSelectionPayload,
+  DispatchBillSelectionResult,
   DispatchPlan,
   DispatchPlanFilters,
   DispatchPlansResponse,
@@ -57,6 +59,17 @@ export const dispatchPlansApi = {
       if ((error as ApiError)?.status === 404) return null; // no such invoice
       throw error;
     }
+  },
+
+  /** Submit the Bill Selection page — persists which bills enter dispatch planning. */
+  async submitBillSelection(
+    payload: DispatchBillSelectionPayload,
+  ): Promise<DispatchBillSelectionResult> {
+    const response = await apiClient.post<DispatchBillSelectionResult>(
+      EP.BILL_SELECTION,
+      payload,
+    );
+    return response.data;
   },
 
   async updatePlan(docEntry: number, payload: DispatchPlanUpdatePayload): Promise<DispatchPlan> {
@@ -130,5 +143,6 @@ function buildParams(filters: DispatchPlanFilters): Record<string, string> {
   if (filters.exclude_jivo_mart_transfer) params.exclude_jivo_mart_transfer = 'true';
   if (filters.by_dispatch_date) params.by_dispatch_date = 'true';
   if (filters.all_companies) params.all_companies = '1';
+  if (filters.selected_only) params.selected_only = 'true';
   return params;
 }

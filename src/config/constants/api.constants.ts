@@ -22,6 +22,8 @@ export const API_ENDPOINTS = {
     VEHICLE_TYPES: '/vehicle-management/vehicle-types/',
     VEHICLES: '/vehicle-management/vehicles/',
     VEHICLE_NAMES: '/vehicle-management/vehicles/names/',
+    VEHICLE_HISTORY: (vehicleNumber: string) =>
+      `/vehicle-management/vehicles/by-number/${encodeURIComponent(vehicleNumber)}/history/`,
     VEHICLE_BY_ID: (id: number) => `/vehicle-management/vehicles/${id}/`,
     VEHICLE_ENTRIES: '/vehicle-management/vehicle-entries/',
     VEHICLE_ENTRY_BY_ID: (id: number) => `/vehicle-management/vehicle-entries/${id}/`,
@@ -382,6 +384,7 @@ export const API_ENDPOINTS = {
   // Dispatch Plans Dashboard
   DISPATCH_PLANS: {
     BILLS: '/dispatch-plans/bills/',
+    BILL_SELECTION: '/dispatch-plans/bills/selection/',
     BILL_BY_NUMBER: (invoiceNumber: string) =>
       `/dispatch-plans/bills/by-number/${encodeURIComponent(invoiceNumber)}/`,
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,

@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/core/auth';
 
 import { DISPATCH_PLAN_STALE_TIME } from '../constants';
-import type { DispatchPlanFilters, DispatchPlanUpdatePayload } from '../types';
+import type {
+  DispatchBillSelectionPayload,
+  DispatchPlanFilters,
+  DispatchPlanUpdatePayload,
+} from '../types';
 import { dispatchPlansApi } from './dispatch-plans.api';
 
 export const DISPATCH_PLANS_QUERY_KEYS = {
@@ -23,6 +27,7 @@ export const DISPATCH_PLANS_QUERY_KEYS = {
         exclude_jivo_mart_transfer: filters.exclude_jivo_mart_transfer,
         by_dispatch_date: filters.by_dispatch_date,
         all_companies: filters.all_companies,
+        selected_only: filters.selected_only,
       },
     ] as const,
 };
@@ -75,6 +80,19 @@ export function useUpdateDispatchPlan() {
     mutationFn: ({ docEntry, payload }: { docEntry: number; payload: DispatchPlanUpdatePayload }) =>
       dispatchPlansApi.updatePlan(docEntry, payload),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DISPATCH_PLANS_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useSubmitBillSelection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: DispatchBillSelectionPayload) =>
+      dispatchPlansApi.submitBillSelection(payload),
+    onSuccess: () => {
+      // Bills feed changes (is_selected + what the Plan page shows).
       queryClient.invalidateQueries({ queryKey: DISPATCH_PLANS_QUERY_KEYS.all });
     },
   });

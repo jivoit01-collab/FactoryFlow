@@ -20,7 +20,7 @@ import { useTransporters } from '../api/transporter/transporter.queries';
 import type { Vehicle } from '../api/vehicle/vehicle.api';
 import { useCreateVehicle, useUpdateVehicle, useVehicleById } from '../api/vehicle/vehicle.queries';
 import { type VehicleFormData, vehicleSchema } from '../schemas/vehicle.schema';
-import { TransporterSelect, type TransporterDetails } from './TransporterSelect';
+import { type TransporterDetails,TransporterSelect } from './TransporterSelect';
 import { VehicleTypeSelect } from './VehicleTypeSelect';
 
 interface CreateVehicleDialogProps {
@@ -75,6 +75,9 @@ export function CreateVehicleDialog({
       vehicle_type: 0,
       transporter: 0,
       capacity_ton: '',
+      length_m: '',
+      width_m: '',
+      height_m: '',
     },
   });
 
@@ -98,6 +101,9 @@ export function CreateVehicleDialog({
         vehicle_type: 0,
         transporter: 0,
         capacity_ton: '',
+        length_m: '',
+        width_m: '',
+        height_m: '',
       });
       setSelectedTransporterId(null);
       setTransporterName(initialTransporterName);
@@ -114,6 +120,9 @@ export function CreateVehicleDialog({
       vehicle_type: vehicleData.vehicle_type?.id ?? 0,
       transporter: vehicleData.transporter?.id ?? 0,
       capacity_ton: vehicleData.capacity_ton ?? '',
+      length_m: vehicleData.length_m ?? '',
+      width_m: vehicleData.width_m ?? '',
+      height_m: vehicleData.height_m ?? '',
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Dialog edit form mirrors fetched vehicle details.
     setVehicleTypeValue(vehicleData.vehicle_type?.id ? String(vehicleData.vehicle_type.id) : '');
@@ -291,6 +300,33 @@ export function CreateVehicleDialog({
             {apiErrors.capacity_ton && !errors.capacity_ton && (
               <p className="text-sm text-destructive">{apiErrors.capacity_ton}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Dimensions (metres) — optional</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Input
+                type="text"
+                placeholder="Length"
+                aria-label="Length in metres"
+                {...register('length_m')}
+                disabled={mutation.isPending}
+              />
+              <Input
+                type="text"
+                placeholder="Width"
+                aria-label="Width in metres"
+                {...register('width_m')}
+                disabled={mutation.isPending}
+              />
+              <Input
+                type="text"
+                placeholder="Height"
+                aria-label="Height in metres"
+                {...register('height_m')}
+                disabled={mutation.isPending}
+              />
+            </div>
           </div>
 
           <DialogFooter>

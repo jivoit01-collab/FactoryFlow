@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
-import { RefreshCw, Search } from 'lucide-react';
+import { RefreshCw, Search, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { VEHICLE_MANAGEMENT_PERMISSIONS } from '@/config/permissions';
@@ -42,6 +43,7 @@ function todayInputValue() {
 }
 
 export default function DispatchVehicleLinkingPage() {
+  const navigate = useNavigate();
   const { currentCompany } = useAuth();
   const { hasPermission } = usePermission();
   const canEdit = hasPermission(VEHICLE_MANAGEMENT_PERMISSIONS.DISPATCH_VEHICLE_LINKING);
@@ -139,6 +141,15 @@ export default function DispatchVehicleLinkingPage() {
         title="Dispatch Vehicle Linking"
         description="Link transport to dispatch plans released by planning"
       >
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/dispatch/vehicle-linking/previously-registered')}
+        >
+          <Truck className="mr-2 h-4 w-4" />
+          Previously Registered Vehicle
+        </Button>
         <Button
           type="button"
           variant="outline"
