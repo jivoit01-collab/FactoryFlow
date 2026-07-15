@@ -22,14 +22,18 @@ interface MovementItemProps {
   thisLocationId?: WmsId;
   /** Location id → code, to name the counterpart location. */
   codeById?: Map<string, string>;
+  /** Pallet id → license plate, to show which pallet moved. */
+  plateById?: Map<string, string>;
 }
 
-export function MovementItem({ entry, thisLocationId, codeById }: MovementItemProps) {
+export function MovementItem({ entry, thisLocationId, codeById, plateById }: MovementItemProps) {
   const isIn = thisLocationId != null && entry.toLocationId === thisLocationId;
   const isOut = thisLocationId != null && entry.fromLocationId === thisLocationId;
   const counterpartId = isIn ? entry.fromLocationId : entry.toLocationId;
   const counterpartCode = counterpartId ? codeById?.get(counterpartId) : null;
   const item = entry.itemName || entry.itemCode || (entry.palletId ? 'Pallet' : '—');
+  // The plate identifies the physical pallet that moved; the item name is the title.
+  const plate = entry.palletId ? plateById?.get(entry.palletId) : null;
 
   return (
     <div className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">
@@ -46,6 +50,7 @@ export function MovementItem({ entry, thisLocationId, codeById }: MovementItemPr
           ) : null}
         </div>
         <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+          {plate ? <span className="font-medium text-foreground/70">{plate}</span> : null}
           {entry.quantity ? <span>{entry.quantity}</span> : null}
           {entry.boxCount ? (
             <span>

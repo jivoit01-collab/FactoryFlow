@@ -562,6 +562,12 @@ export default function WmsMapPage() {
     return map;
   }, [locations]);
 
+  const plateById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const pallet of pallets) map.set(pallet.id, pallet.licensePlate);
+    return map;
+  }, [pallets]);
+
   if (!enabled) {
     return (
       <div className="mx-auto max-w-3xl p-4 md:p-6">
@@ -758,6 +764,7 @@ export default function WmsMapPage() {
         recentMovements={recentMovements.movements}
         movementsLoading={recentMovements.loading}
         locationCodeById={locationCodeById}
+        plateById={plateById}
       />
 
       {/* Move confirmation */}

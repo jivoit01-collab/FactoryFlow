@@ -22,6 +22,7 @@ export default function WmsLocationHistoryPage() {
   const enabled = useWmsEnabled();
   const { locationId = '' } = useParams<{ locationId: string }>();
   const { data: locations } = useWmsCollection('locations');
+  const { data: pallets } = useWmsCollection('pallets');
   const { warehouses } = useWarehouses();
   const [page, setPage] = useState(0);
 
@@ -38,6 +39,11 @@ export default function WmsLocationHistoryPage() {
     for (const item of locations) map.set(item.id, item.code);
     return map;
   }, [locations]);
+  const plateById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const pallet of pallets) map.set(pallet.id, pallet.licensePlate);
+    return map;
+  }, [pallets]);
 
   const { movements, count, loading, error } = useLocationMovements(
     locationId || null,
@@ -91,6 +97,7 @@ export default function WmsLocationHistoryPage() {
                 entry={entry}
                 thisLocationId={locationId}
                 codeById={codeById}
+                plateById={plateById}
               />
             ))
           )}

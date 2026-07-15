@@ -52,6 +52,8 @@ interface LocationDetailPanelProps {
   movementsLoading?: boolean;
   /** Location id → code, to name the counterpart location in a movement. */
   locationCodeById?: Map<string, string>;
+  /** Pallet id → license plate, to show which pallet each movement moved. */
+  plateById?: Map<string, string>;
 }
 
 function Usage({ label, used, max, unit }: { label: string; used: number; max: number | null; unit?: string }) {
@@ -123,6 +125,7 @@ export function LocationDetailPanel({
   purpose,
   occupancy,
   palletsHere,
+  plateById,
   inventoryHere,
   onMovePallet,
   onPlacePalletHere,
@@ -318,6 +321,7 @@ export function LocationDetailPanel({
                         entry={entry}
                         thisLocationId={location.id}
                         codeById={locationCodeById}
+                        plateById={plateById}
                       />
                     ))}
                   </div>
