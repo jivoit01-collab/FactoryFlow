@@ -30,6 +30,81 @@ import {
 } from '../api/marketplace.queries';
 import { MpFlowSteps } from '../components/MpFlowSteps';
 import { PackLabel } from '../components/PackLabel';
+import type { PackQueueOrder } from '../types/marketplace.types';
+
+/** Shared queue table — renders either the to-pack or the packed section. */
+function QueueTable({
+  orders,
+  isLoading,
+  emptyText,
+  onOpen,
+  opening,
+}: {
+  orders: PackQueueOrder[];
+  isLoading: boolean;
+  emptyText: string;
+  onOpen: (orderId: string) => void;
+  opening: boolean;
+}) {
+  return (
+    <div className="-mx-2 overflow-x-auto sm:mx-0">
+      <table className="w-full min-w-[560px] text-sm">
+        <thead className="border-b text-left text-xs text-muted-foreground">
+          <tr>
+            <th className="p-3">Order</th>
+            <th className="p-3">Buyer</th>
+            <th className="p-3">Lines</th>
+            <th className="p-3">Status</th>
+            <th className="p-3" />
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <tr>
+              <td colSpan={5} className="p-6 text-center text-muted-foreground">Loading…</td>
+            </tr>
+          ) : orders.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="p-6 text-center text-muted-foreground">{emptyText}</td>
+            </tr>
+          ) : (
+            orders.map((o) => {
+              const packed = o.packing_status === 'PACKED';
+              return (
+                <tr key={o.order_id} className="border-b last:border-0 hover:bg-muted/40">
+                  <td className="p-3 font-mono font-medium">{o.order_id}</td>
+                  <td className="p-3 text-muted-foreground">{o.buyer_name || '—'}</td>
+                  <td className="p-3">{o.line_count}</td>
+                  <td className="p-3">
+                    <Badge variant={packed ? 'default' : 'outline'}>
+                      {o.packing_status ?? 'NEW'}
+                    </Badge>
+                  </td>
+                  <td className="p-3 text-right">
+                    <Button
+                      size="sm"
+                      variant={packed ? 'outline' : 'default'}
+                      onClick={() => onOpen(o.order_id)}
+                      disabled={opening}
+                    >
+                      {packed ? (
+                        <>
+                          <Printer className="mr-1.5 h-4 w-4" /> Reprint
+                        </>
+                      ) : (
+                        'Pack'
+                      )}
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function MpPackingPage() {
   const [packingId, setPackingId] = useState<number | null>(null);
@@ -37,6 +112,10 @@ export default function MpPackingPage() {
   const [pageSize, setPageSize] = useState(25);
   const { data: queuePage, isLoading } = usePackingQueue({ channel: 'FLIPKART', page, pageSize });
   const queue = queuePage?.results ?? [];
+  // Split the page so unprocessed orders stay easy to spot; packed ones drop to
+  // their own section (kept only so labels can be reprinted).
+  const toPack = queue.filter((o) => o.packing_status !== 'PACKED');
+  const packed = queue.filter((o) => o.packing_status === 'PACKED');
   const openPacking = useOpenPacking();
 
   function open(orderId: string) {
@@ -62,88 +141,59 @@ export default function MpPackingPage() {
       ) : (
         <>
         <PackScanBox />
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Orders to pack</CardTitle>
             <CardDescription>
-              Issued from the warehouse. Packed orders stay here so their labels can be reprinted.
+              Issued from the warehouse and still waiting to be packed.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="-mx-2 overflow-x-auto sm:mx-0">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead className="border-b text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="p-3">Order</th>
-                    <th className="p-3">Buyer</th>
-                    <th className="p-3">Lines</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={5} className="p-6 text-center text-muted-foreground">Loading…</td>
-                    </tr>
-                  ) : queue.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-6 text-center text-muted-foreground">
-                        No orders to pack — issue their materials first.
-                      </td>
-                    </tr>
-                  ) : (
-                    queue.map((o) => {
-                      const packed = o.packing_status === 'PACKED';
-                      return (
-                        <tr key={o.order_id} className="border-b last:border-0 hover:bg-muted/40">
-                          <td className="p-3 font-mono font-medium">{o.order_id}</td>
-                          <td className="p-3 text-muted-foreground">{o.buyer_name || '—'}</td>
-                          <td className="p-3">{o.line_count}</td>
-                          <td className="p-3">
-                            <Badge variant={packed ? 'default' : 'outline'}>
-                              {o.packing_status ?? 'NEW'}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-right">
-                            <Button
-                              size="sm"
-                              variant={packed ? 'outline' : 'default'}
-                              onClick={() => open(o.order_id)}
-                              disabled={openPacking.isPending}
-                            >
-                              {packed ? (
-                                <>
-                                  <Printer className="mr-1.5 h-4 w-4" /> Reprint
-                                </>
-                              ) : (
-                                'Pack'
-                              )}
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {queuePage && queuePage.count > 0 && (
-              <PaginationControls
-                page={queuePage.page}
-                pageSize={queuePage.page_size}
-                total={queuePage.count}
-                totalPages={queuePage.total_pages}
-                isLoading={isLoading}
-                onPageChange={setPage}
-                onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setPage(1);
-                }}
-              />
-            )}
+            <QueueTable
+              orders={toPack}
+              isLoading={isLoading}
+              emptyText="No orders to pack — issue their materials first."
+              onOpen={open}
+              opening={openPacking.isPending}
+            />
           </CardContent>
         </Card>
+
+        {packed.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Packed — reprint labels</CardTitle>
+              <CardDescription>
+                Already packed and moved to Outward. Kept here so their labels can be reprinted.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <QueueTable
+                orders={packed}
+                isLoading={false}
+                emptyText="No packed orders yet."
+                onOpen={open}
+                opening={openPacking.isPending}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {queuePage && queuePage.count > 0 && (
+          <PaginationControls
+            page={queuePage.page}
+            pageSize={queuePage.page_size}
+            total={queuePage.count}
+            totalPages={queuePage.total_pages}
+            isLoading={isLoading}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
+        )}
         </>
       )}
     </div>
