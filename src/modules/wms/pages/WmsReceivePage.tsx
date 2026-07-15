@@ -289,25 +289,26 @@ export default function WmsReceivePage() {
             <CardTitle className="text-base">2 · Scan the location</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {warehouses.length > 1 ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="receive-warehouse">Warehouse</Label>
-                <NativeSelect
-                  id="receive-warehouse"
-                  value={warehouseId}
-                  onChange={(event) => {
-                    setWarehouseOverride(event.target.value);
-                    setSelection({ location: null, validation: null });
-                  }}
-                >
-                  {warehouses.map((wh) => (
-                    <option key={wh.id} value={wh.id}>
-                      {wh.name}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </div>
-            ) : null}
+            {/* Always ask which warehouse to receive INTO -- shown even when there
+                is a single warehouse (pre-selected) so the destination is always
+                explicit. The page returns early above when none exist. */}
+            <div className="space-y-1.5">
+              <Label htmlFor="receive-warehouse">Warehouse</Label>
+              <NativeSelect
+                id="receive-warehouse"
+                value={warehouseId}
+                onChange={(event) => {
+                  setWarehouseOverride(event.target.value);
+                  setSelection({ location: null, validation: null });
+                }}
+              >
+                {warehouses.map((wh) => (
+                  <option key={wh.id} value={wh.id}>
+                    {wh.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
 
             {warehouseId ? (
               <PutawayBinPicker
