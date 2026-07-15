@@ -8,10 +8,12 @@
  * (`syncExternalPalletPlacement`): a WMS Pallet + Inventory + PUTAWAY movement,
  * keyed by the plate.
  */
-import { Loader2, PackagePlus, ScanLine } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, Loader2, PackagePlus, ScanLine } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { useAuth } from '@/core/auth';
 import { barcodeApi } from '@/modules/barcode/api';
 import {
   Button,
@@ -65,8 +67,17 @@ function toResolvedPallet(data: Record<string, unknown>): ResolvedPallet {
 
 export default function WmsReceivePage() {
   const enabled = useWmsEnabled();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { warehouses } = useWarehouses();
   const { data: materials } = useWmsCollection('materials');
+  const { data: allPallets } = useWmsCollection('pallets');
+  const { data: locations } = useWmsCollection('locations');
+
+  const moveActor = useMemo(
+    () => (user ? { id: String(user.id), name: user.full_name || user.email } : undefined),
+    [user],
+  );
 
   const [plateInput, setPlateInput] = useState('');
   const [pallet, setPallet] = useState<ResolvedPallet | null>(null);
@@ -93,6 +104,26 @@ export default function WmsReceivePage() {
   // Total units to place — fall back to the box count when the pallet carries no
   // unit quantity, so the putaway engine still has a positive number to rank by.
   const quantity = pallet ? (pallet.totalQty > 0 ? pallet.totalQty : pallet.boxCount) : 0;
+
+  // A pallet already placed in the WMS must not be "received" again -- receiving is
+  // for pallets entering the warehouse. Relocating a placed pallet is a Transfer, so
+  // we block the putaway and send the operator there instead (see below).
+  const placedPallet = useMemo(() => {
+    if (!pallet) return null;
+    const plate = pallet.palletId.toLowerCase();
+    const wp = allPallets.find((p) => p.licensePlate.toLowerCase() === plate);
+    return wp?.currentLocationId ? wp : null;
+  }, [pallet, allPallets]);
+  const placedLocationCode = useMemo(
+    () => (placedPallet ? locations.find((l) => l.id === placedPallet.currentLocationId)?.code ?? null : null),
+    [placedPallet, locations],
+  );
+
+  function goToTransfer() {
+    if (!pallet) return;
+    // Pre-fills the Transfer source with this pallet (read from ?pallet= there).
+    navigate(`/warehouse-ops/transfer?pallet=${encodeURIComponent(pallet.palletId)}`);
+  }
 
   // The operator chooses which warehouse to receive INTO. We deliberately do NOT
   // infer it from the pallet's current (source) warehouse: a pallet finished on
@@ -182,6 +213,7 @@ export default function WmsReceivePage() {
         boxCount: pallet.boxCount,
         totalUnits: quantity,
         uom: pallet.uom,
+        actor: moveActor,
         note: 'Warehouse Ops receive',
       });
       notifyOk(`Pallet ${pallet.palletId} placed in ${selection.location.code}.`);
@@ -282,8 +314,28 @@ export default function WmsReceivePage() {
         </CardContent>
       </Card>
 
-      {/* 2. Location */}
-      {pallet ? (
+      {/* 2. Location — or, if the pallet is already placed, block and offer Transfer. */}
+      {pallet && placedPallet ? (
+        <Card className="border-amber-400">
+          <CardHeader>
+            <CardTitle className="text-base">Already in the warehouse</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p>
+                This pallet is already placed at{' '}
+                <span className="font-mono font-semibold">{placedLocationCode ?? 'a location'}</span>.
+                Receiving is only for pallets entering the warehouse — to move it, do a Transfer.
+              </p>
+            </div>
+            <Button className="w-full" variant="outline" onClick={goToTransfer}>
+              <ArrowRightLeft className="mr-2 h-4 w-4" />
+              Transfer this pallet instead
+            </Button>
+          </CardContent>
+        </Card>
+      ) : pallet ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">2 · Scan the location</CardTitle>

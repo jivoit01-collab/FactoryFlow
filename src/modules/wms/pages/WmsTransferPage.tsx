@@ -9,9 +9,11 @@
  * scanners type into the focused field and submit on Enter.
  */
 import { ArrowRight, PackageSearch, ScanLine } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { useAuth } from '@/core/auth';
 import { useSyncPalletToBarcode } from '@/modules/barcode/hooks/useSyncPalletToBarcode';
 import {
   Badge,
@@ -59,6 +61,11 @@ export default function WmsTransferPage() {
   const { data: movements } = useWmsCollection('movements');
   const { data: warehouses } = useWmsCollection('warehouses');
   const syncToBarcode = useSyncPalletToBarcode();
+  const { user } = useAuth();
+  const moveActor = useMemo(
+    () => (user ? { id: String(user.id), name: user.full_name || user.email } : undefined),
+    [user],
+  );
 
   const [sourceQuery, setSourceQuery] = useState('');
   const [sourceLocationId, setSourceLocationId] = useState<string | null>(null);
@@ -115,6 +122,22 @@ export default function WmsTransferPage() {
     () => pallets.filter((pallet) => pallet.currentLocationId === sourceLocationId),
     [pallets, sourceLocationId],
   );
+
+  // Deep-link from Receive: `?pallet=<plate>` pre-selects that placed pallet as the
+  // transfer source, so "Transfer this pallet instead" lands ready to pick a
+  // destination. Runs once, after the pallets cache has loaded.
+  const [searchParams] = useSearchParams();
+  const prefillPlate = searchParams.get('pallet');
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (prefilledRef.current || !prefillPlate || pallets.length === 0) return;
+    const wp = pallets.find((p) => p.licensePlate.toLowerCase() === prefillPlate.toLowerCase());
+    if (!wp?.currentLocationId) return;
+    prefilledRef.current = true;
+    setSourceQuery(wp.licensePlate);
+    setSourceLocationId(wp.currentLocationId);
+    setSubject({ kind: 'pallet', pallet: wp });
+  }, [prefillPlate, pallets]);
 
   function resolveSource(override?: string) {
     const query = (override ?? sourceQuery).trim().toLowerCase();
@@ -227,9 +250,9 @@ export default function WmsTransferPage() {
     setBusy(true);
     try {
       if (subject.kind === 'inventory') {
-        await wmsStore.moveInventory({ sourceId: subject.record.id, toLocationId: destLocationId, quantity });
+        await wmsStore.moveInventory({ sourceId: subject.record.id, toLocationId: destLocationId, quantity, actor: moveActor });
       } else {
-        await wmsStore.movePallet({ palletId: subject.pallet.id, toLocationId: destLocationId });
+        await wmsStore.movePallet({ palletId: subject.pallet.id, toLocationId: destLocationId, actor: moveActor });
         // Mirror whole-pallet moves back to the barcode backend (best effort).
         if (destLocation) {
           try {
