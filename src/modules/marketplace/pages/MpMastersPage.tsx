@@ -87,6 +87,7 @@ const EMPTY_SKU = (channel: MarketplaceChannel): SkuMapping => ({
   id: 0,
   channel,
   marketplace_sku: '',
+  fsn: '',
   sku_name: '',
   sku_type: 'RAW',
   fg_item_code: '',
@@ -121,6 +122,7 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
     const payload: SkuMappingUpsert = {
       channel: editing.channel,
       marketplace_sku: editing.marketplace_sku.trim(),
+      fsn: editing.fsn?.trim() ?? '',
       sku_name: editing.sku_name,
       sku_type: editing.sku_type,
       // Only send the branch that applies, so a RAW→COMBO switch can't leave a stale code.
@@ -160,9 +162,10 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
           </Button>
         </div>
         <MasterTable
-          headers={['SKU', 'Type', 'FG / Combo', 'Active', '']}
+          headers={['FSN', 'SKU', 'Type', 'FG / Combo', 'Active', '']}
           rows={(mappings ?? []).map((m) => (
             <tr key={m.id} className="border-b last:border-0">
+              <td className="py-2 px-2 font-mono">{m.fsn || '—'}</td>
               <td className="py-2 px-2 font-mono">{m.marketplace_sku}</td>
               <td className="py-2 px-2">
                 <Badge variant="outline">{m.sku_type}</Badge>
@@ -192,7 +195,14 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
           </DialogHeader>
           {editing ? (
             <div className="space-y-3">
-              <Field label="Marketplace SKU (FSN/ASIN)">
+              <Field label="FSN (primary mapping key)">
+                <Input
+                  value={editing.fsn ?? ''}
+                  placeholder="Flipkart FSN — matched to the SAP item first"
+                  onChange={(e) => setEditing({ ...editing, fsn: e.target.value })}
+                />
+              </Field>
+              <Field label="Marketplace SKU (fallback)">
                 <Input
                   value={editing.marketplace_sku}
                   onChange={(e) => setEditing({ ...editing, marketplace_sku: e.target.value })}
@@ -267,9 +277,15 @@ const EMPTY_COMBO = (channel: MarketplaceChannel): ComboDefinition => ({
   channel,
   code: '',
   name: '',
+  fsn: '',
+  marketplace_sku: '',
+  sku_name: '',
   is_active: true,
   components: [],
 });
+
+// Common units — free-text is still allowed via the current value.
+const UOM_OPTIONS = ['PCS', 'BOX', 'CTN', 'PKT', 'LTR', 'ML', 'KG', 'GM', 'SET'];
 
 function CombosTab({ channel }: { channel: MarketplaceChannel }) {
   const { data: combos } = useCombos(channel);
@@ -334,6 +350,9 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
       channel: editing.channel,
       code: editing.code.trim(),
       name: editing.name.trim(),
+      fsn: editing.fsn?.trim() ?? '',
+      marketplace_sku: editing.marketplace_sku?.trim() ?? '',
+      sku_name: editing.sku_name?.trim() ?? '',
       is_active: editing.is_active,
       components: editing.components,
       ...(editing.id ? { id: editing.id } : {}),
@@ -356,9 +375,10 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
           </Button>
         </div>
         <MasterTable
-          headers={['Code', 'Name', 'Components', '']}
+          headers={['FSN', 'Code', 'Name', 'Components', '']}
           rows={(combos ?? []).map((c) => (
             <tr key={c.id} className="border-b last:border-0">
+              <td className="py-2 px-2 font-mono">{c.fsn || '—'}</td>
               <td className="py-2 px-2 font-mono">{c.code}</td>
               <td className="py-2 px-2">{c.name}</td>
               <td className="py-2 px-2 text-xs text-muted-foreground">
@@ -386,6 +406,20 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
           {editing ? (
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="FSN (primary mapping key)">
+                  <Input
+                    value={editing.fsn ?? ''}
+                    placeholder="Flipkart FSN — matched to this combo first"
+                    onChange={(e) => setEditing({ ...editing, fsn: e.target.value })}
+                  />
+                </Field>
+                <Field label="Marketplace SKU (fallback)">
+                  <Input
+                    value={editing.marketplace_sku ?? ''}
+                    placeholder="Optional — defaults to the combo code"
+                    onChange={(e) => setEditing({ ...editing, marketplace_sku: e.target.value })}
+                  />
+                </Field>
                 <Field label="Code">
                   <Input value={editing.code} onChange={(e) => setEditing({ ...editing, code: e.target.value })} />
                 </Field>
@@ -412,8 +446,13 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
                     <SapItemInput
                       placeholder="Item code"
                       value={comp.item_code}
-                      onChange={(code, name) =>
-                        setComponent(idx, { item_code: code, item_name: name ?? comp.item_name })
+                      onChange={(code, name, uom) =>
+                        setComponent(idx, {
+                          item_code: code,
+                          item_name: name ?? comp.item_name,
+                          // Auto-fill the unit from the picked SAP item (keep existing if none).
+                          uom: uom || comp.uom,
+                        })
                       }
                     />
                     <Input
@@ -421,11 +460,20 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
                       value={comp.quantity}
                       onChange={(e) => setComponent(idx, { quantity: e.target.value })}
                     />
-                    <Input
-                      placeholder="UOM"
+                    <NativeSelect
                       value={comp.uom ?? ''}
                       onChange={(e) => setComponent(idx, { uom: e.target.value })}
-                    />
+                    >
+                      <SelectOption value="">UOM</SelectOption>
+                      {comp.uom && !UOM_OPTIONS.includes(comp.uom) && (
+                        <SelectOption value={comp.uom}>{comp.uom}</SelectOption>
+                      )}
+                      {UOM_OPTIONS.map((u) => (
+                        <SelectOption key={u} value={u}>
+                          {u}
+                        </SelectOption>
+                      ))}
+                    </NativeSelect>
                     <Button size="icon" variant="ghost" onClick={() => removeComponent(idx)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

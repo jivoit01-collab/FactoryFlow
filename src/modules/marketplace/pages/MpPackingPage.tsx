@@ -3,7 +3,7 @@
  * Pick an issued order → generate unique item barcodes → print them → complete
  * packing → the order becomes dispatchable in Outward.
  */
-import { ArrowLeft, Barcode, CheckCircle2, PackageCheck, Printer } from 'lucide-react';
+import { ArrowLeft, Barcode, CheckCircle2, PackageCheck, Printer, ScanLine } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -17,6 +17,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
 } from '@/shared/components/ui';
 
 import {
@@ -25,6 +26,7 @@ import {
   useOpenPacking,
   usePacking,
   usePackingQueue,
+  usePackScan,
 } from '../api/marketplace.queries';
 import { MpFlowSteps } from '../components/MpFlowSteps';
 import { PackLabel } from '../components/PackLabel';
@@ -50,7 +52,7 @@ export default function MpPackingPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">Packing</h1>
         <p className="text-sm text-muted-foreground">
-          Generate and print item barcodes, then release the order to Outward.
+          Scan the Flipkart Tracking ID to pack an order — it then moves to Outward.
         </p>
         <MpFlowSteps current={5} />
       </header>
@@ -58,6 +60,8 @@ export default function MpPackingPage() {
       {packingId ? (
         <ActivePacking packingId={packingId} onClose={() => setPackingId(null)} />
       ) : (
+        <>
+        <PackScanBox />
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Orders to pack</CardTitle>
@@ -140,8 +144,81 @@ export default function MpPackingPage() {
             )}
           </CardContent>
         </Card>
+        </>
       )}
     </div>
+  );
+}
+
+/** Scan the Flipkart Tracking ID barcode → mark the order Packed → it moves to Outward. */
+function PackScanBox() {
+  const [barcode, setBarcode] = useState('');
+  const packScan = usePackScan();
+  const [last, setLast] = useState<
+    { orderId: string; buyer: string; alreadyPacked: boolean } | null
+  >(null);
+
+  function submit() {
+    const code = barcode.trim();
+    if (!code) return;
+    packScan.mutate(code, {
+      onSuccess: (p) => {
+        setLast({ orderId: p.order_id, buyer: p.buyer_name, alreadyPacked: p.already_packed });
+        if (p.already_packed) {
+          toast.info(`Already packed · ${p.order_id}`);
+        } else {
+          toast.success(`Packed · ${p.order_id} → moved to Outward`);
+        }
+        setBarcode('');
+      },
+      onError: (e: unknown) =>
+        toast.error((e as { message?: string })?.message ?? 'Tracking ID not found'),
+    });
+  }
+
+  return (
+    <Card className="border-primary/30">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ScanLine className="h-5 w-5 text-primary" /> Scan to pack
+        </CardTitle>
+        <CardDescription>
+          Scan the Flipkart <strong>Tracking ID</strong> barcode on the shipping label. The order is
+          marked Packed and moves to Outward — no need to open it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            autoFocus
+            value={barcode}
+            placeholder="Scan or type Tracking ID (e.g. FMPP…)"
+            onChange={(e) => setBarcode(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            className="font-mono"
+          />
+          <Button className="w-full sm:w-auto" onClick={submit} disabled={packScan.isPending}>
+            <PackageCheck className="mr-1.5 h-4 w-4" /> Pack
+          </Button>
+        </div>
+        {last && (
+          <div
+            className={`flex items-center gap-2 rounded-md border p-2 text-sm ${
+              last.alreadyPacked
+                ? 'border-amber-300 bg-amber-50 text-amber-800'
+                : 'border-emerald-300 bg-emerald-50 text-emerald-800'
+            }`}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            <span>
+              {last.alreadyPacked ? 'Already packed' : 'Packed'} ·{' '}
+              <span className="font-mono font-medium">{last.orderId}</span>
+              {last.buyer ? ` · ${last.buyer}` : ''}
+            </span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

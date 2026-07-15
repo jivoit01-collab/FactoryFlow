@@ -18,6 +18,9 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  Label,
+  NativeSelect,
+  SelectOption,
 } from '@/shared/components/ui';
 
 import {
@@ -25,13 +28,20 @@ import {
   useMpReturn,
   useMpReturns,
   useScanReturn,
+  useSetReturnScanCondition,
   useSubmitReturn,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpProgressTable } from '../components/MpProgressTable';
 import { MpScanPanel } from '../components/MpScanPanel';
 import { ReturnNoteButton } from '../components/ReturnNote';
-import type { MarketplaceChannel, MpReturnStatus } from '../types/marketplace.types';
+import {
+  type MarketplaceChannel,
+  MP_RETURN_CONDITIONS,
+  type MpReturnCondition,
+  type MpReturnScan,
+  type MpReturnStatus,
+} from '../types/marketplace.types';
 
 const STATUS_VARIANT: Record<MpReturnStatus, 'default' | 'secondary' | 'outline'> = {
   DRAFT: 'outline',
@@ -252,6 +262,12 @@ function ActiveReturn({
 
         <MpProgressTable progress={r.progress ?? []} />
 
+        <ReturnedItemsCondition
+          returnId={returnId}
+          scans={r.scans ?? []}
+          readOnly={submitted}
+        />
+
         {!submitted ? (
           <div className="flex justify-end">
             <Button className="w-full sm:w-auto" onClick={handleSubmit} disabled={submit.isPending || (r.scans ?? []).length === 0}>
@@ -266,5 +282,108 @@ function ActiveReturn({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** Per-item Condition of returned goods — saved on each scan for tracking/reporting. */
+function ReturnedItemsCondition({
+  returnId,
+  scans,
+  readOnly,
+}: {
+  returnId: number;
+  scans: MpReturnScan[];
+  readOnly: boolean;
+}) {
+  const setCondition = useSetReturnScanCondition(returnId);
+  if (scans.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs">Returned items — condition</Label>
+      <div className="-mx-2 overflow-x-auto sm:mx-0">
+        <table className="w-full min-w-[560px] text-sm">
+          <thead className="border-b text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="p-2">Item</th>
+              <th className="p-2">Qty</th>
+              <th className="p-2 w-48">Condition</th>
+              <th className="p-2">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scans.map((s) => (
+              <ReturnScanConditionRow
+                key={s.id}
+                scan={s}
+                readOnly={readOnly}
+                onSave={(condition, remarks) =>
+                  setCondition.mutate(
+                    { scanId: s.id, condition, condition_remarks: remarks },
+                    {
+                      onError: (e: unknown) =>
+                        toast.error(
+                          (e as { message?: string })?.message ?? 'Could not save condition',
+                        ),
+                    },
+                  )
+                }
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ReturnScanConditionRow({
+  scan,
+  readOnly,
+  onSave,
+}: {
+  scan: MpReturnScan;
+  readOnly: boolean;
+  onSave: (condition: MpReturnCondition, remarks: string) => void;
+}) {
+  const [condition, setCondition] = useState<MpReturnCondition>(scan.condition ?? '');
+  const [remarks, setRemarks] = useState(scan.condition_remarks ?? '');
+
+  return (
+    <tr className="border-b last:border-0">
+      <td className="p-2">
+        <div className="font-mono text-xs font-medium">{scan.item_code}</div>
+        <div className="text-xs text-muted-foreground">{scan.item_name}</div>
+      </td>
+      <td className="p-2 tabular-nums">{scan.quantity}</td>
+      <td className="p-2">
+        <NativeSelect
+          value={condition}
+          disabled={readOnly}
+          onChange={(e) => {
+            const value = e.target.value as MpReturnCondition;
+            setCondition(value);
+            onSave(value, remarks);
+          }}
+          className="w-full"
+        >
+          <SelectOption value="">Select…</SelectOption>
+          {MP_RETURN_CONDITIONS.map((c) => (
+            <SelectOption key={c.value} value={c.value}>
+              {c.label}
+            </SelectOption>
+          ))}
+        </NativeSelect>
+      </td>
+      <td className="p-2">
+        <Input
+          value={remarks}
+          disabled={readOnly}
+          placeholder={condition === 'OTHER' ? 'Add details' : 'Optional'}
+          onChange={(e) => setRemarks(e.target.value)}
+          onBlur={() => onSave(condition, remarks)}
+        />
+      </td>
+    </tr>
   );
 }
