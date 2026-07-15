@@ -9,7 +9,7 @@
  * keyed by the plate.
  */
 import { Loader2, PackagePlus, ScanLine } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { barcodeApi } from '@/modules/barcode/api';
@@ -74,7 +74,11 @@ export default function WmsReceivePage() {
 
   const [plateInput, setPlateInput] = useState('');
   const [pallet, setPallet] = useState<ResolvedPallet | null>(null);
+  const [itemGroup, setItemGroup] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
+  // The plate whose item group is currently being fetched — guards against a
+  // slow lookup landing after the operator has scanned a different pallet.
+  const requestedPlateRef = useRef('');
   const [warehouseOverride, setWarehouseOverride] = useState<string | null>(null);
   const [selection, setSelection] = useState<PutawaySelection>({ location: null, validation: null });
   const [busy, setBusy] = useState(false);
@@ -86,7 +90,9 @@ export default function WmsReceivePage() {
     return map;
   }, [materials]);
   const profile = pallet ? materialByItem.get(pallet.itemCode) : undefined;
-  const itemType = profile?.materialType ?? '';
+  // "Item type" = the item's SAP item group (looked up on scan); falls back to
+  // the WMS material profile's type when the group isn't available.
+  const itemType = itemGroup ?? profile?.materialType ?? '';
 
   // Total units to place — fall back to the box count when the pallet carries no
   // unit quantity, so the putaway engine still has a positive number to rank by.
@@ -139,10 +145,23 @@ export default function WmsReceivePage() {
         );
         return;
       }
-      setPallet(toResolvedPallet(result.entity_data));
+      const resolved = toResolvedPallet(result.entity_data);
+      requestedPlateRef.current = resolved.palletId;
+      setPallet(resolved);
+      setItemGroup(null);
       setSelection({ location: null, validation: null });
       setWarehouseOverride(null);
       setPlateInput('');
+      // Best-effort: show the item's SAP item group as its "type".
+      if (resolved.itemCode) {
+        void barcodeApi.getOitmItemGroup(resolved.itemCode).then((group) => {
+          if (requestedPlateRef.current !== resolved.palletId || !group) return;
+          setItemGroup(
+            group.item_group_name ||
+              (group.item_group_code != null ? `Group ${group.item_group_code}` : null),
+          );
+        });
+      }
     } catch (error) {
       notifyFail(error instanceof Error ? error.message : 'Could not look up that pallet.');
     } finally {
@@ -151,7 +170,9 @@ export default function WmsReceivePage() {
   }, []);
 
   function clearPallet() {
+    requestedPlateRef.current = '';
     setPallet(null);
+    setItemGroup(null);
     setSelection({ location: null, validation: null });
     setWarehouseOverride(null);
     setPlateInput('');

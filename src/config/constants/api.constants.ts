@@ -857,6 +857,7 @@ export const API_ENDPOINTS = {
     DISPATCH_REPORT_REJECTED_SCANS: '/barcode/dispatch/reports/rejected-scans/',
     // Production Integration
     OITM_ITEMS: '/barcode/items/oitm/',
+    OITM_ITEM_DETAIL: '/barcode/items/oitm/detail/',
     PRODUCTION_RELEASE_OIL: '/barcode/production-release-oil/',
     PRODUCTION_LABELS: (runId: number) => `/barcode/production/${runId}/generate-labels/`,
     PRODUCTION_PALLET: (runId: number) => `/barcode/production/${runId}/create-pallet/`,

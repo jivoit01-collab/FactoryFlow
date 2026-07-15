@@ -42,6 +42,7 @@ import type {
   LookupResponse,
   LooseStock,
   LooseStockFilters,
+  OitmItemGroup,
   OitmItemRow,
   PaginatedResponse,
   Pallet,
@@ -374,6 +375,19 @@ export const barcodeApi = {
   async getOitmItems(params?: { search?: string; limit?: number }): Promise<OitmItemRow[]> {
     const res = await apiClient.get<OitmItemRow[]>(EP.OITM_ITEMS, { params });
     return res.data;
+  },
+
+  /** One item's group (code + name) by exact item code; null when not found. */
+  async getOitmItemGroup(itemCode: string): Promise<OitmItemGroup | null> {
+    try {
+      const res = await apiClient.get<OitmItemGroup>(EP.OITM_ITEM_DETAIL, {
+        params: { item_code: itemCode },
+      });
+      return res.data ?? null;
+    } catch {
+      // Best-effort lookup (item not in SAP, or HANA unavailable) — no type shown.
+      return null;
+    }
   },
 
   // =========================================================================

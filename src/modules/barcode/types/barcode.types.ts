@@ -380,6 +380,14 @@ export interface OitmItemRow {
   frozen_for: boolean;
 }
 
+/** One item's group (code + name), looked up by exact item code. */
+export interface OitmItemGroup {
+  item_code: string;
+  item_name: string;
+  item_group_code: number | null;
+  item_group_name: string;
+}
+
 export interface VoidPayload {
   reason?: string;
 }
