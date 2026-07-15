@@ -47,10 +47,6 @@ interface ResolvedPallet {
   warehouseCode: string;
 }
 
-function sameCode(a?: string | null, b?: string | null): boolean {
-  return (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
-}
-
 /** Extract the fields we need from the untyped lookup `entity_data`. */
 function toResolvedPallet(data: Record<string, unknown>): ResolvedPallet {
   const str = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
@@ -98,16 +94,11 @@ export default function WmsReceivePage() {
   // unit quantity, so the putaway engine still has a positive number to rank by.
   const quantity = pallet ? (pallet.totalQty > 0 ? pallet.totalQty : pallet.boxCount) : 0;
 
-  // Default the warehouse to the OWN warehouse matching the pallet's current
-  // warehouse code; the operator can override when there is more than one.
-  const matchedWarehouseId = useMemo(() => {
-    if (!pallet?.warehouseCode) return '';
-    const match = warehouses.find(
-      (wh) => (wh.type ?? 'OWN') === 'OWN' && sameCode(wh.sapWarehouseCode, pallet.warehouseCode),
-    );
-    return match?.id ?? '';
-  }, [warehouses, pallet?.warehouseCode]);
-  const warehouseId = warehouseOverride || matchedWarehouseId || warehouses[0]?.id || '';
+  // The operator chooses which warehouse to receive INTO. We deliberately do NOT
+  // infer it from the pallet's current (source) warehouse: a pallet finished on
+  // the production floor is received into a separate storage warehouse, so the
+  // source code is shown only as "From" info, never used to pick the destination.
+  const warehouseId = warehouseOverride || warehouses[0]?.id || '';
 
   const item: MoveItem = useMemo(
     () => ({
