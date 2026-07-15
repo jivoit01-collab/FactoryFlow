@@ -80,7 +80,7 @@ describe('buildDockingVehicleGroups', () => {
     expect(groups[0].subEntries).toHaveLength(2);
   });
 
-  it('groups arrival-less rows by vehicle', () => {
+  it('groups arrival-less in-flight rows by vehicle', () => {
     const groups = buildDockingVehicleGroups([
       docking({ id: 1, vehicle: 3, arrival: null, arrival_no: null }),
       docking({ id: 2, vehicle: 3, arrival: null, arrival_no: null }),
@@ -89,5 +89,25 @@ describe('buildDockingVehicleGroups', () => {
     expect(groups).toHaveLength(2);
     expect(groups[0].subEntries).toHaveLength(2);
     expect(groups[1].subEntries).toHaveLength(1);
+  });
+
+  it('keeps a vehicle’s past (dispatched) arrival-less trips as separate rows', () => {
+    // The over-merge bug: several finished dispatches of one truck, none with an
+    // arrival, must NOT collapse into one dropdown.
+    const groups = buildDockingVehicleGroups([
+      docking({ id: 1, vehicle: 3, arrival: null, arrival_no: null, status: 'DISPATCHED' }),
+      docking({ id: 2, vehicle: 3, arrival: null, arrival_no: null, status: 'DISPATCHED' }),
+      docking({ id: 3, vehicle: 3, arrival: null, arrival_no: null, status: 'DISPATCHED' }),
+    ]);
+    expect(groups).toHaveLength(3);
+    expect(groups.every((group) => group.subEntries.length === 1)).toBe(true);
+  });
+
+  it('does not fold a dispatched arrival-less row into a live arrival of the same vehicle', () => {
+    const groups = buildDockingVehicleGroups([
+      docking({ id: 1, vehicle: 3, arrival: 10, arrival_no: 'ARV-1', status: 'DOCKED' }),
+      docking({ id: 2, vehicle: 3, arrival: null, arrival_no: null, status: 'DISPATCHED' }),
+    ]);
+    expect(groups).toHaveLength(2);
   });
 });

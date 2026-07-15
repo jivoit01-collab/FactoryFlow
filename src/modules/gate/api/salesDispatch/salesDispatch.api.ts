@@ -443,6 +443,9 @@ export interface SalesDispatchListParams {
   search?: string;
   /** 1 = aggregate across every company the user belongs to (cross-company view). */
   all_companies?: number;
+  /** 1 = include the heavy per-line `items`/`documents` arrays (export only). The
+   *  board load omits them for speed. */
+  detail?: number;
 }
 
 export interface SalesDispatchPendingBookingParams {

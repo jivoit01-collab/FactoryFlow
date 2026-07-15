@@ -29,6 +29,7 @@ import {
   getPipelineStageRowClass,
 } from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import {
+  salesDispatchApi,
   type SalesDispatchDashboardEntry,
   type SalesDispatchDocument,
   type SalesDispatchGateOut,
@@ -252,9 +253,24 @@ export default function SalesDispatchDashboardPage() {
     }
   };
 
-  const handleExport = () => {
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
     try {
-      const exportedRows = exportSalesDispatchDashboard(filteredEntries, {
+      // The board list is fetched slim (no per-line items/documents) for speed, but
+      // the export's Documents/Items sheets need them -- pull the detail payload on
+      // demand and merge those two arrays into the current filtered rows by id, so
+      // the exported set/order matches exactly what's on screen.
+      const detailed = await salesDispatchApi.list({ ...listParams, detail: 1 });
+      const heavyById = new Map(detailed.map((row) => [row.id, row]));
+      const enrichedEntries: SalesDispatchDashboardEntry[] = filteredEntries.map((entry) => {
+        const heavy = heavyById.get(entry.id as number);
+        return heavy
+          ? ({ ...entry, items: heavy.items, documents: heavy.documents } as SalesDispatchDashboardEntry)
+          : entry;
+      });
+      const exportedRows = exportSalesDispatchDashboard(enrichedEntries, {
         dateRange,
         isGateOutMode,
         searchTerm,
@@ -263,6 +279,8 @@ export default function SalesDispatchDashboardPage() {
       toast.success(`${exportedRows} ${exportedRows === 1 ? 'row' : 'rows'} exported`);
     } catch (exportError) {
       toast.error(getErrorMessage(exportError, 'Failed to export dashboard'));
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -311,11 +329,11 @@ export default function SalesDispatchDashboardPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={handleExport}
-              disabled={isDashboardFetching || filteredEntries.length === 0}
+              onClick={() => void handleExport()}
+              disabled={isDashboardFetching || isExporting || filteredEntries.length === 0}
             >
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {isExporting ? 'Exporting…' : 'Export'}
             </Button>
           ) : null}
           {!isGateOutMode && canCreateDocking && (

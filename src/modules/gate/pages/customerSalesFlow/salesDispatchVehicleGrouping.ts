@@ -17,6 +17,17 @@ export interface DockingVehicleGroup {
   subEntries: SalesDispatchDashboardEntry[];
 }
 
+// A docking in one of these states is a finished/closed trip. Its physical truck
+// is gone, so it must never fold together with other rows by vehicle -- otherwise
+// a truck's past dispatches (all arrival-less once departed) collapse into one
+// misleading dropdown under some unrelated arrival.
+const TERMINAL_DOCKING_STATUSES = new Set(['DISPATCHED', 'REJECTED', 'CANCELLED']);
+
+function isTerminal(entry: SalesDispatchDashboardEntry): boolean {
+  const status = 'status' in entry ? entry.status : null;
+  return typeof status === 'string' && TERMINAL_DOCKING_STATUSES.has(status);
+}
+
 function entryArrivalId(entry: SalesDispatchDashboardEntry): number | null {
   return 'arrival' in entry && entry.arrival != null ? entry.arrival : null;
 }
@@ -41,6 +52,11 @@ export function dockingGroupKey(
 ): string {
   const arrivalId = entryArrivalId(entry);
   if (arrivalId != null) return `arv:${arrivalId}`;
+  // Arrival-less + terminal = a finished trip on its own; give it a unique key so
+  // it renders as its own row instead of gluing onto the truck's other rows.
+  if (isTerminal(entry)) return `done:${entry.id}`;
+  // Live arrival-less rows (pending bookings, in-flight dockings) fold onto their
+  // truck's open arrival group.
   const vkey = vehicleKey(entry);
   return vehicleToArrival.get(vkey) ?? vkey;
 }
@@ -51,7 +67,9 @@ export function buildDockingVehicleGroups(
   const vehicleToArrival = new Map<string, string>();
   for (const entry of entries) {
     const arrivalId = entryArrivalId(entry);
-    if (arrivalId != null) {
+    // Only a LIVE arrival can adopt a vehicle's arrival-less rows -- a departed
+    // (terminal) trip must not absorb a later pending booking for the same truck.
+    if (arrivalId != null && !isTerminal(entry)) {
       const vkey = vehicleKey(entry);
       if (!vehicleToArrival.has(vkey)) vehicleToArrival.set(vkey, `arv:${arrivalId}`);
     }
