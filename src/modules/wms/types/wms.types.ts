@@ -327,6 +327,9 @@ export interface MovementLogEntry extends WmsRecordBase {
   itemCode: string;
   itemName: string;
   palletId: WmsId | null;
+  /** The pallet's license plate, snapshotted so it survives the pallet later
+   *  leaving the system (dispatched/removed) -- the audit row can still name it. */
+  licensePlate?: string;
   fromLocationId: WmsId | null;
   toLocationId: WmsId | null;
   quantity: number | null;

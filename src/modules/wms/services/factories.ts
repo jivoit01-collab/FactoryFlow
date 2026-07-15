@@ -182,6 +182,7 @@ export interface MovementInput {
   itemCode?: string;
   itemName?: string;
   palletId?: WmsId | null;
+  licensePlate?: string;
   fromLocationId?: WmsId | null;
   toLocationId?: WmsId | null;
   quantity?: number | null;
@@ -201,6 +202,7 @@ export function makeMovement(input: MovementInput): MovementLogEntry {
     itemCode: input.itemCode ?? '',
     itemName: input.itemName ?? '',
     palletId: input.palletId ?? null,
+    licensePlate: input.licensePlate ?? '',
     fromLocationId: input.fromLocationId ?? null,
     toLocationId: input.toLocationId ?? null,
     quantity: input.quantity ?? null,

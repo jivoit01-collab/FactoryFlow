@@ -33,7 +33,10 @@ export function MovementItem({ entry, thisLocationId, codeById, plateById }: Mov
   const counterpartCode = counterpartId ? codeById?.get(counterpartId) : null;
   const item = entry.itemName || entry.itemCode || (entry.palletId ? 'Pallet' : '—');
   // The plate identifies the physical pallet that moved; the item name is the title.
-  const plate = entry.palletId ? plateById?.get(entry.palletId) : null;
+  // Prefer the plate snapshotted on the movement (survives the pallet leaving);
+  // fall back to resolving the live pallet for older records without a snapshot.
+  const plate =
+    entry.licensePlate || (entry.palletId ? plateById?.get(entry.palletId) : null) || null;
 
   return (
     <div className="flex items-start justify-between gap-2 rounded-md border p-2 text-sm">

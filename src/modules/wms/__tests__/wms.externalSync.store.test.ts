@@ -40,7 +40,11 @@ describe('syncExternalPalletPlacement (barcode → WMS bridge)', () => {
     expect(inventory[0]?.quantity).toBe(40);
     expect(inventory[0]?.palletId).toBe(pallets[0]?.id);
 
-    expect(wmsStore.getSnapshot('movements').some((m) => m.type === 'PUTAWAY')).toBe(true);
+    const putaway = wmsStore.getSnapshot('movements').find((m) => m.type === 'PUTAWAY');
+    expect(putaway).toBeTruthy();
+    // The plate is snapshotted on the movement so the audit row still names the
+    // pallet after it later leaves the system.
+    expect(putaway?.licensePlate).toBe('PLT-NEW');
   });
 
   it('relocates an existing pallet (and its stock) and logs a TRANSFER', async () => {
