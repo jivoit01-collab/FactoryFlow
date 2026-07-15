@@ -58,6 +58,49 @@ function Usage({ label, used, max, unit }: { label: string; used: number; max: n
   );
 }
 
+/** One label/value row in the location Details section. */
+function Detail({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between gap-3 text-sm">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span className="text-right font-medium">{value}</span>
+    </div>
+  );
+}
+
+/** ISO datetime → plain date (drop the time part). */
+function asDate(value: string | null | undefined): string {
+  return value && value.length >= 10 ? value.slice(0, 10) : value ?? '';
+}
+
+/** A human item label that never falls back to the pallet plate. */
+function itemLabel(itemName: string, itemCode: string, plate?: string): string {
+  if (itemName.trim()) return itemName;
+  if (itemCode.trim() && itemCode !== plate) return itemCode;
+  return 'Unknown item';
+}
+
+/** The location's configured constraints, as {label, value} rows (empty when none). */
+function locationDetails(location: WarehouseLocation): { label: string; value: React.ReactNode }[] {
+  const rows: { label: string; value: React.ReactNode }[] = [];
+  if (location.status && location.status !== 'ACTIVE') rows.push({ label: 'Status', value: location.status });
+  if (location.barcode && location.barcode !== location.code) rows.push({ label: 'Barcode', value: location.barcode });
+  const rules = location.materialRules;
+  if (rules?.temperatureClass) rows.push({ label: 'Temperature', value: rules.temperatureClass });
+  if (rules?.singleLotOnly) rows.push({ label: 'Single lot only', value: 'Yes' });
+  if (rules && rules.allowMixedItems === false) rows.push({ label: 'Mixed items', value: 'Not allowed' });
+  if (rules?.allowedMaterialTypes?.length) rows.push({ label: 'Allowed types', value: rules.allowedMaterialTypes.join(', ') });
+  if (rules?.restrictedMaterialTypes?.length) rows.push({ label: 'Restricted types', value: rules.restrictedMaterialTypes.join(', ') });
+  if (rules?.hazmatAllowed) rows.push({ label: 'Hazmat', value: rules.hazmatClasses?.length ? rules.hazmatClasses.join(', ') : 'Allowed' });
+  if (location.reservation?.isReserved) rows.push({ label: 'Reserved for', value: location.reservation.reference || 'Yes' });
+  const rep = location.replenishment;
+  if (rep && (rep.minStock != null || rep.maxStock != null)) {
+    rows.push({ label: 'Min / max stock', value: `${rep.minStock ?? '—'} / ${rep.maxStock ?? '—'}` });
+  }
+  if (location.notes?.trim()) rows.push({ label: 'Notes', value: location.notes });
+  return rows;
+}
+
 export function LocationDetailPanel({
   open,
   onOpenChange,
@@ -72,6 +115,7 @@ export function LocationDetailPanel({
   if (!location) return null;
   const meta = occupancy ? DISPLAY_STATUS_META[occupancy.status] : null;
   const isStorage = purpose ? purpose.holdsStock : true;
+  const details = locationDetails(location);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -124,6 +168,18 @@ export function LocationDetailPanel({
             </section>
           ) : null}
 
+          {/* Location configuration & constraints */}
+          {details.length > 0 ? (
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">Details</h3>
+              <div className="space-y-1.5">
+                {details.map((row) => (
+                  <Detail key={row.label} label={row.label} value={row.value} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <Separator />
 
           {/* Pallets inside */}
@@ -133,30 +189,46 @@ export function LocationDetailPanel({
               <p className="text-sm text-muted-foreground">No pallets here yet.</p>
             ) : (
               palletsHere.map((pallet) => (
-                <div key={pallet.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{pallet.licensePlate}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {pallet.itemName || pallet.itemCode} · {pallet.boxCount} boxes
-                    </p>
+                <div key={pallet.id} className="rounded-md border p-2 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {itemLabel(pallet.itemName, pallet.itemCode, pallet.licensePlate)}
+                      </p>
+                      <p className="truncate font-mono text-xs text-muted-foreground">
+                        {pallet.licensePlate}
+                        {pallet.itemCode && pallet.itemCode !== pallet.licensePlate
+                          ? ` · ${pallet.itemCode}`
+                          : ''}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <WmsPrintLabelButton
+                        label="Print"
+                        documentTitle={`Pallet ${pallet.licensePlate}`}
+                        labels={[
+                          {
+                            code: pallet.licensePlate,
+                            title: pallet.licensePlate,
+                            heading: 'PALLET',
+                            subtitle: itemLabel(pallet.itemName, pallet.itemCode, pallet.licensePlate),
+                          },
+                        ]}
+                      />
+                      {onMovePallet ? (
+                        <Button variant="outline" size="sm" onClick={() => onMovePallet(pallet)}>
+                          <MoveRight className="mr-1 h-3.5 w-3.5" /> Move
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <WmsPrintLabelButton
-                      label="Print"
-                      documentTitle={`Pallet ${pallet.licensePlate}`}
-                      labels={[
-                        {
-                          code: pallet.licensePlate,
-                          title: pallet.licensePlate,
-                          heading: 'PALLET',
-                          subtitle: pallet.itemName || pallet.itemCode,
-                        },
-                      ]}
-                    />
-                    {onMovePallet ? (
-                      <Button variant="outline" size="sm" onClick={() => onMovePallet(pallet)}>
-                        <MoveRight className="mr-1 h-3.5 w-3.5" /> Move
-                      </Button>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    <span>{pallet.boxCount} box{pallet.boxCount === 1 ? '' : 'es'}</span>
+                    {pallet.totalUnits ? <span>{pallet.totalUnits} units</span> : null}
+                    {pallet.lotNumber ? <span>lot {pallet.lotNumber}</span> : null}
+                    {pallet.expiryDate ? <span>exp {asDate(pallet.expiryDate)}</span> : null}
+                    {pallet.status && pallet.status !== 'ACTIVE' ? (
+                      <span className="font-medium text-amber-600">{pallet.status}</span>
                     ) : null}
                   </div>
                 </div>
@@ -171,11 +243,19 @@ export function LocationDetailPanel({
               <p className="text-sm text-muted-foreground">No stock here yet.</p>
             ) : (
               inventoryHere.map((record) => (
-                <div key={record.id} className="flex justify-between rounded-md border p-2 text-sm">
-                  <span>{record.itemName || record.itemCode}</span>
-                  <span className="font-medium">
-                    {record.quantity} {record.uom}
-                  </span>
+                <div key={record.id} className="rounded-md border p-2 text-sm">
+                  <div className="flex justify-between gap-2">
+                    <span className="truncate">{itemLabel(record.itemName, record.itemCode)}</span>
+                    <span className="shrink-0 font-medium">
+                      {record.quantity} {record.uom}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    {record.itemCode ? <span className="font-mono">{record.itemCode}</span> : null}
+                    {record.boxCount ? <span>{record.boxCount} box{record.boxCount === 1 ? '' : 'es'}</span> : null}
+                    {record.lotNumber ? <span>lot {record.lotNumber}</span> : null}
+                    {record.expiryDate ? <span>exp {asDate(record.expiryDate)}</span> : null}
+                  </div>
                 </div>
               ))
             )}
