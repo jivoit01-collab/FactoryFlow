@@ -4,34 +4,39 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Card, CardContent } from '@/shared/components/ui';
 
-import { useBoxes, usePallets } from '../api';
+import { useBoxesPage, usePalletsPage } from '../api';
 
 export default function BarcodeDashboardPage() {
   const navigate = useNavigate();
-  const { data: activePallets = [] } = usePallets({ status: 'ACTIVE' });
-  const { data: allPallets = [] } = usePallets();
-  const { data: activeBoxes = [] } = useBoxes({ status: 'ACTIVE' });
+  // Read the true totals from the paginated endpoints' ``count`` -- the plain list
+  // is capped at 500 rows, so counting its length pinned every stat card at 500.
+  // The active-pallets page doubles as the Recent Pallets source (newest first),
+  // so page_size 5 serves both the card count and the list.
+  const { data: activePalletsPage } = usePalletsPage({ status: 'ACTIVE', page_size: 5 });
+  const { data: allPalletsPage } = usePalletsPage({ page_size: 1 });
+  const { data: activeBoxesPage } = useBoxesPage({ status: 'ACTIVE', page_size: 1 });
+  const { data: voidedPalletsPage } = usePalletsPage({ status: 'VOID', page_size: 1 });
 
-  const voidedPallets = allPallets.filter((p) => p.status === 'VOID').length;
+  const recentPallets = activePalletsPage?.results ?? [];
 
   const cards = [
     {
       title: 'Active Pallets',
-      value: activePallets.length,
+      value: activePalletsPage?.count ?? 0,
       icon: Package,
       color: 'text-blue-600 bg-blue-50',
       path: '/barcode/pallets?status=ACTIVE',
     },
     {
       title: 'Total Boxes',
-      value: activeBoxes.length,
+      value: activeBoxesPage?.count ?? 0,
       icon: Boxes,
       color: 'text-green-600 bg-green-50',
       path: '/barcode/boxes?status=ACTIVE',
     },
     {
       title: 'All Pallets',
-      value: allPallets.length,
+      value: allPalletsPage?.count ?? 0,
       icon: ScanBarcode,
       color: 'text-purple-600 bg-purple-50',
       path: '/barcode/pallets',
@@ -45,7 +50,7 @@ export default function BarcodeDashboardPage() {
     },
     {
       title: 'Voided Pallets',
-      value: voidedPallets,
+      value: voidedPalletsPage?.count ?? 0,
       icon: XCircle,
       color: 'text-red-600 bg-red-50',
       path: '/barcode/pallets?status=VOID',
@@ -80,7 +85,7 @@ export default function BarcodeDashboardPage() {
       </div>
 
       {/* Recent pallets */}
-      {activePallets.length > 0 && (
+      {recentPallets.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
@@ -88,7 +93,7 @@ export default function BarcodeDashboardPage() {
               Recent Pallets
             </h3>
             <div className="space-y-2">
-              {activePallets.slice(0, 5).map((pallet) => (
+              {recentPallets.slice(0, 5).map((pallet) => (
                 <div
                   key={pallet.id}
                   className="flex items-center justify-between p-2 bg-muted/50 rounded cursor-pointer hover:bg-muted"
