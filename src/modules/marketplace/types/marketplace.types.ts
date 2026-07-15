@@ -503,8 +503,11 @@ export interface MarketplacePacking {
   order: number;
   order_id: string;
   buyer_name?: string;
+  tracking_id?: string;
+  city?: string;
   status: MpPackingStatus;
   packed_at: string | null;
+  pack_barcode?: string;
   created_at: string;
   barcodes: MarketplacePackBarcode[];
 }

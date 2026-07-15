@@ -1,11 +1,13 @@
 /**
  * Printable packing label — same design as the Barcode Module's Box label
- * (bordered header + info-cell grid + 2D QR panel), relabeled for packing.
- * Reuses the barcode module's label constants for a pixel-consistent look.
+ * (bordered header + info-cell grid + scan panel), relabeled for packing.
+ * The scannable code is the order's Flipkart Tracking ID, rendered as a 1D
+ * CODE128 barcode. Reuses the barcode module's label constants for a
+ * pixel-consistent look.
  */
-import { QRCodeSVG } from 'qrcode.react';
 import { type CSSProperties, forwardRef } from 'react';
 
+import Barcode1D from '@/modules/barcode/components/Barcode1D';
 import { LABEL_HEIGHT, LABEL_WIDTH, MONO_LABEL_TYPE_STYLES } from '@/modules/barcode/components/labelPrint';
 
 import type { MarketplacePackBarcode } from '../types/marketplace.types';
@@ -164,7 +166,7 @@ export const PackLabel = forwardRef<HTMLDivElement, PackLabelProps>(({ bc, order
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 17mm', alignItems: 'center', minWidth: 0, borderBottom: LABEL_BORDER, borderLeft: MARKS.identityAccentBorder }}>
           <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 1mm', fontSize: '8px', fontWeight: HEADER_WEIGHT }}>
-            Pack Code: {compact(bc.barcode)}
+            Tracking ID: {compact(bc.barcode)}
           </div>
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: LABEL_BORDER, fontSize: '8px', fontWeight: HEADER_WEIGHT }}>
             ITEM
@@ -182,10 +184,15 @@ export const PackLabel = forwardRef<HTMLDivElement, PackLabelProps>(({ bc, order
         </div>
       </div>
 
-      {/* Right: QR + caption */}
+      {/* Right: 1D barcode + caption */}
       <div style={{ minWidth: 0, display: 'grid', gridTemplateRows: '30mm 1fr', borderLeft: OUTER_BORDER, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', padding: '0.9mm', borderTop: MARKS.scanTopBorder }}>
-          <QRCodeSVG value={bc.barcode} size={148} level="H" includeMargin={false} style={{ width: '28mm', height: '28mm', display: 'block' }} />
+          <Barcode1D
+            value={compact(bc.barcode)}
+            displayValue={false}
+            fit
+            style={{ width: '32mm', height: '26mm', display: 'block' }}
+          />
         </div>
         <div
           style={{
@@ -203,7 +210,7 @@ export const PackLabel = forwardRef<HTMLDivElement, PackLabelProps>(({ bc, order
           }}
         >
           <div style={{ fontSize: '5.4px', fontWeight: HEADER_WEIGHT, lineHeight: 1, color: MARKS.scanTextColor }}>
-            Scan Pack Barcode
+            Scan Tracking ID
           </div>
           <div
             style={{
@@ -218,7 +225,7 @@ export const PackLabel = forwardRef<HTMLDivElement, PackLabelProps>(({ bc, order
               color: MARKS.scanTextColor,
             }}
           >
-            Pack Code: {compact(bc.barcode)}
+            Tracking ID: {compact(bc.barcode)}
           </div>
         </div>
       </div>

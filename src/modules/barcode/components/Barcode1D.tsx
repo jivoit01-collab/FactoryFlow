@@ -1,5 +1,5 @@
 import JsBarcode from 'jsbarcode';
-import { useEffect, useRef } from 'react';
+import { type CSSProperties, useEffect, useRef } from 'react';
 
 interface Barcode1DProps {
   value: string;
@@ -7,6 +7,12 @@ interface Barcode1DProps {
   height?: number;
   fontSize?: number;
   displayValue?: boolean;
+  /** Stretch the barcode to fill the wrapping box (via a viewBox) instead of
+   *  rendering at its intrinsic pixel size — useful inside fixed-size labels. */
+  fit?: boolean;
+  /** Applied to the <svg>; the reliable way to size it in print (global styles
+   *  are stripped when printing labels). */
+  style?: CSSProperties;
 }
 
 export default function Barcode1D({
@@ -15,13 +21,16 @@ export default function Barcode1D({
   height = 40,
   fontSize = 8,
   displayValue = true,
+  fit = false,
+  style,
 }: Barcode1DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    if (svgRef.current && value) {
+    const svg = svgRef.current;
+    if (svg && value) {
       try {
-        JsBarcode(svgRef.current, value, {
+        JsBarcode(svg, value, {
           format: 'CODE128',
           width,
           height,
@@ -29,11 +38,23 @@ export default function Barcode1D({
           fontSize,
           margin: 0,
         });
+        if (fit) {
+          // Convert the intrinsic width/height into a viewBox so CSS on the <svg>
+          // can scale it to any box; without this the px dimensions are fixed.
+          const w = svg.getAttribute('width');
+          const h = svg.getAttribute('height');
+          if (w && h) {
+            svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            svg.setAttribute('preserveAspectRatio', 'none');
+            svg.removeAttribute('width');
+            svg.removeAttribute('height');
+          }
+        }
       } catch {
         // Invalid barcode value — render nothing
       }
     }
-  }, [value, width, height, fontSize, displayValue]);
+  }, [value, width, height, fontSize, displayValue, fit]);
 
-  return <svg ref={svgRef} />;
+  return <svg ref={svgRef} style={style} />;
 }
