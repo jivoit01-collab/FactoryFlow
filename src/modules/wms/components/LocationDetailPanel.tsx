@@ -7,6 +7,7 @@
  * here up for relocation, or scan a pallet to place into this location.
  */
 import { MoveRight, PackagePlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import {
   Badge,
@@ -21,7 +22,14 @@ import {
 
 import type { LocationOccupancy } from '../services';
 import { DISPLAY_STATUS_META } from '../services';
-import type { CellPurpose, InventoryRecord, Pallet, WarehouseLocation } from '../types';
+import type {
+  CellPurpose,
+  InventoryRecord,
+  MovementLogEntry,
+  Pallet,
+  WarehouseLocation,
+} from '../types';
+import { MovementItem } from './MovementItem';
 import { WmsPrintLabelButton } from './WmsPrintLabelButton';
 import { WmsScanButton } from './WmsScanButton';
 
@@ -37,6 +45,11 @@ interface LocationDetailPanelProps {
   onMovePallet?: (pallet: Pallet) => void;
   /** Scan a pallet elsewhere to move it into this location. */
   onPlacePalletHere?: (scannedCode: string) => void;
+  /** The most recent movements for this location (the audit-trail preview). */
+  recentMovements?: MovementLogEntry[];
+  movementsLoading?: boolean;
+  /** Location id → code, to name the counterpart location in a movement. */
+  locationCodeById?: Map<string, string>;
 }
 
 function Usage({ label, used, max, unit }: { label: string; used: number; max: number | null; unit?: string }) {
@@ -111,6 +124,9 @@ export function LocationDetailPanel({
   inventoryHere,
   onMovePallet,
   onPlacePalletHere,
+  recentMovements,
+  movementsLoading,
+  locationCodeById,
 }: LocationDetailPanelProps) {
   if (!location) return null;
   const meta = occupancy ? DISPLAY_STATUS_META[occupancy.status] : null;
@@ -260,6 +276,41 @@ export function LocationDetailPanel({
               ))
             )}
           </section>
+
+          {/* Audit trail — the most recent movements, with a link to the full,
+              paginated history for this cell. */}
+          {isStorage ? (
+            <>
+              <Separator />
+              <section className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Recent movements</h3>
+                  <Link
+                    to={`/warehouse-ops/locations/${location.id}/history`}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    View full history →
+                  </Link>
+                </div>
+                {movementsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : !recentMovements || recentMovements.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No movements recorded.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recentMovements.slice(0, 3).map((entry) => (
+                      <MovementItem
+                        key={entry.id}
+                        entry={entry}
+                        thisLocationId={location.id}
+                        codeById={locationCodeById}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          ) : null}
         </div>
 
         {/* Scan-driven actions */}

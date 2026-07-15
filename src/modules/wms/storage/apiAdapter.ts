@@ -51,6 +51,31 @@ export class ApiAdapter implements WmsStorageAdapter {
     return unwrapList<WmsCollectionMap[K]>(response.data);
   }
 
+  async listPage<K extends WmsCollection>(
+    collection: K,
+    params: {
+      limit: number;
+      offset?: number;
+      warehouseId?: WmsId;
+      locationId?: WmsId;
+      order?: '-created_at';
+    },
+  ): Promise<{ results: WmsCollectionMap[K][]; count: number }> {
+    const query = new URLSearchParams();
+    query.set('limit', String(params.limit));
+    if (params.offset) query.set('offset', String(params.offset));
+    if (params.warehouseId) query.set('warehouseId', params.warehouseId);
+    if (params.locationId) query.set('locationId', params.locationId);
+    if (params.order) query.set('order', params.order);
+    const response = await apiClient.get(`${collectionUrl(collection)}?${query.toString()}`);
+    const data = response.data as { count?: number } | unknown;
+    const count =
+      data && typeof data === 'object' && typeof (data as { count?: number }).count === 'number'
+        ? (data as { count: number }).count
+        : 0;
+    return { results: unwrapList<WmsCollectionMap[K]>(response.data), count };
+  }
+
   async get<K extends WmsCollection>(collection: K, id: WmsId): Promise<WmsCollectionMap[K] | null> {
     try {
       const response = await apiClient.get<WmsCollectionMap[K]>(collectionUrl(collection, id));

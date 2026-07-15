@@ -72,6 +72,23 @@ export interface WmsStorageAdapter {
     params?: { warehouseId?: WmsId },
   ): Promise<WmsCollectionMap[K][]>;
 
+  /**
+   * Fetch ONE server-paginated page of a collection, with the total count.
+   * ``locationId`` filters to the rows touching a cell (a movement's from/to) —
+   * the audit trail; ``order: '-created_at'`` reads newest-first. Used for large
+   * collections (movements) that must not be pulled in full.
+   */
+  listPage<K extends WmsCollection>(
+    collection: K,
+    params: {
+      limit: number;
+      offset?: number;
+      warehouseId?: WmsId;
+      locationId?: WmsId;
+      order?: '-created_at';
+    },
+  ): Promise<{ results: WmsCollectionMap[K][]; count: number }>;
+
   get<K extends WmsCollection>(
     collection: K,
     id: WmsId,

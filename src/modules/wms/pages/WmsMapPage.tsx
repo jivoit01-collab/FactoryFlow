@@ -48,6 +48,7 @@ import {
   validatePalletMove,
 } from '../services';
 import {
+  useLocationMovements,
   useWarehouseLayout,
   useWarehouses,
   useWmsCollection,
@@ -486,6 +487,15 @@ export default function WmsMapPage() {
 
   const detailLocation = detailId ? locations.find((location) => location.id === detailId) ?? null : null;
 
+  // Recent movements for the open location (audit-trail preview in the panel),
+  // fetched on demand — movements are unbounded, so never cached in full.
+  const recentMovements = useLocationMovements(detailOpen && detailId ? detailId : null, 3, 0);
+  const locationCodeById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const location of locations) map.set(location.id, location.code);
+    return map;
+  }, [locations]);
+
   if (!enabled) {
     return (
       <div className="mx-auto max-w-3xl p-4 md:p-6">
@@ -675,6 +685,9 @@ export default function WmsMapPage() {
         inventoryHere={detailLocation ? inventoryByLocation.get(detailLocation.id) ?? [] : []}
         onMovePallet={startMoveForPallet}
         onPlacePalletHere={placePalletHere}
+        recentMovements={recentMovements.movements}
+        movementsLoading={recentMovements.loading}
+        locationCodeById={locationCodeById}
       />
 
       {/* Move confirmation */}

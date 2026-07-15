@@ -186,6 +186,20 @@ class WmsStore {
     return this.adapter().get(collection, id);
   }
 
+  /**
+   * One server-paginated page of a location's movement audit trail, newest
+   * first. Movements are unbounded (FMCG), so this is fetched on demand rather
+   * than pulled into the cached `movements` collection.
+   */
+  listLocationMovements(locationId: WmsId, limit: number, offset: number) {
+    return this.adapter().listPage('movements', {
+      locationId,
+      limit,
+      offset,
+      order: '-created_at',
+    });
+  }
+
   async create<K extends WmsCollection>(
     collection: K,
     record: WmsCollectionMap[K],
