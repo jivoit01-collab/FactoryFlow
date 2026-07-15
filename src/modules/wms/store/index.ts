@@ -2,6 +2,8 @@ export type { ExternalPalletPlacement, ExternalPalletSnapshot, MirrorResult, Syn
 export { useWmsPalletMirror, useWmsPalletSync } from './usePalletMirror';
 export type { WarehouseEditor } from './useWarehouseEditor';
 export { useWarehouseEditor } from './useWarehouseEditor';
+export type { UseLocationMovementsResult } from './useLocationMovements';
+export { useLocationMovements } from './useLocationMovements';
 export type { WarehouseLayout } from './useWarehouses';
 export { useWarehouseLayout,useWarehouses } from './useWarehouses';
 export type { UseWmsSettingsResult } from './useWmsSettings';

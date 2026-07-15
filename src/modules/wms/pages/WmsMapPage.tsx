@@ -48,6 +48,7 @@ import {
   validatePalletMove,
 } from '../services';
 import {
+  useLocationMovements,
   useWarehouseLayout,
   useWarehouses,
   useWmsCollection,
@@ -101,6 +102,11 @@ export default function WmsMapPage() {
   const [search, setSearch] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // "Find pallet" cross-warehouse jump + phantom-pallet removal.
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<Pallet | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   // Scan-driven move state.
   const [moveSession, setMoveSession] = useState<Pallet | null>(null);
@@ -380,6 +386,57 @@ export default function WmsMapPage() {
     if (exact) openDetail(exact.id);
   }
 
+  // Scan a pallet to find WHERE it is — jump to its cell (switching warehouse if
+  // it sits in a different one) and report the location.
+  async function findPallet(code: string) {
+    const key = code.trim().toLowerCase();
+    if (!key) return;
+    const pallet = pallets.find(
+      (p) => p.licensePlate.toLowerCase() === key && p.status !== 'SHIPPED',
+    );
+    if (!pallet) {
+      notifyFail('No pallet matched that code.');
+      return;
+    }
+    if (!pallet.currentLocationId) {
+      notifyFail(`Pallet ${pallet.licensePlate} is not placed in any location.`);
+      return;
+    }
+    const here = locations.find((location) => location.id === pallet.currentLocationId);
+    if (here) {
+      focusLocation(here.id);
+      notifyOk(`Pallet ${pallet.licensePlate} is in ${here.code}.`);
+      return;
+    }
+    // In a different warehouse — resolve the location, switch to it, then focus.
+    const location = await wmsStore.get('locations', pallet.currentLocationId);
+    if (!location) {
+      notifyFail(`Could not find where pallet ${pallet.licensePlate} is placed.`);
+      return;
+    }
+    notifyOk(`Pallet ${pallet.licensePlate} is in ${location.code} — switching warehouse.`);
+    setPendingFocusId(location.id);
+    setSearchParams({ warehouse: location.warehouseId });
+  }
+
+  async function confirmRemove() {
+    if (!removeTarget) return;
+    setRemoving(true);
+    try {
+      await wmsStore.removePalletFromLocation(
+        removeTarget.id,
+        undefined,
+        'Removed from map — bin was empty',
+      );
+      notifyOk(`Removed pallet ${removeTarget.licensePlate} from the map.`);
+      setRemoveTarget(null);
+    } catch (error) {
+      notifyFail(error instanceof Error ? error.message : 'Could not remove the pallet.');
+    } finally {
+      setRemoving(false);
+    }
+  }
+
   // ── Move workflow ────────────────────────────────────────────────────────
   function startMoveForPallet(pallet: Pallet) {
     setMoveSession(pallet);
@@ -484,7 +541,26 @@ export default function WmsMapPage() {
     cancelMove();
   }, [selectedId]);
 
+  // Complete a cross-warehouse "find pallet" once the target warehouse's
+  // locations have loaded.
+  useEffect(() => {
+    if (pendingFocusId && locations.some((location) => location.id === pendingFocusId)) {
+      focusLocation(pendingFocusId);
+      setPendingFocusId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingFocusId, locations]);
+
   const detailLocation = detailId ? locations.find((location) => location.id === detailId) ?? null : null;
+
+  // Recent movements for the open location (audit-trail preview in the panel),
+  // fetched on demand — movements are unbounded, so never cached in full.
+  const recentMovements = useLocationMovements(detailOpen && detailId ? detailId : null, 3, 0);
+  const locationCodeById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const location of locations) map.set(location.id, location.code);
+    return map;
+  }, [locations]);
 
   if (!enabled) {
     return (
@@ -518,7 +594,10 @@ export default function WmsMapPage() {
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
           {!moveSession ? (
-            <WmsScanButton label="Move pallet" onScan={resolveAndStartMove} />
+            <>
+              <WmsScanButton label="Find pallet" onScan={findPallet} />
+              <WmsScanButton label="Move pallet" onScan={resolveAndStartMove} />
+            </>
           ) : null}
           <NativeSelect
             className="w-full sm:w-48"
@@ -675,6 +754,10 @@ export default function WmsMapPage() {
         inventoryHere={detailLocation ? inventoryByLocation.get(detailLocation.id) ?? [] : []}
         onMovePallet={startMoveForPallet}
         onPlacePalletHere={placePalletHere}
+        onRemovePallet={setRemoveTarget}
+        recentMovements={recentMovements.movements}
+        movementsLoading={recentMovements.loading}
+        locationCodeById={locationCodeById}
       />
 
       {/* Move confirmation */}
@@ -716,6 +799,32 @@ export default function WmsMapPage() {
             </Button>
             <Button disabled={busy || !pendingValidation?.ok} onClick={() => void confirmMove()}>
               {pendingValidation && !pendingValidation.ok ? 'Cannot move' : 'Confirm move'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove-pallet (phantom cleanup) confirmation */}
+      <Dialog open={removeTarget != null} onOpenChange={(open) => !open && setRemoveTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove pallet from the map?</DialogTitle>
+            <DialogDescription>
+              {removeTarget ? (
+                <>
+                  This deletes pallet{' '}
+                  <span className="font-mono font-medium">{removeTarget.licensePlate}</span> and its
+                  stock from Warehouse Ops. Use this only when the bin is physically empty.
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveTarget(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" disabled={removing} onClick={() => void confirmRemove()}>
+              {removing ? 'Removing…' : 'Remove'}
             </Button>
           </DialogFooter>
         </DialogContent>

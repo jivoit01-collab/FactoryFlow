@@ -26,6 +26,7 @@ const WmsDesignerPage = lazy(() => import('./pages/WmsDesignerPage'));
 const WmsWarehousesPage = lazy(() => import('./pages/WmsWarehousesPage'));
 const WmsWarehouseEditorPage = lazy(() => import('./pages/WmsWarehouseEditorPage'));
 const WmsMapPage = lazy(() => import('./pages/WmsMapPage'));
+const WmsLocationHistoryPage = lazy(() => import('./pages/WmsLocationHistoryPage'));
 const WmsTransferPage = lazy(() => import('./pages/WmsTransferPage'));
 const WmsReceivePage = lazy(() => import('./pages/WmsReceivePage'));
 const WmsOutboundPage = lazy(() => import('./pages/WmsOutboundPage'));
@@ -64,6 +65,13 @@ export const wmsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: WMS_ACCESS,
       breadcrumb: { label: 'Map' },
+    },
+    {
+      path: '/warehouse-ops/locations/:locationId/history',
+      element: <WmsLocationHistoryPage />,
+      layout: 'main',
+      permissions: WMS_ACCESS,
+      breadcrumb: { label: 'Movement history' },
     },
     {
       path: '/warehouse-ops/receive',

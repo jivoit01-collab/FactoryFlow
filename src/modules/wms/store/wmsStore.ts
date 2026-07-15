@@ -186,6 +186,20 @@ class WmsStore {
     return this.adapter().get(collection, id);
   }
 
+  /**
+   * One server-paginated page of a location's movement audit trail, newest
+   * first. Movements are unbounded (FMCG), so this is fetched on demand rather
+   * than pulled into the cached `movements` collection.
+   */
+  listLocationMovements(locationId: WmsId, limit: number, offset: number) {
+    return this.adapter().listPage('movements', {
+      locationId,
+      limit,
+      offset,
+      order: '-created_at',
+    });
+  }
+
   async create<K extends WmsCollection>(
     collection: K,
     record: WmsCollectionMap[K],
@@ -882,6 +896,43 @@ class WmsStore {
       }),
     );
 
+    await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
+  }
+
+  /**
+   * Delete a pallet and its stock from the map — the manual "this bin is
+   * actually empty" cleanup for a phantom pallet that never physically arrived
+   * or already left. Removes the pallet + its inventory and logs an ADJUSTMENT
+   * so the location's audit trail records the correction.
+   */
+  async removePalletFromLocation(
+    palletId: WmsId,
+    actor?: MoveActor,
+    note?: string,
+  ): Promise<void> {
+    const adapter = this.adapter();
+    const pallet = (await adapter.list('pallets')).find((p) => p.id === palletId);
+    if (!pallet) return;
+    const stock = (await adapter.list('inventory')).filter((r) => r.palletId === palletId);
+    await Promise.all(stock.map((r) => adapter.remove('inventory', r.id)));
+    await adapter.remove('pallets', palletId);
+    if (pallet.currentLocationId) {
+      await adapter.create(
+        'movements',
+        makeMovement({
+          type: 'ADJUSTMENT',
+          itemCode: pallet.itemCode,
+          itemName: pallet.itemName,
+          palletId,
+          fromLocationId: pallet.currentLocationId,
+          toLocationId: null,
+          boxCount: pallet.boxCount,
+          userId: actor?.id,
+          userName: actor?.name,
+          note: note ?? 'Removed from map — bin was empty',
+        }),
+      );
+    }
     await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
   }
 
