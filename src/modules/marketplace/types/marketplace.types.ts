@@ -65,6 +65,10 @@ export interface ComboDefinition {
   name: string;
   is_active: boolean;
   components: ComboComponent[];
+  // Inline SKU mapping — a combo is FSN-mapped in the same form as a single SKU.
+  fsn?: string;
+  marketplace_sku?: string;
+  sku_name?: string;
   created_at?: string;
   updated_at?: string;
 }

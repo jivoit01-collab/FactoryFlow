@@ -11,7 +11,7 @@ import { useSapItems } from '../api/marketplace.queries';
 
 interface Props {
   value: string;
-  onChange: (code: string, name?: string) => void;
+  onChange: (code: string, name?: string, uom?: string) => void;
   placeholder?: string;
 }
 
@@ -57,7 +57,7 @@ export function SapItemInput({ value, onChange, placeholder }: Props) {
                 onMouseDown={(e) => {
                   e.preventDefault(); // fire before blur closes the list
                   setTerm(it.item_code);
-                  onChange(it.item_code, it.item_name);
+                  onChange(it.item_code, it.item_name, it.uom);
                   setOpen(false);
                 }}
               >
