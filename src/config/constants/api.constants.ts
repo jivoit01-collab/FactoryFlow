@@ -864,6 +864,9 @@ export const API_ENDPOINTS = {
   },
   // Marketplace (Flipkart/Amazon) dispatch, returns, masters & reconciliation
   MARKETPLACE: {
+    SETTINGS: '/marketplace/settings/',
+    DELIVERY_NOTE_SUMMARY: '/marketplace/delivery-notes/summary/',
+    DELIVERY_NOTE_CUT: '/marketplace/delivery-notes/cut/',
     WAREHOUSES: '/marketplace/warehouses/',
     WAREHOUSE_BY_ID: (id: number) => `/marketplace/warehouses/${id}/`,
     SKU_MAPPINGS: '/marketplace/sku-mappings/',

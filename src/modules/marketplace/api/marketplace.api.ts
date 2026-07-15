@@ -6,6 +6,8 @@ import type {
   ComboDefinition,
   ComboDefinitionUpsert,
   ConfirmRequest,
+  DeliveryNoteCutResult,
+  DeliveryNoteSummary,
   DispatchCreateRequest,
   DispatchListParams,
   ImportOrdersRequest,
@@ -16,6 +18,7 @@ import type {
   MarketplaceOrder,
   MarketplacePacking,
   MarketplaceReturn,
+  MarketplaceSettings,
   MarketplaceWarehouse,
   MarketplaceWarehouseUpsert,
   MpPaginated,
@@ -56,6 +59,36 @@ function buildQuery<T extends object>(params?: T) {
 }
 
 export const marketplaceApi = {
+  // ── Settings ───────────────────────────────────────────────────────────────
+  async settings(channel: MarketplaceChannel): Promise<MarketplaceSettings> {
+    const { data } = await apiClient.get<MarketplaceSettings>(
+      `${EP.SETTINGS}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+  async updateSettings(
+    channel: MarketplaceChannel,
+    payload: Partial<Pick<MarketplaceSettings, 'skip_packing' | 'defer_delivery_note'>>,
+  ): Promise<MarketplaceSettings> {
+    const { data } = await apiClient.put<MarketplaceSettings>(
+      `${EP.SETTINGS}${buildQuery({ channel })}`,
+      payload,
+    );
+    return data;
+  },
+
+  // ── SAP Delivery Notes (bulk) ────────────────────────────────────────────────
+  async deliveryNoteSummary(channel: MarketplaceChannel): Promise<DeliveryNoteSummary> {
+    const { data } = await apiClient.get<DeliveryNoteSummary>(
+      `${EP.DELIVERY_NOTE_SUMMARY}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+  async cutDeliveryNote(channel: MarketplaceChannel): Promise<DeliveryNoteCutResult> {
+    const { data } = await apiClient.post<DeliveryNoteCutResult>(EP.DELIVERY_NOTE_CUT, { channel });
+    return data;
+  },
+
   // ── Warehouses ─────────────────────────────────────────────────────────────
   async warehouses(channel?: MarketplaceChannel): Promise<MarketplaceWarehouse[]> {
     const { data } = await apiClient.get<MarketplaceWarehouse[]>(
