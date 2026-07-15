@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useScanner } from '@/modules/barcode/hooks/useScanner';
+import { WmsEnabledGate } from '@/modules/wms/components/WmsEnabledGate';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input } from '@/shared/components/ui';
 import {
@@ -16,9 +17,10 @@ import {
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { bstApi, BST_QUERY_KEYS, useBSTIncomingDetail, useCompleteBSTReceive } from '../../api';
+import { BST_QUERY_KEYS, bstApi, useBSTIncomingDetail, useCompleteBSTReceive } from '../../api';
 import type { BSTReceiveStatus } from '../../types';
 import { BoxScanCamera } from './BoxScanCamera';
+import { BSTReceivePutawaySection } from './BSTReceivePutawaySection';
 import { BSTStatusBadge } from './bstStatus';
 
 const RECEIVABLE = ['IN_TRANSIT', 'ARRIVED', 'RECEIVING'];
@@ -290,6 +292,11 @@ export default function BSTReceivePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Put away received pallets into Warehouse Ops bins (only when WMS is on). */}
+      <WmsEnabledGate fallback={null}>
+        <BSTReceivePutawaySection transfer={transfer} />
+      </WmsEnabledGate>
 
       {receivable && (
         <div className="flex justify-end gap-2">
