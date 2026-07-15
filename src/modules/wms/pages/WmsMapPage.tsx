@@ -140,6 +140,24 @@ export default function WmsMapPage() {
     return map;
   }, [inventory]);
 
+  // A short, multi-line summary of what a location holds — used for the hover
+  // tooltip so the operator sees the item/qty/lot without opening the panel.
+  const stockSummary = useMemo(() => {
+    return (locationId: string): string => {
+      const records = inventoryByLocation.get(locationId) ?? [];
+      if (records.length === 0) return 'Empty';
+      const lines = records.slice(0, 4).map((record) => {
+        const name = record.itemName || record.itemCode || 'Item';
+        const bits = [`${record.quantity} ${record.uom}`];
+        if (record.boxCount) bits.push(`${record.boxCount} box${record.boxCount === 1 ? '' : 'es'}`);
+        if (record.lotNumber) bits.push(`lot ${record.lotNumber}`);
+        return `• ${name} (${bits.join(' · ')})`;
+      });
+      if (records.length > 4) lines.push(`• +${records.length - 4} more`);
+      return lines.join('\n');
+    };
+  }, [inventoryByLocation]);
+
   const safeLevel = warehouse ? Math.min(level, Math.max(0, warehouse.levels - 1)) : 0;
   const levelLocations = useMemo(
     () => locations.filter((location) => location.level === safeLevel),
@@ -309,7 +327,7 @@ export default function WmsMapPage() {
           tooltip:
             purpose && !purpose.holdsStock
               ? `${location.code} · ${purpose.name}`
-              : `${location.code} · ${DISPLAY_STATUS_META[occ?.status ?? 'EMPTY'].label} · ${Math.round(occ?.occupancyPct ?? 0)}%${purpose ? ` · ${purpose.name}` : ''}`,
+              : `${location.code} · ${DISPLAY_STATUS_META[occ?.status ?? 'EMPTY'].label} · ${Math.round(occ?.occupancyPct ?? 0)}%${purpose ? ` · ${purpose.name}` : ''}\n${stockSummary(location.id)}`,
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
