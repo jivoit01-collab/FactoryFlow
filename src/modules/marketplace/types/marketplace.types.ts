@@ -184,6 +184,29 @@ export interface MarketplaceDispatch {
 }
 
 // ── Returns ──────────────────────────────────────────────────────────────────
+export type MpReturnCondition =
+  | ''
+  | 'GOOD'
+  | 'DAMAGED'
+  | 'WRONG_ITEM'
+  | 'PARTIAL'
+  | 'MISSING'
+  | 'EXCESS'
+  | 'PACKAGING_DAMAGED'
+  | 'OTHER';
+
+// Return-item condition options for the Inward dropdown (value → label).
+export const MP_RETURN_CONDITIONS: Array<{ value: MpReturnCondition; label: string }> = [
+  { value: 'GOOD', label: 'Good' },
+  { value: 'DAMAGED', label: 'Damaged' },
+  { value: 'WRONG_ITEM', label: 'Wrong Item Received' },
+  { value: 'PARTIAL', label: 'Partial Receiving' },
+  { value: 'MISSING', label: 'Missing Item' },
+  { value: 'EXCESS', label: 'Excess Quantity' },
+  { value: 'PACKAGING_DAMAGED', label: 'Packaging Damaged' },
+  { value: 'OTHER', label: 'Other' },
+];
+
 export interface MpReturnScan {
   id: number;
   mp_return: number;
@@ -194,6 +217,8 @@ export interface MpReturnScan {
   source_sku: string;
   quantity: string;
   uom: string;
+  condition?: MpReturnCondition;
+  condition_remarks?: string;
   scanned_by_name?: string;
   scanned_at: string;
   duplicate?: boolean;

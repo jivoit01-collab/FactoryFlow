@@ -9,6 +9,7 @@ import type {
   ImportOrdersRequest,
   MarketplaceChannel,
   MarketplaceWarehouseUpsert,
+  MpReturnCondition,
   OrderListParams,
   ReceiveRequest,
   ReconciliationParams,
@@ -255,6 +256,22 @@ export function useScanReturn(returnId: number) {
     onSuccess: () => qc.invalidateQueries({ queryKey: MARKETPLACE_QUERY_KEYS.return(returnId) }),
   });
 }
+
+export function useSetReturnScanCondition(returnId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: {
+      scanId: number;
+      condition: MpReturnCondition;
+      condition_remarks?: string;
+    }) =>
+      marketplaceApi.setReturnScanCondition(returnId, vars.scanId, {
+        condition: vars.condition,
+        condition_remarks: vars.condition_remarks,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: MARKETPLACE_QUERY_KEYS.return(returnId) }),
+  });
+}
 export function useSubmitReturn(returnId: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -415,6 +432,14 @@ export function usePacking(id?: number | null) {
 
 export function useOpenPacking() {
   return useMutation({ mutationFn: (orderId: string) => marketplaceApi.openPacking(orderId) });
+}
+
+export function usePackScan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (barcode: string) => marketplaceApi.packScan(barcode),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
 }
 
 export function useGenerateBarcodes(id: number) {

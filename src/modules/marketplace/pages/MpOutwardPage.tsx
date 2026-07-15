@@ -236,6 +236,11 @@ function ActiveDispatch({
   const unmapped = d?.unmapped_skus ?? [];
   const progress = d?.progress ?? [];
   const allComplete = progress.length > 0 && progress.every((p) => p.status === 'COMPLETE');
+  // The order is verified at Packing (single Tracking-ID scan), so item scanning
+  // here is optional: a packed order with no scans can confirm directly. The
+  // deviation override only matters once the operator has actually scanned items.
+  const hasScans = progress.some((p) => Number(p.scanned_quantity) > 0);
+  const readyToConfirm = unmapped.length === 0 && (allComplete || override || !hasScans);
   const confirmed = d?.status === 'CONFIRMED';
 
   const pmLines = useMemo(
@@ -364,13 +369,17 @@ function ActiveDispatch({
               <span className="inline-flex items-center gap-1 text-emerald-600">
                 <CheckCircle2 className="h-4 w-4" /> Total scanning done.
               </span>
+            ) : !hasScans ? (
+              <span className="inline-flex items-center gap-1 text-emerald-600">
+                <CheckCircle2 className="h-4 w-4" /> Packed — ready to confirm (item scanning optional).
+              </span>
             ) : (
               'Scan all finished goods to enable confirm.'
             )}
           </p>
           <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto" disabled={unmapped.length > 0 || (!allComplete && !override)}>
+              <Button className="w-full sm:w-auto" disabled={!readyToConfirm}>
                 <PackageCheck className="mr-2 h-4 w-4" /> Confirm dispatch
               </Button>
             </DialogTrigger>
@@ -382,7 +391,7 @@ function ActiveDispatch({
                   materials, and creates the internal billing document.
                 </DialogDescription>
               </DialogHeader>
-              {!allComplete ? (
+              {!allComplete && hasScans ? (
                 <label className="flex items-center gap-2 rounded-md border p-3 text-sm">
                   <Checkbox checked={override} onCheckedChange={(v) => setOverride(v === true)} />
                   <span>Override scan deviation (some lines are not fully scanned).</span>
@@ -394,7 +403,7 @@ function ActiveDispatch({
                 </Button>
                 <Button
                   onClick={handleConfirm}
-                  disabled={confirm.isPending || (!allComplete && !override)}
+                  disabled={confirm.isPending || !readyToConfirm}
                 >
                   {confirm.isPending ? 'Confirming…' : 'Confirm'}
                 </Button>

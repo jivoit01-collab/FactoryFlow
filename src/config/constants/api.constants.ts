@@ -880,6 +880,8 @@ export const API_ENDPOINTS = {
     RETURNS: '/marketplace/returns/',
     RETURN_BY_ID: (id: number) => `/marketplace/returns/${id}/`,
     RETURN_SCANS: (id: number) => `/marketplace/returns/${id}/scans/`,
+    RETURN_SCAN_CONDITION: (id: number, scanId: number) =>
+      `/marketplace/returns/${id}/scans/${scanId}/condition/`,
     RETURN_SUBMIT: (id: number) => `/marketplace/returns/${id}/submit/`,
     RECONCILIATION: '/marketplace/reconciliation/',
     // Sheet-driven flow
@@ -898,6 +900,7 @@ export const API_ENDPOINTS = {
     WAREHOUSE_INSIGHTS: '/marketplace/warehouse-insights/',
     SAP_ITEMS: '/marketplace/sap-items/',
     PACKING_QUEUE: '/marketplace/packing/queue/',
+    PACKING_SCAN: '/marketplace/packing/scan/',
     PACKING_OPEN: '/marketplace/packing/open/',
     PACKING_BY_ID: (id: number) => `/marketplace/packing/${id}/`,
     PACKING_GENERATE: (id: number) => `/marketplace/packing/${id}/generate/`,

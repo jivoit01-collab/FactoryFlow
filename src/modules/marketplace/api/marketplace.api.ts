@@ -19,6 +19,7 @@ import type {
   MarketplaceWarehouse,
   MarketplaceWarehouseUpsert,
   MpPaginated,
+  MpReturnCondition,
   MpReturnScan,
   MpScan,
   OrderImportBatch,
@@ -185,6 +186,17 @@ export const marketplaceApi = {
     const { data } = await apiClient.post<MpReturnScan>(EP.RETURN_SCANS(id), payload);
     return data;
   },
+  async setReturnScanCondition(
+    id: number,
+    scanId: number,
+    payload: { condition: MpReturnCondition; condition_remarks?: string },
+  ): Promise<MpReturnScan> {
+    const { data } = await apiClient.post<MpReturnScan>(
+      EP.RETURN_SCAN_CONDITION(id, scanId),
+      payload,
+    );
+    return data;
+  },
   async submitReturn(id: number, payload: ReturnSubmitRequest): Promise<MarketplaceReturn> {
     const { data } = await apiClient.post<MarketplaceReturn>(EP.RETURN_SUBMIT(id), payload);
     return data;
@@ -284,6 +296,13 @@ export const marketplaceApi = {
   }): Promise<MpPaginated<PackQueueOrder>> {
     const { data } = await apiClient.get<MpPaginated<PackQueueOrder>>(
       `${EP.PACKING_QUEUE}${buildQuery(params)}`,
+    );
+    return data;
+  },
+  async packScan(barcode: string): Promise<MarketplacePacking & { already_packed: boolean }> {
+    const { data } = await apiClient.post<MarketplacePacking & { already_packed: boolean }>(
+      EP.PACKING_SCAN,
+      { barcode },
     );
     return data;
   },
