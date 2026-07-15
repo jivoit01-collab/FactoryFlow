@@ -16,6 +16,7 @@ import { MoveRight, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { useAuth } from '@/core/auth';
 import { useSyncPalletToBarcode } from '@/modules/barcode/hooks/useSyncPalletToBarcode';
 import {
   Badge,
@@ -425,7 +426,7 @@ export default function WmsMapPage() {
     try {
       await wmsStore.removePalletFromLocation(
         removeTarget.id,
-        undefined,
+        moveActor,
         'Removed from map — bin was empty',
       );
       notifyOk(`Removed pallet ${removeTarget.licensePlate} from the map.`);
@@ -514,6 +515,7 @@ export default function WmsMapPage() {
       await wmsStore.movePallet({
         palletId: pendingMove.pallet.id,
         toLocationId: pendingMove.destination.id,
+        actor: moveActor,
         note: 'Map move',
       });
       // Mirror the move back to the barcode backend (best effort).
@@ -567,6 +569,14 @@ export default function WmsMapPage() {
     for (const pallet of pallets) map.set(pallet.id, pallet.licensePlate);
     return map;
   }, [pallets]);
+
+  // Stamp map mutations (move / remove) with the signed-in operator so the
+  // movement audit records who did it -- these actions previously logged no user.
+  const { user } = useAuth();
+  const moveActor = useMemo(
+    () => (user ? { id: String(user.id), name: user.full_name || user.email } : undefined),
+    [user],
+  );
 
   if (!enabled) {
     return (
