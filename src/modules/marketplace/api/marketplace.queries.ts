@@ -25,6 +25,10 @@ import { marketplaceApi } from './marketplace.api';
 
 export const MARKETPLACE_QUERY_KEYS = {
   all: ['marketplace'] as const,
+  settings: (channel: MarketplaceChannel) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'settings', channel] as const,
+  deliveryNoteSummary: (channel: MarketplaceChannel) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'deliveryNoteSummary', channel] as const,
   warehouses: (channel?: MarketplaceChannel) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'warehouses', channel] as const,
   skuMappings: (params?: OrderListParams) =>
@@ -55,6 +59,42 @@ export const MARKETPLACE_QUERY_KEYS = {
 
 function invalidateMarketplace(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: MARKETPLACE_QUERY_KEYS.all });
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+export function useMarketplaceSettings(channel: MarketplaceChannel) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.settings(channel),
+    queryFn: () => marketplaceApi.settings(channel),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useUpdateMarketplaceSettings(channel: MarketplaceChannel) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { skip_packing?: boolean; defer_delivery_note?: boolean }) =>
+      marketplaceApi.updateSettings(channel, payload),
+    // Settings changes the Outward gate, so refresh all marketplace queries.
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+// ── SAP Delivery Notes (bulk) ────────────────────────────────────────────────
+export function useDeliveryNoteSummary(channel: MarketplaceChannel) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.deliveryNoteSummary(channel),
+    queryFn: () => marketplaceApi.deliveryNoteSummary(channel),
+    staleTime: 15 * 1000,
+  });
+}
+
+export function useCutDeliveryNote(channel: MarketplaceChannel) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marketplaceApi.cutDeliveryNote(channel),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
 }
 
 // ── Queries ────────────────────────────────────────────────────────────────

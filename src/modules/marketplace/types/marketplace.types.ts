@@ -13,6 +13,68 @@ export const MARKETPLACE_CHANNELS: { value: MarketplaceChannel; label: string }[
 export type MpComponentType = 'FG' | 'PM';
 export type MpSkuType = 'RAW' | 'COMBO';
 
+/** Per company + channel flow settings (mirrors MarketplaceSettingsSerializer). */
+export interface MarketplaceSettings {
+  id: number;
+  channel: MarketplaceChannel;
+  /** When true, issued orders skip Packing and go straight to Outward. */
+  skip_packing: boolean;
+  /** When true, dispatches defer their SAP Delivery Note to the bulk cut page. */
+  defer_delivery_note: boolean;
+  updated_at: string;
+}
+
+/** One combined line in the bulk delivery-note preview. */
+export interface DeliveryNoteLine {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  warehouse_code: string;
+  quantity: string;
+}
+
+/** A dispatch included in (or blocked from) the bulk delivery note. */
+export interface DeliveryNoteDispatch {
+  dispatch_id: number;
+  order_id: string;
+  buyer_name: string;
+  fg_line_count: number;
+  amount: string;
+}
+
+export interface DeliveryNoteBlocked {
+  order_id: string;
+  dispatch_id: number;
+  reason: string;
+}
+
+/** Full preview of the single SAP Delivery Note that will be cut. */
+export interface DeliveryNoteSummary {
+  channel: MarketplaceChannel;
+  card_code: string;
+  warehouse_code: string;
+  doc_date: string;
+  post_goods_issue: boolean;
+  dispatches: DeliveryNoteDispatch[];
+  fg_lines: DeliveryNoteLine[];
+  pm_lines: DeliveryNoteLine[];
+  blocked: DeliveryNoteBlocked[];
+  totals: {
+    dispatch_count: number;
+    fg_item_count: number;
+    fg_total_quantity: string;
+    total_amount: string;
+  };
+}
+
+/** Result of cutting the bulk delivery note. */
+export interface DeliveryNoteCutResult {
+  delivery_note_num: string;
+  delivery_note_doc_entry: number | null;
+  dispatch_count: number;
+  order_ids: string[];
+}
+
 /** Paged list envelope — mirrors the DRF `{results, count, page, …}` shape. */
 export interface MpPaginated<T> {
   results: T[];

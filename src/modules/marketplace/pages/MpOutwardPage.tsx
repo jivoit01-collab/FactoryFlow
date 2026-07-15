@@ -29,6 +29,7 @@ import {
 import {
   useConfirmDispatch,
   useCreateDispatch,
+  useMarketplaceSettings,
   useMpDispatch,
   useMpDispatches,
   useMpOrders,
@@ -45,8 +46,10 @@ export default function MpOutwardPage() {
   const [search, setSearch] = useState('');
   const [dispatchId, setDispatchId] = useState<number | null>(null);
 
-  // Only orders whose warehouse materials were issued are dispatchable.
+  // Only dispatch-ready orders show (packed, or issued when packing is skipped).
   const ordersQuery = useMpOrders({ channel, status: 'OPEN', search, ready: 1 });
+  const { data: mpSettings } = useMarketplaceSettings(channel);
+  const skipPacking = mpSettings?.skip_packing ?? false;
   const dispatchedQuery = useMpDispatches({ channel, status: 'CONFIRMED' });
   const createDispatch = useCreateDispatch();
   const dispatchQuery = useMpDispatch(dispatchId);
@@ -112,7 +115,9 @@ export default function MpOutwardPage() {
                 <p className="px-3 py-6 text-center text-sm text-muted-foreground">
                   {ordersQuery.isLoading
                     ? 'Loading…'
-                    : 'No orders ready — pack them first (Packing section).'}
+                    : skipPacking
+                      ? 'No orders ready — issue their materials first (Warehouse Issues).'
+                      : 'No orders ready — pack them first (Packing section).'}
                 </p>
               ) : (
                 (ordersQuery.data ?? []).map((order) => (

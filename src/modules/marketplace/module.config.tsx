@@ -31,9 +31,11 @@ const MpIssueRequestsPage = lazy(() => import('./pages/MpIssueRequestsPage'));
 const MpIssueRequestDetailPage = lazy(() => import('./pages/MpIssueRequestDetailPage'));
 const MpPackingPage = lazy(() => import('./pages/MpPackingPage'));
 const MpOutwardPage = lazy(() => import('./pages/MpOutwardPage'));
+const MpDeliveryNotesPage = lazy(() => import('./pages/MpDeliveryNotesPage'));
 const MpInwardPage = lazy(() => import('./pages/MpInwardPage'));
 const MpMastersPage = lazy(() => import('./pages/MpMastersPage'));
 const MpReconciliationPage = lazy(() => import('./pages/MpReconciliationPage'));
+const MpSettingsPage = lazy(() => import('./pages/MpSettingsPage'));
 
 export const marketplaceModuleConfig: ModuleConfig = {
   name: 'marketplace',
@@ -88,6 +90,13 @@ export const marketplaceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Outward' },
     },
     {
+      path: '/marketplace/delivery-notes',
+      element: <MpDeliveryNotesPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_ACCESS,
+      breadcrumb: { label: 'SAP Delivery Notes' },
+    },
+    {
       path: '/marketplace/inward',
       element: <MpInwardPage />,
       layout: 'main',
@@ -108,6 +117,13 @@ export const marketplaceModuleConfig: ModuleConfig = {
       permissions: MARKETPLACE_ADMIN_ACCESS,
       breadcrumb: { label: 'Reconciliation' },
     },
+    {
+      path: '/marketplace/settings',
+      element: <MpSettingsPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_ADMIN_ACCESS,
+      breadcrumb: { label: 'Settings' },
+    },
   ],
   navigation: [
     {
@@ -123,6 +139,11 @@ export const marketplaceModuleConfig: ModuleConfig = {
         { path: '/marketplace/issues', title: 'Warehouse Issues', permissions: MARKETPLACE_ISSUE_ACCESS },
         { path: '/marketplace/packing', title: 'Packing', permissions: MARKETPLACE_PACKING_ACCESS },
         { path: '/marketplace/outward', title: 'Outward', permissions: MARKETPLACE_ACCESS },
+        {
+          path: '/marketplace/delivery-notes',
+          title: 'SAP Delivery Notes',
+          permissions: MARKETPLACE_ACCESS,
+        },
         { path: '/marketplace/inward', title: 'Inward', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/masters', title: 'Masters', permissions: MARKETPLACE_ADMIN_ACCESS },
         {
@@ -130,6 +151,7 @@ export const marketplaceModuleConfig: ModuleConfig = {
           title: 'Reconciliation',
           permissions: MARKETPLACE_ADMIN_ACCESS,
         },
+        { path: '/marketplace/settings', title: 'Settings', permissions: MARKETPLACE_ADMIN_ACCESS },
       ],
     },
   ],
