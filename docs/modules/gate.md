@@ -1,857 +1,274 @@
-# Gate Module
-
-The Gate module is the primary business feature of the Factory Management System, handling all gate entry operations for raw materials, daily needs, maintenance, and other entry types.
-
-## Module Structure
-
-```
-src/modules/gate/
-├── pages/
-│   ├── GateDashboardPage.tsx         # Main gate dashboard
-│   ├── RawMaterialsPage.tsx          # Raw materials entry list
-│   ├── DailyNeedsPage.tsx            # Daily needs entries
-│   ├── ConstructionPage.tsx          # Construction entries
-│   ├── ContractorLaborPage.tsx       # Contractor/Labor redirect
-│   ├── rawMaterialPages/             # Multi-step entry workflow
-│   │   ├── Step1Page.tsx             # Driver, Transporter, Vehicle
-│   │   ├── Step2Page.tsx             # Purchase Order
-│   │   ├── Step3Page.tsx             # PO Receipt
-│   │   ├── Step4Page.tsx             # Weighment
-│   │   ├── Step5Page.tsx             # Quality Control
-│   │   └── ReviewPage.tsx            # Final Review
-│   ├── dailyNeedsPages/              # Daily needs workflow
-│   ├── constructionPages/            # Construction workflow
-│   ├── maintenancePages/             # Maintenance workflow
-│   └── personGateInPages/            # Visitor/Labour management
-│       ├── PersonGateInDashboard.tsx # Dashboard with stats
-│       ├── PersonGateInAllPage.tsx   # All entries list
-│       ├── NewEntryPage.tsx          # Create new entry
-│       ├── InsidePage.tsx            # Currently inside list
-│       ├── VisitorsPage.tsx          # Visitor management
-│       └── LaboursPage.tsx           # Labour management
-├── api/
-│   ├── driver.api.ts                 # Driver API functions
-│   ├── driver.queries.ts             # Driver React Query hooks
-│   ├── transporter.api.ts
-│   ├── transporter.queries.ts
-│   ├── vehicle.api.ts
-│   ├── vehicle.queries.ts
-│   ├── vehicleEntry.api.ts
-│   ├── vehicleEntry.queries.ts
-│   ├── personGateIn/                 # Person gate-in API
-│   │   ├── personGateIn.api.ts       # API functions & types
-│   │   └── personGateIn.queries.ts   # React Query hooks
-│   └── [other API files]
-├── components/
-│   ├── DriverSelect.tsx
-│   ├── TransporterSelect.tsx
-│   ├── VehicleSelect.tsx
-│   ├── CreateVehicleDialog.tsx
-│   ├── StepHeader.tsx
-│   ├── StepFooter.tsx
-│   ├── DateRangePicker.tsx           # Date range selection
-│   ├── personGateIn/                 # Person gate-in components
-│   │   ├── VisitorSelect.tsx         # Visitor search/select
-│   │   ├── LabourSelect.tsx          # Labour search/select
-│   │   ├── GateSelect.tsx            # Gate selection
-│   │   ├── CreateVisitorDialog.tsx   # Create new visitor
-│   │   ├── CreateLabourDialog.tsx    # Create new labour
-│   │   └── index.ts
-│   └── index.ts
-├── hooks/
-│   └── [Custom hooks]
-├── schemas/
-│   └── [Zod schemas]
-├── constants/
-│   └── [Gate constants]
-└── utils/
-    └── [Utility functions]
-```
-
-## Entry Types
-
-The gate module supports multiple entry types:
-
-| Type | Description | Route Prefix |
-|------|-------------|--------------|
-| Raw Materials | Raw material deliveries | `/gate/raw-materials` |
-| Daily Needs | Food and consumables | `/gate/daily-needs` |
-| Maintenance | Spare parts and tools | `/gate/maintenance` |
-| Construction | Civil and building materials | `/gate/construction` |
-| **Visitor/Labour** | Person gate-in tracking | `/gate/visitor-labour` |
-| Returnable | Tools and equipment (returnable) | `/gate/returnable` |
-
-## Raw Materials Workflow
-
-The raw materials entry follows a 5-step workflow:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              Raw Materials Entry Workflow                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Step 1: Vehicle Information                                     │
-│  ├── Select Driver                                               │
-│  ├── Select Transporter                                          │
-│  └── Select Vehicle (or create new)                              │
-│              │                                                   │
-│              ▼                                                   │
-│  Step 2: Purchase Order                                          │
-│  ├── Enter/Search PO Number                                      │
-│  ├── PO Details display                                          │
-│  └── Validate PO status                                          │
-│              │                                                   │
-│              ▼                                                   │
-│  Step 3: PO Receipt                                              │
-│  ├── Received quantity                                           │
-│  ├── Unit of measure                                             │
-│  └── Receipt remarks                                             │
-│              │                                                   │
-│              ▼                                                   │
-│  Step 4: Weighment                                               │
-│  ├── Gross weight                                                │
-│  ├── Tare weight                                                 │
-│  ├── Net weight (calculated)                                     │
-│  └── Weighbridge details                                         │
-│              │                                                   │
-│              ▼                                                   │
-│  Step 5: Quality Control                                         │
-│  ├── Quality parameters                                          │
-│  ├── Test results                                                │
-│  └── Pass/Fail determination                                     │
-│              │                                                   │
-│              ▼                                                   │
-│  Review: Final Submission                                        │
-│  ├── Review all entered data                                     │
-│  ├── Validate completeness                                       │
-│  └── Submit entry                                                │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Pages
-
-### RawMaterialsDashboard
-
-Statistics and overview dashboard for raw material entries.
-
-**Route:** `/gate/raw-materials`
-
-**Features:**
-- Entry counts by status
-- Recent entries list
-- Quick action buttons
-
-### RawMaterialsPage
-
-List view with filtering capabilities.
-
-**Route:** `/gate/raw-materials/all`
-
-**Features:**
-- Paginated entry list
-- Status filtering
-- Date range filtering
-- Search functionality
-- Quick actions (edit, view, delete)
-
-```typescript
-function RawMaterialsPage() {
-  const { dateRange } = useGlobalDateRange();
-  const [filters, setFilters] = useState({ status: 'all', search: '' });
-
-  const { data, isLoading } = useVehicleEntries({
-    ...filters,
-    fromDate: dateRange.from,
-    toDate: dateRange.to,
-  });
-
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Raw Materials Entries"
-        action={<NewEntryButton />}
-      />
-      <FilterBar filters={filters} onChange={setFilters} />
-      <DataTable
-        data={data?.data}
-        loading={isLoading}
-        pagination={data?.pagination}
-      />
-    </div>
-  );
-}
-```
-
-### Step Pages
-
-Each step page follows a consistent pattern:
-
-```typescript
-// Example: Step1Page.tsx
-function Step1Page() {
-  const { entryId } = useParams();
-  const navigate = useNavigate();
-  const form = useForm<Step1FormData>({
-    resolver: zodResolver(step1Schema),
-  });
-
-  // Load existing data if editing
-  const { data: entry } = useVehicleEntry(entryId);
-
-  useEffect(() => {
-    if (entry) {
-      form.reset({
-        driverId: entry.driverId,
-        transporterId: entry.transporterId,
-        vehicleId: entry.vehicleId,
-      });
-    }
-  }, [entry]);
-
-  const createEntry = useCreateVehicleEntry();
-  const updateEntry = useUpdateVehicleEntry();
-
-  const onSubmit = async (data: Step1FormData) => {
-    try {
-      if (entryId) {
-        await updateEntry.mutateAsync({ id: entryId, data });
-      } else {
-        const newEntry = await createEntry.mutateAsync(data);
-        navigate(`/gate/raw-materials/new/step2?entryId=${newEntry.id}`);
-        return;
-      }
-      navigate('/gate/raw-materials/new/step2');
-    } catch (error) {
-      // Handle error
-    }
-  };
-
-  return (
-    <div>
-      <StepHeader currentStep={1} totalSteps={5} />
-
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <DriverSelect
-          value={form.watch('driverId')}
-          onChange={(value) => form.setValue('driverId', value)}
-          error={form.formState.errors.driverId?.message}
-        />
-
-        <TransporterSelect
-          value={form.watch('transporterId')}
-          onChange={(value) => form.setValue('transporterId', value)}
-          error={form.formState.errors.transporterId?.message}
-        />
-
-        <VehicleSelect
-          transporterId={form.watch('transporterId')}
-          value={form.watch('vehicleId')}
-          onChange={(value) => form.setValue('vehicleId', value)}
-          error={form.formState.errors.vehicleId?.message}
-        />
-
-        <StepFooter
-          onBack={() => navigate(-1)}
-          isSubmitting={createEntry.isPending || updateEntry.isPending}
-        />
-      </form>
-    </div>
-  );
-}
-```
-
-## Components
-
-### DriverSelect
-
-Searchable dropdown for driver selection with create capability.
-
-```typescript
-interface DriverSelectProps {
-  value?: string;
-  onChange: (value: string) => void;
-  error?: string;
-  disabled?: boolean;
-}
-
-function DriverSelect({ value, onChange, error, disabled }: DriverSelectProps) {
-  const { data: drivers, isLoading } = useDriverNames();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-
-  return (
-    <div className="space-y-2">
-      <Label>Driver</Label>
-      <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger>
-          <SelectValue placeholder="Select driver" />
-        </SelectTrigger>
-        <SelectContent>
-          {isLoading && <SelectItem disabled>Loading...</SelectItem>}
-          {drivers?.map((driver) => (
-            <SelectItem key={driver.id} value={driver.id}>
-              {driver.name}
-            </SelectItem>
-          ))}
-          <Button
-            variant="ghost"
-            className="w-full"
-            onClick={() => setIsCreateOpen(true)}
-          >
-            + Add New Driver
-          </Button>
-        </SelectContent>
-      </Select>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      <CreateDriverDialog
-        open={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onCreated={(driver) => onChange(driver.id)}
-      />
-    </div>
-  );
-}
-```
-
-### TransporterSelect
-
-Similar to DriverSelect, for transporter selection.
-
-### VehicleSelect
-
-Vehicle selection with transporter filtering and create capability.
-
-```typescript
-interface VehicleSelectProps {
-  transporterId?: string;
-  value?: string;
-  onChange: (value: string) => void;
-  error?: string;
-}
-
-function VehicleSelect({ transporterId, value, onChange, error }: VehicleSelectProps) {
-  const { data: vehicles, isLoading } = useVehicleNames({ transporterId });
-
-  // Filter vehicles by transporter
-  const filteredVehicles = useMemo(() => {
-    if (!transporterId) return vehicles;
-    return vehicles?.filter(v => v.transporterId === transporterId);
-  }, [vehicles, transporterId]);
-
-  return (
-    <Select value={value} onValueChange={onChange}>
-      {/* Similar structure to DriverSelect */}
-    </Select>
-  );
-}
-```
-
-### StepHeader
-
-Navigation header showing current step progress.
-
-```typescript
-interface StepHeaderProps {
-  currentStep: number;
-  totalSteps: number;
-  title?: string;
-}
-
-function StepHeader({ currentStep, totalSteps, title }: StepHeaderProps) {
-  const steps = [
-    'Vehicle Info',
-    'Purchase Order',
-    'Receipt',
-    'Weighment',
-    'Quality Check',
-  ];
-
-  return (
-    <div className="mb-8">
-      <div className="flex justify-between items-center mb-4">
-        {steps.map((step, index) => (
-          <div
-            key={step}
-            className={cn(
-              'flex items-center',
-              index < currentStep ? 'text-primary' : 'text-muted-foreground'
-            )}
-          >
-            <div className={cn(
-              'w-8 h-8 rounded-full flex items-center justify-center',
-              index < currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted'
-            )}>
-              {index < currentStep - 1 ? '✓' : index + 1}
-            </div>
-            <span className="ml-2 hidden md:inline">{step}</span>
-          </div>
-        ))}
-      </div>
-      <Progress value={(currentStep / totalSteps) * 100} />
-    </div>
-  );
-}
-```
-
-### StepFooter
-
-Navigation footer with back/next buttons.
-
-```typescript
-interface StepFooterProps {
-  onBack?: () => void;
-  onNext?: () => void;
-  isSubmitting?: boolean;
-  isLastStep?: boolean;
-  showSaveDraft?: boolean;
-}
-
-function StepFooter({
-  onBack,
-  onNext,
-  isSubmitting,
-  isLastStep,
-  showSaveDraft
-}: StepFooterProps) {
-  return (
-    <div className="flex justify-between mt-8 pt-4 border-t">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onBack}
-        disabled={isSubmitting}
-      >
-        Back
-      </Button>
-
-      <div className="space-x-2">
-        {showSaveDraft && (
-          <Button type="button" variant="outline">
-            Save Draft
-          </Button>
-        )}
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : isLastStep ? 'Submit' : 'Next'}
-        </Button>
-      </div>
-    </div>
-  );
-}
-```
-
-## API Integration
-
-### Query Hooks Pattern
-
-```typescript
-// src/modules/gate/api/vehicleEntry.queries.ts
-
-export const vehicleEntryKeys = {
-  all: ['vehicleEntries'] as const,
-  lists: () => [...vehicleEntryKeys.all, 'list'] as const,
-  list: (filters: VehicleEntryFilters) => [...vehicleEntryKeys.lists(), filters] as const,
-  details: () => [...vehicleEntryKeys.all, 'detail'] as const,
-  detail: (id: string) => [...vehicleEntryKeys.details(), id] as const,
-};
-
-export function useVehicleEntries(filters: VehicleEntryFilters) {
-  return useQuery({
-    queryKey: vehicleEntryKeys.list(filters),
-    queryFn: () => vehicleEntryApi.getAll(filters),
-  });
-}
-
-export function useVehicleEntry(id: string | undefined) {
-  return useQuery({
-    queryKey: vehicleEntryKeys.detail(id!),
-    queryFn: () => vehicleEntryApi.getById(id!),
-    enabled: !!id,
-  });
-}
-
-export function useCreateVehicleEntry() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: vehicleEntryApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehicleEntryKeys.all });
-    },
-  });
-}
-
-export function useUpdateVehicleEntry() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateVehicleEntryDto }) =>
-      vehicleEntryApi.update(id, data),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: vehicleEntryKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: vehicleEntryKeys.lists() });
-    },
-  });
-}
-```
-
-## Entry Status Flow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Entry Status Flow                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  DRAFT ──────► IN_PROGRESS ──────► QC_COMPLETED             │
-│    │               │                     │                   │
-│    │               │                     ▼                   │
-│    │               │              ┌─────────────┐           │
-│    │               │              │  COMPLETED  │           │
-│    │               │              └─────────────┘           │
-│    │               │                     │                   │
-│    ▼               ▼                     │                   │
-│  CANCELLED     REJECTED◄─────────────────┘                  │
-│                                                              │
-│  Status Descriptions:                                        │
-│  • DRAFT: Entry started, not submitted                       │
-│  • IN_PROGRESS: Entry submitted, awaiting QC                 │
-│  • QC_COMPLETED: Quality check completed                     │
-│  • COMPLETED: Fully processed                                │
-│  • CANCELLED: Cancelled by user                              │
-│  • REJECTED: Rejected during QC                              │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Validation Schemas
-
-```typescript
-// src/modules/gate/schemas/vehicleEntry.schema.ts
-
-export const step1Schema = z.object({
-  driverId: z.string().min(1, 'Driver is required'),
-  transporterId: z.string().min(1, 'Transporter is required'),
-  vehicleId: z.string().min(1, 'Vehicle is required'),
-});
-
-export const step2Schema = z.object({
-  poNumber: z.string().min(1, 'PO Number is required'),
-  poId: z.string().optional(),
-});
-
-export const step3Schema = z.object({
-  receivedQuantity: z.number().positive('Quantity must be positive'),
-  unit: z.string().min(1, 'Unit is required'),
-  remarks: z.string().optional(),
-});
-
-export const step4Schema = z.object({
-  grossWeight: z.number().positive('Gross weight is required'),
-  tareWeight: z.number().positive('Tare weight is required'),
-  netWeight: z.number().optional(),
-  weighbridgeNumber: z.string().optional(),
-});
-
-export const step5Schema = z.object({
-  parameters: z.array(z.object({
-    name: z.string(),
-    value: z.number(),
-    unit: z.string(),
-    result: z.enum(['pass', 'fail']),
-  })),
-  overallResult: z.enum(['pass', 'fail']),
-  remarks: z.string().optional(),
-});
-```
-
-## Person Gate In (Visitor/Labour)
-
-The Person Gate In feature manages visitor and labour entry/exit tracking at factory gates.
-
-### Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              Person Gate In Module                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Dashboard (/gate/visitor-labour)                                │
-│  ├── Current Status (Total Inside, Visitors, Labours)           │
-│  ├── Today's Activity (Entries, Exits by type)                  │
-│  ├── Recent Entries                                              │
-│  ├── Gate-wise Inside Count                                      │
-│  └── Person Type Breakdown                                       │
-│                                                                  │
-│  Entry Management                                                │
-│  ├── New Entry (/gate/visitor-labour/new)                       │
-│  ├── All Entries (/gate/visitor-labour/all)                     │
-│  └── Currently Inside (/gate/visitor-labour/inside)             │
-│                                                                  │
-│  Master Data                                                     │
-│  ├── Visitors (/gate/visitor-labour/visitors)                   │
-│  └── Labours (/gate/visitor-labour/labours)                     │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Person Types
-
-| ID | Type | Description |
-|----|------|-------------|
-| 1 | Labour | Contract workers under contractors |
-| 3 | Visitor | External visitors to the factory |
-
-### Pages
-
-#### PersonGateInDashboard
-
-Main dashboard showing current status and activity.
-
-**Route:** `/gate/visitor-labour`
-
-**Features:**
-- Total persons currently inside (clickable to view list)
-- Breakdown by visitors and labours
-- Long duration alerts
-- Today's activity statistics (clickable for filtered views)
-- Recent entries list
-- Gate-wise inside count (clickable for filtered views)
-- Person type breakdown (clickable for filtered views)
-- Quick action buttons
-
-#### NewEntryPage
-
-Create a new gate entry for visitor or labour.
-
-**Route:** `/gate/visitor-labour/new`
-
-**Query Parameters:**
-- `type=visitor` - Pre-select visitor type
-- `type=labour` - Pre-select labour type
-
-**Features:**
-- Toggle between visitor and labour entry
-- Search and select existing visitor/labour
-- Create new visitor/labour inline
-- Gate selection
-- Purpose, vehicle number, and remarks fields
-
-#### PersonGateInAllPage
-
-View all entries with filtering capabilities.
-
-**Route:** `/gate/visitor-labour/all`
-
-**Query Parameters:**
-- `person_type` - Filter by person type ID (1=Labour, 3=Visitor)
-- `status` - Filter by status (IN, OUT, CANCELLED)
-- `gate_in` - Filter by entry gate ID
-
-**Features:**
-- Date range filtering (global date range)
-- Status filtering via URL params
-- Person type filtering
-- Gate filtering
-- Search by name, purpose, gate, vehicle
-- Click on row to view entry details
-
-### Components
-
-#### VisitorSelect
-
-Searchable dropdown for selecting existing visitors.
-
-```typescript
-interface VisitorSelectProps {
-  value?: number | null
-  onChange: (visitor: Visitor | null) => void
-  label?: string
-  placeholder?: string
-  error?: string
-  required?: boolean
-}
-```
-
-#### LabourSelect
-
-Searchable dropdown for selecting existing labours.
-
-```typescript
-interface LabourSelectProps {
-  value?: number | null
-  onChange: (labour: Labour | null) => void
-  label?: string
-  placeholder?: string
-  error?: string
-  required?: boolean
-}
-```
-
-#### GateSelect
-
-Dropdown for selecting entry/exit gates.
-
-```typescript
-interface GateSelectProps {
-  value?: number | null
-  onChange: (gate: Gate | null) => void
-  label?: string
-  placeholder?: string
-  error?: string
-  required?: boolean
-}
-```
-
-#### CreateVisitorDialog
-
-Dialog for creating a new visitor inline.
-
-#### CreateLabourDialog
-
-Dialog for creating a new labour inline with contractor selection.
-
-### API Integration
-
-#### Constants
-
-```typescript
-// Person Type IDs
-export const PERSON_TYPE_IDS = {
-  LABOUR: 1,
-  VISITOR: 3,
-} as const
-```
-
-#### Key API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/person-gatein/dashboard/` | GET | Dashboard statistics |
-| `/person-gatein/entry/create/` | POST | Create new entry |
-| `/person-gatein/entry/{id}/` | GET | Get entry details |
-| `/person-gatein/entry/{id}/exit/` | POST | Mark entry as exited |
-| `/person-gatein/entry/{id}/cancel/` | POST | Cancel an entry |
-| `/person-gatein/entry/inside/` | GET | List persons inside |
-| `/person-gatein/entries/` | GET | List all entries with filters |
-| `/person-gatein/visitors/` | GET/POST | Visitor CRUD |
-| `/person-gatein/labours/` | GET/POST | Labour CRUD |
-| `/person-gatein/gates/` | GET | List gates |
-| `/person-gatein/contractors/` | GET | List contractors |
-
-#### Entry Filters
-
-```typescript
-interface EntryFilters {
-  from_date?: string      // Start date (YYYY-MM-DD)
-  to_date?: string        // End date (YYYY-MM-DD)
-  status?: string         // IN, OUT, CANCELLED
-  person_type?: number    // 1=Labour, 3=Visitor
-  gate_in?: number        // Filter by entry gate ID
-  search?: string         // Search query
-}
-```
-
-#### Query Hooks
-
-```typescript
-// Dashboard data
-const { data: dashboard } = usePersonGateInDashboard()
-
-// Create entry
-const createEntry = useCreatePersonEntry()
-await createEntry.mutateAsync({
-  person_type: PERSON_TYPE_IDS.VISITOR,
-  visitor: visitorId,
-  gate_in: gateId,
-  purpose: 'Meeting',
-})
-
-// Get entries with filters
-const { data: entries } = usePersonEntries({
-  from_date: '2026-01-01',
-  to_date: '2026-01-31',
-  person_type: PERSON_TYPE_IDS.VISITOR,
-  status: 'IN',
-})
-```
-
-### Entry Status Flow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│               Entry Status Flow                              │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Create Entry                                                │
-│       │                                                      │
-│       ▼                                                      │
-│  ┌─────────┐                                                 │
-│  │   IN    │ ◄─── Entry created, person is inside           │
-│  └────┬────┘                                                 │
-│       │                                                      │
-│       ├──────────────┐                                       │
-│       │              │                                       │
-│       ▼              ▼                                       │
-│  ┌─────────┐    ┌───────────┐                               │
-│  │   OUT   │    │ CANCELLED │                               │
-│  └─────────┘    └───────────┘                               │
-│       │              │                                       │
-│       │              │                                       │
-│  Exit recorded   Entry cancelled                             │
-│  (gate_out set)  (before exit)                              │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Types
-
-```typescript
-interface EntryLog {
-  id: number
-  person_type: EntryPersonType
-  gate_in: EntryGate
-  gate_out: EntryGate | null
-  name_snapshot: string
-  photo_snapshot?: string | null
-  entry_time: string
-  exit_time?: string | null
-  purpose?: string | null
-  vehicle_no?: string | null
-  remarks?: string | null
-  status: 'IN' | 'OUT' | 'CANCELLED'
-  created_at: string
-  updated_at: string
-  visitor?: number | null
-  labour?: number | null
-}
-
-interface Visitor {
-  id: number
-  name: string
-  mobile?: string
-  company_name?: string
-  id_proof_type?: string
-  id_proof_no?: string
-  photo?: string
-  blacklisted: boolean
-}
-
-interface Labour {
-  id: number
-  name: string
-  contractor: number
-  contractor_name?: string
-  mobile?: string
-  id_proof_no?: string
-  photo?: string
-  skill_type?: string
-  permit_valid_till?: string
-  is_active: boolean
-}
-```
-
-## Related Documentation
-
-- [Modules Overview](./overview.md)
-- [API Endpoints](../api/endpoints.md)
-- [State Management](../architecture/state-management.md)
+# Gate Management — Inbound Vehicle & Material Entry (Frontend)
+
+> The operator-facing side of the gate. Covers the screens a security/stores operator uses to
+> record a truck arriving with material, receive its PO, hand it to QC, weigh it, and complete it.
+> **This file was rewritten from the code — the previous version contained illustrative pseudo-code
+> that no longer matches the app. Trust this + the source.**
+>
+> Backend counterpart: [`factory_app/gate_core/docs/README.md`](../../../factory_app/gate_core/docs/README.md)
+
+## Overview — what it does & who uses it
+
+`src/modules/gate/` is the React/Vite home of **every gate transaction** at a plant. It is a large
+module: alongside the inbound material flows it also hosts outbound dispatch, empty-vehicle,
+BST-out, repair/returnable and person/labour gate flows. **This doc scopes to inbound vehicle &
+material entry** — the two things that arrive *at* the gate:
+
+- **Material entry** — Raw Materials (RM/PM/Assets), Daily Needs, Maintenance, Construction and Fixed
+  Assets — which all share one wizard spine (the canonical, detailed path here).
+- **Inbound (empty) vehicle** — **Empty Vehicle In** + the **cross-company Arrivals** board: an empty
+  truck arriving to be loaded for dispatch. The gate-in and the one-trip arrival lifecycle are in
+  scope (flow 4); the loading tail (docking, box scans, gatepass) is the dispatch module.
+
+Users: a **gate operator** at the security desk (vehicle, driver, safety check), a **stores/
+receiving operator** (PO receipt, arrival slip, weighment), and **managers** who watch dashboards.
+Everything is gated by Django permissions surfaced through `module.config.tsx`.
+
+The module is registered via `gateModuleConfig` in
+`src/modules/gate/module.config.tsx` (routes + sidebar nav + per-route permission gates) and
+consumed by the app registry (`src/app/registry`).
+
+## Key concepts & entities
+
+- **Entry type** — `constants/gateEntryTypes.ts` defines every gate flow as a `GateEntryTypeConfig`
+  (title, direction `in|out|return`, `vehicleMode`, dashboard/new routes, view/create permissions,
+  `requiresWeighment`, `requiresGatepass`). The inbound-material ones are `raw-materials`,
+  `daily-needs`, `maintenance`, `construction`, `fixed-assets`.
+- **Entry-flow config** — `constants/entryFlowConfig.ts` gives each flow its wizard shape
+  (`routePrefix`, `headerTitle`, `totalSteps`, `attachmentsPreviousStep`). RM = `Material Inward`,
+  4 steps; the others are 3 steps.
+- **Vehicle entry** — the backend `VehicleEntry`; created at Step 1, referenced everywhere by
+  `entryId`. Typed in `api/vehicle/vehicleEntry.api.ts`.
+- **PO receipt / items** — `api/po/*` (SAP PO lookup + receive against the entry).
+- **Arrival slip** — `api/arrivalSlip/*`; the QC hand-off document raised per PO item.
+- **Weighment** — `api/weighment/*`.
+- **Full view** — `api/gateEntryFullView/*`; the read model the Review page renders, including
+  `qc_summary.can_complete`.
+
+## End-to-end flows
+
+### 1. Raw-material inward wizard (the canonical inbound path)
+
+Routes (`module.config.tsx`) — note the **displayed step count (4) is offset from the URL segments**
+because Vehicle/Driver and the old Security step were merged into step 1
+(`constants/wizard.constants.ts`, `entryFlowConfig.ts`):
+
+| URL (new) | Component | What the operator does |
+|-----------|-----------|------------------------|
+| `/gate/raw-materials/new` | `Step1Page` → `SharedStep1Page` | Vehicle, Driver **&** Security (one screen) |
+| `/gate/raw-materials/new/step2` | `Step3Page` | PO Receipt (SAP PO lookup + line qty) |
+| `/gate/raw-materials/new/step3` | `ArrivalSlipPage` | Arrival slip per PO item → submit to QA |
+| `/gate/raw-materials/new/step4` | `Step4Page` | Weighment (gross/tare) |
+| `/gate/raw-materials/new/attachments` | `AttachmentsPage` | Upload gate documents |
+| `/gate/raw-materials/new/review` | `ReviewPage` | Review + **Complete Entry** |
+
+Edit mode mirrors these at `/gate/raw-materials/edit/:entryId/{step1,step2,step3,step4,attachments,review}`.
+
+Step-by-step behaviour:
+
+1. **Step 1 (`SharedStep1Page`).** Operator selects vehicle (auto-fills transporter) and driver, and
+   fills the security check (vehicle/tyre/fire condition, seals, alcohol test, inspector name). On
+   **Next** in create mode it:
+   - generates `entry_no = GE-<year>-<last-4-digits-of-Date.now()>`,
+   - `POST`s the vehicle entry **once** (guarded by `createdEntryIdRef` so a retry never
+     double-creates),
+   - then `POST`s the security check (which flips the entry to `IN_PROGRESS`),
+   - then navigates to `…/edit/{id}/step2`. **Even a "new" entry lands on the `/edit/{id}` routes
+     after Step 1**, because the id now exists.
+   The RM Step 1 also shows a `PONumberLookup` panel at the top.
+2. **Step 2 — PO Receipt (`Step3Page`).** Look up an open SAP PO for the supplier and receive its
+   lines. `poReceiptApi.create` → `POST .../po-receipts/`. Success moves the entry to `QC_PENDING`.
+3. **Step 3 — Arrival Slip (`ArrivalSlipPage`).** Raise a `MaterialArrivalSlip` per PO item
+   (billing qty/UOM, commercial invoice, e-way, bilty, CoA/CoQ flags) and **submit to QA**, optionally
+   attaching Certificate of Analysis/Quantity files (`arrivalSlipApi.submit`, multipart). This is the
+   hand-off into the QC module.
+4. **Step 4 — Weighment (`Step4Page`).** Record gross/tare; net is computed server-side. **Optional
+   for RM** — the entry can complete without it.
+5. **Attachments.** Upload gate documents against the entry.
+6. **Review (`ReviewPage`).** Renders `gateEntryFullView`. **Complete Entry** is disabled until
+   `qc_summary.can_complete` is true (all items QC-done). On success it clears the entry's tracked
+   step and shows a full-screen animated **success screen** ("Entry Completed!"). If QC is not ready,
+   an amber banner lists the blockers ("N pending, M on hold").
+
+### 2. The other inbound flows (Daily Needs / Maintenance / Construction / Fixed Assets)
+
+Same spine, fewer steps (3), driven by the corresponding `*_FLOW` config: Step 1 (vehicle/driver/
+security, shared shell), a line-detail step, attachments, review. No PO/SAP receipt or QC arrival
+slip — these post to their own `*_gatein` backend apps.
+
+### 3. Empty Vehicle In & the cross-company Arrivals board (inbound vehicle)
+
+The empty-vehicle-in flow lives in `pages/emptyVehicleInPages/` (`api/emptyVehicleIn/`, `api/arrivals/`).
+
+| URL | Component | What the operator does |
+|-----|-----------|------------------------|
+| `/gate/empty-vehicle-in` | `EmptyVehicleInPage` | List of empty-vehicle gate-ins; an `inside_only` filter shows trucks still in |
+| `/gate/empty-vehicle-in/new` (+ `/weighment`, `/attachments`, `/review`) | `EmptyVehicleInNewPage` … | Register the empty truck (vehicle/driver/reason), tare weighment, attachments, review |
+| `/gate/arrivals` | `CrossCompanyArrivalPage` | The **one-truck, many-companies** board: which trucks are inside, their per-company bills, and Depart / Empty-out |
+| `/gate/arrivals/:arrivalId/gatepass` | `ArrivalGatepassPage` | Print/commit the combined whole-truck gatepass |
+
+Behaviour that matters to the operator:
+
+1. **Register in.** New empty-vehicle-in posts to `gate-core/empty-vehicle-ins/`. If the same truck is
+   still inside, the backend guard rejects it and the operator sees a banner: *"{vehicle} is already
+   inside under gate entry {EVGI-…} and has not left yet. Finish its dispatch, or do an
+   empty-vehicle-out, before starting a new entry."*
+2. **Cross-company, auto.** For a `DISPATCH` truck, one gate-in marks it in across **every** company
+   whose booked bills it carries — the operator does not register it once per company.
+3. **It leaves once.** As each company's load dispatches its covers are consumed; when the whole load
+   has gone the arrival **auto-departs** (no manual step). The board stops showing the truck. A truck
+   that left empty is closed via **Empty Vehicle Out** / the arrival's Empty-out action.
+
+### 4. Resuming an interrupted entry
+
+`hooks/useEntryStepTracker.ts` persists `entryId → lastStep` in `localStorage`
+(`gate_entry_last_step`, capped at 50 entries). Every step page calls the tracker on mount, so a
+dashboard can send the operator back to where they left off. `clearEntryStep` runs on completion.
+
+## Critical business rules & invariants (frontend-enforced)
+
+- **Single create.** `createdEntryIdRef` in `SharedStep1Page` prevents duplicate `VehicleEntry`
+  creation if the operator retries after a transient error.
+- **`entry_no` is minted on the client** as `GE-<year>-<last4 epoch ms>` — not server-authoritative
+  (collision risk; see edge cases).
+- **Complete is QC-gated in the UI**, mirroring the backend: `ReviewPage` disables the button unless
+  `qc_summary.can_complete`.
+- **Edit is lock-aware.** In edit mode a step is read-only until the operator clicks **Update**
+  (`updateMode`), and `canUpdate` is false once the entry is `COMPLETED`.
+- **PO editability comes from the server.** `POReceipt.is_editable` / `lock_reason` decide whether the
+  PO step is writable; a submitted-to-QC PO must be **Replaced** (with a reason), not edited.
+- **Wire formats vary by endpoint.** Vehicle entry = `application/x-www-form-urlencoded`; security
+  check & arrival-slip submit = `multipart/form-data`; PO receipt & weighment = JSON. (See the `api/`
+  files — this trips up new devs.)
+
+## Integrations & cross-module boundaries
+
+- **Backend gate apps** via `apiClient` (axios) using `API_ENDPOINTS` from `@/config/constants`. All
+  requests carry the auth token and the active `Company-Code` header (see `docs/modules/auth.md`).
+- **State/caching:** TanStack Query (`*.queries.ts` per resource). Mutations invalidate keys like
+  `vehicleEntries`, `securityCheck`, `vehicleEntry`, `gateEntryFullView`.
+- **QC module (`@/modules/qc`)** — arrival slips and inspection status types are imported by
+  `gateEntryFullView.api.ts`; the arrival-slip step is the entry point into QC.
+- **GRPO** — after completion the entry surfaces in the GRPO module (`/grpo/material/preview/{id}`)
+  via a backend notification; the gate itself does not post GRPO.
+- **Dispatch / barcode (outbound, same module folder)** — sales-dispatch `new` routes **redirect** to
+  `/dispatch/docking/new` (`RedirectWithSearch`); box/barcode scanning lives there and in
+  `@/modules/barcode`. **Inbound material entry involves no scanning.**
+- **Cross-company arrivals** — `/gate/arrivals` (`CrossCompanyArrivalPage`) and the empty-vehicle-in
+  flow implement one physical truck across companies (covered in flow 3). The *loading* tail beyond
+  the gate — docking, box scans, the per-bill dispatch — is the dispatch module; the arrival board
+  only shows the trip and its exit.
+
+## Real-world edge cases
+
+- **Scanner/offline** — trigger: no network mid-wizard → behaviour: the app is **online-only** (no
+  offline queue); the mutation rejects → symptom: an error banner/field errors and the operator stays
+  on the step; already-saved steps persist server-side and the localStorage step tracker lets them
+  resume → risk: at a dead-zone gate the operator cannot proceed until connectivity returns.
+- **SAP down at PO receipt** — trigger: backend returns `503` → symptom: "SAP system is currently
+  unavailable. Please try again later."; the entry exists at `IN_PROGRESS` with no PO → risk: truck
+  waits; nothing is queued for retry.
+- **Duplicate `entry_no`** — trigger: two entries created in the same 10-second window collide on
+  `GE-<year>-<last4ms>` → symptom: generic "Failed to save gate entry" on Step 1 Next; a re-click
+  regenerates the suffix and usually succeeds.
+- **Wrong PO already submitted to QC** — trigger: operator booked the wrong PO and submitted the slip
+  → behaviour: PO step becomes read-only (`is_editable=false`), only **Replace** is offered and only
+  after QC sends it back → symptom: lock reason shown; a QC round-trip is required to fix a gate typo.
+- **Re-scanned / re-received line** — trigger: same `po_number` added twice, or a line over 110 % of
+  ordered → symptom: backend `400` ("PO … already added" / "cannot exceed 110 %") shown inline.
+- **Missing weighbridge weight for item group 105** — trigger: complete an item-group-105 material
+  without a gross weight → behaviour: the gate lets it complete (weighment optional) → symptom: the
+  failure appears later in **GRPO** as a SAP `(200032)` rejection, not in the gate → risk: the
+  operator who caused it never sees the error; the GRPO team does.
+- **Complete before QC** — trigger: any item lacking an ACCEPTED/REJECTED inspection → behaviour:
+  Review's **Complete** button is disabled and the amber banner lists what's pending.
+- **Cross-company "blank" RM entry** — trigger: opening an RM entry that belongs to a sibling company
+  under a different active `Company-Code` → symptom: not found / not listed (inbound RM is
+  company-scoped; only weighment/attachments span companies).
+- **Empty truck "already inside" / stale arrival** — trigger: operator tries to register an empty
+  vehicle that is still marked inside — usually because a previous trip's arrival never auto-departed
+  (a partial load, an abandoned committed docking, or a bill removed on the console) → behaviour: the
+  backend gate-in guard `400`s → symptom: banner *"{vehicle} is already inside under gate entry
+  {EVGI-…} and has not left yet. Finish its dispatch, or do an empty-vehicle-out…"*, even though the
+  truck physically left → risk: the operator is blocked; freeing it needs an Empty Vehicle Out (or an
+  admin console unwind) — often under a *different* company than the one active, so it can be
+  unreachable without switching companies. See the vehicle-arrival memory notes.
+- **Bill/PO added after gate-in on an inside truck** — a late-booked dispatch bill auto-attaches to the
+  truck's live arrival (it does not need a second gate-in); this is the **inside-vehicle / dispatch**
+  console path — see the dispatch module and the memory note on late-booked bills.
+
+## Failure modes / what an operator sees
+
+| Situation | What the operator sees |
+|-----------|------------------------|
+| Server 5xx on load/save | `getServerErrorMessage()` banner ("Something went wrong…") |
+| Field validation from API | Inline per-field messages (mapped from `apiError.errors`) |
+| SAP unavailable at PO step | "SAP system is currently unavailable. Please try again later." |
+| Complete fails (5xx) | "Cannot complete the entry at the moment. Please try again later." |
+| Complete blocked by QC | Amber "QC must be completed…" with pending/hold counts; button disabled |
+| Empty vehicle already inside | Banner: "{vehicle} is already inside under gate entry {EVGI-…} and has not left yet." (a live or stale arrival) |
+| No permission for a route | Route/nav item hidden; direct navigation is blocked by the guard |
+| Entry already completed | Review shows a green "Entry Completed" state; edit steps are read-only |
+
+## Improvement opportunities & known gaps
+
+- **Client-minted `entry_no`** should move server-side to remove the collision window.
+- **No offline resilience** — a flaky gate network blocks the wizard mid-entry; the localStorage
+  tracker only remembers the step, it does not queue writes.
+- **Weighment optionality is invisible at the gate**, so the item-group-105 gross-weight requirement
+  only bites downstream at GRPO; a gate-side hint would help.
+- The previous version of this doc was pseudo-code fiction; keep this one code-grounded when the
+  wizard changes (the step/URL offset in particular).
+
+## Permissions & roles (nav gating)
+
+The **Gate** sidebar item (`Truck` icon) is shown when the user holds **any** permission in
+`GATE_NAVIGATION_PERMISSIONS` (the union of every entry type's view/create perms + `BST_OUT.VIEW`).
+Each route lists a `permissions: [...]` array evaluated as **any-of**. Codenames come from
+`src/config/permissions/gate.permissions.ts` and map 1:1 to Django perms.
+
+| Role / action | Permission(s) |
+|---------------|---------------|
+| See the Gate module & dashboard | any of `GATE_DASHBOARD_ACCESS_PERMISSIONS` (`person_gatein.can_view_dashboard`, `gate_core.can_view_gate_entry`, or any entry-type view perm) |
+| View RM entries | `raw_material_gatein.view_poreceipt` **or** `gate_core.can_view_raw_material_full_entry` |
+| Create / receive RM | `raw_material_gatein.add_poreceipt` **or** `raw_material_gatein.can_receive_po` |
+| Edit RM entry | `raw_material_gatein.change_poreceipt` |
+| Delete RM entry | `raw_material_gatein.delete_poreceipt` |
+| Complete RM entry | `raw_material_gatein.can_complete_raw_material_entry` (enforced backend-side) |
+| Daily Needs / Maintenance / Construction / Fixed Assets | the matching `*_gatein.*` perms (see the config) |
+| Empty Vehicle In / Arrivals board | `EMPTY_VEHICLE_IN.VIEW` / `.CREATE` (`gate.permissions.ts`); backend gate-in is company-context-gated |
+
+> **Nav-gating gotcha (see memory):** the sidebar filters by **permission**, not by Django group.
+> Adding/removing a permission on a user's group can make whole gate sub-modules appear/disappear.
+> If a module is unexpectedly hidden, check `module.config.tsx` gates against the user's effective perms.
+
+## Developer file map
+
+**Frontend (this repo):**
+- `src/modules/gate/module.config.tsx` — routes, sidebar nav, permission gates
+- `src/modules/gate/constants/{gateEntryTypes,entryFlowConfig,wizard.constants}.ts`
+- `src/modules/gate/pages/GateDashboardPage.tsx`, `GateNewEntryPage.tsx`
+- `src/modules/gate/pages/RawMaterialsPage.tsx` (list) and `pages/rawMaterialPages/`:
+  `RawMaterialsDashboard.tsx`, `Step1Page.tsx`, `Step3Page.tsx` (PO), `ArrivalSlipPage.tsx`,
+  `Step4Page.tsx` (weighment), `AttachmentsPage.tsx`, `ReviewPage.tsx`
+- `src/modules/gate/pages/shared/SharedStep1Page.tsx`, `SharedDashboard.tsx`, `SharedAllPage.tsx`
+  (the reused shells for all inbound flows)
+- `src/modules/gate/pages/{dailyNeedsPages,maintenancePages,constructionPages,fixedAssetsPages}/`
+- Inbound vehicle: `src/modules/gate/pages/emptyVehicleInPages/` (`EmptyVehicleInPage`, `EmptyVehicleInNewPage`,
+  `EmptyVehicleInWeighmentPage`, `EmptyVehicleInReviewPage`, `CrossCompanyArrivalPage`, `ArrivalGatepassPage`)
+- `src/modules/gate/api/vehicle/vehicleEntry.api.ts` + `.queries.ts`
+- `src/modules/gate/api/securityCheck/`, `api/weighment/`, `api/po/{po,poReceipt}.*`,
+  `api/arrivalSlip/`, `api/gateEntryFullView/`, `api/emptyVehicleIn/`, `api/arrivals/`
+- `src/modules/gate/hooks/{useEntryId,useEntryStepTracker}.ts`
+- `src/modules/gate/components/` — `VehicleDriverSecurityFormShell`, `PONumberLookup`,
+  `DriverSelect`, `VehicleSelect`, `TransporterSelect`, `StepHeader`, `StepFooter`, etc.
+- `src/config/permissions/gate.permissions.ts` — permission codenames
+
+## Related docs
+
+- **Backend counterpart:** [`factory_app/gate_core/docs/README.md`](../../../factory_app/gate_core/docs/README.md)
+- `docs/modules/auth.md` — auth + `Company-Code` header
+- `docs/modules/qc.md` / `qc-status-analysis.md` — arrival-slip & inspection flow the gate hands to
+- `docs/modules/grpo.md` — the downstream GRPO posting
+- `docs/modules/dispatch.md` / `sales-dispatch-docking.md` — the outbound loading tail the arrival hands off to
+- `docs/modules/overview.md` — module registry & conventions

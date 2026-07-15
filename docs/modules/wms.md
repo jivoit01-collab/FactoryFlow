@@ -1,471 +1,277 @@
-# WMS — Module Integration & SAP Reality
+# Warehouse Ops (bin-level WMS) — Frontend
 
-> What SAP actually has, and how WMS connects to every other FactoryFlow module.
-> Updated: 2026-04-18 (based on live PRODUCTION SAP HANA — JIVO_OIL_HANADB, confirmed same data across env changes)
+> Module folder: `FactoryFlow/src/modules/wms` · routes under **`/warehouse-ops`**
+> Backend companion doc: [`factory_app/wms/docs/README.md`](../../../factory_app/wms/docs/README.md)
+> Absolute path: `C:/Users/gurpa/dev/factory_app/wms/docs/README.md`
 
----
-
-## 1. What SAP Actually Has (Live Data)
-
-### 1.1 Branches & Warehouse Layout
-
-Jivo operates across **3 physical locations** with **40+ active warehouses**:
-
-| Branch | Location | Key Warehouses |
-|--------|----------|---------------|
-| **Branch 2 — FACTORY (Bhakharpur, HR)** | Main production site | BH-PC (Production Consumption), BH-PM (Packaging Materials), BH-BS (Basement/storage), BH-PF (Production Finished), BH-FG (Finished Basement), BH-EC (E-Commerce), BH-LO (Loose Oil), BH-GR (Goods Receipt), BH-WST (Wastage), BH-NM (Non-Moving), BH-CRUDE (Gujarat Crude), BH-INT (Intransit), GP-FG (Gupta Godown FG), GP-PM (Gupta Godown PM) |
-| **Branch 1 — DELHI** | Sales/distribution | DL-FG (Finished), DL-EC (E-Commerce), DL-PS (Preshit Samagam), DL-INT (Intransit), DL-GR (Goods Receipt) |
-| **Branch 3 — PUNJAB** | C&F / distribution | PB-ST (Sai Trading C&F), PB-SP (Sangrur), PB-JP (Jagraon C&F), PB-INT (Intransit) |
-
-### 1.2 What IS Configured
-
-| Feature | Status | Data |
-|---------|--------|------|
-| **Multiple warehouses** | Active | 40+ active warehouses across 3 branches |
-| **Stock transfers** | Heavily used | 9,675 transfers total, 32,144 movement entries in last 90 days |
-| **Transfer requests** | Used | 1,114 requests |
-| **Batch tracking** | Active | 14,819 batch records, 572 batch-managed items |
-| **Batch expiry dates** | Active on FG items | Expiry tracked, 10 items already expired, 3 expiring within 90 days |
-| **Pick lists** | Used | 3,584 pick lists, all sourced from Sales Orders |
-| **Delivery notes** | Active | 2,717 deliveries |
-| **Sales orders** | Active | 2,466 open orders, 4.7M open qty |
-| **Goods issues** | Active | 6,526 documents (material issue to production) |
-| **Goods receipts** | Active | 6,647 documents (FG receipts, GRPO) |
-| **Customer returns** | Active | 1,816 returns |
-| **Purchase returns** | Light | 78 returns |
-| **Production orders** | Active | 158 released, 6,234 closed |
-
-### 1.3 What is NOT Configured
-
-| Feature | Status | Implication |
-|---------|--------|------------|
-| **Bin locations** | NOT enabled | 0 records in OBIN, BinActivat='N' on all warehouses. No sub-warehouse location tracking. |
-| **Serial numbers** | NOT used | 0 records in OSRN. No items configured for serial tracking. |
-| **Inventory counting** | NOT used | 0 records in OINC. No cycle counts done through SAP. |
-
-### 1.4 Real Material Flow (Top Transfer Routes — Last 90 Days)
-
-```
-INBOUND (Raw Materials)
-  BH-GR (Goods Receipt) ──── receive from gate
-       │
-       ▼
-  BH-PM (Packaging Materials) ──── 1,222 transfers ──► BH-BS (Basement Storage)
-  BH-LO (Loose Oil) ─────────── 358 transfers ──► BH-PC (Production Consumption)
-  BH-NM (Non-Moving) ─────────── 147 transfers ──► BH-PC
-       │
-       ▼
-PRODUCTION
-  BH-BS (Basement) ─────── 2,524 transfers ──► BH-PC (Production Consumption)
-  BH-PC ───── consumed by production ────► BH-WST (Wastage) [1,595 transfers]
-  BH-PC ──────────────────────────────► BH-PP (Production Process)
-       │
-       ▼
-FINISHED GOODS
-  BH-PF (Production Finished) ── 586 transfers ──► GP-FG (Gupta Godown FG)
-  BH-PF ──────────────────────── 365 transfers ──► BH-EC (E-Commerce)
-       │
-       ▼
-DISTRIBUTION
-  GP-FG / BH-FG / BH-EC ──────── Sales Orders ──► Pick ──► Delivery ──► Customer
-  BH-INT / DL-INT / PB-INT ──── Intransit between branches
-```
+> **This doc replaces earlier content that described a different "WMS".** The file
+> previously held the *SAP stock-analytics* integration notes (OITW/OITM dashboards,
+> BOM requests, FG receipts). That subsystem is the older **`warehouse`** module and
+> still lives in `FactoryFlow/src/docs/WMS_ARCHITECTURE.md` / `WMS_API_REFERENCE.md`.
+> **This doc is about the self-contained, bin-level Warehouse Ops module at
+> `src/modules/wms`** — a browser-designed warehouse (grid → cells → pallets → stock)
+> that persists through the thin `wms` Django app. Two different things share the
+> "WMS" name; don't conflate them.
 
 ---
 
-## 2. WMS Integration with Each Module
+## Overview — what it does & who uses it
 
-### Overview
+Warehouse Ops is a **frontend-driven** warehouse management system. An admin
+designs the whole warehouse in the browser — grid dimensions, areas, zones, cell
+purposes, naming scheme — and operators then run scan-based workflows against it:
+receive & put away, transfer, pick, take out (with a mandatory audit), and cycle
+count. A live map colours every bin by occupancy, and reports/labels round it out.
 
-```
-                          ┌──────────────────┐
-                          │    ERP (SAP B1)   │
-                          └────────┬─────────┘
-                                   │
-    ┌──────────────────────────────┼──────────────────────────────────┐
-    │                              │                                  │
-    ▼                              ▼                                  ▼
-┌────────┐  items move   ┌──────────────────┐   items move   ┌────────────┐
-│  GATE  │ ───────────►  │       WMS        │  ───────────►  │  DISPATCH  │
-│  (in)  │               │  (storage/stock) │               │   (out)    │
-└───┬────┘               └───────┬──────────┘               └────────────┘
-    │                        ▲       │
-    ▼                        │       ▼
-┌────────┐              ┌────┴───────────┐
-│   QC   │              │   PRODUCTION   │
-│(accept/│              │ (consume raw,  │
-│ reject)│              │  produce FG)   │
-└────────┘              └────────────────┘
-```
+All logic (layout generation, occupancy, putaway ranking, move validation, pick
+strategy, the audit, stock math) runs **in the client**. The backend (`wms` app)
+is a dumb JSON store — see the [backend doc](../../../factory_app/wms/docs/README.md).
+Persistence is now **exclusively the backend REST API**; the old browser-local
+(IndexedDB/localStorage) adapters have been removed (`storage/createAdapter.ts`
+returns a single shared `ApiAdapter`). **There is no offline mode** — every action
+is an immediate API call.
+
+Two independent gates decide what a user sees:
+1. **Django permissions** (`wms.*`, via the `WMS Admin`/`WMS Operator` groups) — gate the sidebar and routes.
+2. **The master enable flag** (`settings.masterEnabled`, default **off**) — when off, every WMS surface disappears and the host app behaves exactly as before.
+
+Audience: warehouse **operators** (scan workflows) and **admins/managers**
+(design, settings, approvals, data cleanup).
 
 ---
 
-### 2.1 GATE → WMS (Inbound Receiving)
+## Key concepts & entities
 
-**Current state:** Gate creates `VehicleEntry` → `POReceipt` → `POItemReceipt`. After QC approval, GRPO posts to SAP. WMS dashboard reads SAP stock. No explicit handoff exists.
+Record shapes live in `types/wms.types.ts`; builders in `services/factories.ts`.
 
-**What WMS needs from Gate:**
+- **Warehouse** — `type: 'OWN'` (an internal grid of `columns × rows × levels` cells, the normal case) or `'SAP'` (external, no internal cells). Carries a `namingScheme`, optional `areas`, and an optional `sapWarehouseCode` used only for the barcode/SAP bridge.
+- **Area** (`WarehouseArea`) — a rectangle of the grid with its own numbering origin and code `prefix`. Cells outside every area are **"outside"**: no code, excluded from occupancy, moves, and putaway. Areas sharing a `groupId` are numbered continuously.
+- **Zone** — a tinted, classified group of cells (BULK/PICK/RECEIVING…), optional temperature class.
+- **Cell purpose** (`CellPurpose`) — what a cell *is* (storage / walkable path / damaged goods / obstacle…). The behavioural flag is `holdsStock`: non-storage cells are excluded from occupancy and rejected as move/putaway destinations. `purposeId === null` ⇒ ordinary storage (so old layouts need no migration).
+- **Location** (`WarehouseLocation`, a.k.a. "block/bin") — one cell: `code`, `barcode`, coords, `capacity` (max pallets/units/weight/volume), `materialRules`, `reservation`, `status` (ACTIVE/BLOCKED/DAMAGED/MAINTENANCE/RESERVED), `enabled`.
+- **Material** (`MaterialWarehouseProfile`) — warehouse profile for an item: UoM, units/box, temp/hazmat class, and `trackLot`/`trackExpiry`/`trackSerial` flags that drive which fields Receive asks for.
+- **Pallet** — a license plate: item, `boxCount`, `lotNumber`, `expiryDate`, `currentLocationId`, `status` (ACTIVE/PARTIAL/EMPTY/PICKED/SHIPPED/ON_HOLD).
+- **InventoryRecord** — stock of an item at a location, optionally `palletId`-linked, with lot/serial/qty/uom/weight/volume/expiry.
+- **MovementLogEntry** — the append-only audit trail (RECEIVE/PUTAWAY/TRANSFER/PICK/OUTBOUND/ADJUSTMENT/AUDIT/CYCLE_COUNT), with `discrepancy`/`auditConfirmed` flags.
+- **LayoutTemplate** — a saved blueprint that spawns new warehouses.
+- **WmsSettings** — the singleton (`wms-settings`): `masterEnabled`, `putawayMode` (DIRECTED/MANUAL/HYBRID), `pickStrategy` (FIFO/LIFO/FEFO), `mandatoryOutboundAudit`, `capacityViolation`/`materialRuleViolation` (BLOCK/WARN), `allowNegativeStock`, `forceLocationOnTransfer`, and `role` (ADMIN/OPERATOR).
 
-| Data | Source | WMS Purpose |
-|------|--------|-------------|
-| Item code, accepted qty | `POItemReceipt.accepted_qty` | Know what arrived and how much |
-| Rejected qty | `POItemReceipt.rejected_qty` | Route to BH-WST or rejection area |
-| Warehouse code | `POItemReceipt.warehouse_code` | Target warehouse (usually BH-GR or BH-PC) |
-| Supplier batch/lot | `MaterialArrivalSlip.supplier_batch_lot_no` | Batch tracking for FEFO |
-| GRPO SAP doc entry | `GRPOPosting.sap_doc_entry` | Link to SAP document |
-| Vehicle entry ID | `VehicleEntry.id` | Full traceability |
+**Derived, never stored:** occupancy %, display status/colour, utilization — recomputed by `services/occupancy.ts` from inventory + capacity.
 
-**Integration flow:**
-
-```
-GRPO Posted (SAP doc created)
-  │
-  └──► WMS: Receiving record created
-       ├── Log: what arrived, from whom, qty, batch
-       ├── Stock now visible in warehouse (BH-GR → then transferred to BH-PC/BH-PM/BH-BS)
-       └── Notification: GRPO_POSTED → warehouse team
-```
-
-**Note:** Since bins are NOT enabled in SAP, there's no "putaway task" needed. The material goes to the warehouse specified on the PO line. The real movement is the **stock transfer** from receiving warehouse (BH-GR) to storage/production warehouse — and this already happens via SAP stock transfers (9,675 total).
+**Occupancy nuance worth knowing:** `occupancyPct` is the max of the ratios that
+have a configured maximum. A bin with only `maxPallets` set (default) and loose
+units reports **0%**. "Is this bin empty?" is therefore measured from *actual* stock
+present (`isEmptyDestination` in `services/emptyLocations.ts`), not from the percentage.
 
 ---
 
-### 2.2 QC → WMS (Quality Decisions Affect Stock)
+## End-to-end flows (numbered)
 
-**Current state:** QC results in `final_status`: ACCEPTED / REJECTED / HOLD. Only accepted qty feeds into GRPO posting.
+State plumbing (all flows): screens read collections reactively through
+`store/useWmsStore.ts` (`useWmsCollection`) and mutate through `store/wmsStore.ts`,
+which calls the `ApiAdapter` and then **reloads the affected collection(s)** so the
+cache can't drift from the server.
 
-**Integration flow:**
+### 1. Design a warehouse (admin)
+`WmsDesignerPage` → set grid + naming (`services/layout.ts` generates the cells,
+capped at **5,000** locations) → `WmsWarehouseEditorPage` paints areas, zones,
+purposes, and per-cell properties. Saved as a bundle via
+`wmsStore.saveWarehouseBundle` / `replaceWarehouseBundle` (a **minimal diff** — only
+changed records are upserted, only removed ones deleted, scoped to that warehouse).
+Warehouses can be cloned, exported/imported as JSON, built from CSV, or spawned from
+a template (`WmsWarehousesPage`, `services/warehouseIO.ts`).
 
-```
-QC Inspection
-  ├── ACCEPTED ──► GRPO posts accepted qty → stock in designated warehouse
-  ├── REJECTED ──► Rejected qty NOT posted to SAP
-  │                WMS should track: what was rejected, route to BH-WST
-  └── HOLD ──────► Material awaits disposition
-                   WMS should track: item on hold, pending QC release
-```
+### 2. Receive & put away (operator) — `WmsReceivePage`
+1. Scan an item code or a pallet plate. A known plate pre-fills its item; a known item code pulls name/UoM/units-per-box from its `Material` profile and shows **only** the tracked fields (lot/expiry).
+2. Enter boxes (+ optional pallet plate, lot, expiry).
+3. Pick a destination: the **putaway engine** (`services/putaway.ts`) ranks every *legal* bin (it runs `validateMove` first, then scores by consolidation, temperature, allowed-type, headroom, pick position). Top 3 get a ★. Empty bins are grouped by section; you can also scan a bin.
+4. The validation panel shows errors (block) / warnings. Confirm → `wmsStore.receiveStock` creates the pallet (if any) + inventory (loose stock **merges** into a matching line; pallet stock gets its own) + a `PUTAWAY` movement. A QR label for the new pallet is offered for print.
 
-**What WMS needs from QC:**
+### 3. Transfer / move (operator) — `WmsTransferPage`
+Scan a source (location, item, or pallet) → choose the subject and quantity (or a
+whole pallet) → scan/choose a destination → `validateMove` → confirm. Item moves
+call `moveInventory` (splits/merges lines, follows the pallet if it fully leaves);
+whole-pallet moves call `movePallet` (stock follows) **and best-effort mirror the
+move back to the barcode backend** (`useSyncPalletToBarcode`).
 
-| Trigger | WMS Action |
-|---------|-----------|
-| `final_status = ACCEPTED` | Normal receiving flow |
-| `final_status = REJECTED` | Track rejected material, notify for return to vendor or wastage |
-| `final_status = HOLD` | Track held material, alert when released |
-| Production QC `FAIL` | Flag FG as not ready for receipt, may need rework |
-| Production QC `PASS` | FG ready for warehouse receipt |
+### 4. Pick (operator) — `WmsPickPage`
+Enter item + qty → `planPicks` (`services/picking.ts`) allocates across stock in the
+configured **FIFO/LIFO/FEFO** order and directs the operator stop-by-stop. Each stop
+requires scanning the **location** and the **item** (and a qty ≤ available) before
+`Confirm`. A stop that consumes a **whole pallet** triggers the outbound audit
+(below) before it leaves. Short picks warn ("only N available").
 
----
+### 5. Take a pallet out (operator) — `WmsOutboundPage`
+Scan a pallet plate, or scan a location and pick a pallet from it. The **mandatory
+audit dialog** (`PalletAuditDialog`) shows item + box count prominently; the operator
+confirms a match or logs a corrected box count. A **large discrepancy** (>20% of
+boxes, min 5) needs supervisor approval — and **only an admin** (`useWmsRole().isAdmin`)
+can toggle that approval. Confirm → `shipPallet`: removes the pallet's stock, marks
+it `SHIPPED`, writes an `OUTBOUND` movement (+ an `ADJUSTMENT` flagged as a
+discrepancy if the count was corrected). A `SHIPPED` label is offered for print.
 
-### 2.3 PRODUCTION ↔ WMS (Heaviest Integration — Already Partially Built)
+### 6. Cycle count (operator) — `WmsCountPage`
+Scan a location → adjust the counted qty per line and/or add "found" items → Post →
+`postCycleCount` sets each line to its counted figure (removing emptied lines),
+creates found items, and writes a `CYCLE_COUNT` movement (flagged discrepancy) for
+every change.
 
-This is bidirectional. Production **consumes** from warehouse and **feeds** finished goods back.
-
-#### A. Material Request (Production → WMS)
-
-Already built: `BOMRequest` model with line-level approval.
-
-```
-ProductionRun created
-  └── BOMRequest created ──────► WMS: Request appears in approval queue
-      │                              │
-      │ BOMRequestLine[]             ├── Check stock in OITW
-      │ (item, qty, warehouse)       ├── Approve/Partially Approve/Reject per line
-      │                              ├── Set approved_qty
-      │                              │
-      │◄─────────────────────────    └── Status → APPROVED / PARTIALLY_APPROVED / REJECTED
-      │
-      ├── APPROVED ──► WMS issues material (POST InventoryGenExits)
-      │                  └── SAP: stock moves from BH-PC/BH-BS → production consumption
-      │                  └── material_issue_status → FULLY_ISSUED
-      │
-      └── REJECTED ──► ProductionRun.warehouse_approval_status = REJECTED
-                       Production cannot start
-```
-
-**Key fields:**
-
-| Production | WMS | Bridge |
-|-----------|-----|--------|
-| `ProductionRun.id` | `BOMRequest.production_run` | FK link |
-| `ProductionRun.sap_doc_entry` | `BOMRequest.sap_doc_entry` | SAP production order |
-| `ProductionRun.required_qty` | `BOMRequest.required_qty` | BOM scaling |
-| `ProductionRun.warehouse_approval_status` | Set by WMS approve/reject | Gates production |
-
-#### B. Finished Goods Receipt (Production → WMS)
-
-Already built: `FinishedGoodsReceipt` model.
-
-```
-ProductionRun completed + Final QC PASS
-  └── FinishedGoodsReceipt created (PENDING)
-      │
-      └──► WMS: FG receipt appears in queue
-           ├── Verify qty (produced, good, rejected)
-           ├── Mark as RECEIVED
-           ├── Post to SAP (InventoryGenEntries, BaseType=202)
-           │   └── Stock appears in BH-PF (Production Finished)
-           └── Status → SAP_POSTED
-               │
-               └──► ProductionRun.sap_receipt_doc_entry set
-                    Loop closed
-```
-
-After FG receipt, the real-world flow is: **BH-PF → GP-FG or BH-EC** via stock transfer (586 + 365 transfers in last 90 days).
-
-#### C. Material Usage Tracking
-
-```
-During production:
-  ProductionMaterialUsage
-    - opening_qty        ─┐
-    - issued_qty          ├── WMS can reconcile:
-    - closing_qty         │   issued_qty should match BOMRequest.issued_qty
-    - wastage_qty (calc) ─┘   wastage feeds variance reports
-```
-
-#### D. Waste Management
-
-```
-WasteLog (multi-step approval)
-  └── engineer → AM → STORE → HOD
-                        ▲
-                        │
-                  This is a WMS touchpoint:
-                  Store/warehouse person verifies
-                  waste quantity and material disposition
-```
-
-**SAP reality:** Waste goes to BH-WST warehouse (1,595 transfers from BH-PC → BH-WST in last 90 days). Some waste then transfers back: BH-WST → BH-PP (231 transfers) and BH-WST → BH-PC (recyclable waste).
+### 7. Monitor & maintain
+`WmsOverviewPage` (KPIs + "scan anything" locator + quick actions), `WmsMapPage`
+(colour-coded live grid + moves), `WmsReportsPage` (where-is-item, utilization,
+stock-by-location, movement history, replenishment, expiry — all pure queries in
+`services/reports.ts`), `WmsLabelsPage` (QR labels via `qrcode.react`, TSC DA310
+100×40 mm). `WmsAdminPage` browses/bulk-deletes raw records; `WmsSettingsPage` holds
+config + maintenance (reconcile links, clear stock data).
 
 ---
 
-### 2.4 WMS → OUTBOUND / DISPATCH (Picking & Shipping)
+## Critical business rules & invariants
 
-**SAP reality:** This flow already exists in SAP but NOT in FactoryFlow.
-
-| SAP Object | Volume | Current Status in FactoryFlow |
-|-----------|--------|------------------------------|
-| Sales Orders (ORDR) | 2,466 open, 4.7M open qty | Not in app |
-| Pick Lists (OPKL) | 3,584 total, all from Sales Orders | Not in app |
-| Delivery Notes (ODLN) | 2,717 total | Not in app |
-
-**Current flow (done directly in SAP):**
-
-```
-Sales Order (ORDR) ──► Pick List (OPKL) ──► Delivery Note (ODLN) ──► Customer
-                                                     │
-  Main outbound warehouses:                          │
-  GP-FG  (2,696K open qty, 1,171 orders)            │
-  BH-FG  (1,215K open qty, 668 orders)              │
-  PB-ST  (334K open qty, 329 orders)                │
-```
-
-**WMS integration:** If we bring picking/dispatch into FactoryFlow:
-- Read open Sales Orders from SAP
-- Generate/manage pick lists
-- Operator confirms picks on mobile
-- Create delivery note in SAP
-- Track shipment
+- **Master flag is the top gate.** `useWmsEnabled()` (from the `settings.masterEnabled`) — when off, every page renders `WmsDisabledNotice` and `validateMove` fails with `feature_off`. `WmsEnabledGate` wraps any WMS surface injected into other screens.
+- **Move validation is centralised** (`services/validation.ts`, `validateMove`) and shared by transfer, putaway ranking, and pick. Order of checks: feature on → qty > 0 → destination usable (outside-area / non-storage / disabled / blocked / maintenance) → reservation match → capacity (4 dims) → allowed/restricted type → mixing → single-lot → temperature → hazmat → FEFO expiry warning → sufficient source stock → lot/serial existence. **Capacity and material-rule violations are errors *or* warnings** per `capacityViolation`/`materialRuleViolation` settings.
+- **Non-storage & outside-area cells are never valid destinations** (rejected in validation and excluded from suggestions/empty-bin pickers).
+- **The outbound audit cannot be skipped when `mandatoryOutboundAudit` is on**, and large-discrepancy approval is **admin-only**.
+- **Pick strategy** (FIFO/LIFO/FEFO) orders stock allocation; FEFO sorts by earliest expiry then creation.
+- **Movements are append-only** — the frontend never edits them (matches the backend rule).
+- **Two role systems coexist:** Django `wms.*` group perms (real access control) and the in-app `settings.role` ADMIN/OPERATOR switch (a soft UI toggle that hides designer/settings/approvals). They are independent — see Permissions below.
 
 ---
 
-### 2.5 WMS — Stock Transfers (Internal Movements)
+## Integrations & cross-module boundaries
 
-**SAP reality:** This is the MOST active SAP operation — 32,144 movement entries in last 90 days.
-
-**Current flow (done directly in SAP):**
-
-```
-INBOUND FLOW:
-  BH-PM (Packaging) ──1,222──► BH-BS (Basement Storage)
-  BH-LO (Loose Oil) ───358──► BH-PC (Production)
-  BH-NM (Non-Moving) ──147──► BH-PC (Production)
-
-PRODUCTION FLOW:
-  BH-BS (Basement) ──2,524──► BH-PC (Production Consumption)  ← HIGHEST VOLUME
-  BH-PC ──────────────321──► BH-PP (Production Process)
-
-WASTE FLOW:
-  BH-PC ────────────1,595──► BH-WST (Wastage)
-  BH-WST ─────────────231──► BH-PP (back to production)
-
-FINISHED GOODS FLOW:
-  BH-PF (Prod Finished) ──586──► GP-FG (Gupta Godown FG)
-  BH-PF ───────────────────365──► BH-EC (E-Commerce)
-
-INTER-BRANCH:
-  DL-INT ──175──► DL-PS (Delhi)
-  PB-INT ──169──► PB-SP (Punjab)
-  DL-PS  ──167──► BH-INT (back to factory)
-```
-
-**WMS integration:** If we bring transfers into FactoryFlow:
-- Create/approve transfer requests
-- Execute transfers (updates SAP via POST StockTransfers)
-- Dashboard showing transfer volume and routes
-- Alert for pending transfers
+- **Backend `wms` app** — the sole persistence path (`storage/apiAdapter.ts`, BASE `/wms`, i.e. `/api/v1/wms/...`). Company scoping rides on the `Company-Code` header that `core/api/client.ts` attaches from the selected company.
+- **`barcode` module — bidirectional pallet bridge** (gated on an `OWN` warehouse whose `sapWarehouseCode` matches, and a bin whose code matches):
+  - **barcode → WMS** (`store/usePalletMirror.ts`): the barcode module's `PalletMovePage`, `PalletTransferPage`, and `BoxTransferPage` call `useWmsPalletMirror` / `useWmsPalletSync` after a move, so a pallet moved in the barcode app appears on the WMS map/reports. `syncExternalPalletPlacement` relocates/creates; `reconcileExternalPallet` also reconciles box/qty; `removeExternalPallet` unplaces a pallet that left WMS-managed space.
+  - **WMS → barcode** (`barcode/hooks/useSyncPalletToBarcode.ts`, called from `WmsTransferPage`): a whole-pallet WMS move is pushed to `barcodeApi.movePallet` so both datasets agree. **Best-effort** — failures are swallowed (the WMS move already succeeded).
+- **Scanning** — `WmsScanButton` wraps the barcode module's `ScanSearchButton` (camera + manual entry, `expectedType="ANY"`, returns the raw code). Handheld scanners type into the focused input and submit on Enter.
+- **No direct SAP posting** from this module (unlike the older `warehouse`/SAP "WMS"). SAP is reached only indirectly, via the barcode bridge above.
+- **Host app** — routes/nav are contributed via `module.config.tsx` (`wmsModuleConfig`); the module is otherwise self-contained.
 
 ---
 
-### 2.6 WMS → DASHBOARDS (Analytics)
+## Real-world edge cases
 
-**Already built:**
+Each: **trigger → current behaviour → operator-visible symptom → risk/gap.**
 
-| Dashboard | Backend | What it reads |
-|-----------|---------|--------------|
-| WMS Dashboard | `warehouse/views_wms.py` | OITW, OITM, OITB, OINM, OWHS |
-| Stock Benchmark | `stock_dashboard/` | OITW, OITM |
-| Inventory Age | `inventory_age/` | OITW, OINM |
-| Non-Moving RM | `non_moving_rm/` | OITW, OINM |
+- **Scanner offline / network down mid-action.**
+  Trigger: no offline queue exists; a scan-confirm fires an API call that fails.
+  Behaviour: the mutation throws; `notifyFail` shows a red toast ("Receive failed." / "Move failed." / "Ship failed."); nothing is persisted, and the cache stays truthful (it only updates on a successful reload).
+  Symptom: the action visibly fails; the operator must retry when back online.
+  Risk/gap: **all work requires connectivity** — there is no store-and-forward.
 
-**New dashboards WMS should provide:**
+- **Duplicate / re-scanned pallet plate.**
+  Trigger: Receive a plate that already exists.
+  Behaviour: `receiveStock` always creates a **new** pallet row (no plate-uniqueness check), even though the scan can pre-fill the item from the existing one.
+  Symptom: two pallets with the same plate; outbound/transfer resolves whichever is found first (`p.status !== 'SHIPPED'`), leaving a phantom.
+  Risk/gap: no client- or server-side plate uniqueness.
 
-| View | Data Source | Why |
-|------|-----------|-----|
-| **Expiry tracker** | OBTN/OBTQ | 10 items expired NOW, 3 more within 90 days — critical for food products |
-| **Transfer activity** | OWTR/WTR1 | 32K movements in 90 days, need visibility |
-| **Warehouse-to-warehouse flow** | OINM (TransType=67) | Visualize the material flow routes |
-| **Open order backlog** | ORDR/RDR1 | 2,466 open orders, 4.7M pending qty |
-| **Pick completion rate** | OPKL/PKL1 | Track picker efficiency |
+- **Partial multi-write failure (e.g. ship).**
+  Trigger: `shipPallet`/`receiveStock`/`moveInventory` issue several API calls; a later one fails.
+  Behaviour: no cross-request transaction — the earlier writes stick.
+  Symptom: stock on the map with **"no pallet"**, a `SHIPPED` pallet whose stock lingers, or a movement with no matching stock change.
+  Risk/gap: repair only via **Settings → Reconcile pallet & stock links** (`reconcilePalletLinks`: follows stock to relocate pallets, re-links unambiguous stranded pallets) or the Admin console. `palletsLocatedAt` also papers over drift by showing a pallet wherever its stock actually is.
 
----
+- **Barcode move that never appears in WMS.**
+  Trigger: a pallet is moved in the barcode module into a warehouse whose WMS record has no matching `sapWarehouseCode`, or into a bin code that doesn't match any WMS location.
+  Behaviour: `useWmsPalletMirror` silently returns `{mirrored:false, reason:'not-own-warehouse'|'location-not-found'}` — a deliberate no-op.
+  Symptom: the pallet exists in the barcode app but is missing from the WMS map.
+  Risk/gap: the mapping is silent; a mis-typed `sapWarehouseCode` or bin code just drops the mirror.
 
-### 2.7 WMS → NOTIFICATIONS
+- **Stale data across devices / users.**
+  Trigger: operator A receives into a bin; operator B is on another device.
+  Behaviour: the store only reloads collections **it** mutated — there is no push/poll/websocket.
+  Symptom: B still sees the bin empty until they re-navigate/reload; capacity is validated against B's stale view.
+  Risk/gap: possible double-putaway; the map lags reality between refreshes.
 
-**Existing types relevant to WMS:**
+- **Master flag flipped off mid-shift.**
+  Trigger: an admin disables the module in Settings.
+  Behaviour: `useWmsEnabled` flips false everywhere; pages swap to `WmsDisabledNotice`; `validateMove` returns `feature_off`.
+  Symptom: operators mid-task are blocked instantly, app-wide.
+  Risk/gap: no warning/confirmation about the blast radius.
 
-| Type | Already Exists |
-|------|---------------|
-| `GRPO_POSTED` | Yes |
-| `GRPO_FAILED` | Yes |
-| `STOCK_ALERT` | Yes |
+- **In-app role switch is global, and not real security.**
+  Trigger: someone flips the Overview role switch to Operator (or Admin).
+  Behaviour: `role` is stored in the **shared** `settings` singleton, so it changes for **everyone in the company**, and it does **not** alter Django permissions.
+  Symptom: designer/settings/approvals disappear from the nav for all users until switched back; a user without the perms still can't actually write regardless of the switch.
+  Risk/gap: it's a convenience toggle masquerading as a role; easy to misread as per-user security.
 
-**New types WMS should add:**
+- **Capacity never configured.**
+  Trigger: bins keep the default `maxPallets: 1`, no unit/weight/volume max.
+  Behaviour: capacity checks skip null dimensions; occupancy shows 0% until a pallet lands.
+  Symptom: loose stock can pile into a bin the map still paints "empty-ish."
+  Risk/gap: occupancy colour can under-represent real fill.
 
-| Type | Trigger | Recipient |
-|------|---------|-----------|
-| `BOM_REQUEST_CREATED` | Production requests materials | Warehouse manager |
-| `BOM_REQUEST_APPROVED` | WMS approves | Production team |
-| `BOM_REQUEST_REJECTED` | WMS rejects | Production team |
-| `MATERIAL_ISSUED` | Goods issue posted | Production + warehouse |
-| `FG_RECEIPT_PENDING` | Production complete, FG waiting | Warehouse operator |
-| `FG_RECEIPT_POSTED` | FG posted to SAP | Production + warehouse |
-| `EXPIRY_ALERT` | Batch within 30/90 days of expiry | Warehouse + QC |
-| `STOCK_TRANSFER_CREATED` | Transfer initiated | Both warehouse teams |
-
----
-
-## 3. Shared Data Entities Across Modules
-
-| Entity | Owner | Used By | How WMS Uses It |
-|--------|-------|---------|-----------------|
-| `VehicleEntry` | Gate | QC, GRPO, WMS | Trace inbound receiving |
-| `POItemReceipt` | Gate | QC, GRPO, WMS | Source qty, item details |
-| `MaterialArrivalSlip` | QC | GRPO, WMS | Batch/lot info |
-| `RawMaterialInspection` | QC | GRPO, WMS | Accept/reject → stock routing |
-| `GRPOPosting` | GRPO | WMS | Trigger for receiving log |
-| `ProductionRun` | Production | WMS | BOM requests + FG receipts |
-| `BOMRequest` | WMS | Production | Approval status gates production |
-| `FinishedGoodsReceipt` | WMS | Production | Closes production loop |
-| `WasteLog` | Production | WMS | Store approval step |
-| `Notification` | Notifications | All | WMS publishes + subscribes |
+- **Company switch without cache reset.**
+  Trigger: user switches company (`switchCompany`).
+  Behaviour: `wmsStore` is a module singleton; `wmsStore.reset()` is only called in tests, not on company change.
+  Symptom (potential): unless the switch remounts/reloads the app, previously-loaded warehouses/stock from the old company can linger in the cache.
+  Risk/gap: confirm the app forces a reload on company switch; otherwise wire `wmsStore.reset()` into it.
 
 ---
 
-## 4. End-to-End Flows
+## Failure modes / what can break
 
-### Flow A: Raw Material Inbound
-
-```
-Step  Module       Action                             WMS Touch
-────  ──────       ──────                             ─────────
- 1    GATE         Vehicle arrives, PO receipts       —
- 2    GATE         Security check, weighment          —
- 3    QC           Inspection + approval chain         —
- 4    GRPO         GRPO posted to SAP                 ► Receiving logged, stock in BH-GR
- 5    WMS          Transfer BH-GR → BH-PC/BH-PM      Stock in correct warehouse
- 6    DASHBOARDS   Stock levels updated                KPIs refreshed
-```
-
-### Flow B: Material Issue to Production
-
-```
-Step  Module       Action                             WMS Touch
-────  ──────       ──────                             ─────────
- 1    PRODUCTION   Run created, BOM request           ► Request in WMS queue
- 2    WMS          Check stock, approve per line       Stock availability check
- 3    WMS          Issue to SAP (InventoryGenExits)   Stock out of BH-PC/BH-BS
- 4    PRODUCTION   Materials on production floor       Run starts
- 5    PRODUCTION   Track consumption (MaterialUsage)  WMS reconciles issued vs used
-```
-
-### Flow C: FG Receipt from Production
-
-```
-Step  Module       Action                             WMS Touch
-────  ──────       ──────                             ─────────
- 1    PRODUCTION   Run completed                      —
- 2    QC           Final QC PASS                      —
- 3    WMS          FG receipt verified + SAP posted    ► Stock in BH-PF
- 4    WMS          Transfer BH-PF → GP-FG / BH-EC    FG in distribution warehouse
- 5    PRODUCTION   sap_receipt_doc_entry set           Loop closed
-```
-
-### Flow D: Outbound / Dispatch (if built)
-
-```
-Step  Module       Action                             WMS Touch
-────  ──────       ──────                             ─────────
- 1    SAP          Sales order created                 —
- 2    WMS          Pick list from open SO              ► Pick assigned
- 3    WMS          Picker confirms picks               Qty confirmed
- 4    WMS          Delivery note posted to SAP         Stock out of GP-FG / BH-FG
- 5    WMS          Shipment tracking                  Vehicle, tracking no.
-```
-
-### Flow E: Internal Stock Transfers
-
-```
-Step  Module       Action                             WMS Touch
-────  ──────       ──────                             ─────────
- 1    WMS          Transfer request created            From-WH, To-WH, items
- 2    WMS          Approved (if needed)                Manager approves
- 3    WMS          Transfer posted to SAP              Stock moved in OITW
- 4    DASHBOARDS   Movement in OINM                    Movement history updated
-```
+- **"Warehouse Ops is blank / won't load."** Usually the `Company-Code` header is missing/invalid (backend `403`), or the user has no `wms.*` permission (module hidden). Check group membership and company selection first.
+- **"I can see stock but Save/Ship/Receive fails."** The user is an operator hitting a structural write, or lacks the operational perm → backend `403`, surfaced as a red toast.
+- **Orphaned pallets / "stock here but no pallet."** A partial multi-write. Fix with Settings → *Reconcile pallet & stock links*.
+- **Map/occupancy looks wrong or lags.** Stale cross-device cache, or capacity not configured (see edge cases). A hard refresh reloads from the server.
+- **Barcode and WMS disagree on a pallet.** The best-effort `WMS → barcode` push failed (swallowed), or the `barcode → WMS` mirror no-oped on a mapping miss.
+- **No warehouses yet.** Receive/Overview show "Design a warehouse first" — the operator can't do anything until an admin designs one and the master flag is on.
+- **Label won't print correctly.** Labels target a TSC DA310 at 100×40 mm; wrong printer/driver = misfit output.
 
 ---
 
-## 5. Summary: WMS Feature ↔ Module ↔ SAP
+## Improvement opportunities & known gaps
 
-| WMS Feature | Connects To | SAP Object | SAP Volume | Status |
-|------------|------------|-----------|-----------|--------|
-| **BOM Request Approval** | Production | OITW (stock check) | — | Built |
-| **Material Issue** | Production | InventoryGenExits (OIGE) | 6,526 docs | Built |
-| **FG Receipt** | Production | InventoryGenEntries (OIGN) | 6,647 docs | Built |
-| **Receiving Log** | Gate/GRPO | OPDN (GRPO) | — | Partially built |
-| **Stock Dashboard** | Dashboards | OITW, OITM, OINM | — | Built |
-| **Waste Store Approval** | Production | WasteLog model | — | Built |
-| **Stock Transfers** | Internal | StockTransfers (OWTR) | 9,675 docs | Not in app |
-| **Transfer Requests** | Internal | StockTransferRequests (OWTQ) | 1,114 docs | Not in app |
-| **Batch/Expiry Tracking** | QC + Dashboards | OBTN/OBTQ | 14,819 batches | Not in app |
-| **Picking** | Outbound | PickLists (OPKL) | 3,584 lists | Not in app |
-| **Delivery/Shipping** | Outbound | DeliveryNotes (ODLN) | 2,717 docs | Not in app |
-| **Sales Order Backlog** | Outbound | ORDR | 2,466 open | Not in app |
-| **Customer Returns** | Returns | Returns (ORDN) | 1,816 docs | Not in app |
-| **Purchase Returns** | Returns | PurchaseReturns (ORPD) | 78 docs | Not in app |
-| **Rejection Routing** | QC | — (app-level) | — | Not in app |
-| **QC Hold/Release** | QC | — (app-level) | — | Not in app |
-| **Reorder Alerts** | Notifications | OITW min/max levels | — | Partially (STOCK_ALERT) |
+- **No offline support.** A store-and-forward queue would make scan flows resilient on flaky warehouse Wi-Fi.
+- **No live sync between devices.** Polling/websockets (or at least a manual "refresh") would cut stale-cache putaway errors.
+- **Composite operations aren't atomic** (client-side multi-call). A transactional backend endpoint would kill the partial-failure class.
+- **Business-key uniqueness** (license plate, location code) is unchecked on both tiers.
+- **The `role` toggle is global and non-authoritative** — consider per-user role, or drop it in favour of Django perms only.
+- **Silent cross-module mirror** — surface a toast when a barcode move can't be mirrored (mapping miss) so it isn't lost.
+- **Stale module-local README** (`src/modules/wms/README.md`) still describes the removed IndexedDB/localStorage adapters and "Step 1 only" — it should be updated or pointed at this doc.
 
-### App-Only Features (not in SAP, built in our Django models + PostgreSQL)
+---
 
-| Feature | SAP Status | Our Approach |
-|---------|-----------|-------------|
-| **Bin locations** | BinActivat='N' on all 46 warehouses, 0 OBIN records | Django models — physical location layer on top of SAP warehouse-level stock |
-| **Putaway tasks** | No SAP putaway | Django models — our logic assigns bins on GRPO/FG receipt |
-| **Inventory counting** | 0 OINC records | Django models — cycle counts in app, material variances posted to SAP via existing GR/GI endpoints |
-| **Serial tracking** | 0 items configured, 0 OSRN records | Django models (future) |
+## Permissions & roles (nav gating)
 
-SAP's `OITW.OnHand` remains the financial source of truth. Our app adds the physical "where in the warehouse" detail. See [sap-wms-integration-points.md](../sap-wms-integration-points.md) for full SAP vs APP breakdown.
+Defined in `src/config/permissions/wms.permissions.ts`, applied in `module.config.tsx`.
+
+- **Module visibility:** the sidebar entry keys off `modulePrefix: 'wms'` — a user holding **no** `wms.*` permission never sees Warehouse Ops at all.
+- **`WMS_ACCESS`** (operator + admin) gates the operator pages: Overview, Map, Receive, Transfer, Pick, Outbound, Cycle Count, Reports, Labels. It is an **any-of** list that includes the operational write perms (`add/change/delete_pallet|inventory`, `add_movement`) **and** the `view_*` perms — so a `WMS Operator` (who has the write perms but **no `view_*`**) still passes.
+- **`WMS_ADMIN_ACCESS`** (admin only) gates the structural pages: Warehouses, Warehouse Editor, Designer, Admin, Settings. Backed by `change/add_warehouse`, `change_template`, `change/add_settings` — a `WMS Operator` fails these.
+- **In-app role** (`settings.role`, `useWmsRole`) additionally hides Designer/Settings/approvals in the UI and gates who can approve a large outbound discrepancy (`isAdmin`). Remember it is **shared, global, and not a security boundary** (see edge cases).
+
+| Capability | No `wms.*` | `WMS Operator` | `WMS Admin` |
+|---|---|---|---|
+| See the module in the sidebar | ❌ | ✅ | ✅ |
+| Receive / Transfer / Pick / Outbound / Count / Reports / Map / Labels | ❌ | ✅ | ✅ |
+| Warehouses / Designer / Editor / Admin / Settings | ❌ | ❌ (nav hidden; API `403`) | ✅ |
+| Approve a large outbound discrepancy | — | ❌ (needs in-app ADMIN role) | ✅ |
+
+---
+
+## Developer file map
+
+**Frontend (`C:/Users/gurpa/dev/FactoryFlow/src/modules/wms/`):**
+- `module.config.tsx` — routes (`/warehouse-ops/*`), nav, permission gates.
+- `types/wms.types.ts` — all record types + `DEFAULT_WMS_SETTINGS`.
+- `storage/` — `adapter.types.ts` (contract + `WmsCollectionMap`), `apiAdapter.ts` (REST client), `createAdapter.ts` (the single active-adapter chooser — API only).
+- `store/` — `wmsStore.ts` (cache + composite ops: `receiveStock`, `moveInventory`, `movePallet`, `pickInventory`, `shipPallet`, `postCycleCount`, `reconcilePalletLinks`, `clearStockData`, warehouse bundle diff/save, external-pallet bridges), `useWmsStore.ts` (`useWmsCollection`), `useWmsSettings.ts` (`useWmsEnabled`/`useWmsRole`), `useWarehouses.ts`, `usePalletMirror.ts` (barcode→WMS bridge).
+- `services/` — `layout.ts` (grid gen), `factories.ts` (record builders), `validation.ts` (`validateMove`), `occupancy.ts`, `putaway.ts` (`suggestPutaway`), `picking.ts` (`planPicks`), `emptyLocations.ts`, `areas.ts`, `reports.ts`, `warehouseIO.ts`, `csv.ts`, `templates.ts`.
+- `pages/` — `WmsOverviewPage`, `WmsWarehousesPage`, `WmsWarehouseEditorPage`, `WmsDesignerPage`, `WmsMapPage`, `WmsReceivePage`, `WmsTransferPage`, `WmsPickPage`, `WmsOutboundPage`, `WmsCountPage`, `WmsReportsPage`, `WmsLabelsPage`, `WmsAdminPage`, `WmsSettingsPage`.
+- `components/` — `WmsScanButton`, `WmsEnabledGate`, `WmsDisabledNotice`, `PalletAuditDialog`, `WmsBarcode`, `WmsPrintLabel(Button)`, `WarehouseMapGrid`, `MapLegend`, `LocationDetailPanel`, `LocationPropertiesPanel`, area/zone/purpose dialogs.
+- `src/config/permissions/wms.permissions.ts` — `WMS_ACCESS`, `WMS_ADMIN_ACCESS`, `WMS_MODULE_PREFIX`, `WMS_PERMISSIONS`.
+- Cross-module: `src/modules/barcode/hooks/useSyncPalletToBarcode.ts`, `src/modules/barcode/pages/{PalletMovePage,PalletTransferPage,BoxTransferPage}.tsx`.
+- Tests: `src/modules/wms/__tests__/*` (store ops, validation, putaway, picking, occupancy, external sync, warehouse-editor race + real-backend e2e).
+
+**Backend (`C:/Users/gurpa/dev/factory_app/wms/`):** `models.py`, `views.py`, `permissions.py`, `urls.py`, `admin.py` — see the backend doc.
+
+---
+
+## Related docs
+
+- **Backend companion:** [`factory_app/wms/docs/README.md`](../../../factory_app/wms/docs/README.md) — the JSON persistence contract, API surface, company scoping, permission rules, and server-side failure modes.
+- **Stale / superseded:** `src/modules/wms/README.md` (module-local, "Step 1", describes removed local adapters) — do not trust its storage section.
+- **A different "WMS" (SAP analytics):** `src/docs/WMS_ARCHITECTURE.md`, `src/docs/WMS_API_REFERENCE.md`, and the `warehouse` module — SAP OITW/OITM dashboards, BOM requests, FG receipts. Separate subsystem, same acronym.

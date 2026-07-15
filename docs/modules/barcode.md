@@ -1,607 +1,218 @@
-# Barcode Module — Requirements & Design
+# Barcode & Labels — Frontend (`src/modules/barcode`)
 
-> Full-fledged barcode system for FactoryFlow. Built in parallel with WMS.
-> Every WMS operation (counting, transfers, picking, putaway) depends on this being accurate.
-> Date: 2026-04-18
-
----
-
-## Why This Exists
-
-Without barcoding, every WMS operation is manual data entry — prone to typos, wrong items, wrong quantities. Counting is the most critical: if you can't trust what's scanned, you can't trust the count. This module is the **reliability layer** underneath the entire WMS.
+> Audience: developers and technical managers. This documents the **React module
+> as it is today**. (An earlier version of this file was a 2026-04 requirements
+> brief describing bin foreign keys and SAP stock-transfer posting — both have
+> since diverged from the code. Trust this file.)
+>
+> Backend companion: [`factory_app/barcode/docs/README.md`](../../../factory_app/barcode/docs/README.md)
 
 ---
 
-## 1. Barcode Hierarchy
+## Overview — what it does & who uses it
 
-Jivo's physical packaging follows this hierarchy:
+This module is the operator-facing UI for everything in the backend `barcode`
+app: generating and printing box/pallet labels, moving/splitting/clearing
+pallets, dismantling and repacking, scanning, **scanner-first dispatch** against
+an SAP bill, intercompany transfers, pallet verification, and reports.
 
-```
-Item (SAP: OITM.ItemCode)
-  └── Batch (SAP: OBTN.DistNumber — e.g., "L1001732 042617 01")
-       └── Pallet (our app — collection of boxes, labeled with pallet barcode)
-            └── Box/Carton (our app — individual unit, labeled with box barcode)
-```
+It is a standard FactoryFlow feature module: routes and sidebar entries are
+declared in `module.config.tsx`, data access goes through `api/barcode.api.ts`
+(thin axios wrappers) and `api/barcode.queries.ts` (TanStack Query hooks), and
+every route is **permission-gated**.
 
-### What Gets a Barcode
-
-| Entity | Barcode Type | When Generated | Who Generates | Contains |
-|--------|-------------|---------------|---------------|----------|
-| **Box/Carton** | 1D Barcode or QR | During production (inline) | Barcode operator | Item code, batch, box sequence, mfg date, expiry |
-| **Pallet** | 1D Barcode or QR | When pallet is assembled (production floor) | Barcode operator | Pallet ID, item code, batch, box count, total qty |
-| **Bin Location** | 1D Barcode (fixed) | When bin is created in app | Admin/warehouse setup | Warehouse code, zone, bin code |
-| **Warehouse** | 1D Barcode (fixed) | One-time setup | Admin | Warehouse code |
-
-### Barcode Format Options
-
-| Format | Use Case | Pros | Cons |
-|--------|----------|------|------|
-| **Code 128** | Box/pallet/bin labels | Universal, compact, all scanners support | Limited data capacity |
-| **QR Code** | Box/pallet labels | More data (batch, expiry, qty), smartphone scannable | Slightly larger print area |
-| **GS1-128 (EAN-128)** | Industry standard for logistics | Structured data (GTIN, batch, expiry), supply chain compatible | More complex to generate |
-| **Interleaved 2 of 5** | Simple numeric sequences | Very compact | Numeric only |
-
-**Recommendation:** QR Code for boxes and pallets (encodes item + batch + expiry + qty in one scan), Code 128 for bin/warehouse labels (simple location scan).
+Who uses which screen:
+- **Barcode operators** — Pallet QR Print, Reprint, Print History, Scan.
+- **Dispatch/warehouse operators** — Dispatch cockpit, Verify Pallet.
+- **Barcode team** (`barcode.view_pallet`) — Verify Pallet resolution, pallet reconcile.
+- **Transfer operators** — Intercompany Transfer, Traceability.
+- **Managers** — Dispatch Reports, dashboards.
 
 ---
 
-## 2. Core Features
+## Key concepts & entities (frontend view)
 
-### 2.1 Label Generation & Printing
-
-#### Box Label
-Generated inline during production. One label per carton.
-
-**Data encoded:**
-```
-{
-  "type": "BOX",
-  "item_code": "FG0000047",
-  "batch": "L4000019 042617 01",
-  "box_seq": 1,
-  "qty": 20,
-  "uom": "PCS",
-  "mfg_date": "2026-04-17",
-  "exp_date": "2028-04-16",
-  "line": "L4",
-  "run_id": 1234
-}
-```
-
-**Printed label layout:**
-```
-┌────────────────────────────────────┐
-│  JIVO WELLNESS                     │
-│  MUSTARD PAKKI GHANI 1L 20 PCS    │
-│  Item: FG0000047                   │
-│  Batch: L4000019 042617 01         │
-│  Qty: 20 PCS                       │
-│  MFG: 17-04-2026  EXP: 16-04-2028 │
-│                                    │
-│  ┌──────────────┐                  │
-│  │  [QR CODE]   │   Box: 0001     │
-│  │              │   Line: L4       │
-│  └──────────────┘                  │
-└────────────────────────────────────┘
-```
-
-#### Pallet Label
-Generated when boxes are stacked onto a pallet.
-
-**Data encoded:**
-```
-{
-  "type": "PALLET",
-  "pallet_id": "PLT-20260417-L4-001",
-  "item_code": "FG0000047",
-  "batch": "L4000019 042617 01",
-  "box_count": 50,
-  "total_qty": 1000,
-  "uom": "PCS",
-  "mfg_date": "2026-04-17",
-  "exp_date": "2028-04-16",
-  "line": "L4"
-}
-```
-
-**Printed label layout (larger, visible from distance):**
-```
-┌──────────────────────────────────────────┐
-│  ████████  PALLET  ████████              │
-│  MUSTARD PAKKI GHANI 1L 20 PCS          │
-│  Item: FG0000047                         │
-│  Batch: L4000019 042617 01               │
-│  Boxes: 50 | Total: 1,000 PCS           │
-│  MFG: 17-04-2026  EXP: 16-04-2028       │
-│                                          │
-│  ┌──────────────────┐                    │
-│  │                  │                    │
-│  │    [QR CODE]     │  PLT-20260417-     │
-│  │                  │  L4-001            │
-│  │                  │                    │
-│  └──────────────────┘                    │
-└──────────────────────────────────────────┘
-```
-
-#### Bin Location Label (Fixed)
-Printed once, attached to physical bin/shelf/rack.
-
-```
-┌──────────────────────┐
-│  BH-PC / A01-R03-S02 │
-│  ┌────────────┐      │
-│  │ [BARCODE]  │      │
-│  └────────────┘      │
-│  Bhakharpur Prod     │
-│  Aisle A, Rack 3     │
-└──────────────────────┘
-```
-
-### 2.2 Reprinting
-
-Labels get damaged, fall off, or are illegible. Reprinting must be:
-- **Audited** — who reprinted, when, why
-- **Same data** — reprint with identical barcode, not a new one
-- **Searchable** — find the original label by box sequence, pallet ID, item code, batch, or date range
-
-| Reprint Trigger | Flow |
-|----------------|------|
-| Damaged label | Operator searches by pallet/box ID → selects → reprints → system logs reprint |
-| Label fell off (unknown box) | Operator scans a sibling box on same pallet → system shows pallet contents → identifies missing label → reprints |
-| Wrong data printed | Supervisor voids old label → creates corrected label → system tracks correction |
-
-### 2.3 Pallet Operations
-
-#### Create Pallet
-```
-Operator on production floor:
-  1. Scan item barcode (or select item + batch)
-  2. System generates pallet ID (auto-incrementing per line per day)
-  3. Scan/enter box count
-  4. Print pallet label
-  5. Pallet registered in system with: item, batch, box count, qty, line, timestamp
-```
-
-#### Move Pallet
-Transfer a pallet from one warehouse/location to another.
-```
-Operator:
-  1. Scan pallet barcode
-  2. System shows pallet details (item, batch, qty, current location)
-  3. Scan destination warehouse/bin barcode (or select from list)
-  4. Confirm move
-  5. System updates pallet location
-  6. If SAP-synced: creates stock transfer in SAP (OWTR)
-```
-
-#### Pallet Transfer (Between Godowns)
-Same as move but specifically for the production → godown flow:
-```
-BH-PF (Production Finished)
-  ├──► GP-FG (Gupta Godown) — General Transport
-  ├──► BH-EC (Basement) — E-Commerce
-  └──► BH-FG (Finished Basement) — Other
-```
-
-The transfer team scans pallets at source, scans at destination. System creates SAP stock transfer.
-
-#### Clear Pallet
-Remove all items from a pallet (pallet is now empty and can be reused).
-```
-Operator:
-  1. Scan pallet barcode
-  2. System shows current contents
-  3. Confirm clear — all boxes disassociated from pallet
-  4. Pallet status → CLEARED
-  5. Boxes retain their individual barcodes (they're just not on this pallet anymore)
-```
-
-#### Split Pallet
-Break a pallet into two (e.g., half goes to GP-FG, half to BH-EC).
-```
-Operator:
-  1. Scan pallet barcode
-  2. Select boxes to split off (by count or specific boxes)
-  3. System creates new pallet with split boxes
-  4. Print new pallet label
-  5. Original pallet qty updated
-```
-
-### 2.4 Box Operations
-
-#### Box Transfer
-Move individual boxes between locations (not full pallet).
-```
-Operator:
-  1. Scan box barcode(s) — can scan multiple
-  2. Scan destination warehouse/bin
-  3. Confirm transfer
-  4. If boxes were on a pallet, pallet qty auto-decremented
-```
-
-#### Box Lookup
-Scan any box → see full history:
-- Item, batch, qty, mfg/exp dates
-- Production run and line it came from
-- Which pallet it's on (or unpalletized)
-- Current warehouse/bin location
-- All movements (when, from, to, by whom)
-
-### 2.5 Scanning Operations (How Barcode Feeds Other Modules)
-
-| WMS Operation | Scan Workflow | Barcode Role |
-|--------------|---------------|-------------|
-| **Receiving (GRPO)** | Scan item at gate → qty confirmed → GRPO posted | Verify item code matches PO line |
-| **Putaway** | Scan item/pallet → scan destination bin → placed | Confirms item + location pairing |
-| **Stock Transfer** | Scan pallet at source → scan at destination → transfer logged | Proves physical movement happened |
-| **Picking** | Scan item from pick list → scan picked qty → confirm | Validates right item picked |
-| **Counting** | Scan every item/box in a zone → system tallies → compare to expected | **Core accuracy mechanism** — scan, don't type |
-| **Shipping** | Scan items/pallets loaded onto truck → delivery note confirmed | Validates what was actually shipped |
-| **Returns** | Scan returned item → system looks up original delivery → return logged | Traceability |
-
-### 2.6 Counting (Barcode-Driven)
-
-This is the most barcode-dependent operation. The flow:
-
-```
-Cycle Count Scheduled (by warehouse, zone, or item group)
-  │
-  ├── Generate count sheet (expected items + qty from SAP OITW + our bin stock)
-  │
-  ├── Operator starts count on mobile device
-  │   │
-  │   ├── SCAN each box/pallet in the zone
-  │   │   ├── System auto-identifies: item, batch, qty
-  │   │   ├── Running total displayed
-  │   │   └── Duplicate scan detection (same box scanned twice → warning)
-  │   │
-  │   ├── Unscanned items → flagged as "expected but not found"
-  │   ├── Unexpected scans → flagged as "found but not expected"
-  │   │
-  │   └── Submit count
-  │
-  ├── Count Review
-  │   ├── Perfect match → auto-approve
-  │   ├── Variance within tolerance → auto-approve, log variance
-  │   └── Material variance → manager review required
-  │       ├── Approve → adjust bin stock, optionally post GR/GI to SAP
-  │       └── Recount → send back to operator
-  │
-  └── Audit Trail: who counted, when, what was scanned, variances
-```
-
-**Why scanning matters for counting:**
-- Typing "FG0000047" vs "FG0000074" → one digit transposition, wrong item counted
-- Scanning a QR code → guaranteed correct item + batch + qty
-- Duplicate detection → impossible with manual entry
-- Speed → scan 50 boxes in 2 minutes vs typing 50 entries
+- Types live in `types/barcode.types.ts` (re-exported from `types/index.ts`); runtime validation schemas in `schemas/barcode.schemas.ts`.
+- List endpoints return **either** a bare array **or** a `{ results, count, page, … }` page. `api/barcode.api.ts` normalizes both via `unwrapList` / `normalizePage`, and most hooks expose both a plain (`useBoxes`) and paged (`useBoxesPage`) variant.
+- A **dispatch session** is the central object on the dispatch screen: it carries `lines`, `scanned_units`, progress totals, `active_line`, and boolean helpers `can_scan` / `can_dispatch` computed by the backend serializer.
+- **Scanning** is dual-mode everywhere: a focused text `Input` (handheld/keyboard-wedge scanners type into it) **and** an optional camera scanner (`hooks/useScanner.ts`, html5-qrcode).
 
 ---
 
-## 3. Data Models (Django — App-Only)
+## End-to-end flows (user journeys)
 
-All barcode data lives in our PostgreSQL, not SAP.
+### 1. Pallet QR Print — `pages/LabelGeneratePage.tsx` (route `/barcode/generate`)
+1. Operator selects an **empty pallet** (`SearchableSelect` filtered to `ACTIVE`/`CLEARED` with `box_count === 0`); a `ScanSearchButton` lets them scan the pallet instead of typing.
+2. Selects a finished-good **item from SAP** (`useOitmItems`, debounced search of SAP `OITM`), then fills batch, qty-per-label, items-per-pallet (box count), mfg/exp dates, warehouse, production line, and optional gross/net weights.
+3. **Generate & print** (`handleGenerateAndPrint`) does three calls in sequence: `generateBoxes` → `addBoxesToPallet` → `printBulk` (2 pallet labels + one per box).
+4. Labels render off-screen (`BoxLabel` / `PalletLabel`) and print via `react-to-print` using a 100×40 mm thermal page style. The printer name + mode persist in `localStorage` (`hooks/usePrinterProfile.ts`, default **TSC DA310**).
 
-### Core Models
+### 2. Dispatch cockpit — `pages/BarcodeDispatchPage.tsx` (route `/barcode/dispatch`)
+This is the highest-traffic, most failure-sensitive screen.
+1. **Lookup** a bill number → `useLookupDispatchBill` shows a read-only SAP bill summary (lines, qty, boxes, "Already dispatched" badge).
+2. **Start** → `useCreateDispatchSession` creates/resumes the session and selects it. The right rail shows the session, scanner dock, controls, and an Active/Done/Closed queue.
+3. **Scan** via the `ScannerDock` (keyboard input or camera). `handleScan` calls `useSubmitDispatchScan` with a fresh `request_id` (`crypto.randomUUID()`) for idempotency. Accepted → success toast with the backend's message; rejected → **warning** toast (not an error), and `BOX_ALREADY_SCANNED` scrolls to and amber-highlights the offending box row.
+4. **Active line focus / Line board** — when `require_sequential_item_scanning` is on you must clear the active line before the next (`isLineLocked` greys the rest); when off, the operator can click a line to target it (`selectedLineId`, sent as `line_id`).
+5. **Scanned Boxes** — each staged box shows original/available/required/dispatch/remaining qty; the operator can **Edit Qty** (`useUpdateDispatchScannedBoxQty`) or **Remove Box** (`useRemoveDispatchScannedBox`, behind a `window.confirm`).
+6. **Confirm Dispatch** (`useDispatchSessionDispatch`) → navigates to the summary (`/barcode/dispatch/summary/:sessionId`). Enabled only when `can_dispatch` and not closed.
+7. **Close / Cancel** — require a typed reason; hidden once the session is terminal.
+8. **Controls panel** toggles `DispatchSettings` live (partial dispatch, partial pallet, box-from-pallet, sequential scan, manual close, admin override).
 
-```
-Pallet
-  - id (UUID)
-  - pallet_id (string, unique — e.g., "PLT-20260417-L4-001")
-  - barcode_data (JSON — encoded in the QR)
-  - item_code (string — SAP item code)
-  - item_name (string)
-  - batch_number (string — SAP batch)
-  - box_count (int)
-  - total_qty (decimal)
-  - uom (string)
-  - mfg_date, exp_date (date)
-  - production_run (FK → ProductionRun, nullable)
-  - production_line (string)
-  - current_warehouse (string — SAP warehouse code)
-  - current_bin (FK → Bin, nullable)
-  - status: ACTIVE | CLEARED | SPLIT | VOID
-  - created_by, created_at
-  - company (FK)
+### 3. Verify Pallet (label-fell-off recovery) — `pages/PalletVerifyPage.tsx` + `components/verify/*`
+- `PalletVerifyPanel` scans a pallet's boxes and shows **matched / missing / foreign** counters against the backend reconcile (`useReconcilePallet`).
+- **Missing** boxes (label lost) can be **reprinted** in place (recover), when counts and item/batch/uom line up.
+- **Foreign** boxes are labelled by reason (on another pallet, unpalletized, dispatched, void, unknown).
+- The barcode team can **Apply** stock-healing (pull foreign on / drop missing off) via `useApplyPalletReconcile`; a non-team operator instead **Submits a ticket** (`useCreateVerifyRequest`, `pages/PalletVerifyNewPage.tsx`) that the team resolves (`/barcode/verify` list, `/barcode/verify/:requestId` detail → `pages/PalletVerifyRequestDetailPage.tsx`). `PalletVerifyDialog` is embedded in the dispatch scanner dock for in-flow recovery.
 
-Box
-  - id (UUID)
-  - box_barcode (string, unique — e.g., "BOX-20260417-L4-0001")
-  - barcode_data (JSON)
-  - item_code, item_name, batch_number
-  - qty (decimal), uom
-  - mfg_date, exp_date
-  - pallet (FK → Pallet, nullable — null if unpalletized)
-  - production_run (FK → ProductionRun, nullable)
-  - production_line (string)
-  - current_warehouse (string)
-  - current_bin (FK → Bin, nullable)
-  - status: ACTIVE | VOID
-  - created_by, created_at
-  - company (FK)
+### 4. Pallet operations — Move / Godown Transfer / Split / Box Transfer / Dismantle / Repack
+Dedicated pages under `/barcode/move`, `/transfer`, `/split`, `/box-transfer`, `/dismantle`, `/repack`, `/loose`:
+- **Move Pallet** (`PalletMovePage`, `/move`) — single pallet to a new warehouse/bin; `hooks/useDestinationBins.ts` offers app-managed bins when the destination is an own warehouse. Calls `useMovePallet`.
+- **Godown Transfer** (`PalletTransferPage`, `/transfer`) — a **bulk pallet warehouse move** (e.g. BH-PF → GP-FG). Despite "Transfer" in the name it calls `useMovePallet` once per selected pallet — it is not a box/ownership transfer.
+- **Split** (`PalletSplitPage`) `useSplitPallet`, **Box Transfer** (`BoxTransferPage`) `useTransferBoxes`, **Dismantle** (`DismantlePage`) `useDismantlePallet`/`useDismantleBox`, **Repack** (`RepackPage`) `useRepack`. Loose stock created by dismantle is listed on `/barcode/loose` and consumed by Repack.
 
-LabelPrintLog
-  - id
-  - label_type: BOX | PALLET | BIN | WAREHOUSE
-  - reference_id (UUID — points to Box.id, Pallet.id, or Bin.id)
-  - reference_code (string — the barcode string)
-  - print_type: ORIGINAL | REPRINT
-  - reprint_reason (string, nullable)
-  - printed_by (FK → User)
-  - printed_at (datetime)
-  - printer_name (string, nullable)
-  - company (FK)
-
-PalletMovement
-  - id
-  - pallet (FK → Pallet)
-  - movement_type: CREATE | MOVE | TRANSFER | CLEAR | SPLIT | VOID
-  - from_warehouse (string, nullable)
-  - to_warehouse (string, nullable)
-  - from_bin (FK → Bin, nullable)
-  - to_bin (FK → Bin, nullable)
-  - sap_transfer_doc_entry (int, nullable — if stock transfer posted)
-  - quantity (decimal)
-  - performed_by (FK → User)
-  - performed_at (datetime)
-  - notes (string, nullable)
-  - company (FK)
-
-BoxMovement
-  - id
-  - box (FK → Box)
-  - movement_type: CREATE | MOVE | TRANSFER | PALLETIZE | DEPALLETIZE | VOID
-  - from_warehouse, to_warehouse (string, nullable)
-  - from_bin, to_bin (FK → Bin, nullable)
-  - from_pallet, to_pallet (FK → Pallet, nullable)
-  - performed_by (FK → User)
-  - performed_at (datetime)
-  - company (FK)
-
-ScanLog
-  - id
-  - scan_type: RECEIVE | PUTAWAY | PICK | COUNT | TRANSFER | SHIP | RETURN | LOOKUP
-  - barcode_raw (string — what was actually scanned)
-  - barcode_parsed (JSON — decoded data)
-  - entity_type: BOX | PALLET | BIN | ITEM | UNKNOWN
-  - entity_id (UUID, nullable)
-  - scan_result: SUCCESS | NOT_FOUND | DUPLICATE | ERROR
-  - context_ref_type (string, nullable — e.g., "count_session", "pick_list", "transfer")
-  - context_ref_id (int, nullable)
-  - scanned_by (FK → User)
-  - scanned_at (datetime)
-  - device_info (string, nullable)
-  - company (FK)
-```
+### 5. Intercompany Transfer & Traceability — `pages/IntercompanyTransferPage.tsx`, `IntercompanyTransferDetailPage.tsx`, `BarcodeTraceabilityPage.tsx`
+- Pick source + destination company and BOX/PALLET mode, scan barcodes (`useScanIntercompanyBarcode` validates each against the source), then confirm (`useCreateIntercompanyTransfer`). Transfers can be reversed (`useReverseIntercompanyTransfer`).
+- **Traceability** searches a barcode across companies (`useBarcodeTrace`) — the one intentionally **global** view, showing manufacturing company, current owner, dispatch status, and full audit history.
 
 ---
 
-## 4. Integration with Other Modules
+## Critical business rules & invariants (as enforced/echoed in the UI)
 
-### 4.1 Production → Barcode (Inline Labeling)
-
-```
-Production Module                    Barcode Module
-─────────────────                    ──────────────
-
-ProductionRun started
-  └── Barcode operator pre-prepares labels
-      (receives plan via group chat today → will be in-app)
-      │
-      ├── Generate box labels (batch of N)
-      │   └── Box records created in DB
-      │   └── Labels queued for printer
-      │
-      ├── As boxes come off line:
-      │   └── Label applied to each box (inline)
-      │
-      └── When pallet full:
-          └── Generate pallet label
-          └── Pallet record created, linked to box records
-          └── Pallet label printed and applied
-```
-
-**Key field:** `ProductionRun.id` → `Box.production_run`, `Pallet.production_run`
-
-### 4.2 Barcode → WMS (Every Operation)
-
-```
-Barcode scans feed into every WMS workflow:
-
-  RECEIVING:    Scan item → verify against PO → GRPO
-  PUTAWAY:      Scan pallet → scan bin → location assigned
-  TRANSFER:     Scan pallet at source → scan at destination → SAP transfer
-  PICKING:      Scan items against pick list → validate
-  COUNTING:     Scan all items in zone → compare to expected
-  SHIPPING:     Scan items onto truck → delivery note
-```
-
-### 4.3 Barcode → QC
-
-```
-QC needs to trace back to production:
-  Scan box → see batch, production run, line
-  Scan pallet → see all boxes, batch, run
-  
-If QC rejects a batch:
-  → All pallets/boxes with that batch flagged
-  → WMS quarantine triggered
-```
-
-### 4.4 Barcode → Dashboards
-
-New dashboard views powered by barcode data:
-- **Pallet tracker:** Where is every pallet right now
-- **Production labeling rate:** Labels printed vs production output
-- **Movement heatmap:** Which routes (warehouse pairs) have most pallet traffic
-- **Pallet age:** How long pallets have been sitting in a location
-- **Reprint frequency:** Flag items/lines with high reprint rates (packaging quality issue?)
+- **Idempotent dispatch scans.** Every scan sends a `request_id`; the camera scanner also debounces identical reads (`useScanner` debounce, **2000 ms** in the dispatch dock — the hook default is 1500 ms) so a lingering QR in frame doesn't double-fire.
+- **Scan gating.** `canSubmitDispatchScan` (`utils/dispatchValidation.ts`) blocks scanning when the session is closed/terminal or has no active line; the scanner input shows "Scanner locked".
+- **Dispatch enablement.** `canMarkDispatchComplete` requires a non-terminal status and the backend's `can_dispatch`; Close/Cancel require a typed reason.
+- **Empty-pallet rule for label print.** The pallet picker only offers `ACTIVE`/`CLEARED` pallets with zero boxes, mirroring the backend "create empty, attach later" rule.
+- **Client-side qty guards.** The Scanned-Boxes editor rejects qty `< 1` or `> total_box_qty` before calling the API (the backend re-validates).
 
 ---
 
-## 5. Hardware & Printing
+## Integrations & cross-module boundaries
 
-### Printer Options
-
-| Printer Type | Use Case | Protocol |
-|-------------|----------|----------|
-| **Zebra thermal printer** | Box/pallet labels on production floor | ZPL (Zebra Programming Language) over TCP/USB |
-| **Brother label printer** | Bin/location labels | ESC/P or Brother SDK |
-| **Any network printer** | Backup / office printing | PDF via browser print |
-
-### Scanner Options
-
-| Device | Use Case |
-|--------|----------|
-| **Handheld barcode scanner (Zebra/Honeywell)** | Production floor inline scanning, warehouse ops |
-| **Mobile phone camera** | Backup scanning, QC lookups, counting |
-| **Tablet + built-in camera** | Counting operations, dashboard on warehouse floor |
-
-### Printing Architecture
-
-```
-FactoryFlow App (browser/mobile)
-  │
-  ├── Generate label data (JSON)
-  │
-  ├── Option A: Browser Print (PDF)
-  │   └── Generate PDF with barcode image → browser print dialog → any printer
-  │
-  ├── Option B: Direct Print (ZPL)
-  │   └── Backend generates ZPL commands → sends to Zebra printer over network
-  │       └── Fastest, no dialog, production-floor friendly
-  │
-  └── Option C: Print Server
-      └── Backend queues print jobs → print server routes to correct printer
-          └── Supports multiple printers, floor-specific routing
-```
-
-**Recommendation:** Start with Option A (PDF/browser print) for simplicity. Add Option B (ZPL direct) for production floor printers where speed matters.
+- **SAP HANA (read only).** The UI reads SAP through the backend for: the dispatch **bill lookup** (`useLookupDispatchBill`), the Pallet-QR **item picker** (`useOitmItems` → `OITM`), and the **production-release** list (`useProductionReleaseOil`). Each surfaces a 503 toast when SAP is unavailable. The UI **never** claims to post to SAP — dispatch completion is app-only (see backend doc).
+- **Warehouse Ops (`wms`).** `hooks/useSyncPalletToBarcode.ts` is a **reverse write-bridge**: when a WMS pallet move lands in a warehouse that maps to a SAP code and the license plate matches a barcode `pallet_id`, it mirrors the move by calling `barcodeApi.movePallet` so both datasets agree. It lives in this module (it owns `barcodeApi`) but is imported by WMS pages; the import graph stays acyclic. Server-side, the pallet list/move endpoints also accept WMS operator perms so this bridge works without barcode permissions.
+- **Cross-company.** Intercompany Transfer moves ownership between companies; afterwards a box leaves the source company's (single-company) lists. **Traceability** is the deliberate global escape hatch to find it again.
+- **Shared platform.** All calls go through the core axios client (`@/core/api`), which injects auth + company context and centrally toasts common HTTP statuses; `utils/errors.ts` de-duplicates against that (below). Routing/permission gating comes from the app shell (`AppRoutes.tsx` → `ProtectedRoute`) reading `module.config.tsx`.
+- **Gate / vehicle-arrival boundary.** Barcode dispatch is keyed to an **SAP bill** and is independent of the gate/`VehicleArrival` lifecycle — this screen does not open/close truck arrivals; it only marks boxes/pallets dispatched in the barcode backend.
 
 ---
 
-## 6. API Endpoints
+## State, offline & scanning behaviour
 
-### Box & Pallet Management
-```
-POST   /api/v1/barcode/boxes/generate/          — Bulk generate box labels for a production run
-GET    /api/v1/barcode/boxes/                    — List boxes (filterable by item, batch, pallet, warehouse, date)
-GET    /api/v1/barcode/boxes/{id}/               — Box detail + full movement history
-POST   /api/v1/barcode/boxes/{id}/void/          — Void a box (damaged, lost)
-
-POST   /api/v1/barcode/pallets/create/           — Create pallet (link boxes)
-GET    /api/v1/barcode/pallets/                   — List pallets (filterable)
-GET    /api/v1/barcode/pallets/{id}/              — Pallet detail + boxes + movements
-POST   /api/v1/barcode/pallets/{id}/move/         — Move pallet to new warehouse/bin
-POST   /api/v1/barcode/pallets/{id}/clear/        — Clear pallet (disassociate boxes)
-POST   /api/v1/barcode/pallets/{id}/split/        — Split pallet into two
-POST   /api/v1/barcode/pallets/{id}/void/         — Void pallet
-POST   /api/v1/barcode/pallets/{id}/add-boxes/    — Add boxes to existing pallet
-POST   /api/v1/barcode/pallets/{id}/remove-boxes/  — Remove specific boxes from pallet
-```
-
-### Printing & Reprinting
-```
-POST   /api/v1/barcode/print/box/{id}/           — Print/reprint box label
-POST   /api/v1/barcode/print/pallet/{id}/        — Print/reprint pallet label
-POST   /api/v1/barcode/print/bin/{id}/           — Print bin location label
-POST   /api/v1/barcode/print/bulk/               — Bulk print (list of IDs + type)
-GET    /api/v1/barcode/print/history/             — Print/reprint audit log
-```
-
-### Scanning
-```
-POST   /api/v1/barcode/scan/                     — Process a scan (decode barcode, log, return entity details)
-POST   /api/v1/barcode/scan/batch/               — Process multiple scans (for counting sessions)
-GET    /api/v1/barcode/scan/history/              — Scan audit log
-```
-
-### Box/Pallet Transfers
-```
-POST   /api/v1/barcode/transfers/pallet/         — Transfer pallet(s) between warehouses
-POST   /api/v1/barcode/transfers/box/            — Transfer box(es) between warehouses/pallets
-GET    /api/v1/barcode/transfers/                 — Transfer history
-```
-
-### Lookup
-```
-GET    /api/v1/barcode/lookup/{barcode_string}/  — Scan any barcode → get full details regardless of type
-```
+- **Server state** is TanStack Query. Most mutations invalidate the whole `BARCODE_QUERY_KEYS.all` tree (simple, slightly broad). Dispatch mutations are surgical: scan/complete/close write the fresh session straight into the cache with `setQueryData` and invalidate the session's scan-log list.
+- **No live polling.** The dispatch session is **not** on a `refetchInterval` (confirmed: no `refetchInterval` anywhere in the module); it stays current because each scan/edit mutation returns the updated session and writes it into the cache. Two operators on the same bill will not see each other's scans until a refetch — a real multi-user caveat.
+- **No offline queue.** Scans POST directly to the API; there is no local buffering/retry. If the network drops mid-scan the mutation fails and the operator sees an error toast — they must re-scan when back online (idempotency via `request_id` makes an accidental double-submit safe).
+- **Read-only reconcile is not cache-invalidating** (`useReconcilePallet`) because the live verify scan loop fires it on every scan; only **applying** a reconcile (`useApplyPalletReconcile`) invalidates.
+- **Camera scanner** (`useScanner`) uses the rear camera (`facingMode: environment`), feature-detects torch/flashlight, and debounces duplicate decodes. Camera failures (permission denied, no device) surface as inline red text under the scanner, not a crash.
+- **Printer profile** persists in `localStorage` per browser; there is no server-side printer registry.
 
 ---
 
-## 7. Frontend Pages
+## What the operator sees when something fails
 
-```
-/barcode
-  ├── /barcode/dashboard              — Overview: today's labels, active pallets, recent scans
-  ├── /barcode/generate               — Generate box/pallet labels (select run, item, batch, qty)
-  ├── /barcode/pallets                — Pallet list (search, filter by warehouse/item/batch/status)
-  │   └── /barcode/pallets/{id}       — Pallet detail (boxes, location, movement history)
-  ├── /barcode/boxes                  — Box list (search, filter)
-  │   └── /barcode/boxes/{id}         — Box detail (pallet, location, history)
-  ├── /barcode/move                   — Move pallet/boxes (scan source → scan destination)
-  ├── /barcode/transfer               — Godown transfer (bulk pallet transfer between warehouses)
-  ├── /barcode/clear                  — Clear pallet (scan pallet → confirm clear)
-  ├── /barcode/split                  — Split pallet (scan pallet → select boxes → new pallet)
-  ├── /barcode/reprint                — Reprint labels (search → select → reprint with reason)
-  ├── /barcode/scan                   — General scan/lookup (scan anything → see details)
-  └── /barcode/print-history          — Print/reprint audit log
-```
+Error surfacing is centralized in `utils/errors.ts`:
+- The shared axios client already toasts common HTTP statuses (400/401/403/500/502/503/504). `toastBarcodeError` **avoids double-toasting** those and only shows a fallback message for other failures — so most backend rejections appear exactly once.
+- **Dispatch scan rejections** are shown as **warning** toasts using the backend's `reject_message`/`success_message` (`formatDispatchScanMessage`), because a rejected scan is a normal operational outcome, not an app error. (The scan endpoint returns HTTP 400 for a rejection; `submitDispatchScan` treats 400 as a valid response body, not a thrown error.)
 
----
-
-## 8. Parallel Build with WMS
-
-Barcode and WMS are built simultaneously. Here's the dependency map:
-
-```
-WEEK 1-2: Foundation (no dependencies)
-  ├── BARCODE: Django models, box/pallet CRUD, label generation (PDF)
-  └── WMS: Django bin models, warehouse zone setup
-
-WEEK 3-4: Core Operations
-  ├── BARCODE: Pallet create/move/clear, scan endpoint, print endpoint
-  └── WMS: Stock transfer integration (reads SAP OWTR), transfer request flow
-
-WEEK 5-6: Integration
-  ├── BARCODE + WMS: Putaway (scan pallet → scan bin → assigned)
-  ├── BARCODE + WMS: Transfer (scan pallet → scan destination → SAP transfer posted)
-  └── BARCODE + PRODUCTION: Inline labeling from production run
-
-WEEK 7-8: Counting & Picking
-  ├── BARCODE + WMS: Counting (scan-based inventory count)
-  ├── BARCODE + WMS: Picking (scan items against pick list)
-  └── WMS: Pick list integration with SAP OPKL
-
-WEEK 9+: Outbound & Reports
-  ├── BARCODE + WMS: Shipping (scan pallets onto truck → delivery note)
-  ├── BARCODE: Reprint management, void flows, audit reports
-  └── DASHBOARDS: Pallet tracker, movement heatmap, reprint frequency
-```
-
-### What Blocks What
-
-| Feature | Blocked By |
-|---------|-----------|
-| Counting | Barcode scan + box/pallet models |
-| Putaway | Barcode scan + WMS bin models |
-| Pallet transfer | Barcode pallet models + SAP stock transfer |
-| Picking | Barcode scan + SAP pick list read |
-| Shipping | Barcode scan + SAP delivery note write |
-| FG receipt with location | Barcode pallet + WMS bin |
+| Situation | What the operator sees |
+|-----------|------------------------|
+| SAP down at bill lookup | "Unable to fetch bill details from SAP" toast (503). Cannot Start until SAP is back. |
+| Bill already dispatched | Start is rejected with the backend's `BILL_ALREADY_DISPATCHED` message. |
+| Re-scan a staged box | Warning toast "This box is already scanned"; the box row scrolls into view and flashes amber. |
+| Box already dispatched elsewhere | Warning toast, with a distinct "…through pallet dispatch" message when relevant. |
+| Wrong material / out of sequence | Warning toast ("Complete the current item before scanning the next item" / "does not match current item"). |
+| Camera permission denied / no camera | Inline red error under the scanner; keyboard/handheld input still works. |
+| Network drop mid-scan | Error toast; nothing staged. Re-scan when back (safe — idempotent). |
+| Missing weights on a label | Label just renders blank weight fields; no error. |
+| Confirm dispatch with partial scan (partial allowed) | Succeeds; session moves to **Done** even though pending qty remains — only the reports show the shortfall. |
 
 ---
 
-## 9. SAP Touchpoints (Barcode Module Itself)
+## Real-world edge cases
 
-The barcode module is **mostly app-only**, but it triggers SAP operations:
+**trigger → current behaviour → operator-visible symptom → risk/gap**
 
-| Barcode Operation | SAP Interaction |
-|------------------|-----------------|
-| Pallet transfer between warehouses | `POST /b1s/v2/StockTransfers` |
-| Box transfer between warehouses | `POST /b1s/v2/StockTransfers` |
-| Count variance adjustment | `POST /b1s/v2/InventoryGenEntries` (surplus) or `InventoryGenExits` (shortage) |
-| Item/batch lookup | HANA read: OITM, OBTN |
+1. **Two operators dispatch the same bill** → no live sync; each sees only their own scans until a manual refresh; the backend still dedupes boxes → one operator's toast says the box was already scanned/dispatched → **gap**: no real-time collaboration; rely on one operator per bill.
+2. **Partial pallet already partly dispatched** → pallet scan either rejects (`PALLET_HAS_DISPATCHED_BOXES`) or dispatches only remaining boxes with a warning banner in the recent-scan message → operator must read the warning to notice the short count → risk of under-loading.
+3. **Label fell off a box mid-dispatch** → open the embedded `PalletVerifyDialog` from the scanner dock, scan siblings, reprint the recovered label → operator continues without minting a duplicate barcode → works only when unlabeled count matches missing count.
+4. **Duplicate QR lingering in camera frame** → `useScanner` debounce swallows the repeat → no duplicate submit → correct.
+5. **Cross-company box vanished from a list** → after an intercompany transfer the box leaves the source company's lists (single-company reads) → operator "loses" it → use **Traceability** (global) to locate it; this is by design.
+6. **OIL→MART transfer with unmapped item** → transfer fails atomically with "maintain U_Oil_ItemCode in Jivo Mart OITM" → operator sees a precise error, nothing moved → correct; requires SAP master-data fix.
+7. **Confirm dispatch shows COMPLETED but SAP unchanged** → SAP write-back is disabled backend-side; the UI never claims an SAP post → manager must reconcile SAP separately → documented gap, not a UI bug.
+8. **Printer offline / wrong printer** → `react-to-print` opens the OS print dialog; a wrong/absent printer is an OS-level failure the app can't detect → labels may silently not print → operator should confirm at the printer; reprint via Print History.
 
-The barcode, pallet, box, scan log, and print log data all live in PostgreSQL. SAP only gets called when a barcode operation results in a stock movement.
+---
+
+## Failure modes / what can break
+
+- **SAP HANA unreachable** → bill lookup and the Pallet-QR item picker error out; label generation and dispatch **start** are blocked (dispatch **completion** is not, since it doesn't call SAP).
+- **Stale dispatch session view** → because there's no polling, a session left open in a tab can drift from reality; a page refresh or reselecting the session refetches.
+- **Broad cache invalidation** → most non-dispatch mutations invalidate `BARCODE_QUERY_KEYS.all`, so unrelated barcode lists refetch after any write — cheap correctness, mild extra traffic.
+- **Camera/torch unsupported** → gracefully degrades to keyboard/handheld input; torch button hides itself.
+- **`localStorage` printer profile per-device** → a new browser/kiosk defaults to "TSC DA310" and must be reconfigured.
+
+---
+
+## Improvement opportunities & known gaps
+
+- **No offline/queued scanning** — a dock with flaky Wi-Fi loses scans on drop (must re-scan).
+- **No real-time multi-user dispatch** — no polling/websocket; concurrent operators can't see each other.
+- **Partial dispatch leaves no on-screen residual** — a short bill reads as Done.
+- **Print success is unverifiable** — browser/OS print dialog gives no delivery confirmation back to the app.
+- **Permission gating is nav-level.** Routes are gated in `module.config.tsx`, but the backend REST endpoints mostly enforce only the coarse `HasAnyBarcodePermission` — so the fine-grained dispatch/intercompany perms are primarily a **frontend** guarantee. Don't rely on the UI alone for authorization-sensitive actions.
+
+---
+
+## Permissions & roles (nav gating)
+
+Permission constants: `src/config/permissions/barcode.permissions.ts`. Routes and
+sidebar children in `module.config.tsx` each declare a `permissions` array. Route
+guarding (`AppRoutes.tsx` → `ProtectedRoute`) uses **OR** semantics — holding
+**any** listed permission grants access (`requireAll` is not set). The sidebar
+gates by permission, not by group.
+
+| Screen(s) | Required permission(s) |
+|-----------|------------------------|
+| Dashboard, Pallets (+detail), Verify (+new/detail) | `barcode.view_pallet` |
+| Boxes (+detail), Reprint, Print History, Scan, Loose Stock | `barcode.view_box` |
+| Pallet QR Print (generate) | `barcode.add_box` |
+| Move / Godown Transfer / Split | `barcode.change_pallet` |
+| Box Transfer / Dismantle / Repack | `barcode.change_box` |
+| Dispatch, Dispatch Reports, Summary | **any of** `can_view_barcode_dispatch` / `barcode.view_box` (route arrays are OR — a plain box-viewer can open Dispatch) |
+| Intercompany Transfer, Traceability | `can_view_intercompany_transfer` (`/intercompany` list also accepts `can_scan_intercompany_transfer`) |
+
+Only the **barcode team** (`barcode.view_pallet`) sees the Apply/resolve controls
+in the verify flow; other operators can only submit verify tickets.
+
+---
+
+## Developer file map
+
+**Frontend (`C:/Users/gurpa/dev/FactoryFlow/src/modules/barcode/`)**
+- `module.config.tsx` — routes + sidebar nav + permission gates.
+- `api/barcode.api.ts` — axios endpoint wrappers; list/page normalization; dispatch-scan 400 handling.
+- `api/barcode.queries.ts` — all TanStack Query hooks + `BARCODE_QUERY_KEYS`.
+- `types/barcode.types.ts`, `schemas/barcode.schemas.ts` — types + validation.
+- `hooks/useScanner.ts` — camera (html5-qrcode) scanner with torch + debounce.
+- `hooks/usePrinterProfile.ts` — persisted printer name/mode.
+- `hooks/useDestinationBins.ts` — app-managed bin options for an own destination warehouse (Move Pallet).
+- `hooks/useSyncPalletToBarcode.ts` — bridge that pushes a **WMS** pallet move into the barcode backend (`movePallet`).
+- `utils/dispatchValidation.ts` — active-line, progress, line-locking, `can_scan`/`can_dispatch`, scan-message formatting.
+- `utils/errors.ts` — de-duplicated error toasts.
+- `pages/BarcodeDispatchPage.tsx` — dispatch cockpit (the core screen); `BarcodeDispatch{Reports,Summary}Page.tsx`.
+- `pages/LabelGeneratePage.tsx` — Pallet QR Print.
+- `pages/PalletVerifyPage.tsx`, `PalletVerifyNewPage.tsx`, `PalletVerifyRequestDetailPage.tsx` + `components/verify/{PalletVerifyPanel,PalletVerifyDialog,PalletPicker}.tsx` — reconcile/verify + ticket workflow.
+- `pages/IntercompanyTransferPage.tsx`, `IntercompanyTransferDetailPage.tsx`, `BarcodeTraceabilityPage.tsx` — cross-company transfer + trace.
+- `pages/{PalletMove,PalletTransfer,PalletSplit,BoxTransfer,Dismantle,Repack,LooseStock}Page.tsx` — pallet/box ops.
+- `pages/{Pallet,Box}ListPage.tsx`, `{Pallet,Box}DetailPage.tsx`, `ScanPage.tsx`, `ReprintPage.tsx`, `PrintHistoryPage.tsx`, `BarcodeDashboardPage.tsx`.
+- `components/{BoxLabel,PalletLabel,PrintableLabel,Barcode1D,labelPrint}.tsx` — label rendering + thermal page style.
+- `components/{BarcodeScanner,ScanSearchButton,PrinterProfileControls}.tsx` — scanning + print controls.
+
+**Key backend files** — see the companion doc; entry points are
+`factory_app/barcode/urls.py`, `views.py`, and
+`services/dispatch_service.py`.
+
+---
+
+## Related docs
+- Backend companion: [`factory_app/barcode/docs/README.md`](../../../factory_app/barcode/docs/README.md)
+- Older design/background (partly superseded): `docs/modules/barcode-dispatch-design.md`, `barcode-dispatch-sequence-options.md`, `barcode-implementation.md`.
