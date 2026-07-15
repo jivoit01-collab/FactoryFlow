@@ -6,7 +6,7 @@
  * actions (wired through the barcode scanner) let the operator pick a pallet
  * here up for relocation, or scan a pallet to place into this location.
  */
-import { MoveRight, PackagePlus } from 'lucide-react';
+import { MoveRight, PackagePlus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -45,6 +45,8 @@ interface LocationDetailPanelProps {
   onMovePallet?: (pallet: Pallet) => void;
   /** Scan a pallet elsewhere to move it into this location. */
   onPlacePalletHere?: (scannedCode: string) => void;
+  /** Remove a phantom pallet from this location (bin is actually empty). */
+  onRemovePallet?: (pallet: Pallet) => void;
   /** The most recent movements for this location (the audit-trail preview). */
   recentMovements?: MovementLogEntry[];
   movementsLoading?: boolean;
@@ -124,6 +126,7 @@ export function LocationDetailPanel({
   inventoryHere,
   onMovePallet,
   onPlacePalletHere,
+  onRemovePallet,
   recentMovements,
   movementsLoading,
   locationCodeById,
@@ -234,6 +237,17 @@ export function LocationDetailPanel({
                       {onMovePallet ? (
                         <Button variant="outline" size="sm" onClick={() => onMovePallet(pallet)}>
                           <MoveRight className="mr-1 h-3.5 w-3.5" /> Move
+                        </Button>
+                      ) : null}
+                      {onRemovePallet ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          title="Remove from this location (bin is empty)"
+                          onClick={() => onRemovePallet(pallet)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       ) : null}
                     </div>
