@@ -53,7 +53,17 @@ export type MovementType =
 /** Manual lifecycle status of a location (display colour is computed later). */
 export type LocationStatus = 'ACTIVE' | 'BLOCKED' | 'DAMAGED' | 'MAINTENANCE' | 'RESERVED';
 
-export type PalletStatus = 'ACTIVE' | 'PARTIAL' | 'EMPTY' | 'PICKED' | 'SHIPPED' | 'ON_HOLD';
+export type PalletStatus =
+  | 'ACTIVE'
+  | 'PARTIAL'
+  | 'EMPTY'
+  | 'PICKED'
+  | 'SHIPPED'
+  | 'ON_HOLD'
+  // Pulled off the map because the physical space was empty (phantom cleanup). The
+  // record is kept (unplaced, stock dropped) so it stays visible on the Removed
+  // Pallets page until the barcode module reports it dispatched/voided.
+  | 'REMOVED';
 
 /** Mixin every persisted record shares so the adapter can key on `id`. */
 export interface WmsRecordBase {

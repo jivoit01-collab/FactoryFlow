@@ -593,7 +593,10 @@ class WmsStore {
     const adapter = this.adapter();
     const pallet = await adapter.get('pallets', params.palletId);
     if (!pallet) throw new Error('Pallet not found.');
+    if (pallet.status === 'SHIPPED') throw new Error('This pallet has already been dispatched.');
+    if (pallet.status === 'REMOVED') throw new Error('This pallet was removed from the map.');
     const fromLocationId = pallet.currentLocationId;
+    if (fromLocationId === params.toLocationId) return; // already at the destination
     const timestamp = nowIso();
 
     await adapter.update('pallets', pallet.id, {
@@ -670,17 +673,37 @@ class WmsStore {
       if (fromLocationId === params.toLocationId) return; // already here
       await adapter.update('pallets', existing.id, {
         currentLocationId: params.toLocationId,
-        status: existing.status === 'SHIPPED' ? 'ACTIVE' : existing.status,
+        // Placing a shipped/removed pallet again brings it back to life.
+        status: existing.status === 'SHIPPED' || existing.status === 'REMOVED' ? 'ACTIVE' : existing.status,
         updatedAt: timestamp,
       });
       const palletStock = (await adapter.list('inventory')).filter(
         (record) => record.palletId === existing.id,
       );
-      await Promise.all(
-        palletStock.map((record) =>
-          adapter.update('inventory', record.id, { locationId: params.toLocationId, updatedAt: timestamp }),
-        ),
-      );
+      if (palletStock.length > 0) {
+        await Promise.all(
+          palletStock.map((record) =>
+            adapter.update('inventory', record.id, { locationId: params.toLocationId, updatedAt: timestamp }),
+          ),
+        );
+      } else if ((params.totalUnits ?? existing.totalUnits ?? 0) > 0) {
+        // Re-placing a pallet whose stock was dropped (e.g. restoring a REMOVED
+        // pallet): recreate its inventory line at the destination.
+        await adapter.create(
+          'inventory',
+          makeInventoryRecord({
+            locationId: params.toLocationId,
+            itemCode: existing.itemCode,
+            itemName: existing.itemName,
+            palletId: existing.id,
+            lotNumber: params.lotNumber ?? existing.lotNumber,
+            quantity: params.totalUnits ?? existing.totalUnits ?? 0,
+            uom: params.uom,
+            boxCount: params.boxCount ?? existing.boxCount ?? null,
+            expiryDate: params.expiryDate ?? existing.expiryDate ?? null,
+          }),
+        );
+      }
       await adapter.create(
         'movements',
         makeMovement({
@@ -905,10 +928,13 @@ class WmsStore {
   }
 
   /**
-   * Delete a pallet and its stock from the map — the manual "this bin is
-   * actually empty" cleanup for a phantom pallet that never physically arrived
-   * or already left. Removes the pallet + its inventory and logs an ADJUSTMENT
-   * so the location's audit trail records the correction.
+   * Pull a pallet off the map — the manual "this bin is actually empty" cleanup
+   * for a phantom pallet that never physically arrived or already left. Rather
+   * than hard-deleting (which silently lost the pallet), the record is kept and
+   * marked ``REMOVED``: unplaced, its stock dropped (the space is empty), so it
+   * stays visible on the Removed Pallets page -- and recoverable via ``restore`` --
+   * until the barcode module reports it dispatched/voided. Logs an ADJUSTMENT so
+   * the location's audit trail records the correction (stamped with the operator).
    */
   async removePalletFromLocation(
     palletId: WmsId,
@@ -918,10 +944,16 @@ class WmsStore {
     const adapter = this.adapter();
     const pallet = (await adapter.list('pallets')).find((p) => p.id === palletId);
     if (!pallet) return;
+    const fromLocationId = pallet.currentLocationId;
+    const timestamp = nowIso();
     const stock = (await adapter.list('inventory')).filter((r) => r.palletId === palletId);
     await Promise.all(stock.map((r) => adapter.remove('inventory', r.id)));
-    await adapter.remove('pallets', palletId);
-    if (pallet.currentLocationId) {
+    await adapter.update('pallets', palletId, {
+      status: 'REMOVED',
+      currentLocationId: null,
+      updatedAt: timestamp,
+    });
+    if (fromLocationId) {
       await adapter.create(
         'movements',
         makeMovement({
@@ -930,7 +962,7 @@ class WmsStore {
           itemName: pallet.itemName,
           palletId,
           licensePlate: pallet.licensePlate,
-          fromLocationId: pallet.currentLocationId,
+          fromLocationId,
           toLocationId: null,
           boxCount: pallet.boxCount,
           userId: actor?.id,
@@ -940,6 +972,70 @@ class WmsStore {
       );
     }
     await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
+  }
+
+  /**
+   * Put a ``REMOVED`` pallet back on the map at ``toLocationId`` -- undo an
+   * accidental removal. Re-activates the record and re-creates its stock line from
+   * the pallet's own box/unit counts, then logs a PUTAWAY.
+   */
+  async restoreRemovedPallet(params: {
+    palletId: WmsId;
+    toLocationId: WmsId;
+    actor?: MoveActor;
+    note?: string;
+  }): Promise<void> {
+    const adapter = this.adapter();
+    const pallet = await adapter.get('pallets', params.palletId);
+    if (!pallet) throw new Error('Pallet not found.');
+    if (pallet.status !== 'REMOVED') throw new Error('Only a removed pallet can be restored.');
+    const timestamp = nowIso();
+    await adapter.update('pallets', pallet.id, {
+      status: 'ACTIVE',
+      currentLocationId: params.toLocationId,
+      updatedAt: timestamp,
+    });
+    if ((pallet.totalUnits ?? 0) > 0) {
+      await adapter.create(
+        'inventory',
+        makeInventoryRecord({
+          locationId: params.toLocationId,
+          itemCode: pallet.itemCode,
+          itemName: pallet.itemName,
+          palletId: pallet.id,
+          lotNumber: pallet.lotNumber,
+          quantity: pallet.totalUnits ?? 0,
+          boxCount: pallet.boxCount ?? null,
+          expiryDate: pallet.expiryDate ?? null,
+        }),
+      );
+    }
+    await adapter.create(
+      'movements',
+      makeMovement({
+        type: 'PUTAWAY',
+        itemCode: pallet.itemCode,
+        itemName: pallet.itemName,
+        palletId: pallet.id,
+        licensePlate: pallet.licensePlate,
+        toLocationId: params.toLocationId,
+        boxCount: pallet.boxCount,
+        userId: params.actor?.id,
+        userName: params.actor?.name,
+        note: params.note ?? 'Restored to map',
+      }),
+    );
+    await Promise.all([this.load('pallets'), this.load('inventory'), this.load('movements')]);
+  }
+
+  /** Purge a ``REMOVED`` pallet for good (its barcode pallet is dispatched/voided,
+   *  so it is truly gone). Deletes only the retained record. */
+  async purgeRemovedPallet(palletId: WmsId): Promise<void> {
+    const adapter = this.adapter();
+    const pallet = await adapter.get('pallets', palletId);
+    if (!pallet || pallet.status !== 'REMOVED') return;
+    await adapter.remove('pallets', palletId);
+    await this.load('pallets');
   }
 
   /**
@@ -1028,6 +1124,9 @@ class WmsStore {
     const adapter = this.adapter();
     const pallet = await adapter.get('pallets', params.palletId);
     if (!pallet) throw new Error('Pallet not found.');
+    if (pallet.status === 'SHIPPED') throw new Error('This pallet has already been dispatched.');
+    if (pallet.status === 'REMOVED') throw new Error('This pallet was removed from the map.');
+    if (!pallet.currentLocationId) throw new Error('This pallet is not placed anywhere to dispatch.');
 
     const fromLocationId = pallet.currentLocationId;
     const originalBoxCount = pallet.boxCount;

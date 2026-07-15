@@ -30,6 +30,7 @@ const WmsLocationHistoryPage = lazy(() => import('./pages/WmsLocationHistoryPage
 const WmsTransferPage = lazy(() => import('./pages/WmsTransferPage'));
 const WmsReceivePage = lazy(() => import('./pages/WmsReceivePage'));
 const WmsOutboundPage = lazy(() => import('./pages/WmsOutboundPage'));
+const WmsRemovedPalletsPage = lazy(() => import('./pages/WmsRemovedPalletsPage'));
 const WmsPickPage = lazy(() => import('./pages/WmsPickPage'));
 const WmsCountPage = lazy(() => import('./pages/WmsCountPage'));
 const WmsReportsPage = lazy(() => import('./pages/WmsReportsPage'));
@@ -109,6 +110,13 @@ export const wmsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Count' },
     },
     {
+      path: '/warehouse-ops/removed',
+      element: <WmsRemovedPalletsPage />,
+      layout: 'main',
+      permissions: WMS_ACCESS,
+      breadcrumb: { label: 'Removed Pallets' },
+    },
+    {
       path: '/warehouse-ops/reports',
       element: <WmsReportsPage />,
       layout: 'main',
@@ -161,6 +169,7 @@ export const wmsModuleConfig: ModuleConfig = {
         { path: '/warehouse-ops/pick', title: 'Pick', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/outbound', title: 'Outbound', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/count', title: 'Cycle Count', permissions: WMS_ACCESS },
+        { path: '/warehouse-ops/removed', title: 'Removed Pallets', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/reports', title: 'Reports', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/labels', title: 'Labels', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/designer', title: 'Designer', permissions: WMS_ADMIN_ACCESS },

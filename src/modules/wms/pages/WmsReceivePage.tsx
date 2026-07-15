@@ -9,8 +9,8 @@
  * keyed by the plate.
  */
 import { AlertTriangle, ArrowRightLeft, Loader2, PackagePlus, ScanLine } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/core/auth';
@@ -190,6 +190,17 @@ export default function WmsReceivePage() {
       setResolving(false);
     }
   }, []);
+
+  // Deep-link from Removed Pallets ("Restore"): ?plate=<plate> auto-resolves the
+  // pallet so the operator lands ready to pick where to put it back. Runs once.
+  const [searchParams] = useSearchParams();
+  const prefillPlate = searchParams.get('plate');
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (prefilledRef.current || !prefillPlate) return;
+    prefilledRef.current = true;
+    void resolvePallet(prefillPlate);
+  }, [prefillPlate, resolvePallet]);
 
   function clearPallet() {
     requestedPlateRef.current = '';
