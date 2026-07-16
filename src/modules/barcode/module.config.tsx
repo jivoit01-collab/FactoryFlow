@@ -1,5 +1,5 @@
 import { ScanBarcode } from 'lucide-react';
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import { BARCODE_PERMISSIONS } from '@/config/permissions/barcode.permissions';
 import type { ModuleConfig } from '@/core/types';

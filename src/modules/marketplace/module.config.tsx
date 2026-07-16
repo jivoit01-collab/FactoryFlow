@@ -12,7 +12,7 @@
  * reconciliation on `MARKETPLACE_ADMIN_ACCESS`.
  */
 import { ShoppingCart } from 'lucide-react';
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import {
   MARKETPLACE_ACCESS,

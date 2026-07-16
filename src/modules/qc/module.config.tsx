@@ -1,5 +1,5 @@
 import { FlaskConical } from 'lucide-react';
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';

@@ -1,5 +1,5 @@
 import { IndianRupee } from 'lucide-react';
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate } from 'react-router-dom';
 
 import type { ModuleConfig } from '@/core/types';

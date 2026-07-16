@@ -1,5 +1,5 @@
 import { Truck } from 'lucide-react';
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { DISPATCH_PERMISSIONS, GATE_PERMISSIONS, GRPO_PERMISSIONS } from '@/config/permissions';

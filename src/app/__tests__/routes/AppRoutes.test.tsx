@@ -65,11 +65,11 @@ describe('AppRoutes', () => {
 
   // ─── Route Structure ────────────────────────────────────
 
-  it('wraps all routes in Suspense with PageLoadError fallback', () => {
+  it('wraps all routes in Suspense with PageLoading fallback', () => {
     const content = readSource();
-    expect(content).toContain('<Suspense fallback={<PageLoadError />}>');
+    expect(content).toContain('<Suspense fallback={<PageLoading />}>');
     expect(content).toMatch(
-      /import\s*\{[^}]*PageLoadError[^}]*\}\s*from\s*['"]@\/shared\/components\/PageLoadError['"]/,
+      /import\s*\{[^}]*PageLoading[^}]*\}\s*from\s*['"]@\/shared\/components\/PageLoading['"]/,
     );
   });
 

@@ -24,9 +24,9 @@ describe('module.config — Exports', () => {
     expect(content).toContain('export const qcModuleConfig: ModuleConfig');
   });
 
-  it('imports lazy from react', () => {
+  it('imports the retry-aware lazy for code-split pages', () => {
     const content = readSource();
-    expect(content).toContain("import { lazy } from 'react'");
+    expect(content).toContain("import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload'");
   });
 
   it('imports FlaskConical from lucide-react', () => {

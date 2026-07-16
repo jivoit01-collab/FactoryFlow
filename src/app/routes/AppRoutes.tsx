@@ -5,7 +5,7 @@ import { AuthLayout, MainLayout } from '@/app/layouts';
 import { getRoutesByLayout } from '@/app/registry';
 import { ProtectedRoute } from '@/core/auth';
 import { NotificationGate } from '@/core/notifications/components/NotificationGate';
-import { PageLoadError } from '@/shared/components/PageLoadError';
+import { PageLoading } from '@/shared/components/PageLoading';
 
 // Unauthorized page
 function UnauthorizedPage() {
@@ -23,7 +23,7 @@ export function AppRoutes() {
   const mainRoutes = getRoutesByLayout('main');
 
   return (
-    <Suspense fallback={<PageLoadError />}>
+    <Suspense fallback={<PageLoading />}>
       <Routes>
         {/* Auth routes (public) */}
         <Route element={<AuthLayout />}>

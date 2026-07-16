@@ -17,7 +17,7 @@ import {
   ShieldCheck,
   Wrench,
 } from 'lucide-react';
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import {
   GATE_PERMISSIONS,

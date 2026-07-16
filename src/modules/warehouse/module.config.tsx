@@ -1,5 +1,5 @@
 import { LayoutDashboard,Warehouse } from 'lucide-react';
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import { GRPO_PERMISSIONS,WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';

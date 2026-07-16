@@ -15,7 +15,7 @@
  * `useWmsEnabled` / `WmsEnabledGate`.
  */
 import { Warehouse } from 'lucide-react';
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import { WMS_ACCESS, WMS_ADMIN_ACCESS, WMS_MODULE_PREFIX } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';

@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import type { ModuleConfig } from '@/core/types';
 

@@ -30,9 +30,9 @@ describe('GRPO Submodule Config — Exports', () => {
     expect(content).not.toContain('grpoModuleConfig');
   });
 
-  it('imports lazy from react', () => {
+  it('imports the retry-aware lazy for code-split pages', () => {
     const content = readSource();
-    expect(content).toContain("import { lazy } from 'react'");
+    expect(content).toContain("import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload'");
   });
 
   it('imports ModuleRoute and ModuleNavItem types from @/core/types', () => {

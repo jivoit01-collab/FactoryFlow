@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { DISPATCH_PERMISSIONS, GRPO_PERMISSIONS } from '@/config/permissions';

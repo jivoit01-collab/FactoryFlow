@@ -44,8 +44,8 @@ describe('Gate Module Config', () => {
     expect(content).toContain('BARCODE_PERMISSIONS');
   });
 
-  it('imports lazy from react', () => {
-    expect(content).toContain("import { lazy } from 'react'");
+  it('imports the retry-aware lazy for code-split pages', () => {
+    expect(content).toContain("import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload'");
   });
 
   // ═══════════════════════════════════════════════════════════════
