@@ -5,6 +5,7 @@ import {
   Clock,
   type LucideIcon,
   Moon,
+  PauseCircle,
   Sun,
   SunDim,
   XCircle,
@@ -17,9 +18,9 @@ import type {
   ChecklistStatus,
   ClearanceResult,
   ClearanceStatus,
+  FinalQCResult,
   MachineType,
   QCResult,
-  FinalQCResult,
   RunStatus,
   Shift,
   WasteApprovalStatus,
@@ -125,6 +126,7 @@ export const CHECKLIST_STATUS_COLORS: Record<ChecklistStatus, StatusColorConfig>
 export const CLEARANCE_STATUS_LABELS: Record<ClearanceStatus, string> = {
   DRAFT: 'Draft',
   SUBMITTED: 'Submitted',
+  ON_HOLD: 'On Hold',
   CLEARED: 'Cleared',
   NOT_CLEARED: 'Not Cleared',
 };
@@ -141,6 +143,12 @@ export const CLEARANCE_STATUS_COLORS: Record<ClearanceStatus, StatusColorConfig>
     text: 'text-blue-800',
     darkBg: 'dark:bg-blue-900/30',
     darkText: 'dark:text-blue-400',
+  },
+  ON_HOLD: {
+    bg: 'bg-amber-100',
+    text: 'text-amber-800',
+    darkBg: 'dark:bg-amber-900/30',
+    darkText: 'dark:text-amber-400',
   },
   CLEARED: {
     bg: 'bg-green-100',
@@ -159,6 +167,7 @@ export const CLEARANCE_STATUS_COLORS: Record<ClearanceStatus, StatusColorConfig>
 export const CLEARANCE_STATUS_ICONS: Record<ClearanceStatus, LucideIcon> = {
   DRAFT: Circle,
   SUBMITTED: Clock,
+  ON_HOLD: PauseCircle,
   CLEARED: CheckCircle2,
   NOT_CLEARED: XCircle,
 };

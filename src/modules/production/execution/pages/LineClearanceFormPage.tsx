@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { ArrowLeft, Loader2, Paperclip, RotateCcw, Send, Trash2, Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -11,10 +11,16 @@ import {
 } from '@/shared/components/ui';
 
 import {
-  useCreateLineClearance, useLineClearanceDetail, useUpdateLineClearance,
-  useSubmitLineClearance, useLines, useRunDetail,
-} from '../api';
+  useCreateLineClearance, useDeleteLineClearanceAttachment,
+useLineClearanceDetail, useLines,   useReopenLineClearance,
+useRunDetail,
+  useSubmitLineClearance, useUpdateLineClearance,
+  useUploadLineClearanceAttachments, } from '../api';
 import { ClearanceStatusBadge } from '../components/ClearanceStatusBadge';
+
+const isImageFile = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url.split('?')[0]);
+const fileNameFromUrl = (url: string, fallback?: string) =>
+  fallback || decodeURIComponent(url.split('?')[0].split('/').pop() || 'attachment');
 
 function LineClearanceFormPage() {
   const { clearanceId } = useParams<{ clearanceId: string }>();
@@ -31,16 +37,22 @@ function LineClearanceFormPage() {
   const createClearance = useCreateLineClearance();
   const updateClearance = useUpdateLineClearance(numId || 0);
   const submitClearance = useSubmitLineClearance(numId || 0);
+  const uploadAttachments = useUploadLineClearanceAttachments(numId || 0);
+  const deleteAttachment = useDeleteLineClearanceAttachment(numId || 0);
+  const reopenClearance = useReopenLineClearance(numId || 0);
 
   const [lineId, setLineId] = useState<number>(0);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [supervisorName, setSupervisorName] = useState('');
   const [isSavingSupervisor, setIsSavingSupervisor] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const effectiveLineId = linkedRun ? linkedRun.line : lineId;
   const effectiveDate = linkedRun ? linkedRun.date : date;
 
   const isDraft = clearance?.status === 'DRAFT';
+  const attachments = clearance?.attachments ?? [];
+  const hasAttachments = attachments.length > 0;
 
   useEffect(() => {
     if (!clearance || isSavingSupervisor) return;
@@ -72,6 +84,36 @@ function LineClearanceFormPage() {
       await updateClearance.mutateAsync({ production_supervisor_sign: name });
     } catch { toast.error('Failed to save supervisor name'); }
     finally { setIsSavingSupervisor(false); }
+  };
+
+  const handleUpload = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    try {
+      await uploadAttachments.mutateAsync(Array.from(fileList));
+      toast.success('Attachment uploaded');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload attachment');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: number) => {
+    try {
+      await deleteAttachment.mutateAsync(attachmentId);
+      toast.success('Attachment removed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove attachment');
+    }
+  };
+
+  const handleReopen = async () => {
+    try {
+      await reopenClearance.mutateAsync();
+      toast.success('Clearance reopened — you can revise and resubmit');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reopen');
+    }
   };
 
   const handleSubmit = async () => {
@@ -213,13 +255,86 @@ function LineClearanceFormPage() {
             </CardContent>
           </Card>
 
+          {/* Attachments — evidence of the cleared line */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4" /> Cleared Line Attachments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isDraft && (
+                <p className="text-sm text-muted-foreground">
+                  Attach at least one photo/document of the cleared line. Required before submitting for QA approval.
+                </p>
+              )}
+
+              {attachments.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {attachments.map((att) => {
+                    const name = fileNameFromUrl(att.file, att.original_name);
+                    return (
+                      <div key={att.id} className="group relative rounded-md border overflow-hidden">
+                        <a href={att.file} target="_blank" rel="noopener noreferrer" className="block">
+                          {isImageFile(att.file) ? (
+                            <img src={att.file} alt={name} className="h-28 w-full object-cover" />
+                          ) : (
+                            <div className="flex h-28 w-full items-center justify-center bg-muted">
+                              <Paperclip className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )}
+                          <p className="truncate px-2 py-1 text-xs" title={name}>{name}</p>
+                        </a>
+                        {isDraft && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAttachment(att.id)}
+                            disabled={deleteAttachment.isPending}
+                            className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
+                            title="Remove attachment"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                !isDraft && <p className="text-sm text-muted-foreground">No attachments.</p>
+              )}
+
+              {isDraft && (
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => handleUpload(e.target.files)}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadAttachments.isPending}
+                  >
+                    <Upload className="h-4 w-4 mr-1" />
+                    {uploadAttachments.isPending ? 'Uploading...' : 'Add Attachment'}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Actions */}
           <div className="flex justify-end gap-2">
             {isDraft && (
               <Button
                 onClick={handleSubmit}
-                disabled={!clearance.all_checks_passed || !supervisorName || isSavingSupervisor || submitClearance.isPending}
-                title={!clearance.all_checks_passed ? 'Mark all checks as passed first' : !supervisorName ? 'Enter supervisor name first' : isSavingSupervisor ? 'Wait for supervisor name to save' : undefined}
+                disabled={!clearance.all_checks_passed || !supervisorName || !hasAttachments || isSavingSupervisor || submitClearance.isPending}
+                title={!clearance.all_checks_passed ? 'Mark all checks as passed first' : !supervisorName ? 'Enter supervisor name first' : !hasAttachments ? 'Add at least one attachment first' : isSavingSupervisor ? 'Wait for supervisor name to save' : undefined}
               >
                 <Send className="h-4 w-4 mr-1" />
                 {submitClearance.isPending ? 'Submitting...' : 'Submit for QA Approval'}
@@ -228,11 +343,20 @@ function LineClearanceFormPage() {
             {clearance.status === 'SUBMITTED' && (
               <p className="text-sm text-muted-foreground italic">Waiting for QA approval</p>
             )}
+            {clearance.status === 'ON_HOLD' && (
+              <p className="text-sm text-amber-600 font-medium">On hold by QA</p>
+            )}
             {clearance.status === 'CLEARED' && (
               <p className="text-sm text-green-600 font-medium">Approved by QA</p>
             )}
             {clearance.status === 'NOT_CLEARED' && (
-              <p className="text-sm text-red-600 font-medium">Rejected by QA</p>
+              <>
+                <p className="text-sm text-red-600 font-medium self-center">Rejected by QA</p>
+                <Button variant="outline" onClick={handleReopen} disabled={reopenClearance.isPending}>
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  {reopenClearance.isPending ? 'Reopening...' : 'Reopen & Revise'}
+                </Button>
+              </>
             )}
           </div>
         </>

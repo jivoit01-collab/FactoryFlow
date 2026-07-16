@@ -662,6 +662,50 @@ export function useApproveLineClearance(clearanceId: number) {
   });
 }
 
+export function useHoldLineClearance(clearanceId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => executionApi.holdLineClearance(clearanceId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });
+    },
+  });
+}
+
+export function useReopenLineClearance(clearanceId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => executionApi.reopenLineClearance(clearanceId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });
+    },
+  });
+}
+
+export function useUploadLineClearanceAttachments(clearanceId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (files: File[]) =>
+      executionApi.uploadLineClearanceAttachments(clearanceId, files),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
+    },
+  });
+}
+
+export function useDeleteLineClearanceAttachment(clearanceId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: number) =>
+      executionApi.deleteLineClearanceAttachment(clearanceId, attachmentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
+    },
+  });
+}
+
 // ============================================================================
 // Machine Checklists
 // ============================================================================

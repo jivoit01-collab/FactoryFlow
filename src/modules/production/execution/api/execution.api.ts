@@ -470,6 +470,40 @@ export const executionApi = {
     return res.data;
   },
 
+  async holdLineClearance(clearanceId: number): Promise<LineClearanceDetail> {
+    const res = await apiClient.post<LineClearanceDetail>(EP.LINE_CLEARANCE_HOLD(clearanceId));
+    return res.data;
+  },
+
+  async reopenLineClearance(clearanceId: number): Promise<LineClearanceDetail> {
+    const res = await apiClient.post<LineClearanceDetail>(EP.LINE_CLEARANCE_REOPEN(clearanceId));
+    return res.data;
+  },
+
+  async uploadLineClearanceAttachments(
+    clearanceId: number,
+    files: File[],
+  ): Promise<LineClearanceDetail> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('file', file));
+    const res = await apiClient.post<LineClearanceDetail>(
+      EP.LINE_CLEARANCE_ATTACHMENTS(clearanceId),
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return res.data;
+  },
+
+  async deleteLineClearanceAttachment(
+    clearanceId: number,
+    attachmentId: number,
+  ): Promise<LineClearanceDetail> {
+    const res = await apiClient.delete<LineClearanceDetail>(
+      EP.LINE_CLEARANCE_ATTACHMENT_DETAIL(clearanceId, attachmentId),
+    );
+    return res.data;
+  },
+
   // =========================================================================
   // Machine Checklists
   // =========================================================================

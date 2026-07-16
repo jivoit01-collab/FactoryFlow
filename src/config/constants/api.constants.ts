@@ -642,6 +642,14 @@ export const API_ENDPOINTS = {
       `/production-execution/line-clearance/${clearanceId}/submit/`,
     LINE_CLEARANCE_APPROVE: (clearanceId: number) =>
       `/production-execution/line-clearance/${clearanceId}/approve/`,
+    LINE_CLEARANCE_HOLD: (clearanceId: number) =>
+      `/production-execution/line-clearance/${clearanceId}/hold/`,
+    LINE_CLEARANCE_REOPEN: (clearanceId: number) =>
+      `/production-execution/line-clearance/${clearanceId}/reopen/`,
+    LINE_CLEARANCE_ATTACHMENTS: (clearanceId: number) =>
+      `/production-execution/line-clearance/${clearanceId}/attachments/`,
+    LINE_CLEARANCE_ATTACHMENT_DETAIL: (clearanceId: number, attachmentId: number) =>
+      `/production-execution/line-clearance/${clearanceId}/attachments/${attachmentId}/`,
     // Machine Checklists
     MACHINE_CHECKLISTS: '/production-execution/machine-checklists/',
     MACHINE_CHECKLIST_DETAIL: (entryId: number) =>

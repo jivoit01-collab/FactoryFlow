@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Shield, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Paperclip, PauseCircle, Shield, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { QC_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import {
   useApproveLineClearance,
+  useHoldLineClearance,
   useLineClearanceDetail,
   useLineClearances,
 } from '@/modules/production/execution/api';
@@ -19,12 +20,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/shared/components/ui';
 
+const isImageFile = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url.split('?')[0]);
+const fileNameFromUrl = (url: string, fallback?: string) =>
+  fallback || decodeURIComponent(url.split('?')[0].split('/').pop() || 'attachment');
+
 function LineClearanceQAPage() {
   const [statusFilter, setStatusFilter] = useState<string>('SUBMITTED');
   const { data: clearances = [] } = useLineClearances(undefined, statusFilter === 'ALL' ? undefined : statusFilter);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const { data: detail, isLoading: detailLoading } = useLineClearanceDetail(selectedId);
   const approveMutation = useApproveLineClearance(selectedId || 0);
+  const holdMutation = useHoldLineClearance(selectedId || 0);
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
   const canApproveLineClearance = hasAnyPermission([
@@ -40,6 +46,17 @@ function LineClearanceQAPage() {
     } catch { toast.error('Failed'); }
   };
 
+  const handleHold = async () => {
+    if (!selectedId || !canApproveLineClearance) return;
+    try {
+      await holdMutation.mutateAsync();
+      toast.success('Clearance put on hold');
+      setSelectedId(null);
+    } catch { toast.error('Failed'); }
+  };
+
+  const actionsPending = approveMutation.isPending || holdMutation.isPending;
+
   return (
     <div className="space-y-6">
       <DashboardHeader
@@ -52,6 +69,7 @@ function LineClearanceQAPage() {
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="SUBMITTED">Pending Approval</SelectItem>
+            <SelectItem value="ON_HOLD">On Hold</SelectItem>
             <SelectItem value="CLEARED">Approved</SelectItem>
             <SelectItem value="NOT_CLEARED">Rejected</SelectItem>
             <SelectItem value="ALL">All</SelectItem>
@@ -88,6 +106,7 @@ function LineClearanceQAPage() {
                 <div className="flex items-center gap-3">
                   <ClearanceStatusBadge status={c.status} />
                   {c.status === 'SUBMITTED' && <Clock className="h-4 w-4 text-amber-500" />}
+                  {c.status === 'ON_HOLD' && <PauseCircle className="h-4 w-4 text-amber-500" />}
                 </div>
               </CardContent>
             </Card>
@@ -152,19 +171,59 @@ function LineClearanceQAPage() {
                 </ul>
               </div>
 
-              {/* Approve / Reject buttons */}
-              {detail.status === 'SUBMITTED' && canApproveLineClearance && (
+              {/* Attachments from production */}
+              <div>
+                <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  <Paperclip className="h-3.5 w-3.5" /> Cleared Line Attachments
+                </p>
+                {detail.attachments.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {detail.attachments.map((att) => {
+                      const name = fileNameFromUrl(att.file, att.original_name);
+                      return (
+                        <a
+                          key={att.id}
+                          href={att.file}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block rounded-md border overflow-hidden hover:border-primary/50"
+                          title={name}
+                        >
+                          {isImageFile(att.file) ? (
+                            <img src={att.file} alt={name} className="h-24 w-full object-cover" />
+                          ) : (
+                            <div className="flex h-24 w-full items-center justify-center bg-muted">
+                              <Paperclip className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <p className="truncate px-1.5 py-1 text-xs">{name}</p>
+                        </a>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No attachments provided.</p>
+                )}
+              </div>
+
+              {/* Approve / Reject / Hold buttons */}
+              {(detail.status === 'SUBMITTED' || detail.status === 'ON_HOLD') && canApproveLineClearance && (
                 <div className="flex justify-end gap-2 pt-2 border-t">
-                  <Button variant="destructive" onClick={() => handleApprove(false)} disabled={approveMutation.isPending}>
+                  <Button variant="destructive" onClick={() => handleApprove(false)} disabled={actionsPending}>
                     <XCircle className="h-4 w-4 mr-1" /> Reject
                   </Button>
-                  <Button onClick={() => handleApprove(true)} disabled={approveMutation.isPending}>
+                  {detail.status === 'SUBMITTED' && (
+                    <Button variant="outline" onClick={handleHold} disabled={actionsPending}>
+                      <PauseCircle className="h-4 w-4 mr-1" /> Hold
+                    </Button>
+                  )}
+                  <Button onClick={() => handleApprove(true)} disabled={actionsPending}>
                     <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
                   </Button>
                 </div>
               )}
 
-              {detail.status !== 'SUBMITTED' && detail.production_run && (
+              {(detail.status === 'CLEARED' || detail.status === 'NOT_CLEARED') && detail.production_run && (
                 <div className="flex justify-end pt-2 border-t">
                   <Button variant="outline" size="sm" onClick={() => { setSelectedId(null); navigate(`/production/execution/runs/${detail.production_run}`); }}>
                     View Production Run

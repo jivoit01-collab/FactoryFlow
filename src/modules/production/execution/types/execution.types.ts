@@ -22,7 +22,7 @@ export type ChecklistStatus = 'OK' | 'NOT_OK' | 'NA';
 
 export type ClearanceResult = 'YES' | 'NO' | 'NA';
 
-export type ClearanceStatus = 'DRAFT' | 'SUBMITTED' | 'CLEARED' | 'NOT_CLEARED';
+export type ClearanceStatus = 'DRAFT' | 'SUBMITTED' | 'ON_HOLD' | 'CLEARED' | 'NOT_CLEARED';
 
 export type WasteApprovalStatus = 'PENDING' | 'PARTIALLY_APPROVED' | 'FULLY_APPROVED';
 
@@ -349,6 +349,15 @@ export interface LineClearanceItem {
   remarks: string;
 }
 
+export interface LineClearanceAttachment {
+  id: number;
+  file: string;
+  original_name: string;
+  uploaded_by: number | null;
+  uploaded_by_name: string | null;
+  uploaded_at: string;
+}
+
 export interface LineClearance {
   id: number;
   production_run: number | null;
@@ -371,6 +380,7 @@ export interface LineClearanceDetail extends LineClearance {
   qa_approved_by: number | null;
   qa_approved_at: string | null;
   items: LineClearanceItem[];
+  attachments: LineClearanceAttachment[];
 }
 
 // ============================================================================
