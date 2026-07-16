@@ -328,6 +328,16 @@ function LineClearanceFormPage() {
             </CardContent>
           </Card>
 
+          {/* QA remarks from the reviewer */}
+          {clearance.qa_remarks && (clearance.status === 'NOT_CLEARED' || clearance.status === 'ON_HOLD') && (
+            <Card>
+              <CardHeader><CardTitle>QA Remarks</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap">{clearance.qa_remarks}</p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-2">
             {isDraft && (

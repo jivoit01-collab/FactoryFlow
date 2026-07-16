@@ -379,6 +379,7 @@ export interface LineClearanceDetail extends LineClearance {
   verified_by: number | null;
   qa_approved_by: number | null;
   qa_approved_at: string | null;
+  qa_remarks: string;
   items: LineClearanceItem[];
   attachments: LineClearanceAttachment[];
 }

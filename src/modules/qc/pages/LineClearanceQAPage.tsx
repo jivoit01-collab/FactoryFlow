@@ -17,7 +17,9 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button, Card, CardContent,
   Dialog, DialogContent, DialogHeader, DialogTitle,
+  Label,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Textarea,
 } from '@/shared/components/ui';
 
 const isImageFile = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url.split('?')[0]);
@@ -28,6 +30,7 @@ function LineClearanceQAPage() {
   const [statusFilter, setStatusFilter] = useState<string>('SUBMITTED');
   const { data: clearances = [] } = useLineClearances(undefined, statusFilter === 'ALL' ? undefined : statusFilter);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [remarks, setRemarks] = useState('');
   const { data: detail, isLoading: detailLoading } = useLineClearanceDetail(selectedId);
   const approveMutation = useApproveLineClearance(selectedId || 0);
   const holdMutation = useHoldLineClearance(selectedId || 0);
@@ -37,21 +40,41 @@ function LineClearanceQAPage() {
     QC_PERMISSIONS.LINE_CLEARANCE_QC.APPROVE,
   ]);
 
+  const openClearance = (id: number) => {
+    setRemarks('');
+    setSelectedId(id);
+  };
+
+  const closeDialog = () => {
+    setSelectedId(null);
+    setRemarks('');
+  };
+
+  const trimmedRemarks = remarks.trim();
+
   const handleApprove = async (approved: boolean) => {
     if (!selectedId || !canApproveLineClearance) return;
+    if (!approved && !trimmedRemarks) {
+      toast.error('Remarks are required to reject a clearance');
+      return;
+    }
     try {
-      await approveMutation.mutateAsync({ approved });
+      await approveMutation.mutateAsync({ approved, remarks: trimmedRemarks });
       toast.success(approved ? 'Clearance approved' : 'Clearance rejected');
-      setSelectedId(null);
+      closeDialog();
     } catch { toast.error('Failed'); }
   };
 
   const handleHold = async () => {
     if (!selectedId || !canApproveLineClearance) return;
+    if (!trimmedRemarks) {
+      toast.error('Remarks are required to put a clearance on hold');
+      return;
+    }
     try {
-      await holdMutation.mutateAsync();
+      await holdMutation.mutateAsync(trimmedRemarks);
       toast.success('Clearance put on hold');
-      setSelectedId(null);
+      closeDialog();
     } catch { toast.error('Failed'); }
   };
 
@@ -87,7 +110,7 @@ function LineClearanceQAPage() {
       ) : (
         <div className="space-y-2">
           {clearances.map((c: LineClearance) => (
-            <Card key={c.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setSelectedId(c.id)}>
+            <Card key={c.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => openClearance(c.id)}>
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <Shield className="h-5 w-5 text-muted-foreground" />
@@ -115,7 +138,7 @@ function LineClearanceQAPage() {
       )}
 
       {/* Detail / Approve Dialog */}
-      <Dialog open={selectedId !== null} onOpenChange={(open) => { if (!open) setSelectedId(null); }}>
+      <Dialog open={selectedId !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Line Clearance Review</DialogTitle>
@@ -206,26 +229,61 @@ function LineClearanceQAPage() {
                 )}
               </div>
 
-              {/* Approve / Reject / Hold buttons */}
+              {/* Existing QA remarks (shown for held/decided clearances) */}
+              {detail.qa_remarks && (
+                <div>
+                  <p className="text-sm font-medium mb-1">QA Remarks</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap rounded-md border bg-muted/40 p-2">
+                    {detail.qa_remarks}
+                  </p>
+                </div>
+              )}
+
+              {/* Remarks input + Approve / Reject / Hold buttons */}
               {(detail.status === 'SUBMITTED' || detail.status === 'ON_HOLD') && canApproveLineClearance && (
-                <div className="flex justify-end gap-2 pt-2 border-t">
-                  <Button variant="destructive" onClick={() => handleApprove(false)} disabled={actionsPending}>
-                    <XCircle className="h-4 w-4 mr-1" /> Reject
-                  </Button>
-                  {detail.status === 'SUBMITTED' && (
-                    <Button variant="outline" onClick={handleHold} disabled={actionsPending}>
-                      <PauseCircle className="h-4 w-4 mr-1" /> Hold
+                <div className="space-y-3 pt-2 border-t">
+                  <div>
+                    <Label htmlFor="qa-remarks">
+                      Remarks <span className="font-normal text-muted-foreground">(required to hold or reject)</span>
+                    </Label>
+                    <Textarea
+                      id="qa-remarks"
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      placeholder="Add remarks for this decision..."
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleApprove(false)}
+                      disabled={actionsPending || !trimmedRemarks}
+                      title={!trimmedRemarks ? 'Enter remarks to reject' : undefined}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" /> Reject
                     </Button>
-                  )}
-                  <Button onClick={() => handleApprove(true)} disabled={actionsPending}>
-                    <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
-                  </Button>
+                    {detail.status === 'SUBMITTED' && (
+                      <Button
+                        variant="outline"
+                        onClick={handleHold}
+                        disabled={actionsPending || !trimmedRemarks}
+                        title={!trimmedRemarks ? 'Enter remarks to hold' : undefined}
+                      >
+                        <PauseCircle className="h-4 w-4 mr-1" /> Hold
+                      </Button>
+                    )}
+                    <Button onClick={() => handleApprove(true)} disabled={actionsPending}>
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+                    </Button>
+                  </div>
                 </div>
               )}
 
               {(detail.status === 'CLEARED' || detail.status === 'NOT_CLEARED') && detail.production_run && (
                 <div className="flex justify-end pt-2 border-t">
-                  <Button variant="outline" size="sm" onClick={() => { setSelectedId(null); navigate(`/production/execution/runs/${detail.production_run}`); }}>
+                  <Button variant="outline" size="sm" onClick={() => { closeDialog(); navigate(`/production/execution/runs/${detail.production_run}`); }}>
                     View Production Run
                   </Button>
                 </div>

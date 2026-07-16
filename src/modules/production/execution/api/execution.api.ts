@@ -470,8 +470,11 @@ export const executionApi = {
     return res.data;
   },
 
-  async holdLineClearance(clearanceId: number): Promise<LineClearanceDetail> {
-    const res = await apiClient.post<LineClearanceDetail>(EP.LINE_CLEARANCE_HOLD(clearanceId));
+  async holdLineClearance(clearanceId: number, remarks: string): Promise<LineClearanceDetail> {
+    const res = await apiClient.post<LineClearanceDetail>(
+      EP.LINE_CLEARANCE_HOLD(clearanceId),
+      { remarks },
+    );
     return res.data;
   },
 

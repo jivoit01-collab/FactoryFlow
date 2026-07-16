@@ -665,7 +665,7 @@ export function useApproveLineClearance(clearanceId: number) {
 export function useHoldLineClearance(clearanceId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => executionApi.holdLineClearance(clearanceId),
+    mutationFn: (remarks: string) => executionApi.holdLineClearance(clearanceId, remarks),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
       qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });
