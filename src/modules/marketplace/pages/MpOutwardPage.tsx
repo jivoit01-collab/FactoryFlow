@@ -287,6 +287,8 @@ function ConfirmButton({ dispatchId, orderId }: { dispatchId: number; orderId: s
             onSuccess: (r) => {
               if (r.sap_post_status === 'FAILED') {
                 toast.warning(`${orderId} dispatched — delivery note failed; retry available.`);
+              } else if (r.sap_post_status === 'PENDING' || !r.sap_delivery_note_num) {
+                toast.success(`Dispatched · ${orderId} — cut its delivery note in SAP Delivery Notes.`);
               } else {
                 toast.success(`Dispatched · ${orderId} · DN ${r.sap_delivery_note_num || '—'}`);
               }
