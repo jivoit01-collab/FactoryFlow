@@ -11,8 +11,10 @@ import {
 import { useAppDispatch, useAppSelector } from '@/core/store';
 
 import { authService } from '../services/auth.service';
+import type { AuthData } from '../services/indexedDb.service';
 import { indexedDBService } from '../services/indexedDb.service';
-import { initializeComplete, loginSuccess, updateUser } from '../store/authSlice';
+import { initializeAuth, initializeComplete, updateUser } from '../store/authSlice';
+import type { User } from '../types/auth.types';
 import { ensureValidToken, isTokenCompletelyExpired } from '../utils/tokenRefresh.util';
 
 interface AuthInitializerProps {
@@ -53,7 +55,15 @@ async function validateStoredTokens(): Promise<{
 }
 
 /**
- * Build the Redux loginSuccess payload from stored auth data.
+ * Build the Redux initializeAuth payload from stored auth data.
+ *
+ * We restore via initializeAuth (NOT loginSuccess) on reload. loginSuccess is
+ * synced back to IndexedDB by authSyncMiddleware through saveAuthDataLogin,
+ * which rewrites the record in login shape — dropping currentCompany and
+ * permissions. On reload that fire-and-forget write races the
+ * getCurrentCompany() read below and intermittently bounces the user to
+ * /select-company. initializeAuth is not persisted, so the stored
+ * currentCompany survives the reload.
  */
 function buildAuthPayload(
   authData: NonNullable<Awaited<ReturnType<typeof indexedDBService.getAuthData>>>,
@@ -62,22 +72,13 @@ function buildAuthPayload(
 ) {
   if (!authData.user || !('id' in authData.user) || !('email' in authData.user)) return null;
 
-  const accessExpiresIn = Math.max(0, Math.floor((authData.accessExpiresAt - Date.now()) / 1000));
-  const refreshExpiresIn = Math.max(0, Math.floor((authData.refreshExpiresAt - Date.now()) / 1000));
-
   return {
-    user: {
-      id: authData.user.id,
-      email: authData.user.email,
-      full_name: authData.user.full_name || '',
-      companies: authData.user.companies || [],
-    },
+    user: authData.user as User,
+    permissions: (authData as AuthData).permissions ?? [],
+    currentCompany: (authData as AuthData).currentCompany ?? null,
     access,
     refresh,
-    tokensExpiresIn: {
-      access_expires_in: accessExpiresIn,
-      refresh_expires_in: refreshExpiresIn,
-    },
+    expiresIn: authData.accessExpiresAt,
   };
 }
 
@@ -128,7 +129,7 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
 
           const payload = buildAuthPayload(stored.authData!, stored.access, stored.refresh);
           if (payload) {
-            dispatch(loginSuccess(payload));
+            dispatch(initializeAuth(payload));
           }
 
           dispatch(initializeComplete());

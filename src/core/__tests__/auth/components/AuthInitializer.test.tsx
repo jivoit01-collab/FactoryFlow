@@ -110,9 +110,9 @@ describe('AuthInitializer — Auth Slice Imports', () => {
     expect(content).toContain("'../store/authSlice'");
   });
 
-  it('imports loginSuccess from authSlice', () => {
+  it('imports initializeAuth from authSlice', () => {
     const content = readSource();
-    expect(content).toContain('loginSuccess');
+    expect(content).toContain('initializeAuth');
   });
 
   it('imports updateUser from authSlice', () => {
@@ -258,9 +258,9 @@ describe('AuthInitializer — Initialization', () => {
     expect(content).toContain('await ensureValidToken(');
   });
 
-  it('dispatches loginSuccess with reconstructed auth data', () => {
+  it('dispatches initializeAuth with reconstructed auth data', () => {
     const content = readSource();
-    expect(content).toMatch(/dispatch\(\s*loginSuccess\(/);
+    expect(content).toMatch(/dispatch\(\s*initializeAuth\(/);
   });
 
   it('dispatches initializeComplete after initialization', () => {
