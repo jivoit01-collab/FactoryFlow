@@ -119,7 +119,6 @@ export default function ReturnOutListPage() {
               <th className="px-3 py-2 text-left font-medium">Type</th>
               <th className="px-3 py-2 text-left font-medium">Purpose</th>
               <th className="px-3 py-2 text-left font-medium">Going To</th>
-              <th className="px-3 py-2 text-left font-medium">Department</th>
               <th className="px-3 py-2 text-left font-medium">Items</th>
               <th className="px-3 py-2 text-left font-medium">Gated Out</th>
               <th className="px-3 py-2 text-left font-medium">Expected Back</th>
@@ -161,8 +160,16 @@ export default function ReturnOutListPage() {
                     </td>
                     <td className="px-3 py-2">{pass.purpose_display}</td>
                     <td className="px-3 py-2">{pass.destination}</td>
-                    <td className="px-3 py-2">{pass.department_name || '—'}</td>
-                    <td className="px-3 py-2">{pass.item_count}</td>
+                    <td className="max-w-[220px] px-3 py-2">
+                      <span className="block truncate" title={pass.item_names}>
+                        {pass.item_names || '—'}
+                      </span>
+                      {pass.item_count > 1 ? (
+                        <span className="text-xs text-muted-foreground">
+                          {pass.item_count} items
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {pass.gate_out_at ? new Date(pass.gate_out_at).toLocaleDateString() : '—'}
                     </td>

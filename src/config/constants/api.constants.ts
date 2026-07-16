@@ -513,6 +513,17 @@ export const API_ENDPOINTS = {
     FIRE_ISSUES: '/maintenance/fire-issues/',
     FIRE_ISSUE_DETAIL: (issueId: number) => `/maintenance/fire-issues/${issueId}/`,
     FIRE_ISSUE_RETURN: (issueId: number) => `/maintenance/fire-issues/${issueId}/return/`,
+    // Material indent — requisition that becomes a gate pass on approval.
+    MATERIAL_INDENTS: '/maintenance/material-indents/',
+    MATERIAL_INDENT_DETAIL: (indentId: number) => `/maintenance/material-indents/${indentId}/`,
+    MATERIAL_INDENT_SUBMIT: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/submit/`,
+    MATERIAL_INDENT_APPROVE: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/approve/`,
+    MATERIAL_INDENT_REJECT: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/reject/`,
+    MATERIAL_INDENT_CANCEL: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/cancel/`,
     // Safety fines — PPE violations recorded by the Fire Department Head.
     SAFETY_VIOLATION_TYPES: '/maintenance/safety-violation-types/',
     SAFETY_VIOLATION_TYPE_DETAIL: (typeId: number) =>
