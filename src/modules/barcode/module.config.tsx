@@ -38,6 +38,7 @@ const BoxTransferPage = lazy(() => import('./pages/BoxTransferPage'));
 // Loose & Dismantle
 const DismantlePage = lazy(() => import('./pages/DismantlePage'));
 const VoidPage = lazy(() => import('./pages/VoidPage'));
+const VoidDashboardPage = lazy(() => import('./pages/VoidDashboardPage'));
 const LooseStockPage = lazy(() => import('./pages/LooseStockPage'));
 const RepackPage = lazy(() => import('./pages/RepackPage'));
 
@@ -191,6 +192,12 @@ export const barcodeModuleConfig: ModuleConfig = {
     },
     {
       path: '/barcode/void',
+      element: <VoidDashboardPage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.MANAGE_PALLET],
+    },
+    {
+      path: '/barcode/void/new',
       element: <VoidPage />,
       layout: 'main',
       permissions: [BARCODE_PERMISSIONS.MANAGE_PALLET],

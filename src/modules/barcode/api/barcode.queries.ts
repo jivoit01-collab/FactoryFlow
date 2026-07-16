@@ -37,6 +37,7 @@ import type {
   ProductionReleaseOilRow,
   RepackPayload,
   ScanRequestPayload,
+  VoidedFilters,
   VoidPayload,
 } from '../types';
 import { barcodeApi } from './barcode.api';
@@ -58,6 +59,10 @@ export const BARCODE_QUERY_KEYS = {
   palletsPage: (filters?: PalletFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'pallets-page', filters] as const,
   palletDetail: (id: number) => [...BARCODE_QUERY_KEYS.all, 'pallet', id] as const,
+  voidedPallets: (filters?: VoidedFilters) =>
+    [...BARCODE_QUERY_KEYS.all, 'voided-pallets', filters] as const,
+  voidedBoxes: (filters?: VoidedFilters) =>
+    [...BARCODE_QUERY_KEYS.all, 'voided-boxes', filters] as const,
   printHistory: (filters?: PrintHistoryFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'print-history', filters] as const,
   printHistoryPage: (filters?: PrintHistoryFilters) =>
@@ -218,6 +223,20 @@ export function useVoidPallet() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
     },
+  });
+}
+
+export function useVoidedPallets(filters?: VoidedFilters) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.voidedPallets(filters),
+    queryFn: () => barcodeApi.getVoidedPallets(filters),
+  });
+}
+
+export function useVoidedBoxes(filters?: VoidedFilters) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.voidedBoxes(filters),
+    queryFn: () => barcodeApi.getVoidedBoxes(filters),
   });
 }
 

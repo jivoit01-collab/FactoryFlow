@@ -65,8 +65,10 @@ export default function BoxDetailPage() {
   });
 
   const handleVoid = () => {
-    if (!box || !confirm('Are you sure you want to void this box?')) return;
-    voidMutation.mutate({ boxId: box.id, data: { reason: 'Voided from detail page' } });
+    if (!box) return;
+    const reason = prompt('Void this box? Enter a reason (required):')?.trim();
+    if (!reason) return;
+    voidMutation.mutate({ boxId: box.id, data: { reason } });
   };
 
   const handleLinkToPallet = async () => {

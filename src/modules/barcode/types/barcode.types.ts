@@ -397,6 +397,42 @@ export interface PalletVoidPayload extends VoidPayload {
   box_ids?: number[] | null;
 }
 
+export interface VoidedPalletRow {
+  id: number;
+  pallet_id: number;
+  pallet_code: string;
+  item_code: string;
+  item_name: string;
+  batch_number: string;
+  box_count: number;
+  total_qty: string;
+  uom: string;
+  warehouse: string;
+  voided_by_name: string;
+  voided_at: string;
+  reason: string;
+}
+
+export interface VoidedBoxRow {
+  id: number;
+  box_id: number;
+  box_barcode: string;
+  item_code: string;
+  item_name: string;
+  batch_number: string;
+  qty: string;
+  uom: string;
+  warehouse: string;
+  from_pallet_code: string;
+  voided_by_name: string;
+  voided_at: string;
+  reason: string;
+}
+
+export interface VoidedFilters extends PaginationParams {
+  search?: string;
+}
+
 export interface PalletMovePayload {
   to_warehouse: string;
   /** Destination location/bin code — required when the destination is an own (WMS) warehouse. */

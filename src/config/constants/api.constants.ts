@@ -804,6 +804,8 @@ export const API_ENDPOINTS = {
     PALLETS: '/barcode/pallets/',
     PALLET_DETAIL: (palletId: number) => `/barcode/pallets/${palletId}/`,
     PALLET_VOID: (palletId: number) => `/barcode/pallets/${palletId}/void/`,
+    VOIDED_PALLETS: '/barcode/voids/pallets/',
+    VOIDED_BOXES: '/barcode/voids/boxes/',
     PALLET_MOVE: (palletId: number) => `/barcode/pallets/${palletId}/move/`,
     PALLET_CLEAR: (palletId: number) => `/barcode/pallets/${palletId}/clear/`,
     PALLET_SPLIT: (palletId: number) => `/barcode/pallets/${palletId}/split/`,

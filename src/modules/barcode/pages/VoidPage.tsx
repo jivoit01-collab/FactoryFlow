@@ -1,5 +1,6 @@
-import { Boxes, Package, XCircle } from 'lucide-react';
+import { ArrowLeft, Boxes, Package, XCircle } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -19,6 +20,7 @@ import type { Box, Pallet } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
 export default function VoidPage() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'pallet' | 'box'>('pallet');
   const [palletSearch, setPalletSearch] = useState('');
   const [boxSearch, setBoxSearch] = useState('');
@@ -102,6 +104,10 @@ export default function VoidPage() {
         title="Void"
         subtitle="Void pallets (and optionally their boxes) or void an individual box"
       />
+
+      <Button variant="ghost" size="sm" onClick={() => navigate('/barcode/void')}>
+        <ArrowLeft className="h-4 w-4 mr-1" /> Back to voided list
+      </Button>
 
       {/* Mode + Search */}
       <Card>
@@ -293,19 +299,20 @@ export default function VoidPage() {
             )}
 
             <div className="mb-4">
-              <label className="text-xs font-medium text-muted-foreground">Reason</label>
+              <label className="text-xs font-medium text-muted-foreground">Reason *</label>
               <input
                 className="w-full border rounded px-3 py-2 text-sm mt-1"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Optional reason..."
+                placeholder="Required reason..."
+                required
               />
             </div>
 
             <Button
               variant="destructive"
               onClick={handleVoidPallet}
-              disabled={voidPalletMutation.isPending}
+              disabled={voidPalletMutation.isPending || !reason.trim()}
             >
               <XCircle className="h-4 w-4 mr-1" />
               {voidPalletMutation.isPending
@@ -342,19 +349,20 @@ export default function VoidPage() {
             </div>
 
             <div className="mb-4">
-              <label className="text-xs font-medium text-muted-foreground">Reason</label>
+              <label className="text-xs font-medium text-muted-foreground">Reason *</label>
               <input
                 className="w-full border rounded px-3 py-2 text-sm mt-1"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Optional reason..."
+                placeholder="Required reason..."
+                required
               />
             </div>
 
             <Button
               variant="destructive"
               onClick={handleVoidBox}
-              disabled={voidBoxMutation.isPending}
+              disabled={voidBoxMutation.isPending || !reason.trim()}
             >
               <XCircle className="h-4 w-4 mr-1" />
               {voidBoxMutation.isPending ? 'Voiding...' : 'Void Box'}

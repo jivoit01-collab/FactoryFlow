@@ -81,7 +81,7 @@ export default function PalletDetailPage() {
       await voidMutation.mutateAsync({
         palletId: pallet.id,
         data: {
-          reason: voidReason || 'Voided from detail page',
+          reason: voidReason.trim(),
           box_ids: voidBoxes && selectedBoxIds.length > 0 ? selectedBoxIds : null,
         },
       });
@@ -299,12 +299,13 @@ export default function PalletDetailPage() {
             )}
 
             <div className="mb-4">
-              <label className="text-xs font-medium text-muted-foreground">Reason</label>
+              <label className="text-xs font-medium text-muted-foreground">Reason *</label>
               <input
                 className="w-full border rounded px-3 py-2 text-sm mt-1"
                 value={voidReason}
                 onChange={(e) => setVoidReason(e.target.value)}
-                placeholder="Optional reason..."
+                placeholder="Required reason..."
+                required
               />
             </div>
 
@@ -312,7 +313,7 @@ export default function PalletDetailPage() {
               variant="destructive"
               size="sm"
               onClick={() => void handleVoid()}
-              disabled={voidMutation.isPending}
+              disabled={voidMutation.isPending || !voidReason.trim()}
             >
               <XCircle className="h-4 w-4 mr-1" />
               {voidMutation.isPending

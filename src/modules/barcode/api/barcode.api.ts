@@ -69,6 +69,9 @@ import type {
   RepackPayload,
   ScanRequestPayload,
   ScanResponse,
+  VoidedBoxRow,
+  VoidedFilters,
+  VoidedPalletRow,
   VoidPayload,
 } from '../types';
 
@@ -172,6 +175,16 @@ export const barcodeApi = {
   async deleteEmptyPallet(palletId: number): Promise<{ message: string }> {
     const res = await apiClient.delete<{ message: string }>(EP.PALLET_DETAIL(palletId));
     return res.data;
+  },
+
+  async getVoidedPallets(params?: VoidedFilters): Promise<PaginatedResponse<VoidedPalletRow>> {
+    const res = await apiClient.get<ListResponse<VoidedPalletRow>>(EP.VOIDED_PALLETS, { params });
+    return normalizePage(res.data, params);
+  },
+
+  async getVoidedBoxes(params?: VoidedFilters): Promise<PaginatedResponse<VoidedBoxRow>> {
+    const res = await apiClient.get<ListResponse<VoidedBoxRow>>(EP.VOIDED_BOXES, { params });
+    return normalizePage(res.data, params);
   },
 
   async getPalletHistory(palletId: number): Promise<PalletBoxHistory[]> {
