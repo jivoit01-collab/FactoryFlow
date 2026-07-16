@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
 import { useCutDeliveryNote, useDeliveryNoteSummary } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
@@ -85,7 +86,7 @@ export default function MpDeliveryNotesPage() {
       },
       onError: (e: unknown) => {
         setConfirmOpen(false);
-        toast.error((e as { message?: string })?.message ?? 'Could not cut delivery note');
+        toast.error(getErrorMessage(e, 'Could not cut delivery note'));
       },
     });
   }
