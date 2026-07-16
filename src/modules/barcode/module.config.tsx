@@ -1,7 +1,7 @@
 import { ScanBarcode } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import { BARCODE_PERMISSIONS } from '@/config/permissions/barcode.permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 const BarcodeDashboardPage = lazy(() => import('./pages/BarcodeDashboardPage'));
@@ -37,6 +37,7 @@ const BoxTransferPage = lazy(() => import('./pages/BoxTransferPage'));
 
 // Loose & Dismantle
 const DismantlePage = lazy(() => import('./pages/DismantlePage'));
+const VoidPage = lazy(() => import('./pages/VoidPage'));
 const LooseStockPage = lazy(() => import('./pages/LooseStockPage'));
 const RepackPage = lazy(() => import('./pages/RepackPage'));
 
@@ -189,6 +190,12 @@ export const barcodeModuleConfig: ModuleConfig = {
       permissions: [BARCODE_PERMISSIONS.MANAGE_BOX],
     },
     {
+      path: '/barcode/void',
+      element: <VoidPage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.MANAGE_PALLET],
+    },
+    {
       path: '/barcode/loose',
       element: <LooseStockPage />,
       layout: 'main',
@@ -294,6 +301,11 @@ export const barcodeModuleConfig: ModuleConfig = {
           path: '/barcode/dismantle',
           title: 'Dismantle',
           permissions: [BARCODE_PERMISSIONS.MANAGE_BOX],
+        },
+        {
+          path: '/barcode/void',
+          title: 'Void',
+          permissions: [BARCODE_PERMISSIONS.MANAGE_PALLET],
         },
         {
           path: '/barcode/loose',

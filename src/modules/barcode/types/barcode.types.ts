@@ -392,6 +392,11 @@ export interface VoidPayload {
   reason?: string;
 }
 
+export interface PalletVoidPayload extends VoidPayload {
+  /** Box IDs to also VOID with the pallet. Omit/null to void none (boxes only disassociated). */
+  box_ids?: number[] | null;
+}
+
 export interface PalletMovePayload {
   to_warehouse: string;
   /** Destination location/bin code — required when the destination is an own (WMS) warehouse. */

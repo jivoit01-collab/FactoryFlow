@@ -31,6 +31,7 @@ import type {
   PalletVerifyRequestCreatePayload,
   PalletVerifyRequestFilters,
   PalletVerifyRequestResolvePayload,
+  PalletVoidPayload,
   PrintHistoryFilters,
   PrintRequestPayload,
   ProductionReleaseOilRow,
@@ -212,7 +213,7 @@ export function useCreatePallet() {
 export function useVoidPallet() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ palletId, data }: { palletId: number; data?: VoidPayload }) =>
+    mutationFn: ({ palletId, data }: { palletId: number; data?: PalletVoidPayload }) =>
       barcodeApi.voidPallet(palletId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });

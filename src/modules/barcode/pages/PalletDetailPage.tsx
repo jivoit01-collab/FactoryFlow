@@ -8,6 +8,7 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -54,14 +55,46 @@ export default function PalletDetailPage() {
   const voidMutation = useVoidPallet();
   const deleteEmptyPalletMutation = useDeleteEmptyPallet();
 
-  const handleVoid = () => {
-    if (
-      !pallet ||
-      !confirm('Are you sure you want to void this pallet? All boxes will be disassociated.')
-    ) {
-      return;
+  const [showVoidPanel, setShowVoidPanel] = useState(false);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidBoxes, setVoidBoxes] = useState(false);
+  const [selectedBoxIds, setSelectedBoxIds] = useState<number[]>([]);
+
+  const activeBoxes = (pallet?.boxes || []).filter((b) => b.status === 'ACTIVE');
+
+  const toggleBoxSelect = (boxId: number) => {
+    setSelectedBoxIds((prev) =>
+      prev.includes(boxId) ? prev.filter((id) => id !== boxId) : [...prev, boxId],
+    );
+  };
+
+  const closeVoidPanel = () => {
+    setShowVoidPanel(false);
+    setVoidReason('');
+    setVoidBoxes(false);
+    setSelectedBoxIds([]);
+  };
+
+  const handleVoid = async () => {
+    if (!pallet) return;
+    try {
+      await voidMutation.mutateAsync({
+        palletId: pallet.id,
+        data: {
+          reason: voidReason || 'Voided from detail page',
+          box_ids: voidBoxes && selectedBoxIds.length > 0 ? selectedBoxIds : null,
+        },
+      });
+      const voided = voidBoxes ? selectedBoxIds.length : 0;
+      toast.success(
+        voided > 0
+          ? `Pallet voided — ${voided} box${voided === 1 ? '' : 'es'} voided`
+          : 'Pallet voided — boxes disassociated',
+      );
+      closeVoidPanel();
+    } catch (err: unknown) {
+      toastBarcodeError(err, 'Unable to void pallet.');
     }
-    voidMutation.mutate({ palletId: pallet.id, data: { reason: 'Voided from detail page' } });
   };
 
   const handleDeleteEmptyPallet = async () => {
@@ -184,17 +217,112 @@ export default function PalletDetailPage() {
               {deleteEmptyPalletMutation.isPending ? 'Deleting...' : 'Delete Empty Pallet'}
             </Button>
           )}
-          {pallet.status === 'ACTIVE' && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleVoid}
-              disabled={voidMutation.isPending}
-            >
+          {pallet.status === 'ACTIVE' && !showVoidPanel && (
+            <Button variant="destructive" size="sm" onClick={() => setShowVoidPanel(true)}>
               <XCircle className="h-4 w-4 mr-1" /> Void Pallet
             </Button>
           )}
         </div>
+      )}
+
+      {pallet.status === 'ACTIVE' && showVoidPanel && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-red-600" /> Void Pallet {pallet.pallet_id}
+              </h3>
+              <Button variant="ghost" size="sm" onClick={closeVoidPanel}>
+                Cancel
+              </Button>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              Voiding this pallet disassociates its boxes. Boxes you leave unselected stay ACTIVE as
+              loose boxes.
+            </p>
+
+            <label className="flex items-center gap-2 mb-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={voidBoxes}
+                onChange={(e) => {
+                  setVoidBoxes(e.target.checked);
+                  setSelectedBoxIds(e.target.checked ? activeBoxes.map((b) => b.id) : []);
+                }}
+              />
+              <span className="text-sm font-medium">Also void its boxes</span>
+            </label>
+
+            {voidBoxes && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Select boxes to void ({selectedBoxIds.length}/{activeBoxes.length})
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setSelectedBoxIds(
+                        selectedBoxIds.length === activeBoxes.length
+                          ? []
+                          : activeBoxes.map((b) => b.id),
+                      )
+                    }
+                  >
+                    {selectedBoxIds.length === activeBoxes.length ? 'Deselect all' : 'Select all'}
+                  </Button>
+                </div>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {activeBoxes.map((box) => (
+                    <label
+                      key={box.id}
+                      className="flex items-center gap-2 p-2 bg-muted/30 rounded cursor-pointer hover:bg-muted/50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedBoxIds.includes(box.id)}
+                        onChange={() => toggleBoxSelect(box.id)}
+                      />
+                      <span className="font-mono text-xs">{box.box_barcode}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {box.qty} {box.uom}
+                      </span>
+                    </label>
+                  ))}
+                  {activeBoxes.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No active boxes on this pallet.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className="text-xs font-medium text-muted-foreground">Reason</label>
+              <input
+                className="w-full border rounded px-3 py-2 text-sm mt-1"
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Optional reason..."
+              />
+            </div>
+
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => void handleVoid()}
+              disabled={voidMutation.isPending}
+            >
+              <XCircle className="h-4 w-4 mr-1" />
+              {voidMutation.isPending
+                ? 'Voiding...'
+                : voidBoxes && selectedBoxIds.length > 0
+                  ? `Void Pallet + ${selectedBoxIds.length} Box${selectedBoxIds.length === 1 ? '' : 'es'}`
+                  : 'Void Pallet'}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <Card>

@@ -62,6 +62,7 @@ import type {
   PalletVerifyRequestFilters,
   PalletVerifyRequestListItem,
   PalletVerifyRequestResolvePayload,
+  PalletVoidPayload,
   PrintHistoryFilters,
   PrintRequestPayload,
   ProductionReleaseOilRow,
@@ -163,7 +164,7 @@ export const barcodeApi = {
     return res.data;
   },
 
-  async voidPallet(palletId: number, data?: VoidPayload): Promise<PalletDetail> {
+  async voidPallet(palletId: number, data?: PalletVoidPayload): Promise<PalletDetail> {
     const res = await apiClient.post<PalletDetail>(EP.PALLET_VOID(palletId), data || {});
     return res.data;
   },
