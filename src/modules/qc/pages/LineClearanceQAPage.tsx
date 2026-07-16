@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Paperclip, PauseCircle, Shield, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, History, Paperclip, PauseCircle, Shield, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -10,9 +10,10 @@ import {
   useHoldLineClearance,
   useLineClearanceDetail,
   useLineClearances,
+  useManagerDecideLineClearance,
 } from '@/modules/production/execution/api';
 import { ClearanceStatusBadge } from '@/modules/production/execution/components/ClearanceStatusBadge';
-import type { LineClearance } from '@/modules/production/execution/types';
+import type { ClearanceStatus, LineClearance } from '@/modules/production/execution/types';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button, Card, CardContent,
@@ -26,6 +27,8 @@ const isImageFile = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url
 const fileNameFromUrl = (url: string, fallback?: string) =>
   fallback || decodeURIComponent(url.split('?')[0].split('/').pop() || 'attachment');
 
+type Decision = 'CLEARED' | 'NOT_CLEARED' | 'ON_HOLD';
+
 function LineClearanceQAPage() {
   const [statusFilter, setStatusFilter] = useState<string>('SUBMITTED');
   const { data: clearances = [] } = useLineClearances(undefined, statusFilter === 'ALL' ? undefined : statusFilter);
@@ -34,10 +37,14 @@ function LineClearanceQAPage() {
   const { data: detail, isLoading: detailLoading } = useLineClearanceDetail(selectedId);
   const approveMutation = useApproveLineClearance(selectedId || 0);
   const holdMutation = useHoldLineClearance(selectedId || 0);
+  const managerMutation = useManagerDecideLineClearance(selectedId || 0);
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
   const canApproveLineClearance = hasAnyPermission([
     QC_PERMISSIONS.LINE_CLEARANCE_QC.APPROVE,
+  ]);
+  const canManageLineClearance = hasAnyPermission([
+    QC_PERMISSIONS.LINE_CLEARANCE_QC.MANAGE,
   ]);
 
   const openClearance = (id: number) => {
@@ -52,33 +59,46 @@ function LineClearanceQAPage() {
 
   const trimmedRemarks = remarks.trim();
 
-  const handleApprove = async (approved: boolean) => {
-    if (!selectedId || !canApproveLineClearance) return;
-    if (!approved && !trimmedRemarks) {
-      toast.error('Remarks are required to reject a clearance');
+  const pending = detail?.status === 'SUBMITTED' || detail?.status === 'ON_HOLD';
+  const decided = detail?.status === 'CLEARED' || detail?.status === 'NOT_CLEARED';
+  const lineStarted = Boolean(detail?.is_line_started);
+
+  // Normal QC acts on pending items; a manager may also change a decided one
+  // (an override) as long as the line has not started yet.
+  const canActNormally = pending && canApproveLineClearance;
+  const canOverride = canManageLineClearance && !lineStarted && (pending || decided);
+  const showDecisionUI = canActNormally || canOverride;
+  const useManagerPath = canManageLineClearance && (decided || !canApproveLineClearance);
+  const showHold = (useManagerPath || detail?.status === 'SUBMITTED') && detail?.status !== 'ON_HOLD';
+  const decisionLocked = canManageLineClearance && lineStarted && detail?.status !== 'DRAFT' && !showDecisionUI;
+
+  const actionsPending =
+    approveMutation.isPending || holdMutation.isPending || managerMutation.isPending;
+
+  const submitDecision = async (decision: Decision) => {
+    if (!selectedId) return;
+    if (decision !== 'CLEARED' && !trimmedRemarks) {
+      toast.error(`Remarks are required to ${decision === 'ON_HOLD' ? 'hold' : 'reject'} a clearance`);
       return;
     }
     try {
-      await approveMutation.mutateAsync({ approved, remarks: trimmedRemarks });
-      toast.success(approved ? 'Clearance approved' : 'Clearance rejected');
+      if (useManagerPath) {
+        await managerMutation.mutateAsync({ decision, remarks: trimmedRemarks });
+      } else if (decision === 'ON_HOLD') {
+        await holdMutation.mutateAsync(trimmedRemarks);
+      } else {
+        await approveMutation.mutateAsync({ approved: decision === 'CLEARED', remarks: trimmedRemarks });
+      }
+      toast.success(
+        decision === 'CLEARED' ? 'Clearance approved'
+          : decision === 'NOT_CLEARED' ? 'Clearance rejected'
+            : 'Clearance put on hold',
+      );
       closeDialog();
-    } catch { toast.error('Failed'); }
-  };
-
-  const handleHold = async () => {
-    if (!selectedId || !canApproveLineClearance) return;
-    if (!trimmedRemarks) {
-      toast.error('Remarks are required to put a clearance on hold');
-      return;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed');
     }
-    try {
-      await holdMutation.mutateAsync(trimmedRemarks);
-      toast.success('Clearance put on hold');
-      closeDialog();
-    } catch { toast.error('Failed'); }
   };
-
-  const actionsPending = approveMutation.isPending || holdMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -239,8 +259,46 @@ function LineClearanceQAPage() {
                 </div>
               )}
 
+              {/* Decision history (audit trail) */}
+              {detail.decision_logs.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                    <History className="h-3.5 w-3.5" /> Decision History
+                  </p>
+                  <ul className="space-y-2">
+                    {detail.decision_logs.map((log, idx) => (
+                      <li key={log.id} className="flex items-start gap-2 text-sm">
+                        <div className="mt-0.5"><ClearanceStatusBadge status={log.decision as ClearanceStatus} /></div>
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">
+                            {log.decided_by_name || 'Unknown'} · {new Date(log.decided_at).toLocaleString()}
+                            {idx === 0 && <span className="ml-1 font-medium text-foreground">· Current</span>}
+                          </p>
+                          {log.remarks && <p className="whitespace-pre-wrap">{log.remarks}</p>}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Manager override hint */}
+              {decided && canOverride && (
+                <p className="text-xs text-muted-foreground rounded-md border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 p-2">
+                  This clearance is already decided. Choosing a decision below changes it — the previous
+                  decision is kept in the history above. Allowed until the line starts.
+                </p>
+              )}
+
+              {/* Decision locked — line already started */}
+              {decisionLocked && (
+                <p className="text-sm text-muted-foreground rounded-md border p-2">
+                  Decision locked — the line has already started, so it can no longer be changed.
+                </p>
+              )}
+
               {/* Remarks input + Approve / Reject / Hold buttons */}
-              {(detail.status === 'SUBMITTED' || detail.status === 'ON_HOLD') && canApproveLineClearance && (
+              {showDecisionUI && (
                 <div className="space-y-3 pt-2 border-t">
                   <div>
                     <Label htmlFor="qa-remarks">
@@ -258,30 +316,30 @@ function LineClearanceQAPage() {
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="destructive"
-                      onClick={() => handleApprove(false)}
+                      onClick={() => submitDecision('NOT_CLEARED')}
                       disabled={actionsPending || !trimmedRemarks}
                       title={!trimmedRemarks ? 'Enter remarks to reject' : undefined}
                     >
                       <XCircle className="h-4 w-4 mr-1" /> Reject
                     </Button>
-                    {detail.status === 'SUBMITTED' && (
+                    {showHold && (
                       <Button
                         variant="outline"
-                        onClick={handleHold}
+                        onClick={() => submitDecision('ON_HOLD')}
                         disabled={actionsPending || !trimmedRemarks}
                         title={!trimmedRemarks ? 'Enter remarks to hold' : undefined}
                       >
                         <PauseCircle className="h-4 w-4 mr-1" /> Hold
                       </Button>
                     )}
-                    <Button onClick={() => handleApprove(true)} disabled={actionsPending}>
+                    <Button onClick={() => submitDecision('CLEARED')} disabled={actionsPending}>
                       <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
                     </Button>
                   </div>
                 </div>
               )}
 
-              {(detail.status === 'CLEARED' || detail.status === 'NOT_CLEARED') && detail.production_run && (
+              {detail.production_run && (detail.status === 'CLEARED' || detail.status === 'NOT_CLEARED') && (
                 <div className="flex justify-end pt-2 border-t">
                   <Button variant="outline" size="sm" onClick={() => { closeDialog(); navigate(`/production/execution/runs/${detail.production_run}`); }}>
                     View Production Run

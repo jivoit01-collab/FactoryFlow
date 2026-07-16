@@ -26,6 +26,7 @@ import type {
   CreateTemplateRequest,
   CreateWasteLogRequest,
   CreateWaterRequest,
+  ManagerDecisionRequest,
   ResolveBreakdownRequest,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
@@ -677,6 +678,18 @@ export function useReopenLineClearance(clearanceId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => executionApi.reopenLineClearance(clearanceId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });
+    },
+  });
+}
+
+export function useManagerDecideLineClearance(clearanceId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ManagerDecisionRequest) =>
+      executionApi.managerDecideLineClearance(clearanceId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.clearanceDetail(clearanceId) });
       qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'clearances'] });

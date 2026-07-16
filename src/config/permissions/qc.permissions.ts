@@ -82,6 +82,8 @@ export const QC_PERMISSIONS = {
     VIEW: 'quality_control.can_view_line_clearance_qc',
     /** Approve/reject line clearance QA records from the QC module */
     APPROVE: 'quality_control.can_approve_line_clearance_qc',
+    /** Manager override — change any decision until the line has started */
+    MANAGE: 'production_execution.can_manage_line_clearance',
   },
 } as const;
 

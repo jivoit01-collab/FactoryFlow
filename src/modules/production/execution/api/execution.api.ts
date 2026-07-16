@@ -42,6 +42,7 @@ import type {
   MachineBreakdown,
   MachineChecklistEntry,
   MachineRuntime,
+  ManagerDecisionRequest,
   Manpower,
   MaterialUsage,
   MonthlySummaryReport,
@@ -480,6 +481,17 @@ export const executionApi = {
 
   async reopenLineClearance(clearanceId: number): Promise<LineClearanceDetail> {
     const res = await apiClient.post<LineClearanceDetail>(EP.LINE_CLEARANCE_REOPEN(clearanceId));
+    return res.data;
+  },
+
+  async managerDecideLineClearance(
+    clearanceId: number,
+    data: ManagerDecisionRequest,
+  ): Promise<LineClearanceDetail> {
+    const res = await apiClient.post<LineClearanceDetail>(
+      EP.LINE_CLEARANCE_MANAGER_DECISION(clearanceId),
+      data,
+    );
     return res.data;
   },
 

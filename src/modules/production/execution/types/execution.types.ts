@@ -358,6 +358,16 @@ export interface LineClearanceAttachment {
   uploaded_at: string;
 }
 
+export interface LineClearanceDecisionLog {
+  id: number;
+  decision: ClearanceStatus;
+  decision_label: string;
+  remarks: string;
+  decided_by: number | null;
+  decided_by_name: string | null;
+  decided_at: string;
+}
+
 export interface LineClearance {
   id: number;
   production_run: number | null;
@@ -380,8 +390,16 @@ export interface LineClearanceDetail extends LineClearance {
   qa_approved_by: number | null;
   qa_approved_at: string | null;
   qa_remarks: string;
+  run_status: RunStatus | null;
+  is_line_started: boolean;
   items: LineClearanceItem[];
   attachments: LineClearanceAttachment[];
+  decision_logs: LineClearanceDecisionLog[];
+}
+
+export interface ManagerDecisionRequest {
+  decision: 'CLEARED' | 'NOT_CLEARED' | 'ON_HOLD';
+  remarks?: string;
 }
 
 // ============================================================================

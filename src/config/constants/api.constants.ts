@@ -646,6 +646,8 @@ export const API_ENDPOINTS = {
       `/production-execution/line-clearance/${clearanceId}/hold/`,
     LINE_CLEARANCE_REOPEN: (clearanceId: number) =>
       `/production-execution/line-clearance/${clearanceId}/reopen/`,
+    LINE_CLEARANCE_MANAGER_DECISION: (clearanceId: number) =>
+      `/production-execution/line-clearance/${clearanceId}/manager-decision/`,
     LINE_CLEARANCE_ATTACHMENTS: (clearanceId: number) =>
       `/production-execution/line-clearance/${clearanceId}/attachments/`,
     LINE_CLEARANCE_ATTACHMENT_DETAIL: (clearanceId: number, attachmentId: number) =>
