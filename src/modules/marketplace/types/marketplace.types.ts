@@ -101,6 +101,8 @@ export interface MarketplaceWarehouse {
   // Delivery-note posting config (used directly when posting to SAP)
   sap_series: string;
   sap_tax_code: string;
+  /** SAP Business Place / Branch (BPLId) the delivery note is booked under. */
+  sap_branch_id: number | null;
   post_goods_issue: boolean;
   is_active: boolean;
   created_at?: string;

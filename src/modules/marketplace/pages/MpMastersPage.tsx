@@ -506,6 +506,7 @@ const EMPTY_WH = (channel: MarketplaceChannel): MarketplaceWarehouse => ({
   facility_code: '',
   sap_series: '',
   sap_tax_code: '',
+  sap_branch_id: null,
   post_goods_issue: true,
   is_active: true,
 });
@@ -540,6 +541,7 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
       facility_code: editing.facility_code,
       sap_series: editing.sap_series.trim(),
       sap_tax_code: editing.sap_tax_code.trim(),
+      sap_branch_id: editing.sap_branch_id,
       post_goods_issue: editing.post_goods_issue,
       is_active: editing.is_active,
       ...(editing.id ? { id: editing.id } : {}),
@@ -663,6 +665,19 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
                       value={editing.sap_tax_code}
                       placeholder="e.g. GST18"
                       onChange={(e) => setEditing({ ...editing, sap_tax_code: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Branch (BPLId)">
+                    <Input
+                      type="number"
+                      value={editing.sap_branch_id ?? ''}
+                      placeholder="SAP Business Place id"
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          sap_branch_id: e.target.value === '' ? null : Number(e.target.value),
+                        })
+                      }
                     />
                   </Field>
                 </div>
