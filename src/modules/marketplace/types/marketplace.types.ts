@@ -588,6 +588,25 @@ export interface PackQueueOrder {
   packing_status: MpPackingStatus | null;
 }
 
+export interface PackingSummaryItem {
+  item_code: string;
+  item_name: string;
+  order_count: number;
+}
+
+export interface PackingSummary {
+  items: PackingSummaryItem[];
+  total_orders: number;
+  unmapped_orders: number;
+}
+
+export interface CompleteItemGroupResult {
+  item_code: string;
+  completed_count: number;
+  completed_order_ids: string[];
+  skipped_order_ids: string[];
+}
+
 export interface PackLabelData {
   type: string;
   barcode: string;

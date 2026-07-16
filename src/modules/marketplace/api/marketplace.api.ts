@@ -5,6 +5,7 @@ import type {
   CancelRequest,
   ComboDefinition,
   ComboDefinitionUpsert,
+  CompleteItemGroupResult,
   ConfirmRequest,
   DeliveryNoteCutResult,
   DeliveryNoteSummary,
@@ -28,6 +29,7 @@ import type {
   OrderImportBatch,
   OrderListParams,
   PackLabelData,
+  PackingSummary,
   PackQueueOrder,
   ReceiveRequest,
   ReconciliationParams,
@@ -181,6 +183,16 @@ export const marketplaceApi = {
     const { data } = await apiClient.post<MarketplaceDispatch>(EP.DISPATCHES, payload);
     return data;
   },
+  async scanDispatchByTracking(
+    channel: MarketplaceChannel,
+    barcode: string,
+  ): Promise<MarketplaceDispatch & { created: boolean; duplicate: boolean }> {
+    const { data } = await apiClient.post<MarketplaceDispatch & { created: boolean; duplicate: boolean }>(
+      EP.DISPATCH_SCAN_TRACKING,
+      { channel, barcode },
+    );
+    return data;
+  },
   async scanDispatch(id: number, payload: ScanRequest): Promise<MpScan> {
     const { data } = await apiClient.post<MpScan>(EP.DISPATCH_SCANS(id), payload);
     return data;
@@ -214,6 +226,16 @@ export const marketplaceApi = {
   },
   async createReturn(payload: ReturnCreateRequest): Promise<MarketplaceReturn> {
     const { data } = await apiClient.post<MarketplaceReturn>(EP.RETURNS, payload);
+    return data;
+  },
+  async scanReturnByTracking(
+    channel: MarketplaceChannel,
+    barcode: string,
+  ): Promise<MarketplaceReturn & { created: boolean; duplicate: boolean }> {
+    const { data } = await apiClient.post<MarketplaceReturn & { created: boolean; duplicate: boolean }>(
+      EP.RETURN_SCAN_TRACKING,
+      { channel, barcode },
+    );
     return data;
   },
   async scanReturn(id: number, payload: ScanRequest): Promise<MpReturnScan> {
@@ -327,6 +349,22 @@ export const marketplaceApi = {
   },
 
   // ── Packing ─────────────────────────────────────────────────────────────────
+  async packingSummary(channel: MarketplaceChannel): Promise<PackingSummary> {
+    const { data } = await apiClient.get<PackingSummary>(
+      `${EP.PACKING_SUMMARY}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+  async completeItemGroup(
+    channel: MarketplaceChannel,
+    itemCode: string,
+  ): Promise<CompleteItemGroupResult> {
+    const { data } = await apiClient.post<CompleteItemGroupResult>(
+      EP.PACKING_SUMMARY_COMPLETE,
+      { channel, item_code: itemCode },
+    );
+    return data;
+  },
   async packingQueue(params?: {
     channel?: MarketplaceChannel;
     page?: number;

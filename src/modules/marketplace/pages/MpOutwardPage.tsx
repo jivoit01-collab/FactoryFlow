@@ -1,10 +1,20 @@
 /**
- * Outward — the marketplace dispatch centerpiece.
- * Pick an Order ID → resolve products (combo-expanded) → scan finished goods →
- * live summary → confirm → SAP delivery note + internal billing.
+ * Outward — scan-first dispatch.
+ * Scan a Flipkart Tracking ID and the whole order is marked scanned on a live
+ * board — no opening orders first. Each order card shows its items and status;
+ * Confirm posts the SAP delivery note + internal bill (per order or in bulk).
  */
-import { AlertTriangle, CheckCircle2, PackageCheck, RefreshCw, Truck } from 'lucide-react';
+import {
+  CheckCircle2,
+  Circle,
+  Loader2,
+  PackageCheck,
+  RefreshCw,
+  ScanLine,
+  Truck,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import {
@@ -15,169 +25,279 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Checkbox,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  Input,
 } from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
+import { marketplaceApi } from '../api/marketplace.api';
 import {
+  MARKETPLACE_QUERY_KEYS,
   useConfirmDispatch,
-  useCreateDispatch,
-  useMarketplaceSettings,
-  useMpDispatch,
   useMpDispatches,
   useMpOrders,
   useRetryDeliveryNote,
-  useScanDispatch,
+  useScanDispatchByTracking,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
-import { MpProgressTable } from '../components/MpProgressTable';
+import { MpScanFeedback, type ScanFeedback } from '../components/MpScanFeedback';
 import { MpScanPanel } from '../components/MpScanPanel';
-import type { MarketplaceChannel, MarketplaceDispatch } from '../types/marketplace.types';
+import type {
+  MarketplaceChannel,
+  MarketplaceDispatch,
+  MarketplaceOrder,
+} from '../types/marketplace.types';
+
+const WARN_CODES = ['NOT_PACKED', 'NOT_ISSUED', 'ORDER_CANCELLED', 'EMPTY'];
+
+function errorCode(e: unknown): string | undefined {
+  return (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
+}
 
 export default function MpOutwardPage() {
   const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
-  const [search, setSearch] = useState('');
-  const [dispatchId, setDispatchId] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
+  const qc = useQueryClient();
 
-  // Only dispatch-ready orders show (packed, or issued when packing is skipped).
-  const ordersQuery = useMpOrders({ channel, status: 'OPEN', search, ready: 1 });
-  const { data: mpSettings } = useMarketplaceSettings(channel);
-  const skipPacking = mpSettings?.skip_packing ?? false;
+  const ordersQuery = useMpOrders({ channel, status: 'OPEN', ready: 1 });
+  const dispatchesQuery = useMpDispatches({ channel });
   const dispatchedQuery = useMpDispatches({ channel, status: 'CONFIRMED' });
-  const createDispatch = useCreateDispatch();
-  const dispatchQuery = useMpDispatch(dispatchId);
-  const dispatch = dispatchQuery.data;
+  const scanMut = useScanDispatchByTracking(channel);
 
-  function loadOrder(orderId: string) {
-    createDispatch.mutate(
-      { channel, order_id: orderId },
-      {
-        onSuccess: (d) => setDispatchId(d.id),
-        onError: (e: unknown) => {
-          const err = e as { status?: number; message?: string };
-          if (err?.status === 409 && err?.message) {
-            toast.error(err.message); // e.g. "materials have not been issued…"
-          } else {
-            toast.error(`Order ${orderId} not found for ${channel}`);
-          }
-        },
+  const orders = ordersQuery.data ?? [];
+
+  // order_id → active (non-confirmed, non-cancelled) dispatch, to know scan state.
+  const activeDispatch = useMemo(() => {
+    const map = new Map<string, MarketplaceDispatch>();
+    for (const d of dispatchesQuery.data ?? []) {
+      if (d.status === 'CANCELLED' || d.status === 'CONFIRMED') continue;
+      map.set(d.order_id, d);
+    }
+    return map;
+  }, [dispatchesQuery.data]);
+
+  const scannedIds = orders
+    .map((o) => activeDispatch.get(o.order_id))
+    .filter((d): d is MarketplaceDispatch => !!d && d.status === 'READY')
+    .map((d) => d.id);
+  const scannedCount = scannedIds.length;
+
+  const confirmAll = useMutation({
+    mutationFn: async (ids: number[]) => {
+      for (const id of ids) await marketplaceApi.confirmDispatch(id, {});
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: MARKETPLACE_QUERY_KEYS.all }),
+  });
+
+  function handleScan(barcode: string) {
+    scanMut.mutate(barcode, {
+      onSuccess: (d) => {
+        if (d.duplicate) {
+          setFeedback({ kind: 'warning', message: `Already scanned · ${d.order_id}`, detail: d.buyer_name });
+        } else {
+          setFeedback({ kind: 'success', message: `Scanned · ${d.order_id}`, detail: d.buyer_name });
+        }
       },
-    );
-  }
-
-  function reset() {
-    setDispatchId(null);
+      onError: (e) => {
+        const warn = WARN_CODES.includes(errorCode(e) ?? '');
+        setFeedback({ kind: warn ? 'warning' : 'error', message: getErrorMessage(e, 'Scan failed') });
+      },
+    });
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 p-4 md:p-6">
+    <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
       <header className="flex items-center gap-3">
         <Truck className="h-7 w-7 text-primary" />
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Outward Dispatch</h1>
           <p className="text-sm text-muted-foreground">
-            Scan finished goods against a marketplace Order ID and confirm.
+            Scan a Tracking ID to mark the whole order dispatched — then confirm.
           </p>
         </div>
-        <MpChannelSelect value={channel} onChange={(c) => { setChannel(c); reset(); }} />
+        <MpChannelSelect value={channel} onChange={(c) => { setChannel(c); setFeedback(null); }} />
       </header>
 
-      {!dispatch ? (
-        <>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Pick an order</CardTitle>
-            <CardDescription>
-              Only orders that have been packed are shown.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={search}
-                placeholder="Search or type an Order ID"
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && search.trim() && loadOrder(search.trim())}
-              />
-              <Button className="w-full sm:w-auto" onClick={() => search.trim() && loadOrder(search.trim())} disabled={createDispatch.isPending}>
-                Load
-              </Button>
-            </div>
-            <div className="divide-y rounded-md border">
-              {(ordersQuery.data ?? []).length === 0 ? (
-                <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  {ordersQuery.isLoading
-                    ? 'Loading…'
-                    : skipPacking
-                      ? 'No orders ready — issue their materials first (Warehouse Issues).'
-                      : 'No orders ready — pack them first (Packing section).'}
-                </p>
-              ) : (
-                (ordersQuery.data ?? []).map((order) => (
-                  <button
-                    key={order.id}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted/50"
-                    onClick={() => loadOrder(order.order_id)}
-                  >
-                    <span>
-                      <span className="font-mono font-medium">{order.order_id}</span>
-                      {order.buyer_name ? (
-                        <span className="ml-2 text-xs text-muted-foreground">{order.buyer_name}</span>
-                      ) : null}
-                    </span>
-                    <Badge variant="outline">{order.lines.length} lines</Badge>
-                  </button>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Scan box */}
+      <Card className="border-primary/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ScanLine className="h-5 w-5 text-primary" /> Scan to dispatch
+          </CardTitle>
+          <CardDescription>
+            Scan the Flipkart <strong>Tracking ID</strong> on the shipping label. One scan marks the
+            whole order scanned.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <MpScanPanel onScan={handleScan} pending={scanMut.isPending} placeholder="Scan Tracking ID (e.g. FMPP…)" />
+          <MpScanFeedback feedback={feedback} />
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Dispatched orders</CardTitle>
-            <CardDescription>Confirmed {channel} dispatches (delivery note posted).</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="-mx-2 overflow-x-auto sm:mx-0">
-              <table className="w-full min-w-[660px] text-sm">
-                <thead className="border-b text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="p-3">Order</th>
-                    <th className="p-3">Buyer</th>
-                    <th className="p-3">Delivery note</th>
-                    <th className="p-3">Bill</th>
-                    <th className="p-3">DN status</th>
-                    <th className="p-3">Dispatched</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(dispatchedQuery.data ?? []).length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="p-6 text-center text-muted-foreground">
-                        {dispatchedQuery.isLoading ? 'Loading…' : 'No dispatched orders yet.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    (dispatchedQuery.data ?? []).map((d) => <DispatchedRow key={d.id} d={d} />)
-                  )}
-                </tbody>
-              </table>
+      {/* Board */}
+      <Card>
+        <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-base">To dispatch</CardTitle>
+            <CardDescription>Packed orders awaiting scan &amp; confirm.</CardDescription>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="tabular-nums">
+              {scannedCount} of {orders.length} scanned
+            </Badge>
+            <Button
+              size="sm"
+              disabled={scannedCount === 0 || confirmAll.isPending}
+              onClick={() =>
+                confirmAll.mutate(scannedIds, {
+                  onSuccess: () => toast.success(`Confirmed ${scannedIds.length} order(s).`),
+                  onError: (e) => toast.error(getErrorMessage(e, 'Bulk confirm failed')),
+                })
+              }
+            >
+              {confirmAll.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirming…</>
+              ) : (
+                <><PackageCheck className="mr-2 h-4 w-4" /> Confirm all scanned</>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {ordersQuery.isLoading ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
-          </CardContent>
-        </Card>
-        </>
-      ) : (
-        <ActiveDispatch dispatchId={dispatch.id} onClose={reset} channel={channel} />
-      )}
+          ) : orders.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              No orders ready — pack them first (Packing).
+            </p>
+          ) : (
+            orders.map((order) => (
+              <OrderScanCard
+                key={order.order_id}
+                order={order}
+                dispatch={activeDispatch.get(order.order_id)}
+              />
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dispatched */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Dispatched orders</CardTitle>
+          <CardDescription>Confirmed {channel} dispatches (delivery note posted).</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="-mx-2 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[660px] text-sm">
+              <thead className="border-b text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-3">Order</th>
+                  <th className="p-3">Buyer</th>
+                  <th className="p-3">Delivery note</th>
+                  <th className="p-3">Bill</th>
+                  <th className="p-3">DN status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(dispatchedQuery.data ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                      {dispatchedQuery.isLoading ? 'Loading…' : 'No dispatched orders yet.'}
+                    </td>
+                  </tr>
+                ) : (
+                  (dispatchedQuery.data ?? []).map((d) => <DispatchedRow key={d.id} d={d} />)
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function OrderScanCard({
+  order,
+  dispatch,
+}: {
+  order: MarketplaceOrder;
+  dispatch?: MarketplaceDispatch;
+}) {
+  const scanned = dispatch?.status === 'READY';
+  return (
+    <div
+      className={`rounded-lg border p-3 transition-colors ${
+        scanned ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-card'
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {scanned ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+          ) : (
+            <Circle className="h-5 w-5 text-muted-foreground/50" />
+          )}
+          <div>
+            <div className="font-mono font-medium">{order.order_id}</div>
+            {order.buyer_name ? (
+              <div className="text-xs text-muted-foreground">{order.buyer_name}</div>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {scanned ? (
+            <Badge className="bg-emerald-600">Scanned</Badge>
+          ) : (
+            <Badge variant="outline">Pending scan</Badge>
+          )}
+          {scanned && dispatch ? <ConfirmButton dispatchId={dispatch.id} orderId={order.order_id} /> : null}
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {order.lines.map((l, i) => (
+          <span
+            key={i}
+            className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs ${
+              scanned ? 'border-emerald-300 text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'
+            }`}
+          >
+            {scanned ? <CheckCircle2 className="h-3 w-3" /> : null}
+            {l.sku_name || l.marketplace_sku} × {Number(l.ordered_quantity)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmButton({ dispatchId, orderId }: { dispatchId: number; orderId: string }) {
+  const confirm = useConfirmDispatch(dispatchId);
+  return (
+    <Button
+      size="sm"
+      disabled={confirm.isPending}
+      onClick={() =>
+        confirm.mutate(
+          {},
+          {
+            onSuccess: (r) => {
+              if (r.sap_post_status === 'FAILED') {
+                toast.warning(`${orderId} dispatched — delivery note failed; retry available.`);
+              } else {
+                toast.success(`Dispatched · ${orderId} · DN ${r.sap_delivery_note_num || '—'}`);
+              }
+            },
+            onError: (e) => toast.error(getErrorMessage(e, 'Confirm failed')),
+          },
+        )
+      }
+    >
+      <PackageCheck className="mr-1.5 h-4 w-4" /> {confirm.isPending ? 'Confirming…' : 'Confirm'}
+    </Button>
   );
 }
 
@@ -214,213 +334,6 @@ function DispatchedRow({ d }: { d: MarketplaceDispatch }) {
           <Badge variant="outline">{d.sap_post_status ?? 'POSTED'}</Badge>
         )}
       </td>
-      <td className="p-3 text-muted-foreground">
-        {d.confirmed_at ? new Date(d.confirmed_at).toLocaleString() : '—'}
-      </td>
     </tr>
-  );
-}
-
-function ActiveDispatch({
-  dispatchId,
-  channel,
-  onClose,
-}: {
-  dispatchId: number;
-  channel: MarketplaceChannel;
-  onClose: () => void;
-}) {
-  const dispatchQuery = useMpDispatch(dispatchId);
-  const scan = useScanDispatch(dispatchId);
-  const confirm = useConfirmDispatch(dispatchId);
-  const retry = useRetryDeliveryNote(dispatchId);
-  const [override, setOverride] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-
-  const d = dispatchQuery.data;
-  const unmapped = d?.unmapped_skus ?? [];
-  const progress = d?.progress ?? [];
-  const allComplete = progress.length > 0 && progress.every((p) => p.status === 'COMPLETE');
-  // The order is verified at Packing (single Tracking-ID scan), so item scanning
-  // here is optional: a packed order with no scans can confirm directly. The
-  // deviation override only matters once the operator has actually scanned items.
-  const hasScans = progress.some((p) => Number(p.scanned_quantity) > 0);
-  const readyToConfirm = unmapped.length === 0 && (allComplete || override || !hasScans);
-  const confirmed = d?.status === 'CONFIRMED';
-
-  const pmLines = useMemo(
-    () => (d?.resolved_lines ?? []).filter((l) => l.component_type === 'PM'),
-    [d?.resolved_lines],
-  );
-
-  function handleScan(barcode: string) {
-    scan.mutate(
-      { barcode_raw: barcode },
-      {
-        onSuccess: (result) => {
-          if (result.duplicate) toast.warning(`Duplicate scan: ${barcode}`);
-          else toast.success(`Scanned ${result.item_code}`);
-        },
-      },
-    );
-  }
-
-  function handleConfirm() {
-    confirm.mutate(
-      { override_deviation: override },
-      {
-        onSuccess: (result) => {
-          setConfirmOpen(false);
-          if (result.sap_post_status === 'FAILED') {
-            toast.warning('Order dispatched — delivery note failed to post. Retry available.');
-          } else {
-            toast.success(
-              `Dispatched · DN ${result.sap_delivery_note_num || '—'} · Bill ${
-                result.internal_billing_num || '—'
-              }`,
-            );
-          }
-        },
-      },
-    );
-  }
-
-  if (!d) return <p className="text-sm text-muted-foreground">Loading dispatch…</p>;
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle className="text-base">
-              Order <span className="font-mono">{d.order_id}</span>
-            </CardTitle>
-            <CardDescription>
-              {channel} · warehouse {d.sap_warehouse_code || '—'}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={confirmed ? 'default' : 'secondary'}>{d.status}</Badge>
-            <Button size="sm" variant="ghost" onClick={onClose}>
-              Change order
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {unmapped.length > 0 ? (
-            <div className="flex items-start gap-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                Unmapped SKUs: <span className="font-mono">{unmapped.join(', ')}</span>. Add mappings
-                in Masters before confirming.
-              </span>
-            </div>
-          ) : null}
-
-          {!confirmed ? (
-            <MpScanPanel onScan={handleScan} pending={scan.isPending} />
-          ) : d.sap_post_status === 'FAILED' ? (
-            <div className="space-y-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  Order <strong>dispatched</strong>, but the SAP delivery note failed to post.
-                  {d.sap_error ? (
-                    <span className="mt-1 block max-h-16 overflow-auto font-mono text-xs opacity-80">
-                      {d.sap_error}
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-              <Button
-                size="sm"
-                onClick={() =>
-                  retry.mutate(undefined, {
-                    onSuccess: (r) =>
-                      r.sap_post_status === 'POSTED'
-                        ? toast.success(`Delivery note posted · ${r.sap_delivery_note_num}`)
-                        : toast.error('Still failing — the order stays dispatched; retry later.'),
-                  })
-                }
-                disabled={retry.isPending}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {retry.isPending ? 'Retrying…' : 'Retry delivery note'}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-400 bg-emerald-50 p-3 text-sm text-emerald-800">
-              <CheckCircle2 className="h-4 w-4" />
-              Confirmed. Delivery note <span className="font-mono">{d.sap_delivery_note_num || '—'}</span> ·
-              Internal bill <span className="font-mono">{d.internal_billing_num || '—'}</span>.
-            </div>
-          )}
-
-          <MpProgressTable progress={progress} />
-
-          {pmLines.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Packing materials consumed on confirm:{' '}
-              {pmLines.map((l) => `${l.item_code}×${l.required_quantity}`).join(', ')}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {!confirmed ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">
-            {allComplete ? (
-              <span className="inline-flex items-center gap-1 text-emerald-600">
-                <CheckCircle2 className="h-4 w-4" /> Total scanning done.
-              </span>
-            ) : !hasScans ? (
-              <span className="inline-flex items-center gap-1 text-emerald-600">
-                <CheckCircle2 className="h-4 w-4" /> Packed — ready to confirm (item scanning optional).
-              </span>
-            ) : (
-              'Scan all finished goods to enable confirm.'
-            )}
-          </p>
-          <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto" disabled={!readyToConfirm}>
-                <PackageCheck className="mr-2 h-4 w-4" /> Confirm dispatch
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirm dispatch</DialogTitle>
-                <DialogDescription>
-                  This generates the SAP delivery note (decrementing stock), consumes packing
-                  materials, and creates the internal billing document.
-                </DialogDescription>
-              </DialogHeader>
-              {!allComplete && hasScans ? (
-                <label className="flex items-center gap-2 rounded-md border p-3 text-sm">
-                  <Checkbox checked={override} onCheckedChange={(v) => setOverride(v === true)} />
-                  <span>Override scan deviation (some lines are not fully scanned).</span>
-                </label>
-              ) : null}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleConfirm}
-                  disabled={confirm.isPending || !readyToConfirm}
-                >
-                  {confirm.isPending ? 'Confirming…' : 'Confirm'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      ) : (
-        <Button className="w-full sm:w-auto" variant="outline" onClick={onClose}>
-          New dispatch
-        </Button>
-      )}
-    </div>
   );
 }

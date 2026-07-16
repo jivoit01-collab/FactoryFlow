@@ -55,6 +55,8 @@ export const MARKETPLACE_QUERY_KEYS = {
     [...MARKETPLACE_QUERY_KEYS.all, 'issueRequests', channel] as const,
   issueRequest: (id?: number | null) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'issueRequest', id] as const,
+  packingSummary: (channel?: MarketplaceChannel) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'packingSummary', channel] as const,
 };
 
 function invalidateMarketplace(qc: ReturnType<typeof useQueryClient>) {
@@ -475,6 +477,38 @@ export function usePacking(id?: number | null) {
     queryFn: () => marketplaceApi.packing(id!),
     enabled: !!id,
     staleTime: 10 * 1000,
+  });
+}
+
+export function usePackingSummary(channel: MarketplaceChannel) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.packingSummary(channel),
+    queryFn: () => marketplaceApi.packingSummary(channel),
+    staleTime: 15 * 1000,
+  });
+}
+
+export function useCompleteItemGroup(channel: MarketplaceChannel) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemCode: string) => marketplaceApi.completeItemGroup(channel, itemCode),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useScanDispatchByTracking(channel: MarketplaceChannel) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (barcode: string) => marketplaceApi.scanDispatchByTracking(channel, barcode),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useScanReturnByTracking(channel: MarketplaceChannel) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (barcode: string) => marketplaceApi.scanReturnByTracking(channel, barcode),
+    onSuccess: () => invalidateMarketplace(qc),
   });
 }
 

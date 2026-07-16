@@ -896,6 +896,7 @@ export const API_ENDPOINTS = {
     ORDERS: '/marketplace/orders/',
     ORDER_RESOLVE: '/marketplace/orders/resolve/',
     DISPATCHES: '/marketplace/dispatches/',
+    DISPATCH_SCAN_TRACKING: '/marketplace/dispatches/scan/',
     DISPATCH_BY_ID: (id: number) => `/marketplace/dispatches/${id}/`,
     DISPATCH_SCANS: (id: number) => `/marketplace/dispatches/${id}/scans/`,
     DISPATCH_SCAN_BY_ID: (id: number, scanId: number) =>
@@ -904,6 +905,7 @@ export const API_ENDPOINTS = {
     DISPATCH_RETRY_DN: (id: number) => `/marketplace/dispatches/${id}/retry-delivery-note/`,
     DISPATCH_CANCEL: (id: number) => `/marketplace/dispatches/${id}/cancel/`,
     RETURNS: '/marketplace/returns/',
+    RETURN_SCAN_TRACKING: '/marketplace/returns/scan/',
     RETURN_BY_ID: (id: number) => `/marketplace/returns/${id}/`,
     RETURN_SCANS: (id: number) => `/marketplace/returns/${id}/scans/`,
     RETURN_SCAN_CONDITION: (id: number, scanId: number) =>
@@ -927,6 +929,8 @@ export const API_ENDPOINTS = {
     WAREHOUSE_INSIGHTS: '/marketplace/warehouse-insights/',
     SAP_ITEMS: '/marketplace/sap-items/',
     PACKING_QUEUE: '/marketplace/packing/queue/',
+    PACKING_SUMMARY: '/marketplace/packing/summary/',
+    PACKING_SUMMARY_COMPLETE: '/marketplace/packing/summary/complete/',
     PACKING_SCAN: '/marketplace/packing/scan/',
     PACKING_OPEN: '/marketplace/packing/open/',
     PACKING_BY_ID: (id: number) => `/marketplace/packing/${id}/`,

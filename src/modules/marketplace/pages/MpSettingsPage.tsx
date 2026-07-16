@@ -1,11 +1,11 @@
 /**
  * Marketplace Settings — flexible per-channel toggles for how the pipeline
- * behaves. Currently exposes "Skip packing": when on, an issued order becomes
- * dispatchable in Outward without a packing session (the Packing page is
- * bypassed). The gate is enforced server-side, so this switch is the single
- * source of truth.
+ * behaves. Currently exposes "Defer delivery note": when on, confirming a
+ * dispatch does not post its SAP delivery note; they are cut in bulk instead.
+ * The behaviour is enforced server-side, so this switch is the single source of
+ * truth.
  */
-import { FileText, PackageCheck, Settings2 } from 'lucide-react';
+import { FileText, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -32,24 +32,14 @@ export default function MpSettingsPage() {
   const { data: settings, isLoading } = useMarketplaceSettings(CHANNEL);
   const update = useUpdateMarketplaceSettings(CHANNEL);
 
-  const skipPacking = settings?.skip_packing ?? false;
   const deferDeliveryNote = settings?.defer_delivery_note ?? false;
 
-  function save(payload: { skip_packing?: boolean; defer_delivery_note?: boolean }, message: string) {
+  function save(payload: { defer_delivery_note?: boolean }, message: string) {
     update.mutate(payload, {
       onSuccess: () => toast.success(message),
       onError: (e: unknown) =>
         toast.error((e as { message?: string })?.message ?? 'Could not save setting'),
     });
-  }
-
-  function toggleSkipPacking(next: boolean) {
-    save(
-      { skip_packing: next },
-      next
-        ? 'Packing step skipped — issued orders go straight to Outward.'
-        : 'Packing step required again.',
-    );
   }
 
   function toggleDeferDeliveryNote(next: boolean) {
@@ -74,40 +64,6 @@ export default function MpSettingsPage() {
         </div>
         <MpChannelSelect value={CHANNEL} onChange={() => {}} />
       </header>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <PackageCheck className="h-5 w-5 text-primary" /> Packing
-          </CardTitle>
-          <CardDescription>Control whether orders must be packed before dispatch.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-start justify-between gap-6 rounded-lg border p-4">
-            <div className="space-y-1">
-              <Label htmlFor="skip-packing" className="text-sm font-medium">
-                Skip packing step
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                When on, an order becomes dispatchable in <strong>Outward</strong> as soon as its
-                materials are issued from the warehouse — the <strong>Packing</strong> page is
-                bypassed. Turn off to require every order to be packed first.
-              </p>
-              {skipPacking && (
-                <Badge variant="outline" className="mt-1 border-amber-300 text-amber-700">
-                  Packing is currently optional
-                </Badge>
-              )}
-            </div>
-            <Switch
-              id="skip-packing"
-              checked={skipPacking}
-              onChange={toggleSkipPacking}
-              disabled={isLoading || update.isPending}
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader className="pb-3">

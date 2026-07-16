@@ -3,7 +3,7 @@
  * see a summary, and submit to produce a Return Note. Also lists existing returns
  * so a submitted one can be reopened and its note reprinted.
  */
-import { CheckCircle2, PackageOpen, Undo2 } from 'lucide-react';
+import { CheckCircle2, PackageOpen, ScanLine, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -22,17 +22,19 @@ import {
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
 import {
-  useCreateReturn,
   useMpReturn,
   useMpReturns,
   useScanReturn,
+  useScanReturnByTracking,
   useSetReturnScanCondition,
   useSubmitReturn,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpProgressTable } from '../components/MpProgressTable';
+import { MpScanFeedback, type ScanFeedback } from '../components/MpScanFeedback';
 import { MpScanPanel } from '../components/MpScanPanel';
 import { ReturnNoteButton } from '../components/ReturnNote';
 import {
@@ -43,6 +45,12 @@ import {
   type MpReturnStatus,
 } from '../types/marketplace.types';
 
+const WARN_CODES = ['NOT_FOUND', 'EMPTY'];
+
+function errorCode(e: unknown): string | undefined {
+  return (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
+}
+
 const STATUS_VARIANT: Record<MpReturnStatus, 'default' | 'secondary' | 'outline'> = {
   DRAFT: 'outline',
   SCANNING: 'secondary',
@@ -52,18 +60,25 @@ const STATUS_VARIANT: Record<MpReturnStatus, 'default' | 'secondary' | 'outline'
 
 export default function MpInwardPage() {
   const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
-  const [orderInput, setOrderInput] = useState('');
   const [returnId, setReturnId] = useState<number | null>(null);
-  const createReturn = useCreateReturn();
+  const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
+  const scanReturn = useScanReturnByTracking(channel);
 
-  function load(orderId: string) {
-    createReturn.mutate(
-      { channel, order_id: orderId },
-      {
-        onSuccess: (r) => setReturnId(r.id),
-        onError: () => toast.error(`Order ${orderId} not found for ${channel}`),
+  function handleScan(barcode: string) {
+    scanReturn.mutate(barcode, {
+      onSuccess: (r) => {
+        setReturnId(r.id);
+        if (r.duplicate) {
+          setFeedback({ kind: 'warning', message: `Already scanned · ${r.order_id}`, detail: r.buyer_name });
+        } else {
+          setFeedback({ kind: 'success', message: `Return opened · ${r.order_id}`, detail: r.buyer_name });
+        }
       },
-    );
+      onError: (e) => {
+        const warn = WARN_CODES.includes(errorCode(e) ?? '');
+        setFeedback({ kind: warn ? 'warning' : 'error', message: getErrorMessage(e, 'Scan failed') });
+      },
+    });
   }
 
   return (
@@ -73,33 +88,30 @@ export default function MpInwardPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Inward Returns</h1>
           <p className="text-sm text-muted-foreground">
-            Scan returned items against a marketplace Order ID and submit the Return Note.
+            Scan a returned shipment's Tracking ID to open its return, set item conditions, and submit
+            the Return Note.
           </p>
         </div>
-        <MpChannelSelect value={channel} onChange={(c) => { setChannel(c); setReturnId(null); }} />
+        <MpChannelSelect value={channel} onChange={(c) => { setChannel(c); setReturnId(null); setFeedback(null); }} />
       </header>
 
       {returnId ? (
         <ActiveReturn returnId={returnId} channel={channel} onClose={() => setReturnId(null)} />
       ) : (
         <>
-          <Card>
+          <Card className="border-primary/30">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Return against an order</CardTitle>
-              <CardDescription>Scan or type the {channel} Order ID.</CardDescription>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ScanLine className="h-5 w-5 text-primary" /> Scan a returned shipment
+              </CardTitle>
+              <CardDescription>
+                Scan the Flipkart <strong>Tracking ID</strong> — the return opens with every item
+                recorded.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  value={orderInput}
-                  placeholder="Order ID"
-                  onChange={(e) => setOrderInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && orderInput.trim() && load(orderInput.trim())}
-                />
-                <Button className="w-full sm:w-auto" onClick={() => orderInput.trim() && load(orderInput.trim())} disabled={createReturn.isPending}>
-                  Load
-                </Button>
-              </div>
+            <CardContent className="space-y-3">
+              <MpScanPanel onScan={handleScan} pending={scanReturn.isPending} placeholder="Scan Tracking ID (e.g. FMPP…)" />
+              <MpScanFeedback feedback={feedback} />
             </CardContent>
           </Card>
 
