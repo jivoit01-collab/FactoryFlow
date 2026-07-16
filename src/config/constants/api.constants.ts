@@ -888,6 +888,7 @@ export const API_ENDPOINTS = {
     SETTINGS: '/marketplace/settings/',
     DELIVERY_NOTE_SUMMARY: '/marketplace/delivery-notes/summary/',
     DELIVERY_NOTE_CUT: '/marketplace/delivery-notes/cut/',
+    DELIVERY_NOTE_RECONCILE: '/marketplace/delivery-notes/reconcile/',
     WAREHOUSES: '/marketplace/warehouses/',
     WAREHOUSE_BY_ID: (id: number) => `/marketplace/warehouses/${id}/`,
     SKU_MAPPINGS: '/marketplace/sku-mappings/',

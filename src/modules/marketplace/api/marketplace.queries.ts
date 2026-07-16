@@ -99,6 +99,22 @@ export function useCutDeliveryNote(channel: MarketplaceChannel) {
   });
 }
 
+export function useReconcileDeliveryNotes(channel: MarketplaceChannel) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marketplaceApi.reconcileDeliveryNotes(channel),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+export function useAwaitingApprovalCount(channel: MarketplaceChannel) {
+  return useQuery({
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'awaitingApproval', channel] as const,
+    queryFn: () => marketplaceApi.awaitingApprovalCount(channel),
+    staleTime: 15 * 1000,
+  });
+}
+
 // ── Queries ────────────────────────────────────────────────────────────────
 export function useMpWarehouses(channel?: MarketplaceChannel) {
   return useQuery({

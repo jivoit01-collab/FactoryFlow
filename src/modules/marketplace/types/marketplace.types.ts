@@ -73,6 +73,19 @@ export interface DeliveryNoteCutResult {
   delivery_note_doc_entry: number | null;
   dispatch_count: number;
   order_ids: string[];
+  /** True when SAP routed the delivery note into an approval process (draft). */
+  pending_approval?: boolean;
+  draft_entry?: number | null;
+}
+
+export interface DeliveryNoteReconcileResult {
+  finalized: string[];
+  rejected: string[];
+  still_pending: number;
+}
+
+export interface AwaitingApprovalCount {
+  awaiting_approval: number;
 }
 
 /** Paged list envelope — mirrors the DRF `{results, count, page, …}` shape. */

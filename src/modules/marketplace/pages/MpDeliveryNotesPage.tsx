@@ -7,7 +7,7 @@
  * Dispatches land here when the channel's "Defer delivery note" setting is on;
  * otherwise each dispatch posts its own delivery note at confirm time.
  */
-import { AlertTriangle, FileText, PackageCheck, Send } from 'lucide-react';
+import { AlertTriangle, Clock, FileText, PackageCheck, RefreshCw, Send } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -26,7 +26,12 @@ import {
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
-import { useCutDeliveryNote, useDeliveryNoteSummary } from '../api/marketplace.queries';
+import {
+  useAwaitingApprovalCount,
+  useCutDeliveryNote,
+  useDeliveryNoteSummary,
+  useReconcileDeliveryNotes,
+} from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import type { DeliveryNoteLine, MarketplaceChannel } from '../types/marketplace.types';
 
@@ -71,23 +76,47 @@ function LineTable({ title, lines }: { title: string; lines: DeliveryNoteLine[] 
 export default function MpDeliveryNotesPage() {
   const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL);
   const cut = useCutDeliveryNote(CHANNEL);
+  const reconcile = useReconcileDeliveryNotes(CHANNEL);
+  const { data: approval } = useAwaitingApprovalCount(CHANNEL);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const count = summary?.totals.dispatch_count ?? 0;
   const hasWork = count > 0;
+  const awaitingApproval = approval?.awaiting_approval ?? 0;
 
   function doCut() {
     cut.mutate(undefined, {
       onSuccess: (r) => {
         setConfirmOpen(false);
-        toast.success(
-          `Delivery note ${r.delivery_note_num || '(posted)'} cut for ${r.dispatch_count} dispatch(es).`,
-        );
+        if (r.pending_approval) {
+          toast.success(
+            `Delivery note submitted to SAP for approval (draft ${r.draft_entry ?? ''}) for ${r.dispatch_count} dispatch(es). It posts once approved in SAP.`,
+          );
+        } else {
+          toast.success(
+            `Delivery note ${r.delivery_note_num || '(posted)'} cut for ${r.dispatch_count} dispatch(es).`,
+          );
+        }
       },
       onError: (e: unknown) => {
         setConfirmOpen(false);
         toast.error(getErrorMessage(e, 'Could not cut delivery note'));
       },
+    });
+  }
+
+  function doReconcile() {
+    reconcile.mutate(undefined, {
+      onSuccess: (r) => {
+        if (r.finalized.length) {
+          toast.success(`${r.finalized.length} delivery note(s) approved & posted.`);
+        } else if (r.rejected.length) {
+          toast.warning(`${r.rejected.length} approval(s) were rejected — cut them again.`);
+        } else {
+          toast.info(`${r.still_pending} still awaiting approval in SAP.`);
+        }
+      },
+      onError: (e: unknown) => toast.error(getErrorMessage(e, 'Could not refresh approval status')),
     });
   }
 
@@ -104,6 +133,30 @@ export default function MpDeliveryNotesPage() {
         </div>
         <MpChannelSelect value={CHANNEL} onChange={() => {}} />
       </header>
+
+      {awaitingApproval > 0 && (
+        <Card className="border-amber-500/40">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2 text-sm">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <span>
+                <strong>{awaitingApproval}</strong> delivery note dispatch(es) are{' '}
+                <strong>awaiting approval in SAP</strong>. They post automatically once approved —
+                use refresh to check.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              onClick={doReconcile}
+              disabled={reconcile.isPending}
+              className="shrink-0"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${reconcile.isPending ? 'animate-spin' : ''}`} />
+              {reconcile.isPending ? 'Checking…' : 'Refresh approval status'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <Card>

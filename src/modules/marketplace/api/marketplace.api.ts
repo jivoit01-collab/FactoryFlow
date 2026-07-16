@@ -6,8 +6,10 @@ import type {
   ComboDefinition,
   ComboDefinitionUpsert,
   CompleteItemGroupResult,
+  AwaitingApprovalCount,
   ConfirmRequest,
   DeliveryNoteCutResult,
+  DeliveryNoteReconcileResult,
   DeliveryNoteSummary,
   DispatchCreateRequest,
   DispatchListParams,
@@ -89,6 +91,18 @@ export const marketplaceApi = {
   },
   async cutDeliveryNote(channel: MarketplaceChannel): Promise<DeliveryNoteCutResult> {
     const { data } = await apiClient.post<DeliveryNoteCutResult>(EP.DELIVERY_NOTE_CUT, { channel });
+    return data;
+  },
+  async reconcileDeliveryNotes(channel: MarketplaceChannel): Promise<DeliveryNoteReconcileResult> {
+    const { data } = await apiClient.post<DeliveryNoteReconcileResult>(
+      EP.DELIVERY_NOTE_RECONCILE, { channel },
+    );
+    return data;
+  },
+  async awaitingApprovalCount(channel: MarketplaceChannel): Promise<AwaitingApprovalCount> {
+    const { data } = await apiClient.get<AwaitingApprovalCount>(
+      `${EP.DELIVERY_NOTE_RECONCILE}${buildQuery({ channel })}`,
+    );
     return data;
   },
 
