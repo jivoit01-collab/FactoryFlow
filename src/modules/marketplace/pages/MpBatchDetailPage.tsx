@@ -2,7 +2,7 @@
  * Step 2–3 — Review a batch's consolidated stock list, resolve any unmapped SKUs
  * inline, then send the request to a warehouse.
  */
-import { AlertTriangle, ArrowLeft, PackageCheck, Send } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, PackageCheck, Send, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,7 +16,11 @@ import {
   CardTitle,
   Dialog,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
 import {
   useBatch,
@@ -24,6 +28,7 @@ import {
   useCombos,
   useSapWarehouses,
   useSendIssueRequest,
+  useSkipUnmappedOrders,
   useUpsertSkuMapping,
 } from '../api/marketplace.queries';
 import { MpFlowSteps } from '../components/MpFlowSteps';
@@ -41,9 +46,29 @@ export default function MpBatchDetailPage() {
   const sendMut = useSendIssueRequest();
 
   const [resolveSku, setResolveSku] = useState<string | null>(null);
+  const [skipOpen, setSkipOpen] = useState(false);
+  const skipMut = useSkipUnmappedOrders(id);
 
   const unmapped = stock?.unmapped_skus ?? [];
   const canSend = unmapped.length === 0 && (stock?.lines.length ?? 0) > 0;
+
+  function skipUnmapped() {
+    skipMut.mutate(undefined, {
+      onSuccess: (r) => {
+        setSkipOpen(false);
+        toast.success(
+          `Removed ${r.removed_count} order(s) with missing mappings.` +
+            (r.blocked_order_ids.length
+              ? ` ${r.blocked_order_ids.length} kept (already in dispatch).`
+              : ''),
+        );
+      },
+      onError: (e: unknown) => {
+        setSkipOpen(false);
+        toast.error(getErrorMessage(e, 'Could not remove orders.'));
+      },
+    });
+  }
 
   const fgLines = useMemo(
     () => (stock?.lines ?? []).filter((l) => l.component_type === 'FG'),
@@ -98,7 +123,8 @@ export default function MpBatchDetailPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              Map each SKU to a finished good or a combo, then this list updates automatically.
+              Map each SKU to a finished good or a combo, then this list updates automatically —
+              or skip the orders that use them and remove them from this batch.
             </p>
             <div className="space-y-2">
               {unmapped.map((sku) => (
@@ -110,9 +136,51 @@ export default function MpBatchDetailPage() {
                 </div>
               ))}
             </div>
+            <div className="flex items-center justify-between border-t pt-3">
+              <span className="text-xs text-muted-foreground">
+                Can't map these? Remove the affected orders so the rest can proceed.
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive"
+                onClick={() => setSkipOpen(true)}
+                disabled={skipMut.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Skip &amp; remove orders
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={skipOpen} onOpenChange={(o) => !o && setSkipOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Skip &amp; remove unmapped orders?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Every order in this batch that still has an unmapped SKU/FSN will be
+            <strong> permanently removed from the system</strong>. Orders already in the
+            dispatch flow are kept. This can't be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSkipOpen(false)} disabled={skipMut.isPending}>
+              Cancel
+            </Button>
+            <Button
+              className="text-destructive"
+              variant="outline"
+              onClick={skipUnmapped}
+              disabled={skipMut.isPending}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {skipMut.isPending ? 'Removing…' : 'Remove orders'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>

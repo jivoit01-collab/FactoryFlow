@@ -908,6 +908,7 @@ export const API_ENDPOINTS = {
     BATCHES: '/marketplace/batches/',
     BATCH_BY_ID: (id: number) => `/marketplace/batches/${id}/`,
     BATCH_STOCK_LIST: (id: number) => `/marketplace/batches/${id}/stock-list/`,
+    BATCH_SKIP_UNMAPPED: (id: number) => `/marketplace/batches/${id}/skip-unmapped/`,
     BATCH_EXPORT: (id: number) => `/marketplace/batches/${id}/issuance.csv`,
     ISSUE_REQUESTS: '/marketplace/issue-requests/',
     ISSUE_REQUEST_BY_ID: (id: number) => `/marketplace/issue-requests/${id}/`,

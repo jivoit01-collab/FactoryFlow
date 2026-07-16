@@ -347,6 +347,14 @@ export function useBatchStockList(id?: number | null) {
   });
 }
 
+export function useSkipUnmappedOrders(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marketplaceApi.skipUnmappedOrders(id),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
 export function useImportPreview() {
   return useMutation({
     mutationFn: (payload: ImportOrdersRequest) => marketplaceApi.importPreview(payload),

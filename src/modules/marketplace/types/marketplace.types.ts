@@ -425,6 +425,13 @@ export interface StockList {
   orders: number;
 }
 
+export interface SkipUnmappedResult {
+  removed_count: number;
+  removed_order_ids: string[];
+  blocked_order_ids: string[];
+  remaining_unmapped_skus: string[];
+}
+
 export type MpIssueStatus =
   | 'DRAFT'
   | 'SENT'

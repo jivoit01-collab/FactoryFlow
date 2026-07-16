@@ -41,6 +41,7 @@ import type {
   SapWarehouse,
   ScanRequest,
   SendIssueRequest,
+  SkipUnmappedResult,
   SkuMapping,
   SkuMappingUpsert,
   StockList,
@@ -262,6 +263,10 @@ export const marketplaceApi = {
   },
   async batchStockList(id: number): Promise<StockList> {
     const { data } = await apiClient.get<StockList>(EP.BATCH_STOCK_LIST(id));
+    return data;
+  },
+  async skipUnmappedOrders(id: number): Promise<SkipUnmappedResult> {
+    const { data } = await apiClient.post<SkipUnmappedResult>(EP.BATCH_SKIP_UNMAPPED(id), {});
     return data;
   },
   batchExportUrl(id: number): string {
