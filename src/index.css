@@ -80,6 +80,134 @@
   }
 }
 
+/* Dashboard pipeline-flow animations */
+@keyframes df-flow-x {
+  from {
+    transform: translateX(-130%);
+  }
+  to {
+    transform: translateX(360%);
+  }
+}
+
+.animate-df-flow-x {
+  animation: df-flow-x 2.2s linear infinite;
+}
+
+@keyframes df-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-df-float {
+  animation: df-float 3s ease-in-out infinite;
+}
+
+/* Gate activity hero — vehicles & people crossing the gate */
+@keyframes df-drive {
+  0% {
+    left: -14%;
+    opacity: 0;
+  }
+  7% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 1;
+  }
+  100% {
+    left: 114%;
+    opacity: 0;
+  }
+}
+
+@keyframes df-drive-rev {
+  0% {
+    left: 114%;
+    opacity: 0;
+  }
+  7% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 1;
+  }
+  100% {
+    left: -14%;
+    opacity: 0;
+  }
+}
+
+.animate-df-drive {
+  animation: df-drive 7s linear infinite;
+}
+
+.animate-df-drive-rev {
+  animation: df-drive-rev 8.5s linear infinite;
+}
+
+.animate-df-walk {
+  animation: df-drive 11s linear infinite;
+}
+
+@keyframes df-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+
+.animate-df-bob {
+  animation: df-bob 0.5s ease-in-out infinite;
+}
+
+/* Vehicle-journey: a truck drives in from the left and stops at its live step.
+   The stop position is provided per-truck via the --df-stop custom property. */
+@keyframes df-drive-to {
+  0% {
+    left: -12%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    left: var(--df-stop, 50%);
+    opacity: 1;
+  }
+}
+
+.animate-df-drive-to {
+  animation: df-drive-to 2.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes df-barrier {
+  0%,
+  30% {
+    transform: rotate(0deg);
+  }
+  45%,
+  90% {
+    transform: rotate(-68deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-df-barrier {
+  animation: df-barrier 7s ease-in-out infinite;
+  transform-origin: left center;
+}
+
 .sales-dispatch-gatepass-print-blocked {
   display: none;
 }

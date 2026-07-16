@@ -1,4 +1,10 @@
-import type { AssetStatus, SafetyFineStatus, WorkOrderStatus, WorkPermitStatus } from '../types';
+import type {
+  AssetStatus,
+  MaterialIndentStatus,
+  SafetyFineStatus,
+  WorkOrderStatus,
+  WorkPermitStatus,
+} from '../types';
 
 const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   RUNNING: 'Running',
@@ -108,4 +114,28 @@ export function getSafetyFineStatusLabel(status: SafetyFineStatus) {
 
 export function getSafetyFineStatusClass(status: SafetyFineStatus) {
   return SAFETY_FINE_STATUS_CLASSES[status];
+}
+
+const MATERIAL_INDENT_STATUS_LABELS: Record<MaterialIndentStatus, string> = {
+  DRAFT: 'Draft',
+  SUBMITTED: 'Submitted',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  CANCELLED: 'Cancelled',
+};
+
+const MATERIAL_INDENT_STATUS_CLASSES: Record<MaterialIndentStatus, string> = {
+  DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
+  SUBMITTED: 'border-sky-200 bg-sky-50 text-sky-700',
+  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  REJECTED: 'border-rose-200 bg-rose-50 text-rose-700',
+  CANCELLED: 'border-zinc-200 bg-zinc-50 text-zinc-700',
+};
+
+export function getMaterialIndentStatusLabel(status: MaterialIndentStatus) {
+  return MATERIAL_INDENT_STATUS_LABELS[status] ?? status;
+}
+
+export function getMaterialIndentStatusClass(status: MaterialIndentStatus) {
+  return MATERIAL_INDENT_STATUS_CLASSES[status];
 }

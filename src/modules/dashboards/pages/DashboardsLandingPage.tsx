@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   CalendarClock,
+  DoorOpen,
   Package,
   PackageX,
   Target,
@@ -13,6 +14,8 @@ import { useNavigate } from 'react-router-dom';
 import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
+
+import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
 
 interface DashboardsModuleCard {
   title: string;
@@ -79,6 +82,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/dispatch-pipeline',
     color: 'text-teal-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE],
+  },
+  {
+    title: 'Gate',
+    description: 'All gate activity — vehicles in/out, visitors, receipts, dispatch & returns',
+    icon: <DoorOpen className="h-5 w-5" />,
+    route: '/dashboards/gate',
+    color: 'text-blue-600',
+    permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
   },
 ];
 

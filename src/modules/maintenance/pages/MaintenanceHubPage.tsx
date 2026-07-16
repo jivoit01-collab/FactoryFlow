@@ -14,6 +14,7 @@ import {
   type LucideIcon,
   Package,
   PackageOpen,
+  PackagePlus,
   Settings,
   ShieldCheck,
 } from 'lucide-react';
@@ -108,6 +109,13 @@ const SUB_MODULES: SubModule[] = [
     to: '/maintenance/safety-fines',
     icon: BadgeIndianRupee,
     permissions: [MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE],
+  },
+  {
+    title: 'Material Indent',
+    description: 'Raise material requisitions; approved indents flow to the gate for material-out.',
+    to: '/maintenance/material-indents',
+    icon: PackagePlus,
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT],
   },
   {
     title: 'PM / Checklist',

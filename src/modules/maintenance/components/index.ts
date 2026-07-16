@@ -7,3 +7,4 @@ export * from './WorkOrderDialogs';
 export * from './WorkOrderStatusBadge';
 export * from './WorkPermitStatusBadge';
 export * from './SafetyFineStatusBadge';
+export * from './MaterialIndentStatusBadge';

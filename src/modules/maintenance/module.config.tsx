@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Package,
   PackageOpen,
+  PackagePlus,
   Settings,
   ShieldCheck,
   Wrench,
@@ -42,6 +43,7 @@ const MaintenanceFireReportsPage = lazy(() => import('./pages/MaintenanceFireRep
 const MaintenanceFireIssuePage = lazy(() => import('./pages/MaintenanceFireIssuePage'));
 const MaintenanceWorkPermitsPage = lazy(() => import('./pages/MaintenanceWorkPermitsPage'));
 const MaintenanceSafetyFinePage = lazy(() => import('./pages/MaintenanceSafetyFinePage'));
+const MaintenanceMaterialIndentPage = lazy(() => import('./pages/MaintenanceMaterialIndentPage'));
 const MaintenanceWorkOrdersPage = lazy(() => import('./pages/MaintenanceWorkOrdersPage'));
 const MaintenanceWorkOrderDetailPage = lazy(() => import('./pages/MaintenanceWorkOrderDetailPage'));
 const MaintenanceReturnablePage = lazy(() => import('./pages/MaintenanceReturnablePage'));
@@ -131,6 +133,13 @@ export const maintenanceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Safety Fines' },
     },
     {
+      path: '/maintenance/material-indents',
+      element: <MaintenanceMaterialIndentPage />,
+      layout: 'main',
+      permissions: [MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT],
+      breadcrumb: { label: 'Material Indent' },
+    },
+    {
       path: '/maintenance/returnable',
       element: <MaintenanceReturnablePage />,
       layout: 'main',
@@ -210,6 +219,7 @@ export const maintenanceModuleConfig: ModuleConfig = {
         MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE,
         MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT,
         MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE,
+        MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
         MAINTENANCE_PERMISSIONS.VIEW_PM,
         MAINTENANCE_PERMISSIONS.VIEW_REPORTS,
         MAINTENANCE_PERMISSIONS.VIEW_ASSET_CATEGORY,
@@ -286,6 +296,12 @@ export const maintenanceModuleConfig: ModuleConfig = {
           title: 'Safety Fines',
           icon: BadgeIndianRupee,
           permissions: [MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE],
+        },
+        {
+          path: '/maintenance/material-indents',
+          title: 'Material Indent',
+          icon: PackagePlus,
+          permissions: [MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT],
         },
         {
           path: '/maintenance/returnable',

@@ -169,6 +169,8 @@ export interface ReturnableGatePassListItem {
   recipient_name: string;
   /** Vendor on a returnable pass, person on a non-returnable one. */
   destination: string;
+  /** Comma-joined names of the items on the pass, for list views. */
+  item_names: string;
   expected_return_date: string | null;
   is_overdue: boolean;
   days_overdue: number;

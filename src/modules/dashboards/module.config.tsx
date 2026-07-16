@@ -5,7 +5,11 @@ import { Navigate } from 'react-router-dom';
 import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
+import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
+
 const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage'));
+const ExecutiveOverviewPage = lazy(() => import('./overview/pages/ExecutiveOverviewPage'));
+const GateDashboardPage = lazy(() => import('./gate/pages/GateDashboardPage'));
 const SAPPlanDashboardPage = lazy(() => import('./sap-plan/pages/SAPPlanDashboardPage'));
 const StockLevelDashboardPage = lazy(
   () => import('./stock-level/pages/StockLevelDashboardPage'),
@@ -45,6 +49,29 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       ],
+    },
+    {
+      path: '/dashboards/overview',
+      element: <ExecutiveOverviewPage />,
+      layout: 'main',
+      permissions: [
+        DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
+        DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+        DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
+        DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
+        DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
+        DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
+        DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
+        DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+      ],
+      breadcrumb: { label: 'Command Centre' },
+    },
+    {
+      path: '/dashboards/gate',
+      element: <GateDashboardPage />,
+      layout: 'main',
+      permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Gate' },
     },
     {
       path: '/dashboards/sap-plan',
@@ -127,9 +154,29 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // surfaced under the Production module instead (still route-accessible here).
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+        // Gate dashboard lives here too — let gate staff reach the Dashboards menu.
+        ...GATE_DASHBOARD_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [
+        {
+          path: '/dashboards/overview',
+          title: 'Command Centre',
+          permissions: [
+            DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
+            DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+            DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
+            DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
+            DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
+            DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
+            DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+          ],
+        },
+        {
+          path: '/dashboards/gate',
+          title: 'Gate',
+          permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
+        },
         {
           path: '/dashboards/sap-plan',
           title: 'SAP Material Plan',
