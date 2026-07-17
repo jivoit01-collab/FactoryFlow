@@ -118,8 +118,11 @@ export function getSafetyFineStatusClass(status: SafetyFineStatus) {
 
 const MATERIAL_INDENT_STATUS_LABELS: Record<MaterialIndentStatus, string> = {
   DRAFT: 'Draft',
-  SUBMITTED: 'Submitted',
-  APPROVED: 'Approved',
+  SUBMITTED: 'Submitted to Store',
+  ISSUED: 'Issued from Store',
+  PENDING_APPROVAL: 'Pending Purchase Approval',
+  APPROVED: 'Approved for Purchase',
+  PURCHASED: 'Purchased',
   REJECTED: 'Rejected',
   CANCELLED: 'Cancelled',
 };
@@ -127,7 +130,10 @@ const MATERIAL_INDENT_STATUS_LABELS: Record<MaterialIndentStatus, string> = {
 const MATERIAL_INDENT_STATUS_CLASSES: Record<MaterialIndentStatus, string> = {
   DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
   SUBMITTED: 'border-sky-200 bg-sky-50 text-sky-700',
-  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  ISSUED: 'border-teal-200 bg-teal-50 text-teal-700',
+  PENDING_APPROVAL: 'border-amber-200 bg-amber-50 text-amber-700',
+  APPROVED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+  PURCHASED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   REJECTED: 'border-rose-200 bg-rose-50 text-rose-700',
   CANCELLED: 'border-zinc-200 bg-zinc-50 text-zinc-700',
 };

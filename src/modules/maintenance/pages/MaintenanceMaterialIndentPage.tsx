@@ -1,5 +1,4 @@
 import {
-  ArrowRightCircle,
   CalendarDays,
   CheckCircle2,
   ClipboardList,
@@ -12,7 +11,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
@@ -46,11 +45,18 @@ import {
   useMaintenanceOptions,
   useMaterialIndent,
   useMaterialIndents,
+  usePurchaseMaterialIndent,
   useRejectMaterialIndent,
+  useReviewMaterialIndent,
   useSubmitMaterialIndent,
 } from '../api';
 import { MaterialIndentStatusBadge } from '../components';
-import type { MaterialIndent, MaterialIndentFilters, MaterialIndentStatus } from '../types';
+import type {
+  MaterialIndent,
+  MaterialIndentFilters,
+  MaterialIndentItem,
+  MaterialIndentStatus,
+} from '../types';
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -295,26 +301,53 @@ function NewIndentDialog({ onOpenChange }: { onOpenChange: (open: boolean) => vo
 function IndentDetailDialog({
   indentId,
   canManage,
+  canReview,
   canApprove,
+  canPurchase,
   onOpenChange,
 }: {
   indentId: number;
   canManage: boolean;
+  canReview: boolean;
   canApprove: boolean;
+  canPurchase: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const indentQuery = useMaterialIndent(indentId);
   const submitIndent = useSubmitMaterialIndent();
+  const reviewIndent = useReviewMaterialIndent();
   const approveIndent = useApproveMaterialIndent();
   const rejectIndent = useRejectMaterialIndent();
+  const purchaseIndent = usePurchaseMaterialIndent();
   const cancelIndent = useCancelMaterialIndent();
   const [remarks, setRemarks] = useState('');
+  const [storeRemarks, setStoreRemarks] = useState('');
+  const [purchaseRemarks, setPurchaseRemarks] = useState('');
+  const [issued, setIssued] = useState<Record<number, string>>({});
 
   const indent = indentQuery.data;
+  const reviewing = indent?.status === 'SUBMITTED' && canReview;
+
+  // When the store starts reviewing, default each row to "issue the full qty".
+  useEffect(() => {
+    if (reviewing && indent) {
+      setIssued((prev) =>
+        Object.keys(prev).length ? prev : Object.fromEntries(indent.items.map((i) => [i.id, i.quantity])),
+      );
+    }
+  }, [reviewing, indent]);
+
+  const issuedFor = (item: MaterialIndentItem) =>
+    reviewing ? (issued[item.id] ?? item.quantity) : item.issued_quantity;
+  const shortfallFor = (item: MaterialIndentItem) => {
+    if (!reviewing) return item.shortfall_quantity;
+    const s = Number(item.quantity) - Number(issued[item.id] ?? item.quantity);
+    return String(s > 0 ? s : 0);
+  };
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{indent ? `Material Indent ${indent.indent_no}` : 'Material Indent'}</DialogTitle>
         </DialogHeader>
@@ -328,6 +361,7 @@ function IndentDetailDialog({
               <span className="text-muted-foreground">{indent.indent_date}</span>
             </div>
 
+            {/* Requester details — visible to store, authority and purchaser. */}
             <div className="grid gap-3 rounded-md border p-3 md:grid-cols-2">
               <div>
                 <span className="text-muted-foreground">Purpose: </span>
@@ -337,30 +371,25 @@ function IndentDetailDialog({
                 <span className="text-muted-foreground">Department: </span>
                 {indent.department_name || '-'}
               </div>
-              <div>
-                <span className="text-muted-foreground">Requested by: </span>
-                {indent.requested_by_name || '-'} {indent.contact_no && `(${indent.contact_no})`}
+              <div className="md:col-span-2">
+                <span className="text-muted-foreground">Raised by: </span>
+                {indent.requested_by_name || indent.created_by_name || '-'}
+                {indent.contact_no && ` (${indent.contact_no})`}
+                {indent.submitted_by_name && ` · submitted by ${indent.submitted_by_name}`}
               </div>
-              {indent.generated_pass_no && (
-                <div className="md:col-span-2 flex items-center gap-2 text-emerald-700">
-                  <ArrowRightCircle className="h-4 w-4" />
-                  Gate pass <span className="font-medium">{indent.generated_pass_no}</span> created —
-                  now in Gate → Material Out.
-                </div>
-              )}
             </div>
 
             <div className="overflow-x-auto rounded-md border">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[720px] text-sm">
                 <thead className="border-b bg-muted/40">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">#</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Particulars</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Spec / Make</th>
-                    <th className="px-3 py-2 text-right font-medium text-muted-foreground">Qty</th>
+                    <th className="px-3 py-2 text-right font-medium text-muted-foreground">Req. Qty</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Unit</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Priority</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Remarks</th>
+                    <th className="px-3 py-2 text-right font-medium text-muted-foreground">Issued</th>
+                    <th className="px-3 py-2 text-right font-medium text-muted-foreground">To Purchase</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -371,18 +400,53 @@ function IndentDetailDialog({
                       <td className="px-3 py-2">{item.specification || '-'}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{Number(item.quantity)}</td>
                       <td className="px-3 py-2">{item.unit}</td>
-                      <td className="px-3 py-2 capitalize">{item.priority.toLowerCase()}</td>
-                      <td className="px-3 py-2">{item.remarks || '-'}</td>
+                      <td className="px-3 py-2 text-right">
+                        {reviewing ? (
+                          <Input
+                            type="number"
+                            min="0"
+                            max={item.quantity}
+                            step="0.001"
+                            className="ml-auto w-24"
+                            value={issued[item.id] ?? item.quantity}
+                            onChange={(e) =>
+                              setIssued((c) => ({ ...c, [item.id]: e.target.value }))
+                            }
+                          />
+                        ) : (
+                          <span className="tabular-nums">{Number(issuedFor(item))}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums font-medium text-amber-700">
+                        {Number(shortfallFor(item)) || '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
+            {/* Trail of remarks at each stage. */}
+            {indent.store_remarks && (
+              <div className="rounded-md border bg-muted/30 p-3">
+                <span className="font-medium">Store note: </span>
+                {indent.store_remarks}
+                {indent.reviewed_by_name && (
+                  <span className="text-muted-foreground"> — {indent.reviewed_by_name}</span>
+                )}
+              </div>
+            )}
             {indent.status === 'REJECTED' && indent.decision_remarks && (
               <div className="rounded-md border bg-rose-50/60 p-3">
                 <span className="font-medium">Rejected: </span>
                 {indent.decision_remarks}
+              </div>
+            )}
+            {indent.status === 'PURCHASED' && (
+              <div className="rounded-md border bg-emerald-50/60 p-3">
+                <span className="font-medium">Purchased</span>
+                {indent.purchased_by_name && ` by ${indent.purchased_by_name}`}
+                {indent.purchase_remarks && ` — ${indent.purchase_remarks}`}
               </div>
             )}
 
@@ -390,21 +454,63 @@ function IndentDetailDialog({
             <div className="space-y-3 rounded-md border p-3">
               <p className="font-medium">Actions</p>
 
+              {/* 1. Requester submits to store */}
               {indent.status === 'DRAFT' && canManage && (
                 <Button
                   type="button"
                   onClick={async () => {
                     await submitIndent.mutateAsync(indentId);
-                    toast.success('Indent submitted for approval');
+                    toast.success('Sent to store engineer');
                   }}
                   disabled={submitIndent.isPending}
                 >
                   <Send className="h-4 w-4" />
-                  Submit for Approval
+                  Send to Store
                 </Button>
               )}
 
-              {indent.status === 'SUBMITTED' && canApprove && (
+              {/* 2. Store engineer reviews: sets issued qty, issues or forwards shortfall */}
+              {reviewing && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Store note (optional)</Label>
+                  <Textarea value={storeRemarks} onChange={(e) => setStoreRemarks(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">
+                    Set how much of each item you can issue from stock. Any shortfall is forwarded
+                    for purchase approval.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      const res = await reviewIndent.mutateAsync({
+                        indentId,
+                        payload: {
+                          items: indent.items.map((i) => ({
+                            id: i.id,
+                            issued_quantity: issued[i.id] ?? i.quantity,
+                          })),
+                          store_remarks: storeRemarks.trim(),
+                        },
+                      });
+                      toast.success(
+                        res.status === 'ISSUED'
+                          ? 'All items issued from store'
+                          : 'Available items issued; shortfall sent for approval',
+                      );
+                      setStoreRemarks('');
+                    }}
+                    disabled={reviewIndent.isPending}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Issue / Forward Shortfall
+                  </Button>
+                </div>
+              )}
+              {indent.status === 'SUBMITTED' && !canReview && (
+                <p className="text-sm text-muted-foreground">Waiting for store review.</p>
+              )}
+
+              {/* 3. Higher authority approves the purchase of the shortfall */}
+              {indent.status === 'PENDING_APPROVAL' && canApprove && (
                 <div className="space-y-2">
                   <Label className="text-xs">Decision remarks (optional)</Label>
                   <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} />
@@ -412,19 +518,17 @@ function IndentDetailDialog({
                     <Button
                       type="button"
                       onClick={async () => {
-                        const res = await approveIndent.mutateAsync({
+                        await approveIndent.mutateAsync({
                           indentId,
                           payload: { decision_remarks: remarks.trim() },
                         });
-                        toast.success(
-                          `Approved — gate pass ${res.generated_pass_no} sent to Material Out`,
-                        );
+                        toast.success('Approved — sent to purchaser');
                         setRemarks('');
                       }}
                       disabled={approveIndent.isPending}
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      Approve
+                      Approve Purchase
                     </Button>
                     <Button
                       type="button"
@@ -449,9 +553,37 @@ function IndentDetailDialog({
                   </div>
                 </div>
               )}
+              {indent.status === 'PENDING_APPROVAL' && !canApprove && (
+                <p className="text-sm text-muted-foreground">Waiting for purchase approval.</p>
+              )}
 
-              {indent.status === 'SUBMITTED' && !canApprove && (
-                <p className="text-sm text-muted-foreground">Waiting for approval.</p>
+              {/* 4. Purchaser marks purchased */}
+              {indent.status === 'APPROVED' && canPurchase && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Vendor / PO note (optional)</Label>
+                  <Textarea
+                    value={purchaseRemarks}
+                    onChange={(e) => setPurchaseRemarks(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      await purchaseIndent.mutateAsync({
+                        indentId,
+                        payload: { purchase_remarks: purchaseRemarks.trim() },
+                      });
+                      toast.success('Marked purchased');
+                      setPurchaseRemarks('');
+                    }}
+                    disabled={purchaseIndent.isPending}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Mark Purchased
+                  </Button>
+                </div>
+              )}
+              {indent.status === 'APPROVED' && !canPurchase && (
+                <p className="text-sm text-muted-foreground">Waiting for the purchaser.</p>
               )}
 
               {(indent.status === 'DRAFT' || indent.status === 'SUBMITTED') && canManage && (
@@ -484,7 +616,9 @@ function IndentDetailDialog({
 export default function MaintenanceMaterialIndentPage() {
   const { hasPermission } = usePermission();
   const canManage = hasPermission(MAINTENANCE_PERMISSIONS.MANAGE_MATERIAL_INDENT);
+  const canReview = hasPermission(MAINTENANCE_PERMISSIONS.REVIEW_MATERIAL_INDENT);
   const canApprove = hasPermission(MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT);
+  const canPurchase = hasPermission(MAINTENANCE_PERMISSIONS.PURCHASE_MATERIAL_INDENT);
 
   const [filters, setFilters] = useState<MaterialIndentFilters>({
     search: '',
@@ -498,9 +632,9 @@ export default function MaintenanceMaterialIndentPage() {
   const deleteIndent = useDeleteMaterialIndent();
 
   const indents = indentsQuery.data ?? [];
-  const drafts = indents.filter((i) => i.status === 'DRAFT').length;
-  const pending = indents.filter((i) => i.status === 'SUBMITTED').length;
-  const approved = indents.filter((i) => i.status === 'APPROVED').length;
+  const atStore = indents.filter((i) => i.status === 'SUBMITTED').length;
+  const forApproval = indents.filter((i) => i.status === 'PENDING_APPROVAL').length;
+  const toPurchase = indents.filter((i) => i.status === 'APPROVED').length;
 
   const handleDelete = async (indent: MaterialIndent) => {
     await deleteIndent.mutateAsync(indent.id);
@@ -511,7 +645,7 @@ export default function MaintenanceMaterialIndentPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Material Indent"
-        description="Raise material requisitions; approved indents flow to Gate → Material Out"
+        description="Raise material requests → store issues stock → shortfall goes for purchase approval"
       >
         <Button
           variant="outline"
@@ -530,9 +664,9 @@ export default function MaintenanceMaterialIndentPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard title="Total" value={indents.length} icon={FileText} />
-        <SummaryCard title="Drafts" value={drafts} icon={ClipboardList} />
-        <SummaryCard title="Pending Approval" value={pending} icon={Send} />
-        <SummaryCard title="Approved" value={approved} icon={CheckCircle2} />
+        <SummaryCard title="At Store" value={atStore} icon={ClipboardList} />
+        <SummaryCard title="For Approval" value={forApproval} icon={Send} />
+        <SummaryCard title="To Purchase" value={toPurchase} icon={CheckCircle2} />
       </div>
 
       <Card>
@@ -565,8 +699,11 @@ export default function MaintenanceMaterialIndentPage() {
               >
                 <SelectOption value="ALL">All</SelectOption>
                 <SelectOption value="DRAFT">Draft</SelectOption>
-                <SelectOption value="SUBMITTED">Submitted</SelectOption>
-                <SelectOption value="APPROVED">Approved</SelectOption>
+                <SelectOption value="SUBMITTED">Submitted to Store</SelectOption>
+                <SelectOption value="ISSUED">Issued from Store</SelectOption>
+                <SelectOption value="PENDING_APPROVAL">Pending Purchase Approval</SelectOption>
+                <SelectOption value="APPROVED">Approved for Purchase</SelectOption>
+                <SelectOption value="PURCHASED">Purchased</SelectOption>
                 <SelectOption value="REJECTED">Rejected</SelectOption>
                 <SelectOption value="CANCELLED">Cancelled</SelectOption>
               </NativeSelect>
@@ -583,8 +720,8 @@ export default function MaintenanceMaterialIndentPage() {
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Purpose</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Items</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Requested By</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Gate Pass</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
@@ -610,9 +747,16 @@ export default function MaintenanceMaterialIndentPage() {
                   <td className="px-4 py-3">{indent.purpose || '-'}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{indent.total_items}</td>
                   <td className="px-4 py-3">
+                    {indent.requested_by_name || indent.created_by_name || '-'}
+                    {indent.department_name && (
+                      <span className="block text-xs text-muted-foreground">
+                        {indent.department_name}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
                     <MaterialIndentStatusBadge status={indent.status} />
                   </td>
-                  <td className="px-4 py-3">{indent.generated_pass_no || '-'}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap justify-end gap-1">
                       <Button variant="outline" size="sm" onClick={() => setDetailId(indent.id)}>
@@ -644,7 +788,9 @@ export default function MaintenanceMaterialIndentPage() {
         <IndentDetailDialog
           indentId={detailId}
           canManage={canManage}
+          canReview={canReview}
           canApprove={canApprove}
+          canPurchase={canPurchase}
           onOpenChange={(open) => {
             if (!open) setDetailId(null);
           }}

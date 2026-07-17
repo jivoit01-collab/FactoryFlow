@@ -161,6 +161,8 @@ export interface ReturnableGatePassListItem {
   status_display: string;
   /** False for material issued out that never comes back. */
   is_returnable: boolean;
+  /** Non-empty when this pass was auto-generated from a maintenance Material Indent. */
+  material_indent_no: string;
   purpose: ReturnablePurpose;
   purpose_display: string;
   department: number | null;
@@ -189,6 +191,8 @@ export interface ReturnableGatePass {
   status: ReturnableStatus;
   status_display: string;
   is_returnable: boolean;
+  /** Non-empty when this pass was auto-generated from a maintenance Material Indent. */
+  material_indent_no: string;
 
   department: number | null;
   department_name: string;

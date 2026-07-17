@@ -4,6 +4,8 @@ import type {
   MaterialIndentDecisionPayload,
   MaterialIndentFilters,
   MaterialIndentPayload,
+  MaterialIndentPurchasePayload,
+  MaterialIndentReviewPayload,
   MaterialIndentUpdatePayload,
 } from '../types';
 import { materialIndentApi } from './materialIndent.api';
@@ -64,6 +66,29 @@ export function useSubmitMaterialIndent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (indentId: number) => materialIndentApi.submitIndent(indentId),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useReviewMaterialIndent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ indentId, payload }: { indentId: number; payload: MaterialIndentReviewPayload }) =>
+      materialIndentApi.reviewIndent(indentId, payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function usePurchaseMaterialIndent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      indentId,
+      payload,
+    }: {
+      indentId: number;
+      payload?: MaterialIndentPurchasePayload;
+    }) => materialIndentApi.purchaseIndent(indentId, payload),
     onSuccess: () => invalidateIndents(queryClient),
   });
 }

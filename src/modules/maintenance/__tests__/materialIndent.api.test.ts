@@ -15,7 +15,9 @@ vi.mock('@/config/constants', () => ({
       MATERIAL_INDENTS: '/maintenance/material-indents/',
       MATERIAL_INDENT_DETAIL: (id: number) => `/maintenance/material-indents/${id}/`,
       MATERIAL_INDENT_SUBMIT: (id: number) => `/maintenance/material-indents/${id}/submit/`,
+      MATERIAL_INDENT_REVIEW: (id: number) => `/maintenance/material-indents/${id}/review/`,
       MATERIAL_INDENT_APPROVE: (id: number) => `/maintenance/material-indents/${id}/approve/`,
+      MATERIAL_INDENT_PURCHASE: (id: number) => `/maintenance/material-indents/${id}/purchase/`,
       MATERIAL_INDENT_REJECT: (id: number) => `/maintenance/material-indents/${id}/reject/`,
       MATERIAL_INDENT_CANCEL: (id: number) => `/maintenance/material-indents/${id}/cancel/`,
     },
@@ -56,9 +58,23 @@ describe('materialIndentApi', () => {
     await materialIndentApi.submitIndent(4);
     expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/material-indents/4/submit/');
 
+    await materialIndentApi.reviewIndent(4, {
+      items: [{ id: 9, issued_quantity: '5' }],
+      store_remarks: 'partial',
+    });
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/material-indents/4/review/', {
+      items: [{ id: 9, issued_quantity: '5' }],
+      store_remarks: 'partial',
+    });
+
     await materialIndentApi.approveIndent(4, { decision_remarks: 'ok' });
     expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/material-indents/4/approve/', {
       decision_remarks: 'ok',
+    });
+
+    await materialIndentApi.purchaseIndent(4, { purchase_remarks: 'PO-9' });
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/material-indents/4/purchase/', {
+      purchase_remarks: 'PO-9',
     });
 
     await materialIndentApi.rejectIndent(4, { decision_remarks: 'no' });
