@@ -74,7 +74,8 @@ function LineTable({ title, lines }: { title: string; lines: DeliveryNoteLine[] 
 }
 
 export default function MpDeliveryNotesPage() {
-  const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL);
+  const [warehouseId, setWarehouseId] = useState<number | null>(null);
+  const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL, warehouseId);
   const cut = useCutDeliveryNote(CHANNEL);
   const reconcile = useReconcileDeliveryNotes(CHANNEL);
   const { data: approval } = useAwaitingApprovalCount(CHANNEL);
@@ -83,9 +84,12 @@ export default function MpDeliveryNotesPage() {
   const count = summary?.totals.dispatch_count ?? 0;
   const hasWork = count > 0;
   const awaitingApproval = approval?.awaiting_approval ?? 0;
+  // The warehouse actually in effect: the operator's pick, else the server default.
+  const selectedWh = warehouseId ?? summary?.warehouse_id ?? null;
+  const warehouses = summary?.warehouses ?? [];
 
   function doCut() {
-    cut.mutate(undefined, {
+    cut.mutate(selectedWh, {
       onSuccess: (r) => {
         setConfirmOpen(false);
         if (r.pending_approval) {
@@ -182,7 +186,25 @@ export default function MpDeliveryNotesPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Field label="SAP Customer" value={summary!.card_code || '—'} />
-                <Field label="Warehouse" value={summary!.warehouse_code || '—'} />
+                {warehouses.length > 1 ? (
+                  <div className="rounded-md border p-3">
+                    <div className="text-xs text-muted-foreground">Warehouse</div>
+                    <select
+                      value={selectedWh ?? ''}
+                      onChange={(e) => setWarehouseId(e.target.value ? Number(e.target.value) : null)}
+                      className="mt-1 h-8 w-full rounded border bg-background px-1 text-sm font-medium"
+                    >
+                      {warehouses.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.sap_warehouse_code}
+                          {w.is_default ? ' (default)' : ''} — {w.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <Field label="Warehouse" value={summary!.warehouse_code || '—'} />
+                )}
                 <Field label="Doc date" value={summary!.doc_date} />
                 <Field label="Dispatches" value={String(count)} />
               </div>

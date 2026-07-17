@@ -83,14 +83,23 @@ export const marketplaceApi = {
   },
 
   // ── SAP Delivery Notes (bulk) ────────────────────────────────────────────────
-  async deliveryNoteSummary(channel: MarketplaceChannel): Promise<DeliveryNoteSummary> {
+  async deliveryNoteSummary(
+    channel: MarketplaceChannel,
+    warehouseId?: number | null,
+  ): Promise<DeliveryNoteSummary> {
     const { data } = await apiClient.get<DeliveryNoteSummary>(
-      `${EP.DELIVERY_NOTE_SUMMARY}${buildQuery({ channel })}`,
+      `${EP.DELIVERY_NOTE_SUMMARY}${buildQuery({ channel, warehouse_id: warehouseId ?? undefined })}`,
     );
     return data;
   },
-  async cutDeliveryNote(channel: MarketplaceChannel): Promise<DeliveryNoteCutResult> {
-    const { data } = await apiClient.post<DeliveryNoteCutResult>(EP.DELIVERY_NOTE_CUT, { channel });
+  async cutDeliveryNote(
+    channel: MarketplaceChannel,
+    warehouseId?: number | null,
+  ): Promise<DeliveryNoteCutResult> {
+    const { data } = await apiClient.post<DeliveryNoteCutResult>(EP.DELIVERY_NOTE_CUT, {
+      channel,
+      warehouse_id: warehouseId ?? undefined,
+    });
     return data;
   },
   async reconcileDeliveryNotes(channel: MarketplaceChannel): Promise<DeliveryNoteReconcileResult> {

@@ -83,10 +83,13 @@ export function useUpdateMarketplaceSettings(channel: MarketplaceChannel) {
 }
 
 // ── SAP Delivery Notes (bulk) ────────────────────────────────────────────────
-export function useDeliveryNoteSummary(channel: MarketplaceChannel) {
+export function useDeliveryNoteSummary(
+  channel: MarketplaceChannel,
+  warehouseId?: number | null,
+) {
   return useQuery({
-    queryKey: MARKETPLACE_QUERY_KEYS.deliveryNoteSummary(channel),
-    queryFn: () => marketplaceApi.deliveryNoteSummary(channel),
+    queryKey: [...MARKETPLACE_QUERY_KEYS.deliveryNoteSummary(channel), warehouseId ?? 'default'] as const,
+    queryFn: () => marketplaceApi.deliveryNoteSummary(channel, warehouseId),
     staleTime: 15 * 1000,
   });
 }
@@ -94,7 +97,8 @@ export function useDeliveryNoteSummary(channel: MarketplaceChannel) {
 export function useCutDeliveryNote(channel: MarketplaceChannel) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => marketplaceApi.cutDeliveryNote(channel),
+    mutationFn: (warehouseId?: number | null) =>
+      marketplaceApi.cutDeliveryNote(channel, warehouseId),
     onSuccess: () => invalidateMarketplace(qc),
   });
 }

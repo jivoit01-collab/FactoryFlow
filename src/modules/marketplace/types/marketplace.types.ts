@@ -49,10 +49,20 @@ export interface DeliveryNoteBlocked {
 }
 
 /** Full preview of the single SAP Delivery Note that will be cut. */
+export interface DeliveryNoteWarehouseOption {
+  id: number;
+  name: string;
+  sap_warehouse_code: string;
+  sap_customer_card_code: string;
+  is_default: boolean;
+}
+
 export interface DeliveryNoteSummary {
   channel: MarketplaceChannel;
   card_code: string;
   warehouse_code: string;
+  warehouse_id: number | null;
+  warehouses: DeliveryNoteWarehouseOption[];
   doc_date: string;
   post_goods_issue: boolean;
   dispatches: DeliveryNoteDispatch[];
@@ -117,6 +127,8 @@ export interface MarketplaceWarehouse {
   /** SAP Business Place / Branch (BPLId) the delivery note is booked under. */
   sap_branch_id: number | null;
   post_goods_issue: boolean;
+  /** Pre-selected warehouse when cutting a delivery note for this channel. */
+  is_default: boolean;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

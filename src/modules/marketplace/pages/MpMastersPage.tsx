@@ -508,6 +508,7 @@ const EMPTY_WH = (channel: MarketplaceChannel): MarketplaceWarehouse => ({
   sap_tax_code: '',
   sap_branch_id: null,
   post_goods_issue: true,
+  is_default: false,
   is_active: true,
 });
 
@@ -543,6 +544,7 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
       sap_tax_code: editing.sap_tax_code.trim(),
       sap_branch_id: editing.sap_branch_id,
       post_goods_issue: editing.post_goods_issue,
+      is_default: editing.is_default,
       is_active: editing.is_active,
       ...(editing.id ? { id: editing.id } : {}),
     };
@@ -689,6 +691,15 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
                     onChange={(e) => setEditing({ ...editing, post_goods_issue: e.target.checked })}
                   />
                   Also post packing-material Goods Issue
+                </label>
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={editing.is_default}
+                    onChange={(e) => setEditing({ ...editing, is_default: e.target.checked })}
+                  />
+                  Default warehouse for cutting delivery notes
                 </label>
               </div>
             </div>
