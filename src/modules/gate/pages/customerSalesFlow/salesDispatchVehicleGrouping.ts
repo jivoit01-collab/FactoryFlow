@@ -23,9 +23,20 @@ export interface DockingVehicleGroup {
 // misleading dropdown under some unrelated arrival.
 const TERMINAL_DOCKING_STATUSES = new Set(['DISPATCHED', 'REJECTED', 'CANCELLED']);
 
+// A rejected/cancelled docking is a DISCARDED attempt — it is no longer part of the
+// truck's live load, so it must never merge into (nor label) the truck's grouped
+// row. Otherwise the group aggregates every sibling's bills onto a row headed by the
+// discarded entry, which then shows many bills but opens to its own single bill.
+const DISCARDED_DOCKING_STATUSES = new Set(['REJECTED', 'CANCELLED']);
+
 function isTerminal(entry: SalesDispatchDashboardEntry): boolean {
   const status = 'status' in entry ? entry.status : null;
   return typeof status === 'string' && TERMINAL_DOCKING_STATUSES.has(status);
+}
+
+function isDiscarded(entry: SalesDispatchDashboardEntry): boolean {
+  const status = 'status' in entry ? entry.status : null;
+  return typeof status === 'string' && DISCARDED_DOCKING_STATUSES.has(status);
 }
 
 function entryArrivalId(entry: SalesDispatchDashboardEntry): number | null {
@@ -50,6 +61,9 @@ export function dockingGroupKey(
   entry: SalesDispatchDashboardEntry,
   vehicleToArrival: Map<string, string>,
 ): string {
+  // A rejected/cancelled docking always stands alone (shows its own bill), even
+  // though it still carries the arrival id of the truck it was discarded from.
+  if (isDiscarded(entry)) return `done:${entry.id}`;
   const arrivalId = entryArrivalId(entry);
   if (arrivalId != null) return `arv:${arrivalId}`;
   // Arrival-less + terminal = a finished trip on its own; give it a unique key so

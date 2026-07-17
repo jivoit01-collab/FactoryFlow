@@ -63,6 +63,21 @@ describe('buildDockingVehicleGroups', () => {
     expect(groups[0].companies).toEqual(['Jivo Mart', 'Jivo Oil', 'Jivo Beverages']);
   });
 
+  it('keeps a rejected/cancelled docking as its own row, not merged into the live arrival group', () => {
+    const groups = buildDockingVehicleGroups([
+      docking({ id: 1, arrival: 10, arrival_no: 'ARV-1', company_name: 'Jivo Oil', status: 'DOCKED' }),
+      docking({ id: 2, arrival: 10, arrival_no: 'ARV-1', company_name: 'Jivo Mart', status: 'DOCKED' }),
+      docking({ id: 3, arrival: 10, arrival_no: 'ARV-1', company_name: 'Jivo Beverages', status: 'REJECTED' }),
+    ]);
+    // Two groups: the live Oil+Mart pair, and the rejected Beverages docking alone.
+    expect(groups).toHaveLength(2);
+    const live = groups.find((g) => g.subEntries.length === 2);
+    const discarded = groups.find((g) => g.subEntries.length === 1);
+    expect(live?.companies).toEqual(['Jivo Oil', 'Jivo Mart']);
+    expect(discarded?.subEntries[0].id).toBe(3);
+    expect(discarded?.subEntries[0].status).toBe('REJECTED');
+  });
+
   it('keeps two distinct arrivals of the same vehicle in separate groups', () => {
     const groups = buildDockingVehicleGroups([
       docking({ id: 1, vehicle: 5, arrival: 10, arrival_no: 'ARV-1' }),
