@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 import { getAllNavigation } from '@/app/registry';
-import { usePermission } from '@/core/auth';
+import { useAuth, usePermission } from '@/core/auth';
 import type { ModuleNavItem } from '@/core/types';
 import {
   Button,
@@ -25,6 +25,7 @@ interface MobileSidebarProps {
 
 function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission();
+  const { currentCompany } = useAuth();
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
 
@@ -39,6 +40,11 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       // Wait for permissions to load before filtering
       if (!permissionsLoaded) return false;
 
+      // Company-restricted modules only show under their configured company unit.
+      if (item.companies && !item.companies.includes(currentCompany?.company_code ?? '')) {
+        return false;
+      }
+
       // If route has a modulePrefix, check if user has any permission for that module
       if (item.modulePrefix) {
         return hasModulePermission(item.modulePrefix);
@@ -52,7 +58,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       // Routes without modulePrefix or permissions are shown (like Gate)
       return true;
     });
-  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission]);
+  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission, currentCompany]);
 
   const toggleSubmenu = (routePath: string) => {
     setOpenSubmenus((prev) => {

@@ -4,7 +4,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 
 import { getAllNavigation } from '@/app/registry';
 import { SIDEBAR_CONFIG } from '@/config/constants';
-import { usePermission } from '@/core/auth';
+import { useAuth, usePermission } from '@/core/auth';
 import type { ModuleNavItem } from '@/core/types';
 import { Button, Collapsible, CollapsibleContent } from '@/shared/components/ui';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
@@ -19,6 +19,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const { hasModulePermission, hasAnyPermission, permissionsLoaded } = usePermission();
+  const { currentCompany } = useAuth();
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
 
@@ -33,6 +34,11 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
         // Wait for permissions to load before filtering
         if (!permissionsLoaded) return false;
+
+        // Company-restricted modules only show under their configured company unit.
+        if (item.companies && !item.companies.includes(currentCompany?.company_code ?? '')) {
+          return false;
+        }
 
         // If route has a modulePrefix, check if user has any permission for that module
         if (item.modulePrefix) {
@@ -57,7 +63,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           return hasAnyPermission(child.permissions);
         }),
       }));
-  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission]);
+  }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission, currentCompany]);
 
   const toggleSubmenu = (routePath: string) => {
     setOpenSubmenus((prev) => {

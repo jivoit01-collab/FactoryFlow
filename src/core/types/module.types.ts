@@ -16,6 +16,9 @@ export interface ModuleNavItem {
   permissions?: readonly string[];
   /** Module prefix for dynamic sidebar filtering (e.g., 'quality_control' to show if user has any 'quality_control.*' permission). Use array for modules spanning multiple Django apps. */
   modulePrefix?: string | readonly string[];
+  /** Restrict this item to specific company units (company_code). When set, it is
+   *  hidden unless the active company is one of these. Omit to show for all. */
+  companies?: readonly string[];
   /** Whether to show in sidebar */
   showInSidebar?: boolean;
   /** Whether this route has a submenu in the sidebar */

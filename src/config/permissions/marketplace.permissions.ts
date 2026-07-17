@@ -14,6 +14,10 @@
 
 export const MARKETPLACE_MODULE_PREFIX = 'marketplace';
 
+/** Company units the marketplace module is enabled for (must match the backend
+ *  MARKETPLACE_COMPANY_CODE setting). The module is hidden under any other unit. */
+export const MARKETPLACE_COMPANIES = ['JIVO_MART'] as const;
+
 export const MARKETPLACE_PERMISSIONS = {
   VIEW_DISPATCH: 'marketplace.view_dispatch',
   ADD_DISPATCH: 'marketplace.add_dispatch',

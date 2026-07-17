@@ -17,6 +17,7 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import {
   MARKETPLACE_ACCESS,
   MARKETPLACE_ADMIN_ACCESS,
+  MARKETPLACE_COMPANIES,
   MARKETPLACE_ISSUE_ACCESS,
   MARKETPLACE_MODULE_PREFIX,
   MARKETPLACE_PACKING_ACCESS,
@@ -132,6 +133,7 @@ export const marketplaceModuleConfig: ModuleConfig = {
       icon: ShoppingCart,
       showInSidebar: true,
       modulePrefix: MARKETPLACE_MODULE_PREFIX,
+      companies: MARKETPLACE_COMPANIES,
       hasSubmenu: true,
       children: [
         { path: '/marketplace', title: 'Overview', permissions: MARKETPLACE_ACCESS },
