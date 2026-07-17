@@ -515,8 +515,12 @@ export const API_ENDPOINTS = {
     MATERIAL_INDENT_DETAIL: (indentId: number) => `/maintenance/material-indents/${indentId}/`,
     MATERIAL_INDENT_SUBMIT: (indentId: number) =>
       `/maintenance/material-indents/${indentId}/submit/`,
+    MATERIAL_INDENT_REVIEW: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/review/`,
     MATERIAL_INDENT_APPROVE: (indentId: number) =>
       `/maintenance/material-indents/${indentId}/approve/`,
+    MATERIAL_INDENT_PURCHASE: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/purchase/`,
     MATERIAL_INDENT_REJECT: (indentId: number) =>
       `/maintenance/material-indents/${indentId}/reject/`,
     MATERIAL_INDENT_CANCEL: (indentId: number) =>

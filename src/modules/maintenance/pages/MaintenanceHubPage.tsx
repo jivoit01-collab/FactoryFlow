@@ -112,7 +112,7 @@ const SUB_MODULES: SubModule[] = [
   },
   {
     title: 'Material Indent',
-    description: 'Raise material requisitions; approved indents flow to the gate for material-out.',
+    description: 'Raise material requests; store issues stock and forwards the shortfall for purchase.',
     to: '/maintenance/material-indents',
     icon: PackagePlus,
     permissions: [MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT],

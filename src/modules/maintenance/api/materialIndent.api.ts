@@ -6,6 +6,8 @@ import type {
   MaterialIndentDecisionPayload,
   MaterialIndentFilters,
   MaterialIndentPayload,
+  MaterialIndentPurchasePayload,
+  MaterialIndentReviewPayload,
   MaterialIndentUpdatePayload,
 } from '../types';
 
@@ -55,18 +57,43 @@ export const materialIndentApi = {
 
   // ---- Workflow (each stamps user + timestamp server-side) ----
 
+  // Requester → Store Engineer.
   async submitIndent(indentId: number): Promise<MaterialIndent> {
     const response = await apiClient.post<MaterialIndent>(EP.MATERIAL_INDENT_SUBMIT(indentId));
     return response.data;
   },
 
-  // Approval generates the gate pass and surfaces it in Gate → Material Out.
+  // Store engineer records issued qty per item; shortfall goes for purchase approval.
+  async reviewIndent(
+    indentId: number,
+    payload: MaterialIndentReviewPayload,
+  ): Promise<MaterialIndent> {
+    const response = await apiClient.post<MaterialIndent>(
+      EP.MATERIAL_INDENT_REVIEW(indentId),
+      payload,
+    );
+    return response.data;
+  },
+
+  // Higher authority approves the purchase of the shortfall.
   async approveIndent(
     indentId: number,
     payload: MaterialIndentDecisionPayload = {},
   ): Promise<MaterialIndent> {
     const response = await apiClient.post<MaterialIndent>(
       EP.MATERIAL_INDENT_APPROVE(indentId),
+      payload,
+    );
+    return response.data;
+  },
+
+  // Purchaser marks the approved shortfall as purchased.
+  async purchaseIndent(
+    indentId: number,
+    payload: MaterialIndentPurchasePayload = {},
+  ): Promise<MaterialIndent> {
+    const response = await apiClient.post<MaterialIndent>(
+      EP.MATERIAL_INDENT_PURCHASE(indentId),
       payload,
     );
     return response.data;

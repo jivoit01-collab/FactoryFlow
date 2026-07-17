@@ -156,7 +156,16 @@ export default function ReturnOutListPage() {
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <ReturnableTypeBadge isReturnable={pass.is_returnable} />
+                      {pass.material_indent_no ? (
+                        <span
+                          className="inline-flex items-center whitespace-nowrap rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700"
+                          title={`Material Indent ${pass.material_indent_no}`}
+                        >
+                          Material Indent
+                        </span>
+                      ) : (
+                        <ReturnableTypeBadge isReturnable={pass.is_returnable} />
+                      )}
                     </td>
                     <td className="px-3 py-2">{pass.purpose_display}</td>
                     <td className="px-3 py-2">{pass.destination}</td>
