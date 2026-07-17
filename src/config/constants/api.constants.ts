@@ -104,6 +104,8 @@ export const API_ENDPOINTS = {
     ARRIVAL_DEPART_BY_ID: (id: number) => `/gate-core/arrivals/${id}/depart/`,
     ARRIVAL_EMPTY_OUT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/empty-out/`,
     ARRIVAL_DISPATCH_BY_ID: (id: number) => `/gate-core/arrivals/${id}/dispatch/`,
+    ARRIVAL_WORKSPACE_BY_ID: (id: number) => `/gate-core/arrivals/${id}/workspace/`,
+    ARRIVAL_WEIGHMENT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/weighment/`,
     ARRIVAL_GATEPASS_READINESS_BY_ID: (id: number) =>
       `/gate-core/arrivals/${id}/gatepass/readiness/`,
     ARRIVAL_GATEPASS_PRINT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/print/`,

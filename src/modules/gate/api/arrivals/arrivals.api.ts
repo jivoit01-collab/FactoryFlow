@@ -1,6 +1,8 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
+import type { SalesDispatchGateOut } from '../salesDispatch/salesDispatch.api';
+
 export type VehicleArrivalStatusValue = 'INSIDE' | 'LOADING' | 'DEPARTED' | 'CANCELLED';
 
 export interface ArrivalExpectedBill {
@@ -89,6 +91,36 @@ export interface ArrivalGatepassReadiness {
   arrival_gatepass_no: string | null;
 }
 
+/** Coarse stepper hint from the backend workspace; the UI still drives fine state. */
+export type ArrivalWorkspaceNextAction =
+  | 'dock'
+  | 'prepare'
+  | 'print'
+  | 'commit'
+  | 'dispatch'
+  | 'depart'
+  | 'done'
+  | 'idle';
+
+/** The whole truck as one payload — header, per-company dockings, readiness, bills. */
+export interface ArrivalWorkspace {
+  arrival: VehicleArrival;
+  gatepass: ArrivalGatepassReadiness;
+  dockings: SalesDispatchGateOut[];
+  undocked: ArrivalExpectedCompany[];
+  next_action: ArrivalWorkspaceNextAction;
+  can_dispatch: boolean;
+  can_depart: boolean;
+}
+
+/** One physical gross weighing applied to every company's docking on the truck. */
+export interface ArrivalWeighmentRequest {
+  gross_weight: number | string;
+  weighbridge_slip_no?: string;
+  first_weighment_time?: string | null;
+  second_weighment_time?: string | null;
+}
+
 export interface ArrivalCreateRequest {
   vehicle_id: number;
   driver_id: number;
@@ -140,6 +172,21 @@ export const arrivalsApi = {
   async dispatch(id: number): Promise<VehicleArrival> {
     const response = await apiClient.post<VehicleArrival>(
       API_ENDPOINTS.GATE_CORE.ARRIVAL_DISPATCH_BY_ID(id),
+    );
+    return response.data;
+  },
+
+  async workspace(id: number): Promise<ArrivalWorkspace> {
+    const response = await apiClient.get<ArrivalWorkspace>(
+      API_ENDPOINTS.GATE_CORE.ARRIVAL_WORKSPACE_BY_ID(id),
+    );
+    return response.data;
+  },
+
+  async recordWeighment(id: number, data: ArrivalWeighmentRequest): Promise<VehicleArrival> {
+    const response = await apiClient.post<VehicleArrival>(
+      API_ENDPOINTS.GATE_CORE.ARRIVAL_WEIGHMENT_BY_ID(id),
+      data,
     );
     return response.data;
   },

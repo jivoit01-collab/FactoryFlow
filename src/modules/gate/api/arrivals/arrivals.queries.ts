@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { type ArrivalCreateRequest, arrivalsApi } from './arrivals.api';
+import {
+  type ArrivalCreateRequest,
+  type ArrivalWeighmentRequest,
+  arrivalsApi,
+} from './arrivals.api';
 
 export const ARRIVALS_QUERY_KEYS = {
   all: ['arrivals'] as const,
@@ -9,6 +13,7 @@ export const ARRIVALS_QUERY_KEYS = {
   list: (openOnly?: boolean) => [...ARRIVALS_QUERY_KEYS.all, 'list', openOnly] as const,
   gatepassReadiness: (id?: number | null) =>
     [...ARRIVALS_QUERY_KEYS.all, 'gatepassReadiness', id] as const,
+  workspace: (id?: number | null) => [...ARRIVALS_QUERY_KEYS.all, 'workspace', id] as const,
 };
 
 /** Bills booked to a vehicle across the user's companies, grouped by company. */
@@ -113,6 +118,26 @@ export function useDispatchArrival() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => arrivalsApi.dispatch(id),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
+/** The whole truck as one payload — powers the single-truck workspace screen. */
+export function useArrivalWorkspace(id?: number | null, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ARRIVALS_QUERY_KEYS.workspace(id),
+    queryFn: () => arrivalsApi.workspace(id!),
+    enabled: (options?.enabled ?? true) && !!id,
+    staleTime: 10 * 1000,
+  });
+}
+
+/** Record the truck's single gross weighing across every company's docking at once. */
+export function useRecordArrivalWeighment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ArrivalWeighmentRequest }) =>
+      arrivalsApi.recordWeighment(id, data),
     onSuccess: () => invalidateArrivalRelated(queryClient),
   });
 }
