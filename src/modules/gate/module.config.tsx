@@ -1051,11 +1051,6 @@ export const gateModuleConfig: ModuleConfig = {
           permissions: GATE_ENTRY_CREATE_PERMISSIONS,
         },
         {
-          path: '/gate/arrivals',
-          title: 'Cross-Company Arrivals',
-          permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
-        },
-        {
           path: '/gate/bst-out',
           title: 'BST Out',
           permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],

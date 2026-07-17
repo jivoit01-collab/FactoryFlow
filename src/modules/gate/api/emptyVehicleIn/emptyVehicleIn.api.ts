@@ -31,6 +31,20 @@ export interface EmptyVehicleGateInItemRequest {
   actual_quantity: number;
 }
 
+export interface ArrivalBillDocument {
+  sap_doc_entry: number;
+  sap_doc_num: string;
+}
+
+export interface ArrivalBillGroup {
+  gate_in_id: number;
+  entry_no: string;
+  company_id: number;
+  company_code: string;
+  company_name: string;
+  documents: ArrivalBillDocument[];
+}
+
 export interface EmptyVehicleGateInEntry {
   id: number;
   entry_no: string;
@@ -40,6 +54,12 @@ export interface EmptyVehicleGateInEntry {
   arrival?: number | null;
   /** Arrival number (ARV-…) shown on the grouped Empty Vehicle Entries row. */
   arrival_no?: string | null;
+  /**
+   * Every company's bills on this physical truck trip (detail view only), so the
+   * normal detail page can show the whole cross-company load in place. Empty for a
+   * single-company gate-in.
+   */
+  arrival_bills?: ArrivalBillGroup[];
   vehicle_entry: number;
   vehicle_entry_no: string;
   vehicle_entry_status: string;

@@ -467,12 +467,37 @@ export default function EmptyVehicleInNewPage() {
               // read-only text (not editable fields that would submit redundant,
               // drift-prone data).
               <>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Document Reference</p>
-                  <p className="whitespace-pre-line text-sm text-muted-foreground">
-                    {documentReference || 'Auto-filled from the linked bills.'}
-                  </p>
-                </div>
+                {existingEntry?.arrival_bills && existingEntry.arrival_bills.length > 1 ? (
+                  // Cross-company truck: show every company's bills in place, so the
+                  // whole intercompany load is handled from this one normal page.
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">
+                      Bills on this truck ({existingEntry.arrival_bills.length} companies)
+                    </p>
+                    {existingEntry.arrival_bills.map((group) => (
+                      <div key={group.gate_in_id} className="rounded-md border p-3">
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                            {group.company_name || group.company_code}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{group.entry_no}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {group.documents.length
+                            ? `Dispatch ${group.documents.map((d) => d.sap_doc_num).join(', ')}`
+                            : 'No bills'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Document Reference</p>
+                    <p className="whitespace-pre-line text-sm text-muted-foreground">
+                      {documentReference || 'Auto-filled from the linked bills.'}
+                    </p>
+                  </div>
+                )}
                 {documentNotes ? (
                   <div className="space-y-1">
                     <p className="text-sm font-medium">Document Notes</p>
