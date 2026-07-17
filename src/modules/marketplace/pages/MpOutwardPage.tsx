@@ -7,14 +7,13 @@
 import {
   CheckCircle2,
   Circle,
-  FileUp,
   Loader2,
   PackageCheck,
   RefreshCw,
   ScanLine,
   Truck,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -33,7 +32,6 @@ import { marketplaceApi } from '../api/marketplace.api';
 import {
   MARKETPLACE_QUERY_KEYS,
   useConfirmDispatch,
-  useImportOrders,
   useMpDispatches,
   useMpOrders,
   useRetryDeliveryNote,
@@ -63,24 +61,6 @@ export default function MpOutwardPage() {
   const dispatchesQuery = useMpDispatches({ channel });
   const dispatchedQuery = useMpDispatches({ channel, status: 'CONFIRMED' });
   const scanMut = useScanDispatchByTracking(channel);
-  const importMut = useImportOrders();
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  function onCsvChosen(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-selecting the same file
-    if (!file) return;
-    file.text().then((text) => {
-      importMut.mutate(
-        { text, filename: file.name },
-        {
-          onSuccess: (batch) =>
-            toast.success(`Imported ${batch.order_count} orders — ready to scan.`),
-          onError: (err) => toast.error(getErrorMessage(err, 'Import failed')),
-        },
-      );
-    });
-  }
 
   const orders = ordersQuery.data ?? [];
 
@@ -137,34 +117,11 @@ export default function MpOutwardPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Outward Dispatch</h1>
           <p className="text-sm text-muted-foreground">
-            Upload the order CSV, then scan each shipment's Tracking ID to dispatch.
+            Scan each shipment's Tracking ID to dispatch, then confirm.
           </p>
         </div>
         <MpChannelSelect value={channel} onChange={(c) => { setChannel(c); setFeedback(null); }} />
       </header>
-
-      {/* CSV upload */}
-      <Card>
-        <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <FileUp className="h-5 w-5 text-primary" />
-            Upload a Flipkart order CSV — orders are processed and appear below immediately.
-          </div>
-          <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={onCsvChosen} />
-          <Button
-            variant="outline"
-            className="w-full sm:w-auto"
-            disabled={importMut.isPending}
-            onClick={() => fileRef.current?.click()}
-          >
-            {importMut.isPending ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing…</>
-            ) : (
-              <><FileUp className="mr-2 h-4 w-4" /> Upload CSV</>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
 
       {/* Scan box */}
       <Card className="border-primary/30">
