@@ -20,7 +20,6 @@ import {
   MARKETPLACE_COMPANIES,
   MARKETPLACE_ISSUE_ACCESS,
   MARKETPLACE_MODULE_PREFIX,
-  MARKETPLACE_PACKING_ACCESS,
   MARKETPLACE_SHEET_ACCESS,
 } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
@@ -30,7 +29,6 @@ const MpImportPage = lazy(() => import('./pages/MpImportPage'));
 const MpBatchDetailPage = lazy(() => import('./pages/MpBatchDetailPage'));
 const MpIssueRequestsPage = lazy(() => import('./pages/MpIssueRequestsPage'));
 const MpIssueRequestDetailPage = lazy(() => import('./pages/MpIssueRequestDetailPage'));
-const MpPackingPage = lazy(() => import('./pages/MpPackingPage'));
 const MpOutwardPage = lazy(() => import('./pages/MpOutwardPage'));
 const MpDeliveryNotesPage = lazy(() => import('./pages/MpDeliveryNotesPage'));
 const MpInwardPage = lazy(() => import('./pages/MpInwardPage'));
@@ -75,13 +73,6 @@ export const marketplaceModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: MARKETPLACE_ISSUE_ACCESS,
       breadcrumb: { label: 'Issue Request' },
-    },
-    {
-      path: '/marketplace/packing',
-      element: <MpPackingPage />,
-      layout: 'main',
-      permissions: MARKETPLACE_PACKING_ACCESS,
-      breadcrumb: { label: 'Packing' },
     },
     {
       path: '/marketplace/outward',
@@ -139,7 +130,6 @@ export const marketplaceModuleConfig: ModuleConfig = {
         { path: '/marketplace', title: 'Overview', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/import', title: 'Import Sheet', permissions: MARKETPLACE_SHEET_ACCESS },
         { path: '/marketplace/issues', title: 'Warehouse Issues', permissions: MARKETPLACE_ISSUE_ACCESS },
-        { path: '/marketplace/packing', title: 'Packing', permissions: MARKETPLACE_PACKING_ACCESS },
         { path: '/marketplace/outward', title: 'Outward', permissions: MARKETPLACE_ACCESS },
         {
           path: '/marketplace/delivery-notes',

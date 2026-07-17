@@ -7,13 +7,14 @@
 import {
   CheckCircle2,
   Circle,
+  FileUp,
   Loader2,
   PackageCheck,
   RefreshCw,
   ScanLine,
   Truck,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -32,6 +33,7 @@ import { marketplaceApi } from '../api/marketplace.api';
 import {
   MARKETPLACE_QUERY_KEYS,
   useConfirmDispatch,
+  useImportOrders,
   useMpDispatches,
   useMpOrders,
   useRetryDeliveryNote,
@@ -61,6 +63,24 @@ export default function MpOutwardPage() {
   const dispatchesQuery = useMpDispatches({ channel });
   const dispatchedQuery = useMpDispatches({ channel, status: 'CONFIRMED' });
   const scanMut = useScanDispatchByTracking(channel);
+  const importMut = useImportOrders();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function onCsvChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    file.text().then((text) => {
+      importMut.mutate(
+        { text, filename: file.name },
+        {
+          onSuccess: (batch) =>
+            toast.success(`Imported ${batch.order_count} orders — ready to scan.`),
+          onError: (err) => toast.error(getErrorMessage(err, 'Import failed')),
+        },
+      );
+    });
+  }
 
   const orders = ordersQuery.data ?? [];
 
@@ -92,8 +112,15 @@ export default function MpOutwardPage() {
       onSuccess: (d) => {
         if (d.duplicate) {
           setFeedback({ kind: 'warning', message: `Already scanned · ${d.order_id}`, detail: d.buyer_name });
+        } else if (d.status === 'READY') {
+          setFeedback({ kind: 'success', message: `Order complete · ${d.order_id}`, detail: d.buyer_name });
         } else {
-          setFeedback({ kind: 'success', message: `Scanned · ${d.order_id}`, detail: d.buyer_name });
+          // Multi-item order: this item is done, others still pending.
+          setFeedback({
+            kind: 'success',
+            message: `Item scanned · ${d.order_id}`,
+            detail: 'More items pending on this order — scan their tracking IDs.',
+          });
         }
       },
       onError: (e) => {
@@ -110,11 +137,34 @@ export default function MpOutwardPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Outward Dispatch</h1>
           <p className="text-sm text-muted-foreground">
-            Scan a Tracking ID to mark the whole order dispatched — then confirm.
+            Upload the order CSV, then scan each shipment's Tracking ID to dispatch.
           </p>
         </div>
         <MpChannelSelect value={channel} onChange={(c) => { setChannel(c); setFeedback(null); }} />
       </header>
+
+      {/* CSV upload */}
+      <Card>
+        <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileUp className="h-5 w-5 text-primary" />
+            Upload a Flipkart order CSV — orders are processed and appear below immediately.
+          </div>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={onCsvChosen} />
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            disabled={importMut.isPending}
+            onClick={() => fileRef.current?.click()}
+          >
+            {importMut.isPending ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing…</>
+            ) : (
+              <><FileUp className="mr-2 h-4 w-4" /> Upload CSV</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Scan box */}
       <Card className="border-primary/30">
@@ -123,8 +173,8 @@ export default function MpOutwardPage() {
             <ScanLine className="h-5 w-5 text-primary" /> Scan to dispatch
           </CardTitle>
           <CardDescription>
-            Scan the Flipkart <strong>Tracking ID</strong> on the shipping label. One scan marks the
-            whole order scanned.
+            Scan each shipment's Flipkart <strong>Tracking ID</strong>. An order with several items
+            has a tracking ID per item — scan each; the order completes once all are scanned.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -228,10 +278,17 @@ function OrderScanCard({
   dispatch?: MarketplaceDispatch;
 }) {
   const scanned = dispatch?.status === 'READY';
+  const total = order.lines.length;
+  const done = Math.min(dispatch?.scanned_count ?? 0, total);
+  const partial = !scanned && done > 0; // multi-item order, some items scanned
   return (
     <div
       className={`rounded-lg border p-3 transition-colors ${
-        scanned ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-card'
+        scanned
+          ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20'
+          : partial
+            ? 'border-amber-400/60 bg-amber-50/40 dark:bg-amber-950/20'
+            : 'bg-card'
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -239,7 +296,7 @@ function OrderScanCard({
           {scanned ? (
             <CheckCircle2 className="h-5 w-5 text-emerald-500" />
           ) : (
-            <Circle className="h-5 w-5 text-muted-foreground/50" />
+            <Circle className={`h-5 w-5 ${partial ? 'text-amber-500' : 'text-muted-foreground/50'}`} />
           )}
           <div>
             <div className="font-mono font-medium">{order.order_id}</div>
@@ -251,6 +308,8 @@ function OrderScanCard({
         <div className="flex items-center gap-2">
           {scanned ? (
             <Badge className="bg-emerald-600">Scanned</Badge>
+          ) : partial ? (
+            <Badge className="bg-amber-500">{done} of {total} scanned</Badge>
           ) : (
             <Badge variant="outline">Pending scan</Badge>
           )}

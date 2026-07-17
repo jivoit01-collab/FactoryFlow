@@ -258,6 +258,8 @@ export interface MarketplaceDispatch {
   buyer_name?: string;
   sap_warehouse_code?: string;
   status: MpDispatchStatus;
+  /** Distinct items scanned so far (for per-item Outward progress). */
+  scanned_count?: number;
   sap_delivery_note_num?: string;
   internal_billing_num?: string;
   sap_post_status?: 'PENDING' | 'POSTED' | 'FAILED';
