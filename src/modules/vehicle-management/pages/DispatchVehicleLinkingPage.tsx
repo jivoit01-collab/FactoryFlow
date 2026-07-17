@@ -56,7 +56,12 @@ export default function DispatchVehicleLinkingPage() {
   });
   const [searchDraft, setSearchDraft] = useState('');
   const [selectedBill, setSelectedBill] = useState<DispatchBill | null>(null);
-  const [selectedDocEntries, setSelectedDocEntries] = useState<Set<number>>(() => new Set());
+  // Track the full selected bill OBJECTS (keyed by doc entry), not just their ids, so
+  // a bill stays in the link even after it scrolls out of the currently-filtered list.
+  // Deriving the selection from the visible page silently dropped off-page selections.
+  const [selectedBillsById, setSelectedBillsById] = useState<Map<number, DispatchBill>>(
+    () => new Map(),
+  );
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const effectiveFilters = useMemo(
@@ -73,20 +78,22 @@ export default function DispatchVehicleLinkingPage() {
 
   const handleLink = (bill: DispatchBill) => {
     setSelectedBill(bill);
-    setSelectedDocEntries((current) => {
+    setSelectedBillsById((current) => {
+      // Keep an existing multi-selection the clicked bill is part of; otherwise
+      // start a fresh single-bill selection.
       if (current.size > 0 && current.has(bill.doc_entry)) return current;
-      return new Set([bill.doc_entry]);
+      return new Map([[bill.doc_entry, bill]]);
     });
     setIsSheetOpen(true);
   };
 
   const handleToggleSelection = (bill: DispatchBill) => {
-    setSelectedDocEntries((current) => {
-      const next = new Set(current);
+    setSelectedBillsById((current) => {
+      const next = new Map(current);
       if (next.has(bill.doc_entry)) {
         next.delete(bill.doc_entry);
       } else {
-        next.add(bill.doc_entry);
+        next.set(bill.doc_entry, bill);
       }
       return next;
     });
@@ -98,7 +105,7 @@ export default function DispatchVehicleLinkingPage() {
       toast.success('Vehicle linked to dispatch plan');
       setIsSheetOpen(false);
       setSelectedBill(null);
-      setSelectedDocEntries(new Set());
+      setSelectedBillsById(new Map());
     } catch (error) {
       // Surface backend guard messages (e.g. "vehicle is already inside — add
       // bills from the 'Add Bills to Inside Vehicle' page") instead of a generic
@@ -113,7 +120,7 @@ export default function DispatchVehicleLinkingPage() {
       toast.success('Vehicle unlinked. The booking is back to Pending.');
       setIsSheetOpen(false);
       setSelectedBill(null);
-      setSelectedDocEntries(new Set());
+      setSelectedBillsById(new Map());
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to unlink vehicle'));
     }
@@ -126,14 +133,21 @@ export default function DispatchVehicleLinkingPage() {
     upcoming: meta?.upcoming ?? 0,
     all: meta?.total ?? 0,
   };
+  // Derived from the stored selection so the table's checkboxes stay in sync.
+  const selectedDocEntries = useMemo(
+    () => new Set(selectedBillsById.keys()),
+    [selectedBillsById],
+  );
   const selectedBills = useMemo(() => {
-    const bills = plansQuery.data?.data ?? [];
     if (!selectedBill) return [];
-    const selected = bills.filter((bill) => selectedDocEntries.has(bill.doc_entry));
-    return selected.some((bill) => bill.doc_entry === selectedBill.doc_entry)
-      ? selected
+    // All selected bills, from the stored objects — NOT filtered against the
+    // currently-visible page, so a selected bill on another date bucket / behind a
+    // search still rides on the link.
+    const chosen = Array.from(selectedBillsById.values());
+    return chosen.some((bill) => bill.doc_entry === selectedBill.doc_entry)
+      ? chosen
       : [selectedBill];
-  }, [plansQuery.data?.data, selectedBill, selectedDocEntries]);
+  }, [selectedBillsById, selectedBill]);
 
   return (
     <div className="space-y-6 p-6">
