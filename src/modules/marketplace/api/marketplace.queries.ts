@@ -545,6 +545,14 @@ export function useScanDispatchByTracking(channel: MarketplaceChannel) {
   });
 }
 
+export function usePostedDeliveryNotes(channel: MarketplaceChannel) {
+  return useQuery({
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'postedDeliveryNotes', channel] as const,
+    queryFn: () => marketplaceApi.postedDeliveryNotes(channel),
+    staleTime: 30 * 1000,
+  });
+}
+
 export function useBatchVariants(batchId?: number | null) {
   return useQuery({
     queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'batchVariants', batchId] as const,

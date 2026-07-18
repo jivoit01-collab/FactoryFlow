@@ -87,6 +87,38 @@ export interface DeliveryNoteSummary {
   };
 }
 
+/** A delivery note already posted to SAP, with its live SAP metadata. */
+export interface PostedDeliveryNoteLine {
+  item_code: string;
+  item_name: string;
+  quantity: string;
+  warehouse_code: string;
+  cost_center: string;
+}
+
+export interface PostedDeliveryNote {
+  doc_entry: number;
+  doc_num: string;
+  channel: MarketplaceChannel;
+  posted_at: string | null;
+  dispatch_count: number;
+  sap_post_status: string;
+  orders: { order_id: string; buyer_name: string; order_date: string | null; invoice_number: string }[];
+  lines?: PostedDeliveryNoteLine[];
+  total_quantity?: string;
+  sap?: {
+    doc_num: string;
+    doc_date: string | null;
+    card_code: string;
+    card_name: string;
+    num_at_card: string;
+    comments: string;
+    branch_id: number | null;
+    cancelled: boolean;
+    doc_total: string;
+  };
+}
+
 /** Result of cutting the bulk delivery note. */
 export interface DeliveryNoteCutResult {
   delivery_note_num: string;

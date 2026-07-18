@@ -21,6 +21,7 @@ import type {
   LineVariant,
   MarketplaceDispatch,
   OrderVariants,
+  PostedDeliveryNote,
   MarketplaceIssueRequest,
   MarketplaceOrder,
   MarketplacePacking,
@@ -208,6 +209,12 @@ export const marketplaceApi = {
   },
   async createDispatch(payload: DispatchCreateRequest): Promise<MarketplaceDispatch> {
     const { data } = await apiClient.post<MarketplaceDispatch>(EP.DISPATCHES, payload);
+    return data;
+  },
+  async postedDeliveryNotes(channel: MarketplaceChannel): Promise<{ notes: PostedDeliveryNote[] }> {
+    const { data } = await apiClient.get<{ notes: PostedDeliveryNote[] }>(
+      `${EP.DELIVERY_NOTE_POSTED}${buildQuery({ channel })}`,
+    );
     return data;
   },
   async batchVariants(batchId: number): Promise<{ orders: OrderVariants[] }> {

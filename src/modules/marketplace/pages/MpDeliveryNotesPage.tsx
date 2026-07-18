@@ -7,11 +7,12 @@
  * Dispatches land here when the channel's "Defer delivery note" setting is on;
  * otherwise each dispatch posts its own delivery note at confirm time.
  */
-import { AlertTriangle, Clock, FileText, PackageCheck, PackageX, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, Clock, FileText, CheckCircle2, PackageCheck, PackageX, RefreshCw, Send } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import {
+  Badge,
   Button,
   Card,
   CardContent,
@@ -30,6 +31,7 @@ import {
   useAwaitingApprovalCount,
   useCutDeliveryNote,
   useDeliveryNoteSummary,
+  usePostedDeliveryNotes,
   useReconcileDeliveryNotes,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
@@ -76,6 +78,15 @@ function LineTable({ title, lines }: { title: string; lines: DeliveryNoteLine[] 
   );
 }
 
+function Meta({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={mono ? 'font-mono' : ''}>{value}</dd>
+    </div>
+  );
+}
+
 export default function MpDeliveryNotesPage() {
   const [warehouseId, setWarehouseId] = useState<number | null>(null);
   const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL, warehouseId);
@@ -95,6 +106,8 @@ export default function MpDeliveryNotesPage() {
       d.order_id.toLowerCase().includes(q) || (d.buyer_name ?? '').toLowerCase().includes(q)
     );
   });
+  const { data: posted } = usePostedDeliveryNotes(CHANNEL);
+  const postedNotes = posted?.notes ?? [];
   const heldForStock = summary?.held_for_stock ?? [];
   // Orders held for stock are still "work" — otherwise the page looks empty with
   // no explanation of where the orders went.
@@ -372,6 +385,87 @@ export default function MpDeliveryNotesPage() {
             </Button>
           </div>
         </>
+      )}
+
+      {/* Already posted to SAP — the audit trail of what we sent */}
+      {postedNotes.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Posted delivery notes ({postedNotes.length})
+            </CardTitle>
+            <CardDescription>Delivery notes this module posted to SAP, with their SAP metadata.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {postedNotes.map((n) => (
+              <div key={n.doc_entry} className="rounded-lg border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-base font-semibold">{n.sap?.doc_num || n.doc_num}</span>
+                    {n.sap?.cancelled ? (
+                      <Badge variant="destructive">Cancelled in SAP</Badge>
+                    ) : (
+                      <Badge className="bg-emerald-600">Posted</Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {n.dispatch_count} order{n.dispatch_count === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {n.sap?.doc_date ? String(n.sap.doc_date).slice(0, 10) : (n.posted_at ?? '').slice(0, 10)}
+                  </span>
+                </div>
+
+                <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
+                  <Meta label="SAP DocEntry" value={String(n.doc_entry)} mono />
+                  <Meta label="Customer" value={n.sap?.card_code || '—'} mono />
+                  <Meta label="Branch" value={n.sap?.branch_id != null ? String(n.sap.branch_id) : '—'} />
+                  <Meta label="Reference" value={n.sap?.num_at_card || '—'} mono />
+                </dl>
+                {n.sap?.card_name ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{n.sap.card_name}</p>
+                ) : null}
+
+                {(n.lines ?? []).length > 0 && (
+                  <div className="mt-2 overflow-x-auto rounded-md border">
+                    <table className="w-full min-w-[420px] text-xs">
+                      <thead className="border-b text-left text-muted-foreground">
+                        <tr>
+                          <th className="p-2">Item shipped</th>
+                          <th className="p-2 text-right">Qty</th>
+                          <th className="p-2">Warehouse</th>
+                          <th className="p-2">Cost centre</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(n.lines ?? []).map((l, i) => (
+                          <tr key={i} className="border-b last:border-0">
+                            <td className="p-2">
+                              <span className="font-mono">{l.item_code}</span>
+                              <div className="text-muted-foreground">{l.item_name}</div>
+                            </td>
+                            <td className="p-2 text-right font-medium">{Number(l.quantity)}</td>
+                            <td className="p-2 font-mono">{l.warehouse_code || '—'}</td>
+                            <td className="p-2">{l.cost_center || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {n.orders.map((o) => (
+                    <span key={o.order_id}>
+                      <span className="font-mono">{o.order_id}</span>
+                      {o.invoice_number ? ` · bill ${o.invoice_number}` : ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
