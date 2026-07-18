@@ -45,6 +45,7 @@ import type {
   MarketplaceWarehouse,
   MarketplaceWarehouseUpsert,
   SkuMapping,
+  SkuMappingOption,
   SkuMappingUpsert,
 } from '../types/marketplace.types';
 
@@ -111,26 +112,58 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
       toast.error('Enter the marketplace SKU.');
       return;
     }
-    if (editing.sku_type === 'RAW' && !editing.fg_item_code?.trim()) {
-      toast.error('Enter the SAP finished-good item code for a raw SKU.');
-      return;
+    const opts = editing.options ?? [];
+    if (opts.length === 0) {
+      if (editing.sku_type === 'RAW' && !editing.fg_item_code?.trim()) {
+        toast.error('Enter the SAP finished-good item code for a raw SKU.');
+        return;
+      }
+      if (editing.sku_type === 'COMBO' && !editing.combo) {
+        toast.error('Pick a combo for a combo SKU.');
+        return;
+      }
+    } else {
+      for (const o of opts) {
+        if (o.sku_type === 'RAW' && !o.fg_item_code?.trim()) {
+          toast.error('Every variant needs a SAP item code.');
+          return;
+        }
+        if (o.sku_type === 'COMBO' && !o.combo) {
+          toast.error('Every combo variant needs a combo.');
+          return;
+        }
+      }
     }
-    if (editing.sku_type === 'COMBO' && !editing.combo) {
-      toast.error('Pick a combo for a combo SKU.');
-      return;
+    // The base item mirrors the default variant (when variants are used), so
+    // legacy displays and single-item resolution stay consistent.
+    let base = {
+      sku_type: editing.sku_type,
+      fg_item_code: editing.fg_item_code ?? '',
+      fg_item_name: editing.fg_item_name ?? '',
+      combo: editing.combo ?? null,
+    };
+    if (opts.length) {
+      const def = opts.find((o) => o.is_default) ?? opts[0];
+      base = {
+        sku_type: def.sku_type,
+        fg_item_code: def.fg_item_code ?? '',
+        fg_item_name: def.fg_item_name ?? '',
+        combo: def.combo ?? null,
+      };
     }
     const payload: SkuMappingUpsert = {
       channel: editing.channel,
       marketplace_sku: editing.marketplace_sku.trim(),
       fsn: editing.fsn?.trim() ?? '',
       sku_name: editing.sku_name,
-      sku_type: editing.sku_type,
+      sku_type: base.sku_type,
       // Only send the branch that applies, so a RAW→COMBO switch can't leave a stale code.
-      fg_item_code: editing.sku_type === 'RAW' ? editing.fg_item_code : '',
-      fg_item_name: editing.sku_type === 'RAW' ? editing.fg_item_name : '',
-      combo: editing.sku_type === 'COMBO' ? editing.combo : null,
+      fg_item_code: base.sku_type === 'RAW' ? base.fg_item_code : '',
+      fg_item_name: base.sku_type === 'RAW' ? base.fg_item_name : '',
+      combo: base.sku_type === 'COMBO' ? base.combo : null,
       default_uom: editing.default_uom,
       is_active: editing.is_active,
+      options: opts,
       ...(editing.id ? { id: editing.id } : {}),
     };
     upsert.mutate(payload, {
@@ -172,6 +205,11 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
               </td>
               <td className="py-2 px-2 font-mono">
                 {m.sku_type === 'COMBO' ? m.combo_code || `#${m.combo}` : m.fg_item_code}
+                {m.options && m.options.length > 1 ? (
+                  <Badge variant="secondary" className="ml-2 font-sans">
+                    +{m.options.length - 1} variant{m.options.length - 1 > 1 ? 's' : ''}
+                  </Badge>
+                ) : null}
               </td>
               <td className="py-2 px-2">{m.is_active ? 'Yes' : 'No'}</td>
               <RowActions onEdit={() => setEditing(m)} onDelete={() => setToDelete(m)} />
@@ -255,6 +293,7 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
                   </NativeSelect>
                 </Field>
               )}
+              <VariantsEditor editing={editing} setEditing={setEditing} combos={combos ?? []} />
             </div>
           ) : null}
           <DialogFooter>
@@ -268,6 +307,134 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
         </DialogContent>
       </Dialog>
     </Card>
+  );
+}
+
+/**
+ * Editor for linking MULTIPLE SAP items to one FSN. Empty list → the mapping
+ * ships its single base item (unchanged). With entries, exactly one is the default
+ * and the operator picks per order at sheet processing / DN cut.
+ */
+function VariantsEditor({
+  editing,
+  setEditing,
+  combos,
+}: {
+  editing: SkuMapping;
+  setEditing: (m: SkuMapping) => void;
+  combos: ComboDefinition[];
+}) {
+  const options = editing.options ?? [];
+  const set = (next: SkuMappingOption[]) => setEditing({ ...editing, options: next });
+
+  function add() {
+    const first = options.length === 0;
+    // Seed the first variant from the base item so the common case is one click.
+    set([
+      ...options,
+      {
+        label: '',
+        sku_type: first ? editing.sku_type : 'RAW',
+        fg_item_code: first ? editing.fg_item_code ?? '' : '',
+        fg_item_name: first ? editing.fg_item_name ?? '' : '',
+        combo: first ? editing.combo ?? null : null,
+        is_default: first,
+      },
+    ]);
+  }
+  function setOpt(i: number, patch: Partial<SkuMappingOption>) {
+    set(
+      options.map((o, idx) =>
+        idx === i ? { ...o, ...patch } : patch.is_default ? { ...o, is_default: false } : o,
+      ),
+    );
+  }
+  function removeOpt(i: number) {
+    const next = options.filter((_, idx) => idx !== i);
+    if (next.length && !next.some((o) => o.is_default)) next[0].is_default = true;
+    set(next);
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-medium">Ship-as variants (optional)</div>
+          <div className="text-xs text-muted-foreground">
+            Link more than one SAP item to this product. The operator picks which one ships per order.
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={add}>
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add
+        </Button>
+      </div>
+
+      {options.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No variants — ships the single item selected above.
+        </p>
+      ) : (
+        options.map((o, i) => (
+          <div key={i} className="space-y-2 rounded border bg-muted/30 p-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <NativeSelect
+                className="w-28"
+                value={o.sku_type}
+                onChange={(e) =>
+                  setOpt(i, {
+                    sku_type: e.target.value as 'RAW' | 'COMBO',
+                    fg_item_code: '',
+                    fg_item_name: '',
+                    combo: null,
+                  })
+                }
+              >
+                <SelectOption value="RAW">SAP item</SelectOption>
+                <SelectOption value="COMBO">Combo</SelectOption>
+              </NativeSelect>
+              <Input
+                className="flex-1"
+                placeholder="Label (e.g. SANO Sunflower)"
+                value={o.label ?? ''}
+                onChange={(e) => setOpt(i, { label: e.target.value })}
+              />
+              <label className="flex items-center gap-1 whitespace-nowrap text-xs">
+                <input
+                  type="radio"
+                  name={`opt-default-${editing.id ?? 'new'}`}
+                  checked={!!o.is_default}
+                  onChange={() => setOpt(i, { is_default: true })}
+                />
+                default
+              </label>
+              <Button size="icon" variant="ghost" onClick={() => removeOpt(i)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+            {o.sku_type === 'RAW' ? (
+              <SapItemInput
+                value={o.fg_item_code ?? ''}
+                onChange={(code, name) =>
+                  setOpt(i, { fg_item_code: code, fg_item_name: name ?? o.fg_item_name })
+                }
+              />
+            ) : (
+              <NativeSelect
+                value={o.combo ?? ''}
+                onChange={(e) => setOpt(i, { combo: e.target.value ? Number(e.target.value) : null })}
+              >
+                <SelectOption value="">— select combo —</SelectOption>
+                {combos.map((c) => (
+                  <SelectOption key={c.id} value={c.id}>
+                    {c.code} — {c.name}
+                  </SelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          </div>
+        ))
+      )}
+    </div>
   );
 }
 

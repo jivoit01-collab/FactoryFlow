@@ -42,6 +42,7 @@ import {
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpScanFeedback, type ScanFeedback } from '../components/MpScanFeedback';
 import { MpScanPanel } from '../components/MpScanPanel';
+import { MpVariantPicker } from '../components/MpVariantPicker';
 import type {
   DispatchBoardOrder,
   DispatchSheetSummary,
@@ -345,6 +346,17 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
           ) : null}
         </div>
       </div>
+
+      {/* SAP-item variant choice (only when the FSN maps to >1 item) */}
+      {order.variants && order.variants.some((v) => v.has_choice) && order.status !== 'CONFIRMED' ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-dashed border-amber-300/70 bg-amber-50/40 p-2 dark:bg-amber-950/10">
+          {order.variants
+            .filter((v) => v.has_choice)
+            .map((v) => (
+              <MpVariantPicker key={v.line_id} variant={v} />
+            ))}
+        </div>
+      ) : null}
 
       {/* Per-item tracking IDs */}
       <div className="mt-2 flex flex-wrap gap-1.5">

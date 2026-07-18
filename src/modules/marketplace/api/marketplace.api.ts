@@ -18,7 +18,9 @@ import type {
   MarketplaceChannel,
   DispatchBoard,
   DispatchSheetSummary,
+  LineVariant,
   MarketplaceDispatch,
+  OrderVariants,
   MarketplaceIssueRequest,
   MarketplaceOrder,
   MarketplacePacking,
@@ -206,6 +208,17 @@ export const marketplaceApi = {
   },
   async createDispatch(payload: DispatchCreateRequest): Promise<MarketplaceDispatch> {
     const { data } = await apiClient.post<MarketplaceDispatch>(EP.DISPATCHES, payload);
+    return data;
+  },
+  async batchVariants(batchId: number): Promise<{ orders: OrderVariants[] }> {
+    const { data } = await apiClient.get<{ orders: OrderVariants[] }>(EP.BATCH_VARIANTS(batchId));
+    return data;
+  },
+  async chooseVariant(lineId: number, optionId: number | null): Promise<LineVariant> {
+    const { data } = await apiClient.post<LineVariant>(EP.ORDER_CHOOSE_VARIANT, {
+      line_id: lineId,
+      option_id: optionId,
+    });
     return data;
   },
   async dispatchSheets(channel: MarketplaceChannel): Promise<{ sheets: DispatchSheetSummary[] }> {

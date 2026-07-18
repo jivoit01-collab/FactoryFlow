@@ -545,6 +545,24 @@ export function useScanDispatchByTracking(channel: MarketplaceChannel) {
   });
 }
 
+export function useBatchVariants(batchId?: number | null) {
+  return useQuery({
+    queryKey: [...MARKETPLACE_QUERY_KEYS.all, 'batchVariants', batchId] as const,
+    queryFn: () => marketplaceApi.batchVariants(batchId!),
+    enabled: !!batchId,
+    staleTime: 15 * 1000,
+  });
+}
+
+export function useChooseVariant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ lineId, optionId }: { lineId: number; optionId: number | null }) =>
+      marketplaceApi.chooseVariant(lineId, optionId),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
 export function useScanReturnByTracking(channel: MarketplaceChannel) {
   const qc = useQueryClient();
   return useMutation({

@@ -908,6 +908,8 @@ export const API_ENDPOINTS = {
     DISPATCH_SCAN_TRACKING: '/marketplace/dispatches/scan/',
     DISPATCH_SHEETS: '/marketplace/dispatches/sheets/',
     DISPATCH_BOARD: (batchId: number) => `/marketplace/dispatches/board/${batchId}/`,
+    ORDER_CHOOSE_VARIANT: '/marketplace/orders/choose-variant/',
+    BATCH_VARIANTS: (id: number) => `/marketplace/batches/${id}/variants/`,
     DISPATCH_BY_ID: (id: number) => `/marketplace/dispatches/${id}/`,
     DISPATCH_SCANS: (id: number) => `/marketplace/dispatches/${id}/scans/`,
     DISPATCH_SCAN_BY_ID: (id: number, scanId: number) =>

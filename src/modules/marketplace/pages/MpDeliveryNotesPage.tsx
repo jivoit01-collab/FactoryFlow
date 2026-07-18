@@ -33,6 +33,7 @@ import {
   useReconcileDeliveryNotes,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { MpVariantPicker } from '../components/MpVariantPicker';
 import type { DeliveryNoteLine, MarketplaceChannel } from '../types/marketplace.types';
 
 const CHANNEL: MarketplaceChannel = 'FLIPKART';
@@ -238,11 +239,12 @@ export default function MpDeliveryNotesPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="-mx-2 overflow-x-auto sm:mx-0">
-                <table className="w-full min-w-[520px] text-sm">
+                <table className="w-full min-w-[640px] text-sm">
                   <thead className="border-b text-left text-xs text-muted-foreground">
                     <tr>
                       <th className="p-3">Order</th>
                       <th className="p-3">Buyer</th>
+                      <th className="p-3">Ship as</th>
                       <th className="p-3 text-right">Lines</th>
                       <th className="p-3 text-right">Value</th>
                     </tr>
@@ -252,6 +254,19 @@ export default function MpDeliveryNotesPage() {
                       <tr key={d.dispatch_id} className="border-b last:border-0">
                         <td className="p-3 font-mono font-medium">{d.order_id}</td>
                         <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
+                        <td className="p-3">
+                          {(d.variants ?? []).filter((v) => v.has_choice).length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {(d.variants ?? [])
+                                .filter((v) => v.has_choice)
+                                .map((v) => (
+                                  <MpVariantPicker key={v.line_id} variant={v} />
+                                ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="p-3 text-right">{d.fg_line_count}</td>
                         <td className="p-3 text-right">{inr(d.amount)}</td>
                       </tr>

@@ -40,6 +40,7 @@ export interface DeliveryNoteDispatch {
   buyer_name: string;
   fg_line_count: number;
   amount: string;
+  variants?: LineVariant[];
 }
 
 export interface DeliveryNoteBlocked {
@@ -165,6 +166,17 @@ export type ComboDefinitionUpsert = Omit<ComboDefinition, 'id' | 'created_at' | 
   id?: number;
 };
 
+export interface SkuMappingOption {
+  id?: number;
+  label?: string;
+  sku_type: MpSkuType;
+  fg_item_code?: string;
+  fg_item_name?: string;
+  combo?: number | null;
+  combo_code?: string;
+  is_default: boolean;
+}
+
 export interface SkuMapping {
   id: number;
   channel: MarketplaceChannel;
@@ -178,8 +190,36 @@ export interface SkuMapping {
   combo_code?: string;
   default_uom?: string;
   is_active: boolean;
+  // SAP items this FSN MAY ship as (empty = single fg_item_code/combo).
+  options?: SkuMappingOption[];
   created_at?: string;
   updated_at?: string;
+}
+
+// ── Per-order SAP-item variant choice ──────────────────────────────────────
+export interface VariantOption {
+  id: number;
+  label: string;
+  sku_type: MpSkuType;
+  fg_item_code: string;
+  combo_code: string;
+  is_default: boolean;
+}
+
+export interface LineVariant {
+  line_id: number;
+  sku_name: string;
+  fsn?: string;
+  marketplace_sku: string;
+  has_choice: boolean;
+  options: VariantOption[];
+  chosen_option_id: number | null;
+}
+
+export interface OrderVariants {
+  order_id: string;
+  buyer_name: string;
+  lines: LineVariant[];
 }
 export type SkuMappingUpsert = Omit<
   SkuMapping,
@@ -489,6 +529,7 @@ export interface DispatchBoardOrder {
   tracking_total: number;
   tracking_scanned: number;
   items: DispatchBoardItem[];
+  variants?: LineVariant[];
 }
 
 export interface DispatchBoard {
