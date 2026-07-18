@@ -121,6 +121,7 @@ export default function ReturnInListPage() {
               <th className="px-3 py-2 text-left font-medium">Pass No</th>
               <th className="px-3 py-2 text-left font-medium">Status</th>
               <th className="px-3 py-2 text-left font-medium">Party</th>
+              <th className="px-3 py-2 text-left font-medium">Items</th>
               <th className="px-3 py-2 text-left font-medium">Purpose</th>
               <th className="px-3 py-2 text-left font-medium">Gated Out</th>
               <th className="px-3 py-2 text-left font-medium">Expected Back</th>
@@ -131,13 +132,13 @@ export default function ReturnInListPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
                   Loading gate passes…
                 </td>
               </tr>
             ) : !passes?.length ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
                   <PackageOpen className="mx-auto mb-2 h-8 w-8 opacity-40" />
                   No gate passes match these filters.
                 </td>
@@ -159,6 +160,16 @@ export default function ReturnInListPage() {
                       />
                     </td>
                     <td className="px-3 py-2">{pass.party_name}</td>
+                    <td className="max-w-[220px] px-3 py-2">
+                      <span className="block truncate" title={pass.item_names}>
+                        {pass.item_names || '—'}
+                      </span>
+                      {pass.item_count > 1 ? (
+                        <span className="text-xs text-muted-foreground">
+                          {pass.item_count} items
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-3 py-2">{pass.purpose_display}</td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {pass.gate_out_at ? new Date(pass.gate_out_at).toLocaleDateString() : '—'}
