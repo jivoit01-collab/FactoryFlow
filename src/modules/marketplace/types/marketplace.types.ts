@@ -38,6 +38,7 @@ export interface DeliveryNoteDispatch {
   dispatch_id: number;
   order_id: string;
   buyer_name: string;
+  order_date: string | null;
   fg_line_count: number;
   amount: string;
   variants?: LineVariant[];
@@ -522,6 +523,7 @@ export interface DispatchBoardItem {
 export interface DispatchBoardOrder {
   order_id: string;
   buyer_name: string;
+  order_date: string | null;
   dispatch_id: number | null;
   dispatch_status: string | null;
   sap_post_status: string | null;

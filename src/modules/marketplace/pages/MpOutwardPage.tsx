@@ -40,6 +40,7 @@ import {
   useScanDispatchByTracking,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { EMPTY_RANGE, inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
 import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import { MpScanFeedback, type ScanFeedback } from '../components/MpScanFeedback';
 import { MpScanPanel } from '../components/MpScanPanel';
@@ -62,12 +63,21 @@ export default function MpOutwardPage() {
   const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TODO' | 'SCANNED' | 'CONFIRMED'>('TODO');
+  const [sheetRange, setSheetRange] = useState<MpRange>(EMPTY_RANGE);   // sheet upload date
+  const [orderRange, setOrderRange] = useState<MpRange>(EMPTY_RANGE);   // order date
   const qc = useQueryClient();
 
   const sheetsQuery = useDispatchSheets(channel);
-  const sheets = sheetsQuery.data?.sheets ?? [];
-  // Default to the newest sheet until the operator picks one.
-  const sheetId = pickedSheet ?? sheets[0]?.id ?? null;
+  const allSheets = sheetsQuery.data?.sheets ?? [];
+  // Narrow the sheet list by when it was uploaded.
+  const sheets = useMemo(
+    () => allSheets.filter((s) => inRange(s.created_at, sheetRange)),
+    [allSheets, sheetRange],
+  );
+  // Default to the newest visible sheet until the operator picks one.
+  const sheetId = pickedSheet && sheets.some((s) => s.id === pickedSheet)
+    ? pickedSheet
+    : sheets[0]?.id ?? null;
 
   const boardQuery = useDispatchBoard(channel, sheetId);
   const board = boardQuery.data;
@@ -94,6 +104,7 @@ export default function MpOutwardPage() {
       if (statusFilter === 'TODO' && o.status !== 'PENDING' && o.status !== 'PARTIAL') return false;
       if (statusFilter === 'SCANNED' && o.status !== 'SCANNED') return false;
       if (statusFilter === 'CONFIRMED' && o.status !== 'CONFIRMED') return false;
+      if (!inRange(o.order_date, orderRange)) return false;
       if (!q) return true;
       // Match the order, the buyer, or any of its tracking IDs.
       return (
@@ -102,7 +113,7 @@ export default function MpOutwardPage() {
         || o.items.some((i) => (i.tracking_id ?? '').toLowerCase().includes(q))
       );
     });
-  }, [orders, statusFilter, search]);
+  }, [orders, statusFilter, search, orderRange]);
 
   const confirmAll = useMutation({
     mutationFn: async (ids: number[]) => {
@@ -154,13 +165,21 @@ export default function MpOutwardPage() {
           </CardTitle>
           <CardDescription>Each sheet is one uploaded order file. Pick one to scan its orders.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <MpFilterBar>
+            <MpDateRange value={sheetRange} onChange={setSheetRange} label="Uploaded" />
+            <MpResultCount shown={sheets.length} total={allSheets.length} noun="sheet" />
+          </MpFilterBar>
           {sheetsQuery.isLoading ? (
             <div className="flex items-center gap-2 py-4 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading sheets…
             </div>
           ) : sheets.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">No sheets yet — import an order file first.</p>
+            <p className="py-4 text-sm text-muted-foreground">
+              {allSheets.length === 0
+                ? 'No sheets yet — import an order file first.'
+                : 'No sheets uploaded in this date range.'}
+            </p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {sheets.map((s) => (
@@ -264,6 +283,7 @@ export default function MpOutwardPage() {
                   ]}
                 />
               </MpFilterBar>
+              <MpDateRange value={orderRange} onChange={setOrderRange} label="Order date" />
               <MpResultCount shown={visibleOrders.length} total={orders.length} noun="order" />
               {boardQuery.isLoading ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">

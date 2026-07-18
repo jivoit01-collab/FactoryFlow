@@ -33,6 +33,7 @@ import {
   useReconcileDeliveryNotes,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { EMPTY_RANGE, inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
 import { MpFilterBar, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import { MpVariantPicker } from '../components/MpVariantPicker';
 import type { DeliveryNoteLine, MarketplaceChannel } from '../types/marketplace.types';
@@ -85,7 +86,9 @@ export default function MpDeliveryNotesPage() {
 
   const count = summary?.totals.dispatch_count ?? 0;
   const [dnSearch, setDnSearch] = useState('');
+  const [dnRange, setDnRange] = useState<MpRange>(EMPTY_RANGE);
   const visibleDispatches = (summary?.dispatches ?? []).filter((d) => {
+    if (!inRange(d.order_date, dnRange)) return false;
     const q = dnSearch.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -256,11 +259,13 @@ export default function MpDeliveryNotesPage() {
                 />
                 <MpResultCount shown={visibleDispatches.length} total={count} noun="dispatch" />
               </MpFilterBar>
+              <MpDateRange value={dnRange} onChange={setDnRange} label="Order date" />
               <div className="-mx-2 overflow-x-auto sm:mx-0">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead className="border-b text-left text-xs text-muted-foreground">
                     <tr>
                       <th className="p-3">Order</th>
+                      <th className="p-3">Order date</th>
                       <th className="p-3">Buyer</th>
                       <th className="p-3">Ship as</th>
                       <th className="p-3 text-right">Lines</th>
@@ -271,6 +276,7 @@ export default function MpDeliveryNotesPage() {
                     {visibleDispatches.map((d) => (
                       <tr key={d.dispatch_id} className="border-b last:border-0">
                         <td className="p-3 font-mono font-medium">{d.order_id}</td>
+                        <td className="p-3 whitespace-nowrap text-muted-foreground">{d.order_date || '—'}</td>
                         <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
                         <td className="p-3">
                           {(d.variants ?? []).filter((v) => v.has_choice).length > 0 ? (
