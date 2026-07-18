@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
+  MaterialIndentAttachmentUploadPayload,
   MaterialIndentDecisionPayload,
   MaterialIndentFilters,
+  MaterialIndentGateInPayload,
   MaterialIndentPayload,
   MaterialIndentPurchasePayload,
+  MaterialIndentReceivePayload,
   MaterialIndentReviewPayload,
   MaterialIndentUpdatePayload,
 } from '../types';
@@ -89,6 +92,41 @@ export function usePurchaseMaterialIndent() {
       indentId: number;
       payload?: MaterialIndentPurchasePayload;
     }) => materialIndentApi.purchaseIndent(indentId, payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useGateInMaterialIndent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ indentId, payload }: { indentId: number; payload?: MaterialIndentGateInPayload }) =>
+      materialIndentApi.gateInIndent(indentId, payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useReceiveMaterialIndent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ indentId, payload }: { indentId: number; payload?: MaterialIndentReceivePayload }) =>
+      materialIndentApi.receiveIndent(indentId, payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useUploadMaterialIndentAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: MaterialIndentAttachmentUploadPayload) =>
+      materialIndentApi.uploadAttachment(payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useDeleteMaterialIndentAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: number) => materialIndentApi.deleteAttachment(attachmentId),
     onSuccess: () => invalidateIndents(queryClient),
   });
 }

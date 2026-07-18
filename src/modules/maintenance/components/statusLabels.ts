@@ -123,6 +123,8 @@ const MATERIAL_INDENT_STATUS_LABELS: Record<MaterialIndentStatus, string> = {
   PENDING_APPROVAL: 'Pending Purchase Approval',
   APPROVED: 'Approved for Purchase',
   PURCHASED: 'Purchased',
+  GATE_IN: 'Arrived at Gate',
+  RECEIVED: 'Received into Store',
   REJECTED: 'Rejected',
   CANCELLED: 'Cancelled',
 };
@@ -133,7 +135,9 @@ const MATERIAL_INDENT_STATUS_CLASSES: Record<MaterialIndentStatus, string> = {
   ISSUED: 'border-teal-200 bg-teal-50 text-teal-700',
   PENDING_APPROVAL: 'border-amber-200 bg-amber-50 text-amber-700',
   APPROVED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-  PURCHASED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  PURCHASED: 'border-violet-200 bg-violet-50 text-violet-700',
+  GATE_IN: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+  RECEIVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   REJECTED: 'border-rose-200 bg-rose-50 text-rose-700',
   CANCELLED: 'border-zinc-200 bg-zinc-50 text-zinc-700',
 };

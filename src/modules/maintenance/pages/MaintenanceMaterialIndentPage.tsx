@@ -8,6 +8,7 @@ import {
   Search,
   Send,
   Trash2,
+  Upload,
   XCircle,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
@@ -42,13 +43,17 @@ import {
   useCancelMaterialIndent,
   useCreateMaterialIndent,
   useDeleteMaterialIndent,
+  useDeleteMaterialIndentAttachment,
+  useGateInMaterialIndent,
   useMaintenanceOptions,
   useMaterialIndent,
   useMaterialIndents,
   usePurchaseMaterialIndent,
+  useReceiveMaterialIndent,
   useRejectMaterialIndent,
   useReviewMaterialIndent,
   useSubmitMaterialIndent,
+  useUploadMaterialIndentAttachment,
 } from '../api';
 import { MaterialIndentStatusBadge } from '../components';
 import type {
@@ -304,6 +309,8 @@ function IndentDetailDialog({
   canReview,
   canApprove,
   canPurchase,
+  canGateIn,
+  canReceive,
   onOpenChange,
 }: {
   indentId: number;
@@ -311,6 +318,8 @@ function IndentDetailDialog({
   canReview: boolean;
   canApprove: boolean;
   canPurchase: boolean;
+  canGateIn: boolean;
+  canReceive: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const indentQuery = useMaterialIndent(indentId);
@@ -319,11 +328,18 @@ function IndentDetailDialog({
   const approveIndent = useApproveMaterialIndent();
   const rejectIndent = useRejectMaterialIndent();
   const purchaseIndent = usePurchaseMaterialIndent();
+  const gateInIndent = useGateInMaterialIndent();
+  const receiveIndent = useReceiveMaterialIndent();
+  const uploadAttachment = useUploadMaterialIndentAttachment();
+  const deleteAttachment = useDeleteMaterialIndentAttachment();
   const cancelIndent = useCancelMaterialIndent();
   const [remarks, setRemarks] = useState('');
   const [storeRemarks, setStoreRemarks] = useState('');
   const [purchaseRemarks, setPurchaseRemarks] = useState('');
   const [issued, setIssued] = useState<Record<number, string>>({});
+  const [vehicleNumber, setVehicleNumber] = useState('');
+  const [driverName, setDriverName] = useState('');
+  const [docType, setDocType] = useState('INVOICE');
 
   const indent = indentQuery.data;
   const reviewing = indent?.status === 'SUBMITTED' && canReview;
@@ -425,6 +441,62 @@ function IndentDetailDialog({
                 </tbody>
               </table>
             </div>
+
+            {/* Gate-in details once the goods have arrived. */}
+            {(indent.gatein_vehicle_number || indent.gate_in_by_name) && (
+              <div className="rounded-md border bg-muted/30 p-3">
+                <span className="font-medium">Gate-in: </span>
+                {indent.gatein_vehicle_number || '—'}
+                {indent.gatein_driver_name && ` · ${indent.gatein_driver_name}`}
+                {indent.gate_in_by_name && (
+                  <span className="text-muted-foreground"> · by {indent.gate_in_by_name}</span>
+                )}
+              </div>
+            )}
+
+            {/* Invoice / bill attachments. */}
+            {indent.attachments.length > 0 && (
+              <div className="space-y-1">
+                <p className="font-medium">Documents</p>
+                <ul className="space-y-1">
+                  {indent.attachments.map((att) => (
+                    <li
+                      key={att.id}
+                      className="flex items-center justify-between rounded border px-3 py-2"
+                    >
+                      <a
+                        href={att.file}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-primary hover:underline"
+                      >
+                        <FileText className="h-4 w-4" />
+                        {att.title || att.doc_type_display || att.file.split('/').pop()}
+                      </a>
+                      {(canGateIn || canReceive || canManage) && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await deleteAttachment.mutateAsync(att.id);
+                            toast.success('Attachment removed');
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {indent.status === 'RECEIVED' && (
+              <div className="rounded-md border bg-emerald-50/60 p-3">
+                <span className="font-medium">Received into Store / Spares</span>
+                {indent.received_by_name && ` by ${indent.received_by_name}`} — purchased items added
+                to stock.
+              </div>
+            )}
 
             {/* Trail of remarks at each stage. */}
             {indent.store_remarks && (
@@ -586,6 +658,98 @@ function IndentDetailDialog({
                 <p className="text-sm text-muted-foreground">Waiting for the purchaser.</p>
               )}
 
+              {/* 5. Gate records vehicle + invoice/bill when purchased goods arrive */}
+              {indent.status === 'PURCHASED' && canGateIn && (
+                <div className="space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Vehicle number</Label>
+                      <Input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Driver name</Label>
+                      <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <NativeSelect
+                      value={docType}
+                      onChange={(e) => setDocType(e.target.value)}
+                      className="w-32"
+                    >
+                      <SelectOption value="INVOICE">Invoice</SelectOption>
+                      <SelectOption value="BILL">Bill</SelectOption>
+                      <SelectOption value="OTHER">Other</SelectOption>
+                    </NativeSelect>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40">
+                      <Upload className="h-4 w-4" />
+                      Attach invoice / bill
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!file) return;
+                          await uploadAttachment.mutateAsync({
+                            indent: indentId,
+                            file,
+                            doc_type: docType as 'INVOICE' | 'BILL' | 'OTHER',
+                          });
+                          toast.success('Attachment added');
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      await gateInIndent.mutateAsync({
+                        indentId,
+                        payload: {
+                          vehicle_number: vehicleNumber.trim(),
+                          driver_name: driverName.trim(),
+                        },
+                      });
+                      toast.success('Gated in — sent to store to receive');
+                      setVehicleNumber('');
+                      setDriverName('');
+                    }}
+                    disabled={gateInIndent.isPending}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Gate In
+                  </Button>
+                </div>
+              )}
+              {indent.status === 'PURCHASED' && !canGateIn && (
+                <p className="text-sm text-muted-foreground">Awaiting gate-in of the purchased goods.</p>
+              )}
+
+              {/* 6. Store collects the arrival into Store/Spares stock */}
+              {indent.status === 'GATE_IN' && canReceive && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Collecting adds each purchased item’s quantity to Store / Spares stock
+                    (matching or creating the part).
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      await receiveIndent.mutateAsync({ indentId, payload: {} });
+                      toast.success('Received into Store / Spares stock');
+                    }}
+                    disabled={receiveIndent.isPending}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Collect into Store
+                  </Button>
+                </div>
+              )}
+              {indent.status === 'GATE_IN' && !canReceive && (
+                <p className="text-sm text-muted-foreground">Awaiting store receipt.</p>
+              )}
+
               {(indent.status === 'DRAFT' || indent.status === 'SUBMITTED') && canManage && (
                 <Button
                   type="button"
@@ -619,6 +783,8 @@ export default function MaintenanceMaterialIndentPage() {
   const canReview = hasPermission(MAINTENANCE_PERMISSIONS.REVIEW_MATERIAL_INDENT);
   const canApprove = hasPermission(MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT);
   const canPurchase = hasPermission(MAINTENANCE_PERMISSIONS.PURCHASE_MATERIAL_INDENT);
+  const canGateIn = hasPermission(MAINTENANCE_PERMISSIONS.GATEIN_MATERIAL_INDENT);
+  const canReceive = hasPermission(MAINTENANCE_PERMISSIONS.RECEIVE_MATERIAL_INDENT);
 
   const [filters, setFilters] = useState<MaterialIndentFilters>({
     search: '',
@@ -791,6 +957,8 @@ export default function MaintenanceMaterialIndentPage() {
           canReview={canReview}
           canApprove={canApprove}
           canPurchase={canPurchase}
+          canGateIn={canGateIn}
+          canReceive={canReceive}
           onOpenChange={(open) => {
             if (!open) setDetailId(null);
           }}
