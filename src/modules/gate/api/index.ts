@@ -9,6 +9,10 @@
 export * from './arrivalSlip/arrivalSlip.api';
 export * from './arrivalSlip/arrivalSlip.queries';
 
+// Vehicle Arrivals (one physical truck trip across companies)
+export * from './arrivals/arrivals.api';
+export * from './arrivals/arrivals.queries';
+
 // Attachment
 export * from './attachment/attachment.api';
 export * from './attachment/attachment.queries';
