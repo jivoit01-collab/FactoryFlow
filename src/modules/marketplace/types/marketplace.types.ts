@@ -448,6 +448,55 @@ export interface StockListLine {
   source_skus: string[];
 }
 
+// ── Sheet-wise dispatch board ──────────────────────────────────────────────
+export type DispatchOrderStatus = 'PENDING' | 'PARTIAL' | 'SCANNED' | 'CONFIRMED';
+
+export interface DispatchSheetInsights {
+  total_orders: number;
+  completed_orders: number;
+  pending_orders: number;
+  confirmed_orders: number;
+  tracking_total: number;
+  tracking_scanned: number;
+  tracking_remaining: number;
+  progress_pct: number;
+}
+
+export interface DispatchSheetSummary {
+  id: number;
+  filename: string;
+  status: OrderImportBatchStatus;
+  created_at: string;
+  insights: DispatchSheetInsights;
+}
+
+export interface DispatchBoardItem {
+  sku_name: string;
+  marketplace_sku: string;
+  quantity: string;
+  tracking_id: string;
+  scanned: boolean;
+}
+
+export interface DispatchBoardOrder {
+  order_id: string;
+  buyer_name: string;
+  dispatch_id: number | null;
+  dispatch_status: string | null;
+  sap_post_status: string | null;
+  ready: boolean;
+  status: DispatchOrderStatus;
+  tracking_total: number;
+  tracking_scanned: number;
+  items: DispatchBoardItem[];
+}
+
+export interface DispatchBoard {
+  sheet: { id: number; filename: string; status: OrderImportBatchStatus; created_at: string };
+  insights: DispatchSheetInsights;
+  orders: DispatchBoardOrder[];
+}
+
 export interface StockList {
   lines: StockListLine[];
   unmapped_skus: string[];

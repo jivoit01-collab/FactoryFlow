@@ -41,6 +41,10 @@ export const MARKETPLACE_QUERY_KEYS = {
   dispatches: (params?: DispatchListParams) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'dispatches', params] as const,
   dispatch: (id?: number | null) => [...MARKETPLACE_QUERY_KEYS.all, 'dispatch', id] as const,
+  dispatchSheets: (channel?: MarketplaceChannel) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'dispatchSheets', channel] as const,
+  dispatchBoard: (channel: MarketplaceChannel, batchId?: number | null) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'dispatchBoard', channel, batchId] as const,
   returns: (params?: ReturnListParams) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'returns', params] as const,
   return: (id?: number | null) => [...MARKETPLACE_QUERY_KEYS.all, 'return', id] as const,
@@ -167,6 +171,23 @@ export function useMpDispatches(params?: DispatchListParams) {
     queryKey: MARKETPLACE_QUERY_KEYS.dispatches(params),
     queryFn: () => marketplaceApi.dispatches(params),
     staleTime: 30 * 1000,
+  });
+}
+
+export function useDispatchSheets(channel: MarketplaceChannel) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.dispatchSheets(channel),
+    queryFn: () => marketplaceApi.dispatchSheets(channel),
+    staleTime: 20 * 1000,
+  });
+}
+
+export function useDispatchBoard(channel: MarketplaceChannel, batchId?: number | null) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.dispatchBoard(channel, batchId),
+    queryFn: () => marketplaceApi.dispatchBoard(channel, batchId!),
+    enabled: !!batchId,
+    staleTime: 10 * 1000,
   });
 }
 

@@ -16,6 +16,8 @@ import type {
   ImportOrdersRequest,
   ImportPreview,
   MarketplaceChannel,
+  DispatchBoard,
+  DispatchSheetSummary,
   MarketplaceDispatch,
   MarketplaceIssueRequest,
   MarketplaceOrder,
@@ -204,6 +206,18 @@ export const marketplaceApi = {
   },
   async createDispatch(payload: DispatchCreateRequest): Promise<MarketplaceDispatch> {
     const { data } = await apiClient.post<MarketplaceDispatch>(EP.DISPATCHES, payload);
+    return data;
+  },
+  async dispatchSheets(channel: MarketplaceChannel): Promise<{ sheets: DispatchSheetSummary[] }> {
+    const { data } = await apiClient.get<{ sheets: DispatchSheetSummary[] }>(
+      `${EP.DISPATCH_SHEETS}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+  async dispatchBoard(channel: MarketplaceChannel, batchId: number): Promise<DispatchBoard> {
+    const { data } = await apiClient.get<DispatchBoard>(
+      `${EP.DISPATCH_BOARD(batchId)}${buildQuery({ channel })}`,
+    );
     return data;
   },
   async scanDispatchByTracking(
