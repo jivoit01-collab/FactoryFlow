@@ -316,13 +316,31 @@ export default function MpDeliveryNotesPage() {
                   document). They&apos;ll be included automatically once the stock arrives.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-1 text-sm">
-                {heldForStock.map((h) => (
-                  <div key={h.dispatch_id} className="flex flex-wrap justify-between gap-3">
-                    <span className="font-mono">{h.order_id}</span>
-                    <span className="text-muted-foreground">{h.reason}</span>
-                  </div>
-                ))}
+              <CardContent className="space-y-2 text-sm">
+                {heldForStock.map((h) => {
+                  const pickable = (h.variants ?? []).filter((v) => v.has_choice);
+                  return (
+                    <div key={h.dispatch_id} className="rounded-md border bg-background p-2">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="font-mono">{h.order_id}</span>
+                        <span className="text-muted-foreground">{h.reason}</span>
+                      </div>
+                      {pickable.length > 0 ? (
+                        <div className="mt-2 border-t pt-2">
+                          <p className="mb-1.5 text-xs text-muted-foreground">
+                            This product can ship as another SAP item — switch it to one you have
+                            in stock and the order joins this delivery note.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {pickable.map((v) => (
+                              <MpVariantPicker key={v.line_id} variant={v} />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           )}

@@ -48,6 +48,11 @@ export interface DeliveryNoteBlocked {
   order_id: string;
   dispatch_id: number;
   reason: string;
+  // Present on held-for-stock entries so the operator can switch the order to an
+  // item that IS in stock without leaving the page.
+  buyer_name?: string;
+  order_date?: string | null;
+  variants?: LineVariant[];
 }
 
 /** Full preview of the single SAP Delivery Note that will be cut. */
