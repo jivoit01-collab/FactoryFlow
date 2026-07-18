@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import {
+  ReturnablePassDetails,
   ReturnableReasonDialog,
   ReturnableStatusBadge,
   ReturnableTimeline,
@@ -184,6 +185,8 @@ export default function ReturnOutFormPage() {
           will not appear in the Material In queue.
         </div>
       ) : null}
+
+      <ReturnablePassDetails pass={pass} />
 
       <Card>
         <CardHeader>

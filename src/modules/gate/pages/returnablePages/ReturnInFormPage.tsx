@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import {
+  ReturnablePassDetails,
   ReturnableStatusBadge,
   ReturnableTimeline,
 } from '@/modules/maintenance/components/returnable';
@@ -173,6 +174,8 @@ export default function ReturnInFormPage() {
           {pass.total_quantity_returned} of {pass.total_quantity_out} units are back.
         </div>
       ) : null}
+
+      <ReturnablePassDetails pass={pass} />
 
       {isOutstanding ? (
         <>
