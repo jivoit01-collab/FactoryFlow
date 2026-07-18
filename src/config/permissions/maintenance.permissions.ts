@@ -58,6 +58,8 @@ export const MAINTENANCE_PERMISSIONS = {
   REVIEW_MATERIAL_INDENT: 'maintenance.can_review_material_indent',
   APPROVE_MATERIAL_INDENT: 'maintenance.can_approve_material_indent',
   PURCHASE_MATERIAL_INDENT: 'maintenance.can_purchase_material_indent',
+  GATEIN_MATERIAL_INDENT: 'maintenance.can_gatein_material_indent',
+  RECEIVE_MATERIAL_INDENT: 'maintenance.can_receive_material_indent',
   VIEW_WORK_PERMIT: 'maintenance.can_view_work_permit',
   MANAGE_WORK_PERMIT: 'maintenance.can_manage_work_permit',
   ISSUE_WORK_PERMIT: 'maintenance.can_issue_work_permit',

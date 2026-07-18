@@ -3,10 +3,14 @@ import { apiClient } from '@/core/api';
 
 import type {
   MaterialIndent,
+  MaterialIndentAttachment,
+  MaterialIndentAttachmentUploadPayload,
   MaterialIndentDecisionPayload,
   MaterialIndentFilters,
+  MaterialIndentGateInPayload,
   MaterialIndentPayload,
   MaterialIndentPurchasePayload,
+  MaterialIndentReceivePayload,
   MaterialIndentReviewPayload,
   MaterialIndentUpdatePayload,
 } from '../types';
@@ -97,6 +101,53 @@ export const materialIndentApi = {
       payload,
     );
     return response.data;
+  },
+
+  // Gate records vehicle when the purchased goods arrive.
+  async gateInIndent(
+    indentId: number,
+    payload: MaterialIndentGateInPayload = {},
+  ): Promise<MaterialIndent> {
+    const response = await apiClient.post<MaterialIndent>(
+      EP.MATERIAL_INDENT_GATE_IN(indentId),
+      payload,
+    );
+    return response.data;
+  },
+
+  // Store collects the arrival into Store/Spares stock.
+  async receiveIndent(
+    indentId: number,
+    payload: MaterialIndentReceivePayload = {},
+  ): Promise<MaterialIndent> {
+    const response = await apiClient.post<MaterialIndent>(
+      EP.MATERIAL_INDENT_RECEIVE(indentId),
+      payload,
+    );
+    return response.data;
+  },
+
+  // ---- Invoice / bill attachments ----
+
+  async uploadAttachment(
+    payload: MaterialIndentAttachmentUploadPayload,
+  ): Promise<MaterialIndentAttachment> {
+    const formData = new FormData();
+    formData.append('indent', String(payload.indent));
+    formData.append('file', payload.file);
+    formData.append('doc_type', payload.doc_type ?? 'INVOICE');
+    if (payload.title?.trim()) formData.append('title', payload.title.trim());
+
+    const response = await apiClient.post<MaterialIndentAttachment>(
+      EP.MATERIAL_INDENT_ATTACHMENTS,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  },
+
+  async deleteAttachment(attachmentId: number): Promise<void> {
+    await apiClient.delete(EP.MATERIAL_INDENT_ATTACHMENT_DETAIL(attachmentId));
   },
 
   async rejectIndent(

@@ -57,10 +57,13 @@ import {
   useMaintenanceDashboard,
   useMaintenanceOptions,
   useMaintenanceSpares,
+  useMaterialIndents,
+  useReceiveMaterialIndent,
   useReturnUnusedSpareRequest,
   useSpareRequests,
   useUpdateMaintenanceSpare,
 } from '../api';
+import { MaterialIndentStatusBadge } from '../components';
 import type {
   MaintenanceAsset,
   MaintenanceDecimal,
@@ -627,6 +630,7 @@ function SpareAdjustDialog({
 export default function MaintenanceSparesPage() {
   const { hasPermission } = usePermission();
   const canManageSpare = hasPermission(MAINTENANCE_PERMISSIONS.MANAGE_SPARE);
+  const canReceiveIndent = hasPermission(MAINTENANCE_PERMISSIONS.RECEIVE_MATERIAL_INDENT);
 
   const [filters, setFilters] = useState<MaintenanceSpareFilters>({
     search: '',
@@ -658,6 +662,10 @@ export default function MaintenanceSparesPage() {
     [requestSearch, requestStatus],
   );
   const requestsQuery = useSpareRequests(requestFilters);
+  // Purchased material indents that have been gated in and await store receipt.
+  const pendingReceiptsQuery = useMaterialIndents({ status: 'GATE_IN' }, canReceiveIndent);
+  const receiveIndent = useReceiveMaterialIndent();
+  const pendingReceipts = pendingReceiptsQuery.data ?? [];
 
   const createSpare = useCreateMaintenanceSpare();
   const updateSpare = useUpdateMaintenanceSpare();
@@ -778,6 +786,48 @@ export default function MaintenanceSparesPage() {
           New Spare
         </Button>
       </DashboardHeader>
+
+      {canReceiveIndent && pendingReceipts.length > 0 && (
+        <Card className="border-cyan-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <PackageCheck className="h-4 w-4 text-cyan-700" />
+              Pending Receipts ({pendingReceipts.length})
+            </CardTitle>
+            <CardDescription>
+              Purchased material indents gated in and awaiting collection. Collecting adds the
+              items to stock.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingReceipts.map((indent) => (
+              <div
+                key={indent.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+              >
+                <div>
+                  <span className="font-medium">{indent.indent_no}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {indent.items.map((i) => i.particulars).join(', ')}
+                  </span>
+                  <MaterialIndentStatusBadge status={indent.status} />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    await receiveIndent.mutateAsync({ indentId: indent.id, payload: {} });
+                    toast.success(`Collected ${indent.indent_no} into stock`);
+                  }}
+                  disabled={receiveIndent.isPending}
+                >
+                  <PackageCheck className="h-4 w-4" />
+                  Collect into Stock
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <SummaryCard

@@ -524,10 +524,17 @@ export const API_ENDPOINTS = {
       `/maintenance/material-indents/${indentId}/approve/`,
     MATERIAL_INDENT_PURCHASE: (indentId: number) =>
       `/maintenance/material-indents/${indentId}/purchase/`,
+    MATERIAL_INDENT_GATE_IN: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/gate-in/`,
+    MATERIAL_INDENT_RECEIVE: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/receive/`,
     MATERIAL_INDENT_REJECT: (indentId: number) =>
       `/maintenance/material-indents/${indentId}/reject/`,
     MATERIAL_INDENT_CANCEL: (indentId: number) =>
       `/maintenance/material-indents/${indentId}/cancel/`,
+    MATERIAL_INDENT_ATTACHMENTS: '/maintenance/material-indent-attachments/',
+    MATERIAL_INDENT_ATTACHMENT_DETAIL: (attachmentId: number) =>
+      `/maintenance/material-indent-attachments/${attachmentId}/`,
     // Safety fines — PPE violations recorded by the Fire Department Head.
     SAFETY_VIOLATION_TYPES: '/maintenance/safety-violation-types/',
     SAFETY_VIOLATION_TYPE_DETAIL: (typeId: number) =>
