@@ -580,7 +580,11 @@ function DispatchTable({
     // One flat row per physical truck. Clicking opens the primary docking's page,
     // which resolves the whole cross-company trip; the columns summarise every
     // company's docking on the truck instead of an expandable accordion.
-    const primary = group.subEntries[0];
+    // The row's identity (entry no, status, click target) must come from a real
+    // docking, never a pending booking that happened to sort first -- otherwise the
+    // merged truck row shows "Pending" and clicks into the create-docking wizard.
+    const primary =
+      group.subEntries.find((entry) => !isPendingBookingEntry(entry)) ?? group.subEntries[0];
     const docCount = group.subEntries.reduce((sum, entry) => sum + getDocumentCount(entry), 0);
     const docNumbers = group.subEntries.flatMap((entry) => getDashboardDocumentNumbers(entry));
     const customers = Array.from(
