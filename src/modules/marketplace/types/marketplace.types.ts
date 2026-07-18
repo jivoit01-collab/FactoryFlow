@@ -140,6 +140,14 @@ export type MarketplaceWarehouseUpsert = Omit<
   'id' | 'created_at' | 'updated_at'
 > & { id?: number };
 
+/** An interchangeable SAP item for one combo slot. */
+export interface ComboComponentOption {
+  id?: number;
+  item_code: string;
+  item_name?: string;
+  is_default: boolean;
+}
+
 export interface ComboComponent {
   id?: number;
   component_type: MpComponentType;
@@ -147,6 +155,8 @@ export interface ComboComponent {
   item_name?: string;
   quantity: string;
   uom?: string;
+  // Alternatives for this slot (empty = ships item_code).
+  options?: ComboComponentOption[];
 }
 
 export interface ComboDefinition {
@@ -208,6 +218,16 @@ export interface VariantOption {
   is_default: boolean;
 }
 
+/** One combo slot on an order line whose SAP item can be chosen. */
+export interface ComponentVariant {
+  component_id: number;
+  label: string;
+  quantity: string;
+  has_choice: boolean;
+  options: { id: number; item_code: string; item_name: string; is_default: boolean }[];
+  chosen_option_id: number;
+}
+
 export interface LineVariant {
   line_id: number;
   sku_name: string;
@@ -216,6 +236,8 @@ export interface LineVariant {
   has_choice: boolean;
   options: VariantOption[];
   chosen_option_id: number | null;
+  // Per-combo-slot alternatives (only slots that have options).
+  components: ComponentVariant[];
 }
 
 export interface OrderVariants {

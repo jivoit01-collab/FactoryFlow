@@ -40,6 +40,7 @@ import { SapItemInput } from '../components/SapItemInput';
 import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import type {
   ComboComponent,
+  ComboComponentOption,
   ComboDefinition,
   ComboDefinitionUpsert,
   MarketplaceChannel,
@@ -520,6 +521,76 @@ const EMPTY_COMBO = (channel: MarketplaceChannel): ComboDefinition => ({
 // Common units — free-text is still allowed via the current value.
 const UOM_OPTIONS = ['PCS', 'BOX', 'CTN', 'PKT', 'LTR', 'ML', 'KG', 'GM', 'SET'];
 
+/**
+ * Alternatives for ONE combo slot — the interchangeable SAP items that can fill it
+ * depending on stock. Empty means the slot always ships its own item code.
+ */
+function ComponentAlternatives({
+  component,
+  onChange,
+}: {
+  component: ComboComponent;
+  onChange: (patch: Partial<ComboComponent>) => void;
+}) {
+  const options = component.options ?? [];
+  const set = (next: ComboComponentOption[]) => onChange({ options: next });
+
+  function add() {
+    const first = options.length === 0;
+    // Seed the first alternative from the component's own item.
+    set([
+      ...options,
+      first
+        ? { item_code: component.item_code, item_name: component.item_name ?? '', is_default: true }
+        : { item_code: '', item_name: '', is_default: false },
+    ]);
+  }
+  function setOpt(i: number, patch: Partial<ComboComponentOption>) {
+    set(options.map((o, idx) => (idx === i ? { ...o, ...patch } : patch.is_default ? { ...o, is_default: false } : o)));
+  }
+  function removeOpt(i: number) {
+    const next = options.filter((_, idx) => idx !== i);
+    if (next.length && !next.some((o) => o.is_default)) next[0].is_default = true;
+    set(next);
+  }
+
+  return (
+    <div className="space-y-1.5 pl-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {options.length === 0
+            ? 'Always ships the item above'
+            : `${options.length} interchangeable item${options.length > 1 ? 's' : ''} — user picks at delivery note`}
+        </span>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={add}>
+          <Plus className="mr-1 h-3 w-3" /> Alternative
+        </Button>
+      </div>
+      {options.map((o, i) => (
+        <div key={i} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_32px]">
+          <SapItemInput
+            placeholder="Alternative SAP item"
+            value={o.item_code}
+            onChange={(code, name) => setOpt(i, { item_code: code, item_name: name ?? o.item_name })}
+          />
+          <label className="flex items-center gap-1 whitespace-nowrap text-xs">
+            <input
+              type="radio"
+              name={`comp-default-${component.id ?? component.item_code}`}
+              checked={!!o.is_default}
+              onChange={() => setOpt(i, { is_default: true })}
+            />
+            default
+          </label>
+          <Button size="icon" variant="ghost" onClick={() => removeOpt(i)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CombosTab({ channel }: { channel: MarketplaceChannel }) {
   const { data: combos } = useCombos(channel);
   const upsert = useUpsertCombo();
@@ -668,7 +739,8 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
                   </Button>
                 </div>
                 {editing.components.map((comp, idx) => (
-                  <div key={idx} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[90px_1fr_80px_70px_32px]">
+                  <div key={idx} className="space-y-2 rounded-lg border p-2">
+                  <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[90px_1fr_80px_70px_32px]">
                     <NativeSelect
                       value={comp.component_type}
                       onChange={(e) => setComponent(idx, { component_type: e.target.value as 'FG' | 'PM' })}
@@ -710,6 +782,11 @@ function CombosTab({ channel }: { channel: MarketplaceChannel }) {
                     <Button size="icon" variant="ghost" onClick={() => removeComponent(idx)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
+                  </div>
+                  <ComponentAlternatives
+                    component={comp}
+                    onChange={(patch) => setComponent(idx, patch)}
+                  />
                   </div>
                 ))}
               </div>

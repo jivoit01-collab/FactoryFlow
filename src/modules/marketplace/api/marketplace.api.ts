@@ -214,10 +214,16 @@ export const marketplaceApi = {
     const { data } = await apiClient.get<{ orders: OrderVariants[] }>(EP.BATCH_VARIANTS(batchId));
     return data;
   },
-  async chooseVariant(lineId: number, optionId: number | null): Promise<LineVariant> {
+  /** Pick the SAP item for a line — or, with componentId, for one combo slot. */
+  async chooseVariant(
+    lineId: number,
+    optionId: number | null,
+    componentId?: number,
+  ): Promise<LineVariant> {
     const { data } = await apiClient.post<LineVariant>(EP.ORDER_CHOOSE_VARIANT, {
       line_id: lineId,
       option_id: optionId,
+      ...(componentId ? { component_id: componentId } : {}),
     });
     return data;
   },

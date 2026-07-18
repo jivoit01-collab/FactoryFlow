@@ -557,8 +557,9 @@ export function useBatchVariants(batchId?: number | null) {
 export function useChooseVariant() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ lineId, optionId }: { lineId: number; optionId: number | null }) =>
-      marketplaceApi.chooseVariant(lineId, optionId),
+    mutationFn: ({ lineId, optionId, componentId }: {
+      lineId: number; optionId: number | null; componentId?: number;
+    }) => marketplaceApi.chooseVariant(lineId, optionId, componentId),
     onSuccess: () => invalidateMarketplace(qc),
   });
 }
