@@ -7,7 +7,7 @@
  * Dispatches land here when the channel's "Defer delivery note" setting is on;
  * otherwise each dispatch posts its own delivery note at confirm time.
  */
-import { AlertTriangle, Clock, FileText, PackageCheck, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, Clock, FileText, PackageCheck, PackageX, RefreshCw, Send } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -95,7 +95,10 @@ export default function MpDeliveryNotesPage() {
       d.order_id.toLowerCase().includes(q) || (d.buyer_name ?? '').toLowerCase().includes(q)
     );
   });
-  const hasWork = count > 0;
+  const heldForStock = summary?.held_for_stock ?? [];
+  // Orders held for stock are still "work" — otherwise the page looks empty with
+  // no explanation of where the orders went.
+  const hasWork = count > 0 || heldForStock.length > 0;
   const awaitingApproval = approval?.awaiting_approval ?? 0;
   // The warehouse actually in effect: the operator's pick, else the server default.
   const selectedWh = warehouseId ?? summary?.warehouse_id ?? null;
@@ -301,6 +304,29 @@ export default function MpDeliveryNotesPage() {
             </CardContent>
           </Card>
 
+          {heldForStock.length > 0 && (
+            <Card className="border-amber-300">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base text-amber-700">
+                  <PackageX className="h-4 w-4" /> Held — not enough stock ({heldForStock.length})
+                </CardTitle>
+                <CardDescription>
+                  These orders are ready, but the warehouse doesn&apos;t have the stock yet, so
+                  they&apos;re kept out of this delivery note (one short line would fail the whole
+                  document). They&apos;ll be included automatically once the stock arrives.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                {heldForStock.map((h) => (
+                  <div key={h.dispatch_id} className="flex flex-wrap justify-between gap-3">
+                    <span className="font-mono">{h.order_id}</span>
+                    <span className="text-muted-foreground">{h.reason}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {summary!.blocked.length > 0 && (
             <Card className="border-amber-300">
               <CardHeader className="pb-3">
@@ -323,7 +349,7 @@ export default function MpDeliveryNotesPage() {
           )}
 
           <div className="flex justify-end">
-            <Button onClick={() => setConfirmOpen(true)} disabled={cut.isPending}>
+            <Button onClick={() => setConfirmOpen(true)} disabled={cut.isPending || count === 0}>
               <Send className="mr-2 h-4 w-4" /> Cut delivery note ({count})
             </Button>
           </div>

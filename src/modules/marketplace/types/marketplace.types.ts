@@ -71,6 +71,9 @@ export interface DeliveryNoteSummary {
   fg_lines: DeliveryNoteLine[];
   pm_lines: DeliveryNoteLine[];
   blocked: DeliveryNoteBlocked[];
+  /** Orders the warehouse can't fulfil yet — excluded so one short line can't
+   *  fail the whole document. They cut automatically once stock arrives. */
+  held_for_stock: DeliveryNoteBlocked[];
   totals: {
     dispatch_count: number;
     fg_item_count: number;
