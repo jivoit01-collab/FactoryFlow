@@ -20,6 +20,7 @@ import {
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
   type SalesDispatchItem,
+  type TripDocking,
   useCancelSalesDispatch,
   useRejectSalesDispatch,
   useSalesDispatch,
@@ -40,7 +41,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
+import { cn, getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
 import {
   getExpectedDispatchBoxes,
@@ -238,6 +239,16 @@ export default function SalesDispatchDetailPage() {
       <DockingOverviewCard entry={entry} documents={detailDocuments} />
 
       <DocumentsCard documents={detailDocuments} />
+
+      {entry.trip_dockings && entry.trip_dockings.length > 1 ? (
+        <TripDockingsCard
+          dockings={entry.trip_dockings}
+          arrivalNo={entry.arrival_no}
+          onOpen={(dockingId) =>
+            navigate(`${location.pathname.replace(/\/[^/]+$/, '')}/${dockingId}`)
+          }
+        />
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -551,6 +562,72 @@ function InfoGroup({ title, children }: { title: string; children: ReactNode }) 
       <h3 className="text-sm font-semibold">{title}</h3>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">{children}</div>
     </div>
+  );
+}
+
+function TripDockingsCard({
+  dockings,
+  arrivalNo,
+  onOpen,
+}: {
+  dockings: TripDocking[];
+  arrivalNo?: string | null;
+  onOpen: (dockingId: number) => void;
+}) {
+  const totalBills = dockings.reduce((sum, docking) => sum + docking.documents.length, 0);
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <CardTitle className="flex items-center gap-2">
+          <Truck className="h-5 w-5" />
+          Full truck load
+        </CardTitle>
+        <div className="text-sm text-muted-foreground">
+          {dockings.length} dockings · {totalBills} bills{arrivalNo ? ` · ${arrivalNo}` : ''}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          This physical truck carries several dockings (per company / SAP branch). Each keeps
+          its own gate pass; open any to work on it.
+        </p>
+        {dockings.map((docking) => (
+          <button
+            key={docking.id}
+            type="button"
+            disabled={docking.is_current}
+            onClick={() => onOpen(docking.id)}
+            className={cn(
+              'flex w-full flex-col gap-1.5 rounded-md border p-3 text-left transition-colors',
+              docking.is_current
+                ? 'border-primary bg-muted/40'
+                : 'cursor-pointer hover:bg-muted/40',
+            )}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                {docking.company_name || docking.company_code}
+              </span>
+              <span className="text-sm font-medium">{docking.entry_no}</span>
+              {docking.is_current ? (
+                <span className="text-xs text-muted-foreground">(this docking)</span>
+              ) : null}
+              <GateStatusBadge status={docking.status} />
+              {docking.sap_branch_id != null ? (
+                <span className="text-xs text-muted-foreground">
+                  Branch {docking.sap_branch_name || docking.sap_branch_id}
+                </span>
+              ) : null}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {docking.documents.length
+                ? docking.documents.map((doc) => doc.sap_doc_num).join(', ')
+                : 'No bills'}
+            </div>
+          </button>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

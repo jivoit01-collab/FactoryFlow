@@ -184,6 +184,25 @@ export interface SalesDispatchBoxScan {
   duplicate?: boolean;
 }
 
+export interface TripDockingDocument {
+  sap_doc_entry: number;
+  sap_doc_num: string;
+  customer_name?: string;
+}
+
+export interface TripDocking {
+  id: number;
+  entry_no: string;
+  company_id: number;
+  company_code: string;
+  company_name: string;
+  status: string;
+  sap_branch_id?: number | null;
+  sap_branch_name?: string;
+  is_current: boolean;
+  documents: TripDockingDocument[];
+}
+
 export interface SalesDispatchGateOut {
   id: number;
   entry_no: string;
@@ -200,6 +219,9 @@ export interface SalesDispatchGateOut {
   arrival_company_count?: number;
   /** true once every company on the truck is dispatched and it can make its single exit. */
   arrival_can_depart?: boolean;
+  /** Every live docking on this physical truck trip (detail view only), so the detail
+   *  page can show the whole truck's load and match the one-row-per-truck board. */
+  trip_dockings?: TripDocking[];
   /** Gatepass-print lock of THIS docking's company (not the active selector). */
   gatepass_print_locked?: boolean;
   gatepass_lock_reason?: string;
