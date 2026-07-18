@@ -48,6 +48,7 @@ import {
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
   type SalesDispatchItem,
+  useArrivalWorkspace,
   useImportSalesDispatchBarcodeScans,
   useRemoveSalesDispatchBoxScan,
   useSalesDispatchBarcodeScans,
@@ -168,6 +169,35 @@ export default function SalesDispatchBarcodeScanPage() {
   const createSkipRequest = useCreateDockingScanSkipRequest();
   const createPartialRequest = useCreateDockingPartialScanRequest();
 
+  // One physical truck can carry bills for several companies / SAP branches -- each is
+  // its own docking under the hood. On the scan step we show them together: every
+  // company's bills in one list (tagged), scanned in one place. Load the whole trip via
+  // the arrival workspace; each docking there carries its own documents + box scans.
+  const { data: workspace, refetch: refetchWorkspace } = useArrivalWorkspace(
+    entry?.arrival ?? null,
+    { enabled: !!entry?.arrival },
+  );
+  const tripDockings = useMemo<SalesDispatchGateOut[]>(() => {
+    const active = (docking: SalesDispatchGateOut) =>
+      docking.status !== 'REJECTED' && docking.status !== 'CANCELLED';
+    if (entry?.arrival && workspace?.dockings?.length) {
+      return workspace.dockings.filter(active);
+    }
+    return entry ? [entry] : [];
+  }, [entry, workspace]);
+  const isMultiDocking = tripDockings.length > 1;
+  // Which docking each SAP-document (bill) belongs to, so a scanned box is posted to
+  // the right company's docking even though every bill shows in one list.
+  const documentDockingId = useMemo(() => {
+    const map = new Map<number, number>();
+    tripDockings.forEach((docking) =>
+      (docking.documents ?? []).forEach((document) => map.set(document.id, docking.id)),
+    );
+    return map;
+  }, [tripDockings]);
+  const documentDockingRef = useRef(documentDockingId);
+  documentDockingRef.current = documentDockingId;
+
   const isReadOnly = entry ? SCAN_CLOSED_STATUSES.includes(entry.status) : false;
   // In review mode we deliberately stay on the page to walk a closed entry.
   const closedScanRedirectPath = isReview ? '' : getClosedScanRedirectPath(entry);
@@ -200,12 +230,36 @@ export default function SalesDispatchBarcodeScanPage() {
     }
   }, [autoFocusBarcode, entry, isReadOnly, canEditDocking, openBillKey]);
 
-  const expectedBoxes = getExpectedDispatchBoxes(entry);
-  const scannedQuantity = useMemo(
-    () => scans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
-    [scans],
+  // Scans / expected boxes span the whole trip. For a single-company docking this is
+  // just its own live scans; for a multi-company truck it aggregates every docking's
+  // box scans (from the workspace payload).
+  const allScans = useMemo(
+    () => (isMultiDocking ? tripDockings.flatMap((docking) => docking.box_scans ?? []) : scans),
+    [isMultiDocking, tripDockings, scans],
   );
-  const billGroups = useMemo(() => buildBillGroups(entry, scans), [entry, scans]);
+  const expectedBoxes = useMemo(
+    () => tripDockings.reduce((sum, docking) => sum + getExpectedDispatchBoxes(docking), 0),
+    [tripDockings],
+  );
+  const scannedQuantity = useMemo(
+    () => allScans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
+    [allScans],
+  );
+  const billGroups = useMemo(
+    () =>
+      tripDockings.flatMap((docking) =>
+        buildBillGroups(docking, isMultiDocking ? (docking.box_scans ?? []) : scans).map(
+          (bill) => ({
+            ...bill,
+            dockingId: docking.id,
+            companyName: isMultiDocking
+              ? docking.company_name ?? docking.company_code ?? ''
+              : '',
+          }),
+        ),
+      ),
+    [tripDockings, isMultiDocking, scans],
+  );
   // Partial = at least one box scanned, but the load still carries unscanned invoiced
   // goods. Judged PER BILL/LINE on invoiced quantity (the same signal as the bill badges
   // and the backend gate), OR by the load-wide box total — NOT the load total alone,
@@ -219,10 +273,10 @@ export default function SalesDispatchBarcodeScanPage() {
     ),
   );
   const isPartialScan =
-    scans.length > 0 &&
-    (hasUnscannedBillLine || (expectedBoxes > 0 && scans.length < expectedBoxes));
+    allScans.length > 0 &&
+    (hasUnscannedBillLine || (expectedBoxes > 0 && allScans.length < expectedBoxes));
   const progressPercent =
-    expectedBoxes > 0 ? Math.min(100, Math.round((scans.length / expectedBoxes) * 100)) : 0;
+    expectedBoxes > 0 ? Math.min(100, Math.round((allScans.length / expectedBoxes) * 100)) : 0;
 
   // Hard lock on leaving the scanning step. The load may only move forward once one
   // of three things is true: box scanning is complete, an admin approved skipping the
@@ -231,13 +285,13 @@ export default function SalesDispatchBarcodeScanPage() {
   // visible half of the gate; the backend re-checks the same rule at gatepass print.
   const scanGateSatisfied =
     isBoxScanOptional ||
-    (scans.length > 0 && !isPartialScan) ||
-    (scans.length === 0 && isSkipApproved) ||
+    (allScans.length > 0 && !isPartialScan) ||
+    (allScans.length === 0 && isSkipApproved) ||
     (isPartialScan && isPartialApproved);
   const isScanLocked = !isReview && !isReadOnly && !scanGateSatisfied;
   const scanLockMessage = !isScanLocked
     ? ''
-    : scans.length === 0
+    : allScans.length === 0
       ? isSkipPending
         ? 'Locked — box-scan skip is awaiting admin approval. You can continue once it is approved.'
         : 'Locked — scan at least one box, or request approval to skip scanning (panel above), to continue.'
@@ -267,8 +321,8 @@ export default function SalesDispatchBarcodeScanPage() {
 
   // Latest entry id / refetch / mutation, read by the background queue worker so it
   // never closes over stale values while it drains.
-  const queueCtxRef = useRef({ entryId: entry?.id, refetchEntry, scanBox });
-  queueCtxRef.current = { entryId: entry?.id, refetchEntry, scanBox };
+  const queueCtxRef = useRef({ entryId: entry?.id, refetchEntry, refetchWorkspace, scanBox });
+  queueCtxRef.current = { entryId: entry?.id, refetchEntry, refetchWorkspace, scanBox };
 
   const triggerFlash = useCallback(() => {
     setFlashing(true);
@@ -290,10 +344,16 @@ export default function SalesDispatchBarcodeScanPage() {
       const next = scanQueueRef.current[0];
       const { entryId, scanBox: scanMutation } = queueCtxRef.current;
       const key = next.barcode.toLowerCase();
+      // Post the box to the docking that owns the bill it's scanned into -- a
+      // multi-company truck lists every company's bills together, but each box still
+      // lands on its own company's docking. Falls back to the current docking.
+      const targetDockingId =
+        (next.documentId != null ? documentDockingRef.current.get(next.documentId) : null) ??
+        entryId;
       try {
-        if (entryId == null) throw new Error('Docking details not found.');
+        if (targetDockingId == null) throw new Error('Docking details not found.');
         const saved = await scanMutation.mutateAsync({
-          id: entryId,
+          id: targetDockingId,
           data: { barcode_raw: next.barcode, document: next.documentId },
         });
         if (saved.duplicate) {
@@ -318,7 +378,11 @@ export default function SalesDispatchBarcodeScanPage() {
       }
     }
     processingRef.current = false;
-    if (didProcess) await queueCtxRef.current.refetchEntry();
+    if (didProcess) {
+      await queueCtxRef.current.refetchEntry();
+      // Multi-company truck: refresh the workspace so sibling dockings' scan counts update.
+      await queueCtxRef.current.refetchWorkspace();
+    }
     if (scanQueueRef.current.length > 0) void processQueue();
   }, [triggerFlash]);
 
@@ -419,7 +483,7 @@ export default function SalesDispatchBarcodeScanPage() {
       return;
     }
     if (!isBoxScanOptional) {
-      if (scans.length === 0 && !isSkipApproved) {
+      if (allScans.length === 0 && !isSkipApproved) {
         setError(
           isSkipPending
             ? 'Box scanning skip is awaiting admin approval. You can continue once it is approved.'
@@ -520,7 +584,7 @@ export default function SalesDispatchBarcodeScanPage() {
 
       {isBoxScanOptional ? (
         <ScanOptionalPanel />
-      ) : scans.length === 0 ? (
+      ) : allScans.length === 0 ? (
         <ScanSkipPanel
           skipRequest={skipRequest}
           canRequest={canRequestScanSkip && !isReadOnly && canEditDocking}
@@ -536,7 +600,7 @@ export default function SalesDispatchBarcodeScanPage() {
         <PartialScanPanel
           partialRequest={partialRequest}
           canRequest={canRequestPartial && !isReadOnly && canEditDocking}
-          scanned={scans.length}
+          scanned={allScans.length}
           expected={expectedBoxes}
           isSubmitting={createPartialRequest.isPending}
           onRequest={() => {
@@ -576,8 +640,8 @@ export default function SalesDispatchBarcodeScanPage() {
                     Syncing {pendingCount}
                   </Badge>
                 ) : null}
-                <Badge variant={scans.length > 0 ? 'success' : 'outline'}>
-                  {scans.length} scanned
+                <Badge variant={allScans.length > 0 ? 'success' : 'outline'}>
+                  {allScans.length} scanned
                 </Badge>
               </div>
             </div>
@@ -588,7 +652,7 @@ export default function SalesDispatchBarcodeScanPage() {
                 label="Expected Boxes"
                 value={expectedBoxes > 0 ? formatNumber(expectedBoxes) : '-'}
               />
-              <ScanMetric label="Scanned Boxes" value={String(scans.length)} />
+              <ScanMetric label="Scanned Boxes" value={String(allScans.length)} />
               <ScanMetric
                 label="Scanned Qty"
                 value={scannedQuantity > 0 ? formatNumber(scannedQuantity) : '-'}
@@ -603,7 +667,7 @@ export default function SalesDispatchBarcodeScanPage() {
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all"
                   style={{
-                    width: expectedBoxes > 0 ? `${progressPercent}%` : scans.length ? '100%' : '0%',
+                    width: expectedBoxes > 0 ? `${progressPercent}%` : allScans.length ? '100%' : '0%',
                   }}
                 />
               </div>
@@ -758,7 +822,7 @@ export default function SalesDispatchBarcodeScanPage() {
           <DialogHeader>
             <DialogTitle>Request Partial Dispatch Approval</DialogTitle>
             <DialogDescription>
-              Only {scans.length} of {expectedBoxes} boxes are scanned. Send this Docking entry to
+              Only {allScans.length} of {expectedBoxes} boxes are scanned. Send this Docking entry to
               Admin for approval to dispatch with a partial scan. You cannot continue until an admin
               approves the request.
             </DialogDescription>
@@ -1122,11 +1186,18 @@ function BillScanCard({
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold">
-            Bill {formatValue(bill.sapDocNum)}
-            {bill.customerName ? (
-              <span className="font-normal text-muted-foreground"> · {bill.customerName}</span>
+          <div className="flex flex-wrap items-center gap-2 truncate text-sm font-semibold">
+            {bill.companyName ? (
+              <span className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                {bill.companyName}
+              </span>
             ) : null}
+            <span>
+              Bill {formatValue(bill.sapDocNum)}
+              {bill.customerName ? (
+                <span className="font-normal text-muted-foreground"> · {bill.customerName}</span>
+              ) : null}
+            </span>
           </div>
           <div className="text-xs text-muted-foreground">
             {bill.items.length} item{bill.items.length === 1 ? '' : 's'}
@@ -1713,6 +1784,10 @@ interface BillScanSummary {
 interface BillGroup {
   key: number;
   documentId: number | null;
+  /** The docking this bill belongs to (added when a truck spans several dockings). */
+  dockingId?: number;
+  /** Company label, set only on a multi-company truck; '' / undefined hides the tag. */
+  companyName?: string;
   sapDocNum: string;
   customerName: string;
   items: SalesDispatchItem[];
