@@ -54,7 +54,6 @@ import {
   formatValue,
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
-import { UnifiedTruckView } from './UnifiedTruckView';
 
 interface DetailDocument extends SalesDispatchGateOutDocument {
   key: string;
@@ -170,18 +169,6 @@ export default function SalesDispatchDetailPage() {
           }
         />
       </div>
-    );
-  }
-
-  // A truck carrying several dockings (cross-company / multi-branch) is shown as ONE
-  // unified page -- every bill in one table, one combined gate pass + dispatch +
-  // departure -- so the operator never has to pick a docking to see the truck.
-  if (entry.trip_dockings && entry.trip_dockings.length > 1 && entry.arrival) {
-    return (
-      <UnifiedTruckView
-        arrivalId={entry.arrival}
-        scanBasePath={location.pathname.replace(/\/[^/]+$/, '')}
-      />
     );
   }
 
