@@ -16,7 +16,7 @@ import type { ApiError } from '@/core/api/types';
 import { Button, Input } from '@/shared/components/ui';
 
 import { useAllGRPOEntries } from '../api';
-import { QCStatusBadge } from '../components';
+import { QCReportButton, QCStatusBadge, useQCReportPrint } from '../components';
 import type { AllGRPOEntry, AllGRPOEntryPOQC, EntryPhase } from '../types';
 
 const formatDateTime = (dateTime?: string | null) => {
@@ -74,6 +74,8 @@ export default function AllEntriesPage({
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('ALL');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
+  const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
+    useQCReportPrint();
 
   // When embedded in the unified GRPO page, the phase is driven by the parent's
   // tab (pills are hidden); standalone, it's driven by this page's own pills.
@@ -121,6 +123,16 @@ export default function AllEntriesPage({
 
   return (
     <div className="space-y-6">
+      {printOptionsModal}
+      {printPortal}
+
+      {printError && (
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
+          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-destructive">{printError}</p>
+        </div>
+      )}
+
       {!embedded && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -335,6 +347,8 @@ export default function AllEntriesPage({
                                           `/warehouse/grpo/material/preview/${entry.vehicle_entry_id}`,
                                         )
                                       }
+                                      onPrintQCReport={printQCReport}
+                                      printingArrivalSlipId={printingArrivalSlipId}
                                     />
                                   ))}
                                 </div>
@@ -356,7 +370,17 @@ export default function AllEntriesPage({
 }
 
 // Read-only per-bill QC card shown when an All Entries row is expanded.
-function BillQCCard({ po, onPost }: { po: AllGRPOEntryPOQC; onPost: () => void }) {
+function BillQCCard({
+  po,
+  onPost,
+  onPrintQCReport,
+  printingArrivalSlipId,
+}: {
+  po: AllGRPOEntryPOQC;
+  onPost: () => void;
+  onPrintQCReport: (arrivalSlipId: number) => void;
+  printingArrivalSlipId: number | null;
+}) {
   const billStatus = po.is_posted
     ? {
         label: 'Posted',
@@ -415,7 +439,14 @@ function BillQCCard({ po, onPost }: { po: AllGRPOEntryPOQC; onPost: () => void }
                       ` · Rejected: ${formatQuantity(item.rejected_qty)} ${item.uom}`}
                   </p>
                 </div>
-                <QCStatusBadge status={item.qc_status} className="flex-shrink-0" />
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <QCStatusBadge status={item.qc_status} />
+                  <QCReportButton
+                    item={item}
+                    onPrint={onPrintQCReport}
+                    printingArrivalSlipId={printingArrivalSlipId}
+                  />
+                </div>
               </div>
             );
           })

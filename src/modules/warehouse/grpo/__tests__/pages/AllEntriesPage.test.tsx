@@ -25,8 +25,14 @@ describe('AllEntriesPage file content', () => {
   });
 
   it('renders per-item QC verdicts via the shared QCStatusBadge', () => {
-    expect(content).toContain("import { QCStatusBadge } from '../components'");
+    expect(content).toContain('QCStatusBadge');
     expect(content).toContain('<QCStatusBadge status={item.qc_status}');
+  });
+
+  it('lets the operator reprint the QC inspection report inline', () => {
+    expect(content).toContain('useQCReportPrint');
+    expect(content).toContain('<QCReportButton');
+    expect(content).toContain('onPrint={onPrintQCReport}');
   });
 
   it('lets a ready, unposted bill jump to the posting preview', () => {

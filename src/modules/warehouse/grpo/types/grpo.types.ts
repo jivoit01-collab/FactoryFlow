@@ -309,6 +309,9 @@ export interface AllGRPOEntryItemQC {
   rejected_qty: string;
   uom: string;
   qc_status: QCStatus;
+  arrival_slip_id: number | null;
+  inspection_id: number | null;
+  inspection_report_no: string | null;
 }
 
 // Per-PO (bill) QC summary for the All Entries read-only drill-down
