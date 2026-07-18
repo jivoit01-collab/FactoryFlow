@@ -37,6 +37,7 @@ import {
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { SapItemInput } from '../components/SapItemInput';
+import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import type {
   ComboComponent,
   ComboDefinition,
@@ -105,6 +106,9 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
   const remove = useDeleteSkuMapping();
   const [editing, setEditing] = useState<SkuMapping | null>(null);
   const [toDelete, setToDelete] = useState<SkuMapping | null>(null);
+  const [search, setSearch] = useState('');
+  const [type, setType] = useState<'ALL' | 'RAW' | 'COMBO'>('ALL');
+  const [status, setStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'VARIANTS'>('ALL');
 
   function save() {
     if (!editing) return;
@@ -186,35 +190,97 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
     });
   }
 
+  const all = mappings ?? [];
+  const filtered = all.filter((m) => {
+    if (type !== 'ALL' && m.sku_type !== type) return false;
+    if (status === 'ACTIVE' && !m.is_active) return false;
+    if (status === 'INACTIVE' && m.is_active) return false;
+    if (status === 'VARIANTS' && !(m.options && m.options.length > 1)) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [
+      m.fsn, m.marketplace_sku, m.sku_name, m.fg_item_code, m.fg_item_name,
+      m.combo_code, m.combo_name,
+    ].some((f) => (f ?? '').toLowerCase().includes(q));
+  });
+
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
-        <div className="flex justify-end">
-          <Button size="sm" onClick={() => setEditing(EMPTY_SKU(channel))}>
-            <Plus className="mr-2 h-4 w-4" /> Add mapping
-          </Button>
-        </div>
+        <MpFilterBar>
+          <MpSearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search FSN, SKU, item code or name…"
+            className="w-full sm:max-w-sm"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <MpFilterChips
+              value={type}
+              onChange={setType}
+              options={[
+                { value: 'ALL', label: 'All', count: all.length },
+                { value: 'RAW', label: 'Raw', count: all.filter((m) => m.sku_type === 'RAW').length },
+                { value: 'COMBO', label: 'Combo', count: all.filter((m) => m.sku_type === 'COMBO').length },
+              ]}
+            />
+            <MpFilterChips
+              value={status}
+              onChange={setStatus}
+              options={[
+                { value: 'ALL', label: 'Any' },
+                { value: 'ACTIVE', label: 'Active', count: all.filter((m) => m.is_active).length },
+                { value: 'INACTIVE', label: 'Inactive', count: all.filter((m) => !m.is_active).length },
+                { value: 'VARIANTS', label: 'Variants', count: all.filter((m) => (m.options?.length ?? 0) > 1).length },
+              ]}
+            />
+            <Button size="sm" onClick={() => setEditing(EMPTY_SKU(channel))}>
+              <Plus className="mr-2 h-4 w-4" /> Add mapping
+            </Button>
+          </div>
+        </MpFilterBar>
+        <MpResultCount shown={filtered.length} total={all.length} noun="mapping" />
         <MasterTable
-          headers={['FSN', 'SKU', 'Type', 'FG / Combo', 'Active', '']}
-          rows={(mappings ?? []).map((m) => (
-            <tr key={m.id} className="border-b last:border-0">
-              <td className="py-2 px-2 font-mono">{m.fsn || '—'}</td>
-              <td className="py-2 px-2 font-mono">{m.marketplace_sku}</td>
-              <td className="py-2 px-2">
-                <Badge variant="outline">{m.sku_type}</Badge>
-              </td>
-              <td className="py-2 px-2 font-mono">
-                {m.sku_type === 'COMBO' ? m.combo_code || `#${m.combo}` : m.fg_item_code}
-                {m.options && m.options.length > 1 ? (
-                  <Badge variant="secondary" className="ml-2 font-sans">
-                    +{m.options.length - 1} variant{m.options.length - 1 > 1 ? 's' : ''}
-                  </Badge>
-                ) : null}
-              </td>
-              <td className="py-2 px-2">{m.is_active ? 'Yes' : 'No'}</td>
-              <RowActions onEdit={() => setEditing(m)} onDelete={() => setToDelete(m)} />
-            </tr>
-          ))}
+          headers={['FSN', 'Marketplace SKU', 'Type', 'Ships as (SAP item)', 'Active', '']}
+          rows={filtered.map((m) => {
+            const isCombo = m.sku_type === 'COMBO';
+            const code = isCombo ? m.combo_code || `#${m.combo}` : m.fg_item_code;
+            const name = isCombo ? m.combo_name : m.fg_item_name;
+            const extra = (m.options?.length ?? 0) - 1;
+            return (
+              <tr key={m.id} className="border-b last:border-0 hover:bg-muted/40">
+                <td className="py-2 px-2 font-mono text-xs">{m.fsn || '—'}</td>
+                <td className="py-2 px-2">
+                  <div className="font-mono text-xs">{m.marketplace_sku}</div>
+                  {m.sku_name ? (
+                    <div className="text-xs text-muted-foreground">{m.sku_name}</div>
+                  ) : null}
+                </td>
+                <td className="py-2 px-2">
+                  <Badge variant="outline">{m.sku_type}</Badge>
+                </td>
+                <td className="py-2 px-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs">{code || '—'}</span>
+                    {extra > 0 ? (
+                      <Badge variant="secondary">
+                        +{extra} variant{extra > 1 ? 's' : ''}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {name ? <div className="text-xs text-muted-foreground">{name}</div> : null}
+                </td>
+                <td className="py-2 px-2">
+                  {m.is_active ? (
+                    <Badge className="bg-emerald-600">Active</Badge>
+                  ) : (
+                    <Badge variant="outline">Inactive</Badge>
+                  )}
+                </td>
+                <RowActions onEdit={() => setEditing(m)} onDelete={() => setToDelete(m)} />
+              </tr>
+            );
+          })}
         />
       </CardContent>
 

@@ -302,8 +302,9 @@ function ResolveDialog({ sku, onClose }: { sku: string; onClose: () => void }) {
         channel: 'FLIPKART',
         marketplace_sku: sku,
         sku_type: type,
-        fg_item_code: type === 'RAW' ? fgCode.trim() : undefined,
-        combo: type === 'COMBO' ? Number(comboId) : undefined,
+        fg_item_code: type === 'RAW' ? fgCode.trim() : '',
+        combo: type === 'COMBO' ? Number(comboId) : null,
+        is_active: true,
       },
       {
         onSuccess: () => {

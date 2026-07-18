@@ -33,6 +33,7 @@ import {
   useSubmitReturn,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { MpFilterBar, MpFilterChips, MpSearchInput } from '../components/MpFilters';
 import { MpProgressTable } from '../components/MpProgressTable';
 import { MpScanFeedback, type ScanFeedback } from '../components/MpScanFeedback';
 import { MpScanPanel } from '../components/MpScanPanel';
@@ -131,8 +132,21 @@ function ReturnsList({
 }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const { data, isLoading } = useMpReturns({ channel, page, pageSize });
-  const rows = data?.results ?? [];
+  const [status, setStatus] = useState<'ALL' | MpReturnStatus>('ALL');
+  const [search, setSearch] = useState('');
+  // `page_size` (snake_case) is what the API expects — `pageSize` was silently ignored.
+  const { data, isLoading } = useMpReturns({
+    channel, page, page_size: pageSize,
+    ...(status === 'ALL' ? {} : { status }),
+  });
+  const all = data?.results ?? [];
+  const rows = all.filter((r) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      r.order_id.toLowerCase().includes(q) || (r.buyer_name ?? '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <Card>
@@ -140,7 +154,26 @@ function ReturnsList({
         <CardTitle className="text-base">Return orders</CardTitle>
         <CardDescription>Open a return to continue scanning or reprint its note.</CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="space-y-3 p-4 pt-0">
+        <MpFilterBar>
+          <MpSearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search order ID or buyer…"
+            className="w-full sm:max-w-sm"
+          />
+          <MpFilterChips
+            value={status}
+            onChange={(v) => { setStatus(v); setPage(1); }}
+            options={[
+              { value: 'ALL', label: 'All' },
+              { value: 'DRAFT', label: 'Draft' },
+              { value: 'SCANNING', label: 'Scanning' },
+              { value: 'SUBMITTED', label: 'Submitted' },
+              { value: 'CANCELLED', label: 'Cancelled' },
+            ]}
+          />
+        </MpFilterBar>
         <div className="-mx-2 overflow-x-auto sm:mx-0">
           <table className="w-full min-w-[560px] text-sm">
             <thead className="border-b text-left text-xs text-muted-foreground">

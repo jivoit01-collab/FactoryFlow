@@ -188,6 +188,7 @@ export interface SkuMapping {
   fg_item_name?: string;
   combo?: number | null;
   combo_code?: string;
+  combo_name?: string;
   default_uom?: string;
   is_active: boolean;
   // SAP items this FSN MAY ship as (empty = single fg_item_code/combo).

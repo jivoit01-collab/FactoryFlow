@@ -33,6 +33,7 @@ import {
   useReconcileDeliveryNotes,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { MpFilterBar, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import { MpVariantPicker } from '../components/MpVariantPicker';
 import type { DeliveryNoteLine, MarketplaceChannel } from '../types/marketplace.types';
 
@@ -83,6 +84,14 @@ export default function MpDeliveryNotesPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const count = summary?.totals.dispatch_count ?? 0;
+  const [dnSearch, setDnSearch] = useState('');
+  const visibleDispatches = (summary?.dispatches ?? []).filter((d) => {
+    const q = dnSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      d.order_id.toLowerCase().includes(q) || (d.buyer_name ?? '').toLowerCase().includes(q)
+    );
+  });
   const hasWork = count > 0;
   const awaitingApproval = approval?.awaiting_approval ?? 0;
   // The warehouse actually in effect: the operator's pick, else the server default.
@@ -237,7 +246,16 @@ export default function MpDeliveryNotesPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Dispatches included ({count})</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="space-y-3 p-4 pt-0">
+              <MpFilterBar>
+                <MpSearchInput
+                  value={dnSearch}
+                  onChange={setDnSearch}
+                  placeholder="Search order ID or buyer…"
+                  className="w-full sm:max-w-sm"
+                />
+                <MpResultCount shown={visibleDispatches.length} total={count} noun="dispatch" />
+              </MpFilterBar>
               <div className="-mx-2 overflow-x-auto sm:mx-0">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead className="border-b text-left text-xs text-muted-foreground">
@@ -250,7 +268,7 @@ export default function MpDeliveryNotesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {summary!.dispatches.map((d) => (
+                    {visibleDispatches.map((d) => (
                       <tr key={d.dispatch_id} className="border-b last:border-0">
                         <td className="p-3 font-mono font-medium">{d.order_id}</td>
                         <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>

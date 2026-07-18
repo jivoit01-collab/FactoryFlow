@@ -40,6 +40,7 @@ import {
   useScanDispatchByTracking,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import { MpScanFeedback, type ScanFeedback } from '../components/MpScanFeedback';
 import { MpScanPanel } from '../components/MpScanPanel';
 import { MpVariantPicker } from '../components/MpVariantPicker';
@@ -59,7 +60,8 @@ export default function MpOutwardPage() {
   const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
   const [pickedSheet, setPickedSheet] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
-  const [showConfirmed, setShowConfirmed] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'TODO' | 'SCANNED' | 'CONFIRMED'>('TODO');
   const qc = useQueryClient();
 
   const sheetsQuery = useDispatchSheets(channel);
@@ -78,7 +80,29 @@ export default function MpOutwardPage() {
     () => orders.filter((o) => o.status === 'SCANNED' && o.dispatch_id),
     [orders],
   );
-  const visibleOrders = showConfirmed ? orders : orders.filter((o) => o.status !== 'CONFIRMED');
+
+  const counts = useMemo(() => ({
+    ALL: orders.length,
+    TODO: orders.filter((o) => o.status === 'PENDING' || o.status === 'PARTIAL').length,
+    SCANNED: orders.filter((o) => o.status === 'SCANNED').length,
+    CONFIRMED: orders.filter((o) => o.status === 'CONFIRMED').length,
+  }), [orders]);
+
+  const visibleOrders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return orders.filter((o) => {
+      if (statusFilter === 'TODO' && o.status !== 'PENDING' && o.status !== 'PARTIAL') return false;
+      if (statusFilter === 'SCANNED' && o.status !== 'SCANNED') return false;
+      if (statusFilter === 'CONFIRMED' && o.status !== 'CONFIRMED') return false;
+      if (!q) return true;
+      // Match the order, the buyer, or any of its tracking IDs.
+      return (
+        o.order_id.toLowerCase().includes(q)
+        || (o.buyer_name ?? '').toLowerCase().includes(q)
+        || o.items.some((i) => (i.tracking_id ?? '').toLowerCase().includes(q))
+      );
+    });
+  }, [orders, statusFilter, search]);
 
   const confirmAll = useMutation({
     mutationFn: async (ids: number[]) => {
@@ -202,13 +226,6 @@ export default function MpOutwardPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   size="sm"
-                  variant="ghost"
-                  onClick={() => setShowConfirmed((v) => !v)}
-                >
-                  {showConfirmed ? 'Hide confirmed' : 'Show confirmed'}
-                </Button>
-                <Button
-                  size="sm"
                   disabled={scannedOrders.length === 0 || confirmAll.isPending}
                   onClick={() =>
                     confirmAll.mutate(
@@ -229,13 +246,38 @@ export default function MpOutwardPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
+              <MpFilterBar className="pb-1">
+                <MpSearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search order ID, buyer or tracking ID…"
+                  className="w-full sm:max-w-sm"
+                />
+                <MpFilterChips
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  options={[
+                    { value: 'TODO', label: 'To scan', count: counts.TODO },
+                    { value: 'SCANNED', label: 'Scanned', count: counts.SCANNED },
+                    { value: 'CONFIRMED', label: 'Confirmed', count: counts.CONFIRMED },
+                    { value: 'ALL', label: 'All', count: counts.ALL },
+                  ]}
+                />
+              </MpFilterBar>
+              <MpResultCount shown={visibleOrders.length} total={orders.length} noun="order" />
               {boardQuery.isLoading ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
                 </div>
               ) : visibleOrders.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
-                  {orders.length === 0 ? 'No orders in this sheet.' : 'All orders confirmed 🎉'}
+                  {orders.length === 0
+                    ? 'No orders in this sheet.'
+                    : search.trim()
+                      ? `Nothing matches “${search.trim()}”.`
+                      : statusFilter === 'TODO'
+                        ? 'Nothing left to scan — every order is done 🎉'
+                        : 'No orders in this filter.'}
                 </p>
               ) : (
                 visibleOrders.map((order) => <BoardOrderCard key={order.order_id} order={order} />)
