@@ -9,7 +9,7 @@ import {
   Truck,
   XCircle,
 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -20,6 +20,7 @@ import {
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
   type SalesDispatchItem,
+  useArrivalWorkspace,
   useCancelSalesDispatch,
   useRejectSalesDispatch,
   useSalesDispatch,
@@ -58,6 +59,8 @@ import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchR
 interface DetailDocument extends SalesDispatchGateOutDocument {
   key: string;
   items: SalesDispatchItem[];
+  /** Company label, set only when the truck carries bills for several companies. */
+  companyName?: string;
 }
 
 interface AuditEvent {
@@ -84,6 +87,29 @@ export default function SalesDispatchDetailPage() {
   const { data: entry, isLoading, error, refetch } = useSalesDispatch(id);
   const cancelSalesDispatch = useCancelSalesDispatch();
   const rejectSalesDispatch = useRejectSalesDispatch();
+
+  // One physical truck can carry bills for several companies / SAP branches -- each a
+  // separate docking under the hood (its own SAP + gate-pass record for tax). The page
+  // still lists ALL the truck's bills, just tagged with each company, so nothing looks
+  // "missing". Pulled from the arrival workspace; single-company dockings skip it.
+  const { data: workspace } = useArrivalWorkspace(entry?.arrival ?? null, {
+    enabled: !!entry?.arrival,
+  });
+  const tripDocuments = useMemo<DetailDocument[]>(() => {
+    if (!entry) return [];
+    const own = getDetailDocuments(entry);
+    const siblings = workspace?.dockings?.filter(
+      (docking) => docking.status !== 'REJECTED' && docking.status !== 'CANCELLED',
+    );
+    if (!entry.arrival || !siblings || siblings.length <= 1) return own;
+    return siblings.flatMap((docking) =>
+      getDetailDocuments(docking).map((document) => ({
+        ...document,
+        key: `${docking.id}:${document.key}`,
+        companyName: docking.company_name ?? docking.company_code ?? '',
+      })),
+    );
+  }, [entry, workspace]);
 
   const canCancel = Boolean(
     entry &&
@@ -237,7 +263,7 @@ export default function SalesDispatchDetailPage() {
 
       <DockingOverviewCard entry={entry} documents={detailDocuments} />
 
-      <DocumentsCard documents={detailDocuments} />
+      <DocumentsCard documents={tripDocuments} />
 
       <Card>
         <CardHeader>
@@ -247,7 +273,7 @@ export default function SalesDispatchDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <DocumentItemsByDocument documents={detailDocuments} itemSummary={entry.item_summary} />
+          <DocumentItemsByDocument documents={tripDocuments} itemSummary={entry.item_summary} />
         </CardContent>
       </Card>
 
@@ -591,6 +617,11 @@ function DocumentsCard({ documents }: { documents: DetailDocument[] }) {
                 {documents.map((document) => (
                   <tr key={document.key} className="border-t align-top">
                     <td className="p-3 text-sm">
+                      {document.companyName ? (
+                        <span className="mb-1 inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                          {document.companyName}
+                        </span>
+                      ) : null}
                       <div className="font-semibold">{formatValue(document.sap_doc_num)}</div>
                       <div className="text-xs text-muted-foreground">
                         {formatDocumentType(document.document_type)}
@@ -660,8 +691,15 @@ function DocumentItemsTable({ document }: { document: DetailDocument }) {
   return (
     <div className="overflow-hidden rounded-md border">
       <div className="flex flex-col gap-1 border-b bg-muted/30 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="font-semibold">
-          {formatDocumentType(document.document_type)} {formatValue(document.sap_doc_num)}
+        <div className="flex flex-wrap items-center gap-2 font-semibold">
+          {document.companyName ? (
+            <span className="inline-flex whitespace-nowrap rounded-full border bg-background px-2 py-0.5 text-xs font-medium">
+              {document.companyName}
+            </span>
+          ) : null}
+          <span>
+            {formatDocumentType(document.document_type)} {formatValue(document.sap_doc_num)}
+          </span>
         </div>
         <div className="text-muted-foreground">
           {document.customer_name || formatDocumentDestination(document)}
