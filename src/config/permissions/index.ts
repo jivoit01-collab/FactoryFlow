@@ -30,6 +30,9 @@ export { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS, type GRPOPermission } from './grp
 
 // Production Module
 export {
+  BLOWING_MODULE_PREFIX,
+  BLOWING_PERMISSIONS,
+  type BlowingPermission,
   EXECUTION_MODULE_PREFIX,
   EXECUTION_PERMISSIONS,
   type ExecutionPermission,

@@ -134,3 +134,36 @@ export const EXECUTION_MODULE_PREFIX = 'production_execution';
  */
 export type ExecutionPermission =
   (typeof EXECUTION_PERMISSIONS)[keyof typeof EXECUTION_PERMISSIONS];
+
+/**
+ * Blowing Module Permissions
+ *
+ * Bottle-making from preform on blowing machines. Maps to the `blowing` Django app.
+ * Format: 'app_label.permission_codename'
+ */
+export const BLOWING_PERMISSIONS = {
+  /** View blowing runs */
+  VIEW_RUN: 'blowing.can_view_blowing_run',
+  /** Create a blowing run */
+  CREATE_RUN: 'blowing.can_create_blowing_run',
+  /** Edit a blowing run */
+  EDIT_RUN: 'blowing.can_edit_blowing_run',
+  /** Complete a blowing run */
+  COMPLETE_RUN: 'blowing.can_complete_blowing_run',
+  /** Manage blowing machines (master data) */
+  MANAGE_MACHINES: 'blowing.can_manage_blowing_machines',
+  /** Manage preform specs (master data) */
+  MANAGE_PREFORM_SPECS: 'blowing.can_manage_preform_specs',
+  /** Manage the blowing rate config (labour/electricity/preform rates) */
+  MANAGE_RATE_CONFIG: 'blowing.can_manage_blowing_rate_config',
+  /** View blowing reports and analytics */
+  VIEW_REPORTS: 'blowing.can_view_blowing_reports',
+} as const;
+
+export const BLOWING_MODULE_PREFIX = 'blowing';
+
+/**
+ * Type for Blowing permission values
+ */
+export type BlowingPermission =
+  (typeof BLOWING_PERMISSIONS)[keyof typeof BLOWING_PERMISSIONS];

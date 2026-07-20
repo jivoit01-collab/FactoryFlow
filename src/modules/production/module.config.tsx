@@ -2,6 +2,8 @@ import { Factory } from 'lucide-react';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import {
+  BLOWING_MODULE_PREFIX,
+  BLOWING_PERMISSIONS,
   EXECUTION_MODULE_PREFIX,
   EXECUTION_PERMISSIONS,
   PRODUCTION_MODULE_PREFIX,
@@ -46,6 +48,14 @@ const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
 
+// Lazy load Blowing (preform -> bottle) pages
+const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
+const BlowingRunFormPage = lazy(() => import('./blowing/pages/RunFormPage'));
+const BlowingRunDetailPage = lazy(() => import('./blowing/pages/RunDetailPage'));
+const BlowingMasterDataPage = lazy(() => import('./blowing/pages/MasterDataPage'));
+const BlowingReportsPage = lazy(() => import('./blowing/pages/ReportsPage'));
+const BlowingMakeVsBuyPage = lazy(() => import('./blowing/pages/MakeVsBuyPage'));
+
 const PRODUCTION_DASHBOARD_PERMISSIONS = [
   PRODUCTION_PERMISSIONS.VIEW_PLAN,
   EXECUTION_PERMISSIONS.VIEW_RUN,
@@ -54,6 +64,7 @@ const PRODUCTION_DASHBOARD_PERMISSIONS = [
   EXECUTION_PERMISSIONS.VIEW_WASTE,
   EXECUTION_PERMISSIONS.VIEW_REPORTS,
   EXECUTION_PERMISSIONS.MANAGE_LINES,
+  BLOWING_PERMISSIONS.VIEW_RUN,
 ] as const;
 
 export const productionModuleConfig: ModuleConfig = {
@@ -248,6 +259,49 @@ export const productionModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
     },
+    // ---- Blowing (preform -> bottle) ----
+    {
+      path: '/production/blowing',
+      element: <BlowingDashboardPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.VIEW_RUN],
+    },
+    {
+      path: '/production/blowing/runs/new',
+      element: <BlowingRunFormPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.CREATE_RUN],
+    },
+    {
+      path: '/production/blowing/runs/:runId',
+      element: <BlowingRunDetailPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.VIEW_RUN],
+    },
+    {
+      path: '/production/blowing/runs/:runId/edit',
+      element: <BlowingRunFormPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.EDIT_RUN],
+    },
+    {
+      path: '/production/blowing/master-data',
+      element: <BlowingMasterDataPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.MANAGE_MACHINES],
+    },
+    {
+      path: '/production/blowing/reports',
+      element: <BlowingReportsPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
+    },
+    {
+      path: '/production/blowing/make-vs-buy',
+      element: <BlowingMakeVsBuyPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
+    },
   ],
   navigation: [
     {
@@ -255,7 +309,7 @@ export const productionModuleConfig: ModuleConfig = {
       title: 'Production',
       icon: Factory,
       showInSidebar: true,
-      modulePrefix: [PRODUCTION_MODULE_PREFIX, EXECUTION_MODULE_PREFIX],
+      modulePrefix: [PRODUCTION_MODULE_PREFIX, EXECUTION_MODULE_PREFIX, BLOWING_MODULE_PREFIX],
       permissions: PRODUCTION_DASHBOARD_PERMISSIONS,
       hasSubmenu: true,
       children: [
@@ -263,6 +317,16 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/production/execution',
           title: 'Execution',
           permissions: [EXECUTION_PERMISSIONS.VIEW_RUN],
+        },
+        {
+          path: '/production/blowing',
+          title: 'Blowing',
+          permissions: [BLOWING_PERMISSIONS.VIEW_RUN],
+        },
+        {
+          path: '/production/blowing/make-vs-buy',
+          title: 'Make vs Buy',
+          permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
         },
         {
           path: '/production/execution/line-clearance',

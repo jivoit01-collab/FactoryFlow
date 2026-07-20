@@ -106,7 +106,14 @@ export default function BOMRequestListPage() {
                 >
                   <td className="px-3 py-3 font-semibold">#{req.id}</td>
                   <td className="px-3 py-3">
-                    <p className="font-medium">Run #{req.run_number}</p>
+                    <p className="flex items-center gap-1.5 font-medium">
+                      Run #{req.run_number}
+                      {req.source === 'blowing' && (
+                        <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                          Blowing
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-muted-foreground">{req.run_date}</p>
                   </td>
                   <td className="px-3 py-3">

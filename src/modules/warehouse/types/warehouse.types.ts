@@ -43,8 +43,11 @@ export interface BOMRequestLine {
 
 export interface BOMRequest {
   id: number;
-  production_run: number;
-  run_number: number;
+  production_run: number | null;
+  blowing_run: number | null;
+  /** 'production' or 'blowing' — which run this request originates from. */
+  source: 'production' | 'blowing';
+  run_number: number | null;
   run_date: string;
   line_name: string;
   product: string;

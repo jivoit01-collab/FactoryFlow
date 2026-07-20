@@ -609,6 +609,44 @@ export const API_ENDPOINTS = {
     /** Omni-search over the SAP item master (OITM), live from HANA. */
     SAP_ITEMS: '/returnable-items/sap-items/',
   },
+  // Blowing (preform -> bottle)
+  PRODUCTION_BLOWING: {
+    // Master data
+    MACHINES: '/blowing/machines/',
+    MACHINE_DETAIL: (machineId: number) => `/blowing/machines/${machineId}/`,
+    PREFORM_SPECS: '/blowing/preform-specs/',
+    PREFORM_SPEC_DETAIL: (specId: number) => `/blowing/preform-specs/${specId}/`,
+    RATE_CONFIGS: '/blowing/rate-configs/',
+    RATE_CONFIG_DETAIL: (configId: number) => `/blowing/rate-configs/${configId}/`,
+    BUY_PRICES: '/blowing/buy-prices/',
+    BUY_PRICE_DETAIL: (buyId: number) => `/blowing/buy-prices/${buyId}/`,
+    // Runs
+    RUNS: '/blowing/runs/',
+    RUN_DETAIL: (runId: number) => `/blowing/runs/${runId}/`,
+    RUN_COMPLETE: (runId: number) => `/blowing/runs/${runId}/complete/`,
+    RUN_COST: (runId: number) => `/blowing/runs/${runId}/cost/`,
+    // Run lifecycle
+    START_PRODUCTION: (runId: number) => `/blowing/runs/${runId}/start-production/`,
+    STOP_PRODUCTION: (runId: number) => `/blowing/runs/${runId}/stop-production/`,
+    ADD_BREAKDOWN: (runId: number) => `/blowing/runs/${runId}/add-breakdown/`,
+    RESOLVE_BREAKDOWN: (runId: number, breakdownId: number) =>
+      `/blowing/runs/${runId}/breakdowns/${breakdownId}/resolve/`,
+    SEGMENT_UPDATE: (runId: number, segmentId: number) =>
+      `/blowing/runs/${runId}/segments/${segmentId}/`,
+    BREAKDOWN_CATEGORIES: '/blowing/breakdown-categories/',
+    BREAKDOWN_CATEGORY_DETAIL: (categoryId: number) =>
+      `/blowing/breakdown-categories/${categoryId}/`,
+    // Preform request — raised into the Warehouse BOM-request queue
+    SUBMIT_PREFORM_REQUEST: (runId: number) => `/blowing/runs/${runId}/preform-request/`,
+    // Reports
+    REPORT_DAILY: '/blowing/reports/daily/',
+    REPORT_MONTHLY: '/blowing/reports/monthly/',
+    REPORT_MAKE_VS_BUY: '/blowing/reports/make-vs-buy/',
+    REPORT_VARIANCES: '/blowing/reports/variances/',
+    AUDIT: '/blowing/audit/',
+    // SAP item pickers (read-only)
+    SAP_ITEMS: '/blowing/sap/items/',
+  },
   // Production Execution
   PRODUCTION_EXECUTION: {
     // Production Lines
