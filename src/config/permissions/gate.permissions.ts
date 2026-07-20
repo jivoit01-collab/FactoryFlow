@@ -283,6 +283,26 @@ export const GATE_PERMISSIONS = {
   },
 
   // ============================================
+  // ATTENDANCE (manual employee attendance fallback)
+  // ============================================
+  ATTENDANCE: {
+    /** View attendance records */
+    VIEW: 'attendance.view_attendancerecord',
+    /** Mark a new attendance record */
+    CREATE: 'attendance.add_attendancerecord',
+    /** Delete an attendance record */
+    DELETE: 'attendance.delete_attendancerecord',
+    /** View the employee master */
+    VIEW_EMPLOYEE: 'attendance.view_employee',
+    /** Create an employee */
+    ADD_EMPLOYEE: 'attendance.add_employee',
+    /** Edit an employee */
+    CHANGE_EMPLOYEE: 'attendance.change_employee',
+    /** Delete an employee */
+    DELETE_EMPLOYEE: 'attendance.delete_employee',
+  },
+
+  // ============================================
   // JOB WORK FORM PAGES
   // ============================================
   JOB_WORK: {

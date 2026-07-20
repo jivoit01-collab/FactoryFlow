@@ -13,6 +13,10 @@ export * from './arrivalSlip/arrivalSlip.queries';
 export * from './attachment/attachment.api';
 export * from './attachment/attachment.queries';
 
+// Attendance (manual employee attendance fallback)
+export * from './attendance/attendance.api';
+export * from './attendance/attendance.queries';
+
 // Construction
 export * from './construction/construction.api';
 export * from './construction/construction.queries';

@@ -50,10 +50,11 @@ const directionSearchText: Record<GateEntryTypeConfig['direction'], string> = {
   return: 'return returned receiving back',
 };
 
-type GateCategory = 'Gate In' | 'Gate Out' | 'Visitor';
-const CATEGORY_ORDER: GateCategory[] = ['Gate In', 'Gate Out', 'Visitor'];
+type GateCategory = 'Gate In' | 'Gate Out' | 'Visitor' | 'Attendance';
+const CATEGORY_ORDER: GateCategory[] = ['Gate In', 'Gate Out', 'Visitor', 'Attendance'];
 
 function categoryOf(entryType: GateEntryTypeConfig): GateCategory {
+  if (entryType.id === 'attendance') return 'Attendance';
   if (entryType.id === 'visitor-labour') return 'Visitor';
   if (entryType.direction === 'out') return 'Gate Out';
   return 'Gate In';
@@ -155,6 +156,7 @@ export default function GateDashboardPage() {
       'Gate In': [],
       'Gate Out': [],
       Visitor: [],
+      Attendance: [],
     };
     filteredEntryTypes.forEach((entryType) => groups[categoryOf(entryType)].push(entryType));
     return groups;

@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Boxes,
   Building2,
+  CalendarCheck,
   Factory,
   HardHat,
   LogIn,
@@ -131,6 +132,22 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     icon: HardHat,
     colorClassName: 'text-red-600',
     keywords: ['visitor', 'labour', 'contractor', 'person'],
+  },
+  {
+    id: 'attendance',
+    title: 'Attendance',
+    description: 'Manually mark employee attendance when the punching machine is unavailable.',
+    direction: 'in',
+    vehicleMode: 'non_vehicle',
+    dashboardRoute: '/gate/attendance',
+    newEntryRoute: '/gate/attendance/new',
+    viewPermissions: [GATE_PERMISSIONS.ATTENDANCE.VIEW],
+    createPermissions: [GATE_PERMISSIONS.ATTENDANCE.CREATE],
+    icon: CalendarCheck,
+    colorClassName: 'text-indigo-600',
+    keywords: ['attendance', 'employee', 'present', 'punch', 'punching', 'manual'],
+    // Reached only from the dashboard tile; the entry form lives inside the module.
+    hideFromNewEntry: true,
   },
   {
     id: 'labour-in',
