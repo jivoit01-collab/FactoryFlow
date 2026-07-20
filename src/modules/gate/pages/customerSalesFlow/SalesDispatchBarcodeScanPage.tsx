@@ -207,20 +207,26 @@ export default function SalesDispatchBarcodeScanPage() {
   );
   const billGroups = useMemo(() => buildBillGroups(entry, scans), [entry, scans]);
   // Partial = at least one box scanned, but the load still carries unscanned invoiced
-  // goods. Judged PER BILL/LINE on invoiced quantity (the same signal as the bill badges
-  // and the backend gate), OR by the load-wide box total — NOT the load total alone,
-  // which lets a surplus on one bill mask a shortfall on another and can't see
-  // weight/carton lines with no box estimate (e.g. a packing-material bill scanned 0/N
-  // while the rest over-scans to 100%). Mirrors load_scan_status on the backend. Such a
-  // load needs a partial-dispatch approval; the zero-scan case still uses scan-skip.
+  // goods. Judged PER BILL/LINE on exact scanned-vs-invoiced QUANTITY (the same signal as
+  // the bill badges and the backend gate) whenever the scans carry a quantity — every
+  // barcode box does, its piece count coming from our own barcode system. Quantity is
+  // ground truth and needs no pack size, so an item whose box size we can't derive (SAP
+  // stores none; the name may lack an "N PCS" token) can't inflate the expected-box count
+  // and lock a truck that is in fact fully loaded. The load-wide box COUNT is only a
+  // fallback for legacy/quantity-less scans. Mirrors load_scan_status on the backend.
   const hasUnscannedBillLine = billGroups.some((bill) =>
     bill.summary.items.some(
       (item) => item.expectedQuantity > 0 && item.scannedQuantity < item.expectedQuantity,
     ),
   );
+  const hasTrustworthyScanQuantities = scans.some(
+    (scan) => scan.document != null && parsePositiveNumber(scan.quantity) > 0,
+  );
   const isPartialScan =
     scans.length > 0 &&
-    (hasUnscannedBillLine || (expectedBoxes > 0 && scans.length < expectedBoxes));
+    (hasTrustworthyScanQuantities
+      ? hasUnscannedBillLine
+      : expectedBoxes > 0 && scans.length < expectedBoxes);
   const progressPercent =
     expectedBoxes > 0 ? Math.min(100, Math.round((scans.length / expectedBoxes) * 100)) : 0;
 
