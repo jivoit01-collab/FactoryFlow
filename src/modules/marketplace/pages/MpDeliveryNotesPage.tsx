@@ -256,12 +256,6 @@ export default function MpDeliveryNotesPage() {
                   <span className="text-muted-foreground">Total value:</span>{' '}
                   <strong>{inr(summary!.totals.total_amount)}</strong>
                 </span>
-                {summary!.totals.dn_goods_value !== undefined && (
-                  <span>
-                    <span className="text-muted-foreground">DN value (pre-tax):</span>{' '}
-                    <strong>{inr(summary!.totals.dn_goods_value)}</strong>
-                  </span>
-                )}
               </div>
             </CardContent>
           </Card>

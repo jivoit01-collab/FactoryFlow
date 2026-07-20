@@ -31,8 +31,6 @@ export interface DeliveryNoteLine {
   uom: string;
   warehouse_code: string;
   quantity: string;
-  /** Pre-tax value on this line (only the primary line of each order carries it). */
-  amount?: string;
 }
 
 /** A dispatch included in (or blocked from) the bulk delivery note. */
@@ -86,8 +84,6 @@ export interface DeliveryNoteSummary {
     fg_item_count: number;
     fg_total_quantity: string;
     total_amount: string;
-    /** Pre-tax goods value posted as the delivery note's DocTotal. */
-    dn_goods_value?: string;
   };
 }
 
