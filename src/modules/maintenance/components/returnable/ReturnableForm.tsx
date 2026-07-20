@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
+import { DepartmentSelect } from '@/modules/gate/components';
 import {
   Button,
   Input,
@@ -29,8 +30,10 @@ import {
   returnableGatePassSchema,
 } from '../../schemas/returnable.schema';
 import type { ReturnableGatePass, ReturnableGatePassPayload, StagedAttachment } from '../../types';
+import { AssetSelect } from './AssetSelect';
 import { ReturnableAttachmentsField } from './ReturnableAttachmentsField';
 import { SapItemSelect } from './SapItemSelect';
+import { WorkOrderSelect } from './WorkOrderSelect';
 
 interface ReturnableFormProps {
   /** Present when editing. Only DRAFT passes are editable. */
@@ -61,6 +64,9 @@ function toFormValues(gatePass?: ReturnableGatePass | null): ReturnableGatePassF
       recipient_name: '',
       issued_by_name: '',
       expected_return_date: '',
+      department: null,
+      asset: null,
+      work_order: null,
       items_input: [{ ...EMPTY_LINE }],
     } as ReturnableGatePassFormValues;
   }
@@ -306,6 +312,14 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
         }
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Department">
+            <DepartmentSelect
+              value={watch('department') ?? ''}
+              initialDisplayText={gatePass?.department_name || undefined}
+              onChange={(id) => setValue('department', id === '' ? null : id)}
+            />
+          </Field>
+
           <Field id="purpose" label="Purpose">
             <NativeSelect id="purpose" {...register('purpose')}>
               {RETURNABLE_PURPOSE_OPTIONS.map((option) => (
@@ -395,6 +409,24 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
               </Field>
             </>
           )}
+
+          {/* Optional maintenance links — the asset the material belongs to and
+              the work order it was raised against. */}
+          <Field label="Linked Asset">
+            <AssetSelect
+              value={watch('asset') ?? null}
+              defaultDisplayText={gatePass?.asset_name || undefined}
+              onChange={(id) => setValue('asset', id)}
+            />
+          </Field>
+
+          <Field label="Work Order">
+            <WorkOrderSelect
+              value={watch('work_order') ?? null}
+              defaultDisplayText={gatePass?.work_order_no || undefined}
+              onChange={(id) => setValue('work_order', id)}
+            />
+          </Field>
 
           <Field id="purpose_detail" label="Purpose Details" className="sm:col-span-2 lg:col-span-3">
             <Textarea

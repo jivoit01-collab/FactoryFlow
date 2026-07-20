@@ -134,10 +134,11 @@ export function useMaintenanceOptions() {
   });
 }
 
-export function useMaintenanceAssets(filters?: MaintenanceAssetFilters) {
+export function useMaintenanceAssets(filters?: MaintenanceAssetFilters, enabled = true) {
   return useQuery({
     queryKey: MAINTENANCE_QUERY_KEYS.assets(filters),
     queryFn: () => maintenanceApi.getAssets(filters),
+    enabled,
   });
 }
 
