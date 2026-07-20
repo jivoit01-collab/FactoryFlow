@@ -23,7 +23,9 @@ import { BoxScanCamera } from './BoxScanCamera';
 import { BSTReceivePutawaySection } from './BSTReceivePutawaySection';
 import { BSTStatusBadge } from './bstStatus';
 
-const RECEIVABLE = ['IN_TRANSIT', 'ARRIVED', 'RECEIVING'];
+// PARTIALLY_RECEIVED stays receivable so a premature/partial finalize can be
+// resumed — the remaining boxes can still be accepted and the receipt re-finalized.
+const RECEIVABLE = ['IN_TRANSIT', 'ARRIVED', 'RECEIVING', 'PARTIALLY_RECEIVED'];
 
 function ReceiveBadge({ status }: { status: BSTReceiveStatus }) {
   const cfg: Record<BSTReceiveStatus, string> = {
@@ -122,6 +124,20 @@ export default function BSTReceivePage() {
   };
 
   const handleComplete = async () => {
+    // Finalizing is a commitment: pending boxes are recorded as short/not
+    // received and the transfer is locked as (partially) received. Guard against
+    // the accidental one-click finalize that stranded a whole shipment.
+    if (accepted === 0 && rejected === 0) {
+      toast.error('Accept or reject at least one box before finalizing.');
+      return;
+    }
+    if (pending > 0) {
+      const ok = window.confirm(
+        `${pending} box(es) are still pending. Finalizing now records them as not received ` +
+          `and marks this transfer partially received. Continue?`,
+      );
+      if (!ok) return;
+    }
     try {
       await completeMut.mutateAsync(transferId);
       toast.success('Receipt finalized');
