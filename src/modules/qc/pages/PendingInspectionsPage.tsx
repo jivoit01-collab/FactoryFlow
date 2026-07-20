@@ -49,6 +49,14 @@ const TAB_CONFIG = {
 type StatusFilterKey = keyof typeof TAB_CONFIG;
 const TAB_KEYS = Object.keys(TAB_CONFIG) as StatusFilterKey[];
 
+// Material-class toggle — derived from the SAP material code prefix (RM.../PM...)
+const MATERIAL_FILTERS = [
+  { key: 'all', label: 'All', prefix: null },
+  { key: 'rm', label: 'RM', prefix: 'RM' },
+  { key: 'pm', label: 'PM', prefix: 'PM' },
+] as const;
+type MaterialFilterKey = (typeof MATERIAL_FILTERS)[number]['key'];
+
 // Status badge styling based on workflow_status
 const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
   NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -88,6 +96,7 @@ export default function PendingInspectionsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
+  const [materialFilter, setMaterialFilter] = useState<MaterialFilterKey>('all');
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   const dateParams = useMemo(
@@ -110,11 +119,16 @@ export default function PendingInspectionsPage() {
     refetch,
   } = useInspectionsByTab(statusFilter, dateParams);
 
-  // Filter items based on search query
+  // Filter items based on material class (RM/PM prefix) and search query
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return items;
+    const prefix = MATERIAL_FILTERS.find((m) => m.key === materialFilter)?.prefix;
+    const byMaterial = prefix
+      ? items.filter((item) => item.po_item_code?.toUpperCase().startsWith(prefix))
+      : items;
+
+    if (!search.trim()) return byMaterial;
     const searchLower = search.toLowerCase();
-    return items.filter(
+    return byMaterial.filter(
       (item) =>
         item.entry_no?.toLowerCase().includes(searchLower) ||
         item.party_name?.toLowerCase().includes(searchLower) ||
@@ -127,7 +141,7 @@ export default function PendingInspectionsPage() {
         item.manager_decision?.label?.toLowerCase().includes(searchLower) ||
         getEffectiveStatusBadge(item).label.toLowerCase().includes(searchLower),
     );
-  }, [items, search]);
+  }, [items, search, materialFilter]);
 
   // Check if error is a permission error (403)
   const apiError = error as ApiError | null;
@@ -265,19 +279,34 @@ export default function PendingInspectionsPage() {
         />
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {TAB_KEYS.map((key) => (
-          <Button
-            key={key}
-            variant={statusFilter === key ? 'default' : 'outline'}
-            size="sm"
-            className="h-8"
-            onClick={() => handleFilterChange(key)}
-          >
-            {TAB_CONFIG[key].label}
-          </Button>
-        ))}
+      {/* Filter Tabs + Material toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {TAB_KEYS.map((key) => (
+            <Button
+              key={key}
+              variant={statusFilter === key ? 'default' : 'outline'}
+              size="sm"
+              className="h-8"
+              onClick={() => handleFilterChange(key)}
+            >
+              {TAB_CONFIG[key].label}
+            </Button>
+          ))}
+        </div>
+        <div className="inline-flex items-center rounded-md border p-0.5">
+          {MATERIAL_FILTERS.map((m) => (
+            <Button
+              key={m.key}
+              variant={materialFilter === m.key ? 'default' : 'ghost'}
+              size="sm"
+              className="h-7 px-3"
+              onClick={() => setMaterialFilter(m.key)}
+            >
+              {m.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Permission Error */}
