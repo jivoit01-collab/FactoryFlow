@@ -182,7 +182,7 @@ function NewIndentDialog({ onOpenChange }: { onOpenChange: (open: boolean) => vo
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="mi_contact">Contact</Label>
+              <Label htmlFor="mi_contact">Contact No.</Label>
               <Input id="mi_contact" value={contact} onChange={(e) => setContact(e.target.value)} />
             </div>
           </div>
