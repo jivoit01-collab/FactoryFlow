@@ -44,6 +44,16 @@ export interface DeliveryNoteDispatch {
   variants?: LineVariant[];
 }
 
+/** One short finished-good line: how much is needed vs on hand. */
+export interface StockShortItem {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  required_quantity: string;
+  available_quantity: string;
+  shortfall_quantity: string;
+}
+
 export interface DeliveryNoteBlocked {
   order_id: string;
   dispatch_id: number;
@@ -53,6 +63,14 @@ export interface DeliveryNoteBlocked {
   buyer_name?: string;
   order_date?: string | null;
   variants?: LineVariant[];
+  // The exact FG lines this order is short on (code, name, needed vs in stock).
+  short_items?: StockShortItem[];
+}
+
+/** One finished-good item the warehouse is short on, across all held orders.
+ *  `shortfall_quantity` is exactly what to request from the warehouse. */
+export interface StockShortfallLine extends StockShortItem {
+  warehouse_code: string;
 }
 
 /** Full preview of the single SAP Delivery Note that will be cut. */
@@ -79,6 +97,9 @@ export interface DeliveryNoteSummary {
   /** Orders the warehouse can't fulfil yet — excluded so one short line can't
    *  fail the whole document. They cut automatically once stock arrives. */
   held_for_stock: DeliveryNoteBlocked[];
+  /** Per-item top-up the warehouse must supply so every held order can ship.
+   *  Empty when nothing is short or on-hand can't be read. */
+  stock_shortfall: StockShortfallLine[];
   totals: {
     dispatch_count: number;
     fg_item_count: number;

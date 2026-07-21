@@ -10,6 +10,7 @@
 import {
   CheckCircle2,
   Circle,
+  Download,
   FileSpreadsheet,
   Loader2,
   PackageCheck,
@@ -56,6 +57,19 @@ const WARN_CODES = ['NOT_PACKED', 'NOT_ISSUED', 'ORDER_CANCELLED', 'EMPTY'];
 function errorCode(e: unknown): string | undefined {
   return (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
 }
+
+/** Quote a CSV field only when it contains a comma, quote or newline (RFC-4180). */
+function csvCell(value: string | number | boolean | null | undefined): string {
+  const s = value === null || value === undefined ? '' : String(value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+const CSV_STATUS_LABEL: Record<DispatchBoardOrder['status'], string> = {
+  PENDING: 'Pending scan',
+  PARTIAL: 'Partial',
+  SCANNED: 'Scanned',
+  CONFIRMED: 'Confirmed',
+};
 
 export default function MpOutwardPage() {
   const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
@@ -114,6 +128,45 @@ export default function MpOutwardPage() {
       );
     });
   }, [orders, statusFilter, search, orderRange]);
+
+  // Export whatever the board currently shows — the status filter (To scan /
+  // Scanned / Confirmed / All), search and date range all apply, so the operator
+  // picks the order type via the existing filter and downloads exactly that. One
+  // row per shipment (tracking ID) so SKUs and tracking IDs are captured.
+  function handleExportCsv() {
+    const headers = [
+      'Order ID', 'Buyer', 'Order date', 'Status', 'Ready',
+      'Tracking scanned', 'Tracking total', 'SKU', 'Marketplace SKU',
+      'Quantity', 'Tracking ID', 'Item scanned', 'Dispatch ID',
+      'Dispatch status', 'SAP post status',
+    ];
+    const rows = [headers.join(',')];
+    for (const o of visibleOrders) {
+      const status = CSV_STATUS_LABEL[o.status] ?? o.status;
+      const items = o.items.length > 0 ? o.items : [null];
+      for (const it of items) {
+        rows.push([
+          o.order_id, o.buyer_name, o.order_date ?? '', status,
+          o.ready ? 'yes' : 'no', o.tracking_scanned, o.tracking_total,
+          it?.sku_name ?? '', it?.marketplace_sku ?? '',
+          it ? Number(it.quantity) : '', it?.tracking_id ?? '',
+          it ? (it.scanned ? 'yes' : 'no') : '',
+          o.dispatch_id ?? '', o.dispatch_status ?? '', o.sap_post_status ?? '',
+        ].map(csvCell).join(','));
+      }
+    }
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const sheetName = (board?.sheet.filename || `sheet-${sheetId}`)
+      .replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_');
+    a.download = `outward_${channel}_${sheetName}_${statusFilter.toLowerCase()}_${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const confirmAll = useMutation({
     mutationFn: async (ids: number[]) => {
@@ -243,6 +296,15 @@ export default function MpOutwardPage() {
                 <CardDescription>Each order shows its tracking IDs and scan status.</CardDescription>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={visibleOrders.length === 0}
+                  onClick={handleExportCsv}
+                  title="Download the orders currently shown (respects the status filter, search and date range)"
+                >
+                  <Download className="mr-2 h-4 w-4" /> Download CSV ({visibleOrders.length})
+                </Button>
                 <Button
                   size="sm"
                   disabled={scannedOrders.length === 0 || confirmAll.isPending}

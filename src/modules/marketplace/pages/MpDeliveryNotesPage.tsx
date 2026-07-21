@@ -7,7 +7,7 @@
  * Dispatches land here when the channel's "Defer delivery note" setting is on;
  * otherwise each dispatch posts its own delivery note at confirm time.
  */
-import { AlertTriangle, Clock, FileText, CheckCircle2, PackageCheck, PackageX, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clipboard, Clock, FileText, PackageCheck, PackageX, RefreshCw, Send } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -38,7 +38,12 @@ import { MpChannelSelect } from '../components/MpChannelSelect';
 import { EMPTY_RANGE, inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
 import { MpFilterBar, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import { MpVariantPicker } from '../components/MpVariantPicker';
-import type { DeliveryNoteLine, MarketplaceChannel } from '../types/marketplace.types';
+import type {
+  DeliveryNoteLine,
+  DeliveryNoteSummary,
+  MarketplaceChannel,
+  StockShortfallLine,
+} from '../types/marketplace.types';
 
 const CHANNEL: MarketplaceChannel = 'FLIPKART';
 const inr = (v: string | number) =>
@@ -87,6 +92,96 @@ function Meta({ label, value, mono = false }: { label: string; value: string; mo
   );
 }
 
+/** Plain-text list an operator can paste to the warehouse (WhatsApp / email). */
+function buildRequestText(summary: DeliveryNoteSummary, lines: StockShortfallLine[]) {
+  const header = `Stock needed — ${summary.channel}${
+    summary.warehouse_code ? ` · ${summary.warehouse_code}` : ''
+  }`;
+  const body = lines
+    .map((l) => `${l.item_code} ${l.item_name ? `(${l.item_name}) ` : ''}— need ${Number(
+      l.shortfall_quantity,
+    )} ${l.uom} (have ${Number(l.available_quantity)}, required ${Number(l.required_quantity)})`)
+    .join('\n');
+  return `${header}\n\n${body}`;
+}
+
+function StockShortfallDialog({
+  open,
+  onOpenChange,
+  summary,
+  lines,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  summary: DeliveryNoteSummary;
+  lines: StockShortfallLine[];
+}) {
+  async function copyRequest() {
+    try {
+      await navigator.clipboard.writeText(buildRequestText(summary, lines));
+      toast.success('Stock request copied — paste it to the warehouse.');
+    } catch {
+      toast.error('Could not copy to clipboard.');
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PackageX className="h-5 w-5 text-amber-600" /> Stock needed from warehouse
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          These finished goods are short in{' '}
+          <span className="font-mono">{summary.warehouse_code || 'the warehouse'}</span>. Request
+          the shortfall and the held orders join the delivery note automatically once it arrives.
+        </p>
+        <div className="-mx-1 max-h-[50vh] overflow-auto rounded-md border">
+          <table className="w-full min-w-[420px] text-sm">
+            <thead className="sticky top-0 border-b bg-muted/60 text-left text-xs text-muted-foreground">
+              <tr>
+                <th className="p-2">Item</th>
+                <th className="p-2 text-right">Required</th>
+                <th className="p-2 text-right">In stock</th>
+                <th className="p-2 text-right">Short</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l) => (
+                <tr key={l.item_code} className="border-b last:border-0">
+                  <td className="p-2">
+                    <div className="font-mono">{l.item_code}</div>
+                    <div className="text-xs text-muted-foreground">{l.item_name}</div>
+                  </td>
+                  <td className="p-2 text-right">
+                    {Number(l.required_quantity)} {l.uom}
+                  </td>
+                  <td className="p-2 text-right text-muted-foreground">
+                    {Number(l.available_quantity)}
+                  </td>
+                  <td className="p-2 text-right font-semibold text-amber-700">
+                    {Number(l.shortfall_quantity)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          <Button onClick={copyRequest}>
+            <Clipboard className="mr-2 h-4 w-4" /> Copy request
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function MpDeliveryNotesPage() {
   const [warehouseId, setWarehouseId] = useState<number | null>(null);
   const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL, warehouseId);
@@ -94,6 +189,7 @@ export default function MpDeliveryNotesPage() {
   const reconcile = useReconcileDeliveryNotes(CHANNEL);
   const { data: approval } = useAwaitingApprovalCount(CHANNEL);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [shortfallOpen, setShortfallOpen] = useState(false);
 
   const count = summary?.totals.dispatch_count ?? 0;
   const [dnSearch, setDnSearch] = useState('');
@@ -109,6 +205,7 @@ export default function MpDeliveryNotesPage() {
   const { data: posted } = usePostedDeliveryNotes(CHANNEL);
   const postedNotes = posted?.notes ?? [];
   const heldForStock = summary?.held_for_stock ?? [];
+  const stockShortfall = summary?.stock_shortfall ?? [];
   // Orders held for stock are still "work" — otherwise the page looks empty with
   // no explanation of where the orders went.
   const hasWork = count > 0 || heldForStock.length > 0;
@@ -320,24 +417,74 @@ export default function MpDeliveryNotesPage() {
           {heldForStock.length > 0 && (
             <Card className="border-amber-300">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base text-amber-700">
-                  <PackageX className="h-4 w-4" /> Held — not enough stock ({heldForStock.length})
-                </CardTitle>
-                <CardDescription>
-                  These orders are ready, but the warehouse doesn&apos;t have the stock yet, so
-                  they&apos;re kept out of this delivery note (one short line would fail the whole
-                  document). They&apos;ll be included automatically once the stock arrives.
-                </CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2 text-base text-amber-700">
+                      <PackageX className="h-4 w-4" /> Held — not enough stock ({heldForStock.length})
+                    </CardTitle>
+                    <CardDescription>
+                      These orders are ready, but the warehouse doesn&apos;t have the stock yet, so
+                      they&apos;re kept out of this delivery note (one short line would fail the
+                      whole document). They&apos;ll be included automatically once the stock arrives.
+                    </CardDescription>
+                  </div>
+                  {stockShortfall.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-amber-400 text-amber-800 hover:bg-amber-50"
+                      onClick={() => setShortfallOpen(true)}
+                    >
+                      <PackageX className="mr-2 h-4 w-4" /> Stock needed ({stockShortfall.length})
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 {heldForStock.map((h) => {
                   const pickable = (h.variants ?? []).filter((v) => v.has_choice);
+                  const shortItems = h.short_items ?? [];
                   return (
                     <div key={h.dispatch_id} className="rounded-md border bg-background p-2">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <span className="font-mono">{h.order_id}</span>
-                        <span className="text-muted-foreground">{h.reason}</span>
+                        <span className="font-mono font-medium">{h.order_id}</span>
+                        {shortItems.length === 0 && (
+                          <span className="text-muted-foreground">{h.reason}</span>
+                        )}
                       </div>
+                      {shortItems.length > 0 && (
+                        <div className="mt-2 overflow-x-auto rounded-md border">
+                          <table className="w-full min-w-[420px] text-xs">
+                            <thead className="border-b bg-muted/50 text-left text-muted-foreground">
+                              <tr>
+                                <th className="p-2">Short item</th>
+                                <th className="p-2 text-right">Needed</th>
+                                <th className="p-2 text-right">In stock</th>
+                                <th className="p-2 text-right">Short by</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {shortItems.map((s) => (
+                                <tr key={s.item_code} className="border-b last:border-0">
+                                  <td className="p-2">
+                                    <div className="font-mono">{s.item_code}</div>
+                                    <div className="text-muted-foreground">{s.item_name || '—'}</div>
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    {Number(s.required_quantity)} {s.uom}
+                                  </td>
+                                  <td className="p-2 text-right text-muted-foreground">
+                                    {Number(s.available_quantity)}
+                                  </td>
+                                  <td className="p-2 text-right font-semibold text-amber-700">
+                                    {Number(s.shortfall_quantity)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                       {pickable.length > 0 ? (
                         <div className="mt-2 border-t pt-2">
                           <p className="mb-1.5 text-xs text-muted-foreground">
@@ -466,6 +613,15 @@ export default function MpDeliveryNotesPage() {
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {summary && stockShortfall.length > 0 && (
+        <StockShortfallDialog
+          open={shortfallOpen}
+          onOpenChange={setShortfallOpen}
+          summary={summary}
+          lines={stockShortfall}
+        />
       )}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
