@@ -82,6 +82,14 @@ export const inspectionApi = {
     return response.data;
   },
 
+  // Inspections whose QA Manager changed their decision at least once
+  async getDecisionChangedList(params?: InspectionListParams): Promise<InspectionListItem[]> {
+    const response = await apiClient.get<InspectionListItem[]>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.DECISION_CHANGED_INSPECTIONS + buildQueryString(params),
+    );
+    return response.data;
+  },
+
   // Dashboard counts (single lightweight query)
   async getCounts(params?: InspectionListParams): Promise<InspectionCounts> {
     const response = await apiClient.get<InspectionCounts>(

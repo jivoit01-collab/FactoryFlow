@@ -273,6 +273,7 @@ export const API_ENDPOINTS = {
     COMPLETED_INSPECTIONS: '/quality-control/inspections/completed/',
     REJECTED_INSPECTIONS: '/quality-control/inspections/rejected/',
     RETURN_TO_VENDOR_INSPECTIONS: '/quality-control/inspections/return-to-vendor/',
+    DECISION_CHANGED_INSPECTIONS: '/quality-control/inspections/decision-changed/',
     INSPECTION_COUNTS: '/quality-control/inspections/counts/',
     INSPECTION_BY_ID: (id: number) => `/quality-control/inspections/${id}/`,
     INSPECTION_FOR_SLIP: (slipId: number) => `/quality-control/arrival-slips/${slipId}/inspection/`,

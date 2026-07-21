@@ -26,6 +26,10 @@ export const INSPECTION_QUERY_KEYS = {
     [...INSPECTION_QUERY_KEYS.all, 'awaitingQAM', ...(params ? [params] : [])] as const,
   completed: (params?: InspectionListParams) =>
     [...INSPECTION_QUERY_KEYS.all, 'completed', ...(params ? [params] : [])] as const,
+  hold: (params?: InspectionListParams) =>
+    [...INSPECTION_QUERY_KEYS.all, 'hold', ...(params ? [params] : [])] as const,
+  decisionChanged: (params?: InspectionListParams) =>
+    [...INSPECTION_QUERY_KEYS.all, 'decisionChanged', ...(params ? [params] : [])] as const,
   rejected: (params?: InspectionListParams) =>
     [...INSPECTION_QUERY_KEYS.all, 'rejected', ...(params ? [params] : [])] as const,
   returnToVendor: (params?: InspectionListParams) =>
@@ -38,7 +42,7 @@ export const INSPECTION_QUERY_KEYS = {
 
 // ── Tab-based list hook (used by PendingInspectionsPage) ─────────────
 
-type TabKey = 'all' | 'actionable' | 'pending' | 'draft' | 'approved' | 'rejected';
+type TabKey = 'all' | 'actionable' | 'pending' | 'draft' | 'approved' | 'hold' | 'rejected';
 
 const TAB_API_MAP: Record<
   TabKey,
@@ -54,6 +58,12 @@ const TAB_API_MAP: Record<
   approved: {
     key: INSPECTION_QUERY_KEYS.completed,
     fn: (params) => inspectionApi.getCompletedList({ ...params, final_status: 'ACCEPTED' }),
+  },
+  // Reuses the completed endpoint (QAM-approved) filtered to HOLD. Uses its own
+  // query key so its cache never collides with the Approved tab's.
+  hold: {
+    key: INSPECTION_QUERY_KEYS.hold,
+    fn: (params) => inspectionApi.getCompletedList({ ...params, final_status: 'HOLD' }),
   },
   rejected: { key: INSPECTION_QUERY_KEYS.rejected, fn: inspectionApi.getRejectedList },
 };
@@ -136,6 +146,14 @@ export function useReturnToVendorInspections(params?: InspectionListParams) {
   return useQuery({
     queryKey: INSPECTION_QUERY_KEYS.returnToVendor(params),
     queryFn: () => inspectionApi.getReturnToVendorList(params),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useDecisionChangedInspections(params?: InspectionListParams) {
+  return useQuery({
+    queryKey: INSPECTION_QUERY_KEYS.decisionChanged(params),
+    queryFn: () => inspectionApi.getDecisionChangedList(params),
     staleTime: 30 * 1000,
   });
 }

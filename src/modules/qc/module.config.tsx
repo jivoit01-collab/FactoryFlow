@@ -11,6 +11,9 @@ const QCDashboardPage = lazy(() => import('./pages/QCDashboardPage'));
 const PendingInspectionsPage = lazy(() => import('./pages/PendingInspectionsPage'));
 const InspectionDetailPage = lazy(() => import('./pages/InspectionDetailPage'));
 const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'));
+const DecisionChangedInspectionsPage = lazy(
+  () => import('./pages/DecisionChangedInspectionsPage'),
+);
 
 // Master Data (shared)
 const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'));
@@ -90,6 +93,13 @@ export const qcModuleConfig: ModuleConfig = {
         QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
         QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
       ],
+    },
+    {
+      path: '/qc/arrival-slips/decision-changed',
+      element: <DecisionChangedInspectionsPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
+      breadcrumb: { label: 'Decision Changes' },
     },
 
     // ==================== Production QC Submodule ====================
@@ -236,6 +246,11 @@ export const qcModuleConfig: ModuleConfig = {
             QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
             QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
           ],
+        },
+        {
+          path: '/qc/arrival-slips/decision-changed',
+          title: 'Decision Changes',
+          permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
         },
         {
           path: '/qc/production',

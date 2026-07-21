@@ -225,6 +225,9 @@ export interface InspectionListItem {
   rejected_qc_return_entry_id?: number | null;
   rejected_qc_return_entry_no?: string | null;
   material_type_name: string | null;
+  /** Number of QA Manager decision-log rows. Populated only by the
+   *  decision-changed endpoint; null on other list endpoints. */
+  manager_decision_count?: number | null;
   created_at: string;
   submitted_at: string | null;
 }

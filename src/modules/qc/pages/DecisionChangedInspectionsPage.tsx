@@ -1,6 +1,6 @@
-import { AlertCircle, ArrowLeft, Download, RefreshCw, Search, ShieldX } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Download, History, RefreshCw, Search, ShieldX } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
 import type { ApiError } from '@/core/api/types';
@@ -8,83 +8,14 @@ import { useGlobalDateRange } from '@/core/store/hooks';
 import { DateRangePicker } from '@/modules/gate/components';
 import { Button, Input } from '@/shared/components/ui';
 
-import { useInspectionsByTab } from '../api/inspection/inspection.queries';
-import { DECISION_STATUS_CONFIG, WORKFLOW_STATUS_CONFIG } from '../constants';
-import type { InspectionDecisionInfo, InspectionListItem, InspectionListWorkflowStatus } from '../types';
-
-// Tab metadata
-const TAB_CONFIG = {
-  all: {
-    label: 'All',
-    title: 'All Inspections',
-    description: 'All inspections',
-  },
-  actionable: {
-    label: 'Actionable',
-    title: 'Pending Actions',
-    description: 'Items requiring attention',
-  },
-  pending: {
-    label: 'Pending',
-    title: 'Pending Inspections',
-    description: 'Arrival slips awaiting QC inspection',
-  },
-  draft: {
-    label: 'Draft',
-    title: 'Draft Inspections',
-    description: 'Inspections started but not submitted',
-  },
-  approved: {
-    label: 'Approved',
-    title: 'Approved Inspections',
-    description: 'Completed and approved inspections',
-  },
-  hold: {
-    label: 'Hold',
-    title: 'On-Hold Inspections',
-    description: 'Inspections placed on hold by the manager',
-  },
-  rejected: {
-    label: 'Rejected',
-    title: 'Rejected Inspections',
-    description: 'Rejected inspections',
-  },
-} as const;
-
-type StatusFilterKey = keyof typeof TAB_CONFIG;
-const TAB_KEYS = Object.keys(TAB_CONFIG) as StatusFilterKey[];
-
-// Material-class toggle — derived from the SAP material code prefix (RM.../PM...)
-const MATERIAL_FILTERS = [
-  { key: 'all', label: 'All', prefix: null },
-  { key: 'rm', label: 'RM', prefix: 'RM' },
-  { key: 'pm', label: 'PM', prefix: 'PM' },
-] as const;
-type MaterialFilterKey = (typeof MATERIAL_FILTERS)[number]['key'];
-
-// Status badge styling based on workflow_status
-const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
-  NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QA_CHEMIST_APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QAM_APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-};
+import { useDecisionChangedInspections } from '../api/inspection/inspection.queries';
+import { DECISION_STATUS_CONFIG } from '../constants';
+import type { InspectionDecisionInfo, InspectionListItem } from '../types';
 
 function getNavigateTo(item: InspectionListItem): string {
   return item.inspection_id
     ? `/qc/inspections/${item.arrival_slip_id}`
     : `/qc/inspections/${item.arrival_slip_id}/new`;
-}
-
-function getEffectiveStatusBadge(item: InspectionListItem) {
-  return {
-    label: WORKFLOW_STATUS_CONFIG[item.workflow_status]?.label || item.workflow_status,
-    className:
-      STATUS_BADGE_CLASSES[item.workflow_status] ||
-      'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  };
 }
 
 function getDecisionBadge(decision?: InspectionDecisionInfo | null) {
@@ -97,11 +28,14 @@ function getDecisionBadge(decision?: InspectionDecisionInfo | null) {
   };
 }
 
-export default function PendingInspectionsPage() {
+// Number of times the manager changed their decision (first decision isn't a change).
+function getTimesChanged(item: InspectionListItem): number {
+  return Math.max((item.manager_decision_count ?? 1) - 1, 0);
+}
+
+export default function DecisionChangedInspectionsPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [materialFilter, setMaterialFilter] = useState<MaterialFilterKey>('all');
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   const dateParams = useMemo(
@@ -112,28 +46,12 @@ export default function PendingInspectionsPage() {
     [dateRange],
   );
 
-  // Get status filter from URL
-  const statusFilter = (searchParams.get('status') as StatusFilterKey) || 'all';
-  const currentTab = TAB_CONFIG[statusFilter] || TAB_CONFIG.all;
+  const { data: items = [], isLoading, error, refetch } = useDecisionChangedInspections(dateParams);
 
-  // Single hook — fetches the correct endpoint based on active tab
-  const {
-    data: items = [],
-    isLoading,
-    error,
-    refetch,
-  } = useInspectionsByTab(statusFilter, dateParams);
-
-  // Filter items based on material class (RM/PM prefix) and search query
   const filteredItems = useMemo(() => {
-    const prefix = MATERIAL_FILTERS.find((m) => m.key === materialFilter)?.prefix;
-    const byMaterial = prefix
-      ? items.filter((item) => item.po_item_code?.toUpperCase().startsWith(prefix))
-      : items;
-
-    if (!search.trim()) return byMaterial;
+    if (!search.trim()) return items;
     const searchLower = search.toLowerCase();
-    return byMaterial.filter(
+    return items.filter(
       (item) =>
         item.entry_no?.toLowerCase().includes(searchLower) ||
         item.party_name?.toLowerCase().includes(searchLower) ||
@@ -142,26 +60,13 @@ export default function PendingInspectionsPage() {
         item.report_no?.toLowerCase().includes(searchLower) ||
         item.internal_lot_no?.toLowerCase().includes(searchLower) ||
         item.material_type_name?.toLowerCase().includes(searchLower) ||
-        item.chemist_decision?.label?.toLowerCase().includes(searchLower) ||
-        item.manager_decision?.label?.toLowerCase().includes(searchLower) ||
-        getEffectiveStatusBadge(item).label.toLowerCase().includes(searchLower),
+        item.manager_decision?.label?.toLowerCase().includes(searchLower),
     );
-  }, [items, search, materialFilter]);
+  }, [items, search]);
 
-  // Check if error is a permission error (403)
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
-  // Handle filter change
-  const handleFilterChange = (filter: StatusFilterKey) => {
-    if (filter === 'all') {
-      setSearchParams({});
-    } else {
-      setSearchParams({ status: filter });
-    }
-  };
-
-  // Export filtered table data to Excel
   const handleExportExcel = useCallback(() => {
     if (filteredItems.length === 0) return;
 
@@ -173,9 +78,8 @@ export default function PendingInspectionsPage() {
       'Report No.': item.report_no || '-',
       'Internal Lot No.': item.internal_lot_no || '-',
       'Material Type': item.material_type_name || '-',
-      Stage: getEffectiveStatusBadge(item).label,
-      'Chemist Decision': item.chemist_decision?.label || 'Pending',
-      'Manager Decision': item.manager_decision?.label || 'Pending',
+      'Times Changed': getTimesChanged(item),
+      'Current Manager Decision': item.manager_decision?.label || 'Pending',
       'Date/Time':
         item.submitted_at || item.created_at
           ? new Date(item.submitted_at || item.created_at).toLocaleString('en-US', {
@@ -188,8 +92,6 @@ export default function PendingInspectionsPage() {
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
-
-    // Auto-size columns based on content
     const colWidths = Object.keys(rows[0]).map((key) => {
       const maxLen = Math.max(
         key.length,
@@ -200,13 +102,12 @@ export default function PendingInspectionsPage() {
     ws['!cols'] = colWidths;
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Inspections');
+    XLSX.utils.book_append_sheet(wb, ws, 'Decision Changes');
 
-    const fileName = `Inspections_${currentTab.label}_${dateRange.from || 'all'}_to_${dateRange.to || 'all'}.xlsx`;
+    const fileName = `Decision_Changes_${dateRange.from || 'all'}_to_${dateRange.to || 'all'}.xlsx`;
     XLSX.writeFile(wb, fileName);
-  }, [filteredItems, currentTab.label, dateRange]);
+  }, [filteredItems, dateRange]);
 
-  // Format date/time - consistent with Gate module
   const formatDateTime = (dateTime?: string | null) => {
     if (!dateTime) return '-';
     try {
@@ -236,9 +137,11 @@ export default function PendingInspectionsPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h2 className="text-3xl font-bold tracking-tight">{currentTab.title}</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Decision Changes</h2>
           </div>
-          <p className="text-muted-foreground">{currentTab.description}</p>
+          <p className="text-muted-foreground">
+            Inspections where the QA Manager changed their decision at least once
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <DateRangePicker
@@ -277,41 +180,11 @@ export default function PendingInspectionsPage() {
       <div className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search entry, vendor, SAP material, report, lot, or status..."
+          placeholder="Search entry, vendor, SAP material, report, lot, or decision..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
         />
-      </div>
-
-      {/* Filter Tabs + Material toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {TAB_KEYS.map((key) => (
-            <Button
-              key={key}
-              variant={statusFilter === key ? 'default' : 'outline'}
-              size="sm"
-              className="h-8"
-              onClick={() => handleFilterChange(key)}
-            >
-              {TAB_CONFIG[key].label}
-            </Button>
-          ))}
-        </div>
-        <div className="inline-flex items-center rounded-md border p-0.5">
-          {MATERIAL_FILTERS.map((m) => (
-            <Button
-              key={m.key}
-              variant={materialFilter === m.key ? 'default' : 'ghost'}
-              size="sm"
-              className="h-7 px-3"
-              onClick={() => setMaterialFilter(m.key)}
-            >
-              {m.label}
-            </Button>
-          ))}
-        </div>
       </div>
 
       {/* Permission Error */}
@@ -321,7 +194,7 @@ export default function PendingInspectionsPage() {
           <div className="flex-1 min-w-0">
             <p className="font-medium text-destructive">Permission Denied</p>
             <p className="text-sm text-muted-foreground mt-1">
-              {apiError?.message || 'You do not have permission to view pending inspections.'}
+              {apiError?.message || 'You do not have permission to view inspections.'}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -357,17 +230,17 @@ export default function PendingInspectionsPage() {
       {!isLoading && !error && filteredItems.length === 0 && (
         <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
           {items.length === 0
-            ? `No ${currentTab.label.toLowerCase()} inspections`
+            ? 'No inspections with changed manager decisions'
             : 'No inspections match your search'}
         </div>
       )}
 
-      {/* Inspections Table */}
+      {/* Table */}
       {!isLoading && !error && filteredItems.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-muted-foreground">
-              {currentTab.label} ({filteredItems.length})
+              Decision Changes ({filteredItems.length})
             </h3>
           </div>
 
@@ -382,15 +255,15 @@ export default function PendingInspectionsPage() {
                     <th className="p-3 text-left text-sm font-medium">Report No.</th>
                     <th className="p-3 text-left text-sm font-medium">Internal Lot No.</th>
                     <th className="p-3 text-left text-sm font-medium">Material Type</th>
-                    <th className="p-3 text-left text-sm font-medium">Chemist</th>
-                    <th className="p-3 text-left text-sm font-medium">Manager</th>
+                    <th className="p-3 text-left text-sm font-medium">Times Changed</th>
+                    <th className="p-3 text-left text-sm font-medium">Current Decision</th>
                     <th className="p-3 text-left text-sm font-medium">Date/Time</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => {
-                    const chemistBadge = getDecisionBadge(item.chemist_decision);
                     const managerBadge = getDecisionBadge(item.manager_decision);
+                    const timesChanged = getTimesChanged(item);
 
                     return (
                       <tr
@@ -421,10 +294,9 @@ export default function PendingInspectionsPage() {
                         <td className="p-3 text-sm">{item.internal_lot_no || '-'}</td>
                         <td className="p-3 text-sm">{item.material_type_name || '-'}</td>
                         <td className="p-3 text-sm">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${chemistBadge.className}`}
-                          >
-                            {chemistBadge.label}
+                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                            <History className="h-3 w-3" />
+                            {timesChanged}×
                           </span>
                         </td>
                         <td className="p-3 text-sm">
