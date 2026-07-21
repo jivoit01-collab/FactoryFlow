@@ -79,6 +79,7 @@ function StartRunPage() {
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       product: '',
+      item_code: '',
       required_qty: '',
       rated_speed: '',
       electricity_cost_per_unit: '',
@@ -254,11 +255,13 @@ function StartRunPage() {
               onSearchChange={(s) => setSkuSearch(s)}
               onItemSelect={(item) => {
                 form.setValue('product', item.ItemName, { shouldValidate: true });
+                form.setValue('item_code', item.ItemCode);
                 form.setValue('sap_doc_entry', undefined);
                 setSelectedItemCode(item.ItemCode);
               }}
               onClear={() => {
                 form.setValue('product', '');
+                form.setValue('item_code', '');
                 setSelectedItemCode(null);
                 lastPopulatedItemCode.current = null;
                 setRawBOM([]);
@@ -322,7 +325,12 @@ function StartRunPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Product</Label>
-                <Input {...form.register('product')} placeholder="Auto-filled from selected SKU" />
+                <Input
+                  {...form.register('product')}
+                  readOnly
+                  className="bg-muted/50 cursor-not-allowed"
+                  placeholder="Auto-filled from selected SKU"
+                />
                 {form.formState.errors.product && (
                   <p className="text-sm text-red-500 mt-1">
                     {form.formState.errors.product.message}

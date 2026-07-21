@@ -185,6 +185,7 @@ export interface ProductionRun {
   line: number;
   line_name: string;
   product: string;
+  item_code: string;
   required_qty: string | null;
   rated_speed: string;
   electricity_cost_per_unit: string | null;
@@ -694,6 +695,7 @@ export interface CreateRunRequest {
   line_id: number;
   date: string;
   product?: string;
+  item_code?: string;
   required_qty?: number | null;
   rated_speed?: string;
   electricity_cost_per_unit?: string;

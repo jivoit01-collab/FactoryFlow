@@ -9,6 +9,7 @@ export const createRunSchema = z.object({
   line_id: z.number({ required_error: 'Production line is required' }),
   date: z.string().min(1, 'Date is required'),
   product: z.string().min(1, 'Product SKU is required'),
+  item_code: z.string().optional().default(''),
   required_qty: z.string().optional(),
   rated_speed: z.string().optional(),
   electricity_cost_per_unit: z.string().optional(),
@@ -30,6 +31,16 @@ export const createRunSchema = z.object({
     )
     .optional()
     .default([]),
+}).superRefine((val, ctx) => {
+  // The product must be chosen from the SKU list so its SAP item code is
+  // captured — a free-typed name has no BOM and breaks "Submit BOM to WH".
+  if (!val.item_code) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['product'],
+      message: 'Select a product from the SKU list (do not type it manually).',
+    });
+  }
 });
 
 export type CreateRunFormData = z.infer<typeof createRunSchema>;
