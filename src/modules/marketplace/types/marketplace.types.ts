@@ -140,12 +140,25 @@ export interface PostedDeliveryNote {
   };
 }
 
-/** Result of cutting the bulk delivery note. */
-export interface DeliveryNoteCutResult {
+/** One posted (or draft) delivery note in a cut — one per ship-to (place of supply). */
+export interface DeliveryNoteCutGroup {
+  ship_to_code: string;
   delivery_note_num: string;
   delivery_note_doc_entry: number | null;
   dispatch_count: number;
   order_ids: string[];
+  pending_approval: boolean;
+  draft_entry?: number | null;
+}
+
+/** Result of cutting the bulk delivery note (one note per ship-to group). */
+export interface DeliveryNoteCutResult {
+  groups: DeliveryNoteCutGroup[];
+  dispatch_count: number;
+  order_ids: string[];
+  /** Flat fields, present only when a single note was cut (backward compatible). */
+  delivery_note_num?: string;
+  delivery_note_doc_entry?: number | null;
   /** True when SAP routed the delivery note into an approval process (draft). */
   pending_approval?: boolean;
   draft_entry?: number | null;

@@ -320,7 +320,16 @@ export default function MpDeliveryNotesPage() {
     cut.mutate(selectedWh, {
       onSuccess: (r) => {
         setConfirmOpen(false);
-        if (r.pending_approval) {
+        const groups = r.groups ?? [];
+        if (groups.length > 1) {
+          const parts = groups.map(
+            (g) =>
+              `${g.ship_to_code || 'default'}: ${
+                g.pending_approval ? 'awaiting approval' : g.delivery_note_num || 'posted'
+              } (${g.dispatch_count})`,
+          );
+          toast.success(`Cut ${groups.length} delivery notes — ${parts.join(' · ')}`);
+        } else if (r.pending_approval) {
           toast.success(
             `Delivery note submitted to SAP for approval (draft ${r.draft_entry ?? ''}) for ${r.dispatch_count} dispatch(es). It posts once approved in SAP.`,
           );
