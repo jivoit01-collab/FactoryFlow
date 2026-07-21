@@ -273,7 +273,6 @@ export function DispatchLinkingSheet({
     await onSave(bill.doc_entry, {
       sap_invoice_doc_num: bill.doc_num,
       linked_invoice_doc_entries: activeBills.map((selected) => selected.doc_entry),
-      invoice_number: form.invoice_number.trim(),
       invoice_weight: invoiceWeightForPayload(bill),
       invoice_amount: stringOrNull(form.invoice_amount),
       place_of_supply: form.place_of_supply.trim(),
@@ -423,10 +422,13 @@ export function DispatchLinkingSheet({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="dispatch-link-invoice-number">Invoice Number</Label>
+                {/* The invoice number is the SAP document number; it is shown for
+                    reference and is no longer an editable override. */}
                 <Input
                   id="dispatch-link-invoice-number"
                   value={form.invoice_number}
-                  onChange={(event) => updateField('invoice_number', event.target.value)}
+                  readOnly
+                  disabled
                 />
               </div>
 
