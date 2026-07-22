@@ -286,16 +286,53 @@ export default function SalesDispatchAttachmentsPage() {
       setUploadingMessage(
         type === 'TRUCK_PHOTO' ? 'Uploading truck photo...' : 'Uploading document...',
       );
-      await uploadAttachment.mutateAsync({
-        id: entry.id,
-        data: {
-          attachment_type: type,
-          file,
-          notes,
-          latitude: location?.latitude ?? null,
-          longitude: location?.longitude ?? null,
-        },
-      });
+      const uploadOnce = (allowPartial: boolean) =>
+        uploadAttachment.mutateAsync({
+          id: entry.id,
+          data: {
+            attachment_type: type,
+            file,
+            notes,
+            latitude: location?.latitude ?? null,
+            longitude: location?.longitude ?? null,
+            ...(allowPartial ? { allow_partial: true } : {}),
+          },
+        });
+      try {
+        await uploadOnce(false);
+      } catch (blockError) {
+        // "One docking per truck": the truck photo is blocked while booked bills
+        // are still un-docked. Let the operator dock them first, or override to
+        // dispatch what's loaded and leave the rest.
+        const respData = (
+          blockError as {
+            response?: {
+              data?: {
+                requires_partial_override?: boolean;
+                detail?: string;
+                undocked_bills?: { sap_doc_num: string }[];
+              };
+            };
+          }
+        )?.response?.data;
+        if (type === 'TRUCK_PHOTO' && respData?.requires_partial_override) {
+          const bills = (respData.undocked_bills ?? [])
+            .map((b) => b.sap_doc_num)
+            .join(', ');
+          const proceed = window.confirm(
+            `${respData.detail ?? 'This truck has booked bills not on this docking.'}\n\n` +
+              `OK = dispatch partial (leave ${bills} behind).\n` +
+              `Cancel = go dock the remaining bills onto this docking first.`,
+          );
+          if (!proceed) {
+            toast.info('Dock the remaining bills onto this docking, then upload the photo.');
+            return;
+          }
+          await uploadOnce(true);
+        } else {
+          throw blockError;
+        }
+      }
       toast.success(
         type === 'TRUCK_PHOTO' ? 'Truck photo uploaded with location' : 'Document uploaded',
       );
