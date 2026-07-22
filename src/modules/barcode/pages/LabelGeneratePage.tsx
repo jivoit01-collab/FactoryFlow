@@ -1,4 +1,4 @@
-import { Plus, Printer, Settings2 } from 'lucide-react';
+import { AlertTriangle, Plus, Printer, Settings2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
@@ -13,6 +13,12 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Label as FormLabel,
   Select,
   SelectContent,
@@ -54,6 +60,7 @@ export default function LabelGeneratePage() {
   const [selectedItem, setSelectedItem] = useState<OitmItemRow | null>(null);
   const [generatedBoxes, setGeneratedBoxes] = useState<Box[]>([]);
   const [labelDataList, setLabelDataList] = useState<LabelData[]>([]);
+  const [reuseConfirmOpen, setReuseConfirmOpen] = useState(false);
   const { printerName, printMode, setPrinterName, setPrintMode } = usePrinterProfile();
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -175,7 +182,12 @@ export default function LabelGeneratePage() {
     return { itemCode, batchNumber, warehouse, qty, boxCount };
   };
 
-  const handleGenerateAndPrint = async () => {
+  // Boxes already linked to the selected pallet — either pre-existing on the
+  // record or generated onto it earlier in this same session (the record's
+  // box_count stays stale after the first print, so we add both).
+  const linkedBoxCount = (selectedPallet?.box_count ?? 0) + generatedBoxes.length;
+
+  const runGenerateAndPrint = async () => {
     const valid = validateForm();
     if (!valid || !selectedPallet) return;
 
@@ -225,6 +237,23 @@ export default function LabelGeneratePage() {
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to generate and print linked labels.');
     }
+  };
+
+  const handleGenerateClick = () => {
+    const valid = validateForm();
+    if (!valid || !selectedPallet) return;
+    // Guard the common mistake: forgetting to switch to a fresh pallet, so the
+    // next run's boxes pile onto the pallet that was just printed.
+    if (linkedBoxCount > 0) {
+      setReuseConfirmOpen(true);
+      return;
+    }
+    void runGenerateAndPrint();
+  };
+
+  const confirmReusePallet = () => {
+    setReuseConfirmOpen(false);
+    void runGenerateAndPrint();
   };
 
   return (
@@ -532,7 +561,7 @@ export default function LabelGeneratePage() {
 
           <div className="mt-4 flex gap-2">
             <Button
-              onClick={handleGenerateAndPrint}
+              onClick={handleGenerateClick}
               disabled={
                 generateMutation.isPending ||
                 addBoxesMutation.isPending ||
@@ -589,6 +618,50 @@ export default function LabelGeneratePage() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={reuseConfirmOpen} onOpenChange={setReuseConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Add more labels to the same pallet?
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 pt-1 text-sm">
+                <p>
+                  Pallet{' '}
+                  <span className="font-mono font-medium text-foreground">
+                    {selectedPallet?.pallet_id}
+                  </span>{' '}
+                  already has{' '}
+                  <span className="font-medium text-foreground">{linkedBoxCount}</span> box label
+                  {linkedBoxCount === 1 ? '' : 's'} linked to it.
+                </p>
+                <p>
+                  Printing now will add{' '}
+                  <span className="font-medium text-foreground">{form.box_count || 0}</span> more box
+                  {form.box_count === '1' ? '' : 'es'} onto this <strong>same</strong> pallet — not a
+                  new one.
+                </p>
+                <p>
+                  If you are starting a new pallet, cancel and select a different empty pallet first.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setReuseConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={confirmReusePallet}
+            >
+              Add to same pallet anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div aria-hidden style={{ position: 'fixed', left: '-10000px', top: 0 }}>
         <div ref={printRef} className="barcode-print-sheet">
