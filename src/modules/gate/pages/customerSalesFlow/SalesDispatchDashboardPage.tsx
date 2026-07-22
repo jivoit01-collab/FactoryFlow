@@ -608,7 +608,7 @@ function DispatchTable({
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0" />
             )}
-            <span>{group.subEntries.length} dockings</span>
+            <span>{group.companies.length} companies</span>
           </div>
         </td>
         <td className="whitespace-nowrap p-3 text-sm">
@@ -630,7 +630,7 @@ function DispatchTable({
           ) : null}
         </td>
         <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
-          {group.subEntries.length} entries
+          One truck
         </td>
         <td className="p-3 text-sm" title={docNumbers.join(', ')}>
           <div className="flex flex-wrap items-center gap-2">

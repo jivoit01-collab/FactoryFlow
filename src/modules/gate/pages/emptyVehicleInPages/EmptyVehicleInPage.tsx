@@ -221,7 +221,7 @@ export default function EmptyVehicleInPage() {
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0" />
             )}
-            <span>{group.subEntries.length} gate-ins</span>
+            <span>{group.companies.length} companies</span>
           </div>
         </td>
         <td className="whitespace-nowrap p-3 text-sm">
@@ -243,7 +243,7 @@ export default function EmptyVehicleInPage() {
           ) : null}
         </td>
         <td className="p-3 text-sm text-muted-foreground" colSpan={7}>
-          {group.subEntries.length} entries — expand to view each company
+          One physical truck — expand to view each company
         </td>
       </tr>
     );
