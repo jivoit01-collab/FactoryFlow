@@ -186,7 +186,13 @@ export default function InspectionDetailPage() {
   // "Unmapped" now means the lookup finished with no candidates (or errored) and
   // the user hasn't linked one manually — the empty-list case the backend
   // returns instead of a 404.
+  // Only meaningful while we actively resolve from the SAP item (new/edit). In
+  // pure view mode the by-SAP lookup is disabled, so its empty candidate list
+  // must NOT be read as "unmapped" — the inspection already carries a persisted
+  // material type (shown via inspection.material_type_name). Without this guard
+  // every saved inspection falsely renders "No material type mapping found".
   const isUnmappedMaterialType =
+    shouldResolveMaterialType &&
     !manualLinkedMaterialType &&
     !isResolvingMaterialType &&
     Boolean(sapItemCode) &&
