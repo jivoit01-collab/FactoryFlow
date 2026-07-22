@@ -255,6 +255,8 @@ export default function MpDeliveryNotesPage() {
   const [batchId, setBatchId] = useState<number | null>(null);
   const { data: sheetsData } = useDeliveryNoteSheets(CHANNEL);
   const dnSheets = sheetsData?.sheets ?? [];
+  const [sheetSearch, setSheetSearch] = useState('');
+  const [sheetRange, setSheetRange] = useState<MpRange>(EMPTY_RANGE);
   const currentSheet = dnSheets.find((s) => s.id === batchId) ?? null;
   const scopeLabel = currentSheet
     ? `sheet "${currentSheet.filename || `#${currentSheet.id}`}"`
@@ -273,8 +275,6 @@ export default function MpDeliveryNotesPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shortfallOpen, setShortfallOpen] = useState(false);
   const [showLines, setShowLines] = useState(false);
-  const [sheetSearch, setSheetSearch] = useState('');
-  const [sheetRange, setSheetRange] = useState<MpRange>(EMPTY_RANGE);
   const [tab, setTab] = useState<Tab>('READY');
   const [search, setSearch] = useState('');
   const [range, setRange] = useState<MpRange>(EMPTY_RANGE);
