@@ -1,8 +1,8 @@
 import { Truck } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { DISPATCH_PERMISSIONS, GATE_PERMISSIONS, GRPO_PERMISSIONS } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 const DispatchDashboardPage = lazy(() => import('./pages/DispatchDashboardPage'));
@@ -21,6 +21,7 @@ const PreviouslyRegisteredVehiclePage = lazy(
 const InsideVehicleManagerPage = lazy(
   () => import('@/modules/vehicle-management/pages/InsideVehicleManagerPage'),
 );
+const DispatchTrackingPage = lazy(() => import('@/modules/dispatch/pages/DispatchTrackingPage'));
 const ServiceGRPODashboardPage = lazy(
   () => import('@/modules/warehouse/grpo/pages/ServiceGRPODashboardPage'),
 );
@@ -67,6 +68,7 @@ const dispatchViewPermissions = [
   // add-bill-only SCM operator) still sees the Dispatch parent menu and the
   // /dispatch landing. Every other child's view perm is represented here too.
   DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW,
+  DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW,
   // Service GRPO (transporter bilty) is a dispatch function — gate the module on
   // the dispatch-owned can_post_bilty_service_grpo, NOT the material-GRPO app
   // perms, so material-GRPO clerks don't see the whole Dispatch module (A7a).
@@ -136,6 +138,13 @@ export const dispatchModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW],
       breadcrumb: { label: 'Inside Vehicle Manager' },
+    },
+    {
+      path: '/dispatch/tracking',
+      element: <DispatchTrackingPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
+      breadcrumb: { label: 'Dispatch Tracking' },
     },
     {
       path: '/dispatch/docking',
@@ -330,6 +339,11 @@ export const dispatchModuleConfig: ModuleConfig = {
           path: '/dispatch/docking',
           title: 'Docking',
           permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
+        },
+        {
+          path: '/dispatch/tracking',
+          title: 'Dispatch Tracking',
+          permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
         },
         {
           path: '/dispatch/docking/reprint',

@@ -16,6 +16,9 @@ export const DISPATCH_PERMISSIONS = {
   INSIDE_VEHICLE_MOVE_BILL: 'dispatch_plans.can_move_bill_inside_vehicle',
   INSIDE_VEHICLE_UNLINK_ALL: 'dispatch_plans.can_unlink_bills_inside_vehicle',
   INSIDE_VEHICLE_MARK_OUT: 'dispatch_plans.can_mark_out_inside_vehicle',
+  // Dispatch Tracking (post-dispatch truck status log).
+  DISPATCH_TRACKING_VIEW: 'gate_core.can_view_dispatch_tracking',
+  DISPATCH_TRACKING_UPDATE: 'gate_core.can_update_dispatch_tracking',
 } as const;
 
 export type DispatchPermission =

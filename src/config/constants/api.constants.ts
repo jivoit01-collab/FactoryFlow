@@ -105,6 +105,9 @@ export const API_ENDPOINTS = {
     ARRIVAL_EMPTY_OUT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/empty-out/`,
     ARRIVAL_TRUCK_PHOTO_BY_ID: (id: number) => `/gate-core/arrivals/${id}/truck-photo/`,
     ARRIVAL_DISPATCH_BY_ID: (id: number) => `/gate-core/arrivals/${id}/dispatch/`,
+    DISPATCH_TRACKING: '/gate-core/dispatch-tracking/',
+    DISPATCH_TRACKING_UPDATES: (arrivalId: number) =>
+      `/gate-core/dispatch-tracking/${arrivalId}/updates/`,
     ARRIVAL_GATEPASS_READINESS_BY_ID: (id: number) =>
       `/gate-core/arrivals/${id}/gatepass/readiness/`,
     ARRIVAL_GATEPASS_PRINT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/print/`,
