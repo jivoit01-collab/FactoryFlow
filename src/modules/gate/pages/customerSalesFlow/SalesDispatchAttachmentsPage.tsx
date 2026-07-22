@@ -23,6 +23,7 @@ import {
   useUpdateSalesDispatch,
   useUploadSalesDispatchAttachment,
 } from '@/modules/gate/api';
+import { useUploadArrivalTruckPhoto } from '@/modules/gate/api/arrivals/arrivals.queries';
 import { StepFooter, StepHeader, StepLoadingSpinner } from '@/modules/gate/components';
 import { useEntryId } from '@/modules/gate/hooks';
 import {
@@ -134,7 +135,12 @@ export default function SalesDispatchAttachmentsPage() {
     entry?.id,
   );
   const uploadAttachment = useUploadSalesDispatchAttachment();
+  const uploadArrivalTruckPhoto = useUploadArrivalTruckPhoto();
   const updateSalesDispatch = useUpdateSalesDispatch();
+  // A multi-company truck is one physical load: its photo attaches to (and locks)
+  // every company's docking in one upload via the arrival endpoint, instead of a
+  // separate photo per company.
+  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1 && Boolean(entry?.arrival);
   const previewGatepass = usePreviewSalesDispatchGatepass();
 
   const isReadOnly = entry
@@ -287,17 +293,30 @@ export default function SalesDispatchAttachmentsPage() {
         type === 'TRUCK_PHOTO' ? 'Uploading truck photo...' : 'Uploading document...',
       );
       const uploadOnce = (allowPartial: boolean) =>
-        uploadAttachment.mutateAsync({
-          id: entry.id,
-          data: {
-            attachment_type: type,
-            file,
-            notes,
-            latitude: location?.latitude ?? null,
-            longitude: location?.longitude ?? null,
-            ...(allowPartial ? { allow_partial: true } : {}),
-          },
-        });
+        type === 'TRUCK_PHOTO' && isMultiCompanyArrival && entry.arrival
+          ? // One physical truck: the photo fans to every company's docking in a
+            // single arrival-level upload (and locks the whole truck's load).
+            uploadArrivalTruckPhoto.mutateAsync({
+              id: entry.arrival,
+              data: {
+                file,
+                notes,
+                latitude: location?.latitude ?? null,
+                longitude: location?.longitude ?? null,
+                ...(allowPartial ? { allow_partial: true } : {}),
+              },
+            })
+          : uploadAttachment.mutateAsync({
+              id: entry.id,
+              data: {
+                attachment_type: type,
+                file,
+                notes,
+                latitude: location?.latitude ?? null,
+                longitude: location?.longitude ?? null,
+                ...(allowPartial ? { allow_partial: true } : {}),
+              },
+            });
       try {
         await uploadOnce(false);
       } catch (blockError) {

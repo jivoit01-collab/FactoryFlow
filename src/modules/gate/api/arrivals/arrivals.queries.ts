@@ -66,6 +66,21 @@ export function useEmptyOutArrival() {
   });
 }
 
+/** One truck photo -> every company's docking on the arrival (whole-truck lock). */
+export function useUploadArrivalTruckPhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Parameters<typeof arrivalsApi.truckPhoto>[1];
+    }) => arrivalsApi.truckPhoto(id, data),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
 /** Per-company readiness for the one combined ARV/... gatepass on a truck. */
 export function useArrivalGatepassReadiness(id?: number | null, options?: { enabled?: boolean }) {
   return useQuery({
