@@ -15,7 +15,6 @@ import {
   useSalesDispatchPendingBookings,
   useUpdateSalesDispatch,
 } from '@/modules/gate/api';
-import { useArrivalExpected } from '@/modules/gate/api/arrivals/arrivals.queries';
 import {
   DriverSelect,
   type DriverSelection,
@@ -307,12 +306,19 @@ export default function SalesDispatchNewPage() {
   // company, Step 1 docks EVERY company together -- one docking per company under
   // the shared arrival -- so the truck moves through the flow as a single entry.
   const draftVehicleId = draft.vehicle?.vehicleId ?? null;
-  const { data: truckExpected } = useArrivalExpected(draftVehicleId);
-  const truckCompanies = useMemo(
-    () => (truckExpected?.companies ?? []).filter((company) => company.bills.length > 0),
-    [truckExpected],
+  // Every company's bills gated in and READY TO DOCK on this physical truck: the
+  // pending bookings across all the user's companies, filtered to this vehicle
+  // (one booking per company). A truck spanning >1 company docks them together.
+  const { data: allPendingBookings = [] } = useSalesDispatchPendingBookings(
+    { all_companies: 1 },
+    { enabled: Boolean(draftVehicleId) && !existingEntry },
   );
-  const isMultiCompanyTruck = !existingEntry && truckCompanies.length > 1;
+  const truckBookings = useMemo(
+    () => allPendingBookings.filter((booking) => booking.vehicle === draftVehicleId),
+    [allPendingBookings, draftVehicleId],
+  );
+  const isMultiCompanyTruck =
+    !existingEntry && new Set(truckBookings.map((booking) => booking.company_code)).size > 1;
   const documentOptions = useMemo(() => {
     if (existingEntryDocumentOption) return [existingEntryDocumentOption];
     if (pendingBookingDocumentOption) return [pendingBookingDocumentOption];
@@ -418,24 +424,25 @@ export default function SalesDispatchNewPage() {
       };
       try {
         let firstEntry: SalesDispatchGateOut | null = null;
-        for (const company of truckCompanies) {
+        for (const booking of truckBookings) {
+          if (!booking.documents.length) continue;
           const entry = await createSalesDispatch.mutateAsync({
             ...payload,
-            document_type: 'INVOICE' as SalesDispatchDocumentType,
-            sap_doc_entry: company.bills[0].sap_invoice_doc_entry,
-            documents: company.bills.map((bill) => ({
-              document_type: 'INVOICE' as SalesDispatchDocumentType,
-              sap_doc_entry: bill.sap_invoice_doc_entry,
-              dispatch_plan_id: bill.dispatch_plan_id,
+            document_type: booking.documents[0].document_type,
+            sap_doc_entry: booking.documents[0].doc_entry,
+            documents: booking.documents.map((document) => ({
+              document_type: document.document_type,
+              sap_doc_entry: document.doc_entry,
+              dispatch_plan_id: getDispatchPlanId(document),
             })),
             vehicle_id: vehicleId,
             driver_id: driverId,
-            dispatch_plan_id: company.bills[0].dispatch_plan_id,
+            dispatch_plan_id: getDispatchPlanId(booking.documents[0]),
           });
           if (!firstEntry) firstEntry = entry;
         }
         if (firstEntry) {
-          toast.success(`Docked ${truckCompanies.length} companies on this truck`);
+          toast.success(`Docked ${truckBookings.length} companies on this truck`);
           navigate(DOCKING_ROUTES.barcodeScan(firstEntry.vehicle_entry));
         }
       } catch (error) {
@@ -577,30 +584,28 @@ export default function SalesDispatchNewPage() {
           {isMultiCompanyTruck ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                This truck carries bills for {truckCompanies.length} companies. Docking creates one
+                This truck carries bills for {truckBookings.length} companies. Docking creates one
                 docking per company and loads them together as a single truck.
               </p>
-              {truckCompanies.map((company) => (
-                <div key={company.company_id} className="rounded-md border p-3">
+              {truckBookings.map((booking) => (
+                <div key={booking.id} className="rounded-md border p-3">
                   <div className="mb-2 flex items-center gap-2">
                     <span className="inline-flex rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
-                      {company.company_name}
+                      {booking.company_name || booking.company_code}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {company.bills.length} bill{company.bills.length === 1 ? '' : 's'}
+                      {booking.documents.length} bill{booking.documents.length === 1 ? '' : 's'}
                     </span>
                   </div>
                   <div className="space-y-1">
-                    {company.bills.map((bill) => (
+                    {booking.documents.map((document) => (
                       <div
-                        key={bill.dispatch_plan_id}
+                        key={`${document.document_type}:${document.doc_entry}`}
                         className="flex flex-wrap items-center gap-2 text-sm"
                       >
-                        <span className="font-mono font-medium">{bill.sap_invoice_doc_num}</span>
-                        {bill.place_of_supply ? (
-                          <span className="text-xs text-muted-foreground">
-                            {bill.place_of_supply}
-                          </span>
+                        <span className="font-mono font-medium">{document.doc_num}</span>
+                        {document.card_name ? (
+                          <span className="text-xs text-muted-foreground">{document.card_name}</span>
                         ) : null}
                       </div>
                     ))}
