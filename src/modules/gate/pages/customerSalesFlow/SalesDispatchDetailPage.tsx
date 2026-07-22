@@ -24,6 +24,7 @@ import {
   useRejectSalesDispatch,
   useSalesDispatch,
 } from '@/modules/gate/api';
+import { useArrivalDockings } from '@/modules/gate/api/arrivals/arrivals.queries';
 import { GateStatusBadge, StepLoadingSpinner } from '@/modules/gate/components';
 import {
   Button,
@@ -82,6 +83,11 @@ export default function SalesDispatchDetailPage() {
   const [rejectError, setRejectError] = useState('');
 
   const { data: entry, isLoading, error, refetch } = useSalesDispatch(id);
+  // One physical truck = one page: a multi-company truck pulls in every company's
+  // docking so this page shows all the bills (and scans + photos), not just the
+  // one docking that was opened.
+  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1 && Boolean(entry?.arrival);
+  const arrivalDockings = useArrivalDockings(entry?.arrival, { enabled: isMultiCompanyArrival });
   const cancelSalesDispatch = useCancelSalesDispatch();
   const rejectSalesDispatch = useRejectSalesDispatch();
 
@@ -172,7 +178,22 @@ export default function SalesDispatchDetailPage() {
     );
   }
 
-  const detailDocuments = getDetailDocuments(entry);
+  // The truck's dockings (all companies) when multi-company, else just this one.
+  const truckDockings =
+    isMultiCompanyArrival && arrivalDockings.dockings.length
+      ? arrivalDockings.dockings
+      : [entry];
+  const detailDocuments = truckDockings.flatMap((docking) => getDetailDocuments(docking));
+  // Merge scans + attachments across the truck so Scanned Boxes + Attachments show
+  // the whole load, not just the opened docking. (Overview/Audit keep this docking.)
+  const loadEntry =
+    truckDockings.length > 1
+      ? {
+          ...entry,
+          box_scans: truckDockings.flatMap((docking) => docking.box_scans ?? []),
+          attachments: truckDockings.flatMap((docking) => docking.attachments ?? []),
+        }
+      : entry;
 
   return (
     <div className="space-y-6 pb-6">
@@ -251,7 +272,7 @@ export default function SalesDispatchDetailPage() {
         </CardContent>
       </Card>
 
-      <BoxScansCard entry={entry} />
+      <BoxScansCard entry={loadEntry} />
 
       <Card>
         <CardHeader>
@@ -261,11 +282,11 @@ export default function SalesDispatchDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {entry.attachments.length === 0 ? (
+          {loadEntry.attachments.length === 0 ? (
             <p className="text-sm text-muted-foreground">No attachments uploaded</p>
           ) : (
             <div className="grid gap-2 md:grid-cols-2">
-              {entry.attachments.map((attachment) => (
+              {loadEntry.attachments.map((attachment) => (
                 <a
                   key={attachment.id}
                   href={resolveFileUrl(attachment.file)}
@@ -375,7 +396,19 @@ function DockingOverviewCard({
   documents: DetailDocument[];
 }) {
   const primaryDocument = documents[0];
-  const customer = entry.customer_name || primaryDocument?.customer_name || entry.to_warehouse;
+  // A multi-company truck carries several bills; show them all (and all their
+  // customers) here, not just the opened docking's one.
+  const documentNumbers =
+    documents
+      .map((document) => formatValue(document.sap_doc_num))
+      .filter((value) => value && value !== '-')
+      .join(', ') || formatDocumentNumbers(entry);
+  const customerNames = Array.from(
+    new Set(documents.map((document) => document.customer_name).filter(Boolean)),
+  );
+  const customer = customerNames.length
+    ? customerNames.join(', ')
+    : entry.customer_name || primaryDocument?.customer_name || entry.to_warehouse;
   const destination = primaryDocument
     ? formatDocumentDestination(primaryDocument)
     : entry.ship_to_address || entry.warehouses;
@@ -402,7 +435,7 @@ function DockingOverviewCard({
         </InfoGroup>
 
         <InfoGroup title="Document">
-          <InfoItem label="SAP Document" value={formatDocumentNumbers(entry)} />
+          <InfoItem label="SAP Document" value={documentNumbers} />
           <InfoItem label="Customer" value={customer} />
           <InfoItem label="Destination" value={destination} />
           <InfoItem label="GSTIN" value={entry.bp_gstin || primaryDocument?.bp_gstin} />

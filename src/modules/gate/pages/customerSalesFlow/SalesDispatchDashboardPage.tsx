@@ -1,7 +1,5 @@
 import {
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Clock,
   Download,
   FileText,
@@ -14,7 +12,7 @@ import {
   Truck,
   Unlock,
 } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -23,6 +21,7 @@ import { DASHBOARDS_PERMISSIONS, GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
+import { PIPELINE_STAGE_ORDER } from '@/modules/dashboards/dispatch-pipeline/constants';
 import type { PipelineStage } from '@/modules/dashboards/dispatch-pipeline/types';
 import {
   buildPipelineStatusFromStage,
@@ -481,14 +480,6 @@ function DispatchTable({
   // group renders exactly as before; a multi-entry group collapses its
   // per-company docking rows under one vehicle summary.
   const vehicleGroups = useMemo(() => buildDockingVehicleGroups(entries), [entries]);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
-  const toggleGroup = (key: string) =>
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
 
   const renderSubRow = (entry: SalesDispatchDashboardEntry, indent: boolean) => {
     const itemSummary = entry.item_summary || summarizeItems(getEntryItems(entry));
@@ -585,8 +576,28 @@ function DispatchTable({
     );
   };
 
-  const renderGroupRow = (group: DockingVehicleGroup) => {
-    const isOpen = expandedGroups.has(group.key);
+  // One physical truck = ONE row, shown exactly like a single-company docking:
+  // the company lives on the bills, everything else on the truck. The Status is
+  // the TRUCK's -- its slowest bill's stage (the truck isn't gatepass-ready until
+  // every company's docking is) -- and clicking the row opens the truck's flow
+  // (one detail/scan page carrying every company's bills). The per-company
+  // SalesDispatchGateOut records stay only where SAP needs them, invisible here.
+  const renderMergedTruckRow = (group: DockingVehicleGroup) => {
+    const primary = group.subEntries[0];
+    // The truck sits at its least-advanced docking; that docking drives the row's
+    // status + where clicking the truck goes next in the flow.
+    const slowest = group.subEntries.reduce((slowestEntry, entry) =>
+      stageRank(getSalesDispatchDashboardEntryStage(entry)) <
+      stageRank(getSalesDispatchDashboardEntryStage(slowestEntry))
+        ? entry
+        : slowestEntry,
+    );
+    const truckStage = getSalesDispatchDashboardEntryStage(slowest);
+    const allGatepassPrinted = group.subEntries.every((entry) => Boolean(entry.gatepass_no));
+    const itemSummary = group.subEntries
+      .map((entry) => entry.item_summary || summarizeItems(getEntryItems(entry)))
+      .filter(Boolean)
+      .join('; ');
     const docCount = group.subEntries.reduce((sum, entry) => sum + getDocumentCount(entry), 0);
     const docNumbers = group.subEntries.flatMap((entry) => getDashboardDocumentNumbers(entry));
     const customers = Array.from(
@@ -598,25 +609,34 @@ function DispatchTable({
     );
     return (
       <tr
-        className="cursor-pointer border-t bg-muted/30 align-top font-medium transition-colors hover:bg-muted/50"
-        onClick={() => toggleGroup(group.key)}
+        key={group.key}
+        className={cn(
+          'cursor-pointer border-t align-top transition-colors',
+          getPipelineStageRowClass(truckStage) || 'hover:bg-muted/50',
+        )}
+        onClick={() =>
+          navigate(
+            getSalesDispatchDashboardEntryPath(
+              slowest,
+              newEntryPath,
+              detailPath,
+              weighmentPath,
+              gatepassPath,
+              isGateOutMode,
+            ),
+          )
+        }
       >
         <td className="whitespace-nowrap p-3 text-sm font-medium">
-          <div className="flex items-center gap-1.5">
-            {isOpen ? (
-              <ChevronDown className="h-4 w-4 shrink-0" />
-            ) : (
-              <ChevronRight className="h-4 w-4 shrink-0" />
-            )}
-            <span>{group.subEntries.length} dockings</span>
-          </div>
+          {group.arrivalNo || primary.entry_no}
         </td>
-        <td className="whitespace-nowrap p-3 text-sm">
+        <td className="p-3 text-sm">
+          {/* Company lives on the bills: show every company the truck carries. */}
           <div className="flex flex-wrap gap-1">
             {group.companies.map((company) => (
               <span
                 key={company}
-                className="inline-flex whitespace-nowrap rounded-full border bg-background px-2 py-0.5 text-xs font-medium"
+                className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium"
               >
                 {company}
               </span>
@@ -629,8 +649,9 @@ function DispatchTable({
             <div className="text-xs text-muted-foreground">{group.arrivalNo}</div>
           ) : null}
         </td>
-        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
-          {group.subEntries.length} entries
+        <td className="p-3 text-sm">
+          {/* One status -- the truck's, not per bill. */}
+          <PipelineStatusBadge status={buildPipelineStatusFromStage(truckStage)} />
         </td>
         <td className="p-3 text-sm" title={docNumbers.join(', ')}>
           <div className="flex flex-wrap items-center gap-2">
@@ -647,10 +668,19 @@ function DispatchTable({
             {customers.length ? customers.join(', ') : '-'}
           </div>
         </td>
-        <td className="p-3 text-sm text-muted-foreground">—</td>
-        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
-        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
-        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
+        <td className="p-3 text-sm text-muted-foreground" title={itemSummary}>
+          <div className="truncate whitespace-nowrap">{itemSummary || '—'}</div>
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          {formatDate(getPlannedDispatchDate(primary))}
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">{getActualGateOut(primary)}</td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <GateStatusBadge
+            status={allGatepassPrinted ? 'PRINTED' : 'PENDING'}
+            label={allGatepassPrinted ? 'Printed' : 'Pending'}
+          />
+        </td>
       </tr>
     );
   };
@@ -689,22 +719,22 @@ function DispatchTable({
           </thead>
           <tbody>
             {vehicleGroups.map((group) =>
-              group.subEntries.length === 1 ? (
-                renderSubRow(group.subEntries[0], false)
-              ) : (
-                <Fragment key={group.key}>
-                  {renderGroupRow(group)}
-                  {expandedGroups.has(group.key)
-                    ? group.subEntries.map((entry) => renderSubRow(entry, true))
-                    : null}
-                </Fragment>
-              ),
+              group.subEntries.length === 1
+                ? renderSubRow(group.subEntries[0], false)
+                : renderMergedTruckRow(group),
             )}
           </tbody>
         </table>
       </div>
     </div>
   );
+}
+
+// Position of a stage in the pipeline; unknown stages sort last. Lets a truck's
+// row take its slowest (least-advanced) docking's stage as the truck status.
+function stageRank(stage: PipelineStage): number {
+  const index = PIPELINE_STAGE_ORDER.indexOf(stage);
+  return index === -1 ? PIPELINE_STAGE_ORDER.length : index;
 }
 
 function getSalesDispatchDashboardEntryStage(entry: SalesDispatchDashboardEntry): PipelineStage {

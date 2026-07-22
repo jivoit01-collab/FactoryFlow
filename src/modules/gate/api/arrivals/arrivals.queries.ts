@@ -1,5 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { salesDispatchApi,type SalesDispatchGateOut } from '../salesDispatch/salesDispatch.api';
+import { SALES_DISPATCH_QUERY_KEYS } from '../salesDispatch/salesDispatch.queries';
 import { type ArrivalCreateRequest, arrivalsApi } from './arrivals.api';
 
 export const ARRIVALS_QUERY_KEYS = {
@@ -66,6 +68,21 @@ export function useEmptyOutArrival() {
   });
 }
 
+/** One truck photo -> every company's docking on the arrival (whole-truck lock). */
+export function useUploadArrivalTruckPhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Parameters<typeof arrivalsApi.truckPhoto>[1];
+    }) => arrivalsApi.truckPhoto(id, data),
+    onSuccess: () => invalidateArrivalRelated(queryClient),
+  });
+}
+
 /** Per-company readiness for the one combined ARV/... gatepass on a truck. */
 export function useArrivalGatepassReadiness(id?: number | null, options?: { enabled?: boolean }) {
   return useQuery({
@@ -74,6 +91,41 @@ export function useArrivalGatepassReadiness(id?: number | null, options?: { enab
     enabled: (options?.enabled ?? true) && !!id,
     staleTime: 15 * 1000,
   });
+}
+
+/**
+ * Every company's full docking on one physical truck, so a per-docking flow page
+ * can show and act on the WHOLE truck. Fans out over the arrival's gatepass-
+ * readiness companies (each carries its `docking_id`) and fetches each docking by
+ * id -- the same pattern the combined gatepass panel uses, shared here for the
+ * detail + scan pages.
+ */
+export function useArrivalDockings(arrivalId?: number | null, options?: { enabled?: boolean }) {
+  const validId = Number.isFinite(arrivalId) && (arrivalId ?? 0) > 0;
+  const enabled = (options?.enabled ?? true) && validId;
+  const readiness = useArrivalGatepassReadiness(arrivalId, { enabled });
+  const companies = readiness.data?.companies ?? [];
+  const dockingQueries = useQueries({
+    queries: companies.map((company) => ({
+      queryKey: SALES_DISPATCH_QUERY_KEYS.detail(company.docking_id),
+      queryFn: () => salesDispatchApi.get(company.docking_id),
+      enabled: enabled && !!company.docking_id,
+      staleTime: 15 * 1000,
+    })),
+  });
+  const dockings = dockingQueries
+    .map((query) => query.data)
+    .filter((docking): docking is SalesDispatchGateOut => Boolean(docking));
+  return {
+    dockings,
+    companies,
+    isLoading: readiness.isLoading || dockingQueries.some((query) => query.isLoading),
+    isFetching: readiness.isFetching || dockingQueries.some((query) => query.isFetching),
+    refetch: async () => {
+      await readiness.refetch();
+      await Promise.all(dockingQueries.map((query) => query.refetch()));
+    },
+  };
 }
 
 export function usePrintArrivalGatepass() {

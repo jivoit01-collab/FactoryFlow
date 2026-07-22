@@ -144,6 +144,39 @@ export const arrivalsApi = {
     return response.data;
   },
 
+  /** One truck photo -> every company's docking on the arrival (whole-truck load
+   * lock). Mirrors the per-docking upload body; `allow_partial` overrides the
+   * one-docking-per-truck block. */
+  async truckPhoto(
+    id: number,
+    data: {
+      file: File | Blob;
+      latitude?: number | string | null;
+      longitude?: number | string | null;
+      notes?: string;
+      allow_partial?: boolean;
+    },
+  ): Promise<{ arrival: VehicleArrival; photographed_dockings: number }> {
+    const formData = new FormData();
+    formData.append('file', data.file);
+    if (data.latitude !== undefined && data.latitude !== null) {
+      formData.append('latitude', String(data.latitude));
+    }
+    if (data.longitude !== undefined && data.longitude !== null) {
+      formData.append('longitude', String(data.longitude));
+    }
+    if (data.notes) formData.append('notes', data.notes);
+    if (data.allow_partial) formData.append('allow_partial', 'true');
+
+    const response = await apiClient.post<{
+      arrival: VehicleArrival;
+      photographed_dockings: number;
+    }>(API_ENDPOINTS.GATE_CORE.ARRIVAL_TRUCK_PHOTO_BY_ID(id), formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
   async gatepassReadiness(id: number): Promise<ArrivalGatepassReadiness> {
     const response = await apiClient.get<ArrivalGatepassReadiness>(
       API_ENDPOINTS.GATE_CORE.ARRIVAL_GATEPASS_READINESS_BY_ID(id),

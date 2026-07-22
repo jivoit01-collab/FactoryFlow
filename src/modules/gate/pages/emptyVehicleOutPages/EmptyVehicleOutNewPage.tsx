@@ -140,6 +140,19 @@ export default function EmptyVehicleOutNewPage() {
       )
     : null;
 
+  // A physical truck can be gated in under several companies on one shared
+  // arrival; it leaves once, so marking it out empty cascades to every sibling
+  // company's entry on the same arrival. Enumerate those siblings (from the same
+  // cross-company eligible feed) so the operator sees exactly what leaves with it.
+  // Empty when the truck is single-company or has no arrival -- then it's a plain
+  // one-entry exit and no whole-truck notice is shown.
+  const siblingEntries = useMemo(() => {
+    if (!selectedEntry?.arrival) return [];
+    return eligibleEntries.filter(
+      (entry) => entry.arrival === selectedEntry.arrival && entry.id !== selectedEntry.id,
+    );
+  }, [eligibleEntries, selectedEntry]);
+
   const handleSubmit = async () => {
     if (!selectedEntry) {
       setFormError('Please select an inward vehicle entry');
@@ -331,15 +344,35 @@ export default function EmptyVehicleOutNewPage() {
             </Card>
           )}
 
-          {selectedEntry?.arrival_no && (
+          {siblingEntries.length > 0 && (
             <div className="flex items-start gap-3 rounded-md border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
               <Truck className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                This truck arrived under multiple companies (arrival{' '}
-                {selectedEntry.arrival_no}). Marking it out empty will also mark
-                out and release the sibling companies&apos; entries for the same
-                physical trip.
-              </span>
+              <div className="min-w-0 space-y-2">
+                <p className="font-medium">
+                  One physical truck — {siblingEntries.length + 1} companies leave together
+                  (arrival {selectedEntry?.arrival_no}).
+                </p>
+                <p>
+                  Marking it out empty is a single exit for the whole truck: it also
+                  marks out and releases these sibling companies&apos; entries.
+                </p>
+                <ul className="space-y-1">
+                  {siblingEntries.map((entry) => (
+                    <li key={entry.id} className="flex flex-wrap items-center gap-x-2">
+                      <span className="inline-flex whitespace-nowrap rounded-full border border-blue-300 bg-white px-2 py-0.5 text-xs font-medium">
+                        {entry.company_name || entry.company_code || 'Company'}
+                      </span>
+                      <span className="font-mono text-xs">{entry.entry_no}</span>
+                      {entry.release_invoice_count > 0 ? (
+                        <span className="text-xs text-blue-800">
+                          releases {entry.release_invoice_count} bill
+                          {entry.release_invoice_count === 1 ? '' : 's'}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
 
