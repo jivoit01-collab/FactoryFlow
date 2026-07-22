@@ -15,6 +15,7 @@ import {
   useSalesDispatchPendingBookings,
   useUpdateSalesDispatch,
 } from '@/modules/gate/api';
+import { useArrivalExpected } from '@/modules/gate/api/arrivals/arrivals.queries';
 import {
   DriverSelect,
   type DriverSelection,
@@ -31,8 +32,8 @@ import { getErrorMessage } from '@/shared/utils';
 import {
   buildDocumentKey,
   buildDocumentLabel,
-  buildEntryDocumentLabel,
   buildEntryDocumentKey,
+  buildEntryDocumentLabel,
   DOCKING_TOTAL_STEPS,
   formatDocumentType,
   lockedDateTimeInputClassName,
@@ -301,6 +302,17 @@ export default function SalesDispatchNewPage() {
   );
   const createSalesDispatch = useCreateSalesDispatch();
   const updateSalesDispatch = useUpdateSalesDispatch();
+  // The whole truck's booked bills, grouped by company (only once a vehicle is
+  // chosen/seeded). When the physical truck carries bills for more than one
+  // company, Step 1 docks EVERY company together -- one docking per company under
+  // the shared arrival -- so the truck moves through the flow as a single entry.
+  const draftVehicleId = draft.vehicle?.vehicleId ?? null;
+  const { data: truckExpected } = useArrivalExpected(draftVehicleId);
+  const truckCompanies = useMemo(
+    () => (truckExpected?.companies ?? []).filter((company) => company.bills.length > 0),
+    [truckExpected],
+  );
+  const isMultiCompanyTruck = !existingEntry && truckCompanies.length > 1;
   const documentOptions = useMemo(() => {
     if (existingEntryDocumentOption) return [existingEntryDocumentOption];
     if (pendingBookingDocumentOption) return [pendingBookingDocumentOption];
@@ -381,6 +393,56 @@ export default function SalesDispatchNewPage() {
   const handleSaveAndNext = async () => {
     if (existingEntry && isExistingReadOnly) {
       navigate(DOCKING_ROUTES.barcodeScan(existingEntry.vehicle_entry));
+      return;
+    }
+
+    // Whole-truck docking: the physical truck carries bills for several companies,
+    // so dock EVERY company at once -- one docking per company (the backend keys
+    // each off its own plan) under the truck's shared arrival -- then walk into the
+    // one scan flow. The per-company records stay only where SAP needs them.
+    if (isMultiCompanyTruck) {
+      const vehicleId = draft.vehicle?.vehicleId;
+      const driverId = draft.driver?.driverId;
+      if (!vehicleId) return setFormError('Please select a vehicle');
+      if (!driverId) return setFormError('Please select a driver');
+      if (!draft.gateOutDate) return setFormError('Docking date is required');
+      if (!draft.outTime) return setFormError('Docking time is required');
+      setFormError('');
+
+      const payload = {
+        security_name: draft.securityName,
+        bilty_no: draft.biltyNo,
+        bilty_date: draft.biltyDate || null,
+        dock_incharge: draft.dockIncharge,
+        remarks: draft.remarks,
+      };
+      try {
+        let firstEntry: SalesDispatchGateOut | null = null;
+        for (const company of truckCompanies) {
+          const entry = await createSalesDispatch.mutateAsync({
+            ...payload,
+            document_type: 'INVOICE' as SalesDispatchDocumentType,
+            sap_doc_entry: company.bills[0].sap_invoice_doc_entry,
+            documents: company.bills.map((bill) => ({
+              document_type: 'INVOICE' as SalesDispatchDocumentType,
+              sap_doc_entry: bill.sap_invoice_doc_entry,
+              dispatch_plan_id: bill.dispatch_plan_id,
+            })),
+            vehicle_id: vehicleId,
+            driver_id: driverId,
+            dispatch_plan_id: company.bills[0].dispatch_plan_id,
+          });
+          if (!firstEntry) firstEntry = entry;
+        }
+        if (firstEntry) {
+          toast.success(`Docked ${truckCompanies.length} companies on this truck`);
+          navigate(DOCKING_ROUTES.barcodeScan(firstEntry.vehicle_entry));
+        }
+      } catch (error) {
+        // A create can fail mid-loop (e.g. a bill already docked). Earlier companies
+        // stay docked under the arrival; the operator can re-dock the rest.
+        setFormError(getErrorMessage(error, 'Failed to dock all companies on this truck'));
+      }
       return;
     }
 
@@ -512,7 +574,42 @@ export default function SalesDispatchNewPage() {
         </FormSection>
 
         <FormSection icon={<FileText className="h-5 w-5" />} title="SAP Document">
-          <div className="grid gap-4 lg:grid-cols-2">
+          {isMultiCompanyTruck ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                This truck carries bills for {truckCompanies.length} companies. Docking creates one
+                docking per company and loads them together as a single truck.
+              </p>
+              {truckCompanies.map((company) => (
+                <div key={company.company_id} className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="inline-flex rounded-full border bg-muted px-2 py-0.5 text-xs font-medium">
+                      {company.company_name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {company.bills.length} bill{company.bills.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {company.bills.map((bill) => (
+                      <div
+                        key={bill.dispatch_plan_id}
+                        className="flex flex-wrap items-center gap-2 text-sm"
+                      >
+                        <span className="font-mono font-medium">{bill.sap_invoice_doc_num}</span>
+                        {bill.place_of_supply ? (
+                          <span className="text-xs text-muted-foreground">
+                            {bill.place_of_supply}
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="sales-dispatch-document-type">
                 Document Type <span className="text-destructive">*</span>
@@ -597,7 +694,8 @@ export default function SalesDispatchNewPage() {
                 )}
               />
             </div>
-          </div>
+            </div>
+          )}
         </FormSection>
       </div>
 
