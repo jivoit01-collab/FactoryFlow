@@ -97,7 +97,11 @@ function buildVehicleGroups(vehicles: InsideDispatchVehicle[]): VehicleGroup[] {
   const groups = new Map<string, VehicleGroup>();
   const order: string[] = [];
   for (const v of vehicles) {
-    const key = v.arrival != null ? `arv:${v.arrival}` : `veh:${v.vehicle_entry_id}`;
+    // Fold by the shared arrival; fall back to the physical vehicle (NOT the
+    // per-company gate-in) so that if the arrival is ever missing, two companies
+    // on the same truck still land on one card instead of splitting. Safe here
+    // because this feed is inside-only (no departed rows to over-merge).
+    const key = v.arrival != null ? `arv:${v.arrival}` : `veh:${v.vehicle_id}`;
     let group = groups.get(key);
     if (!group) {
       group = {
