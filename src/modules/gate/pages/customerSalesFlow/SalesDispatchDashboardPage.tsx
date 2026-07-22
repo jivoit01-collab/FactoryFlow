@@ -1,6 +1,5 @@
 import {
   CheckCircle2,
-  ChevronRight,
   Clock,
   Download,
   FileText,
@@ -22,6 +21,7 @@ import { DASHBOARDS_PERMISSIONS, GATE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
+import { PIPELINE_STAGE_ORDER } from '@/modules/dashboards/dispatch-pipeline/constants';
 import type { PipelineStage } from '@/modules/dashboards/dispatch-pipeline/types';
 import {
   buildPipelineStatusFromStage,
@@ -576,13 +576,23 @@ function DispatchTable({
     );
   };
 
-  // One physical truck = ONE row. A multi-company truck still needs each
-  // company's OWN box-scan + photo step (those are per-docking), so every company
-  // renders as a clickable launcher chip that opens its next step; the combined
-  // gatepass / dispatch / depart live on any company's gatepass page. The rest of
-  // the row is truck-level aggregate, so it reads like a single-company entry.
+  // One physical truck = ONE row, shown exactly like a single-company docking:
+  // the company lives on the bills, everything else on the truck. The Status is
+  // the TRUCK's -- its slowest bill's stage (the truck isn't gatepass-ready until
+  // every company's docking is) -- and clicking the row opens the truck's flow
+  // (one detail/scan page carrying every company's bills). The per-company
+  // SalesDispatchGateOut records stay only where SAP needs them, invisible here.
   const renderMergedTruckRow = (group: DockingVehicleGroup) => {
     const primary = group.subEntries[0];
+    // The truck sits at its least-advanced docking; that docking drives the row's
+    // status + where clicking the truck goes next in the flow.
+    const slowest = group.subEntries.reduce((slowestEntry, entry) =>
+      stageRank(getSalesDispatchDashboardEntryStage(entry)) <
+      stageRank(getSalesDispatchDashboardEntryStage(slowestEntry))
+        ? entry
+        : slowestEntry,
+    );
+    const truckStage = getSalesDispatchDashboardEntryStage(slowest);
     const allGatepassPrinted = group.subEntries.every((entry) => Boolean(entry.gatepass_no));
     const itemSummary = group.subEntries
       .map((entry) => entry.item_summary || summarizeItems(getEntryItems(entry)))
@@ -598,36 +608,38 @@ function DispatchTable({
       ),
     );
     return (
-      <tr key={group.key} className="border-t bg-muted/20 align-top">
+      <tr
+        key={group.key}
+        className={cn(
+          'cursor-pointer border-t align-top transition-colors',
+          getPipelineStageRowClass(truckStage) || 'hover:bg-muted/50',
+        )}
+        onClick={() =>
+          navigate(
+            getSalesDispatchDashboardEntryPath(
+              slowest,
+              newEntryPath,
+              detailPath,
+              weighmentPath,
+              gatepassPath,
+              isGateOutMode,
+            ),
+          )
+        }
+      >
         <td className="whitespace-nowrap p-3 text-sm font-medium">
           {group.arrivalNo || primary.entry_no}
         </td>
         <td className="p-3 text-sm">
-          {/* Per-company launcher: each opens that company's own next step
-              (scan / photo / gatepass), so no per-company work is orphaned. */}
-          <div className="space-y-1">
-            {group.subEntries.map((sub) => (
-              <button
-                key={sub.id}
-                type="button"
-                title={`Open ${sub.company_name || sub.company_code || 'company'}'s docking`}
-                onClick={() =>
-                  navigate(
-                    getSalesDispatchDashboardEntryPath(
-                      sub,
-                      newEntryPath,
-                      detailPath,
-                      weighmentPath,
-                      gatepassPath,
-                      isGateOutMode,
-                    ),
-                  )
-                }
-                className="flex w-full items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-left text-xs font-medium transition-colors hover:bg-muted"
+          {/* Company lives on the bills: show every company the truck carries. */}
+          <div className="flex flex-wrap gap-1">
+            {group.companies.map((company) => (
+              <span
+                key={company}
+                className="inline-flex whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 text-xs font-medium"
               >
-                <span className="truncate">{sub.company_name || sub.company_code || '-'}</span>
-                <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-muted-foreground" />
-              </button>
+                {company}
+              </span>
             ))}
           </div>
         </td>
@@ -638,15 +650,8 @@ function DispatchTable({
           ) : null}
         </td>
         <td className="p-3 text-sm">
-          {/* Per-company status, aligned row-for-row with the launchers above. */}
-          <div className="space-y-1">
-            {group.subEntries.map((sub) => (
-              <PipelineStatusBadge
-                key={sub.id}
-                status={buildPipelineStatusFromStage(getSalesDispatchDashboardEntryStage(sub))}
-              />
-            ))}
-          </div>
+          {/* One status -- the truck's, not per bill. */}
+          <PipelineStatusBadge status={buildPipelineStatusFromStage(truckStage)} />
         </td>
         <td className="p-3 text-sm" title={docNumbers.join(', ')}>
           <div className="flex flex-wrap items-center gap-2">
@@ -723,6 +728,13 @@ function DispatchTable({
       </div>
     </div>
   );
+}
+
+// Position of a stage in the pipeline; unknown stages sort last. Lets a truck's
+// row take its slowest (least-advanced) docking's stage as the truck status.
+function stageRank(stage: PipelineStage): number {
+  const index = PIPELINE_STAGE_ORDER.indexOf(stage);
+  return index === -1 ? PIPELINE_STAGE_ORDER.length : index;
 }
 
 function getSalesDispatchDashboardEntryStage(entry: SalesDispatchDashboardEntry): PipelineStage {
