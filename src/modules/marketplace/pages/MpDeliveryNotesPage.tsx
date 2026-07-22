@@ -259,6 +259,11 @@ export default function MpDeliveryNotesPage() {
   const scopeLabel = currentSheet
     ? `sheet "${currentSheet.filename || `#${currentSheet.id}`}"`
     : 'all sheets';
+  const visibleSheets = dnSheets.filter((s) => {
+    if (!inRange(s.created_at, sheetRange)) return false;
+    const q = sheetSearch.trim().toLowerCase();
+    return !q || (s.filename || `#${s.id}`).toLowerCase().includes(q);
+  });
   const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL, warehouseId, batchId);
   const cut = useCutDeliveryNote(CHANNEL);
   const reconcile = useReconcileDeliveryNotes(CHANNEL);
@@ -268,6 +273,8 @@ export default function MpDeliveryNotesPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shortfallOpen, setShortfallOpen] = useState(false);
   const [showLines, setShowLines] = useState(false);
+  const [sheetSearch, setSheetSearch] = useState('');
+  const [sheetRange, setSheetRange] = useState<MpRange>(EMPTY_RANGE);
   const [tab, setTab] = useState<Tab>('READY');
   const [search, setSearch] = useState('');
   const [range, setRange] = useState<MpRange>(EMPTY_RANGE);
@@ -392,22 +399,38 @@ export default function MpDeliveryNotesPage() {
             Post a delivery note for one sheet, or keep &quot;All sheets&quot; to cut everything awaiting.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <SheetChip
-            label="All sheets"
-            sub={`${dnSheets.reduce((n, s) => n + s.awaiting_count, 0)} awaiting`}
-            active={batchId === null}
-            onClick={() => setBatchId(null)}
-          />
-          {dnSheets.map((s) => (
+        <CardContent className="space-y-3">
+          {dnSheets.length > 1 && (
+            <>
+              <MpFilterBar>
+                <MpSearchInput
+                  value={sheetSearch}
+                  onChange={setSheetSearch}
+                  placeholder="Search sheet…"
+                  className="w-full sm:max-w-xs"
+                />
+                <MpResultCount shown={visibleSheets.length} total={dnSheets.length} noun="sheet" />
+              </MpFilterBar>
+              <MpDateRange value={sheetRange} onChange={setSheetRange} label="Uploaded" />
+            </>
+          )}
+          <div className="flex flex-wrap gap-2">
             <SheetChip
-              key={s.id}
-              label={s.filename || `Sheet #${s.id}`}
-              sub={`${s.awaiting_count} awaiting${s.posted_count ? ` · ${s.posted_count} posted` : ''}`}
-              active={batchId === s.id}
-              onClick={() => setBatchId(s.id)}
+              label="All sheets"
+              sub={`${dnSheets.reduce((n, s) => n + s.awaiting_count, 0)} awaiting`}
+              active={batchId === null}
+              onClick={() => setBatchId(null)}
             />
-          ))}
+            {visibleSheets.map((s) => (
+              <SheetChip
+                key={s.id}
+                label={s.filename || `Sheet #${s.id}`}
+                sub={`${s.awaiting_count} awaiting${s.posted_count ? ` · ${s.posted_count} posted` : ''}`}
+                active={batchId === s.id}
+                onClick={() => setBatchId(s.id)}
+              />
+            ))}
+          </div>
         </CardContent>
       </Card>
 
