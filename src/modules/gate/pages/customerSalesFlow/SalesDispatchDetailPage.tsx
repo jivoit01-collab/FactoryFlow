@@ -396,7 +396,19 @@ function DockingOverviewCard({
   documents: DetailDocument[];
 }) {
   const primaryDocument = documents[0];
-  const customer = entry.customer_name || primaryDocument?.customer_name || entry.to_warehouse;
+  // A multi-company truck carries several bills; show them all (and all their
+  // customers) here, not just the opened docking's one.
+  const documentNumbers =
+    documents
+      .map((document) => formatValue(document.sap_doc_num))
+      .filter((value) => value && value !== '-')
+      .join(', ') || formatDocumentNumbers(entry);
+  const customerNames = Array.from(
+    new Set(documents.map((document) => document.customer_name).filter(Boolean)),
+  );
+  const customer = customerNames.length
+    ? customerNames.join(', ')
+    : entry.customer_name || primaryDocument?.customer_name || entry.to_warehouse;
   const destination = primaryDocument
     ? formatDocumentDestination(primaryDocument)
     : entry.ship_to_address || entry.warehouses;
@@ -423,7 +435,7 @@ function DockingOverviewCard({
         </InfoGroup>
 
         <InfoGroup title="Document">
-          <InfoItem label="SAP Document" value={formatDocumentNumbers(entry)} />
+          <InfoItem label="SAP Document" value={documentNumbers} />
           <InfoItem label="Customer" value={customer} />
           <InfoItem label="Destination" value={destination} />
           <InfoItem label="GSTIN" value={entry.bp_gstin || primaryDocument?.bp_gstin} />
