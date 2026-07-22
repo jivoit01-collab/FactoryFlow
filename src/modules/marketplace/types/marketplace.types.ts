@@ -73,6 +73,16 @@ export interface StockShortfallLine extends StockShortItem {
   warehouse_code: string;
 }
 
+/** One sheet (import batch) with dispatches awaiting a delivery note. */
+export interface DeliveryNoteSheet {
+  id: number;
+  filename: string;
+  status: string;
+  created_at: string;
+  awaiting_count: number;
+  posted_count: number;
+}
+
 /** Full preview of the single SAP Delivery Note that will be cut. */
 export interface DeliveryNoteWarehouseOption {
   id: number;

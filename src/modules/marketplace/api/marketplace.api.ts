@@ -2,26 +2,25 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  AwaitingApprovalCount,
   CancelRequest,
   ComboDefinition,
   ComboDefinitionUpsert,
   CompleteItemGroupResult,
-  AwaitingApprovalCount,
   ConfirmRequest,
   DeliveryNoteCutResult,
   DeliveryNoteReconcileResult,
+  DeliveryNoteSheet,
   DeliveryNoteSummary,
+  DispatchBoard,
   DispatchCreateRequest,
   DispatchListParams,
+  DispatchSheetSummary,
   ImportOrdersRequest,
   ImportPreview,
-  MarketplaceChannel,
-  DispatchBoard,
-  DispatchSheetSummary,
   LineVariant,
+  MarketplaceChannel,
   MarketplaceDispatch,
-  OrderVariants,
-  PostedDeliveryNote,
   MarketplaceIssueRequest,
   MarketplaceOrder,
   MarketplacePacking,
@@ -35,9 +34,11 @@ import type {
   MpScan,
   OrderImportBatch,
   OrderListParams,
-  PackLabelData,
+  OrderVariants,
   PackingSummary,
+  PackLabelData,
   PackQueueOrder,
+  PostedDeliveryNote,
   ReceiveRequest,
   ReconciliationParams,
   ReconciliationReport,
@@ -88,22 +89,37 @@ export const marketplaceApi = {
   },
 
   // ── SAP Delivery Notes (bulk) ────────────────────────────────────────────────
+  async deliveryNoteSheets(
+    channel: MarketplaceChannel,
+  ): Promise<{ sheets: DeliveryNoteSheet[] }> {
+    const { data } = await apiClient.get<{ sheets: DeliveryNoteSheet[] }>(
+      `${EP.DELIVERY_NOTE_SHEETS}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
   async deliveryNoteSummary(
     channel: MarketplaceChannel,
     warehouseId?: number | null,
+    batchId?: number | null,
   ): Promise<DeliveryNoteSummary> {
     const { data } = await apiClient.get<DeliveryNoteSummary>(
-      `${EP.DELIVERY_NOTE_SUMMARY}${buildQuery({ channel, warehouse_id: warehouseId ?? undefined })}`,
+      `${EP.DELIVERY_NOTE_SUMMARY}${buildQuery({
+        channel,
+        warehouse_id: warehouseId ?? undefined,
+        batch_id: batchId ?? undefined,
+      })}`,
     );
     return data;
   },
   async cutDeliveryNote(
     channel: MarketplaceChannel,
     warehouseId?: number | null,
+    batchId?: number | null,
   ): Promise<DeliveryNoteCutResult> {
     const { data } = await apiClient.post<DeliveryNoteCutResult>(EP.DELIVERY_NOTE_CUT, {
       channel,
       warehouse_id: warehouseId ?? undefined,
+      batch_id: batchId ?? undefined,
     });
     return data;
   },

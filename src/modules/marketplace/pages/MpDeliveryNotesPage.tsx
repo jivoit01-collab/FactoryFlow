@@ -42,6 +42,7 @@ import { getErrorMessage } from '@/shared/utils';
 import {
   useAwaitingApprovalCount,
   useCutDeliveryNote,
+  useDeliveryNoteSheets,
   useDeliveryNoteSummary,
   usePostedDeliveryNotes,
   useReconcileDeliveryNotes,
@@ -250,7 +251,15 @@ function StockShortfallDialog({
 
 export default function MpDeliveryNotesPage() {
   const [warehouseId, setWarehouseId] = useState<number | null>(null);
-  const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL, warehouseId);
+  // null = all sheets; a number scopes the whole page + cut to that sheet.
+  const [batchId, setBatchId] = useState<number | null>(null);
+  const { data: sheetsData } = useDeliveryNoteSheets(CHANNEL);
+  const dnSheets = sheetsData?.sheets ?? [];
+  const currentSheet = dnSheets.find((s) => s.id === batchId) ?? null;
+  const scopeLabel = currentSheet
+    ? `sheet "${currentSheet.filename || `#${currentSheet.id}`}"`
+    : 'all sheets';
+  const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL, warehouseId, batchId);
   const cut = useCutDeliveryNote(CHANNEL);
   const reconcile = useReconcileDeliveryNotes(CHANNEL);
   const { data: approval } = useAwaitingApprovalCount(CHANNEL);
@@ -317,7 +326,7 @@ export default function MpDeliveryNotesPage() {
           : postedNotes.length;
 
   function doCut() {
-    cut.mutate(selectedWh, {
+    cut.mutate({ warehouseId: selectedWh, batchId }, {
       onSuccess: (r) => {
         setConfirmOpen(false);
         const groups = r.groups ?? [];
@@ -374,6 +383,33 @@ export default function MpDeliveryNotesPage() {
         </div>
         <MpChannelSelect value={CHANNEL} onChange={() => {}} />
       </header>
+
+      {/* Sheet scope — post the delivery note per sheet, or all sheets together */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Sheet</CardTitle>
+          <CardDescription>
+            Post a delivery note for one sheet, or keep &quot;All sheets&quot; to cut everything awaiting.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <SheetChip
+            label="All sheets"
+            sub={`${dnSheets.reduce((n, s) => n + s.awaiting_count, 0)} awaiting`}
+            active={batchId === null}
+            onClick={() => setBatchId(null)}
+          />
+          {dnSheets.map((s) => (
+            <SheetChip
+              key={s.id}
+              label={s.filename || `Sheet #${s.id}`}
+              sub={`${s.awaiting_count} awaiting${s.posted_count ? ` · ${s.posted_count} posted` : ''}`}
+              active={batchId === s.id}
+              onClick={() => setBatchId(s.id)}
+            />
+          ))}
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <Card>
@@ -484,6 +520,7 @@ export default function MpDeliveryNotesPage() {
                 <div className="flex justify-end">
                   <Button onClick={() => setConfirmOpen(true)} disabled={cut.isPending || count === 0}>
                     <Send className="mr-2 h-4 w-4" /> Cut delivery note ({count})
+                    {currentSheet ? ' · this sheet' : ''}
                   </Button>
                 </div>
               </CardContent>
@@ -763,7 +800,8 @@ export default function MpDeliveryNotesPage() {
             <DialogTitle>Cut SAP delivery note?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This posts a single SAP delivery note covering <strong>{count}</strong> dispatch(es) with{' '}
+            This posts the SAP delivery note(s) for <strong>{scopeLabel}</strong>, covering{' '}
+            <strong>{count}</strong> dispatch(es) with{' '}
             <strong>{summary?.totals.fg_item_count ?? 0}</strong> line item(s). This can&apos;t be undone.
           </p>
           <DialogFooter>
@@ -777,6 +815,31 @@ export default function MpDeliveryNotesPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SheetChip({
+  label,
+  sub,
+  active,
+  onClick,
+}: {
+  label: string;
+  sub: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+        active ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'hover:bg-muted/50'
+      }`}
+    >
+      <div className="max-w-[220px] truncate text-sm font-medium">{label}</div>
+      <div className="text-xs text-muted-foreground">{sub}</div>
+    </button>
   );
 }
 
