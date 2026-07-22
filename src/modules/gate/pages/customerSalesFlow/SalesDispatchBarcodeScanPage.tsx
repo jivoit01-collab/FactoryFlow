@@ -55,6 +55,7 @@ import {
   useSalesDispatchByVehicleEntry,
   useScanSalesDispatchBox,
 } from '@/modules/gate/api';
+import { useArrivalDockings } from '@/modules/gate/api/arrivals/arrivals.queries';
 import { StepFooter, StepHeader, StepLoadingSpinner } from '@/modules/gate/components';
 import { useEntryId } from '@/modules/gate/hooks';
 import {
@@ -133,7 +134,7 @@ export default function SalesDispatchBarcodeScanPage() {
   // that bill. `scanTargetRef` mirrors the open bill's document id for the camera
   // callback (which is created once and can't read fresh state).
   const [openBillKey, setOpenBillKey] = useState<number | null>(null);
-  const scanTargetRef = useRef<number | null>(null);
+  const scanTargetRef = useRef<{ documentId: number | null; dockingId: number } | null>(null);
   const didAutoOpenRef = useRef(false);
   // Non-blocking scan queue: scans (camera or hardware gun) are accepted instantly
   // and synced to the backend one at a time in the background, so the barcode field
@@ -144,7 +145,11 @@ export default function SalesDispatchBarcodeScanPage() {
   // Boxes whose sync was rejected (over-invoice, not on bill, not found, …). Shown in
   // a separate queue under the scanner so the operator can see/retry/dismiss each one.
   const [failedScans, setFailedScans] = useState<FailedScan[]>([]);
-  const scanQueueRef = useRef<{ barcode: string; documentId: number | null }[]>([]);
+  // dockingId: which docking a queued scan posts to. On a single-company docking it
+  // is always this entry; on a multi-company truck it is the bill's own docking.
+  const scanQueueRef = useRef<
+    { barcode: string; documentId: number | null; dockingId: number }[]
+  >([]);
   const inFlightRef = useRef<Set<string>>(new Set());
   const processingRef = useRef(false);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -155,7 +160,25 @@ export default function SalesDispatchBarcodeScanPage() {
     error: entryError,
     refetch: refetchEntry,
   } = useSalesDispatchByVehicleEntry(entryIdNumber);
-  const { data: scans = [], isLoading: isScansLoading } = useSalesDispatchBoxScans(entry?.id);
+  const { data: dockingScans = [], isLoading: isScansLoading } = useSalesDispatchBoxScans(
+    entry?.id,
+  );
+  // A multi-company truck is one physical load: pull in every company's docking so
+  // this one page shows and scans ALL the bills, each scan routed to its own
+  // docking. When not a multi-company truck, isArrivalMode is false and everything
+  // below falls back to the single-docking path unchanged.
+  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1 && Boolean(entry?.arrival);
+  const arrivalDockings = useArrivalDockings(entry?.arrival, { enabled: isMultiCompanyArrival });
+  const isArrivalMode = isMultiCompanyArrival && arrivalDockings.dockings.length > 0;
+  // The load's scans: every company's on a multi-company truck, else this docking's.
+  // Named `scans` so all the progress/dedup/display below is truck-wide for free.
+  const scans = useMemo(
+    () =>
+      isArrivalMode
+        ? arrivalDockings.dockings.flatMap((docking) => docking.box_scans ?? [])
+        : dockingScans,
+    [isArrivalMode, arrivalDockings.dockings, dockingScans],
+  );
   const { data: skipRequest } = useDockingScanSkipRequestByDispatch(entry?.id);
   const { data: partialRequest } = useDockingPartialScanRequestByDispatch(entry?.id);
   const {
@@ -200,12 +223,24 @@ export default function SalesDispatchBarcodeScanPage() {
     }
   }, [autoFocusBarcode, entry, isReadOnly, canEditDocking, openBillKey]);
 
-  const expectedBoxes = getExpectedDispatchBoxes(entry);
+  const expectedBoxes = isArrivalMode
+    ? arrivalDockings.dockings.reduce((total, docking) => total + getExpectedDispatchBoxes(docking), 0)
+    : getExpectedDispatchBoxes(entry);
   const scannedQuantity = useMemo(
     () => scans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
     [scans],
   );
-  const billGroups = useMemo(() => buildBillGroups(entry, scans), [entry, scans]);
+  // Every company's bills on a multi-company truck, each tagged with its docking so
+  // scans route correctly; otherwise just this docking's bills.
+  const billGroups = useMemo(
+    () =>
+      isArrivalMode
+        ? arrivalDockings.dockings.flatMap((docking) =>
+            buildBillGroups(docking, docking.box_scans ?? []),
+          )
+        : buildBillGroups(entry, scans),
+    [isArrivalMode, arrivalDockings.dockings, entry, scans],
+  );
   // Partial = at least one box scanned, but the load still carries unscanned invoiced
   // goods. Judged PER BILL/LINE on exact scanned-vs-invoiced QUANTITY (the same signal as
   // the bill badges and the backend gate) whenever the scans carry a quantity — every
@@ -262,7 +297,9 @@ export default function SalesDispatchBarcodeScanPage() {
   // Keep the camera's scan target pointed at the currently open bill.
   useEffect(() => {
     const open = billGroups.find((bill) => bill.key === openBillKey);
-    scanTargetRef.current = open ? open.documentId : null;
+    scanTargetRef.current = open
+      ? { documentId: open.documentId, dockingId: open.dockingId }
+      : null;
   }, [billGroups, openBillKey]);
 
   useEffect(() => {
@@ -273,8 +310,20 @@ export default function SalesDispatchBarcodeScanPage() {
 
   // Latest entry id / refetch / mutation, read by the background queue worker so it
   // never closes over stale values while it drains.
-  const queueCtxRef = useRef({ entryId: entry?.id, refetchEntry, scanBox });
-  queueCtxRef.current = { entryId: entry?.id, refetchEntry, scanBox };
+  const queueCtxRef = useRef({
+    entryId: entry?.id,
+    refetchEntry,
+    scanBox,
+    isArrivalMode,
+    refetchArrival: arrivalDockings.refetch,
+  });
+  queueCtxRef.current = {
+    entryId: entry?.id,
+    refetchEntry,
+    scanBox,
+    isArrivalMode,
+    refetchArrival: arrivalDockings.refetch,
+  };
 
   const triggerFlash = useCallback(() => {
     setFlashing(true);
@@ -298,8 +347,9 @@ export default function SalesDispatchBarcodeScanPage() {
       const key = next.barcode.toLowerCase();
       try {
         if (entryId == null) throw new Error('Docking details not found.');
+        // Post to the box's own docking (its company), not a single "current" one.
         const saved = await scanMutation.mutateAsync({
-          id: entryId,
+          id: next.dockingId,
           data: { barcode_raw: next.barcode, document: next.documentId },
         });
         if (saved.duplicate) {
@@ -313,7 +363,12 @@ export default function SalesDispatchBarcodeScanPage() {
         const message = getErrorMessage(scanError, `Couldn't scan ${next.barcode}`);
         // Surface it in the persistent error queue (deduped by barcode), newest first.
         setFailedScans((prev) => [
-          { barcode: next.barcode, documentId: next.documentId, reason: message },
+          {
+            barcode: next.barcode,
+            documentId: next.documentId,
+            dockingId: next.dockingId,
+            reason: message,
+          },
           ...prev.filter((failed) => failed.barcode.toLowerCase() !== key),
         ]);
       } finally {
@@ -324,14 +379,18 @@ export default function SalesDispatchBarcodeScanPage() {
       }
     }
     processingRef.current = false;
-    if (didProcess) await queueCtxRef.current.refetchEntry();
+    if (didProcess) {
+      await queueCtxRef.current.refetchEntry();
+      // Multi-company truck: the scans live on sibling dockings, so refetch them all.
+      if (queueCtxRef.current.isArrivalMode) await queueCtxRef.current.refetchArrival();
+    }
     if (scanQueueRef.current.length > 0) void processQueue();
   }, [triggerFlash]);
 
   // Accept a scan instantly: validate, dedupe, enqueue, keep the field focused, and
   // kick the background worker. Never awaits the network, so it can't block the field.
   const enqueueScan = useCallback(
-    (rawBarcode: string, documentId: number | null) => {
+    (rawBarcode: string, target: { documentId: number | null; dockingId: number } | null) => {
       const barcode = rawBarcode.trim();
       if (!entry) {
         setError('Docking details not found.');
@@ -360,7 +419,13 @@ export default function SalesDispatchBarcodeScanPage() {
       }
       setError('');
       inFlightRef.current.add(key);
-      scanQueueRef.current.push({ barcode, documentId });
+      // Route to the bill's own docking; fall back to this entry when no bill is
+      // targeted (single-docking auto-resolve on the backend).
+      scanQueueRef.current.push({
+        barcode,
+        documentId: target?.documentId ?? null,
+        dockingId: target?.dockingId ?? entry.id,
+      });
       setPendingCount(scanQueueRef.current.length);
       setManualBarcode('');
       if (autoFocusBarcode) manualInputRef.current?.focus();
@@ -386,8 +451,8 @@ export default function SalesDispatchBarcodeScanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openBillKey]);
 
-  const handleManualSubmit = (documentId: number | null) => {
-    enqueueScan(manualBarcode, documentId);
+  const handleManualSubmit = (target: { documentId: number | null; dockingId: number }) => {
+    enqueueScan(manualBarcode, target);
   };
 
   const handleToggleBill = (key: number) => {
@@ -398,7 +463,7 @@ export default function SalesDispatchBarcodeScanPage() {
     setFailedScans((prev) =>
       prev.filter((item) => item.barcode.toLowerCase() !== failed.barcode.toLowerCase()),
     );
-    enqueueScan(failed.barcode, failed.documentId);
+    enqueueScan(failed.barcode, { documentId: failed.documentId, dockingId: failed.dockingId });
   };
 
   const handleDismissFailedScan = (failed: FailedScan) => {
@@ -481,7 +546,7 @@ export default function SalesDispatchBarcodeScanPage() {
     }
   };
 
-  if (isEntryLoading || isScansLoading) {
+  if (isEntryLoading || isScansLoading || (isMultiCompanyArrival && arrivalDockings.isLoading)) {
     return <StepLoadingSpinner />;
   }
 
@@ -641,7 +706,8 @@ export default function SalesDispatchBarcodeScanPage() {
             Bills on this Load
           </CardTitle>
           <CardDescription>
-            {billGroups.length} bill{billGroups.length === 1 ? '' : 's'}. Open a bill to scan its
+            {billGroups.length} bill{billGroups.length === 1 ? '' : 's'}
+            {isArrivalMode ? ' across every company on this truck' : ''}. Open a bill to scan its
             boxes — each box is recorded against that bill only.
           </CardDescription>
         </CardHeader>
@@ -666,11 +732,14 @@ export default function SalesDispatchBarcodeScanPage() {
                 failedScans={failedScans}
                 isReadOnly={isReadOnly}
                 canEdit={canEditDocking}
+                showCompany={isArrivalMode}
                 onManualChange={(value) => {
                   setManualBarcode(value);
                   setError('');
                 }}
-                onManualSubmit={() => handleManualSubmit(bill.documentId)}
+                onManualSubmit={() =>
+                  handleManualSubmit({ documentId: bill.documentId, dockingId: bill.dockingId })
+                }
                 onRemoveScan={handleRemoveScan}
                 onRetryFailed={handleRetryFailedScan}
                 onDismissFailed={handleDismissFailedScan}
@@ -1057,6 +1126,7 @@ function BarcodeScansDialog({
 interface FailedScan {
   barcode: string;
   documentId: number | null;
+  dockingId: number;
   reason: string;
 }
 
@@ -1088,6 +1158,7 @@ function BillScanCard({
   failedScans,
   isReadOnly,
   canEdit,
+  showCompany,
   onManualChange,
   onManualSubmit,
   onRemoveScan,
@@ -1106,6 +1177,7 @@ function BillScanCard({
   failedScans: FailedScan[];
   isReadOnly: boolean;
   canEdit: boolean;
+  showCompany: boolean;
   onManualChange: (value: string) => void;
   onManualSubmit: () => void;
   onRemoveScan: (scan: SalesDispatchBoxScan) => void;
@@ -1128,11 +1200,18 @@ function BillScanCard({
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold">
-            Bill {formatValue(bill.sapDocNum)}
-            {bill.customerName ? (
-              <span className="font-normal text-muted-foreground"> · {bill.customerName}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {showCompany && bill.companyName ? (
+              <span className="inline-flex shrink-0 rounded-full border bg-background px-2 py-0.5 text-xs font-medium">
+                {bill.companyName}
+              </span>
             ) : null}
+            <span className="truncate text-sm font-semibold">
+              Bill {formatValue(bill.sapDocNum)}
+              {bill.customerName ? (
+                <span className="font-normal text-muted-foreground"> · {bill.customerName}</span>
+              ) : null}
+            </span>
           </div>
           <div className="text-xs text-muted-foreground">
             {bill.items.length} item{bill.items.length === 1 ? '' : 's'}
@@ -1718,6 +1797,11 @@ interface BillScanSummary {
 
 interface BillGroup {
   key: number;
+  // The docking this bill belongs to. On a multi-company truck the scan page shows
+  // every company's bills together, so each scan must post to ITS docking, not a
+  // single "current" one.
+  dockingId: number;
+  companyName: string;
   documentId: number | null;
   sapDocNum: string;
   customerName: string;
@@ -1737,10 +1821,13 @@ function buildBillGroups(
 ): BillGroup[] {
   if (!entry) return [];
   const documents = entry.documents ?? [];
+  const companyName = entry.company_name || '';
   if (documents.length > 0) {
     return documents.map((document) =>
       makeBillGroup({
         key: document.id,
+        dockingId: entry.id,
+        companyName,
         documentId: document.id,
         sapDocNum: document.sap_doc_num || String(document.sap_doc_entry || ''),
         customerName: document.customer_name || '',
@@ -1756,6 +1843,8 @@ function buildBillGroups(
   return [
     makeBillGroup({
       key: 0,
+      dockingId: entry.id,
+      companyName,
       documentId: null,
       sapDocNum: entry.sap_doc_num || '',
       customerName: entry.customer_name || entry.to_warehouse || '',
@@ -1768,6 +1857,8 @@ function buildBillGroups(
 
 function makeBillGroup(args: {
   key: number;
+  dockingId: number;
+  companyName: string;
   documentId: number | null;
   sapDocNum: string;
   customerName: string;
