@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { ChevronDown, ChevronRight, MapPin, Package, RefreshCw, Search, Truck } from 'lucide-react';
+import { ChevronRight, MapPin, Package, RefreshCw, Search, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -23,6 +23,11 @@ import {
   Label,
   NativeSelect as Select,
   SelectOption,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Textarea,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
@@ -81,7 +86,7 @@ export default function DispatchTrackingPage() {
   const { hasPermission } = usePermission();
   const canUpdate = hasPermission(DISPATCH_PERMISSIONS.DISPATCH_TRACKING_UPDATE);
   const [search, setSearch] = useState('');
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [selected, setSelected] = useState<DispatchTrackingTruck | null>(null);
 
   const trucksQuery = useDispatchTrackingTrucks();
   const trucks = useMemo(() => trucksQuery.data ?? [], [trucksQuery.data]);
@@ -139,79 +144,113 @@ export default function DispatchTrackingPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((truck) => (
-            <TruckCard
-              key={truck.arrival}
-              truck={truck}
-              isOpen={expanded === truck.arrival}
-              onToggle={() =>
-                setExpanded((current) => (current === truck.arrival ? null : truck.arrival))
-              }
-              canUpdate={canUpdate}
-            />
+            <TruckRow key={truck.arrival} truck={truck} onOpen={() => setSelected(truck)} />
           ))}
         </div>
       )}
+
+      <Sheet
+        open={selected !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      >
+        <SheetContent side="right" className="flex w-full flex-col gap-4 overflow-y-auto sm:max-w-xl">
+          {selected ? (
+            <>
+              <SheetHeader className="space-y-2">
+                <SheetTitle className="flex flex-wrap items-center gap-2">
+                  <Truck className="h-5 w-5 text-blue-600" />
+                  {selected.vehicle_number || '-'}
+                  {selected.arrival_no ? (
+                    <Badge variant="outline" className="border-blue-300 text-blue-700">
+                      {selected.arrival_no}
+                    </Badge>
+                  ) : null}
+                  <StatusBadge
+                    status={selected.current_status}
+                    label={selected.current_status_display}
+                  />
+                </SheetTitle>
+                <SheetDescription className="space-y-1 text-left">
+                  <span className="block">
+                    Dispatched {formatDateTime(selected.dispatched_at)} · Driver{' '}
+                    {selected.driver_name || '-'}
+                    {selected.gatepass_no ? ` · ${selected.gatepass_no}` : ''}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-2">
+                    <Package className="h-3.5 w-3.5" />
+                    {selected.documents.length ? selected.documents.join(', ') : 'No bills'}
+                    {selected.customers.length ? ` · ${selected.customers.join(', ')}` : ''}
+                  </span>
+                  <span className="flex flex-wrap gap-1 pt-1">
+                    {selected.companies.map((company) => (
+                      <Badge key={company} variant="outline">
+                        {company}
+                      </Badge>
+                    ))}
+                  </span>
+                </SheetDescription>
+              </SheetHeader>
+
+              <TruckTrackingPanel arrivalId={selected.arrival} canUpdate={canUpdate} />
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
 
-function TruckCard({
-  truck,
-  isOpen,
-  onToggle,
-  canUpdate,
-}: {
-  truck: DispatchTrackingTruck;
-  isOpen: boolean;
-  onToggle: () => void;
-  canUpdate: boolean;
-}) {
+function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () => void }) {
   return (
-    <Card>
-      <CardContent className="space-y-4 p-4">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex w-full flex-col gap-3 text-left lg:flex-row lg:items-start lg:justify-between"
-        >
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              {isOpen ? (
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              )}
-              <Truck className="h-4 w-4 text-blue-600" />
-              <span className="font-semibold">{truck.vehicle_number || '-'}</span>
-              {truck.arrival_no ? (
-                <Badge variant="outline" className="border-blue-300 text-blue-700">
-                  {truck.arrival_no}
-                </Badge>
-              ) : null}
-              <StatusBadge status={truck.current_status} label={truck.current_status_display} />
-              {truck.companies.map((company) => (
-                <Badge key={company} variant="outline">
-                  {company}
-                </Badge>
-              ))}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Dispatched {formatDateTime(truck.dispatched_at)} · Driver {truck.driver_name || '-'}
-              {truck.gatepass_no ? ` · ${truck.gatepass_no}` : ''}
-            </p>
-            <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-              <Package className="h-3.5 w-3.5" />
-              {truck.documents.length ? truck.documents.join(', ') : 'No bills'}
-              {truck.customers.length ? ` · ${truck.customers.join(', ')}` : ''}
-            </p>
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      className="cursor-pointer transition-colors hover:bg-muted/40"
+    >
+      <CardContent className="flex items-start gap-3 p-4">
+        <Truck className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold">{truck.vehicle_number || '-'}</span>
+            {truck.arrival_no ? (
+              <Badge variant="outline" className="border-blue-300 text-blue-700">
+                {truck.arrival_no}
+              </Badge>
+            ) : null}
+            <StatusBadge status={truck.current_status} label={truck.current_status_display} />
+            {truck.companies.map((company) => (
+              <Badge key={company} variant="outline">
+                {company}
+              </Badge>
+            ))}
           </div>
-          <div className="shrink-0 text-xs text-muted-foreground">
-            {truck.update_count} update{truck.update_count === 1 ? '' : 's'} · last{' '}
-            {formatDateTime(truck.last_update_at)}
-          </div>
-        </button>
-
-        {isOpen ? <TruckTrackingPanel arrivalId={truck.arrival} canUpdate={canUpdate} /> : null}
+          <p className="text-sm text-muted-foreground">
+            Dispatched {formatDateTime(truck.dispatched_at)} · Driver {truck.driver_name || '-'}
+            {truck.gatepass_no ? ` · ${truck.gatepass_no}` : ''}
+          </p>
+          <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            <Package className="h-3.5 w-3.5" />
+            {truck.documents.length ? truck.documents.join(', ') : 'No bills'}
+            {truck.customers.length ? ` · ${truck.customers.join(', ')}` : ''}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+          <span className="hidden text-right sm:inline">
+            {truck.update_count} update{truck.update_count === 1 ? '' : 's'}
+            <br />
+            last {formatDateTime(truck.last_update_at)}
+          </span>
+          <ChevronRight className="h-4 w-4" />
+        </div>
       </CardContent>
     </Card>
   );
