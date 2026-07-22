@@ -25,7 +25,7 @@ import {
   SelectOption,
   Textarea,
 } from '@/shared/components/ui';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/utils';
 import { getErrorMessage } from '@/shared/utils/error';
 
 // The stages an operator can add after dispatch (DISPATCHED is the starting point).
