@@ -1,6 +1,5 @@
 import {
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
   Clock,
   Download,
@@ -14,7 +13,7 @@ import {
   Truck,
   Unlock,
 } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -481,14 +480,6 @@ function DispatchTable({
   // group renders exactly as before; a multi-entry group collapses its
   // per-company docking rows under one vehicle summary.
   const vehicleGroups = useMemo(() => buildDockingVehicleGroups(entries), [entries]);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
-  const toggleGroup = (key: string) =>
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
 
   const renderSubRow = (entry: SalesDispatchDashboardEntry, indent: boolean) => {
     const itemSummary = entry.item_summary || summarizeItems(getEntryItems(entry));
@@ -585,8 +576,18 @@ function DispatchTable({
     );
   };
 
-  const renderGroupRow = (group: DockingVehicleGroup) => {
-    const isOpen = expandedGroups.has(group.key);
+  // One physical truck = ONE row. A multi-company truck still needs each
+  // company's OWN box-scan + photo step (those are per-docking), so every company
+  // renders as a clickable launcher chip that opens its next step; the combined
+  // gatepass / dispatch / depart live on any company's gatepass page. The rest of
+  // the row is truck-level aggregate, so it reads like a single-company entry.
+  const renderMergedTruckRow = (group: DockingVehicleGroup) => {
+    const primary = group.subEntries[0];
+    const allGatepassPrinted = group.subEntries.every((entry) => Boolean(entry.gatepass_no));
+    const itemSummary = group.subEntries
+      .map((entry) => entry.item_summary || summarizeItems(getEntryItems(entry)))
+      .filter(Boolean)
+      .join('; ');
     const docCount = group.subEntries.reduce((sum, entry) => sum + getDocumentCount(entry), 0);
     const docNumbers = group.subEntries.flatMap((entry) => getDashboardDocumentNumbers(entry));
     const customers = Array.from(
@@ -597,29 +598,36 @@ function DispatchTable({
       ),
     );
     return (
-      <tr
-        className="cursor-pointer border-t bg-muted/30 align-top font-medium transition-colors hover:bg-muted/50"
-        onClick={() => toggleGroup(group.key)}
-      >
+      <tr key={group.key} className="border-t bg-muted/20 align-top">
         <td className="whitespace-nowrap p-3 text-sm font-medium">
-          <div className="flex items-center gap-1.5">
-            {isOpen ? (
-              <ChevronDown className="h-4 w-4 shrink-0" />
-            ) : (
-              <ChevronRight className="h-4 w-4 shrink-0" />
-            )}
-            <span>{group.companies.length} companies</span>
-          </div>
+          {group.arrivalNo || primary.entry_no}
         </td>
-        <td className="whitespace-nowrap p-3 text-sm">
-          <div className="flex flex-wrap gap-1">
-            {group.companies.map((company) => (
-              <span
-                key={company}
-                className="inline-flex whitespace-nowrap rounded-full border bg-background px-2 py-0.5 text-xs font-medium"
+        <td className="p-3 text-sm">
+          {/* Per-company launcher: each opens that company's own next step
+              (scan / photo / gatepass), so no per-company work is orphaned. */}
+          <div className="space-y-1">
+            {group.subEntries.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                title={`Open ${sub.company_name || sub.company_code || 'company'}'s docking`}
+                onClick={() =>
+                  navigate(
+                    getSalesDispatchDashboardEntryPath(
+                      sub,
+                      newEntryPath,
+                      detailPath,
+                      weighmentPath,
+                      gatepassPath,
+                      isGateOutMode,
+                    ),
+                  )
+                }
+                className="flex w-full items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-left text-xs font-medium transition-colors hover:bg-muted"
               >
-                {company}
-              </span>
+                <span className="truncate">{sub.company_name || sub.company_code || '-'}</span>
+                <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-muted-foreground" />
+              </button>
             ))}
           </div>
         </td>
@@ -629,8 +637,16 @@ function DispatchTable({
             <div className="text-xs text-muted-foreground">{group.arrivalNo}</div>
           ) : null}
         </td>
-        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
-          One truck
+        <td className="p-3 text-sm">
+          {/* Per-company status, aligned row-for-row with the launchers above. */}
+          <div className="space-y-1">
+            {group.subEntries.map((sub) => (
+              <PipelineStatusBadge
+                key={sub.id}
+                status={buildPipelineStatusFromStage(getSalesDispatchDashboardEntryStage(sub))}
+              />
+            ))}
+          </div>
         </td>
         <td className="p-3 text-sm" title={docNumbers.join(', ')}>
           <div className="flex flex-wrap items-center gap-2">
@@ -647,10 +663,19 @@ function DispatchTable({
             {customers.length ? customers.join(', ') : '-'}
           </div>
         </td>
-        <td className="p-3 text-sm text-muted-foreground">—</td>
-        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
-        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
-        <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">—</td>
+        <td className="p-3 text-sm text-muted-foreground" title={itemSummary}>
+          <div className="truncate whitespace-nowrap">{itemSummary || '—'}</div>
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          {formatDate(getPlannedDispatchDate(primary))}
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">{getActualGateOut(primary)}</td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <GateStatusBadge
+            status={allGatepassPrinted ? 'PRINTED' : 'PENDING'}
+            label={allGatepassPrinted ? 'Printed' : 'Pending'}
+          />
+        </td>
       </tr>
     );
   };
@@ -689,16 +714,9 @@ function DispatchTable({
           </thead>
           <tbody>
             {vehicleGroups.map((group) =>
-              group.subEntries.length === 1 ? (
-                renderSubRow(group.subEntries[0], false)
-              ) : (
-                <Fragment key={group.key}>
-                  {renderGroupRow(group)}
-                  {expandedGroups.has(group.key)
-                    ? group.subEntries.map((entry) => renderSubRow(entry, true))
-                    : null}
-                </Fragment>
-              ),
+              group.subEntries.length === 1
+                ? renderSubRow(group.subEntries[0], false)
+                : renderMergedTruckRow(group),
             )}
           </tbody>
         </table>
