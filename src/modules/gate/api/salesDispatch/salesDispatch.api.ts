@@ -503,6 +503,8 @@ export interface SalesDispatchAttachmentUploadRequest {
   latitude?: number | string | null;
   longitude?: number | string | null;
   notes?: string;
+  /** Override the "one docking per truck" block on a truck-photo upload. */
+  allow_partial?: boolean;
 }
 
 export interface SalesDispatchBoxScanRequest {
@@ -717,6 +719,11 @@ export const salesDispatchApi = {
     }
     if (data.notes) {
       formData.append('notes', data.notes);
+    }
+    if (data.allow_partial) {
+      // Override the "one docking per truck" block: dispatch what's loaded and
+      // leave the truck's still-un-docked booked bills behind.
+      formData.append('allow_partial', 'true');
     }
 
     const response = await apiClient.post<SalesDispatchAttachment>(
