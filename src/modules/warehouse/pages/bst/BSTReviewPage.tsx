@@ -6,9 +6,10 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
-import { useApproveBST, useBSTTransfer } from '../../api';
+import { BST_LIVE_POLL_MS, useApproveBST, useBSTTransfer } from '../../api';
 import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
+import { isLiveBst } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
 
 export default function BSTReviewPage() {
@@ -16,23 +17,35 @@ export default function BSTReviewPage() {
   const transferId = Number(idParam);
   const navigate = useNavigate();
 
-  const { data: t, isLoading } = useBSTTransfer(transferId);
+  // Keep counts fresh while the receiver may be accepting concurrently.
+  const { data: t, isLoading } = useBSTTransfer(transferId, {
+    refetchInterval: BST_LIVE_POLL_MS,
+  });
   const approveMut = useApproveBST();
 
   if (isLoading || !t) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
   }
 
-  const canApprove = t.status === 'SCANNING' || t.status === 'DRAFT';
+  // A live internal transfer is already in transit from its first scan; approving
+  // it just *seals* the send. Allow it through IN_TRANSIT / RECEIVING until sealed.
+  const live = isLiveBst(t);
+  const liveActive =
+    live &&
+    !t.scan_approved_at &&
+    (t.status === 'SCANNING' || t.status === 'IN_TRANSIT' || t.status === 'RECEIVING');
+  const canApprove = t.status === 'SCANNING' || t.status === 'DRAFT' || liveActive;
   const totalBoxes = t.box_scans.length;
 
   const handleApprove = async () => {
     try {
       const updated = await approveMut.mutateAsync(transferId);
       toast.success(
-        updated.requires_gate
-          ? 'Approved — sent to the gate for vehicle out'
-          : 'Approved — now in transit',
+        live
+          ? 'Sending sealed — the destination can finalize when everything has landed'
+          : updated.requires_gate
+            ? 'Approved — sent to the gate for vehicle out'
+            : 'Approved — now in transit',
       );
       navigate(`/warehouse/bst/${transferId}`);
     } catch (err) {
@@ -122,7 +135,7 @@ export default function BSTReviewPage() {
             ) : (
               <CheckCircle2 className="h-4 w-4 mr-1" />
             )}
-            Approve scanning
+            {live ? 'Finish sending' : 'Approve scanning'}
           </Button>
         </div>
       )}

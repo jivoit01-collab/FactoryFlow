@@ -13,6 +13,16 @@ export interface BSTListParams {
   to_date?: string;
 }
 
+// Live polling for the two-sided flow: a non-gated internal transfer becomes
+// receivable on the sender's first scan, so both the scan page and the
+// destination's receive page poll to see each other's boxes appear in near
+// real time. 4s is snappy enough for a scan-along workflow without hammering.
+export const BST_LIVE_POLL_MS = 4000;
+
+interface PollOptions {
+  refetchInterval?: number | false;
+}
+
 export const BST_QUERY_KEYS = {
   all: ['warehouse', 'bst'] as const,
   list: (params?: BSTListParams) => [...BST_QUERY_KEYS.all, 'list', params ?? {}] as const,
@@ -55,18 +65,20 @@ export function useBSTSapTransfer(docEntry: number | null) {
 // Sender
 // ============================================================================
 
-export function useBSTTransfers(params?: BSTListParams) {
+export function useBSTTransfers(params?: BSTListParams, options?: PollOptions) {
   return useQuery({
     queryKey: BST_QUERY_KEYS.list(params),
     queryFn: () => bstApi.list(params),
+    refetchInterval: options?.refetchInterval,
   });
 }
 
-export function useBSTTransfer(transferId: number | null) {
+export function useBSTTransfer(transferId: number | null, options?: PollOptions) {
   return useQuery({
     queryKey: BST_QUERY_KEYS.detail(transferId!),
     queryFn: () => bstApi.get(transferId!),
     enabled: transferId !== null,
+    refetchInterval: options?.refetchInterval,
   });
 }
 
@@ -129,18 +141,20 @@ export function useCancelBST() {
 // Receiver
 // ============================================================================
 
-export function useBSTIncoming(params?: BSTListParams) {
+export function useBSTIncoming(params?: BSTListParams, options?: PollOptions) {
   return useQuery({
     queryKey: BST_QUERY_KEYS.incoming(params),
     queryFn: () => bstApi.listIncoming(params),
+    refetchInterval: options?.refetchInterval,
   });
 }
 
-export function useBSTIncomingDetail(transferId: number | null) {
+export function useBSTIncomingDetail(transferId: number | null, options?: PollOptions) {
   return useQuery({
     queryKey: BST_QUERY_KEYS.incomingDetail(transferId!),
     queryFn: () => bstApi.getIncoming(transferId!),
     enabled: transferId !== null,
+    refetchInterval: options?.refetchInterval,
   });
 }
 

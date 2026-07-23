@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, ClipboardCheck, Loader2, Trash2, X } from 'lucide-react';
+import { AlertCircle, ClipboardCheck, Loader2, Trash2, Truck, X } from 'lucide-react';
 import { type FormEvent, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,10 +17,11 @@ import {
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { BST_QUERY_KEYS, bstApi, useBSTTransfer, useRemoveBSTScan } from '../../api';
+import { BST_LIVE_POLL_MS, BST_QUERY_KEYS, bstApi, useBSTTransfer, useRemoveBSTScan } from '../../api';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTBillTable } from './BSTBillTable';
 import { expectedBstItemBoxes } from './bstBoxCounts';
+import { isLiveBst } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
 
 export default function BSTScanPage() {
@@ -28,13 +29,27 @@ export default function BSTScanPage() {
   const transferId = Number(idParam);
   const navigate = useNavigate();
 
-  const { data: transfer, isLoading, refetch } = useBSTTransfer(transferId);
+  // Poll so a live transfer reflects the destination's receive progress (and any
+  // concurrent edits) while the sender is still scanning.
+  const { data: transfer, isLoading, refetch } = useBSTTransfer(transferId, {
+    refetchInterval: BST_LIVE_POLL_MS,
+  });
   const removeMut = useRemoveBSTScan();
   const queryClient = useQueryClient();
 
   const [manualBarcode, setManualBarcode] = useState('');
 
-  const editable = transfer?.status === 'SCANNING' || transfer?.status === 'DRAFT';
+  // A live internal transfer stays sender-editable through IN_TRANSIT / RECEIVING
+  // (the destination is already receiving) until it's sealed via approve
+  // (scan_approved_at). Mirrors BSTService._live_editable on the backend.
+  const liveActive =
+    !!transfer &&
+    isLiveBst(transfer) &&
+    !transfer.scan_approved_at &&
+    (transfer.status === 'SCANNING' ||
+      transfer.status === 'IN_TRANSIT' ||
+      transfer.status === 'RECEIVING');
+  const editable = transfer?.status === 'DRAFT' || transfer?.status === 'SCANNING' || liveActive;
   const scans = useMemo(() => transfer?.box_scans ?? [], [transfer]);
 
   // What this BST is supposed to move (the SAP lines), shown with live progress.
@@ -106,6 +121,16 @@ export default function BSTScanPage() {
       >
         <BSTStatusBadge status={transfer.status} />
       </DashboardHeader>
+
+      {liveActive && transfer.status !== 'SCANNING' && (
+        <div className="flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-800">
+          <Truck className="h-4 w-4 shrink-0" />
+          <span>
+            This transfer is live — the destination can receive these boxes as you scan. Keep
+            scanning, then <span className="font-medium">Finish sending</span> when done.
+          </span>
+        </div>
+      )}
 
       {/* Stock this BST should move (the SAP bill), with live scan progress */}
       <Card>
@@ -262,7 +287,7 @@ export default function BSTScanPage() {
           </Button>
           <Button onClick={goToReview} disabled={scans.length === 0}>
             <ClipboardCheck className="h-4 w-4 mr-1" />
-            Review &amp; approve
+            {liveActive && transfer.status !== 'SCANNING' ? 'Finish sending' : 'Review & approve'}
           </Button>
         </div>
       )}

@@ -13,11 +13,11 @@ import {
 } from '@/shared/components/ui/dialog';
 import { getErrorMessage } from '@/shared/utils';
 
-import { useBSTTransfer, useCancelBST } from '../../api';
+import { BST_LIVE_POLL_MS, useBSTTransfer, useCancelBST } from '../../api';
 import type { BSTReceiveStatus } from '../../types';
 import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
-import { formatBstDateTime } from './bstFormat';
+import { formatBstDateTime, isLiveBst } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
 
 function ReceiveBadge({ status }: { status: BSTReceiveStatus }) {
@@ -38,7 +38,9 @@ export default function BSTDetailPage() {
   const transferId = Number(idParam);
   const navigate = useNavigate();
 
-  const { data: t, isLoading } = useBSTTransfer(transferId);
+  const { data: t, isLoading } = useBSTTransfer(transferId, {
+    refetchInterval: BST_LIVE_POLL_MS,
+  });
   const cancelMut = useCancelBST();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -47,7 +49,13 @@ export default function BSTDetailPage() {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
   }
 
-  const canResume = t.status === 'SCANNING' || t.status === 'DRAFT';
+  // A live internal transfer stays sender-scannable through IN_TRANSIT / RECEIVING
+  // until it's sealed via approve (scan_approved_at), so keep "Resume scanning".
+  const liveActive =
+    isLiveBst(t) &&
+    !t.scan_approved_at &&
+    (t.status === 'IN_TRANSIT' || t.status === 'RECEIVING');
+  const canResume = t.status === 'SCANNING' || t.status === 'DRAFT' || liveActive;
   const canCancel = !['RECEIVED', 'PARTIALLY_RECEIVED', 'CLOSED', 'CANCELLED'].includes(t.status);
 
   const handleCancel = async () => {

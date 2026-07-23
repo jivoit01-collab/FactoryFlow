@@ -13,7 +13,7 @@ import {
   TabsTrigger,
 } from '@/shared/components/ui';
 
-import { useBSTIncoming, useBSTTransfers } from '../../api';
+import { BST_LIVE_POLL_MS, useBSTIncoming, useBSTTransfers } from '../../api';
 import type { BSTTransferListItem } from '../../types';
 import { formatBstDateTime } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
@@ -98,8 +98,15 @@ export default function BSTDashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { dateRange, dateRangeAsDateObjects, setDateRange, resetDateRange } = useGlobalDateRange();
   const dateParams = { from_date: dateRange.from, to_date: dateRange.to };
-  const { data: outgoing = [], isLoading: outLoading } = useBSTTransfers(dateParams);
-  const { data: incoming = [], isLoading: inLoading } = useBSTIncoming(dateParams);
+  // Poll both boards: a live internal transfer appears on the destination's
+  // Incoming tab the moment the sender scans its first box, and its box count
+  // ticks up as scanning continues — no manual refresh.
+  const { data: outgoing = [], isLoading: outLoading } = useBSTTransfers(dateParams, {
+    refetchInterval: BST_LIVE_POLL_MS,
+  });
+  const { data: incoming = [], isLoading: inLoading } = useBSTIncoming(dateParams, {
+    refetchInterval: BST_LIVE_POLL_MS,
+  });
 
   const activeTab = searchParams.get('tab') === 'incoming' ? 'incoming' : 'outgoing';
 

@@ -17,9 +17,16 @@ import {
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { BST_QUERY_KEYS, bstApi, useBSTIncomingDetail, useCompleteBSTReceive } from '../../api';
+import {
+  BST_LIVE_POLL_MS,
+  BST_QUERY_KEYS,
+  bstApi,
+  useBSTIncomingDetail,
+  useCompleteBSTReceive,
+} from '../../api';
 import type { BSTReceiveStatus } from '../../types';
 import { BoxScanCamera } from './BoxScanCamera';
+import { isLiveBst } from './bstFormat';
 import { BSTReceivePutawaySection } from './BSTReceivePutawaySection';
 import { BSTStatusBadge } from './bstStatus';
 
@@ -45,7 +52,11 @@ export default function BSTReceivePage() {
   const transferId = Number(idParam);
   const navigate = useNavigate();
 
-  const { data: transfer, isLoading } = useBSTIncomingDetail(transferId);
+  // Poll so boxes the sender scans appear here in near real time on a live
+  // transfer (the sender may still be scanning while we receive).
+  const { data: transfer, isLoading } = useBSTIncomingDetail(transferId, {
+    refetchInterval: BST_LIVE_POLL_MS,
+  });
   const completeMut = useCompleteBSTReceive();
   const queryClient = useQueryClient();
 
@@ -60,6 +71,14 @@ export default function BSTReceivePage() {
   const [decidingBarcode, setDecidingBarcode] = useState<string | null>(null);
 
   const receivable = transfer ? RECEIVABLE.includes(transfer.status) : false;
+  // On a live transfer the sender may still be adding boxes until they seal it
+  // (scan_approved_at). Finalizing before then risks recording not-yet-sent boxes
+  // as short.
+  const senderStillScanning =
+    !!transfer &&
+    isLiveBst(transfer) &&
+    !transfer.scan_approved_at &&
+    (transfer.status === 'IN_TRANSIT' || transfer.status === 'RECEIVING');
   const scans = transfer?.box_scans ?? [];
   const accepted = scans.filter((s) => s.receive_status === 'ACCEPTED').length;
   const rejected = scans.filter((s) => s.receive_status === 'REJECTED').length;
@@ -131,6 +150,11 @@ export default function BSTReceivePage() {
       toast.error('Accept or reject at least one box before finalizing.');
       return;
     }
+    if (senderStillScanning) {
+      // Hard block — mirrors the server guard in receive_complete.
+      toast.error('The sender is still sending. You can finalize once they finish sending.');
+      return;
+    }
     if (pending > 0) {
       const ok = window.confirm(
         `${pending} box(es) are still pending. Finalizing now records them as not received ` +
@@ -161,6 +185,16 @@ export default function BSTReceivePage() {
       >
         <BSTStatusBadge status={transfer.status} />
       </DashboardHeader>
+
+      {senderStillScanning && (
+        <div className="flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-800">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          <span>
+            The sender is still sending — more boxes may keep arriving. You can accept them now,
+            but <span className="font-medium">Finalize is locked until the sender finishes</span>.
+          </span>
+        </div>
+      )}
 
       {!receivable ? (
         <Card>
@@ -319,7 +353,11 @@ export default function BSTReceivePage() {
           <Button variant="outline" onClick={() => navigate('/warehouse/bst')}>
             Save &amp; exit
           </Button>
-          <Button onClick={handleComplete} disabled={completeMut.isPending}>
+          <Button
+            onClick={handleComplete}
+            disabled={completeMut.isPending || senderStillScanning}
+            title={senderStillScanning ? 'The sender must finish sending first' : undefined}
+          >
             {completeMut.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-1" />
             ) : (
