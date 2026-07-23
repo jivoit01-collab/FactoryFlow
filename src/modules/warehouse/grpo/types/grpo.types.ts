@@ -1,4 +1,5 @@
 import type { InspectionDecision, InspectionDecisionInfo, QCStage } from '@/modules/qc/types';
+import type { ControlledDocumentFields } from '@/shared/types';
 
 // Warehouse (from /po/warehouses/)
 export interface Warehouse {
@@ -72,7 +73,7 @@ export interface GRPODashboardSummary {
 }
 
 // GRPO Attachment (linked to a posted GRPO)
-export interface GRPOAttachment {
+export interface GRPOAttachment extends ControlledDocumentFields {
   id: number;
   file: string;
   original_filename: string;

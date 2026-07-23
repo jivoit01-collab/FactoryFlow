@@ -19,7 +19,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
-import { RecordTimestamps, SearchableSelect } from '@/shared/components';
+import { DocumentCodeBadge, RecordTimestamps, SearchableSelect } from '@/shared/components';
 import {
   Badge,
   Button,
@@ -1340,9 +1340,17 @@ export default function InspectionDetailPage() {
                         <ExternalLink className="h-3 w-3" />
                       </div>
                     )}
-                    {attachment.uploaded_at && (
-                      <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-                        Uploaded {new Date(attachment.uploaded_at).toLocaleString()}
+                    {(attachment.uploaded_at || attachment.document_code) && (
+                      <div className="border-t px-3 py-2 text-xs text-muted-foreground space-y-1">
+                        {attachment.uploaded_at && (
+                          <div>Uploaded {new Date(attachment.uploaded_at).toLocaleString()}</div>
+                        )}
+                        <DocumentCodeBadge
+                          inline
+                          document_code={attachment.document_code}
+                          document_revision={attachment.document_revision}
+                          document_issue_date={attachment.document_issue_date}
+                        />
                       </div>
                     )}
                   </a>

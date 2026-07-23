@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api';
+import { DocumentCodeBadge } from '@/shared/components';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { useGateAttachments, useUploadAttachment } from '../../api/attachment/attachment.queries';
@@ -215,11 +216,20 @@ export default function SharedAttachmentsPage({
                                 <FileText className="h-12 w-12 text-muted-foreground" />
                               </div>
                             )}
-                            <div className="flex items-center gap-1 p-2">
-                              <p className="text-xs font-medium truncate flex-1" title={fileName}>
-                                {fileName}
-                              </p>
-                              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="p-2">
+                              <div className="flex items-center gap-1">
+                                <p className="text-xs font-medium truncate flex-1" title={fileName}>
+                                  {fileName}
+                                </p>
+                                <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                              <DocumentCodeBadge
+                                inline
+                                className="mt-1"
+                                document_code={attachment.document_code}
+                                document_revision={attachment.document_revision}
+                                document_issue_date={attachment.document_issue_date}
+                              />
                             </div>
                           </a>
                         );

@@ -2,6 +2,7 @@ import { AlertCircle, ExternalLink, FileText, Paperclip, RefreshCw, Trash2, Uplo
 import { useRef, useState } from 'react';
 
 import type { ApiError } from '@/core/api/types';
+import { DocumentCodeBadge } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useDeleteGRPOAttachment, useRetryGRPOAttachment, useUploadGRPOAttachment } from '../api';
@@ -185,6 +186,12 @@ export function AttachmentsSection({ postingId, attachments, canManage }: Attach
                       <span className="text-[10px] text-muted-foreground">
                         {formatDateTime(attachment.uploaded_at)}
                       </span>
+                      <DocumentCodeBadge
+                        inline
+                        document_code={attachment.document_code}
+                        document_revision={attachment.document_revision}
+                        document_issue_date={attachment.document_issue_date}
+                      />
                     </div>
                     {/* SAP error message for failed attachments */}
                     {isFailed && attachment.sap_error_message && (

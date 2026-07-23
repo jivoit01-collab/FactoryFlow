@@ -1,7 +1,8 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
+import type { ControlledDocumentFields } from '@/shared/types';
 
-export interface GateAttachment {
+export interface GateAttachment extends ControlledDocumentFields {
   id: number;
   file: string;
   file_name?: string;

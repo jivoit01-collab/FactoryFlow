@@ -1,10 +1,11 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 import type { ApiError } from '@/core/api/types';
+import type { ControlledDocumentFields } from '@/shared/types';
 
 export type ArrivalSlipStatus = 'DRAFT' | 'SUBMITTED' | 'REJECTED';
 
-export interface ArrivalSlipAttachment {
+export interface ArrivalSlipAttachment extends ControlledDocumentFields {
   id: number;
   attachment_type: string;
   file: string;

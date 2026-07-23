@@ -2,6 +2,7 @@ import { AlertCircle, ArrowLeft, ExternalLink, FileText, Printer, RefreshCw } fr
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { DocumentCodeBadge } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 import { resolveFileUrl } from '@/shared/utils';
 
@@ -243,21 +244,31 @@ export default function ServiceGRPOHistoryDetailPage() {
                         key={attachment.id}
                         className="flex items-center justify-between gap-3 rounded-md border p-2"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          {fileUrl ? (
-                            <a
-                              href={fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex min-w-0 items-center gap-1 text-sm hover:underline"
-                            >
-                              <span className="truncate">{attachment.original_filename}</span>
-                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
-                            </a>
-                          ) : (
-                            <span className="text-sm truncate">{attachment.original_filename}</span>
-                          )}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            {fileUrl ? (
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex min-w-0 items-center gap-1 text-sm hover:underline"
+                              >
+                                <span className="truncate">{attachment.original_filename}</span>
+                                <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
+                              </a>
+                            ) : (
+                              <span className="text-sm truncate">
+                                {attachment.original_filename}
+                              </span>
+                            )}
+                          </div>
+                          <DocumentCodeBadge
+                            inline
+                            document_code={attachment.document_code}
+                            document_revision={attachment.document_revision}
+                            document_issue_date={attachment.document_issue_date}
+                          />
                         </div>
                         <span className="text-xs text-muted-foreground">
                           {attachment.sap_attachment_status}

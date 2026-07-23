@@ -1,3 +1,5 @@
+import type { ControlledDocumentFields } from '@/shared/types';
+
 // Arrival Slip types
 export type ArrivalSlipStatus = 'DRAFT' | 'SUBMITTED' | 'REJECTED';
 
@@ -153,7 +155,7 @@ export interface UpdateParameterResultRequest {
 // Arrival Slip Attachment
 export type ArrivalSlipAttachmentType = 'CERTIFICATE_OF_ANALYSIS' | 'CERTIFICATE_OF_QUANTITY';
 
-export interface ArrivalSlipAttachment {
+export interface ArrivalSlipAttachment extends ControlledDocumentFields {
   id: number;
   file: string;
   attachment_type: ArrivalSlipAttachmentType;
@@ -161,7 +163,7 @@ export interface ArrivalSlipAttachment {
 }
 
 // Inspection Attachment
-export interface InspectionAttachment {
+export interface InspectionAttachment extends ControlledDocumentFields {
   id: number;
   file: string;
   original_name: string;
