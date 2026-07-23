@@ -1,5 +1,8 @@
 import { Printer } from 'lucide-react';
 
+import { CONTROLLED_DOCUMENTS } from '@/config/constants';
+
+import { ControlledDocumentFrame } from '../ControlledDocumentPrint';
 import type { PrintableInspectionReport, PrintSections } from './types';
 
 // Print-only styles for the QC inspection report. The report markup is hidden on
@@ -133,6 +136,7 @@ export function InspectionReportPrintView({
   return (
     <div className="inspection-report-print" aria-hidden="true">
       <div className="inspection-report-page">
+        <ControlledDocumentFrame doc={CONTROLLED_DOCUMENTS.QC_INSPECTION_REPORT}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
           <span>{formatPrintDateTime(new Date().toISOString())}</span>
           <span>JI</span>
@@ -267,6 +271,7 @@ export function InspectionReportPrintView({
         {sections.qcAttachments && qcAttachments.length > 0 && (
           <InspectionReportAttachmentSection title="QC Attachments" attachments={qcAttachments} />
         )}
+        </ControlledDocumentFrame>
       </div>
     </div>
   );
