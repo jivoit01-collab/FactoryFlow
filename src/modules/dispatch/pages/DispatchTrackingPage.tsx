@@ -1,19 +1,23 @@
 import { format } from 'date-fns';
 import { ChevronRight, MapPin, Package, RefreshCw, Search, Truck } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { useGlobalDateRange } from '@/core/store/hooks';
 import {
   type CreateTruckDispatchUpdateRequest,
+  type DispatchTrackingFilters,
   type DispatchTrackingTruck,
   type TruckDispatchStatus,
   useAddTruckDispatchUpdate,
   useDispatchTrackingTrucks,
   useTruckDispatchUpdates,
 } from '@/modules/gate/api/dispatch-tracking/dispatch-tracking.queries';
+import { DateRangePicker } from '@/modules/gate/components/DateRangePicker';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { PaginationControls } from '@/shared/components/PaginationControls';
 import {
   Badge,
   Button,
@@ -43,6 +47,13 @@ const ADDABLE_STATUSES: { value: TruckDispatchStatus; label: string }[] = [
   { value: 'RETURNED', label: 'Returned' },
   { value: 'DELAYED', label: 'Delayed' },
   { value: 'CLOSED', label: 'Closed' },
+];
+
+// Every status a truck can currently be in — includes the DISPATCHED starting
+// point, so the filter can narrow to trucks with no updates yet.
+const STATUS_FILTER_OPTIONS: { value: TruckDispatchStatus; label: string }[] = [
+  { value: 'DISPATCHED', label: 'Dispatched' },
+  ...ADDABLE_STATUSES,
 ];
 
 const STATUS_CLASS: Record<TruckDispatchStatus, string> = {
@@ -85,27 +96,37 @@ function formatDateTime(value: string | null) {
 export default function DispatchTrackingPage() {
   const { hasPermission } = usePermission();
   const canUpdate = hasPermission(DISPATCH_PERMISSIONS.DISPATCH_TRACKING_UPDATE);
+  const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
+
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<TruckDispatchStatus | ''>('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [selected, setSelected] = useState<DispatchTrackingTruck | null>(null);
 
-  const trucksQuery = useDispatchTrackingTrucks();
-  const trucks = useMemo(() => trucksQuery.data ?? [], [trucksQuery.data]);
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return trucks;
-    return trucks.filter((truck) =>
-      [
-        truck.vehicle_number,
-        truck.arrival_no,
-        truck.gatepass_no,
-        truck.driver_name,
-        ...truck.companies,
-        ...truck.documents,
-        ...truck.customers,
-        truck.current_status_display,
-      ].some((value) => String(value || '').toLowerCase().includes(query)),
-    );
-  }, [trucks, search]);
+  // Any filter change resets back to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, dateRange.from, dateRange.to, pageSize]);
+
+  const filters = useMemo<DispatchTrackingFilters>(
+    () => ({
+      search: search.trim() || undefined,
+      status: statusFilter || undefined,
+      from_date: dateRange.from || undefined,
+      to_date: dateRange.to || undefined,
+      page,
+      page_size: pageSize,
+    }),
+    [search, statusFilter, dateRange.from, dateRange.to, page, pageSize],
+  );
+
+  const trucksQuery = useDispatchTrackingTrucks(filters);
+  const trucksPage = trucksQuery.data;
+  const trucks = useMemo(() => trucksPage?.results ?? [], [trucksPage]);
+  const hasActiveFilters = Boolean(
+    search.trim() || statusFilter || dateRange.from || dateRange.to,
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -125,27 +146,59 @@ export default function DispatchTrackingPage() {
         </Button>
       </DashboardHeader>
 
-      <div className="relative w-full lg:max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search vehicle, arrival, bill, customer, company, status"
-          className="pl-9"
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[240px] flex-1 lg:max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search vehicle, arrival, bill, customer, company, status"
+            className="pl-9"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value as TruckDispatchStatus | '')}
+          className="h-9 w-auto min-w-[160px]"
+          aria-label="Filter by status"
+        >
+          <SelectOption value="">All statuses</SelectOption>
+          {STATUS_FILTER_OPTIONS.map((option) => (
+            <SelectOption key={option.value} value={option.value}>
+              {option.label}
+            </SelectOption>
+          ))}
+        </Select>
+        <DateRangePicker
+          date={dateRangeAsDateObjects}
+          onDateChange={(date) => setDateRange(date && 'from' in date ? date : undefined)}
         />
       </div>
 
       {trucksQuery.isLoading ? (
         <EmptyState text="Loading dispatched trucks..." />
       ) : trucks.length === 0 ? (
-        <EmptyState text="No dispatched trucks to track yet." />
-      ) : filtered.length === 0 ? (
-        <EmptyState text="No dispatched trucks match this search." />
+        <EmptyState
+          text={
+            hasActiveFilters
+              ? 'No dispatched trucks match these filters.'
+              : 'No dispatched trucks to track yet.'
+          }
+        />
       ) : (
         <div className="space-y-3">
-          {filtered.map((truck) => (
+          {trucks.map((truck) => (
             <TruckRow key={truck.arrival} truck={truck} onOpen={() => setSelected(truck)} />
           ))}
+          <PaginationControls
+            page={trucksPage?.page ?? page}
+            pageSize={trucksPage?.page_size ?? pageSize}
+            total={trucksPage?.count ?? 0}
+            totalPages={trucksPage?.total_pages ?? 1}
+            isLoading={trucksQuery.isFetching}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       )}
 

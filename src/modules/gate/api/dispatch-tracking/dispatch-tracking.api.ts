@@ -54,10 +54,33 @@ export interface CreateTruckDispatchUpdateRequest {
   proof?: File | Blob | null;
 }
 
+/** Query params accepted by the dispatch-tracking list endpoint. */
+export interface DispatchTrackingFilters {
+  search?: string;
+  /** One or more TruckDispatchStatus values, comma-separated. */
+  status?: string;
+  from_date?: string;
+  to_date?: string;
+  page?: number;
+  page_size?: number;
+}
+
+/** Standard paginated envelope for the dispatch-tracking board. */
+export interface DispatchTrackingPage {
+  results: DispatchTrackingTruck[];
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  next: boolean;
+  previous: boolean;
+}
+
 export const dispatchTrackingApi = {
-  async list(): Promise<DispatchTrackingTruck[]> {
-    const response = await apiClient.get<DispatchTrackingTruck[]>(
+  async list(filters: DispatchTrackingFilters = {}): Promise<DispatchTrackingPage> {
+    const response = await apiClient.get<DispatchTrackingPage>(
       API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING,
+      { params: filters },
     );
     return response.data;
   },
