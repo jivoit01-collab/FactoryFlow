@@ -17,10 +17,12 @@ import {
   FileText,
   PackageCheck,
   PackageX,
+  Plus,
   RefreshCw,
   Send,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -250,6 +252,14 @@ function StockShortfallDialog({
 }
 
 export default function MpDeliveryNotesPage() {
+  const navigate = useNavigate();
+  // Deep-link a short item to its mapping (or combo) editor so the operator can
+  // add an alternative SAP item that IS in stock. Masters resolves item → the
+  // right SKU mapping or combo (create if unmapped).
+  const openAddAlternative = (itemCode: string) => {
+    const qs = new URLSearchParams({ channel: CHANNEL, item: itemCode });
+    navigate(`/marketplace/masters?${qs.toString()}`);
+  };
   const [warehouseId, setWarehouseId] = useState<number | null>(null);
   // null = all sheets; a number scopes the whole page + cut to that sheet.
   const [batchId, setBatchId] = useState<number | null>(null);
@@ -668,6 +678,7 @@ export default function MpDeliveryNotesPage() {
                                     <th className="p-2 text-right">Needed</th>
                                     <th className="p-2 text-right">In stock</th>
                                     <th className="p-2 text-right">Short by</th>
+                                    <th className="p-2 text-right"></th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -685,6 +696,18 @@ export default function MpDeliveryNotesPage() {
                                       </td>
                                       <td className="p-2 text-right font-semibold text-amber-700">
                                         {Number(s.shortfall_quantity)}
+                                      </td>
+                                      <td className="p-2 text-right">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 gap-1 px-2 text-xs"
+                                          onClick={() => openAddAlternative(s.item_code)}
+                                          title="Add an alternative SAP item or combo for this product in Masters"
+                                        >
+                                          <Plus className="h-3 w-3" />
+                                          Add alternative
+                                        </Button>
                                       </td>
                                     </tr>
                                   ))}

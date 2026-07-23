@@ -1,6 +1,7 @@
 /** Masters — SKU→FG mappings, combos (JI sales-BOM), and channel→SAP warehouse links. */
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -36,8 +37,8 @@ import {
   useUpsertWarehouse,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
-import { SapItemInput } from '../components/SapItemInput';
 import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
+import { SapItemInput } from '../components/SapItemInput';
 import type {
   ComboComponent,
   ComboComponentOption,
@@ -51,8 +52,89 @@ import type {
   SkuMappingUpsert,
 } from '../types/marketplace.types';
 
+/** Find the SKU mapping a deep-link points at (by fsn, marketplace sku, or the
+ *  SAP item code it ships as — including any alternative option). */
+function findSkuForDeepLink(
+  mappings: SkuMapping[],
+  { item, fsn, sku }: { item: string; fsn: string; sku: string },
+): SkuMapping | null {
+  if (fsn) {
+    const byFsn = mappings.find((m) => m.fsn && m.fsn === fsn);
+    if (byFsn) return byFsn;
+  }
+  if (sku) {
+    const bySku = mappings.find((m) => m.marketplace_sku === sku);
+    if (bySku) return bySku;
+  }
+  if (item) {
+    const byItem = mappings.find(
+      (m) =>
+        m.fg_item_code === item ||
+        (m.options ?? []).some((o) => o.fg_item_code === item),
+    );
+    if (byItem) return byItem;
+  }
+  return null;
+}
+
+/** Find the combo whose components (or component alternatives) use a SAP item. */
+function findComboForItem(combos: ComboDefinition[], item: string): ComboDefinition | null {
+  if (!item) return null;
+  return (
+    combos.find((c) =>
+      (c.components ?? []).some(
+        (cc) => cc.item_code === item || (cc.options ?? []).some((o) => o.item_code === item),
+      ),
+    ) ?? null
+  );
+}
+
 export default function MpMastersPage() {
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepItem = searchParams.get('item') ?? '';
+  const deepFsn = searchParams.get('fsn') ?? '';
+  const deepSku = searchParams.get('sku') ?? '';
+  const deepChannel = searchParams.get('channel') as MarketplaceChannel | null;
+  const hasDeepLink = !!(deepItem || deepFsn || deepSku);
+
+  const [channel, setChannel] = useState<MarketplaceChannel>(deepChannel ?? 'FLIPKART');
+  const [tab, setTab] = useState<'skus' | 'combos' | 'warehouses'>('skus');
+
+  // Data is also queried inside the tabs; react-query dedupes on the shared key.
+  const { data: mappings } = useSkuMappings({ channel });
+  const { data: combos } = useCombos(channel);
+
+  // When another screen deep-links here ("add an alternative for this item"),
+  // resolve the target to a SKU mapping or a combo and auto-open its editor.
+  const [autoOpenSku, setAutoOpenSku] = useState<SkuMapping | 'create' | null>(null);
+  const [autoOpenCombo, setAutoOpenCombo] = useState<ComboDefinition | null>(null);
+
+  useEffect(() => {
+    if (!hasDeepLink || !mappings || !combos) return;
+
+    const sku = findSkuForDeepLink(mappings, { item: deepItem, fsn: deepFsn, sku: deepSku });
+    if (sku) {
+      setTab('skus');
+      setAutoOpenSku(sku);
+    } else {
+      const combo = findComboForItem(combos, deepItem);
+      if (combo) {
+        setTab('combos');
+        setAutoOpenCombo(combo);
+      } else {
+        // Unmapped item — open a fresh SKU editor prefilled with what we know.
+        setTab('skus');
+        setAutoOpenSku('create');
+      }
+    }
+
+    // Consume the params so a refresh / re-render doesn't reopen the editor.
+    const next = new URLSearchParams(searchParams);
+    ['item', 'fsn', 'sku', 'channel'].forEach((k) => next.delete(k));
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDeepLink, mappings, combos]);
+
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -65,17 +147,26 @@ export default function MpMastersPage() {
         <MpChannelSelect value={channel} onChange={setChannel} />
       </header>
 
-      <Tabs defaultValue="skus">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
           <TabsTrigger value="skus">SKU Mappings</TabsTrigger>
           <TabsTrigger value="combos">Combos</TabsTrigger>
           <TabsTrigger value="warehouses">Warehouses</TabsTrigger>
         </TabsList>
         <TabsContent value="skus">
-          <SkuTab channel={channel} />
+          <SkuTab
+            channel={channel}
+            autoOpen={autoOpenSku}
+            onAutoOpenHandled={() => setAutoOpenSku(null)}
+            prefill={{ item: deepItem, fsn: deepFsn, sku: deepSku }}
+          />
         </TabsContent>
         <TabsContent value="combos">
-          <CombosTab channel={channel} />
+          <CombosTab
+            channel={channel}
+            autoOpen={autoOpenCombo}
+            onAutoOpenHandled={() => setAutoOpenCombo(null)}
+          />
         </TabsContent>
         <TabsContent value="warehouses">
           <WarehousesTab channel={channel} />
@@ -119,7 +210,17 @@ function toEditable(m: SkuMapping): SkuMapping {
   };
 }
 
-function SkuTab({ channel }: { channel: MarketplaceChannel }) {
+function SkuTab({
+  channel,
+  autoOpen = null,
+  onAutoOpenHandled,
+  prefill,
+}: {
+  channel: MarketplaceChannel;
+  autoOpen?: SkuMapping | 'create' | null;
+  onAutoOpenHandled?: () => void;
+  prefill?: { item: string; fsn: string; sku: string };
+}) {
   const { data: mappings } = useSkuMappings({ channel });
   const { data: combos } = useCombos(channel);
   const upsert = useUpsertSkuMapping();
@@ -128,6 +229,29 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
   const [toDelete, setToDelete] = useState<SkuMapping | null>(null);
   const [search, setSearch] = useState('');
   const [type, setType] = useState<'ALL' | 'RAW' | 'COMBO'>('ALL');
+
+  // Open a mapping's editor when a deep-link asks for it (see MpMastersPage).
+  useEffect(() => {
+    if (!autoOpen) return;
+    if (autoOpen === 'create') {
+      const seed = EMPTY_SKU(channel);
+      setEditing({
+        ...seed,
+        fsn: prefill?.fsn || '',
+        marketplace_sku: prefill?.sku || '',
+        // Seed the first option with the short item so the user only has to add
+        // the alternative alongside it.
+        fg_item_code: prefill?.item || '',
+        options: [
+          { label: '', sku_type: 'RAW', fg_item_code: prefill?.item || '', fg_item_name: '', combo: null, is_default: true },
+        ],
+      });
+    } else {
+      setEditing(toEditable(autoOpen));
+    }
+    onAutoOpenHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
   const [status, setStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'VARIANTS'>('ALL');
 
   function save() {
@@ -257,7 +381,8 @@ function SkuTab({ channel }: { channel: MarketplaceChannel }) {
           headers={['FSN', 'Marketplace SKU', 'Type', 'Ships as (SAP item)', 'Active', '']}
           rows={filtered.map((m) => {
             const isCombo = m.sku_type === 'COMBO';
-            const code = isCombo ? m.combo_code || `#${m.combo}` : m.fg_item_code;
+            // Always show a readable SAP identifier — never a raw "#<id>".
+            const code = isCombo ? m.combo_code || m.combo_name || 'Combo' : m.fg_item_code;
             const name = isCombo ? m.combo_name : m.fg_item_name;
             const extra = (m.options?.length ?? 0) - 1;
             return (
@@ -560,12 +685,28 @@ function ComponentAlternatives({
   );
 }
 
-function CombosTab({ channel }: { channel: MarketplaceChannel }) {
+function CombosTab({
+  channel,
+  autoOpen = null,
+  onAutoOpenHandled,
+}: {
+  channel: MarketplaceChannel;
+  autoOpen?: ComboDefinition | null;
+  onAutoOpenHandled?: () => void;
+}) {
   const { data: combos } = useCombos(channel);
   const upsert = useUpsertCombo();
   const remove = useDeleteCombo();
   const [editing, setEditing] = useState<ComboDefinition | null>(null);
   const [toDelete, setToDelete] = useState<ComboDefinition | null>(null);
+
+  // Open a combo's editor when a deep-link asks for it (see MpMastersPage).
+  useEffect(() => {
+    if (!autoOpen) return;
+    setEditing(autoOpen);
+    onAutoOpenHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   function doDelete() {
     if (!toDelete) return;
