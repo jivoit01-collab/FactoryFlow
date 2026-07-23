@@ -630,14 +630,17 @@ function ComponentAlternatives({
   const set = (next: ComboComponentOption[]) => onChange({ options: next });
 
   function add() {
-    const first = options.length === 0;
-    // Seed the first alternative from the component's own item.
-    set([
-      ...options,
-      first
-        ? { item_code: component.item_code, item_name: component.item_name ?? '', is_default: true }
-        : { item_code: '', item_name: '', is_default: false },
-    ]);
+    if (options.length === 0) {
+      // First alternative: keep the component's own item as the default option
+      // AND add an empty row to enter the interchangeable item — so a single
+      // click never overwrites (or hides) the original item.
+      set([
+        { item_code: component.item_code, item_name: component.item_name ?? '', is_default: true },
+        { item_code: '', item_name: '', is_default: false },
+      ]);
+      return;
+    }
+    set([...options, { item_code: '', item_name: '', is_default: false }]);
   }
   function setOpt(i: number, patch: Partial<ComboComponentOption>) {
     set(options.map((o, idx) => (idx === i ? { ...o, ...patch } : patch.is_default ? { ...o, is_default: false } : o)));
@@ -796,7 +799,24 @@ function CombosTab({
               <td className="py-2 px-2 font-mono">{c.code}</td>
               <td className="py-2 px-2">{c.name}</td>
               <td className="py-2 px-2 text-xs text-muted-foreground">
-                {c.components.map((k) => `${k.item_code}×${k.quantity}`).join(', ')}
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                  {c.components.map((k, i) => {
+                    const altCount = (k.options?.length ?? 0) > 1 ? (k.options?.length ?? 0) - 1 : 0;
+                    return (
+                      <span key={i} className="inline-flex items-center gap-1">
+                        <span className="font-mono">
+                          {k.item_code}×{k.quantity}
+                        </span>
+                        {altCount > 0 ? (
+                          <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                            +{altCount} alt
+                          </Badge>
+                        ) : null}
+                        {i < c.components.length - 1 ? <span>,</span> : null}
+                      </span>
+                    );
+                  })}
+                </div>
               </td>
               <RowActions onEdit={() => setEditing(c)} onDelete={() => setToDelete(c)} />
             </tr>
