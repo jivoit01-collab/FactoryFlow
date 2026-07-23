@@ -229,6 +229,9 @@ export interface ComboComponentOption {
   id?: number;
   item_code: string;
   item_name?: string;
+  /** Combo units of THIS item when picked; blank/undefined = same as the
+   *  component quantity. */
+  quantity?: string | null;
   is_default: boolean;
 }
 
@@ -308,7 +311,13 @@ export interface ComponentVariant {
   label: string;
   quantity: string;
   has_choice: boolean;
-  options: { id: number; item_code: string; item_name: string; is_default: boolean }[];
+  options: {
+    id: number;
+    item_code: string;
+    item_name: string;
+    quantity?: string;
+    is_default: boolean;
+  }[];
   chosen_option_id: number;
 }
 

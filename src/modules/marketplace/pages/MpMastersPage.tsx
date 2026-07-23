@@ -633,14 +633,23 @@ function ComponentAlternatives({
     if (options.length === 0) {
       // First alternative: keep the component's own item as the default option
       // AND add an empty row to enter the interchangeable item — so a single
-      // click never overwrites (or hides) the original item.
+      // click never overwrites (or hides) the original item. Each option carries
+      // its own quantity (seeded from the component's).
       set([
-        { item_code: component.item_code, item_name: component.item_name ?? '', is_default: true },
-        { item_code: '', item_name: '', is_default: false },
+        {
+          item_code: component.item_code,
+          item_name: component.item_name ?? '',
+          quantity: component.quantity,
+          is_default: true,
+        },
+        { item_code: '', item_name: '', quantity: component.quantity, is_default: false },
       ]);
       return;
     }
-    set([...options, { item_code: '', item_name: '', is_default: false }]);
+    set([
+      ...options,
+      { item_code: '', item_name: '', quantity: component.quantity, is_default: false },
+    ]);
   }
   function setOpt(i: number, patch: Partial<ComboComponentOption>) {
     set(options.map((o, idx) => (idx === i ? { ...o, ...patch } : patch.is_default ? { ...o, is_default: false } : o)));
@@ -664,11 +673,21 @@ function ComponentAlternatives({
         </Button>
       </div>
       {options.map((o, i) => (
-        <div key={i} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_32px]">
+        <div
+          key={i}
+          className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_84px_auto_32px]"
+        >
           <SapItemInput
             placeholder="Alternative SAP item"
             value={o.item_code}
             onChange={(code, name) => setOpt(i, { item_code: code, item_name: name ?? o.item_name })}
+          />
+          <Input
+            placeholder="Qty"
+            inputMode="decimal"
+            value={o.quantity ?? ''}
+            onChange={(e) => setOpt(i, { quantity: e.target.value })}
+            title="Combo units of this item when it is the one picked"
           />
           <label className="flex items-center gap-1 whitespace-nowrap text-xs">
             <input
@@ -763,6 +782,17 @@ function CombosTab({
         return;
       }
     }
+    // Drop blank alternative rows and normalise each option's quantity: a blank
+    // or non-positive value becomes null (server falls back to the component qty).
+    const components = editing.components.map((c) => ({
+      ...c,
+      options: (c.options ?? [])
+        .filter((o) => o.item_code.trim())
+        .map((o) => {
+          const q = Number(o.quantity);
+          return { ...o, quantity: q > 0 ? String(o.quantity).trim() : null };
+        }),
+    }));
     const payload: ComboDefinitionUpsert = {
       channel: editing.channel,
       code: editing.code.trim(),
@@ -771,7 +801,7 @@ function CombosTab({
       marketplace_sku: editing.marketplace_sku?.trim() ?? '',
       sku_name: editing.sku_name?.trim() ?? '',
       is_active: editing.is_active,
-      components: editing.components,
+      components,
       ...(editing.id ? { id: editing.id } : {}),
     };
     upsert.mutate(payload, {

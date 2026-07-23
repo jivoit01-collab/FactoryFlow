@@ -92,7 +92,7 @@ export function MpVariantPicker({ variant }: { variant: LineVariant }) {
             onPick={(id) => pick(id, c.component_id)}
             options={c.options.map((o) => ({
               id: o.id,
-              text: o.item_name || o.item_code,
+              text: `${o.item_name || o.item_code}${o.quantity ? ` ×${Number(o.quantity)}` : ''}`,
               is_default: o.is_default,
             }))}
           />
