@@ -2,11 +2,15 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  AllGRPOEntriesCounts,
+  AllGRPOEntriesResponse,
   AllGRPOEntry,
   GRPOAttachment,
   GRPODashboardSummary,
   GRPOHistoryEntry,
   GRPOInspectionReport,
+  GRPOListParams,
+  PaginatedResponse,
   PendingGRPOEntryWithSuppliers,
   PostGRPORequest,
   PostGRPOResponse,
@@ -22,6 +26,46 @@ import type {
 
 const SAP_SERVICE_GRPO_POST_TIMEOUT_MS = 5 * 60 * 1000;
 
+// A list endpoint may return either the DRF-style envelope or (defensively) a
+// bare array. isPaginated narrows the envelope; normalizePage tolerates both so
+// the UI never crashes if an endpoint's shape is unexpected.
+function isPaginated<T>(data: unknown): data is PaginatedResponse<T> {
+  return (
+    !!data &&
+    !Array.isArray(data) &&
+    Array.isArray((data as PaginatedResponse<T>).results)
+  );
+}
+
+function normalizePage<T>(
+  data: T[] | PaginatedResponse<T>,
+  params?: { page?: number; page_size?: number },
+): PaginatedResponse<T> {
+  if (isPaginated<T>(data)) return data;
+  const results = Array.isArray(data) ? data : [];
+  return {
+    results,
+    count: results.length,
+    page: params?.page ?? 1,
+    page_size: params?.page_size ?? results.length,
+    total_pages: 1,
+    next: null,
+    previous: null,
+  };
+}
+
+// Derive per-phase counts from a page of entries — only used as a fallback when
+// the server did not include a `counts` object (e.g. a bare-array response).
+function countPhases(entries: AllGRPOEntry[]): AllGRPOEntriesCounts {
+  const counts: AllGRPOEntriesCounts = { ALL: entries.length, GATE: 0, QC: 0, DONE: 0 };
+  for (const entry of entries) {
+    if (entry.phase === 'GATE') counts.GATE += 1;
+    else if (entry.phase === 'QC') counts.QC += 1;
+    else if (entry.phase === 'DONE') counts.DONE += 1;
+  }
+  return counts;
+}
+
 export const grpoApi = {
   // Get dashboard insight totals
   async getSummary(): Promise<GRPODashboardSummary> {
@@ -29,18 +73,28 @@ export const grpoApi = {
     return response.data;
   },
 
-  // Get list of pending gate entries for GRPO posting
-  async getPendingEntries(): Promise<PendingGRPOEntryWithSuppliers[]> {
-    const response = await apiClient.get<PendingGRPOEntryWithSuppliers[]>(
-      API_ENDPOINTS.GRPO.PENDING,
-    );
-    return response.data;
+  // Get list of pending gate entries for GRPO posting (paginated)
+  async getPendingEntries(
+    params: GRPOListParams = {},
+  ): Promise<PaginatedResponse<PendingGRPOEntryWithSuppliers>> {
+    const response = await apiClient.get<
+      PendingGRPOEntryWithSuppliers[] | PaginatedResponse<PendingGRPOEntryWithSuppliers>
+    >(API_ENDPOINTS.GRPO.PENDING, { params });
+    return normalizePage(response.data, params);
   },
 
-  // Get all gate entries visible to GRPO (gate, QC, done)
-  async getAllEntries(): Promise<AllGRPOEntry[]> {
-    const response = await apiClient.get<AllGRPOEntry[]>(API_ENDPOINTS.GRPO.ALL_ENTRIES);
-    return response.data;
+  // Get all gate entries visible to GRPO (gate, QC, done) — paginated + counts
+  async getAllEntries(params: GRPOListParams = {}): Promise<AllGRPOEntriesResponse> {
+    const response = await apiClient.get<
+      | AllGRPOEntry[]
+      | (PaginatedResponse<AllGRPOEntry> & { counts?: AllGRPOEntriesCounts })
+    >(API_ENDPOINTS.GRPO.ALL_ENTRIES, { params });
+    const page = normalizePage(response.data, params);
+    const counts =
+      !Array.isArray(response.data) && response.data.counts
+        ? response.data.counts
+        : countPhases(page.results);
+    return { ...page, counts };
   },
 
   // Get preview data for a specific vehicle entry
@@ -82,13 +136,12 @@ export const grpoApi = {
     return response.data;
   },
 
-  // Get posting history
-  async getHistory(vehicleEntryId?: number): Promise<GRPOHistoryEntry[]> {
-    const params = vehicleEntryId ? { vehicle_entry_id: vehicleEntryId } : undefined;
-    const response = await apiClient.get<GRPOHistoryEntry[]>(API_ENDPOINTS.GRPO.HISTORY, {
-      params,
-    });
-    return response.data;
+  // Get posting history (paginated)
+  async getHistory(params: GRPOListParams = {}): Promise<PaginatedResponse<GRPOHistoryEntry>> {
+    const response = await apiClient.get<
+      GRPOHistoryEntry[] | PaginatedResponse<GRPOHistoryEntry>
+    >(API_ENDPOINTS.GRPO.HISTORY, { params });
+    return normalizePage(response.data, params);
   },
 
   // Get single posting detail
@@ -97,11 +150,13 @@ export const grpoApi = {
     return response.data;
   },
 
-  async getServicePendingEntries(): Promise<ServiceGRPOPendingEntry[]> {
-    const response = await apiClient.get<ServiceGRPOPendingEntry[]>(
-      API_ENDPOINTS.DISPATCH.BILTY_GRPO_PENDING,
-    );
-    return response.data;
+  async getServicePendingEntries(
+    params: GRPOListParams = {},
+  ): Promise<PaginatedResponse<ServiceGRPOPendingEntry>> {
+    const response = await apiClient.get<
+      ServiceGRPOPendingEntry[] | PaginatedResponse<ServiceGRPOPendingEntry>
+    >(API_ENDPOINTS.DISPATCH.BILTY_GRPO_PENDING, { params });
+    return normalizePage(response.data, params);
   },
 
   async getServiceOptions(): Promise<ServiceGRPOOptions> {
@@ -147,13 +202,13 @@ export const grpoApi = {
     return response.data;
   },
 
-  async getServiceHistory(dispatchPlanId?: number): Promise<ServiceGRPOHistoryEntry[]> {
-    const params = dispatchPlanId ? { dispatch_plan_id: dispatchPlanId } : undefined;
-    const response = await apiClient.get<ServiceGRPOHistoryEntry[]>(
-      API_ENDPOINTS.DISPATCH.BILTY_GRPO_HISTORY,
-      { params },
-    );
-    return response.data;
+  async getServiceHistory(
+    params: GRPOListParams = {},
+  ): Promise<PaginatedResponse<ServiceGRPOHistoryEntry>> {
+    const response = await apiClient.get<
+      ServiceGRPOHistoryEntry[] | PaginatedResponse<ServiceGRPOHistoryEntry>
+    >(API_ENDPOINTS.DISPATCH.BILTY_GRPO_HISTORY, { params });
+    return normalizePage(response.data, params);
   },
 
   async getServiceDetail(postingId: number): Promise<ServiceGRPOHistoryEntry> {

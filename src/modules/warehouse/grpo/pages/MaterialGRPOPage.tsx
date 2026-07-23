@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Button } from '@/shared/components/ui';
 
+import { useAllGRPOEntries, usePendingGRPOEntries } from '../api';
 import AllEntriesPage, { type PhaseFilter } from './AllEntriesPage';
 import GRPOHistoryPage from './GRPOHistoryPage';
 import PendingEntriesPage from './PendingEntriesPage';
@@ -40,6 +41,23 @@ export default function MaterialGRPOPage() {
     setSearchParams(key === 'pending' ? {} : { tab: key });
   };
 
+  // Tab badge counts for the current month, read straight from the paginated
+  // list responses (pending `count`, all-entries `counts`) — never by counting a
+  // full client array.
+  const now = new Date();
+  const monthParams = { year: now.getFullYear(), month: now.getMonth() + 1, page_size: 1 };
+  const { data: pendingData } = usePendingGRPOEntries(monthParams);
+  const { data: allData } = useAllGRPOEntries(monthParams);
+  const counts = allData?.counts;
+
+  const badge: Partial<Record<TabKey, number | undefined>> = {
+    pending: pendingData?.count,
+    all: counts?.ALL,
+    gate: counts?.GATE,
+    qc: counts?.QC,
+    done: counts?.DONE,
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -51,17 +69,21 @@ export default function MaterialGRPOPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <Button
-            key={t.key}
-            variant={tab === t.key ? 'default' : 'outline'}
-            size="sm"
-            className="h-8"
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-          </Button>
-        ))}
+        {TABS.map((t) => {
+          const count = badge[t.key];
+          return (
+            <Button
+              key={t.key}
+              variant={tab === t.key ? 'default' : 'outline'}
+              size="sm"
+              className="h-8"
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+              {count !== undefined && <span className="ml-1.5 text-xs opacity-70">({count})</span>}
+            </Button>
+          );
+        })}
       </div>
 
       {tab === 'pending' && <PendingEntriesPage embedded />}

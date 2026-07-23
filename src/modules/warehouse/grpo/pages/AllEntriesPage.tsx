@@ -9,15 +9,17 @@ import {
   ShieldX,
   X,
 } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Button, Input } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
 
 import { useAllGRPOEntries } from '../api';
-import { QCReportButton, QCStatusBadge, useQCReportPrint } from '../components';
-import type { AllGRPOEntry, AllGRPOEntryPOQC, EntryPhase } from '../types';
+import { GRPOMonthFilter, QCReportButton, QCStatusBadge, useQCReportPrint } from '../components';
+import type { AllGRPOEntryPOQC, EntryPhase } from '../types';
 
 const formatDateTime = (dateTime?: string | null) => {
   if (!dateTime) return '-';
@@ -57,29 +59,45 @@ const PHASE_LABEL: Record<EntryPhase, string> = {
   CANCELLED: 'Cancelled',
 };
 
-// Strip the leading "QC " from QC-phase status labels — the phase pill already says "QC"
-const compactStatusLabel = (entry: AllGRPOEntry): string => {
-  if (entry.phase === 'QC' && entry.status_label.startsWith('QC ')) {
-    return entry.status_label.slice(3);
-  }
-  return entry.status_label;
-};
-
 export default function AllEntriesPage({
   embedded = false,
   phase,
 }: { embedded?: boolean; phase?: PhaseFilter } = {}) {
   const navigate = useNavigate();
-  const { data: entries = [], isLoading, refetch, error } = useAllGRPOEntries();
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('ALL');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const debouncedSearch = useDebounce(search);
+
   const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
     useQCReportPrint();
 
   // When embedded in the unified GRPO page, the phase is driven by the parent's
   // tab (pills are hidden); standalone, it's driven by this page's own pills.
   const activePhase: PhaseFilter = embedded ? (phase ?? 'ALL') : phaseFilter;
+
+  useEffect(() => {
+    setPage(1);
+  }, [activePhase, year, month, debouncedSearch, pageSize]);
+
+  const { data, isLoading, refetch, error } = useAllGRPOEntries({
+    phase: activePhase === 'ALL' ? undefined : activePhase,
+    page,
+    page_size: pageSize,
+    year,
+    month,
+    search: debouncedSearch || undefined,
+  });
+
+  const entries = data?.results ?? [];
+  const total = data?.count ?? 0;
+  const counts = data?.counts ?? { ALL: 0, GATE: 0, QC: 0, DONE: 0 };
 
   const toggleExpanded = (entryId: number) =>
     setExpanded((prev) => {
@@ -91,35 +109,6 @@ export default function AllEntriesPage({
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
-
-  const filtered = useMemo(() => {
-    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
-    return entries.filter((e) => {
-      if (activePhase !== 'ALL' && e.phase !== activePhase) return false;
-      if (terms.length === 0) return true;
-      const haystack = [
-        e.entry_no,
-        PHASE_LABEL[e.phase],
-        e.status_label,
-        ...e.suppliers.flatMap((s) => [s.supplier_name, s.supplier_code]),
-        ...e.po_numbers,
-      ]
-        .filter((value) => value !== null && value !== undefined && value !== '')
-        .join(' ')
-        .toLowerCase();
-      return terms.every((term) => haystack.includes(term));
-    });
-  }, [entries, activePhase, search]);
-
-  const counts = useMemo(() => {
-    const c: Record<PhaseFilter, number> = { ALL: entries.length, GATE: 0, QC: 0, DONE: 0 };
-    for (const entry of entries) {
-      if (entry.phase === 'GATE') c.GATE += 1;
-      else if (entry.phase === 'QC') c.QC += 1;
-      else if (entry.phase === 'DONE') c.DONE += 1;
-    }
-    return c;
-  }, [entries]);
 
   return (
     <div className="space-y-6">
@@ -185,37 +174,41 @@ export default function AllEntriesPage({
         </div>
       )}
 
-      {isLoading && (
-        <div className="flex items-center justify-center h-48">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      )}
-
-      {!isLoading && !error && (
+      {!isPermissionError && (
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search entry, supplier, PO, status…"
-                className="pl-9 pr-9"
-                aria-label="Search entries"
+            <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative w-full sm:max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search entry, supplier, PO, status…"
+                  className="pl-9 pr-9"
+                  aria-label="Search entries"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <GRPOMonthFilter
+                year={year}
+                month={month}
+                onChange={(y, m) => {
+                  setYear(y);
+                  setMonth(m);
+                }}
               />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
             </div>
             <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-              Showing {filtered.length} of {entries.length}
+              {total} {total === 1 ? 'entry' : 'entries'}
             </span>
           </div>
 
@@ -238,7 +231,11 @@ export default function AllEntriesPage({
             </div>
           )}
 
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          ) : entries.length === 0 ? (
             <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
               No entries to show.
             </div>
@@ -259,9 +256,15 @@ export default function AllEntriesPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((entry) => {
+                    {entries.map((entry) => {
                       const hasDetail = entry.po_receipts.length > 0;
                       const isExpanded = expanded.has(entry.vehicle_entry_id);
+                      // Strip the leading "QC " from QC-phase status labels — the
+                      // phase pill already says "QC".
+                      const statusLabel =
+                        entry.phase === 'QC' && entry.status_label.startsWith('QC ')
+                          ? entry.status_label.slice(3)
+                          : entry.status_label;
                       return (
                         <Fragment key={entry.vehicle_entry_id}>
                           <tr
@@ -280,7 +283,7 @@ export default function AllEntriesPage({
                                 {PHASE_LABEL[entry.phase]}
                               </span>
                             </td>
-                            <td className="p-3 text-sm">{compactStatusLabel(entry)}</td>
+                            <td className="p-3 text-sm">{statusLabel}</td>
                             <td className="p-3 text-sm">
                               {entry.suppliers.length > 0 ? (
                                 <div className="flex flex-col gap-0.5">
@@ -361,6 +364,15 @@ export default function AllEntriesPage({
                   </tbody>
                 </table>
               </div>
+              <PaginationControls
+                page={data?.page ?? page}
+                pageSize={data?.page_size ?? pageSize}
+                total={total}
+                totalPages={data?.total_pages ?? 1}
+                isLoading={isLoading}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
             </div>
           )}
         </>

@@ -1,5 +1,6 @@
 export { AttachmentsSection } from './AttachmentsSection';
 export { ExtraChargesSection } from './ExtraChargesSection';
+export { GRPOMonthFilter } from './GRPOMonthFilter';
 export {
   GRPOInspectionReportPrintStyles,
   GRPOInspectionReportPrintView,

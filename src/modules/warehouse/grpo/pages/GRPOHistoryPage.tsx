@@ -1,32 +1,23 @@
 import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, Search, ShieldX, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Button, Input } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
 
 import { useGRPOHistory } from '../api';
 import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants';
-import type { GRPOHistoryEntry, GRPOStatus } from '../types';
+import { GRPOMonthFilter } from '../components';
+import type { GRPOStatus } from '../types';
 
-// Status filter configuration
+// Status filter buttons map to the server `status` query param (a single
+// GRPOStatus value, or undefined for "all").
 const STATUS_FILTERS = {
-  all: {
-    label: 'All',
-    filter: () => true,
-  },
-  posted: {
-    label: 'Posted',
-    filter: (entry: GRPOHistoryEntry) => entry.status === GRPO_STATUS.POSTED,
-  },
-  failed: {
-    label: 'Failed',
-    // A failure that a later successful re-post resolved (is_superseded) drops out of
-    // Failed — it stays visible under "All" for audit.
-    filter: (entry: GRPOHistoryEntry) =>
-      (entry.status === GRPO_STATUS.FAILED || entry.status === GRPO_STATUS.PARTIALLY_POSTED) &&
-      !entry.is_superseded,
-  },
+  all: { label: 'All', status: undefined as GRPOStatus | undefined },
+  posted: { label: 'Posted', status: GRPO_STATUS.POSTED as GRPOStatus },
+  failed: { label: 'Failed', status: GRPO_STATUS.FAILED as GRPOStatus },
 } as const;
 
 type StatusFilterKey = keyof typeof STATUS_FILTERS;
@@ -65,37 +56,41 @@ const formatDateTime = (dateTime?: string | null) => {
 export default function GRPOHistoryPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: historyEntries = [], isLoading, refetch, error } = useGRPOHistory();
 
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const debouncedSearch = useDebounce(search);
+
   // Embedded (inside the unified GRPO page) the status filter is local state, so
   // it doesn't fight the parent's ?tab= URL param. Standalone it lives in the URL.
   const [localStatus, setLocalStatus] = useState<StatusFilterKey>('all');
-
-  const statusFilter = embedded
+  const urlStatus = searchParams.get('status');
+  const statusFilter: StatusFilterKey = embedded
     ? localStatus
-    : (searchParams.get('status') as StatusFilterKey) || 'all';
+    : urlStatus && urlStatus in STATUS_FILTERS
+      ? (urlStatus as StatusFilterKey)
+      : 'all';
   const currentFilter = STATUS_FILTERS[statusFilter] || STATUS_FILTERS.all;
 
-  // Filter entries based on status + free-text search
-  const filteredEntries = useMemo(() => {
-    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
-    return historyEntries.filter((entry) => {
-      if (!currentFilter.filter(entry)) return false;
-      if (terms.length === 0) return true;
-      const statusConfig = GRPO_STATUS_CONFIG[entry.status];
-      const haystack = [
-        entry.entry_no,
-        entry.po_number,
-        entry.sap_doc_num,
-        statusConfig?.label ?? entry.status,
-      ]
-        .filter((value) => value !== null && value !== undefined && value !== '')
-        .join(' ')
-        .toLowerCase();
-      return terms.every((term) => haystack.includes(term));
-    });
-  }, [historyEntries, currentFilter, search]);
+  useEffect(() => {
+    setPage(1);
+  }, [year, month, debouncedSearch, statusFilter, pageSize]);
+
+  const { data, isLoading, refetch, error } = useGRPOHistory({
+    page,
+    page_size: pageSize,
+    year,
+    month,
+    search: debouncedSearch || undefined,
+    status: currentFilter.status,
+  });
+
+  const historyEntries = data?.results ?? [];
+  const total = data?.count ?? 0;
 
   const handleFilterChange = (filter: StatusFilterKey) => {
     if (embedded) {
@@ -138,26 +133,36 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative w-full sm:max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search entry, PO, SAP #, status…"
-          className="pl-9 pr-9"
-          aria-label="Search posting history"
+      {/* Search + month filter */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search entry, PO, SAP #, status…"
+            className="pl-9 pr-9"
+            aria-label="Search posting history"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <GRPOMonthFilter
+          year={year}
+          month={month}
+          onChange={(y, m) => {
+            setYear(y);
+            setMonth(m);
+          }}
         />
-        {search && (
-          <button
-            type="button"
-            onClick={() => setSearch('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
-            aria-label="Clear search"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
       {/* Filter Tabs */}
@@ -207,79 +212,85 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center h-48">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && !error && filteredEntries.length === 0 && (
-        <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
-          No {currentFilter.label.toLowerCase()} postings
-        </div>
-      )}
-
-      {/* History List */}
-      {!isLoading && !error && filteredEntries.length > 0 && (
+      {!isPermissionError && (
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-muted-foreground">
-              {currentFilter.label} ({filteredEntries.length})
+              {currentFilter.label} ({total})
             </h3>
           </div>
 
-          <div className="space-y-2">
-            {filteredEntries.map((entry) => {
-              const statusConfig = GRPO_STATUS_CONFIG[entry.status];
+          {isLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          ) : historyEntries.length === 0 ? (
+            <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
+              No {currentFilter.label.toLowerCase()} postings match the current filters
+            </div>
+          ) : (
+            <div className="rounded-md border overflow-hidden">
+              <div className="space-y-2 p-2">
+                {historyEntries.map((entry) => {
+                  const statusConfig = GRPO_STATUS_CONFIG[entry.status];
 
-              return (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/warehouse/grpo/material/history/${entry.id}`)}
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="font-medium text-sm">{entry.entry_no}</span>
-                    <span className="text-xs text-muted-foreground">{entry.po_number}</span>
-                    <span
-                      className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 ${getStatusBadgeClass(entry.status)}`}
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between px-3 py-2 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/warehouse/grpo/material/history/${entry.id}`)}
                     >
-                      {statusConfig?.label || entry.status}
-                    </span>
-                    {entry.sap_doc_num && (
-                      <span className="text-xs text-muted-foreground hidden md:inline">
-                        SAP #{entry.sap_doc_num}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {(entry.status === GRPO_STATUS.FAILED ||
-                      entry.status === GRPO_STATUS.PARTIALLY_POSTED) &&
-                      !entry.is_superseded && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 gap-1 px-2 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/warehouse/grpo/material/preview/${entry.vehicle_entry}`);
-                          }}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="font-medium text-sm">{entry.entry_no}</span>
+                        <span className="text-xs text-muted-foreground">{entry.po_number}</span>
+                        <span
+                          className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 ${getStatusBadgeClass(entry.status)}`}
                         >
-                          <RefreshCw className="h-3 w-3" />
-                          Retry
-                        </Button>
-                      )}
-                    <span className="text-xs text-muted-foreground">
-                      {formatDateTime(entry.posted_at || entry.created_at)}
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                          {statusConfig?.label || entry.status}
+                        </span>
+                        {entry.sap_doc_num && (
+                          <span className="text-xs text-muted-foreground hidden md:inline">
+                            SAP #{entry.sap_doc_num}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {(entry.status === GRPO_STATUS.FAILED ||
+                          entry.status === GRPO_STATUS.PARTIALLY_POSTED) &&
+                          !entry.is_superseded && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 gap-1 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/warehouse/grpo/material/preview/${entry.vehicle_entry}`);
+                              }}
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              Retry
+                            </Button>
+                          )}
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateTime(entry.posted_at || entry.created_at)}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <PaginationControls
+                page={data?.page ?? page}
+                pageSize={data?.page_size ?? pageSize}
+                total={total}
+                totalPages={data?.total_pages ?? 1}
+                isLoading={isLoading}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,9 +1,13 @@
 export type {
+  AllGRPOEntriesCounts,
+  AllGRPOEntriesResponse,
   AllGRPOEntry,
   AllGRPOEntryItemQC,
   AllGRPOEntryPOQC,
   AllGRPOEntrySupplier,
   AttachmentStatus,
+  GRPOListParams,
+  PaginatedResponse,
   EntryPhase,
   ExtraCharge,
   GRPOAttachment,

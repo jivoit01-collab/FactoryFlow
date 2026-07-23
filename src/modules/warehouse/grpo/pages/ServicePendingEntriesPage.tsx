@@ -1,11 +1,14 @@
 import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, Search, ShieldX, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Button, Input } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
 
 import { usePendingServiceGRPOEntries } from '../api';
+import { GRPOMonthFilter } from '../components';
 
 const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return '-';
@@ -26,62 +29,63 @@ const formatCurrency = (value?: string | null) => {
   return amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
 };
 
-export default function ServicePendingEntriesPage() {
+export default function ServicePendingEntriesPage({
+  embedded = false,
+}: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
-  const { data: pendingEntries = [], isLoading, refetch, error } = usePendingServiceGRPOEntries();
+
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const debouncedSearch = useDebounce(search);
+
+  useEffect(() => {
+    setPage(1);
+  }, [year, month, debouncedSearch, pageSize]);
+
+  const { data, isLoading, refetch, error } = usePendingServiceGRPOEntries({
+    page,
+    page_size: pageSize,
+    year,
+    month,
+    search: debouncedSearch || undefined,
+  });
+
+  const pendingEntries = data?.results ?? [];
+  const total = data?.count ?? 0;
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
-  const [search, setSearch] = useState('');
-
-  const filteredEntries = useMemo(() => {
-    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
-    if (terms.length === 0) return pendingEntries;
-    return pendingEntries.filter((entry) => {
-      const haystack = [
-        entry.sap_invoice_doc_num,
-        entry.sap_invoice_doc_entry,
-        entry.vehicle_no,
-        entry.linked_vehicle_entry_no,
-        entry.transporter_name,
-        entry.transporter_gstin,
-        entry.driver_name,
-        entry.source_state,
-        entry.bilty_no,
-        entry.invoice_number,
-      ]
-        .filter((value) => value !== null && value !== undefined && value !== '')
-        .join(' ')
-        .toLowerCase();
-      return terms.every((term) => haystack.includes(term));
-    });
-  }, [pendingEntries, search]);
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/dispatch/bilty-grpo')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">Service GRPO Pending</h2>
+      {!embedded && (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => navigate('/dispatch/bilty-grpo')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <h2 className="text-3xl font-bold tracking-tight">Service GRPO Pending</h2>
+            </div>
+            <p className="text-muted-foreground">
+              Booked dispatch vehicle bookings pending transport service GRPO
+            </p>
           </div>
-          <p className="text-muted-foreground">
-            Booked dispatch vehicle bookings pending transport service GRPO
-          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
+      )}
 
       {isPermissionError && (
         <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
@@ -113,127 +117,139 @@ export default function ServicePendingEntriesPage() {
         </div>
       )}
 
-      {isLoading && (
-        <div className="flex items-center justify-center h-48">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      )}
-
-      {!isLoading && !error && pendingEntries.length === 0 && (
-        <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
-          No booked dispatch plans pending service GRPO.
-        </div>
-      )}
-
-      {!isLoading && !error && pendingEntries.length > 0 && (
+      {!isPermissionError && (
         <div>
           <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search bill, vehicle, transporter, driver, state, bilty, GSTIN…"
-                className="pl-9 pr-9"
-                aria-label="Search pending service GRPO"
+            <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative w-full sm:max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search bill, vehicle, transporter, driver, state, bilty, GSTIN…"
+                  className="pl-9 pr-9"
+                  aria-label="Search pending service GRPO"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <GRPOMonthFilter
+                year={year}
+                month={month}
+                onChange={(y, m) => {
+                  setYear(y);
+                  setMonth(m);
+                }}
               />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
             </div>
             <h3 className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-              Pending ({filteredEntries.length}
-              {filteredEntries.length !== pendingEntries.length ? ` of ${pendingEntries.length}` : ''})
+              Pending ({total})
             </h3>
           </div>
 
-          {filteredEntries.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          ) : pendingEntries.length === 0 ? (
             <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
-              No entries match your search.
+              No booked dispatch plans match the current filters.
             </div>
           ) : (
-          <div className="rounded-md border overflow-hidden">
-            <div className="overflow-x-auto max-w-full">
-              <table className="w-full min-w-[1040px]">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="p-3 text-left text-sm font-medium">Dispatch Bill</th>
-                    <th className="p-3 text-left text-sm font-medium">Invoices</th>
-                    <th className="p-3 text-left text-sm font-medium">State</th>
-                    <th className="p-3 text-left text-sm font-medium">Vehicle</th>
-                    <th className="p-3 text-left text-sm font-medium">Transporter</th>
-                    <th className="p-3 text-left text-sm font-medium">Driver</th>
-                    <th className="p-3 text-left text-sm font-medium">Bilty</th>
-                    <th className="p-3 text-left text-sm font-medium">Dispatch Date</th>
-                    <th className="p-3 text-left text-sm font-medium">Freight</th>
-                    <th className="p-3 w-8" aria-hidden="true" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEntries.map((entry) => (
-                    <tr
-                      key={entry.dispatch_plan_id}
-                      className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/dispatch/bilty-grpo/preview/${entry.dispatch_plan_id}`)}
-                    >
-                      <td className="p-3 text-sm font-medium whitespace-nowrap">
-                        {entry.sap_invoice_doc_num || entry.sap_invoice_doc_entry}
-                      </td>
-                      <td className="p-3 text-sm whitespace-nowrap">
-                        {entry.invoice_count || 1}
-                      </td>
-                      <td className="p-3 text-sm whitespace-nowrap">{entry.source_state || '-'}</td>
-                      <td className="p-3 text-sm whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span>{entry.vehicle_no || '-'}</span>
-                          {entry.linked_vehicle_entry_no && (
-                            <span className="text-xs text-muted-foreground">
-                              Entry {entry.linked_vehicle_entry_no}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 text-sm">
-                        <div className="flex flex-col">
-                          <span>{entry.transporter_name || '-'}</span>
-                          {entry.transporter_gstin && (
-                            <span className="text-xs text-muted-foreground">
-                              GSTIN {entry.transporter_gstin}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 text-sm whitespace-nowrap">{entry.driver_name || '-'}</td>
-                      <td className="p-3 text-sm whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span>{entry.bilty_no || '-'}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(entry.bilty_date)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
-                        {formatDate(entry.dispatch_date)}
-                      </td>
-                      <td className="p-3 text-sm whitespace-nowrap">
-                        {formatCurrency(entry.total_freight || entry.freight)}
-                      </td>
-                      <td className="p-3 text-right">
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </td>
+            <div className="rounded-md border overflow-hidden">
+              <div className="overflow-x-auto max-w-full">
+                <table className="w-full min-w-[1040px]">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="p-3 text-left text-sm font-medium">Dispatch Bill</th>
+                      <th className="p-3 text-left text-sm font-medium">Invoices</th>
+                      <th className="p-3 text-left text-sm font-medium">State</th>
+                      <th className="p-3 text-left text-sm font-medium">Vehicle</th>
+                      <th className="p-3 text-left text-sm font-medium">Transporter</th>
+                      <th className="p-3 text-left text-sm font-medium">Driver</th>
+                      <th className="p-3 text-left text-sm font-medium">Bilty</th>
+                      <th className="p-3 text-left text-sm font-medium">Dispatch Date</th>
+                      <th className="p-3 text-left text-sm font-medium">Freight</th>
+                      <th className="p-3 w-8" aria-hidden="true" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {pendingEntries.map((entry) => (
+                      <tr
+                        key={entry.dispatch_plan_id}
+                        className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() =>
+                          navigate(`/dispatch/bilty-grpo/preview/${entry.dispatch_plan_id}`)
+                        }
+                      >
+                        <td className="p-3 text-sm font-medium whitespace-nowrap">
+                          {entry.sap_invoice_doc_num || entry.sap_invoice_doc_entry}
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">{entry.invoice_count || 1}</td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          {entry.source_state || '-'}
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span>{entry.vehicle_no || '-'}</span>
+                            {entry.linked_vehicle_entry_no && (
+                              <span className="text-xs text-muted-foreground">
+                                Entry {entry.linked_vehicle_entry_no}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm">
+                          <div className="flex flex-col">
+                            <span>{entry.transporter_name || '-'}</span>
+                            {entry.transporter_gstin && (
+                              <span className="text-xs text-muted-foreground">
+                                GSTIN {entry.transporter_gstin}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">{entry.driver_name || '-'}</td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span>{entry.bilty_no || '-'}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(entry.bilty_date)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
+                          {formatDate(entry.dispatch_date)}
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          {formatCurrency(entry.total_freight || entry.freight)}
+                        </td>
+                        <td className="p-3 text-right">
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <PaginationControls
+                page={data?.page ?? page}
+                pageSize={data?.page_size ?? pageSize}
+                total={total}
+                totalPages={data?.total_pages ?? 1}
+                isLoading={isLoading}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
             </div>
-          </div>
           )}
         </div>
       )}

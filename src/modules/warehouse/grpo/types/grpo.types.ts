@@ -6,6 +6,43 @@ export interface Warehouse {
   warehouse_name: string;
 }
 
+// Standard DRF-style paginated envelope returned by all GRPO list endpoints
+export interface PaginatedResponse<T> {
+  results: T[];
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  next: number | null;
+  previous: number | null;
+}
+
+// Per-phase tab counts returned alongside the all-entries page
+export interface AllGRPOEntriesCounts {
+  ALL: number;
+  GATE: number;
+  QC: number;
+  DONE: number;
+}
+
+// All-entries page also carries the per-phase counts
+export interface AllGRPOEntriesResponse extends PaginatedResponse<AllGRPOEntry> {
+  counts: AllGRPOEntriesCounts;
+}
+
+// Query params accepted by the GRPO list endpoints (all optional)
+export interface GRPOListParams {
+  page?: number;
+  page_size?: number;
+  year?: number;
+  month?: number;
+  search?: string;
+  status?: string;
+  phase?: 'GATE' | 'QC' | 'DONE';
+  vehicle_entry_id?: number;
+  dispatch_plan_id?: number;
+}
+
 // GRPO Status
 export type GRPOStatus = 'PENDING' | 'POSTED' | 'FAILED' | 'PARTIALLY_POSTED';
 
