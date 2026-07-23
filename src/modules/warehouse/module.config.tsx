@@ -1,10 +1,11 @@
 import { LayoutDashboard,Warehouse } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
-import { GRPO_PERMISSIONS,WAREHOUSE_PERMISSIONS } from '@/config/permissions';
+import { GRPO_PERMISSIONS,OMS_PERMISSIONS,WAREHOUSE_PERMISSIONS } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { grpoNavChildren, grpoRoutes } from './grpo/module.config';
+import { invoiceApprovalNavChildren, invoiceApprovalRoutes } from './invoice-approval/module.config';
 
 const WarehouseDashboardPage = lazy(() => import('./pages/WarehouseDashboardPage'));
 const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
@@ -138,6 +139,8 @@ export const warehouseModuleConfig: ModuleConfig = {
     },
     // GRPO submodule routes (/warehouse/grpo/*, plus legacy /grpo/* redirect)
     ...grpoRoutes,
+    // Invoice Approval submodule route (/warehouse/invoice-approval)
+    ...invoiceApprovalRoutes,
   ],
   navigation: [
     {
@@ -154,6 +157,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
         WAREHOUSE_PERMISSIONS.VIEW_BST,
         GRPO_PERMISSIONS.VIEW_PENDING,
+        OMS_PERMISSIONS.VIEW_INVOICE,
       ],
       hasSubmenu: true,
       children: [
@@ -174,6 +178,8 @@ export const warehouseModuleConfig: ModuleConfig = {
         },
         // GRPO submodule — nested under the Warehouse group
         ...grpoNavChildren,
+        // Invoice Approval submodule — nested under the Warehouse group
+        ...invoiceApprovalNavChildren,
       ],
     },
     {

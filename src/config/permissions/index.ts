@@ -69,6 +69,9 @@ export {
   type WarehousePermission,
 } from './warehouse.permissions';
 
+// OMS Invoice Approval Module (external OMS proxy; nav lives under Warehouse)
+export { OMS_MODULE_PREFIX, OMS_PERMISSIONS, type OmsPermission } from './oms.permissions';
+
 // Vehicle Management Module
 export {
   VEHICLE_MANAGEMENT_MODULE_PREFIX,

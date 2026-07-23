@@ -422,6 +422,14 @@ export const API_ENDPOINTS = {
     TRANSPORTER_INVOICE_DETAIL: (postingId: number) =>
       `/dispatch/transporter-invoices/${postingId}/`,
   },
+  // OMS Invoice Approval (proxy to the external OMS service)
+  OMS: {
+    INVOICES: '/oms/invoices/',
+    INVOICE_STATUS: (id: number) => `/oms/invoices/${id}/status/`,
+    INVOICE_HISTORY: (id: number) => `/oms/invoices/${id}/history/`,
+    INVOICE_PENDING_COUNT: '/oms/invoices/pending-count/',
+    INVOICE_AUDIT: (id: number) => `/oms/invoices/${id}/audit/`,
+  },
   // AI Assistant
   AI: {
     ASSISTANT_CHAT: '/ai/assistant/chat/',
