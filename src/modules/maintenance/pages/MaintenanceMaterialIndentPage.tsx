@@ -526,18 +526,18 @@ function IndentDetailDialog({
             <div className="space-y-3 rounded-md border p-3">
               <p className="font-medium">Actions</p>
 
-              {/* 1. Requester submits to store */}
+              {/* 1. Requester submits straight for purchase approval (store step skipped) */}
               {indent.status === 'DRAFT' && canManage && (
                 <Button
                   type="button"
                   onClick={async () => {
                     await submitIndent.mutateAsync(indentId);
-                    toast.success('Sent to store engineer');
+                    toast.success('Sent for purchase approval');
                   }}
                   disabled={submitIndent.isPending}
                 >
                   <Send className="h-4 w-4" />
-                  Send to Store
+                  Send for Approval
                 </Button>
               )}
 
@@ -798,7 +798,6 @@ export default function MaintenanceMaterialIndentPage() {
   const deleteIndent = useDeleteMaterialIndent();
 
   const indents = indentsQuery.data ?? [];
-  const atStore = indents.filter((i) => i.status === 'SUBMITTED').length;
   const forApproval = indents.filter((i) => i.status === 'PENDING_APPROVAL').length;
   const toPurchase = indents.filter((i) => i.status === 'APPROVED').length;
 
@@ -811,7 +810,7 @@ export default function MaintenanceMaterialIndentPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Material Indent"
-        description="Raise material requests → store issues stock → shortfall goes for purchase approval"
+        description="Raise material requests → straight to purchase approval → purchase"
       >
         <Button
           variant="outline"
@@ -828,9 +827,8 @@ export default function MaintenanceMaterialIndentPage() {
         </Button>
       </DashboardHeader>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard title="Total" value={indents.length} icon={FileText} />
-        <SummaryCard title="At Store" value={atStore} icon={ClipboardList} />
         <SummaryCard title="For Approval" value={forApproval} icon={Send} />
         <SummaryCard title="To Purchase" value={toPurchase} icon={CheckCircle2} />
       </div>

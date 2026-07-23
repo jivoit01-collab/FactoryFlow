@@ -1,8 +1,8 @@
-import { ClipboardCheck, Truck } from 'lucide-react';
+import { ClipboardCheck, ClipboardList, Truck } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ADMIN_PERMISSIONS } from '@/config/permissions';
+import { ADMIN_PERMISSIONS, MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
@@ -25,6 +25,17 @@ const adminModuleCards: AdminModuleCard[] = [
     permissions: [
       ADMIN_PERMISSIONS.DOCKING.VIEW_SCAN_SKIP,
       ADMIN_PERMISSIONS.DOCKING.APPROVE_SCAN_SKIP,
+    ],
+  },
+  {
+    title: 'Material Indent — Purchase Approvals',
+    description: 'Review material requests raised across departments and approve them for purchase.',
+    route: '/admin/material-indent-approvals',
+    icon: <ClipboardList className="h-5 w-5" />,
+    color: 'text-sky-700',
+    permissions: [
+      MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
+      MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT,
     ],
   },
 ];

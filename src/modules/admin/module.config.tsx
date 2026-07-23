@@ -1,10 +1,11 @@
 import { ShieldCheck } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
-import { ADMIN_PERMISSIONS } from '@/config/permissions';
+import { ADMIN_PERMISSIONS, MAINTENANCE_PERMISSIONS } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { DockingApprovalsBadge } from './components/DockingApprovalsBadge';
+import { MaterialIndentApprovalsBadge } from './components/MaterialIndentApprovalsBadge';
 import { PartialApprovalsBadge } from './components/PartialApprovalsBadge';
 
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
@@ -12,6 +13,7 @@ const DockingScanApprovalsPage = lazy(() => import('./pages/DockingScanApprovals
 const DockingPartialScanApprovalsPage = lazy(
   () => import('./pages/DockingPartialScanApprovalsPage'),
 );
+const MaterialIndentApprovalsPage = lazy(() => import('./pages/MaterialIndentApprovalsPage'));
 
 const dockingApprovalPermissions = [
   ADMIN_PERMISSIONS.DOCKING.VIEW_SCAN_SKIP,
@@ -23,7 +25,16 @@ const partialApprovalPermissions = [
   ADMIN_PERMISSIONS.DOCKING.APPROVE_PARTIAL_SCAN,
 ] as const;
 
-const adminPermissions = [...dockingApprovalPermissions, ...partialApprovalPermissions] as const;
+const materialIndentApprovalPermissions = [
+  MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
+  MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT,
+] as const;
+
+const adminPermissions = [
+  ...dockingApprovalPermissions,
+  ...partialApprovalPermissions,
+  ...materialIndentApprovalPermissions,
+] as const;
 
 export const adminModuleConfig: ModuleConfig = {
   name: 'admin',
@@ -49,6 +60,13 @@ export const adminModuleConfig: ModuleConfig = {
       permissions: partialApprovalPermissions,
       breadcrumb: { label: 'Partial Dispatch Approvals' },
     },
+    {
+      path: '/admin/material-indent-approvals',
+      element: <MaterialIndentApprovalsPage />,
+      layout: 'main',
+      permissions: materialIndentApprovalPermissions,
+      breadcrumb: { label: 'Material Indent Approvals' },
+    },
   ],
   navigation: [
     {
@@ -71,6 +89,12 @@ export const adminModuleConfig: ModuleConfig = {
           title: 'Partial Dispatch Approvals',
           permissions: partialApprovalPermissions,
           badge: PartialApprovalsBadge,
+        },
+        {
+          path: '/admin/material-indent-approvals',
+          title: 'Material Indent Approvals',
+          permissions: materialIndentApprovalPermissions,
+          badge: MaterialIndentApprovalsBadge,
         },
       ],
     },
