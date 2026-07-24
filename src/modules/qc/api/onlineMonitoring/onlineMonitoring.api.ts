@@ -95,6 +95,33 @@ export const onlineMonitoringApi = {
     return data;
   },
 
+  async reopen(recordId: number): Promise<OnlineQualityRecord> {
+    const { data } = await apiClient.post<OnlineQualityRecord>(
+      EP.ONLINE_MONITORING_REOPEN(recordId),
+    );
+    return data;
+  },
+
+  async updateSpec(
+    specId: number,
+    payload: Partial<
+      Pick<
+        OnlineQualitySpec,
+        'min_value' | 'max_value' | 'validation_type' | 'specification_text' | 'unit'
+      >
+    >,
+  ): Promise<OnlineQualitySpec> {
+    const { data } = await apiClient.patch<OnlineQualitySpec>(
+      EP.ONLINE_MONITORING_SPEC_DETAIL(specId),
+      payload,
+    );
+    return data;
+  },
+
+  async resetSpec(specId: number): Promise<void> {
+    await apiClient.delete(EP.ONLINE_MONITORING_SPEC_DETAIL(specId));
+  },
+
   async lines(): Promise<ProductionLineOption[]> {
     const { data } = await apiClient.get<ProductionLineOption[]>(EP.ONLINE_MONITORING_LINES);
     return data;
