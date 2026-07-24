@@ -85,9 +85,11 @@ export default function BoxTransferPage() {
       (pallet.status === 'ACTIVE' && (isEmpty || matchesSourceContext));
     const canReceiveByContext =
       isReusableClearedPallet || (isEmpty && hasNoContext) || matchesSourceContext;
-    const hasSpace = getRemainingSpace(pallet) >= selectedBoxIds.length;
 
-    return canReceiveByStatus && canReceiveByContext && hasSpace;
+    // Capacity is intentionally NOT gated here: a transfer may consolidate boxes onto
+    // a pallet past its nominal max_box_count (the backend skips the cap for transfers
+    // too). The item/batch/uom compatibility above still applies.
+    return canReceiveByStatus && canReceiveByContext;
   });
 
   const handleSourceSearchChange = useCallback((search: string) => {
@@ -332,9 +334,12 @@ export default function BoxTransferPage() {
                 <br />
                 <strong>Target:</strong> {targetPallet?.pallet_id || 'Select a pallet'}{' '}
                 {targetPallet &&
+                  targetRemainingAfterTransfer != null &&
                   (targetRemainingAfterTransfer === Number.POSITIVE_INFINITY
                     ? '(open capacity)'
-                    : `(${targetRemainingAfterTransfer} spaces left after transfer)`)}
+                    : targetRemainingAfterTransfer < 0
+                      ? `(over capacity by ${Math.abs(targetRemainingAfterTransfer)} after transfer)`
+                      : `(${targetRemainingAfterTransfer} spaces left after transfer)`)}
               </div>
             )}
 
