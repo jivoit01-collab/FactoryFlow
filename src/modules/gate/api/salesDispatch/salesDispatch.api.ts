@@ -448,6 +448,21 @@ export interface SalesDispatchListParams {
   detail?: number;
 }
 
+/** Adds numbered-page pagination on top of the list filters. Passing `page`
+ *  switches the endpoint to the paginated envelope (see {@link salesDispatchApi.listPaged}). */
+export interface SalesDispatchListPageParams extends SalesDispatchListParams {
+  page?: number;
+  page_size?: number;
+}
+
+export interface SalesDispatchListPage {
+  count: number;
+  num_pages: number;
+  page: number;
+  page_size: number;
+  results: SalesDispatchGateOut[];
+}
+
 export interface SalesDispatchPendingBookingParams {
   from_date?: string;
   to_date?: string;
@@ -629,6 +644,16 @@ export const salesDispatchApi = {
       ? `${API_ENDPOINTS.GATE_CORE.SALES_DISPATCHES}?${query}`
       : API_ENDPOINTS.GATE_CORE.SALES_DISPATCHES;
     const response = await apiClient.get<SalesDispatchGateOut[]>(url);
+    return response.data;
+  },
+
+  /** Numbered-page variant of {@link list}. Sends `page`/`page_size` so the
+   *  backend returns one page plus the total count. */
+  async listPaged(params: SalesDispatchListPageParams): Promise<SalesDispatchListPage> {
+    const query = buildQuery({ page: 1, ...params });
+    const response = await apiClient.get<SalesDispatchListPage>(
+      `${API_ENDPOINTS.GATE_CORE.SALES_DISPATCHES}?${query}`,
+    );
     return response.data;
   },
 

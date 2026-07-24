@@ -11,6 +11,7 @@ import {
   type SalesDispatchDocumentType,
   type SalesDispatchGatepassPrintRequest,
   type SalesDispatchGatepassReprintRequest,
+  type SalesDispatchListPageParams,
   type SalesDispatchListParams,
   type SalesDispatchLockUpdateRequest,
   type SalesDispatchPendingBookingParams,
@@ -27,6 +28,8 @@ export const SALES_DISPATCH_QUERY_KEYS = {
     [...SALES_DISPATCH_QUERY_KEYS.all, 'document', documentType, docEntry] as const,
   list: (params?: SalesDispatchListParams) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'list', params] as const,
+  listPaged: (params?: SalesDispatchListPageParams) =>
+    [...SALES_DISPATCH_QUERY_KEYS.all, 'listPaged', params] as const,
   pendingBookings: (params?: SalesDispatchPendingBookingParams) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'pendingBookings', params] as const,
   reports: (params?: SalesDispatchReportParams) =>
@@ -81,6 +84,21 @@ export function useSalesDispatchEntries(
   return useQuery({
     queryKey: SALES_DISPATCH_QUERY_KEYS.list(params),
     queryFn: () => salesDispatchApi.list(params),
+    staleTime: 30 * 1000,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useSalesDispatchEntriesPaged(
+  params: SalesDispatchListPageParams,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: SALES_DISPATCH_QUERY_KEYS.listPaged(params),
+    queryFn: () => salesDispatchApi.listPaged(params),
+    // Keep the previous page on screen while the next one loads so paging
+    // through doesn't flash an empty table.
+    placeholderData: (previous) => previous,
     staleTime: 30 * 1000,
     enabled: options?.enabled ?? true,
   });

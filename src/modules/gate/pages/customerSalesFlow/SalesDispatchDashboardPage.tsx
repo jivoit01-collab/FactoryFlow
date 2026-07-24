@@ -1,18 +1,19 @@
 import {
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Download,
   FileText,
   List,
   Lock,
   Plus,
-  Printer,
   RefreshCw,
   Search,
   Truck,
   Unlock,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -37,12 +38,22 @@ import {
   type SalesDispatchPendingBooking,
   useAddDocumentToDocking,
   useSalesDispatchEntries,
+  useSalesDispatchEntriesPaged,
   useSalesDispatchLock,
   useSalesDispatchPendingBookings,
   useUpdateSalesDispatchLock,
 } from '@/modules/gate/api';
 import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
-import { Button, Card, CardContent, Input } from '@/shared/components/ui';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { ExpectedVehiclesSection } from './ExpectedVehiclesSection';
@@ -62,6 +73,7 @@ const ACTIVE_SALES_DISPATCH_STATUSES = [
   'PRINT_COMMITTED',
 ];
 const GATEPASS_PENDING_STATUSES = ['DOCKED', 'PHOTO_ATTACHED', 'READY_FOR_GATEPASS'];
+const DOCKING_PAGE_SIZE = 25;
 
 type ExportCellValue = string | number;
 type ExportRow = Record<string, ExportCellValue>;
@@ -79,16 +91,6 @@ type DashboardFilter =
   | 'GATEPASS_PENDING'
   | 'DISPATCHED';
 
-type DockingDateBucket = 'today' | 'overdue' | 'upcoming' | 'all';
-type DockingBucketCounts = Record<DockingDateBucket, number>;
-
-const DOCKING_BUCKET_OPTIONS: Array<{ value: DockingDateBucket; label: string }> = [
-  { value: 'today', label: 'Today' },
-  { value: 'overdue', label: 'Overdue' },
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'all', label: 'All' },
-];
-
 export default function SalesDispatchDashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,11 +99,12 @@ export default function SalesDispatchDashboardPage() {
   const { hasPermission } = usePermission();
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
+  const [dockingPage, setDockingPage] = useState(1);
   const [selectedFilterState, setSelectedFilterState] = useState<{
     isGateOutMode: boolean;
     filter: DashboardFilter;
   }>({ isGateOutMode, filter: 'ALL' });
-  const [selectedDockingBucket, setSelectedDockingBucket] = useState<DockingDateBucket>('today');
   const selectedFilter =
     selectedFilterState.isGateOutMode === isGateOutMode ? selectedFilterState.filter : 'ALL';
   const listParams = useMemo(
@@ -118,7 +121,30 @@ export default function SalesDispatchDashboardPage() {
     [dateRange.from, dateRange.to, searchTerm, isGateOutMode],
   );
 
-  const { data: entries = [], isFetching, refetch } = useSalesDispatchEntries(listParams);
+  // A new search or date range restarts paging from the top -- otherwise you
+  // could land on page 5 of a result set that now has two pages.
+  useEffect(() => {
+    setDockingPage(1);
+  }, [searchTerm, dateRange.from, dateRange.to, isGateOutMode]);
+
+  // The gate-out board still loads the full set: its stat cards count across
+  // every entry, so it can't be server-paginated. The docking board is.
+  const gateOutQuery = useSalesDispatchEntries(listParams, { enabled: isGateOutMode });
+  const dockingQuery = useSalesDispatchEntriesPaged(
+    { ...listParams, page: dockingPage, page_size: DOCKING_PAGE_SIZE },
+    { enabled: !isGateOutMode },
+  );
+
+  const entries = useMemo(
+    () => (isGateOutMode ? (gateOutQuery.data ?? []) : (dockingQuery.data?.results ?? [])),
+    [isGateOutMode, gateOutQuery.data, dockingQuery.data],
+  );
+  const isFetching = isGateOutMode ? gateOutQuery.isFetching : dockingQuery.isFetching;
+  const refetch = isGateOutMode ? gateOutQuery.refetch : dockingQuery.refetch;
+  const dockingTotalCount = dockingQuery.data?.count ?? 0;
+  const dockingNumPages = dockingQuery.data?.num_pages ?? 1;
+  const dockingCurrentPage = dockingQuery.data?.page ?? dockingPage;
+
   const {
     data: pendingBookings = [],
     isFetching: isPendingBookingsFetching,
@@ -130,7 +156,6 @@ export default function SalesDispatchDashboardPage() {
   const isDashboardFetching = isFetching || isPendingBookingsFetching;
   const canCreateDocking = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.CREATE);
   const canManageDockingLock = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.MANAGE_LOCK);
-  const canReprintGatepass = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.REPRINT_GATEPASS);
   const canViewDockingReports = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.VIEW_REPORTS);
   const canViewExpectedVehicles = hasPermission(DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE);
 
@@ -153,22 +178,22 @@ export default function SalesDispatchDashboardPage() {
   const displayEntries = useMemo(() => {
     if (isGateOutMode) return entries.slice().sort(sortSalesDispatchOutEntries);
 
-    return [...pendingBookings, ...entries].sort(sortDockingDashboardEntries);
-  }, [entries, isGateOutMode, pendingBookings]);
+    // The not-yet-docked "pending" bookings ride along on the first page only;
+    // deeper pages are pure docked entries in the server's order.
+    const base = dockingCurrentPage === 1 ? [...pendingBookings, ...entries] : entries.slice();
+    return base.sort(sortDockingDashboardEntries);
+  }, [entries, isGateOutMode, pendingBookings, dockingCurrentPage]);
 
-  const dockingBucketCounts = useMemo(
-    () => buildDockingDateBucketCounts(displayEntries),
-    [displayEntries],
-  );
-
+  // Docking shows every truck in the date range -- the worker just finds his
+  // and clicks it. Only the gate-out board keeps its stat-card filters.
   const cardFilteredEntries = useMemo(
     () =>
       isGateOutMode
         ? displayEntries.filter((entry) =>
             matchesSalesDispatchDashboardFilter(entry, selectedFilter),
           )
-        : displayEntries.filter((entry) => matchesDockingDateBucket(entry, selectedDockingBucket)),
-    [displayEntries, isGateOutMode, selectedDockingBucket, selectedFilter],
+        : displayEntries,
+    [displayEntries, isGateOutMode, selectedFilter],
   );
 
   const filteredEntries = useMemo(() => {
@@ -258,22 +283,30 @@ export default function SalesDispatchDashboardPage() {
     setIsExporting(true);
     try {
       // The board list is fetched slim (no per-line items/documents) for speed, but
-      // the export's Documents/Items sheets need them -- pull the detail payload on
-      // demand and merge those two arrays into the current filtered rows by id, so
-      // the exported set/order matches exactly what's on screen.
+      // the export's Documents/Items sheets need them -- pull the full detail payload
+      // on demand (unpaginated: `list` with no `page` returns every matching row).
       const detailed = await salesDispatchApi.list({ ...listParams, detail: 1 });
-      const heavyById = new Map(detailed.map((row) => [row.id, row]));
-      const enrichedEntries: SalesDispatchDashboardEntry[] = filteredEntries.map((entry) => {
-        const heavy = heavyById.get(entry.id as number);
-        return heavy
-          ? ({ ...entry, items: heavy.items, documents: heavy.documents } as SalesDispatchDashboardEntry)
-          : entry;
-      });
-      const exportedRows = exportSalesDispatchDashboard(enrichedEntries, {
+      let entriesToExport: SalesDispatchDashboardEntry[];
+      if (isGateOutMode) {
+        // Gate-out isn't paginated: merge the heavy items/documents into the rows
+        // on screen so the exported set/order matches the visible, card-filtered view.
+        const heavyById = new Map(detailed.map((row) => [row.id, row]));
+        entriesToExport = filteredEntries.map((entry) => {
+          const heavy = heavyById.get(entry.id as number);
+          return heavy
+            ? ({ ...entry, items: heavy.items, documents: heavy.documents } as SalesDispatchDashboardEntry)
+            : entry;
+        });
+      } else {
+        // Docking is server-paginated, so the on-screen rows are just one page.
+        // Export every matching row across all pages (plus the pending bookings).
+        entriesToExport = [...pendingBookings, ...detailed].sort(sortDockingDashboardEntries);
+      }
+      const exportedRows = exportSalesDispatchDashboard(entriesToExport, {
         dateRange,
         isGateOutMode,
         searchTerm,
-        selectedFilter: isGateOutMode ? selectedFilter : selectedDockingBucket.toUpperCase(),
+        selectedFilter: isGateOutMode ? selectedFilter : 'ALL',
       });
       toast.success(`${exportedRows} ${exportedRows === 1 ? 'row' : 'rows'} exported`);
     } catch (exportError) {
@@ -318,10 +351,18 @@ export default function SalesDispatchDashboardPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             {isDashboardFetching ? 'Refreshing' : 'Refresh'}
           </Button>
-          {!isGateOutMode && canReprintGatepass ? (
-            <Button type="button" variant="outline" onClick={() => navigate(routes.reports)}>
-              <Printer className="mr-2 h-4 w-4" />
-              Reprint Gatepass
+          {!isGateOutMode && canManageDockingLock ? (
+            <Button
+              type="button"
+              variant={dispatchLock?.is_locked ? 'destructive' : 'outline'}
+              onClick={() => setIsLockDialogOpen(true)}
+            >
+              {dispatchLock?.is_locked ? (
+                <Lock className="mr-2 h-4 w-4" />
+              ) : (
+                <Unlock className="mr-2 h-4 w-4" />
+              )}
+              {dispatchLock?.is_locked ? 'Printing Locked' : 'Lock Printing'}
             </Button>
           ) : null}
           {canViewDockingReports ? (
@@ -344,16 +385,20 @@ export default function SalesDispatchDashboardPage() {
         </div>
       </div>
 
-      {!isGateOutMode && (
-        <DockingLockPanel
+      {/* Gate-pass printing lock is a supervisor control -- hidden from the
+          scanning worker, who just picks a truck below and scans. It lives behind
+          the header button and opens this modal on demand. */}
+      {!isGateOutMode && canManageDockingLock && (
+        <DockingLockDialog
+          open={isLockDialogOpen}
+          onOpenChange={setIsLockDialogOpen}
           lock={dispatchLock}
           isSaving={updateLock.isPending}
-          canManage={canManageDockingLock}
           onToggle={() => void handleToggleLock()}
         />
       )}
 
-      {isGateOutMode ? (
+      {isGateOutMode && (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           {statCards.map((card) => (
             <StatCard
@@ -366,15 +411,12 @@ export default function SalesDispatchDashboardPage() {
             />
           ))}
         </div>
-      ) : (
-        <DockingDateBucketFilters
-          selectedBucket={selectedDockingBucket}
-          counts={dockingBucketCounts}
-          onChange={setSelectedDockingBucket}
-        />
       )}
 
-      {canViewExpectedVehicles && (
+      {/* "Expected" upstream vehicles aren't actionable here -- they haven't
+          reached docking yet -- so they'd only be noise for the docking worker,
+          who sees just the trucks he can scan. They stay on the gate-out board. */}
+      {canViewExpectedVehicles && isGateOutMode && (
         <ExpectedVehiclesSection
           isGateOutMode={isGateOutMode}
           dateFrom={dateRange.from}
@@ -420,16 +462,27 @@ export default function SalesDispatchDashboardPage() {
             }
           />
         ) : (
-          <DispatchTable
-            entries={filteredEntries}
-            newEntryPath={routes.newEntry}
-            detailPath={routes.detail}
-            weighmentPath={routes.weighment}
-            gatepassPath={routes.gatepass}
-            isGateOutMode={isGateOutMode}
-            onAddToDocking={handleAddToDocking}
-            isAddingToDocking={addToDocking.isPending}
-          />
+          <>
+            <DispatchTable
+              entries={filteredEntries}
+              newEntryPath={routes.newEntry}
+              detailPath={routes.detail}
+              weighmentPath={routes.weighment}
+              gatepassPath={routes.gatepass}
+              isGateOutMode={isGateOutMode}
+              onAddToDocking={handleAddToDocking}
+              isAddingToDocking={addToDocking.isPending}
+            />
+            {!isGateOutMode && (
+              <DockingPager
+                page={dockingCurrentPage}
+                numPages={dockingNumPages}
+                totalCount={dockingTotalCount}
+                isFetching={dockingQuery.isFetching}
+                onPageChange={setDockingPage}
+              />
+            )}
+          </>
         )}
       </section>
     </div>
@@ -750,23 +803,37 @@ function getSalesDispatchDashboardRowClassName(entry: SalesDispatchDashboardEntr
   );
 }
 
-function DockingLockPanel({
+function DockingLockDialog({
+  open,
+  onOpenChange,
   lock,
   isSaving,
-  canManage,
   onToggle,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   lock?: SalesDispatchLock;
   isSaving: boolean;
-  canManage: boolean;
   onToggle: () => void;
 }) {
   const isLocked = Boolean(lock?.is_locked);
 
   return (
-    <Card className={isLocked ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50'}>
-      <CardContent className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-start gap-3">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Gate pass printing</DialogTitle>
+          <DialogDescription>
+            Locking stops gatepasses being printed and committed across every docking load.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div
+          className={cn(
+            'flex items-start gap-3 rounded-lg border p-4',
+            isLocked ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50',
+          )}
+        >
           {isLocked ? (
             <Lock className="mt-0.5 h-5 w-5 text-red-600" />
           ) : (
@@ -789,7 +856,11 @@ function DockingLockPanel({
             ) : null}
           </div>
         </div>
-        {canManage ? (
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
           <Button
             type="button"
             variant={isLocked ? 'default' : 'destructive'}
@@ -797,11 +868,11 @@ function DockingLockPanel({
             disabled={isSaving}
           >
             {isLocked ? <Unlock className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
-            {isSaving ? 'Saving' : isLocked ? 'Unlock' : 'Lock Printing'}
+            {isSaving ? 'Saving' : isLocked ? 'Unlock printing' : 'Lock printing'}
           </Button>
-        ) : null}
-      </CardContent>
-    </Card>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -862,64 +933,6 @@ function matchesSalesDispatchDashboardFilter(
     default:
       return true;
   }
-}
-
-function buildDockingDateBucketCounts(entries: SalesDispatchDashboardEntry[]): DockingBucketCounts {
-  const todayKey = getLocalDateKey(new Date());
-  return {
-    today: entries.filter((entry) => matchesDockingDateBucket(entry, 'today', todayKey)).length,
-    overdue: entries.filter((entry) => matchesDockingDateBucket(entry, 'overdue', todayKey)).length,
-    upcoming: entries.filter((entry) => matchesDockingDateBucket(entry, 'upcoming', todayKey))
-      .length,
-    all: entries.length,
-  };
-}
-
-function matchesDockingDateBucket(
-  entry: SalesDispatchDashboardEntry,
-  bucket: DockingDateBucket,
-  todayKey = getLocalDateKey(new Date()),
-) {
-  if (bucket === 'all') return true;
-
-  const comparison = compareDateToKey(getPlannedDispatchDate(entry), todayKey);
-  if (comparison === null) return false;
-
-  if (bucket === 'today') return comparison === 0;
-  if (bucket === 'overdue') return comparison < 0 && !isClosedDockingDashboardEntry(entry);
-  return comparison > 0;
-}
-
-function compareDateToKey(value: string | null | undefined, todayKey: string) {
-  const dateKey = normalizeDateKey(value);
-  if (!dateKey) return null;
-  if (dateKey === todayKey) return 0;
-  return dateKey < todayKey ? -1 : 1;
-}
-
-function normalizeDateKey(value: string | null | undefined) {
-  const trimmed = value?.trim();
-  if (!trimmed) return '';
-
-  const yearFirst = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (yearFirst) return `${yearFirst[1]}-${yearFirst[2]}-${yearFirst[3]}`;
-
-  const dayFirst = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})/);
-  if (dayFirst) return `${dayFirst[3]}-${dayFirst[2]}-${dayFirst[1]}`;
-
-  const parsed = new Date(trimmed);
-  return Number.isNaN(parsed.getTime()) ? '' : getLocalDateKey(parsed);
-}
-
-function getLocalDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function isClosedDockingDashboardEntry(entry: SalesDispatchDashboardEntry) {
-  return ['DISPATCHED', 'REJECTED', 'CANCELLED'].includes(entry.status);
 }
 
 function exportSalesDispatchDashboard(
@@ -1364,53 +1377,88 @@ function getEntryItems(entry: SalesDispatchDashboardEntry) {
   return isPendingBookingEntry(entry) ? [] : entry.items;
 }
 
-function DockingDateBucketFilters({
-  selectedBucket,
-  counts,
-  onChange,
-}: {
-  selectedBucket: DockingDateBucket;
-  counts: DockingBucketCounts;
-  onChange: (bucket: DockingDateBucket) => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-4">
-      <span className="mr-1 text-sm font-medium text-muted-foreground">Dispatch Date</span>
-      {DOCKING_BUCKET_OPTIONS.map((option) => {
-        const count = counts[option.value];
-        const isActive = selectedBucket === option.value;
-        const hasOverdueVehicles = option.value === 'overdue' && count > 0;
+// First & last page, plus a one-page window around the current page; runs of
+// skipped pages collapse to a single `null` (rendered as an ellipsis).
+function getDockingPageWindow(current: number, total: number): Array<number | null> {
+  const wanted = [1, total, current, current - 1, current + 1].filter(
+    (page) => page >= 1 && page <= total,
+  );
+  const pages = Array.from(new Set(wanted)).sort((a, b) => a - b);
+  const result: Array<number | null> = [];
+  let previous = 0;
+  for (const page of pages) {
+    if (previous && page - previous > 1) result.push(null);
+    result.push(page);
+    previous = page;
+  }
+  return result;
+}
 
-        return (
-          <Button
-            key={option.value}
-            type="button"
-            variant={isActive ? 'default' : 'outline'}
-            className={cn(
-              'gap-2',
-              hasOverdueVehicles &&
-                !isActive &&
-                'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800',
-              hasOverdueVehicles && isActive && 'bg-red-600 text-white hover:bg-red-700',
-            )}
-            onClick={() => onChange(option.value)}
-          >
-            <span>{option.label}</span>
-            <span
-              className={cn(
-                'inline-flex min-w-6 justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
-                isActive
-                  ? 'bg-primary-foreground/20 text-primary-foreground'
-                  : 'bg-muted text-foreground',
-                hasOverdueVehicles && !isActive && 'bg-red-100 text-red-700',
-                hasOverdueVehicles && isActive && 'bg-white/20 text-white',
-              )}
-            >
-              {count}
+function DockingPager({
+  page,
+  numPages,
+  totalCount,
+  isFetching,
+  onPageChange,
+}: {
+  page: number;
+  numPages: number;
+  totalCount: number;
+  isFetching: boolean;
+  onPageChange: (page: number) => void;
+}) {
+  const totalLabel = `${totalCount} ${totalCount === 1 ? 'docking' : 'dockings'}`;
+
+  if (numPages <= 1) {
+    return <p className="mt-3 text-xs text-muted-foreground">{totalLabel}</p>;
+  }
+
+  return (
+    <div className="mt-3 flex flex-col items-center justify-between gap-3 sm:flex-row">
+      <p className="text-xs text-muted-foreground">
+        Page {page} of {numPages} · {totalLabel}
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={page <= 1 || isFetching}
+          onClick={() => onPageChange(page - 1)}
+          aria-label="Previous page"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        {getDockingPageWindow(page, numPages).map((windowPage, index) =>
+          windowPage === null ? (
+            <span key={`gap-${index}`} className="px-1 text-sm text-muted-foreground">
+              …
             </span>
-          </Button>
-        );
-      })}
+          ) : (
+            <Button
+              key={windowPage}
+              type="button"
+              variant={windowPage === page ? 'default' : 'outline'}
+              size="sm"
+              className="min-w-9"
+              disabled={isFetching}
+              onClick={() => onPageChange(windowPage)}
+            >
+              {windowPage}
+            </Button>
+          ),
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={page >= numPages || isFetching}
+          onClick={() => onPageChange(page + 1)}
+          aria-label="Next page"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
