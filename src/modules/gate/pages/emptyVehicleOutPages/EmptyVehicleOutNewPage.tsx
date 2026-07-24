@@ -1,10 +1,11 @@
-import { AlertTriangle, ArrowLeft, LogOut, RefreshCw, ShieldCheck, Truck } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, LogOut, RefreshCw, Scale, ShieldCheck, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
   type EmptyVehicleEligibleEntry,
+  useCreateEmptyVehicleGateOut,
   useEmptyVehicleEligibleEntries,
 } from '@/modules/gate/api';
 import { GateStatusBadge } from '@/modules/gate/components';
@@ -19,6 +20,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
 import {
   buildEmptyOutSideEffectMessage,
@@ -110,6 +112,7 @@ export default function EmptyVehicleOutNewPage() {
   const [remarks, setRemarks] = useState('');
   const [formError, setFormError] = useState('');
 
+  const createGateOut = useCreateEmptyVehicleGateOut();
   const {
     data: eligibleEntries = [],
     isLoading: isEligibleLoading,
@@ -153,42 +156,75 @@ export default function EmptyVehicleOutNewPage() {
     );
   }, [eligibleEntries, selectedEntry]);
 
-  const handleSubmit = async () => {
-    if (!selectedEntry) {
-      setFormError('Please select an inward vehicle entry');
-      return;
-    }
+  // RM (raw material) and job-work vehicles must weigh; everything else (daily
+  // need, PM, maintenance, construction, fixed asset, empty vehicle, BST) leaves
+  // without a weighbridge pass, so it can complete straight from this page.
+  const requiresWeighment = selectedEntry?.requires_weighment ?? true;
 
-    if (!gateOutDate) {
-      setFormError('Gate out date is required');
-      return;
-    }
-
-    if (!outTime) {
-      setFormError('Out time is required');
-      return;
-    }
-
-    setFormError('');
-
+  const persistDraft = (entry: EmptyVehicleEligibleEntry) => {
     writeEmptyVehicleOutDraft({
-      vehicleEntryId: selectedEntry.id,
-      vehicleEntryNo: selectedEntry.entry_no,
-      vehicleEntryType: selectedEntry.entry_type,
-      vehicleNumber: selectedEntry.vehicle_number,
-      vehicleType: selectedEntry.vehicle_type || '',
-      driverName: selectedEntry.driver_name,
-      driverMobile: selectedEntry.driver_mobile,
+      vehicleEntryId: entry.id,
+      vehicleEntryNo: entry.entry_no,
+      vehicleEntryType: entry.entry_type,
+      vehicleNumber: entry.vehicle_number,
+      vehicleType: entry.vehicle_type || '',
+      driverName: entry.driver_name,
+      driverMobile: entry.driver_mobile,
       gateOutDate,
       outTime,
       securityName,
       remarks,
-      releaseInvoiceCount: selectedEntry.release_invoice_count,
-      releaseCancelsDocking: selectedEntry.release_cancels_docking,
+      releaseInvoiceCount: entry.release_invoice_count,
+      releaseCancelsDocking: entry.release_cancels_docking,
+      requiresWeighment: entry.requires_weighment,
     });
+  };
 
+  const validateSelection = () => {
+    if (!selectedEntry) {
+      setFormError('Please select an inward vehicle entry');
+      return null;
+    }
+    if (!gateOutDate) {
+      setFormError('Gate out date is required');
+      return null;
+    }
+    if (!outTime) {
+      setFormError('Out time is required');
+      return null;
+    }
+    setFormError('');
+    return selectedEntry;
+  };
+
+  // RM / job-work: go to the (mandatory) weighment step. Also the optional
+  // "record weighment" path for exempt vehicles.
+  const handleContinueToWeighment = () => {
+    const entry = validateSelection();
+    if (!entry) return;
+    persistDraft(entry);
     toast.success('Vehicle details saved');
     navigate('/gate/empty-vehicle-out/new/weighment');
+  };
+
+  // Exempt vehicles: mark out straight from here, no weighment required.
+  const handleCompleteDirect = async () => {
+    const entry = validateSelection();
+    if (!entry) return;
+
+    try {
+      await createGateOut.mutateAsync({
+        vehicle_entry_id: entry.id,
+        gate_out_date: gateOutDate,
+        out_time: outTime,
+        security_name: securityName,
+        remarks,
+      });
+      toast.success('Vehicle marked out empty');
+      navigate('/gate/empty-vehicle-out');
+    } catch (err) {
+      setFormError(getErrorMessage(err, 'Failed to complete empty vehicle out'));
+    }
   };
 
   return (
@@ -389,13 +425,32 @@ export default function EmptyVehicleOutNewPage() {
             <Button variant="outline" onClick={() => navigate('/gate/empty-vehicle-out')}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSubmit}
-              className="w-full sm:w-auto"
-            >
-              <ShieldCheck className="mr-2 h-4 w-4" />
-              Continue to Weighment
-            </Button>
+            {requiresWeighment ? (
+              <Button onClick={handleContinueToWeighment} className="w-full sm:w-auto">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Continue to Weighment
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleContinueToWeighment}
+                  disabled={!selectedEntry || createGateOut.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  <Scale className="mr-2 h-4 w-4" />
+                  Record Weighment (optional)
+                </Button>
+                <Button
+                  onClick={handleCompleteDirect}
+                  disabled={createGateOut.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  {createGateOut.isPending ? 'Completing...' : 'Complete Gate Out'}
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

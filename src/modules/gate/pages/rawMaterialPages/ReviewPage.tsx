@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_STATUS } from '@/config/constants';
 import { GateStatusBadge } from '@/modules/gate/components';
+import { isAllRmLoad } from '@/modules/gate/utils';
 import { EntryTimeSummary } from '@/shared/components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
@@ -136,9 +137,27 @@ export default function ReviewPage() {
     }
   };
 
+  // An all-RM load must have its loaded (gross) weight recorded before completion
+  // (tare is captured later at gate-out). PM / mixed loads skip this. Mirrors the
+  // backend rule so the operator is told here instead of hitting a late 400.
+  const itemCodes = (gateEntry?.po_receipts ?? []).flatMap((receipt) =>
+    receipt.items.map((item) => item.item_code),
+  );
+  const needsGrossWeight = isAllRmLoad(itemCodes);
+  const hasGrossWeight = (gateEntry?.weighment?.gross_weight ?? 0) > 0;
+  const blockedForMissingWeighment = needsGrossWeight && !hasGrossWeight;
+
   const handleComplete = async () => {
     if (!entryId) {
       setApiErrors({ general: 'Entry ID is missing.' });
+      return;
+    }
+
+    if (blockedForMissingWeighment) {
+      setApiErrors({
+        general:
+          'Gross weight is required for a raw material (RM) load. Go back to the weighment step and record it before completing.',
+      });
       return;
     }
 
@@ -399,6 +418,15 @@ export default function ReviewPage() {
                 </p>
               </div>
             )}
+            {blockedForMissingWeighment && (
+              <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  This is a raw material (RM) load, so the loaded gross weight is required.
+                  Go back to the weighment step and record it before completing.
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -541,7 +569,7 @@ export default function ReviewPage() {
             <Button
               type="button"
               onClick={handleComplete}
-              disabled={isCompleting || !isQcReadyToComplete}
+              disabled={isCompleting || !isQcReadyToComplete || blockedForMissingWeighment}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               {isCompleting ? 'Completing...' : 'Complete Entry'}

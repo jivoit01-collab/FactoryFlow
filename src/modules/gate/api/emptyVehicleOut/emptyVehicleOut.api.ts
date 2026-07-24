@@ -24,6 +24,12 @@ export interface EmptyVehicleEligibleEntry {
   // Side effects of marking this vehicle out empty.
   release_invoice_count: number;
   release_cancels_docking: boolean;
+  /**
+   * Whether marking out must capture a weighment. True only for RM (raw
+   * material) and job-work vehicles; daily need, PM, maintenance, empty
+   * vehicle, BST, etc. leave without one, so the weighment step is skippable.
+   */
+  requires_weighment: boolean;
 }
 
 export interface EmptyVehicleGateOutEntry {

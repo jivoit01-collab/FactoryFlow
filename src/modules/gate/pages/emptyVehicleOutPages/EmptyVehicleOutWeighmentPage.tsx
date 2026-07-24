@@ -102,16 +102,27 @@ export default function EmptyVehicleOutWeighmentPage() {
     }
   };
 
+  // RM / job-work vehicles must weigh. For exempt vehicles this page is reached
+  // only via the optional "Record Weighment" path, so weighment is captured only
+  // when the operator actually enters a weight -- otherwise we just mark out.
+  const requiresWeighment = draft?.requiresWeighment ?? true;
+
   const handleComplete = async () => {
     if (!draft) {
       setError('Vehicle details are missing. Please fill details again.');
       return;
     }
 
-    const validationError = validateRequiredWeighment(values);
-    if (validationError) {
-      setError(validationError);
-      return;
+    const enteredWeight =
+      values.grossWeight.trim() !== '' || values.tareWeight.trim() !== '';
+    const mustWeigh = requiresWeighment || enteredWeight;
+
+    if (mustWeigh) {
+      const validationError = validateRequiredWeighment(values);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
     }
 
     let challanWeightValue: number | null = null;
@@ -124,16 +135,19 @@ export default function EmptyVehicleOutWeighmentPage() {
     }
 
     try {
-      const requestData: CreateWeighmentRequest = {
-        gross_weight: parseFloat(values.grossWeight),
-        tare_weight: parseFloat(values.tareWeight),
-        challan_weight: challanWeightValue,
-        weighbridge_slip_no: values.weighbridgeSlipNo,
-        first_weighment_time: buildRequiredWeighmentDateTime(values.firstWeighmentTime),
-        second_weighment_time: buildRequiredWeighmentDateTime(values.secondWeighmentTime),
-      };
+      if (mustWeigh) {
+        const requestData: CreateWeighmentRequest = {
+          gross_weight: parseFloat(values.grossWeight),
+          tare_weight: parseFloat(values.tareWeight),
+          challan_weight: challanWeightValue,
+          weighbridge_slip_no: values.weighbridgeSlipNo,
+          first_weighment_time: buildRequiredWeighmentDateTime(values.firstWeighmentTime),
+          second_weighment_time: buildRequiredWeighmentDateTime(values.secondWeighmentTime),
+        };
 
-      await createWeighment.mutateAsync(requestData);
+        await createWeighment.mutateAsync(requestData);
+      }
+
       await createGateOut.mutateAsync({
         vehicle_entry_id: draft.vehicleEntryId,
         gate_out_date: draft.gateOutDate,
@@ -172,7 +186,7 @@ export default function EmptyVehicleOutWeighmentPage() {
   }
 
   const missingExistingWeighment =
-    weighmentError && checkNotFoundError(weighmentError)
+    requiresWeighment && weighmentError && checkNotFoundError(weighmentError)
       ? 'No existing weighment found. Fill it before completing gate out.'
       : '';
 
@@ -190,7 +204,7 @@ export default function EmptyVehicleOutWeighmentPage() {
       <StepHeader
         currentStep={2}
         totalSteps={2}
-        title="Empty Vehicle Out"
+        title={requiresWeighment ? 'Empty Vehicle Out' : 'Empty Vehicle Out — Weighment (optional)'}
         error={error || missingExistingWeighment || null}
       />
 
@@ -213,6 +227,7 @@ export default function EmptyVehicleOutWeighmentPage() {
         values={values}
         onChange={handleValueChange}
         disabled={createWeighment.isPending || createGateOut.isPending}
+        requiredFields={{ grossWeight: requiresWeighment, tareWeight: requiresWeighment }}
       />
 
       <ChallanWeightCard

@@ -14,6 +14,8 @@ export interface EmptyVehicleOutDraft {
   remarks: string;
   releaseInvoiceCount: number;
   releaseCancelsDocking: boolean;
+  /** RM / job-work vehicles must weigh; everything else can complete without it. */
+  requiresWeighment: boolean;
 }
 
 export function readEmptyVehicleOutDraft(): EmptyVehicleOutDraft | null {
