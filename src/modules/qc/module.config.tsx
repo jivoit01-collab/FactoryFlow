@@ -1,7 +1,7 @@
 import { FlaskConical } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 // Lazy load QC pages
@@ -35,6 +35,13 @@ const CustomerReturnQCDashboardPage = lazy(
 );
 const CustomerReturnQCDetailPage = lazy(
   () => import('./pages/customerReturns/CustomerReturnQCDetailPage'),
+);
+// Online Quality Monitoring submodule
+const OnlineMonitoringListPage = lazy(
+  () => import('./pages/onlineMonitoring/OnlineMonitoringListPage'),
+);
+const OnlineMonitoringRecordPage = lazy(
+  () => import('./pages/onlineMonitoring/OnlineMonitoringRecordPage'),
 );
 
 const lineClearanceQCPermissions = [
@@ -126,6 +133,21 @@ export const qcModuleConfig: ModuleConfig = {
       element: <ProductionQCApprovalPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.PRODUCTION_QC.APPROVE],
+    },
+    // ==================== Online Quality Monitoring Submodule ====================
+    {
+      path: '/qc/online-monitoring',
+      element: <OnlineMonitoringListPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
+      breadcrumb: { label: 'Online Monitoring' },
+    },
+    {
+      path: '/qc/online-monitoring/:recordId',
+      element: <OnlineMonitoringRecordPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
+      breadcrumb: { label: 'Record' },
     },
     // ==================== Line Clearance QA Submodule ====================
     {
@@ -261,6 +283,11 @@ export const qcModuleConfig: ModuleConfig = {
           path: '/qc/production/approvals',
           title: 'Production QC Approvals',
           permissions: [QC_PERMISSIONS.PRODUCTION_QC.APPROVE],
+        },
+        {
+          path: '/qc/online-monitoring',
+          title: 'Online Quality Monitoring',
+          permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
         },
         {
           path: '/qc/line-clearance',
