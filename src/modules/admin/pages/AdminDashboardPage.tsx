@@ -28,6 +28,17 @@ const adminModuleCards: AdminModuleCard[] = [
     ],
   },
   {
+    title: 'Docking — Partial Dispatch Approvals',
+    description: 'Review and approve requests to dispatch a docking entry with partial box scanning.',
+    route: '/admin/docking/partial-dispatch-approvals',
+    icon: <Truck className="h-5 w-5" />,
+    color: 'text-amber-700',
+    permissions: [
+      ADMIN_PERMISSIONS.DOCKING.VIEW_PARTIAL_SCAN,
+      ADMIN_PERMISSIONS.DOCKING.APPROVE_PARTIAL_SCAN,
+    ],
+  },
+  {
     title: 'Material Indent — Purchase Approvals',
     description: 'Review material requests raised across departments and approve them for purchase.',
     route: '/admin/material-indent-approvals',
