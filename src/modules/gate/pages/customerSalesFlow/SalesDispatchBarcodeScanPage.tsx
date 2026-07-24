@@ -417,6 +417,24 @@ export default function SalesDispatchBarcodeScanPage() {
         setManualBarcode('');
         return;
       }
+      // Hard cap: never scan more boxes into a bill than it invoices. Once every line
+      // on the bill has its full invoiced quantity scanned, any further box is an
+      // over-scan — the backend rejects it too (remaining_invoiced_qty <= 0), so block
+      // it here for instant feedback instead of a background failure. Judged on the
+      // bill's quantity-based Complete status (the same signal as its badge) so a
+      // mis-derived pack size can't wrongly lock a genuinely short bill.
+      const targetBill = target
+        ? billGroups.find(
+            (group) =>
+              group.documentId === target.documentId && group.dockingId === target.dockingId,
+          )
+        : undefined;
+      if (targetBill && targetBill.status === 'Complete') {
+        setError('');
+        toast.warning(`Bill ${formatValue(targetBill.sapDocNum)} already has all its boxes scanned.`);
+        setManualBarcode('');
+        return;
+      }
       setError('');
       inFlightRef.current.add(key);
       // Route to the bill's own docking; fall back to this entry when no bill is
@@ -431,7 +449,7 @@ export default function SalesDispatchBarcodeScanPage() {
       if (autoFocusBarcode) manualInputRef.current?.focus();
       void processQueue();
     },
-    [autoFocusBarcode, canEditDocking, entry, isReadOnly, scans, processQueue],
+    [autoFocusBarcode, billGroups, canEditDocking, entry, isReadOnly, scans, processQueue],
   );
 
   // Stable ref so the camera's one-time onScan callback always enqueues against the
@@ -1185,6 +1203,9 @@ function BillScanCard({
   onDismissFailed: (failed: FailedScan) => void;
 }) {
   const canScan = !isReadOnly && canEdit;
+  // Every invoiced line on this bill is fully scanned — lock further scanning so no
+  // over-scan can be attempted (the enqueue guard blocks the hardware scanner too).
+  const isComplete = bill.status === 'Complete';
   const inputId = `box-barcode-${bill.key}`;
 
   return (
@@ -1244,7 +1265,18 @@ function BillScanCard({
         <div className="space-y-4 border-t p-4">
           <BillItemsTable summary={bill.summary} />
 
-          {canScan ? (
+          {canScan && isComplete ? (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <Lock className="h-4 w-4 shrink-0" />
+              <span>
+                All {bill.expectedBoxes > 0 ? bill.expectedBoxes : bill.scannedBoxes} box
+                {(bill.expectedBoxes > 0 ? bill.expectedBoxes : bill.scannedBoxes) === 1 ? '' : 'es'} for
+                this bill are scanned. Remove a box below to change a scan.
+              </span>
+            </div>
+          ) : null}
+
+          {canScan && !isComplete ? (
             <div className="grid gap-4 rounded-md border bg-muted/10 p-3 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
               <div className="space-y-3">
                 {/* The camera viewport only takes space while the camera is running;
