@@ -20,6 +20,8 @@ export const PRODUCTION_QC_QUERY_KEYS = {
   list: (params?: ProductionQCListParams) =>
     [...PRODUCTION_QC_QUERY_KEYS.lists(), params] as const,
   pending: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'pending'] as const,
+  runningRuns: (lineId?: number) =>
+    [...PRODUCTION_QC_QUERY_KEYS.all, 'runningRuns', lineId ?? null] as const,
   counts: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'counts'] as const,
   runSessions: (runId: number) =>
     [...PRODUCTION_QC_QUERY_KEYS.all, 'run', runId] as const,
@@ -53,6 +55,15 @@ export function useProductionQCPending() {
     queryKey: PRODUCTION_QC_QUERY_KEYS.pending(),
     queryFn: () => productionQCApi.pending(),
     staleTime: 30_000,
+  });
+}
+
+export function useProductionQCRunningRuns(lineId?: number, enabled = true) {
+  return useQuery({
+    queryKey: PRODUCTION_QC_QUERY_KEYS.runningRuns(lineId),
+    queryFn: () => productionQCApi.runningRuns(lineId),
+    enabled,
+    staleTime: 15_000,
   });
 }
 

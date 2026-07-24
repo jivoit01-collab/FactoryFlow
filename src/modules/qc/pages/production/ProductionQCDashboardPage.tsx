@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronRight,
+  Factory,
   RefreshCw,
   Search,
   XCircle,
@@ -13,10 +14,17 @@ import { useNavigate } from 'react-router-dom';
 import { QC_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import { Button, Input } from '@/shared/components/ui';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from '@/shared/components/ui';
 
-import { useProductionQCList } from '../../api/productionQC';
-import type { ProductionQCSessionListItem } from '../../types';
+import { useProductionQCList, useProductionQCRunningRuns } from '../../api/productionQC';
+import type { ProductionQCRunningRun, ProductionQCSessionListItem } from '../../types';
 
 type DisplayStatus = 'PENDING' | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 type StatusFilter = 'all' | DisplayStatus;
@@ -63,6 +71,20 @@ const RESULT_BADGE: Record<string, string> = {
   FAIL: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
+const LIVE_STATUS_BADGE: Record<string, string> = {
+  RUNNING: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  BREAKDOWN: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  STOPPED: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+};
+
+function runningRunQCHint(run: ProductionQCRunningRun): string {
+  if (run.inprocess_qc_count === 0) return 'No QC round yet';
+  const last = run.latest_inprocess_status
+    ? ` · last ${run.latest_inprocess_status.toLowerCase()}`
+    : '';
+  return `${run.inprocess_qc_count} in-process round${run.inprocess_qc_count > 1 ? 's' : ''}${last}`;
+}
+
 function getDisplayStatus(session: ProductionQCSessionListItem): DisplayStatus {
   if (session.workflow_status === 'DRAFT' && !session.material_type) {
     return 'PENDING';
@@ -103,7 +125,14 @@ export default function ProductionQCDashboardPage() {
   const canCreateProductionQC = hasAnyPermission([QC_PERMISSIONS.PRODUCTION_QC.CREATE]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [pickLineOpen, setPickLineOpen] = useState(false);
   const { data: sessions = [], isLoading, error, refetch } = useProductionQCList();
+  // Only fetch running runs while the picker is open.
+  const {
+    data: runningRuns = [],
+    isLoading: runningRunsLoading,
+    refetch: refetchRunningRuns,
+  } = useProductionQCRunningRuns(undefined, pickLineOpen);
 
   const counts = useMemo(
     () =>
@@ -158,10 +187,18 @@ export default function ProductionQCDashboardPage() {
             FG approval requests and saved production inspections
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {canCreateProductionQC && (
+            <Button size="sm" onClick={() => setPickLineOpen(true)}>
+              <Factory className="h-4 w-4 mr-2" />
+              Start QC on a running line
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -320,6 +357,78 @@ export default function ProductionQCDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Select a running line to start / continue its production QC. */}
+      <Dialog open={pickLineOpen} onOpenChange={setPickLineOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Select a running line</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Lines with a production run in progress. Pick one to record its QC.
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                onClick={() => refetchRunningRuns()}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            {runningRunsLoading && (
+              <div className="flex h-24 items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            )}
+
+            {!runningRunsLoading && runningRuns.length === 0 && (
+              <div className="flex h-24 items-center justify-center rounded-md border text-sm text-muted-foreground">
+                No production run is currently in progress.
+              </div>
+            )}
+
+            {!runningRunsLoading && runningRuns.length > 0 && (
+              <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+                {runningRuns.map((run) => (
+                  <button
+                    key={run.id}
+                    type="button"
+                    onClick={() => {
+                      setPickLineOpen(false);
+                      navigate(`/qc/production/runs/${run.id}`);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{run.line_name}</span>
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            LIVE_STATUS_BADGE[run.live_status] ?? LIVE_STATUS_BADGE.STOPPED
+                          }`}
+                        >
+                          {run.live_status}
+                        </span>
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        Run #{run.run_number} · {run.product || 'No product'} · {run.date}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {runningRunQCHint(run)}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,6 +3,7 @@ export {
   PRODUCTION_QC_QUERY_KEYS,
   useProductionQCList,
   useProductionQCPending,
+  useProductionQCRunningRuns,
   useProductionQCCounts,
   useProductionQCRunSessions,
   useProductionQCSession,

@@ -416,6 +416,23 @@ export interface ProductionQCCounts {
   rejected?: number;
 }
 
+// A currently-running production run a QC user can select to do QC on
+export interface ProductionQCRunningRun {
+  id: number;
+  run_number: number;
+  date: string;
+  line: number;
+  line_name: string;
+  product: string;
+  item_code: string;
+  status: string;
+  live_status: 'RUNNING' | 'BREAKDOWN' | 'STOPPED' | string;
+  inprocess_qc_count: number;
+  latest_inprocess_status: ProductionQCWorkflowStatus | null;
+  latest_inprocess_result: ProductionQCOverallResult | null;
+  has_pending_qc: boolean;
+}
+
 // Create session request
 export interface CreateProductionQCSessionRequest {
   material_type_id: number;

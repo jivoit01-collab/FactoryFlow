@@ -295,6 +295,7 @@ export const API_ENDPOINTS = {
     // Production QC
     PRODUCTION_QC_LIST: '/quality-control/production-qc/',
     PRODUCTION_QC_PENDING: '/quality-control/production-qc/pending/',
+    PRODUCTION_QC_RUNNING_RUNS: '/quality-control/production-qc/running-runs/',
     PRODUCTION_QC_COUNTS: '/quality-control/production-qc/counts/',
     PRODUCTION_QC_RUN_SESSIONS: (runId: number) =>
       `/quality-control/production-qc/runs/${runId}/sessions/`,

@@ -2,15 +2,16 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  CreateProductionQCSessionRequest,
+  ProductionQCApprovalRequest,
+  ProductionQCCounts,
+  ProductionQCListParams,
+  ProductionQCRejectRequest,
+  ProductionQCRunningRun,
   ProductionQCSession,
   ProductionQCSessionListItem,
-  ProductionQCCounts,
-  CreateProductionQCSessionRequest,
-  UpdateProductionQCResultRequest,
   ProductionQCSubmitRequest,
-  ProductionQCApprovalRequest,
-  ProductionQCRejectRequest,
-  ProductionQCListParams,
+  UpdateProductionQCResultRequest,
 } from '../../types';
 
 const EP = API_ENDPOINTS.QUALITY_CONTROL_V2;
@@ -37,6 +38,15 @@ export const productionQCApi = {
   async pending(): Promise<ProductionQCSessionListItem[]> {
     const response = await apiClient.get<ProductionQCSessionListItem[]>(
       EP.PRODUCTION_QC_PENDING,
+    );
+    return response.data;
+  },
+
+  // Currently-running production runs a QC user can select to do QC on
+  async runningRuns(lineId?: number): Promise<ProductionQCRunningRun[]> {
+    const response = await apiClient.get<ProductionQCRunningRun[]>(
+      EP.PRODUCTION_QC_RUNNING_RUNS,
+      { params: lineId ? { line: lineId } : undefined },
     );
     return response.data;
   },
