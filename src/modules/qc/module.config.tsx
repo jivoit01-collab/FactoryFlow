@@ -43,6 +43,9 @@ const OnlineMonitoringListPage = lazy(
 const OnlineMonitoringRecordPage = lazy(
   () => import('./pages/onlineMonitoring/OnlineMonitoringRecordPage'),
 );
+const OnlineMonitoringSpecMasterPage = lazy(
+  () => import('./pages/onlineMonitoring/SpecMasterPage'),
+);
 
 const lineClearanceQCPermissions = [
   QC_PERMISSIONS.LINE_CLEARANCE_QC.VIEW,
@@ -141,6 +144,13 @@ export const qcModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
       breadcrumb: { label: 'Online Monitoring' },
+    },
+    {
+      path: '/qc/online-monitoring/specifications',
+      element: <OnlineMonitoringSpecMasterPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
+      breadcrumb: { label: 'Specifications' },
     },
     {
       path: '/qc/online-monitoring/:recordId',
@@ -287,6 +297,11 @@ export const qcModuleConfig: ModuleConfig = {
         {
           path: '/qc/online-monitoring',
           title: 'Online Quality Monitoring',
+          permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
+        },
+        {
+          path: '/qc/online-monitoring/specifications',
+          title: 'Water Quality Specs',
           permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
         },
         {

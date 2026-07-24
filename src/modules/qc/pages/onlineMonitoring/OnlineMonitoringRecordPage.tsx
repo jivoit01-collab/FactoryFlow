@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Plus, Send, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Plus, Printer, RotateCcw, Send, XCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -13,11 +13,13 @@ import {
   useOnlineMonitoringRecord,
   useOnlineMonitoringSpecs,
   useRejectOnlineRecord,
+  useReopenOnlineRecord,
   useSubmitOnlineRecord,
 } from '../../api/onlineMonitoring';
 import type { OnlineRecordStatus } from '../../types';
 import { ReadingCard } from './ReadingCard';
 import { buildSpecMap } from './specValidation';
+import { useOnlineRecordPrint } from './useOnlineRecordPrint';
 
 const STATUS_BADGE: Record<OnlineRecordStatus, string> = {
   DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
@@ -42,6 +44,8 @@ export default function OnlineMonitoringRecordPage() {
   const submit = useSubmitOnlineRecord();
   const approve = useApproveOnlineRecord();
   const reject = useRejectOnlineRecord();
+  const reopen = useReopenOnlineRecord();
+  const { print, printPortal } = useOnlineRecordPrint();
 
   const [addingReading, setAddingReading] = useState(false);
 
@@ -85,6 +89,15 @@ export default function OnlineMonitoringRecordPage() {
     );
   };
 
+  const doReopen = () =>
+    reopen.mutate(
+      { recordId, args: undefined as never },
+      {
+        onSuccess: () => toast.success('Reopened for correction'),
+        onError: (e) => toast.error(getErrorMessage(e, 'Could not reopen')),
+      },
+    );
+
   const header: [string, string][] = [
     ['Date', record.date],
     ['Line', record.line_name],
@@ -106,6 +119,9 @@ export default function OnlineMonitoringRecordPage() {
           <Badge className={STATUS_BADGE[record.status]}>{record.status}</Badge>
         </div>
         <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => print(record, specMap)}>
+            <Printer className="mr-1.5 h-4 w-4" /> Print
+          </Button>
           {isDraft && canSubmit && (
             <Button size="sm" onClick={doSubmit} disabled={submit.isPending}>
               <Send className="mr-1.5 h-4 w-4" /> Submit
@@ -120,6 +136,11 @@ export default function OnlineMonitoringRecordPage() {
                 <XCircle className="mr-1.5 h-4 w-4" /> Reject
               </Button>
             </>
+          )}
+          {record.status === 'REJECTED' && canSubmit && (
+            <Button size="sm" onClick={doReopen} disabled={reopen.isPending}>
+              <RotateCcw className="mr-1.5 h-4 w-4" /> Revise
+            </Button>
           )}
         </div>
       </div>
@@ -184,6 +205,7 @@ export default function OnlineMonitoringRecordPage() {
       {record.remarks && (
         <div className="text-sm text-muted-foreground">Record remarks: {record.remarks}</div>
       )}
+      {printPortal}
     </div>
   );
 }

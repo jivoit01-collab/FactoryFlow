@@ -330,6 +330,8 @@ export const API_ENDPOINTS = {
       `/quality-control/online-monitoring/${recordId}/approve/`,
     ONLINE_MONITORING_REJECT: (recordId: number) =>
       `/quality-control/online-monitoring/${recordId}/reject/`,
+    ONLINE_MONITORING_REOPEN: (recordId: number) =>
+      `/quality-control/online-monitoring/${recordId}/reopen/`,
   },
   // GRPO (Goods Receipt Purchase Order)
   GRPO: {

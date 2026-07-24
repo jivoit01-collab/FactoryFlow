@@ -11,6 +11,9 @@ export {
   useOnlineMonitoringRecord,
   useOnlineMonitoringSpecs,
   useRejectOnlineRecord,
+  useReopenOnlineRecord,
+  useResetOnlineSpec,
   useSubmitOnlineRecord,
   useUpdateOnlineReading,
+  useUpdateOnlineSpec,
 } from './onlineMonitoring.queries';

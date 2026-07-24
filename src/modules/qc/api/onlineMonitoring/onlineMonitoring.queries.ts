@@ -96,6 +96,31 @@ export const useRejectOnlineRecord = () =>
     onlineMonitoringApi.reject(recordId, args.remarks),
   );
 
+export const useReopenOnlineRecord = () =>
+  useRecordMutation((recordId: number) => onlineMonitoringApi.reopen(recordId));
+
+export function useUpdateOnlineSpec() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      specId,
+      payload,
+    }: {
+      specId: number;
+      payload: Parameters<typeof onlineMonitoringApi.updateSpec>[1];
+    }) => onlineMonitoringApi.updateSpec(specId, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ONLINE_MONITORING_KEYS.specs() }),
+  });
+}
+
+export function useResetOnlineSpec() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (specId: number) => onlineMonitoringApi.resetSpec(specId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ONLINE_MONITORING_KEYS.specs() }),
+  });
+}
+
 export const useDeleteOnlineRecord = () => {
   const qc = useQueryClient();
   return useMutation({

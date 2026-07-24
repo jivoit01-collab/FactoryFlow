@@ -19,9 +19,12 @@ export const WATER_QUALITY_KEYS = [
 ] as const;
 export type WaterQualityKey = (typeof WATER_QUALITY_KEYS)[number];
 
+export type SpecScope = 'GLOBAL' | 'COMPANY';
+
 export interface OnlineQualitySpec {
   id: number;
   company: number | null;
+  scope: SpecScope;
   parameter_key: string;
   parameter_name: string;
   unit: string;
