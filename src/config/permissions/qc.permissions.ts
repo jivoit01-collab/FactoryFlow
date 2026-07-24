@@ -75,6 +75,20 @@ export const QC_PERMISSIONS = {
   },
 
   // ============================================
+  // ONLINE QUALITY MONITORING PERMISSIONS
+  // ============================================
+  ONLINE_MONITORING: {
+    /** View online monitoring records */
+    VIEW: 'quality_control.can_view_online_monitoring',
+    /** Create / edit draft records */
+    CREATE: 'quality_control.can_create_online_monitoring',
+    /** Submit a record for approval */
+    SUBMIT: 'quality_control.can_submit_online_monitoring',
+    /** Approve / reject records */
+    APPROVE: 'quality_control.can_approve_online_monitoring',
+  },
+
+  // ============================================
   // LINE CLEARANCE QC PERMISSIONS
   // ============================================
   LINE_CLEARANCE_QC: {

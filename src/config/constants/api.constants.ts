@@ -311,6 +311,25 @@ export const API_ENDPOINTS = {
       `/quality-control/production-qc/sessions/${sessionId}/approve/`,
     PRODUCTION_QC_SESSION_REJECT: (sessionId: number) =>
       `/quality-control/production-qc/sessions/${sessionId}/reject/`,
+
+    // Online Quality Monitoring
+    ONLINE_MONITORING_LIST: '/quality-control/online-monitoring/',
+    ONLINE_MONITORING_LINES: '/quality-control/online-monitoring/lines/',
+    ONLINE_MONITORING_SPECS: '/quality-control/online-monitoring/specs/',
+    ONLINE_MONITORING_SPEC_DETAIL: (specId: number) =>
+      `/quality-control/online-monitoring/specs/${specId}/`,
+    ONLINE_MONITORING_DETAIL: (recordId: number) =>
+      `/quality-control/online-monitoring/${recordId}/`,
+    ONLINE_MONITORING_READINGS: (recordId: number) =>
+      `/quality-control/online-monitoring/${recordId}/readings/`,
+    ONLINE_MONITORING_READING_DETAIL: (recordId: number, readingId: number) =>
+      `/quality-control/online-monitoring/${recordId}/readings/${readingId}/`,
+    ONLINE_MONITORING_SUBMIT: (recordId: number) =>
+      `/quality-control/online-monitoring/${recordId}/submit/`,
+    ONLINE_MONITORING_APPROVE: (recordId: number) =>
+      `/quality-control/online-monitoring/${recordId}/approve/`,
+    ONLINE_MONITORING_REJECT: (recordId: number) =>
+      `/quality-control/online-monitoring/${recordId}/reject/`,
   },
   // GRPO (Goods Receipt Purchase Order)
   GRPO: {
