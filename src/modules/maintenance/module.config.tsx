@@ -141,7 +141,10 @@ export const maintenanceModuleConfig: ModuleConfig = {
       path: '/maintenance/automation',
       element: <MaintenanceAutomationPage />,
       layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_MODULE],
+      // Alerts data requires dashboard access (backend MaintenanceAlertsAPI →
+      // CanViewMaintenanceDashboard); gate the page to match, so module-only
+      // roles don't see an Automation page whose data 403s.
+      permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
       breadcrumb: { label: 'Automation' },
     },
     {
@@ -245,7 +248,8 @@ export const maintenanceModuleConfig: ModuleConfig = {
           path: '/maintenance/automation',
           title: 'Automation',
           icon: Bell,
-          permissions: [MAINTENANCE_PERMISSIONS.VIEW_MODULE],
+          // Matches the route + backend alerts endpoint (dashboard access).
+          permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
         },
         {
           path: '/maintenance/masters',
