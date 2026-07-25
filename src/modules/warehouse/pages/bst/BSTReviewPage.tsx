@@ -1,4 +1,4 @@
-import { CheckCircle2, Loader2, ScanLine } from 'lucide-react';
+import { CheckCircle2, Loader2, Lock, ScanLine } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -36,6 +36,11 @@ export default function BSTReviewPage() {
     (t.status === 'SCANNING' || t.status === 'IN_TRANSIT' || t.status === 'RECEIVING');
   const canApprove = t.status === 'SCANNING' || t.status === 'DRAFT' || liveActive;
   const totalBoxes = t.box_scans.length;
+  // Scanned-vs-expected QUANTITY gate — the same rule blocks approve() on the
+  // backend, so sealing a short load is refused there too. Lock the button and
+  // explain why, listing what's still short.
+  const scanStatus = t.scan_status;
+  const shortLocked = !!scanStatus?.is_partial;
 
   const handleApprove = async () => {
     try {
@@ -122,21 +127,49 @@ export default function BSTReviewPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}
-          >
-            <ScanLine className="h-4 w-4 mr-1" /> Back to scanning
-          </Button>
-          <Button onClick={handleApprove} disabled={totalBoxes === 0 || approveMut.isPending}>
-            {approveMut.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 mr-1" />
-            )}
-            {live ? 'Finish sending' : 'Approve scanning'}
-          </Button>
+        <div className="space-y-3">
+          {shortLocked && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                <span className="font-medium">Locked — short scan.</span> Scanned{' '}
+                {scanStatus?.scanned_qty} of {scanStatus?.expected_qty} pcs.
+                {scanStatus && scanStatus.short_items.length > 0 && (
+                  <>
+                    {' '}
+                    Still short:{' '}
+                    {scanStatus.short_items
+                      .map(
+                        (i) =>
+                          `${i.item_code} (${Number(i.expected_qty) - Number(i.scanned_qty)} ${i.uom})`,
+                      )
+                      .join(', ')}
+                    .
+                  </>
+                )}{' '}
+                Scan the remaining boxes, or request a partial-transfer approval, before sealing.
+              </span>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}
+            >
+              <ScanLine className="h-4 w-4 mr-1" /> Back to scanning
+            </Button>
+            <Button
+              onClick={handleApprove}
+              disabled={totalBoxes === 0 || shortLocked || approveMut.isPending}
+            >
+              {approveMut.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+              )}
+              {live ? 'Finish sending' : 'Approve scanning'}
+            </Button>
+          </div>
         </div>
       )}
     </div>

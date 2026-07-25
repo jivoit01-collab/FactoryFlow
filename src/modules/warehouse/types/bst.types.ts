@@ -146,6 +146,37 @@ export interface BSTTransferListItem {
   created_at: string;
 }
 
+// Per-item scanned-vs-expected QUANTITY completeness (one row per item code,
+// aggregated across the entry's documents). Mirrors the backend
+// warehouse.services.bst_service.scan_status_payload.
+export interface BSTScanStatusItem {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  expected_qty: string;
+  scanned_qty: string;
+  expected_boxes: number;
+  scanned_boxes: number;
+  is_complete: boolean;
+  is_over: boolean;
+}
+
+// The sender's completeness gate: whether the scanned QUANTITY reaches the bill.
+// `is_partial` drives the "scan all boxes" lock and the same rule blocks approve()
+// on the backend, so the two can't disagree. `uses_quantity` is false only for
+// legacy/quantity-less scans, where completeness falls back to the box count.
+export interface BSTScanStatus {
+  is_partial: boolean;
+  has_scans: boolean;
+  uses_quantity: boolean;
+  scanned_qty: string;
+  expected_qty: string;
+  scanned_boxes: number;
+  expected_boxes: number;
+  short_items: BSTScanStatusItem[];
+  items: BSTScanStatusItem[];
+}
+
 export interface BSTTransferDetail extends BSTTransferListItem {
   remarks: string;
   cancel_reason: string;
@@ -157,6 +188,7 @@ export interface BSTTransferDetail extends BSTTransferListItem {
   received_by_name: string;
   accepted_count: number;
   rejected_count: number;
+  scan_status: BSTScanStatus;
   docs: BSTTransferDoc[];
   items: BSTTransferItem[];
   box_scans: BSTBoxScan[];
