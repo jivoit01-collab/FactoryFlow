@@ -35,6 +35,8 @@ export const BST_QUERY_KEYS = {
   sapTransfers: (search?: string, documentType?: string) =>
     [...BST_QUERY_KEYS.all, 'sap-transfers', { search, documentType }] as const,
   sapTransfer: (docEntry: number) => [...BST_QUERY_KEYS.all, 'sap-transfer', docEntry] as const,
+  partialTransfers: (params?: BSTListParams) =>
+    [...BST_QUERY_KEYS.all, 'partial-transfers', params ?? {}] as const,
 };
 
 // ============================================================================
@@ -133,6 +135,46 @@ export function useCancelBST() {
   return useMutation({
     mutationFn: ({ transferId, cancelReason }: { transferId: number; cancelReason: string }) =>
       bstApi.cancel(transferId, cancelReason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.all }),
+  });
+}
+
+// ============================================================================
+// Partial-transfer approval (seal a short scan with admin sign-off)
+// ============================================================================
+
+export function useRequestBSTPartialTransfer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transferId, reason }: { transferId: number; reason: string }) =>
+      bstApi.requestPartialTransfer(transferId, reason),
+    onSuccess: (_res, { transferId }) =>
+      qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.detail(transferId) }),
+  });
+}
+
+export function useBSTPartialTransfers(params?: BSTListParams, options?: PollOptions) {
+  return useQuery({
+    queryKey: BST_QUERY_KEYS.partialTransfers(params),
+    queryFn: () => bstApi.listPartialTransfers(params),
+    refetchInterval: options?.refetchInterval,
+  });
+}
+
+export function useApproveBSTPartialTransfer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, reviewNotes }: { requestId: number; reviewNotes?: string }) =>
+      bstApi.approvePartialTransfer(requestId, reviewNotes ?? ''),
+    onSuccess: () => qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.all }),
+  });
+}
+
+export function useRejectBSTPartialTransfer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, reviewNotes }: { requestId: number; reviewNotes: string }) =>
+      bstApi.rejectPartialTransfer(requestId, reviewNotes),
     onSuccess: () => qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.all }),
   });
 }

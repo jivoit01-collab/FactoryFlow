@@ -1,12 +1,18 @@
-import { CheckCircle2, Loader2, Lock, ScanLine } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, Lock, ScanLine, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
+import { Badge, Button, Card, CardContent, Textarea } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
-import { BST_LIVE_POLL_MS, useApproveBST, useBSTTransfer } from '../../api';
+import {
+  BST_LIVE_POLL_MS,
+  useApproveBST,
+  useBSTTransfer,
+  useRequestBSTPartialTransfer,
+} from '../../api';
 import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
 import { isLiveBst } from './bstFormat';
@@ -22,6 +28,8 @@ export default function BSTReviewPage() {
     refetchInterval: BST_LIVE_POLL_MS,
   });
   const approveMut = useApproveBST();
+  const requestMut = useRequestBSTPartialTransfer();
+  const [reason, setReason] = useState('');
 
   if (isLoading || !t) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
@@ -37,10 +45,26 @@ export default function BSTReviewPage() {
   const canApprove = t.status === 'SCANNING' || t.status === 'DRAFT' || liveActive;
   const totalBoxes = t.box_scans.length;
   // Scanned-vs-expected QUANTITY gate — the same rule blocks approve() on the
-  // backend, so sealing a short load is refused there too. Lock the button and
-  // explain why, listing what's still short.
+  // backend, so sealing a short load is refused there too. An admin-approved
+  // partial-transfer request releases the shortfall; a pending one keeps the lock.
   const scanStatus = t.scan_status;
-  const shortLocked = !!scanStatus?.is_partial;
+  const partial = t.partial_transfer;
+  const shortLocked = !!scanStatus?.is_partial && !partial?.is_approved;
+  const requestPending = !!partial?.is_pending;
+
+  const handleRequest = async () => {
+    if (!reason.trim()) {
+      toast.error('Add a reason for the partial transfer');
+      return;
+    }
+    try {
+      await requestMut.mutateAsync({ transferId, reason: reason.trim() });
+      setReason('');
+      toast.success('Partial-transfer approval requested — waiting for a supervisor');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not request approval'));
+    }
+  };
 
   const handleApprove = async () => {
     try {
@@ -128,27 +152,73 @@ export default function BSTReviewPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {shortLocked && (
-            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+          {partial?.is_approved && (
+            <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                <span className="font-medium">Locked — short scan.</span> Scanned{' '}
-                {scanStatus?.scanned_qty} of {scanStatus?.expected_qty} pcs.
-                {scanStatus && scanStatus.short_items.length > 0 && (
-                  <>
-                    {' '}
-                    Still short:{' '}
-                    {scanStatus.short_items
-                      .map(
-                        (i) =>
-                          `${i.item_code} (${Number(i.expected_qty) - Number(i.scanned_qty)} ${i.uom})`,
-                      )
-                      .join(', ')}
-                    .
-                  </>
-                )}{' '}
-                Scan the remaining boxes, or request a partial-transfer approval, before sealing.
+                <span className="font-medium">Partial transfer approved</span>
+                {partial.reviewed_by_name ? ` by ${partial.reviewed_by_name}` : ''}. You can seal
+                this short load now.
               </span>
+            </div>
+          )}
+          {shortLocked && (
+            <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="flex items-start gap-2">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  <span className="font-medium">Locked — short scan.</span> Scanned{' '}
+                  {scanStatus?.scanned_qty} of {scanStatus?.expected_qty} pcs.
+                  {scanStatus && scanStatus.short_items.length > 0 && (
+                    <>
+                      {' '}
+                      Still short:{' '}
+                      {scanStatus.short_items
+                        .map(
+                          (i) =>
+                            `${i.item_code} (${Number(i.expected_qty) - Number(i.scanned_qty)} ${i.uom})`,
+                        )
+                        .join(', ')}
+                      .
+                    </>
+                  )}{' '}
+                  Scan the remaining boxes, or request a partial-transfer approval to seal it short.
+                </span>
+              </div>
+
+              {requestPending ? (
+                <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-white/60 px-3 py-2">
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <span>
+                    Partial-transfer approval requested
+                    {partial?.requested_by_name ? ` by ${partial.requested_by_name}` : ''} — waiting
+                    for a supervisor to review.
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Reason for sealing this transfer short (e.g. damaged boxes held back)…"
+                    rows={2}
+                    className="bg-white"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRequest}
+                      disabled={!reason.trim() || requestMut.isPending}
+                    >
+                      {requestMut.isPending ? (
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Request partial-transfer approval
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div className="flex justify-end gap-2">

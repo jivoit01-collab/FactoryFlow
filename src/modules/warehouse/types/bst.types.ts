@@ -177,6 +177,41 @@ export interface BSTScanStatus {
   items: BSTScanStatusItem[];
 }
 
+export type BSTPartialTransferStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+// Full admin partial-transfer approval record (the admin review queue rows).
+export interface BSTPartialTransferRequest {
+  id: number;
+  transfer: number;
+  transfer_entry_no: string;
+  scanned_qty: string;
+  expected_qty: string;
+  reason: string;
+  status: BSTPartialTransferStatus;
+  requested_by_name: string;
+  requested_at: string;
+  reviewed_by_name: string;
+  reviewed_at: string | null;
+  review_notes: string;
+}
+
+// Compact snapshot of a transfer's latest partial-transfer request, embedded in
+// the transfer detail so the sender's lock can show pending / unlock on approval.
+export interface BSTPartialTransferState {
+  id: number;
+  status: BSTPartialTransferStatus;
+  is_pending: boolean;
+  is_approved: boolean;
+  reason: string;
+  review_notes: string;
+  scanned_qty: string;
+  expected_qty: string;
+  requested_by_name: string;
+  requested_at: string;
+  reviewed_by_name: string;
+  reviewed_at: string | null;
+}
+
 export interface BSTTransferDetail extends BSTTransferListItem {
   remarks: string;
   cancel_reason: string;
@@ -189,6 +224,8 @@ export interface BSTTransferDetail extends BSTTransferListItem {
   accepted_count: number;
   rejected_count: number;
   scan_status: BSTScanStatus;
+  /** Latest admin partial-transfer approval request, or null if none raised. */
+  partial_transfer: BSTPartialTransferState | null;
   docs: BSTTransferDoc[];
   items: BSTTransferItem[];
   box_scans: BSTBoxScan[];
