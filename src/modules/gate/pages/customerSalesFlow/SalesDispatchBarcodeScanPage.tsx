@@ -249,11 +249,25 @@ export default function SalesDispatchBarcodeScanPage() {
   // stores none; the name may lack an "N PCS" token) can't inflate the expected-box count
   // and lock a truck that is in fact fully loaded. The load-wide box COUNT is only a
   // fallback for legacy/quantity-less scans. Mirrors load_scan_status on the backend.
-  const hasUnscannedBillLine = billGroups.some((bill) =>
-    bill.summary.items.some(
-      (item) => item.expectedQuantity > 0 && item.scannedQuantity < item.expectedQuantity,
-    ),
-  );
+  // Aggregate scanned-vs-invoiced quantity per item_code within each bill, mirroring the
+  // backend's per-(bill, item_code) check (has_unscanned_bill_lines). Summing across lines
+  // that share an item_code matters: when a bill splits one product into two lines (e.g.
+  // 750 + 250), summarizeItems assigns every scan of that code to the FIRST matching line,
+  // so the second line would otherwise read as unscanned though the load is fully scanned —
+  // a false "Partial" that hard-locks a complete truck.
+  const hasUnscannedBillLine = billGroups.some((bill) => {
+    const byCode = new Map<string, { expected: number; scanned: number }>();
+    for (const item of bill.summary.items) {
+      const code = normalizeItemCode(item.itemCode);
+      const agg = byCode.get(code) ?? { expected: 0, scanned: 0 };
+      agg.expected += item.expectedQuantity;
+      agg.scanned += item.scannedQuantity;
+      byCode.set(code, agg);
+    }
+    return Array.from(byCode.values()).some(
+      (agg) => agg.expected > 0 && agg.scanned < agg.expected,
+    );
+  });
   const hasTrustworthyScanQuantities = scans.some(
     (scan) => scan.document != null && parsePositiveNumber(scan.quantity) > 0,
   );
