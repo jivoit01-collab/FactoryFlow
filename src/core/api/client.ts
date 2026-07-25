@@ -11,6 +11,15 @@ import {
 
 import type { ApiError } from './types';
 
+declare module 'axios' {
+  // Per-request opt-out of the global error toast (see response interceptor).
+  // Used for background polls (e.g. sidebar count badges) whose failures should
+  // not interrupt the user on every page.
+  interface AxiosRequestConfig {
+    suppressErrorToast?: boolean;
+  }
+}
+
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -293,9 +302,14 @@ function createApiClient(): AxiosInstance {
       };
 
       // Show global toast notification for API errors
-      // Skip 401 (handled by token refresh/redirect) and 404 (handled by page-level UI)
+      // Skip 401 (handled by token refresh/redirect), 404 (handled by page-level UI),
+      // and any request that opted out via `suppressErrorToast` (background polls).
       const status = apiError.status;
-      if (status !== HTTP_STATUS.UNAUTHORIZED && status !== HTTP_STATUS.NOT_FOUND) {
+      if (
+        !originalRequest?.suppressErrorToast &&
+        status !== HTTP_STATUS.UNAUTHORIZED &&
+        status !== HTTP_STATUS.NOT_FOUND
+      ) {
         toast.error(errorMessage);
       }
 

@@ -34,7 +34,12 @@ export const invoiceApprovalApi = {
   },
 
   async getPendingCount(): Promise<PendingCount> {
-    const response = await apiClient.get<PendingCount>(API_ENDPOINTS.OMS.INVOICE_PENDING_COUNT);
+    // Background poll driving the sidebar badge — mounted on every page. Suppress
+    // the global error toast so an OMS outage doesn't spam a toast app-wide; the
+    // badge simply renders nothing when the count can't be fetched.
+    const response = await apiClient.get<PendingCount>(API_ENDPOINTS.OMS.INVOICE_PENDING_COUNT, {
+      suppressErrorToast: true,
+    });
     return response.data;
   },
 
