@@ -96,7 +96,7 @@ const SUB_MODULES: SubModule[] = [
     description: 'Alerts such as low stock and overdue servicing.',
     to: '/maintenance/automation',
     icon: Bell,
-    permissions: [MAINTENANCE_PERMISSIONS.VIEW_MODULE],
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
   },
   {
     title: 'Masters',
