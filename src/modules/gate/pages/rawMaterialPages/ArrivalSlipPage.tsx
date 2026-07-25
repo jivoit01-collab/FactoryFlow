@@ -374,7 +374,7 @@ export default function ArrivalSlipPage() {
 
     // In edit mode with all items already submitted, just navigate
     if (effectiveEditMode && itemForms.every((form) => form.isSubmitted)) {
-      navigate(`/gate/raw-materials/edit/${entryId}/attachments`);
+      navigate(`/gate/raw-materials/edit/${entryId}/step4`);
       return;
     }
 
@@ -446,12 +446,13 @@ export default function ArrivalSlipPage() {
         }
       }
 
-      // Navigate to attachments; weighment is optional for RM/PM material inward.
+      // Always continue to the weighment step. Gross weight is required there for
+      // an all-RM load (captured now, loaded); it stays optional for PM/mixed.
       setIsNavigating(true);
       if (isEditMode) {
-        navigate(`/gate/raw-materials/edit/${entryId}/attachments`);
+        navigate(`/gate/raw-materials/edit/${entryId}/step4`);
       } else {
-        navigate(`/gate/raw-materials/new/attachments?entryId=${entryId}`);
+        navigate(`/gate/raw-materials/new/step4?entryId=${entryId}`);
       }
     } catch (error) {
       const apiError = error as ApiError;
@@ -527,7 +528,7 @@ export default function ArrivalSlipPage() {
       {itemForms.length > 0 && itemForms.every((form) => form.isSubmitted) && (
         <div className="rounded-md bg-green-50 p-4 text-sm text-green-800 flex items-center gap-2">
           <Check className="h-5 w-5" />
-          All arrival slips have been submitted to QA. Click Next to proceed to attachments.
+          All arrival slips have been submitted to QA. Click Next to proceed to weighment.
         </div>
       )}
 

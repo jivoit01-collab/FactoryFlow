@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { ENTRY_STATUS } from '@/config/constants';
 import type { ApiError } from '@/core/api';
+import { isAllRmLoad } from '@/modules/gate/utils';
 import { RecordTimestamps } from '@/shared/components';
 import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
@@ -16,6 +17,7 @@ import {
   isServerError as checkServerError,
 } from '@/shared/utils';
 
+import { useGateEntryFullView } from '../../api/gateEntryFullView/gateEntryFullView.queries';
 import { useVehicleEntry } from '../../api/vehicle/vehicleEntry.queries';
 import type { CreateWeighmentRequest } from '../../api/weighment/weighment.api';
 import { useCreateWeighment, useWeighment } from '../../api/weighment/weighment.queries';
@@ -45,13 +47,15 @@ function hasWeighmentInput(values: WeighmentFormData) {
   return Object.values(values).some((value) => value.trim() !== '');
 }
 
-function validateWeighmentDetails(values: WeighmentFormData) {
+function validateWeighmentDetails(values: WeighmentFormData, grossRequired: boolean) {
   const grossWeight = parseFloat(values.grossWeight);
   const tareWeight = parseFloat(values.tareWeight);
   const hasTareWeight = values.tareWeight.trim() !== '';
   const errors: Record<string, string> = {};
 
-  if (!hasWeighmentInput(values)) {
+  // PM / mixed loads may skip weighment entirely. An all-RM load must record the
+  // loaded gross weight now; tare is captured later at gate-out (empty vehicle out).
+  if (!grossRequired && !hasWeighmentInput(values)) {
     return errors;
   }
 
@@ -92,6 +96,19 @@ export default function Step4Page() {
   } = useWeighment(isEditMode && entryIdNumber ? entryIdNumber : null);
   const { data: vehicleEntryData } = useVehicleEntry(
     isEditMode && entryIdNumber ? entryIdNumber : null,
+  );
+
+  // Gross weight is mandatory for an all-RM load (item codes starting "RM") and
+  // optional for PM / mixed loads. Read the PO item codes off the entry to decide.
+  const { data: fullView } = useGateEntryFullView(entryIdNumber || null);
+  const grossRequired = useMemo(
+    () =>
+      isAllRmLoad(
+        (fullView?.po_receipts ?? []).flatMap((receipt) =>
+          receipt.items.map((item) => item.item_code),
+        ),
+      ),
+    [fullView],
   );
 
   // Form state
@@ -199,13 +216,15 @@ export default function Step4Page() {
     }
 
     try {
-      const validationErrors = validateWeighmentDetails(formData);
+      const validationErrors = validateWeighmentDetails(formData, grossRequired);
       if (Object.keys(validationErrors).length > 0) {
         setApiErrors(validationErrors);
         return;
       }
 
-      if (!hasWeighmentInput(formData)) {
+      // Only PM / mixed loads may proceed without any weighment; an all-RM load
+      // has been validated above to carry a gross weight.
+      if (!grossRequired && !hasWeighmentInput(formData)) {
         setIsNavigating(true);
         if (isEditMode) {
           navigate(`/gate/raw-materials/edit/${entryId}/attachments`);
@@ -217,7 +236,10 @@ export default function Step4Page() {
 
       const requestData: CreateWeighmentRequest = {
         gross_weight: parseFloat(formData.grossWeight),
-        tare_weight: formData.tareWeight.trim() ? parseFloat(formData.tareWeight) : 0,
+        // Leave tare unset when blank -- it's the second weighment, captured at
+        // gate-out after unloading. Sending 0 here would satisfy the gate-out
+        // check with a fake tare and skip the real empty-truck weighment.
+        tare_weight: formData.tareWeight.trim() ? parseFloat(formData.tareWeight) : undefined,
         weighbridge_slip_no: formData.weighbridgeTicketNo || '',
         first_weighment_time: formData.firstWeighmentTime
           ? `${new Date().toISOString().slice(0, 10)}T${formData.firstWeighmentTime}:00`
@@ -282,7 +304,7 @@ export default function Step4Page() {
     <div className="space-y-6 pb-6">
       <StepHeader
         currentStep={currentStep}
-        title="Optional Weighment"
+        title={grossRequired ? 'Weighment' : 'Weighment (optional)'}
         error={
           hasServerError
             ? getServerErrorMessage()
@@ -315,10 +337,19 @@ export default function Step4Page() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {grossRequired && (
+              <p className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                Raw material (RM) load: record the loaded <strong>gross weight</strong> now. The
+                empty <strong>tare weight</strong> is captured later at gate-out (empty vehicle out),
+                after QC and unloading.
+              </p>
+            )}
             <div className="grid gap-4 md:grid-cols-3">
               {/* First Row */}
               <div className="space-y-2">
-                <Label htmlFor="grossWeight">Gross Weight</Label>
+                <Label htmlFor="grossWeight">
+                  Gross Weight {grossRequired && <span className="text-destructive">*</span>}
+                </Label>
                 <Input
                   id="grossWeight"
                   type="number"
