@@ -9,6 +9,7 @@ import { barcodeModuleConfig } from '@/modules/barcode/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
 import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
+import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
 import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
@@ -37,6 +38,7 @@ export const moduleRegistry: ModuleConfig[] = [
   qcModuleConfig,
   productionModuleConfig,
   maintenanceModuleConfig,
+  fireModuleConfig,
   warehouseModuleConfig,
   wmsModuleConfig,
   barcodeModuleConfig,
