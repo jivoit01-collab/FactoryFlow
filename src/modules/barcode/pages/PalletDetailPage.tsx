@@ -21,6 +21,10 @@ import { toastBarcodeError } from '../utils/errors';
 
 const STATUS_COLORS: Record<PalletStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
+  PARTIAL: 'bg-amber-100 text-amber-800',
+  DISPATCHED: 'bg-blue-100 text-blue-800',
+  EMPTY: 'bg-gray-100 text-gray-800',
+  INACTIVE: 'bg-gray-100 text-gray-800',
   CLEARED: 'bg-gray-100 text-gray-800',
   SPLIT: 'bg-blue-100 text-blue-800',
   VOID: 'bg-red-100 text-red-800',
@@ -29,6 +33,7 @@ const STATUS_COLORS: Record<PalletStatus, string> = {
 const BOX_STATUS_COLORS: Record<BoxStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
   PARTIAL: 'bg-amber-100 text-amber-800',
+  DISPATCHED: 'bg-blue-100 text-blue-800',
   DISMANTLED: 'bg-orange-100 text-orange-800',
   VOID: 'bg-red-100 text-red-800',
 };
@@ -114,6 +119,14 @@ export default function PalletDetailPage() {
   if (!pallet) return <div className="p-8 text-center text-muted-foreground">Pallet not found</div>;
 
   const isEmpty = pallet.box_count === 0;
+  // Only surface the amber EMPTY flag when the status doesn't already imply
+  // emptiness. Statuses like DISPATCHED/EMPTY/CLEARED/SPLIT/VOID inherently have
+  // no active boxes, so showing "EMPTY" alongside them is redundant and — when
+  // counts are stale — contradictory (e.g. "DISPATCHED + EMPTY" on a pallet that
+  // still holds boxes). The flag is only informative for an ACTIVE/PARTIAL pallet
+  // that has been fully drawn down but not yet cleared.
+  const showEmptyBadge =
+    isEmpty && (pallet.status === 'ACTIVE' || pallet.status === 'PARTIAL');
 
   return (
     <div className="space-y-6">
@@ -145,7 +158,9 @@ export default function PalletDetailPage() {
             <p className="text-xs text-muted-foreground">Status</p>
             <div className="mt-1 flex flex-wrap gap-2">
               <Badge className={STATUS_COLORS[pallet.status]}>{pallet.status}</Badge>
-              {isEmpty && <Badge className="bg-amber-100 text-amber-800">EMPTY</Badge>}
+              {showEmptyBadge && (
+                <Badge className="bg-amber-100 text-amber-800">EMPTY</Badge>
+              )}
             </div>
           </CardContent>
         </Card>
