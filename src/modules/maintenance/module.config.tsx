@@ -1,21 +1,16 @@
 import {
-  BadgeIndianRupee,
   BarChart3,
   Bell,
   Boxes,
   CalendarCheck,
-  ClipboardCheck,
   ClipboardList,
   Factory,
   FileText,
-  Flame,
-  HardHat,
   LayoutDashboard,
   Package,
   PackageOpen,
   PackagePlus,
   Settings,
-  ShieldCheck,
   Wrench,
 } from 'lucide-react';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -38,11 +33,6 @@ const MaintenanceMastersPage = lazy(() => import('./pages/MaintenanceMastersPage
 const MaintenancePMPage = lazy(() => import('./pages/MaintenancePMPage'));
 const MaintenanceReportsPage = lazy(() => import('./pages/MaintenanceReportsPage'));
 const MaintenanceSparesPage = lazy(() => import('./pages/MaintenanceSparesPage'));
-const MaintenanceFirePage = lazy(() => import('./pages/MaintenanceFirePage'));
-const MaintenanceFireReportsPage = lazy(() => import('./pages/MaintenanceFireReportsPage'));
-const MaintenanceFireIssuePage = lazy(() => import('./pages/MaintenanceFireIssuePage'));
-const MaintenanceWorkPermitsPage = lazy(() => import('./pages/MaintenanceWorkPermitsPage'));
-const MaintenanceSafetyFinePage = lazy(() => import('./pages/MaintenanceSafetyFinePage'));
 const MaintenanceMaterialIndentPage = lazy(() => import('./pages/MaintenanceMaterialIndentPage'));
 const MaintenanceWorkOrdersPage = lazy(() => import('./pages/MaintenanceWorkOrdersPage'));
 const MaintenanceWorkOrderDetailPage = lazy(() => import('./pages/MaintenanceWorkOrderDetailPage'));
@@ -96,41 +86,6 @@ export const maintenanceModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [MAINTENANCE_PERMISSIONS.VIEW_SPARE],
       breadcrumb: { label: 'Store / Spares' },
-    },
-    {
-      path: '/maintenance/fire',
-      element: <MaintenanceFirePage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_FIRE],
-      breadcrumb: { label: 'Store / Fire' },
-    },
-    {
-      path: '/maintenance/fire-reports',
-      element: <MaintenanceFireReportsPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_FIRE_REPORT],
-      breadcrumb: { label: 'Fire Reports' },
-    },
-    {
-      path: '/maintenance/fire-issue',
-      element: <MaintenanceFireIssuePage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE],
-      breadcrumb: { label: 'Fire Equipment Issue / Return' },
-    },
-    {
-      path: '/maintenance/work-permits',
-      element: <MaintenanceWorkPermitsPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
-      breadcrumb: { label: 'Work Permits' },
-    },
-    {
-      path: '/maintenance/safety-fines',
-      element: <MaintenanceSafetyFinePage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE],
-      breadcrumb: { label: 'Safety Fines' },
     },
     {
       path: '/maintenance/material-indents',
@@ -214,11 +169,6 @@ export const maintenanceModuleConfig: ModuleConfig = {
         MAINTENANCE_PERMISSIONS.VIEW_ASSET,
         MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER,
         MAINTENANCE_PERMISSIONS.VIEW_SPARE,
-        MAINTENANCE_PERMISSIONS.VIEW_FIRE,
-        MAINTENANCE_PERMISSIONS.VIEW_FIRE_REPORT,
-        MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE,
-        MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT,
-        MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE,
         MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
         MAINTENANCE_PERMISSIONS.VIEW_PM,
         MAINTENANCE_PERMISSIONS.VIEW_REPORTS,
@@ -266,36 +216,6 @@ export const maintenanceModuleConfig: ModuleConfig = {
           title: 'Store / Spares',
           icon: Boxes,
           permissions: [MAINTENANCE_PERMISSIONS.VIEW_SPARE],
-        },
-        {
-          path: '/maintenance/fire',
-          title: 'Store / Fire',
-          icon: Flame,
-          permissions: [MAINTENANCE_PERMISSIONS.VIEW_FIRE],
-        },
-        {
-          path: '/maintenance/fire-reports',
-          title: 'Fire Reports',
-          icon: ClipboardCheck,
-          permissions: [MAINTENANCE_PERMISSIONS.VIEW_FIRE_REPORT],
-        },
-        {
-          path: '/maintenance/fire-issue',
-          title: 'Fire Equipment Issue / Return',
-          icon: HardHat,
-          permissions: [MAINTENANCE_PERMISSIONS.VIEW_FIRE_ISSUE],
-        },
-        {
-          path: '/maintenance/work-permits',
-          title: 'Work Permits',
-          icon: ShieldCheck,
-          permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_PERMIT],
-        },
-        {
-          path: '/maintenance/safety-fines',
-          title: 'Safety Fines',
-          icon: BadgeIndianRupee,
-          permissions: [MAINTENANCE_PERMISSIONS.VIEW_SAFETY_FINE],
         },
         {
           path: '/maintenance/material-indents',
