@@ -45,7 +45,7 @@ export interface GRPOListParams {
 }
 
 // GRPO Status
-export type GRPOStatus = 'PENDING' | 'POSTED' | 'FAILED' | 'PARTIALLY_POSTED';
+export type GRPOStatus = 'DRAFT' | 'PENDING' | 'POSTED' | 'FAILED' | 'PARTIALLY_POSTED';
 
 // QC Status (used in preview items)
 export type QCStatus =
@@ -245,6 +245,11 @@ export interface PostGRPORequest {
   should_roundoff?: boolean;
 }
 
+// Saved GRPO draft payload — the request stored on a DRAFT/FAILED posting so it
+// can be re-posted (or edited and re-posted). Same shape as a post request minus
+// the local File attachments, which live as server-side GRPOAttachment rows.
+export type GRPODraftPayload = Omit<PostGRPORequest, 'attachments'>;
+
 // Attachment result in post response
 export interface PostGRPOAttachmentResult {
   id: number;
@@ -303,6 +308,8 @@ export interface GRPOHistoryEntry {
   is_merged?: boolean;
   po_numbers?: string[];
   merged_po_receipts?: number[];
+  /** Saved posting request, present on DRAFT/FAILED postings for re-posting. */
+  request_payload?: GRPODraftPayload | null;
 }
 
 // Supplier group for pending entries (used for merge selection)

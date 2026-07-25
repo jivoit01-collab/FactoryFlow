@@ -341,6 +341,9 @@ export const API_ENDPOINTS = {
     PREVIEW: (vehicleEntryId: number) => `/grpo/preview/${vehicleEntryId}/`,
     INSPECTION_REPORT: (arrivalSlipId: number) => `/grpo/inspection-report/${arrivalSlipId}/`,
     POST: '/grpo/post/',
+    DRAFT_CREATE: '/grpo/draft/',
+    DRAFT_DETAIL: (postingId: number) => `/grpo/draft/${postingId}/`,
+    DRAFT_POST: (postingId: number) => `/grpo/draft/${postingId}/post/`,
     HISTORY: '/grpo/history/',
     DETAIL: (postingId: number) => `/grpo/${postingId}/`,
     SERVICE_PENDING: '/grpo/service/pending/',
@@ -834,6 +837,7 @@ export const API_ENDPOINTS = {
     BOM_REQUEST_DETAIL: (requestId: number) => `/warehouse/bom-requests/${requestId}/`,
     BOM_REQUEST_APPROVE: (requestId: number) => `/warehouse/bom-requests/${requestId}/approve/`,
     BOM_REQUEST_REJECT: (requestId: number) => `/warehouse/bom-requests/${requestId}/reject/`,
+    BOM_REQUEST_RE_REQUEST: (requestId: number) => `/warehouse/bom-requests/${requestId}/re-request/`,
     BOM_REQUEST_ISSUE: (requestId: number) => `/warehouse/bom-requests/${requestId}/issue/`,
     // Stock
     STOCK_CHECK: '/warehouse/stock/check/',

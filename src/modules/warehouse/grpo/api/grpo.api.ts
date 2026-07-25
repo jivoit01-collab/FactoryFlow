@@ -136,6 +136,56 @@ export const grpoApi = {
     return response.data;
   },
 
+  // Save a GRPO as a draft (no SAP posting). Creates a new draft, or updates an
+  // existing one (edit / retry) when postingId is given. Attachments are appended.
+  async saveDraft(data: PostGRPORequest, postingId?: number): Promise<GRPOHistoryEntry> {
+    const { attachments, ...jsonData } = data;
+    const files = attachments ?? [];
+
+    const formData = new FormData();
+    formData.append('data', JSON.stringify(jsonData));
+    files.forEach((file) => {
+      formData.append('attachments', file);
+    });
+
+    const config = { headers: { 'Content-Type': 'multipart/form-data' } };
+    if (postingId != null) {
+      const response = await apiClient.patch<GRPOHistoryEntry>(
+        API_ENDPOINTS.GRPO.DRAFT_DETAIL(postingId),
+        formData,
+        config,
+      );
+      return response.data;
+    }
+    const response = await apiClient.post<GRPOHistoryEntry>(
+      API_ENDPOINTS.GRPO.DRAFT_CREATE,
+      formData,
+      config,
+    );
+    return response.data;
+  },
+
+  // Load a saved draft (for hydration on edit / retry)
+  async getDraft(postingId: number): Promise<GRPOHistoryEntry> {
+    const response = await apiClient.get<GRPOHistoryEntry>(
+      API_ENDPOINTS.GRPO.DRAFT_DETAIL(postingId),
+    );
+    return response.data;
+  },
+
+  // Post a previously-saved draft to SAP
+  async postSavedDraft(postingId: number): Promise<PostGRPOResponse> {
+    const response = await apiClient.post<PostGRPOResponse>(
+      API_ENDPOINTS.GRPO.DRAFT_POST(postingId),
+    );
+    return response.data;
+  },
+
+  // Discard an unposted draft/failed posting
+  async deleteDraft(postingId: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.GRPO.DRAFT_DETAIL(postingId));
+  },
+
   // Get posting history (paginated)
   async getHistory(params: GRPOListParams = {}): Promise<PaginatedResponse<GRPOHistoryEntry>> {
     const response = await apiClient.get<

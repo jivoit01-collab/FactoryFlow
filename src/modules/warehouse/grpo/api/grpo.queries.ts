@@ -14,6 +14,7 @@ export const GRPO_QUERY_KEYS = {
     [...GRPO_QUERY_KEYS.all, 'preview', vehicleEntryId] as const,
   history: (params?: GRPOListParams) => [...GRPO_QUERY_KEYS.all, 'history', params] as const,
   detail: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'detail', postingId] as const,
+  draft: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'draft', postingId] as const,
   servicePending: (params?: GRPOListParams) =>
     [...GRPO_QUERY_KEYS.all, 'service', 'pending', params] as const,
   serviceOptions: () => [...GRPO_QUERY_KEYS.all, 'service', 'options'] as const,
@@ -79,6 +80,57 @@ export function usePostGRPO() {
       queryClient.invalidateQueries({
         queryKey: GRPO_QUERY_KEYS.preview(variables.vehicle_entry_id),
       });
+      queryClient.invalidateQueries({ queryKey: [...GRPO_QUERY_KEYS.all, 'history'] });
+    },
+  });
+}
+
+// Save a GRPO draft (create or update). Pass { data, postingId? }.
+export function useSaveGRPODraft() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ data, postingId }: { data: PostGRPORequest; postingId?: number }) =>
+      grpoApi.saveDraft(data, postingId),
+    onSuccess: (draft) => {
+      queryClient.invalidateQueries({ queryKey: [...GRPO_QUERY_KEYS.all, 'history'] });
+      if (draft?.id != null) {
+        queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.draft(draft.id) });
+      }
+    },
+  });
+}
+
+// Load a saved draft (for hydration on edit / retry)
+export function useGRPODraft(postingId: number | null) {
+  return useQuery({
+    queryKey: GRPO_QUERY_KEYS.draft(postingId!),
+    queryFn: () => grpoApi.getDraft(postingId!),
+    enabled: !!postingId,
+    staleTime: 0,
+  });
+}
+
+// Post a previously-saved draft to SAP
+export function usePostSavedGRPO() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (postingId: number) => grpoApi.postSavedDraft(postingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...GRPO_QUERY_KEYS.all, 'pending'] });
+      queryClient.invalidateQueries({ queryKey: [...GRPO_QUERY_KEYS.all, 'all-entries'] });
+      queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.summary() });
+      queryClient.invalidateQueries({ queryKey: [...GRPO_QUERY_KEYS.all, 'history'] });
+      queryClient.invalidateQueries({ queryKey: [...GRPO_QUERY_KEYS.all, 'preview'] });
+    },
+  });
+}
+
+// Discard an unposted draft/failed posting
+export function useDeleteGRPODraft() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (postingId: number) => grpoApi.deleteDraft(postingId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...GRPO_QUERY_KEYS.all, 'history'] });
     },
   });

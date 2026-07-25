@@ -12,8 +12,8 @@ import {
   ShieldX,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import {
@@ -32,7 +32,13 @@ import {
   Label,
 } from '@/shared/components/ui';
 
-import { useGRPOPreview, usePostGRPO } from '../api';
+import {
+  useDeleteGRPOAttachment,
+  useGRPODraft,
+  useGRPOPreview,
+  usePostSavedGRPO,
+  useSaveGRPODraft,
+} from '../api';
 import {
   ExtraChargesSection,
   QCReportButton,
@@ -41,7 +47,7 @@ import {
   WarehouseSelect,
 } from '../components';
 import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants';
-import type { ExtraCharge, PostGRPOResponse, PreviewPOReceipt } from '../types';
+import type { ExtraCharge, GRPOAttachment, PostGRPOResponse, PreviewPOReceipt } from '../types';
 
 // Per-item form state
 interface ItemFormState {
@@ -98,10 +104,18 @@ const formatPODate = (dateStr?: string | null) => {
 export default function GRPOPreviewPage() {
   const navigate = useNavigate();
   const { vehicleEntryId } = useParams<{ vehicleEntryId: string }>();
+  const [searchParams] = useSearchParams();
   const entryId = vehicleEntryId ? parseInt(vehicleEntryId, 10) : null;
 
+  // When arriving from History → Retry (or resuming a draft), ?draft=<id> tells
+  // us which saved posting to hydrate the form from.
+  const draftParam = searchParams.get('draft');
+  const initialDraftId = draftParam ? parseInt(draftParam, 10) : null;
+
   const { data: previewData = [], isLoading, error, refetch } = useGRPOPreview(entryId);
-  const postGRPO = usePostGRPO();
+  const { data: draftData } = useGRPODraft(initialDraftId);
+  const saveDraft = useSaveGRPODraft();
+  const postSaved = usePostSavedGRPO();
 
   // Selected PO receipt IDs for merged posting
   const [selectedPOIds, setSelectedPOIds] = useState<Set<number>>(new Set());
@@ -110,6 +124,15 @@ export default function GRPOPreviewPage() {
   // Expanded PO cards (to show/hide item details)
   const [expandedPOs, setExpandedPOs] = useState<Set<number>>(new Set());
 
+  // The saved draft this form is bound to (null until first Save). Once set, the
+  // Post button appears and posting works off the persisted payload + attachments.
+  const [draftId, setDraftId] = useState<number | null>(initialDraftId);
+  // Attachments already persisted on the draft (server-side), separate from the
+  // new local files staged in mergedForm.attachments.
+  const [savedAttachments, setSavedAttachments] = useState<GRPOAttachment[]>([]);
+  const hydratedRef = useRef(false);
+  const deleteAttachment = useDeleteGRPOAttachment(draftId ?? 0);
+
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [successResult, setSuccessResult] = useState<PostGRPOResponse | null>(null);
@@ -117,7 +140,10 @@ export default function GRPOPreviewPage() {
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
-  const isPosting = postGRPO.isPending;
+  const isSaving = saveDraft.isPending;
+  const isPosting = postSaved.isPending;
+  const isBusy = isSaving || isPosting;
+  const totalAttachmentCount = (mergedForm?.attachments.length ?? 0) + savedAttachments.length;
   const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
     useQCReportPrint();
 
@@ -231,6 +257,44 @@ export default function GRPOPreviewPage() {
       };
     });
   }, [selectedPOs]);
+
+  // Hydrate the form from a saved draft (History → Retry, or resuming a draft).
+  // Runs once, after the preview list is available, so the selected POs resolve.
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    if (isLoading) return;
+    if (!draftData?.request_payload) return;
+
+    hydratedRef.current = true;
+    const payload = draftData.request_payload;
+
+    const items: Record<number, ItemFormState> = {};
+    (payload.items ?? []).forEach((it) => {
+      items[it.po_item_receipt_id] = {
+        accepted_qty: it.accepted_qty,
+        unit_price: it.unit_price ?? undefined,
+        tax_code: it.tax_code || undefined,
+        gl_account: it.gl_account || undefined,
+        variety: it.variety || undefined,
+      };
+    });
+
+    setSelectedPOIds(new Set(payload.po_receipt_ids ?? []));
+    setMergedForm({
+      items,
+      warehouseCode: payload.warehouse_code ?? '',
+      comments: payload.comments ?? '',
+      vendorRef: payload.vendor_ref ?? '',
+      extraCharges: payload.extra_charges ?? [],
+      attachments: [],
+      docDate: payload.doc_date ?? '',
+      docDueDate: payload.doc_due_date ?? '',
+      taxDate: payload.tax_date ?? '',
+      shouldRoundoff: payload.should_roundoff ?? true,
+    });
+    setSavedAttachments(draftData.attachments ?? []);
+    setDraftId(draftData.id);
+  }, [draftData, isLoading]);
 
   // Toggle PO selection
   const togglePOSelection = (poReceiptId: number) => {
@@ -382,8 +446,42 @@ export default function GRPOPreviewPage() {
     return itemsTotal + chargesTotal;
   }, [mergedForm, selectedPOs]);
 
-  // Validate before posting
-  const validateMergedPost = (): boolean => {
+  // Build the GRPO request from the current form + selection.
+  const buildRequest = () => {
+    if (!mergedForm || !entryId || selectedPOs.length === 0) return null;
+    const items = selectedPOs.flatMap((po) =>
+      po.items.map((item) => {
+        const itemForm = mergedForm.items[item.po_item_receipt_id];
+        return {
+          po_item_receipt_id: item.po_item_receipt_id,
+          accepted_qty: itemForm?.accepted_qty ?? item.received_qty,
+          unit_price: itemForm?.unit_price,
+          tax_code: itemForm?.tax_code || undefined,
+          gl_account: itemForm?.gl_account || undefined,
+          variety: itemForm?.variety || undefined,
+        };
+      }),
+    );
+    return {
+      vehicle_entry_id: entryId,
+      po_receipt_ids: selectedPOs.map((po) => po.po_receipt_id),
+      items,
+      branch_id: selectedPOs[0].branch_id || DEFAULT_BRANCH_ID,
+      warehouse_code: mergedForm.warehouseCode || undefined,
+      comments: mergedForm.comments || undefined,
+      vendor_ref: mergedForm.vendorRef || undefined,
+      extra_charges: mergedForm.extraCharges.length > 0 ? mergedForm.extraCharges : undefined,
+      attachments: mergedForm.attachments.length > 0 ? mergedForm.attachments : undefined,
+      doc_date: mergedForm.docDate || undefined,
+      doc_due_date: mergedForm.docDueDate || undefined,
+      tax_date: mergedForm.taxDate || undefined,
+      should_roundoff: mergedForm.shouldRoundoff || undefined,
+    };
+  };
+
+  // Shared item/supplier/charge checks. `forPost` also enforces the rules SAP
+  // needs (vendor ref + at least one attachment) — relaxed when only saving.
+  const validateMergedForm = (forPost: boolean): boolean => {
     if (!mergedForm || selectedPOs.length === 0) return false;
     const errors: Record<string, string> = {};
 
@@ -393,7 +491,6 @@ export default function GRPOPreviewPage() {
       return false;
     }
 
-    // Validate items
     selectedPOs.forEach((po) => {
       po.items.forEach((item) => {
         const itemForm = mergedForm.items[item.po_item_receipt_id];
@@ -414,13 +511,15 @@ export default function GRPOPreviewPage() {
       errors.general = 'At least one item must have accepted quantity greater than 0';
     }
 
-    if (!mergedForm.vendorRef.trim()) {
-      errors.vendorRef = 'Vendor reference is required';
+    if (forPost) {
+      if (!mergedForm.vendorRef.trim()) {
+        errors.vendorRef = 'Vendor reference is required';
+      }
+      if (totalAttachmentCount === 0) {
+        errors.attachments = 'At least one attachment is required';
+      }
     }
 
-    if (mergedForm.attachments.length === 0) {
-      errors.attachments = 'At least one attachment is required';
-    }
     if (mergedForm.extraCharges.some((charge) => (charge.expense_code || 0) <= 0)) {
       errors.extraCharges = 'Every extra charge needs a valid SAP expense code.';
     } else if (mergedForm.extraCharges.some((charge) => (charge.amount || 0) <= 0)) {
@@ -431,58 +530,78 @@ export default function GRPOPreviewPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Handle post click
+  // Save the form as a draft (create or update). Persists payload + any newly
+  // staged attachment files, then reveals the Post button. Returns the draft id.
+  const saveCurrentDraft = async (): Promise<number | null> => {
+    const data = buildRequest();
+    if (!data) return null;
+    const draft = await saveDraft.mutateAsync({ data, postingId: draftId ?? undefined });
+    setDraftId(draft.id);
+    setSavedAttachments(draft.attachments ?? []);
+    // Staged local files are now persisted server-side; clear them.
+    setMergedForm((prev) => (prev ? { ...prev, attachments: [] } : prev));
+    return draft.id;
+  };
+
+  const handleSaveDraft = async () => {
+    if (!validateMergedForm(false)) return;
+    try {
+      setApiErrors({});
+      await saveCurrentDraft();
+    } catch (err) {
+      const e = err as ApiError;
+      setApiErrors({ general: e.message || 'Failed to save GRPO draft' });
+    }
+  };
+
+  // Handle post click — must pass the full (post-time) validation first.
   const handlePostClick = () => {
-    if (validateMergedPost()) {
+    if (validateMergedForm(true)) {
       setShowConfirm(true);
     }
   };
 
-  // Confirm and submit
+  // Confirm and submit: persist the latest form (so the posted data + attachments
+  // match what's on screen), then post the saved draft to SAP.
   const handleConfirmPost = async () => {
     if (!mergedForm || !entryId || selectedPOs.length === 0) return;
-    if (!validateMergedPost()) return;
-
-    const items = selectedPOs.flatMap((po) =>
-      po.items.map((item) => {
-        const itemForm = mergedForm.items[item.po_item_receipt_id];
-        return {
-          po_item_receipt_id: item.po_item_receipt_id,
-          accepted_qty: itemForm?.accepted_qty ?? item.received_qty,
-          unit_price: itemForm?.unit_price,
-          tax_code: itemForm?.tax_code || undefined,
-          gl_account: itemForm?.gl_account || undefined,
-          variety: itemForm?.variety || undefined,
-        };
-      }),
-    );
+    if (!validateMergedForm(true)) return;
 
     try {
       setApiErrors({});
-      const result = await postGRPO.mutateAsync({
-        vehicle_entry_id: entryId,
-        po_receipt_ids: selectedPOs.map((po) => po.po_receipt_id),
-        items,
-        branch_id: selectedPOs[0].branch_id || DEFAULT_BRANCH_ID,
-        warehouse_code: mergedForm.warehouseCode || undefined,
-        comments: mergedForm.comments || undefined,
-        vendor_ref: mergedForm.vendorRef || undefined,
-        extra_charges: mergedForm.extraCharges.length > 0 ? mergedForm.extraCharges : undefined,
-        attachments: mergedForm.attachments.length > 0 ? mergedForm.attachments : undefined,
-        doc_date: mergedForm.docDate || undefined,
-        doc_due_date: mergedForm.docDueDate || undefined,
-        tax_date: mergedForm.taxDate || undefined,
-        should_roundoff: mergedForm.shouldRoundoff || undefined,
-      });
+      const postingId = await saveCurrentDraft();
+      if (!postingId) {
+        setShowConfirm(false);
+        setApiErrors({ general: 'Could not save the GRPO before posting.' });
+        return;
+      }
+      const postedPOs = selectedPOs;
+      const result = await postSaved.mutateAsync(postingId);
       setShowConfirm(false);
       setSuccessResult(result);
-      setLastPostedQCReports(getPrintableQCReportItems(selectedPOs));
+      setLastPostedQCReports(getPrintableQCReportItems(postedPOs));
       setSelectedPOIds(new Set());
       setMergedForm(null);
+      setDraftId(null);
+      setSavedAttachments([]);
     } catch (err) {
       setShowConfirm(false);
       const postError = err as ApiError;
+      // The draft survives (now FAILED) with its data + attachments — the operator
+      // can adjust and retry from here or from History.
       setApiErrors({ general: postError.message || 'Failed to post GRPO' });
+    }
+  };
+
+  // Remove an already-saved (server-side) attachment from the draft.
+  const handleRemoveSavedAttachment = async (attachmentId: number) => {
+    if (!draftId) return;
+    try {
+      await deleteAttachment.mutateAsync(attachmentId);
+      setSavedAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+    } catch (err) {
+      const e = err as ApiError;
+      setApiErrors((prev) => ({ ...prev, attachments: e.message || 'Failed to remove attachment' }));
     }
   };
 
@@ -1134,6 +1253,32 @@ export default function GRPOPreviewPage() {
                   PDF, PNG, JPG, DOC, XLS accepted
                 </span>
               </div>
+              {/* Already-saved attachments (persisted on the draft) */}
+              {savedAttachments.length > 0 && (
+                <div className="space-y-1">
+                  {savedAttachments.map((att) => (
+                    <div
+                      key={`saved-${att.id}`}
+                      className="flex items-center gap-2 text-sm p-1.5 rounded bg-muted/40 border"
+                    >
+                      <Paperclip className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="truncate flex-1">{att.original_filename}</span>
+                      <span className="text-[10px] font-medium text-green-600 flex-shrink-0">
+                        Saved
+                      </span>
+                      <button
+                        type="button"
+                        className="p-0.5 hover:bg-muted rounded disabled:opacity-50"
+                        disabled={deleteAttachment.isPending}
+                        onClick={() => handleRemoveSavedAttachment(att.id)}
+                      >
+                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Newly staged files (uploaded on next Save) */}
               {mergedForm.attachments.length > 0 && (
                 <div className="space-y-1">
                   {mergedForm.attachments.map((file, idx) => (
@@ -1146,6 +1291,11 @@ export default function GRPOPreviewPage() {
                       <span className="text-xs text-muted-foreground flex-shrink-0">
                         {(file.size / 1024).toFixed(0)} KB
                       </span>
+                      {draftId != null && (
+                        <span className="text-[10px] font-medium text-amber-600 flex-shrink-0">
+                          Not saved
+                        </span>
+                      )}
                       <button
                         type="button"
                         className="p-0.5 hover:bg-muted rounded"
@@ -1191,25 +1341,48 @@ export default function GRPOPreviewPage() {
               );
             })()}
 
-            {/* Post Button */}
-            <div className="border-t pt-4 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedPOIds(new Set());
-                  setMergedForm(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button size="sm" onClick={handlePostClick} disabled={isPosting}>
-                {isPosting
-                  ? 'Posting...'
-                  : selectedPOs.length > 1
-                    ? `Post Merged GRPO (${selectedPOs.length} POs)`
-                    : 'Post GRPO'}
-              </Button>
+            {/* Save / Post actions — save first, then Post GRPO appears */}
+            <div className="border-t pt-4 space-y-2">
+              {draftId != null && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                  Saved as draft. Review the details, then post to SAP. If a post fails, your data
+                  and attachments are kept here so you can fix and retry.
+                </p>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isBusy}
+                  onClick={() => {
+                    setSelectedPOIds(new Set());
+                    setMergedForm(null);
+                    setDraftId(null);
+                    setSavedAttachments([]);
+                    hydratedRef.current = true;
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant={draftId != null ? 'outline' : 'default'}
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  disabled={isBusy}
+                >
+                  {isSaving ? 'Saving...' : draftId != null ? 'Save Changes' : 'Save Draft'}
+                </Button>
+                {draftId != null && (
+                  <Button size="sm" onClick={handlePostClick} disabled={isBusy}>
+                    {isPosting
+                      ? 'Posting...'
+                      : selectedPOs.length > 1
+                        ? `Post Merged GRPO (${selectedPOs.length} POs)`
+                        : 'Post GRPO'}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1303,7 +1476,7 @@ export default function GRPOPreviewPage() {
 
               <div className="text-sm">
                 <span className="text-muted-foreground">Attachments:</span>{' '}
-                <span className="font-medium">{mergedForm.attachments.length} file(s)</span>
+                <span className="font-medium">{totalAttachmentCount} file(s)</span>
               </div>
 
               {mergedForm.extraCharges.length > 0 && (
@@ -1333,11 +1506,11 @@ export default function GRPOPreviewPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirm(false)}>
+            <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={isBusy}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmPost} disabled={isPosting}>
-              {isPosting ? 'Posting...' : 'Confirm Post'}
+            <Button onClick={handleConfirmPost} disabled={isBusy}>
+              {isSaving ? 'Saving...' : isPosting ? 'Posting...' : 'Confirm Post'}
             </Button>
           </DialogFooter>
         </DialogContent>

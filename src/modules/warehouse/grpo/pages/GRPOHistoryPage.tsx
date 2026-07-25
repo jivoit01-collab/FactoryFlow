@@ -16,6 +16,7 @@ import type { GRPOStatus } from '../types';
 // GRPOStatus value, or undefined for "all").
 const STATUS_FILTERS = {
   all: { label: 'All', status: undefined as GRPOStatus | undefined },
+  drafts: { label: 'Drafts', status: GRPO_STATUS.DRAFT as GRPOStatus },
   posted: { label: 'Posted', status: GRPO_STATUS.POSTED as GRPOStatus },
   failed: { label: 'Failed', status: GRPO_STATUS.FAILED as GRPOStatus },
 } as const;
@@ -31,6 +32,8 @@ const getStatusBadgeClass = (status: GRPOStatus) => {
       return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
     case GRPO_STATUS.PARTIALLY_POSTED:
       return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+    case GRPO_STATUS.DRAFT:
+      return 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300';
     case GRPO_STATUS.PENDING:
     default:
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
@@ -256,7 +259,8 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
                       </div>
                       <div className="flex items-center gap-3">
                         {(entry.status === GRPO_STATUS.FAILED ||
-                          entry.status === GRPO_STATUS.PARTIALLY_POSTED) &&
+                          entry.status === GRPO_STATUS.PARTIALLY_POSTED ||
+                          entry.status === GRPO_STATUS.DRAFT) &&
                           !entry.is_superseded && (
                             <Button
                               variant="outline"
@@ -264,11 +268,15 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
                               className="h-7 gap-1 px-2 text-xs"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/warehouse/grpo/material/preview/${entry.vehicle_entry}`);
+                                // Hydrate the preview form from this saved posting
+                                // (payload + attachments) so it can be edited & re-posted.
+                                navigate(
+                                  `/warehouse/grpo/material/preview/${entry.vehicle_entry}?draft=${entry.id}`,
+                                );
                               }}
                             >
                               <RefreshCw className="h-3 w-3" />
-                              Retry
+                              {entry.status === GRPO_STATUS.DRAFT ? 'Resume' : 'Retry'}
                             </Button>
                           )}
                         <span className="text-xs text-muted-foreground">

@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, type LucideIcon, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, FilePen, type LucideIcon, XCircle } from 'lucide-react';
 
 // ============================================================================
 // Entry Status Constants
@@ -41,6 +41,7 @@ export type SecurityApprovalStatus =
 // ============================================================================
 
 export const GRPO_STATUS = {
+  DRAFT: 'DRAFT',
   PENDING: 'PENDING',
   POSTED: 'POSTED',
   FAILED: 'FAILED',
@@ -219,6 +220,12 @@ export interface StatusConfigWithIcon {
 }
 
 export const GRPO_STATUS_CONFIG: Record<GRPOStatus, StatusConfigWithIcon> = {
+  DRAFT: {
+    label: 'Draft',
+    color: 'text-slate-600',
+    bgColor: 'bg-slate-50',
+    icon: FilePen,
+  },
   PENDING: {
     label: 'Pending',
     color: 'text-yellow-600',
