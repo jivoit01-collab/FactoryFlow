@@ -10,7 +10,7 @@ const STATUS_CONFIG: Record<BSTTransferStatus, { label: string; cls: string }> =
   AWAITING_GATE_IN: { label: 'Awaiting Gate In', cls: 'bg-amber-100 text-amber-800' },
   GATED_IN: { label: 'Gated In', cls: 'bg-amber-100 text-amber-800' },
   ARRIVED: { label: 'Arrived', cls: 'bg-teal-100 text-teal-800' },
-  RECEIVING: { label: 'Receiving', cls: 'bg-blue-100 text-blue-800' },
+  RECEIVING: { label: 'Receiving', cls: 'bg-purple-100 text-purple-800' },
   RECEIVED: { label: 'Received', cls: 'bg-green-100 text-green-800' },
   PARTIALLY_RECEIVED: { label: 'Partially Received', cls: 'bg-orange-100 text-orange-800' },
   CLOSED: { label: 'Closed', cls: 'bg-slate-100 text-slate-700' },
