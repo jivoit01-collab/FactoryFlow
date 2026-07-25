@@ -1,4 +1,4 @@
-import { LayoutDashboard,Warehouse } from 'lucide-react';
+import { Warehouse } from 'lucide-react';
 
 import { GRPO_PERMISSIONS,OMS_PERMISSIONS,WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -19,15 +19,6 @@ const BSTScanPage = lazy(() => import('./pages/bst/BSTScanPage'));
 const BSTReviewPage = lazy(() => import('./pages/bst/BSTReviewPage'));
 const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
 const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
-
-// WMS Pages
-const WMSDashboardPage = lazy(() => import('./pages/WMSDashboardPage'));
-const StockTrackerPage = lazy(() => import('./pages/StockTrackerPage'));
-const BillingTrackerPage = lazy(() => import('./pages/BillingTrackerPage'));
-const WarehouseComparisonPage = lazy(() => import('./pages/WarehouseComparisonPage'));
-const TransferActivityPage = lazy(() => import('./pages/TransferActivityPage'));
-const BatchExpiryPage = lazy(() => import('./pages/BatchExpiryPage'));
-const SalesOrderBacklogPage = lazy(() => import('./pages/SalesOrderBacklogPage'));
 
 export const warehouseModuleConfig: ModuleConfig = {
   name: 'warehouse',
@@ -94,49 +85,6 @@ export const warehouseModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.CREATE_BST],
     },
-    // WMS Routes
-    {
-      path: '/wms',
-      element: <WMSDashboardPage />,
-      layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-    },
-    {
-      path: '/wms/stock',
-      element: <StockTrackerPage />,
-      layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-    },
-    {
-      path: '/wms/billing',
-      element: <BillingTrackerPage />,
-      layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-    },
-    {
-      path: '/wms/transfers',
-      element: <TransferActivityPage />,
-      layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-    },
-    {
-      path: '/wms/batches',
-      element: <BatchExpiryPage />,
-      layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-    },
-    {
-      path: '/wms/orders',
-      element: <SalesOrderBacklogPage />,
-      layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-    },
-    {
-      path: '/wms/warehouses',
-      element: <WarehouseComparisonPage />,
-      layout: 'main',
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-    },
     // GRPO submodule routes (/warehouse/grpo/*, plus legacy /grpo/* redirect)
     ...grpoRoutes,
     // Invoice Approval submodule route (/warehouse/invoice-approval)
@@ -180,51 +128,6 @@ export const warehouseModuleConfig: ModuleConfig = {
         ...grpoNavChildren,
         // Invoice Approval submodule — nested under the Warehouse group
         ...invoiceApprovalNavChildren,
-      ],
-    },
-    {
-      path: '/wms',
-      title: 'WMS',
-      icon: LayoutDashboard,
-      showInSidebar: true,
-      permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-      hasSubmenu: true,
-      children: [
-        {
-          path: '/wms',
-          title: 'Dashboard',
-          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-        },
-        {
-          path: '/wms/stock',
-          title: 'Stock Tracker',
-          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-        },
-        {
-          path: '/wms/billing',
-          title: 'Billing Tracker',
-          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-        },
-        {
-          path: '/wms/transfers',
-          title: 'Transfers',
-          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-        },
-        {
-          path: '/wms/batches',
-          title: 'Batch Expiry',
-          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-        },
-        {
-          path: '/wms/orders',
-          title: 'Order Backlog',
-          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-        },
-        {
-          path: '/wms/warehouses',
-          title: 'Warehouses',
-          permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-        },
       ],
     },
   ],

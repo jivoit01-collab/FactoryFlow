@@ -837,17 +837,8 @@ export const API_ENDPOINTS = {
     BOM_REQUEST_ISSUE: (requestId: number) => `/warehouse/bom-requests/${requestId}/issue/`,
     // Stock
     STOCK_CHECK: '/warehouse/stock/check/',
-    // WMS
-    WMS_DASHBOARD: '/warehouse/wms/dashboard/',
-    WMS_STOCK_OVERVIEW: '/warehouse/wms/stock/overview/',
-    WMS_ITEM_DETAIL: (itemCode: string) => `/warehouse/wms/stock/items/${itemCode}/`,
-    WMS_STOCK_MOVEMENTS: '/warehouse/wms/stock/movements/',
-    WMS_TRANSFER_OVERVIEW: '/warehouse/wms/transfers/overview/',
-    WMS_BATCH_EXPIRY: '/warehouse/wms/batches/expiry/',
-    WMS_SALES_ORDER_BACKLOG: '/warehouse/wms/sales-orders/backlog/',
-    WMS_WAREHOUSE_SUMMARY: '/warehouse/wms/warehouses/summary/',
+    // WMS dropdowns (shared: barcode pallet pages + stock-level dashboard)
     WMS_WAREHOUSE_LIST: '/warehouse/wms/warehouses/',
-    WMS_BILLING_OVERVIEW: '/warehouse/wms/billing/overview/',
     WMS_ITEM_GROUPS: '/warehouse/wms/item-groups/',
     // Finished Goods Receipts
     FG_RECEIPTS: '/warehouse/fg-receipts/',
