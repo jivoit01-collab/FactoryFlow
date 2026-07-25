@@ -6,6 +6,7 @@ import type {
   CreateFGReceiptPayload,
   MaterialIssuePayload,
   RejectBOMRequestPayload,
+  ReRequestBOMPayload,
 } from '../types';
 import { warehouseApi } from './warehouse.api';
 
@@ -16,6 +17,8 @@ import { warehouseApi } from './warehouse.api';
 export const WAREHOUSE_QUERY_KEYS = {
   all: ['warehouse'] as const,
   bomRequests: (status?: string) => [...WAREHOUSE_QUERY_KEYS.all, 'bom-requests', { status }] as const,
+  runBomRequests: (productionRunId: number) =>
+    [...WAREHOUSE_QUERY_KEYS.all, 'bom-requests', 'run', productionRunId] as const,
   bomRequestDetail: (id: number) => [...WAREHOUSE_QUERY_KEYS.all, 'bom-request', id] as const,
   fgReceipts: (status?: string, productionRunId?: number) => [...WAREHOUSE_QUERY_KEYS.all, 'fg-receipts', { status, productionRunId }] as const,
   fgReceiptDetail: (id: number) => [...WAREHOUSE_QUERY_KEYS.all, 'fg-receipt', id] as const,
@@ -29,6 +32,14 @@ export function useBOMRequests(status?: string) {
   return useQuery({
     queryKey: WAREHOUSE_QUERY_KEYS.bomRequests(status),
     queryFn: () => warehouseApi.getBOMRequests(status ? { status } : undefined),
+  });
+}
+
+export function useRunBOMRequests(productionRunId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: WAREHOUSE_QUERY_KEYS.runBomRequests(productionRunId!),
+    queryFn: () => warehouseApi.getBOMRequests({ production_run_id: productionRunId! }),
+    enabled: enabled && productionRunId !== null,
   });
 }
 
@@ -73,6 +84,18 @@ export function useRejectBOMRequest() {
   return useMutation({
     mutationFn: ({ requestId, data }: { requestId: number; data: RejectBOMRequestPayload }) =>
       warehouseApi.rejectBOMRequest(requestId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: WAREHOUSE_QUERY_KEYS.all });
+      qc.invalidateQueries({ queryKey: ['production-execution'] });
+    },
+  });
+}
+
+export function useReRequestBOMShortfall() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, data }: { requestId: number; data?: ReRequestBOMPayload }) =>
+      warehouseApi.reRequestBOMShortfall(requestId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: WAREHOUSE_QUERY_KEYS.all });
       qc.invalidateQueries({ queryKey: ['production-execution'] });

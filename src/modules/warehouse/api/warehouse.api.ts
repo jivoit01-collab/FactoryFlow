@@ -10,6 +10,7 @@ import type {
   FGReceipt,
   MaterialIssuePayload,
   RejectBOMRequestPayload,
+  ReRequestBOMPayload,
   StockCheckResponse,
 } from '../types';
 
@@ -51,6 +52,16 @@ export const warehouseApi = {
     data: RejectBOMRequestPayload,
   ): Promise<BOMRequestDetail> {
     const res = await apiClient.post<BOMRequestDetail>(EP.BOM_REQUEST_REJECT(requestId), data);
+    return res.data;
+  },
+
+  async reRequestBOMShortfall(
+    requestId: number,
+    data?: ReRequestBOMPayload,
+  ): Promise<BOMRequestDetail> {
+    const res = await apiClient.post<BOMRequestDetail>(
+      EP.BOM_REQUEST_RE_REQUEST(requestId), data || {},
+    );
     return res.data;
   },
 

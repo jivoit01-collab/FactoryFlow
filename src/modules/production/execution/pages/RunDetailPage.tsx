@@ -8,6 +8,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RefreshCw,
   Send,
   Shield,
   Trash2,
@@ -19,7 +20,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useProductionQCRunSessions, useRequestFinalProductionQC } from '@/modules/qc/api/productionQC';
-import { useCreateBOMRequest, useCreateFGReceipt, useFGReceipts } from '@/modules/warehouse/api';
+import {
+  useCreateBOMRequest,
+  useCreateFGReceipt,
+  useFGReceipts,
+  useReRequestBOMShortfall,
+  useRunBOMRequests,
+} from '@/modules/warehouse/api';
 import { useWarehouses } from '@/modules/warehouse/grpo/api';
 import type { Warehouse as SAPWarehouse } from '@/modules/warehouse/grpo/types';
 import type { FGReceipt } from '@/modules/warehouse/types';
@@ -178,8 +185,24 @@ function RunDetailPage() {
   const updateLabourMut = useUpdateLabour(numRunId);
   const removeLabour = useDeleteLabour(numRunId);
   const createBOMRequest = useCreateBOMRequest();
+  const reRequestBOM = useReRequestBOMShortfall();
   const createFGReceipt = useCreateFGReceipt();
   const requestFinalQC = useRequestFinalProductionQC(numRunId);
+
+  // Latest BOM request for the run — used to re-request the un-approved
+  // remainder when warehouse only partially approved (or rejected) the materials.
+  const partialOrRejected =
+    run?.warehouse_approval_status === 'PARTIALLY_APPROVED' ||
+    run?.warehouse_approval_status === 'REJECTED';
+  const { data: runBomRequests = [] } = useRunBOMRequests(
+    numRunId || null,
+    !!numRunId && partialOrRejected,
+  );
+  const latestBomRequest = runBomRequests[0]; // list is ordered newest-first
+  const canReRequestShortfall =
+    !!latestBomRequest &&
+    (latestBomRequest.status === 'PARTIALLY_APPROVED' ||
+      latestBomRequest.status === 'REJECTED');
 
   useEffect(() => {
     if (
@@ -495,6 +518,24 @@ function RunDetailPage() {
             >
               {createBOMRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
               Submit BOM to WH
+            </Button>
+          )}
+          {!isCompleted && canReRequestShortfall && (
+            <Button
+              variant="outline" size="sm"
+              className="border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+              disabled={reRequestBOM.isPending}
+              title="Re-raise a warehouse request for the items that were not fully approved"
+              onClick={async () => {
+                if (!latestBomRequest) return;
+                try {
+                  await reRequestBOM.mutateAsync({ requestId: latestBomRequest.id });
+                  toast.success('Re-requested pending items from warehouse');
+                } catch { /* interceptor handles */ }
+              }}
+            >
+              {reRequestBOM.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+              Re-request Pending Items
             </Button>
           )}
           <Button

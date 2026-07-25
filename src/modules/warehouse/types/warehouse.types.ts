@@ -45,6 +45,8 @@ export interface BOMRequest {
   id: number;
   production_run: number | null;
   blowing_run: number | null;
+  /** Original request this one re-requests the shortfall of (null unless a re-request). */
+  parent_request: number | null;
   /** 'production' or 'blowing' — which run this request originates from. */
   source: 'production' | 'blowing';
   run_number: number | null;
@@ -150,6 +152,10 @@ export interface ApproveBOMRequestPayload {
 
 export interface RejectBOMRequestPayload {
   reason: string;
+}
+
+export interface ReRequestBOMPayload {
+  remarks?: string;
 }
 
 export interface MaterialIssuePayload {
