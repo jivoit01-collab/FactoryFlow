@@ -25,8 +25,10 @@ const partialApprovalPermissions = [
   ADMIN_PERMISSIONS.DOCKING.APPROVE_PARTIAL_SCAN,
 ] as const;
 
+// Approve-only: this admin queue is for approvers. VIEW_MATERIAL_INDENT is held
+// by requesters too, so including it here would surface the approvals page (and
+// the whole Admin module, via adminPermissions) to raise-only users.
 const materialIndentApprovalPermissions = [
-  MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
   MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT,
 ] as const;
 
