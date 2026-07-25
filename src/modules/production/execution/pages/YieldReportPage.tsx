@@ -134,14 +134,10 @@ function YieldReportPage() {
 
   const hasActiveSegment = run.segments.some((s) => s.is_active);
   const hasActiveBreakdown = run.breakdowns.some((b) => b.is_active);
-  const hasMissingClosingQty = materials.some((m) => !m.closing_qty || parseFloat(m.closing_qty) === 0);
   const warnings: string[] = [];
   if (hasActiveSegment) warnings.push('Production is still running. Stop it first.');
   if (hasActiveBreakdown) warnings.push('There is an active breakdown. Resolve it first.');
-  if (hasMissingClosingQty) {
-    warnings.push('Some materials are missing closing quantities. Click the pencil icon on each material below to enter them.');
-  }
-  const canComplete = !hasActiveSegment && !hasActiveBreakdown && !hasMissingClosingQty && run.status === 'IN_PROGRESS';
+  const canComplete = !hasActiveSegment && !hasActiveBreakdown && run.status === 'IN_PROGRESS';
 
   const handleComplete = async () => {
     if (!totalProduction.trim()) return;
@@ -316,13 +312,10 @@ function YieldReportPage() {
         </CardContent>
       </Card>
 
-      <Card className={isCompleteMode && hasMissingClosingQty ? 'border-amber-300 dark:border-amber-800' : ''}>
+      <Card>
         <CardHeader>
           <CardTitle>
             Material Consumption
-            {isCompleteMode && hasMissingClosingQty && (
-              <span className="text-sm font-normal text-amber-600 ml-2">- closing qty required</span>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
