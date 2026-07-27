@@ -41,6 +41,15 @@ export function useOnlineMonitoringLines(enabled = true) {
   });
 }
 
+export function useOnlineMonitoringRuns(lineId?: number) {
+  return useQuery({
+    queryKey: [...ONLINE_MONITORING_KEYS.all, 'runs', lineId ?? null] as const,
+    queryFn: () => onlineMonitoringApi.runs(lineId),
+    enabled: !!lineId,
+    staleTime: 30_000,
+  });
+}
+
 export function useOnlineMonitoringSpecs() {
   return useQuery({
     queryKey: ONLINE_MONITORING_KEYS.specs(),
@@ -81,6 +90,16 @@ export const useUpdateOnlineReading = () =>
 export const useDeleteOnlineReading = () =>
   useRecordMutation((recordId: number, args: { readingId: number }) =>
     onlineMonitoringApi.deleteReading(recordId, args.readingId),
+  );
+
+export const useUploadReadingAttachment = () =>
+  useRecordMutation((recordId: number, args: { readingId: number; file: File }) =>
+    onlineMonitoringApi.uploadReadingAttachment(recordId, args.readingId, args.file),
+  );
+
+export const useDeleteReadingAttachment = () =>
+  useRecordMutation((recordId: number, args: { readingId: number; attachmentId: number }) =>
+    onlineMonitoringApi.deleteReadingAttachment(recordId, args.readingId, args.attachmentId),
   );
 
 export const useSubmitOnlineRecord = () =>

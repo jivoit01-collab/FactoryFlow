@@ -1,11 +1,17 @@
-import { AlertTriangle, ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, ChevronDown, ChevronRight, Paperclip, Pencil, Trash2, Upload, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge, Button, Input, NativeSelect, SelectOption } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
-import { useAddOnlineReading, useDeleteOnlineReading, useUpdateOnlineReading } from '../../api/onlineMonitoring';
+import {
+  useAddOnlineReading,
+  useDeleteOnlineReading,
+  useDeleteReadingAttachment,
+  useUpdateOnlineReading,
+  useUploadReadingAttachment,
+} from '../../api/onlineMonitoring';
 import type { OnlineQualityReading, OnlineQualityTorque, OnlineReadingWrite } from '../../types';
 import { evaluateSpec, specLabel, type SpecMap } from './specValidation';
 
@@ -194,6 +200,7 @@ export function ReadingCard({ recordId, reading, specMap, editable, onClose }: P
               </div>
             </div>
             {reading.remarks && <div className="text-muted-foreground">Remarks: {reading.remarks}</div>}
+            <ReadingAttachments recordId={recordId} reading={reading} editable={editable} />
             {editable && (
               <div className="flex gap-2 pt-1">
                 <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
@@ -353,6 +360,93 @@ function ViewItem({ label, value }: { label: string; value?: string | null }) {
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
       <div>{value || '-'}</div>
+    </div>
+  );
+}
+
+function ReadingAttachments({
+  recordId,
+  reading,
+  editable,
+}: {
+  recordId: number;
+  reading: OnlineQualityReading;
+  editable: boolean;
+}) {
+  const upload = useUploadReadingAttachment();
+  const remove = useDeleteReadingAttachment();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const attachments = reading.attachments ?? [];
+
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      upload.mutate(
+        { recordId, args: { readingId: reading.id, file } },
+        {
+          onSuccess: () => toast.success('Attachment uploaded'),
+          onError: (err) => toast.error(getErrorMessage(err, 'Upload failed')),
+        },
+      );
+    }
+    e.target.value = ''; // allow re-selecting the same file
+  };
+
+  if (!editable && attachments.length === 0) return null;
+
+  return (
+    <div>
+      <div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Attachments</div>
+      <div className="flex flex-wrap items-center gap-2">
+        {attachments.map((a) => (
+          <span key={a.id} className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs">
+            <a
+              href={resolveFileUrl(a.url)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 hover:underline"
+              title={a.original_name}
+            >
+              <Paperclip className="h-3 w-3" /> {a.original_name || 'file'}
+            </a>
+            {editable && (
+              <button
+                type="button"
+                className="text-destructive"
+                title="Remove attachment"
+                disabled={remove.isPending}
+                onClick={() =>
+                  remove.mutate(
+                    { recordId, args: { readingId: reading.id, attachmentId: a.id } },
+                    { onError: (err) => toast.error(getErrorMessage(err, 'Delete failed')) },
+                  )
+                }
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        ))}
+        {editable && (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={onPick}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={upload.isPending}
+              onClick={() => inputRef.current?.click()}
+            >
+              <Upload className="mr-1 h-3.5 w-3.5" /> {upload.isPending ? 'Uploading…' : 'Upload'}
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

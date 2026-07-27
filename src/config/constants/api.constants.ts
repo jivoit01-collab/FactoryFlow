@@ -315,6 +315,7 @@ export const API_ENDPOINTS = {
     // Online Quality Monitoring
     ONLINE_MONITORING_LIST: '/quality-control/online-monitoring/',
     ONLINE_MONITORING_LINES: '/quality-control/online-monitoring/lines/',
+    ONLINE_MONITORING_RUNS: '/quality-control/online-monitoring/runs/',
     ONLINE_MONITORING_SPECS: '/quality-control/online-monitoring/specs/',
     ONLINE_MONITORING_SPEC_DETAIL: (specId: number) =>
       `/quality-control/online-monitoring/specs/${specId}/`,
@@ -324,6 +325,12 @@ export const API_ENDPOINTS = {
       `/quality-control/online-monitoring/${recordId}/readings/`,
     ONLINE_MONITORING_READING_DETAIL: (recordId: number, readingId: number) =>
       `/quality-control/online-monitoring/${recordId}/readings/${readingId}/`,
+    ONLINE_MONITORING_READING_ATTACHMENTS: (recordId: number, readingId: number) =>
+      `/quality-control/online-monitoring/${recordId}/readings/${readingId}/attachments/`,
+    ONLINE_MONITORING_READING_ATTACHMENT_DETAIL: (
+      recordId: number, readingId: number, attachmentId: number,
+    ) =>
+      `/quality-control/online-monitoring/${recordId}/readings/${readingId}/attachments/${attachmentId}/`,
     ONLINE_MONITORING_SUBMIT: (recordId: number) =>
       `/quality-control/online-monitoring/${recordId}/submit/`,
     ONLINE_MONITORING_APPROVE: (recordId: number) =>
