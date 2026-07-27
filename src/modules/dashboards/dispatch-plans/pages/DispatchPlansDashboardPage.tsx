@@ -1,5 +1,5 @@
 import { RefreshCw } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
@@ -46,14 +46,19 @@ export default function DispatchPlansDashboardPage() {
   const billsQuery = useDispatchBills(filters);
   const updatePlanMutation = useUpdateDispatchPlan();
 
-  const bills = billsQuery.data?.data ?? [];
+  // Memoized so the reference stays stable across renders (react-query keeps
+  // `data` stable via structural sharing). A fresh `?? []` every render would
+  // make the reset below setState on each pass → "too many re-renders".
+  const bills = useMemo(() => billsQuery.data?.data ?? [], [billsQuery.data]);
 
   // Drop the selection whenever a new data set arrives (filter change or refetch)
   // so stale doc entries never carry over — mirrors the table's page reset.
-  const [prevBills, setPrevBills] = useState(bills);
-  if (prevBills !== bills) {
-    setPrevBills(bills);
-    if (selected.size > 0) setSelected(new Set());
+  // Key off the stable query `data` (not the derived `bills`) and return the
+  // same Set when already empty so React can bail out instead of looping.
+  const [prevData, setPrevData] = useState(billsQuery.data);
+  if (prevData !== billsQuery.data) {
+    setPrevData(billsQuery.data);
+    setSelected((prev) => (prev.size > 0 ? new Set() : prev));
   }
 
   const toggleSelect = useCallback((docEntry: number) => {
