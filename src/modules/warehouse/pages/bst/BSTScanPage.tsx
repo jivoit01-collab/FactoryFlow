@@ -51,6 +51,9 @@ export default function BSTScanPage() {
       transfer.status === 'RECEIVING');
   const editable = transfer?.status === 'DRAFT' || transfer?.status === 'SCANNING' || liveActive;
   const scans = useMemo(() => transfer?.box_scans ?? [], [transfer]);
+  // Scanned-vs-expected QUANTITY gate (authoritative — the same rule blocks approve()
+  // on the backend). Drives the short-scan lock banner.
+  const scanStatus = transfer?.scan_status;
 
   // What this BST is supposed to move (the SAP lines), shown with live progress.
   const items = useMemo(() => transfer?.items ?? [], [transfer]);
@@ -128,6 +131,41 @@ export default function BSTScanPage() {
           <span>
             This transfer is live — the destination can receive these boxes as you scan. Keep
             scanning, then <span className="font-medium">Finish sending</span> when done.
+          </span>
+        </div>
+      )}
+
+      {scanStatus?.is_partial && transfer.partial_transfer?.is_approved && (
+        <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <span className="font-medium">Partial transfer approved.</span> You can finish sending
+            this short load ({scanStatus.scanned_qty} of {scanStatus.expected_qty} pcs).
+          </span>
+        </div>
+      )}
+      {scanStatus?.is_partial && !transfer.partial_transfer?.is_approved && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <span className="font-medium">Short scan — sending is locked.</span> Scanned{' '}
+            {scanStatus.scanned_qty} of {scanStatus.expected_qty} pcs.
+            {scanStatus.short_items.length > 0 && (
+              <>
+                {' '}
+                Still short:{' '}
+                {scanStatus.short_items
+                  .map(
+                    (i) =>
+                      `${i.item_code} (${Number(i.expected_qty) - Number(i.scanned_qty)} ${i.uom})`,
+                  )
+                  .join(', ')}
+                .
+              </>
+            )}{' '}
+            {transfer.partial_transfer?.is_pending
+              ? 'A partial-transfer approval has been requested — waiting for a supervisor.'
+              : 'Scan the remaining boxes, or request a partial-transfer approval on the review page, before you can finish sending.'}
           </span>
         </div>
       )}
@@ -237,6 +275,7 @@ export default function BSTScanPage() {
                     <th className="py-2 px-3">Box</th>
                     <th className="py-2 px-3">Item</th>
                     <th className="py-2 px-3">Batch</th>
+                    <th className="py-2 px-3 text-right">Qty</th>
                     <th className="py-2 px-3">Pallet</th>
                     {editable && <th className="py-2 px-3" />}
                   </tr>
@@ -257,6 +296,9 @@ export default function BSTScanPage() {
                         )}
                       </td>
                       <td className="py-2 px-3">{s.batch_number}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">
+                        {s.quantity} {s.uom}
+                      </td>
                       <td className="py-2 px-3">{s.pallet_code || '—'}</td>
                       {editable && (
                         <td className="py-2 px-3 text-right">

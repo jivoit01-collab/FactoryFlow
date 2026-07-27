@@ -19,6 +19,7 @@ const BSTScanPage = lazy(() => import('./pages/bst/BSTScanPage'));
 const BSTReviewPage = lazy(() => import('./pages/bst/BSTReviewPage'));
 const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
 const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
+const BSTPartialApprovalsPage = lazy(() => import('./pages/bst/BSTPartialApprovalsPage'));
 
 export const warehouseModuleConfig: ModuleConfig = {
   name: 'warehouse',
@@ -68,6 +69,13 @@ export const warehouseModuleConfig: ModuleConfig = {
       permissions: [WAREHOUSE_PERMISSIONS.MANAGE_BST],
     },
     {
+      // Static path registered before the `:transferId` route so it isn't captured.
+      path: '/warehouse/bst/partial-approvals',
+      element: <BSTPartialApprovalsPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL],
+    },
+    {
       path: '/warehouse/bst/:transferId',
       element: <BSTDetailPage />,
       layout: 'main',
@@ -104,6 +112,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
         WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
         WAREHOUSE_PERMISSIONS.VIEW_BST,
+        WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL,
         GRPO_PERMISSIONS.VIEW_PENDING,
         OMS_PERMISSIONS.VIEW_INVOICE,
       ],
@@ -123,6 +132,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/bst',
           title: 'Branch Transfer',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
+        },
+        {
+          path: '/warehouse/bst/partial-approvals',
+          title: 'BST Approvals',
+          permissions: [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL],
         },
         // GRPO submodule — nested under the Warehouse group
         ...grpoNavChildren,

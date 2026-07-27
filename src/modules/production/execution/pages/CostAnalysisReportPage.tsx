@@ -1,11 +1,11 @@
+import { ArrowLeft, DollarSign } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, DollarSign } from 'lucide-react';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { DateRangePicker } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
-import { DateRangePicker } from '@/modules/gate/components';
 
 import { useCostAnalysisReport } from '../api';
 import type { AnalyticsParams } from '../types';
@@ -65,7 +65,7 @@ function CostAnalysisReportPage() {
       ) : data ? (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <Card>
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">Total Cost</p>
@@ -74,7 +74,21 @@ function CostAnalysisReportPage() {
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Avg Cost / Unit</p>
+                <p className="text-sm text-muted-foreground">Waste Recovery</p>
+                <p className="text-2xl font-bold text-green-600">
+                  −{data.summary.total_waste_recovery.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">Net Cost</p>
+                <p className="text-2xl font-bold">{data.summary.total_net_cost.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">Net Cost / Unit</p>
                 <p className="text-2xl font-bold text-blue-600">{data.summary.avg_per_unit.toFixed(2)}</p>
               </CardContent>
             </Card>
@@ -220,6 +234,8 @@ function CostAnalysisReportPage() {
                         <th className="text-right p-2 font-medium">Labour</th>
                         <th className="text-right p-2 font-medium">Utilities</th>
                         <th className="text-right p-2 font-medium">Total</th>
+                        <th className="text-right p-2 font-medium">Waste Rec.</th>
+                        <th className="text-right p-2 font-medium">Net</th>
                         <th className="text-right p-2 font-medium">Per Unit</th>
                       </tr>
                     </thead>
@@ -235,6 +251,10 @@ function CostAnalysisReportPage() {
                           <td className="p-2 text-right">{r.labour_cost.toLocaleString()}</td>
                           <td className="p-2 text-right">{(r.electricity_cost + r.water_cost + r.gas_cost + r.compressed_air_cost).toLocaleString()}</td>
                           <td className="p-2 text-right font-medium">{r.total_cost.toLocaleString()}</td>
+                          <td className="p-2 text-right text-green-600">
+                            {r.waste_recovery_credit > 0 ? `−${r.waste_recovery_credit.toLocaleString()}` : '-'}
+                          </td>
+                          <td className="p-2 text-right font-medium">{r.net_cost.toLocaleString()}</td>
                           <td className="p-2 text-right font-medium">{r.per_unit_cost.toFixed(2)}</td>
                         </tr>
                       ))}

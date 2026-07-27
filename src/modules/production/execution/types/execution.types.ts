@@ -40,9 +40,69 @@ export interface ProductionLine {
   id: number;
   name: string;
   description: string;
+  /** Standard operating hours/month — denominator for apportioning PER_MONTH fixed costs. */
+  standard_hours_per_month: string | null;
+  /** Standard operating hours/day — denominator for apportioning PER_DAY fixed costs. */
+  standard_hours_per_day: string | null;
+  /** Standard electricity units (kWh) drawn per running hour. */
+  electricity_units_per_hour: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// ============================================================================
+// Cost Master
+// ============================================================================
+
+export type CostCategory =
+  | 'ELECTRICITY_VARIABLE'
+  | 'ELECTRICITY_FIXED'
+  | 'LABOUR'
+  | 'MANPOWER_SALARIED'
+  | 'LUBRICATION'
+  | 'LAB_CHEMICALS'
+  | 'BATCH_CODING'
+  | 'MAINTENANCE'
+  | 'WATER'
+  | 'OVERHEAD'
+  | 'WASTE_RECOVERY'
+  | 'OTHER';
+
+export type CostBasis = 'PER_UNIT' | 'PER_HOUR' | 'PER_DAY' | 'PER_MONTH';
+
+export interface CostRate {
+  id: number;
+  /** null = company-wide default; set = per-line override. */
+  line: number | null;
+  line_name: string | null;
+  category: CostCategory;
+  category_display: string;
+  basis: CostBasis;
+  basis_display: string;
+  rate: string;
+  is_credit: boolean;
+  label: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpsertCostRatePayload {
+  /** null / omitted = company-wide default. */
+  line_id?: number | null;
+  category: CostCategory;
+  basis: CostBasis;
+  rate: string | number;
+  is_credit?: boolean;
+  label?: string;
+}
+
+export interface UpdateCostRatePayload {
+  basis?: CostBasis;
+  rate?: string | number;
+  is_credit?: boolean;
+  label?: string;
 }
 
 export interface LineSkuConfig {
@@ -552,6 +612,18 @@ export interface ResourceOverhead {
 // Cost Summary
 // ============================================================================
 
+export interface ProductionRunCostLine {
+  id: number;
+  category: CostCategory | 'MATERIAL';
+  category_display: string;
+  basis: CostBasis | '';
+  quantity: string;
+  rate: string;
+  amount: string;
+  is_credit: boolean;
+  note: string;
+}
+
 export interface ProductionRunCost {
   id: number;
   raw_material_cost: string;
@@ -562,10 +634,13 @@ export interface ProductionRunCost {
   gas_cost: string;
   compressed_air_cost: string;
   overhead_cost: string;
+  waste_recovery_credit: string;
   total_cost: string;
+  net_cost: string;
   produced_qty: string;
   per_unit_cost: string;
   calculated_at: string;
+  lines: ProductionRunCostLine[];
 }
 
 // ============================================================================
@@ -675,6 +750,9 @@ export interface WasteAnalytics {
 export interface CreateLineRequest {
   name: string;
   description?: string;
+  standard_hours_per_month?: string | number | null;
+  standard_hours_per_day?: string | number | null;
+  electricity_units_per_hour?: string | number | null;
 }
 
 export interface CreateMachineRequest {
@@ -1099,7 +1177,9 @@ export interface CostRunDetail {
   gas_cost: number;
   compressed_air_cost: number;
   overhead_cost: number;
+  waste_recovery_credit: number;
   total_cost: number;
+  net_cost: number;
   per_unit_cost: number;
 }
 
@@ -1131,6 +1211,8 @@ export interface CostAnalysisReport {
   cost_distribution: Record<string, CostDistributionItem>;
   summary: {
     total_cost: number;
+    total_waste_recovery: number;
+    total_net_cost: number;
     avg_per_unit: number;
     total_production: number;
     run_count: number;

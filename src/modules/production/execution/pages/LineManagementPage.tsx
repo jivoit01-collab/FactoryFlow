@@ -1,8 +1,10 @@
-import { Copy, Edit, Plus, Settings2, Trash2 } from 'lucide-react';
+import { Copy, Edit, Plus, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
   Button,
   Card,
@@ -28,22 +30,11 @@ import {
   useDeleteLineConfig,
   useLineConfigs,
   useLines,
+  useSearchSAPItems,
+  useUpdateLine,
   useUpdateLineConfig,
 } from '../api';
-import type { LineSkuConfig } from '../types';
-
-const parseCost = (value: string | number | null | undefined) => {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const formatCost = (value: string | number | null | undefined) => {
-  if (value === null || value === undefined || value === '') return '-';
-  return parseCost(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
-};
-
-const getPresetLabourCost = (config: LineSkuConfig) =>
-  config.labour_count * parseCost(config.labour_cost_per_hour);
+import type { LineSkuConfig, ProductionLine, SAPItem } from '../types';
 
 const EMPTY_FORM = {
   config_name: '',
@@ -52,10 +43,14 @@ const EMPTY_FORM = {
   rated_speed: '',
   labour_count: 0,
   other_manpower_count: 0,
-  electricity_cost_per_unit: '',
-  labour_cost_per_hour: '',
   supervisor: '',
   operators: '',
+};
+
+const EMPTY_LINE_SETTINGS = {
+  standard_hours_per_month: '',
+  standard_hours_per_day: '',
+  electricity_units_per_hour: '',
 };
 
 function LineManagementPage() {
@@ -66,11 +61,20 @@ function LineManagementPage() {
   const createConfig = useCreateLineConfig();
   const updateConfig = useUpdateLineConfig();
   const deleteConfig = useDeleteLineConfig();
+  const updateLine = useUpdateLine();
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LineSkuConfig | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+
+  // Line operating-profile settings dialog
+  const [lineSettingsOpen, setLineSettingsOpen] = useState(false);
+  const [lineSettings, setLineSettings] = useState({ ...EMPTY_LINE_SETTINGS });
+
+  // SKU (SAP item) search — server-side, min 2 chars, restricted to producible finished goods
+  const [skuSearch, setSkuSearch] = useState('');
+  const { data: skuItems = [], isLoading: loadingSKU } = useSearchSAPItems(skuSearch, true);
 
   const openDialog = (config?: LineSkuConfig) => {
     if (config) {
@@ -82,8 +86,6 @@ function LineManagementPage() {
         rated_speed: config.rated_speed || '',
         labour_count: config.labour_count,
         other_manpower_count: config.other_manpower_count,
-        electricity_cost_per_unit: config.electricity_cost_per_unit || '',
-        labour_cost_per_hour: config.labour_cost_per_hour || '',
         supervisor: config.supervisor,
         operators: config.operators,
       });
@@ -104,8 +106,6 @@ function LineManagementPage() {
       rated_speed: config.rated_speed || '',
       labour_count: config.labour_count,
       other_manpower_count: config.other_manpower_count,
-      electricity_cost_per_unit: config.electricity_cost_per_unit || '',
-      labour_cost_per_hour: config.labour_cost_per_hour || '',
       supervisor: config.supervisor,
       operators: config.operators,
     });
@@ -128,8 +128,6 @@ function LineManagementPage() {
             rated_speed: form.rated_speed || null,
             labour_count: form.labour_count,
             other_manpower_count: form.other_manpower_count,
-            electricity_cost_per_unit: form.electricity_cost_per_unit || null,
-            labour_cost_per_hour: form.labour_cost_per_hour || null,
             supervisor: form.supervisor,
             operators: form.operators,
           },
@@ -148,8 +146,6 @@ function LineManagementPage() {
           rated_speed: form.rated_speed || null,
           labour_count: form.labour_count,
           other_manpower_count: form.other_manpower_count,
-          electricity_cost_per_unit: form.electricity_cost_per_unit || null,
-          labour_cost_per_hour: form.labour_cost_per_hour || null,
           supervisor: form.supervisor,
           operators: form.operators,
         });
@@ -158,6 +154,33 @@ function LineManagementPage() {
       setDialogOpen(false);
     } catch {
       toast.error('Failed to save configuration');
+    }
+  };
+
+  const openLineSettings = (line: ProductionLine) => {
+    setLineSettings({
+      standard_hours_per_month: line.standard_hours_per_month ?? '',
+      standard_hours_per_day: line.standard_hours_per_day ?? '',
+      electricity_units_per_hour: line.electricity_units_per_hour ?? '',
+    });
+    setLineSettingsOpen(true);
+  };
+
+  const handleSaveLineSettings = async () => {
+    if (!selectedLineId) return;
+    try {
+      await updateLine.mutateAsync({
+        lineId: selectedLineId,
+        data: {
+          standard_hours_per_month: lineSettings.standard_hours_per_month || null,
+          standard_hours_per_day: lineSettings.standard_hours_per_day || null,
+          electricity_units_per_hour: lineSettings.electricity_units_per_hour || null,
+        },
+      });
+      toast.success('Line settings saved');
+      setLineSettingsOpen(false);
+    } catch {
+      toast.error('Failed to save line settings');
     }
   };
 
@@ -171,7 +194,8 @@ function LineManagementPage() {
     }
   };
 
-  const selectedLineName = lines.find((l) => l.id === selectedLineId)?.name || '';
+  const selectedLine = lines.find((l) => l.id === selectedLineId);
+  const selectedLineName = selectedLine?.name || '';
 
   return (
     <div className="space-y-6">
@@ -201,11 +225,46 @@ function LineManagementPage() {
               </SelectContent>
             </Select>
             {selectedLineId && (
-              <Button onClick={() => openDialog()}>
-                <Plus className="h-4 w-4 mr-2" /> Add Configuration
-              </Button>
+              <>
+                <Button onClick={() => openDialog()}>
+                  <Plus className="h-4 w-4 mr-2" /> Add Configuration
+                </Button>
+                {selectedLine && (
+                  <Button variant="outline" onClick={() => openLineSettings(selectedLine)}>
+                    <SlidersHorizontal className="h-4 w-4 mr-2" /> Line Settings
+                  </Button>
+                )}
+              </>
             )}
           </div>
+          {selectedLine && (
+            <div className="mt-4 flex flex-wrap gap-x-8 gap-y-1 text-sm text-muted-foreground">
+              <span>
+                Std hours/month:{' '}
+                <span className="font-medium text-foreground">
+                  {selectedLine.standard_hours_per_month ?? '—'}
+                </span>
+              </span>
+              <span>
+                Std hours/day:{' '}
+                <span className="font-medium text-foreground">
+                  {selectedLine.standard_hours_per_day ?? '—'}
+                </span>
+              </span>
+              <span>
+                Electricity units/hour:{' '}
+                <span className="font-medium text-foreground">
+                  {selectedLine.electricity_units_per_hour ?? '—'}
+                </span>
+              </span>
+              <span className="text-xs">
+                Cost rates live in{' '}
+                <Link to="/production/execution/cost-master" className="text-primary underline">
+                  Cost Master
+                </Link>
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -241,9 +300,6 @@ function LineManagementPage() {
                       <th className="text-left p-3 font-medium">SKU</th>
                       <th className="text-right p-3 font-medium">Speed (cases/hr)</th>
                       <th className="text-right p-3 font-medium">Labour</th>
-                      <th className="text-right p-3 font-medium">Labour/hr</th>
-                      <th className="text-right p-3 font-medium">Electric/unit</th>
-                      <th className="text-right p-3 font-medium">Labour total/hr</th>
                       <th className="text-right p-3 font-medium">Other Manpower</th>
                       <th className="text-left p-3 font-medium">Supervisor</th>
                       <th className="text-left p-3 font-medium">Operators</th>
@@ -262,17 +318,6 @@ function LineManagementPage() {
                         </td>
                         <td className="p-3 text-right font-mono">{cfg.rated_speed || '-'}</td>
                         <td className="p-3 text-right">{cfg.labour_count}</td>
-                        <td className="p-3 text-right font-mono">
-                          {formatCost(cfg.labour_cost_per_hour)}
-                        </td>
-                        <td className="p-3 text-right font-mono">
-                          {formatCost(cfg.electricity_cost_per_unit)}
-                        </td>
-                        <td className="p-3 text-right font-mono">
-                          {getPresetLabourCost(cfg).toLocaleString('en-IN', {
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
                         <td className="p-3 text-right">{cfg.other_manpower_count}</td>
                         <td className="p-3">{cfg.supervisor || '-'}</td>
                         <td className="p-3 max-w-[150px] truncate">{cfg.operators || '-'}</td>
@@ -340,23 +385,46 @@ function LineManagementPage() {
                 This name appears in the dropdown when starting a run
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>SKU Code</Label>
-                <Input
-                  value={form.sku_code}
-                  onChange={(e) => setForm({ ...form, sku_code: e.target.value })}
-                  placeholder="e.g., FG0000001"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>SKU / Product Name</Label>
-                <Input
-                  value={form.sku_name}
-                  onChange={(e) => setForm({ ...form, sku_name: e.target.value })}
-                  placeholder="e.g., Olive Oil 1L"
-                />
-              </div>
+            <div className="space-y-2">
+              <SearchableSelect<SAPItem>
+                items={skuItems}
+                isLoading={loadingSKU && skuSearch.length >= 2}
+                getItemKey={(item) => item.ItemCode}
+                getItemLabel={(item) => `${item.ItemCode} - ${item.ItemName}`}
+                filterFn={() => true}
+                renderItem={(item) => (
+                  <div className="flex items-center justify-between w-full gap-3">
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs">{item.ItemCode}</span>
+                      <span className="ml-2">{item.ItemName}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">{item.UomCode}</span>
+                  </div>
+                )}
+                placeholder="Search product by SKU code or name..."
+                label="SKU / Product"
+                inputId="config-sku-item"
+                loadingText="Searching..."
+                emptyText="Type at least 2 characters to search"
+                notFoundText="No products found"
+                defaultDisplayText={
+                  form.sku_code || form.sku_name
+                    ? [form.sku_code, form.sku_name].filter(Boolean).join(' - ')
+                    : undefined
+                }
+                onSearchChange={(s) => setSkuSearch(s)}
+                onItemSelect={(item) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    sku_code: item.ItemCode,
+                    sku_name: item.ItemName,
+                  }))
+                }
+                onClear={() => setForm((prev) => ({ ...prev, sku_code: '', sku_name: '' }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Pick the finished good this line produces — fills both the SKU code and name
+              </p>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -394,30 +462,6 @@ function LineManagementPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Electricity Cost / Unit</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.0001"
-                  value={form.electricity_cost_per_unit}
-                  onChange={(e) => setForm({ ...form, electricity_cost_per_unit: e.target.value })}
-                  placeholder="e.g., 500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Labour Cost / Hour</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.0001"
-                  value={form.labour_cost_per_hour}
-                  onChange={(e) => setForm({ ...form, labour_cost_per_hour: e.target.value })}
-                  placeholder="e.g., 120"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
                 <Label>Supervisor</Label>
                 <Input
                   value={form.supervisor}
@@ -444,6 +488,75 @@ function LineManagementPage() {
               disabled={createConfig.isPending || updateConfig.isPending}
             >
               {createConfig.isPending || updateConfig.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Line Settings Dialog — operating profile that drives automatic costing */}
+      <Dialog open={lineSettingsOpen} onOpenChange={setLineSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Line Settings — {selectedLineName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Standard Operating Hours / Month</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={lineSettings.standard_hours_per_month}
+                onChange={(e) =>
+                  setLineSettings({ ...lineSettings, standard_hours_per_month: e.target.value })
+                }
+                placeholder="e.g., 572 (26 days × 22 hr)"
+              />
+              <p className="text-xs text-muted-foreground">
+                Denominator for apportioning fixed monthly costs (rent, salaries, demand charge)
+                onto a run by its running hours.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Standard Operating Hours / Day</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={lineSettings.standard_hours_per_day}
+                onChange={(e) =>
+                  setLineSettings({ ...lineSettings, standard_hours_per_day: e.target.value })
+                }
+                placeholder="e.g., 22"
+              />
+              <p className="text-xs text-muted-foreground">
+                Denominator for apportioning fixed per-day costs onto a run by its running hours.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Electricity Units / Hour (kWh)</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.0001"
+                value={lineSettings.electricity_units_per_hour}
+                onChange={(e) =>
+                  setLineSettings({ ...lineSettings, electricity_units_per_hour: e.target.value })
+                }
+                placeholder="e.g., 120"
+              />
+              <p className="text-xs text-muted-foreground">
+                Standard units drawn per running hour. Variable electricity cost = this × running
+                hours × the ₹/unit rate from Cost Master.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLineSettingsOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveLineSettings} disabled={updateLine.isPending}>
+              {updateLine.isPending ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>

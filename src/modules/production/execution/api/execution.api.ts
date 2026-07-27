@@ -31,6 +31,7 @@ import type {
   CreateTemplateRequest,
   CreateWasteLogRequest,
   CreateWaterRequest,
+  CostRate,
   DowntimeAnalytics,
   DowntimeParetoReport,
   FinalQCCheck,
@@ -70,9 +71,11 @@ import type {
   SAPProductionOrder,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
+  UpdateCostRatePayload,
   UpdateLineClearanceRequest,
   UpdateLineSkuConfigPayload,
   UpdateRunRequest,
+  UpsertCostRatePayload,
   UpdateSegmentRequest,
   WasteAnalytics,
   WasteApprovalRequest,
@@ -979,5 +982,36 @@ export const executionApi = {
       params: { line_id: lineId, sku_code: skuCode || '' },
     });
     return res.data;
+  },
+
+  // =========================================================================
+  // Cost Master
+  // =========================================================================
+
+  async getCostRates(params?: {
+    lineId?: number;
+    scope?: 'global';
+  }): Promise<CostRate[]> {
+    const query: Record<string, string | number> = {};
+    if (params?.lineId != null) query.line_id = params.lineId;
+    if (params?.scope) query.scope = params.scope;
+    const res = await apiClient.get<CostRate[]>(EP.COST_RATES, {
+      params: Object.keys(query).length ? query : undefined,
+    });
+    return res.data;
+  },
+
+  async upsertCostRate(data: UpsertCostRatePayload): Promise<CostRate> {
+    const res = await apiClient.post<CostRate>(EP.COST_RATES, data);
+    return res.data;
+  },
+
+  async updateCostRate(rateId: number, data: UpdateCostRatePayload): Promise<CostRate> {
+    const res = await apiClient.patch<CostRate>(EP.COST_RATE_DETAIL(rateId), data);
+    return res.data;
+  },
+
+  async deleteCostRate(rateId: number): Promise<void> {
+    await apiClient.delete(EP.COST_RATE_DETAIL(rateId));
   },
 };

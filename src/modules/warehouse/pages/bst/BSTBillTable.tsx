@@ -10,14 +10,22 @@ type Tally = { qty: number; boxes: number; itemName: string; uom: string };
 
 type BillLine = { expected: number; qty: number; uom: string; itemName: string };
 
+function trimQty(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
+}
+
 /**
  * The transfer's combined SAP bill with live scanned progress per item. A BST
- * entry can span several SAP documents; lines are aggregated by item code so the
- * box target and scanned progress match the scan rule (which caps each item at
- * the total box count summed across every document). The bill's target is a
- * **box count** (line quantity ÷ pieces-per-carton, from SAP) — each scanned box
- * is one carton. The "Over +N" / "Not on bill" rows are defensive and shouldn't
- * normally appear. Shared by the BST scan, review, gate-out, and detail screens.
+ * entry can span several SAP documents; lines are aggregated by item code.
+ *
+ * Completeness is judged on QUANTITY — scanned pieces vs the bill's line quantity
+ * — the same rule the backend uses to gate sealing (compute_scan_status). Quantity
+ * is ground truth on both sides (the SAP line qty; each box's own piece count), so
+ * a box whose qty is wrong (e.g. a 4-pack labelled as 1) is caught as a shortfall
+ * even though the box COUNT looks right. Only when no scan carries a quantity
+ * (legacy scans) does it fall back to the box-count estimate. The "Over" / "Not on
+ * bill" rows are defensive and shouldn't normally appear. Shared by the BST scan,
+ * review, gate-out, and detail screens.
  */
 export function BSTBillTable({
   items,
@@ -34,6 +42,10 @@ export function BSTBillTable({
     cur.boxes += 1;
     scannedByItem.set(s.item_code, cur);
   }
+
+  // Quantity is the ground truth whenever any scan carries one; only legacy /
+  // quantity-less loads fall back to the box-count estimate. Mirrors the backend.
+  const usesQuantity = scans.some((s) => (Number(s.quantity) || 0) > 0);
 
   // Aggregate the bill by item code across all documents.
   const billByItem = new Map<string, BillLine>();
@@ -56,8 +68,8 @@ export function BSTBillTable({
           <tr>
             <th className="w-[150px] p-3 text-left font-medium">Item Code</th>
             <th className="p-3 text-left font-medium">Item</th>
-            <th className="w-[130px] p-3 text-right font-medium">Boxes to scan</th>
-            <th className="w-[180px] p-3 text-left font-medium">Scanned</th>
+            <th className="w-[140px] p-3 text-right font-medium">To scan</th>
+            <th className="w-[190px] p-3 text-left font-medium">Scanned</th>
             <th className="w-[130px] p-3 text-left font-medium">Status</th>
           </tr>
         </thead>
@@ -67,17 +79,30 @@ export function BSTBillTable({
             const scannedQty = scanned?.qty ?? 0;
             const boxes = scanned?.boxes ?? 0;
             const expectedBoxes = bill.expected;
-            const over = expectedBoxes > 0 && boxes > expectedBoxes;
-            const complete = expectedBoxes > 0 && boxes >= expectedBoxes;
-            const progress =
-              expectedBoxes > 0 ? Math.min(100, Math.round((boxes / expectedBoxes) * 100)) : null;
+            const expectedQty = bill.qty;
+            // Completeness on QUANTITY when trustworthy, else the box-count estimate.
+            const complete = usesQuantity
+              ? expectedQty > 0 && scannedQty >= expectedQty
+              : expectedBoxes > 0 && boxes >= expectedBoxes;
+            const over = usesQuantity
+              ? expectedQty > 0 && scannedQty > expectedQty
+              : expectedBoxes > 0 && boxes > expectedBoxes;
+            const hasScans = boxes > 0;
+            const overBy = usesQuantity ? scannedQty - expectedQty : boxes - expectedBoxes;
+            const progress = usesQuantity
+              ? expectedQty > 0
+                ? Math.min(100, Math.round((scannedQty / expectedQty) * 100))
+                : null
+              : expectedBoxes > 0
+                ? Math.min(100, Math.round((boxes / expectedBoxes) * 100))
+                : null;
             return (
               <tr
                 key={code}
                 className={cn(
                   'border-b last:border-b-0',
                   over && 'bg-orange-50/70',
-                  !over && boxes > 0 && !complete && 'bg-amber-50/60',
+                  !over && hasScans && !complete && 'bg-amber-50/60',
                   !over && complete && 'bg-emerald-50/60',
                 )}
               >
@@ -89,18 +114,18 @@ export function BSTBillTable({
                 </td>
                 <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
                   <div className="font-medium">
-                    {expectedBoxes} box{expectedBoxes === 1 ? '' : 'es'}
+                    {trimQty(expectedQty)} {bill.uom}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {bill.qty} {bill.uom}
+                    {expectedBoxes} box{expectedBoxes === 1 ? '' : 'es'}
                   </div>
                 </td>
                 <td className="p-3 align-top">
                   <div className="font-medium">
-                    {boxes} of {expectedBoxes} box{expectedBoxes === 1 ? '' : 'es'}
+                    {trimQty(scannedQty)} of {trimQty(expectedQty)} {bill.uom}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {scannedQty > 0 ? `${scannedQty} ${bill.uom}` : '-'}
+                    {boxes} box{boxes === 1 ? '' : 'es'}
                   </div>
                   {progress !== null ? (
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -114,15 +139,15 @@ export function BSTBillTable({
                 <td className="p-3 align-top">
                   {over ? (
                     <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
-                      <AlertTriangle className="mr-1 h-3.5 w-3.5" /> Over +{boxes - expectedBoxes}
+                      <AlertTriangle className="mr-1 h-3.5 w-3.5" /> Over +{trimQty(overBy)}
                     </Badge>
                   ) : complete ? (
                     <Badge variant="success">
                       <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Complete
                     </Badge>
-                  ) : boxes > 0 ? (
+                  ) : hasScans ? (
                     <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-                      Partial
+                      Short {trimQty(expectedQty - scannedQty)} {bill.uom}
                     </Badge>
                   ) : (
                     <Badge variant="outline">Open</Badge>
@@ -147,10 +172,10 @@ export function BSTBillTable({
               </td>
               <td className="p-3 align-top">
                 <div className="font-medium">
-                  {tally.boxes} box{tally.boxes === 1 ? '' : 'es'}
+                  {trimQty(tally.qty)} {tally.uom}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {tally.qty > 0 ? `${tally.qty} ${tally.uom}` : '-'}
+                  {tally.boxes} box{tally.boxes === 1 ? '' : 'es'}
                 </div>
               </td>
               <td className="p-3 align-top">

@@ -4,6 +4,7 @@ import { apiClient } from '@/core/api';
 import type {
   BSTBatchScanResult,
   BSTCreatePayload,
+  BSTPartialTransferRequest,
   BSTReceiveScanPayload,
   BSTReceiveScanResult,
   BSTScanResult,
@@ -87,6 +88,51 @@ export const bstApi = {
     const res = await apiClient.post<BSTTransferDetail>(EP.BST_CANCEL(transferId), {
       cancel_reason: cancelReason,
     });
+    return res.data;
+  },
+
+  // ---- Partial-transfer approval (seal a short scan with admin sign-off) ----
+  async requestPartialTransfer(
+    transferId: number,
+    reason: string,
+  ): Promise<BSTPartialTransferRequest> {
+    const res = await apiClient.post<BSTPartialTransferRequest>(
+      EP.BST_PARTIAL_TRANSFER_REQUEST(transferId),
+      { reason },
+    );
+    return res.data;
+  },
+
+  async listPartialTransfers(params?: {
+    status?: string;
+    from_date?: string;
+    to_date?: string;
+  }): Promise<BSTPartialTransferRequest[]> {
+    const res = await apiClient.get<BSTPartialTransferRequest[]>(EP.BST_PARTIAL_TRANSFERS, {
+      params,
+    });
+    return res.data;
+  },
+
+  async approvePartialTransfer(
+    requestId: number,
+    reviewNotes = '',
+  ): Promise<BSTPartialTransferRequest> {
+    const res = await apiClient.post<BSTPartialTransferRequest>(
+      EP.BST_PARTIAL_TRANSFER_APPROVE(requestId),
+      { review_notes: reviewNotes },
+    );
+    return res.data;
+  },
+
+  async rejectPartialTransfer(
+    requestId: number,
+    reviewNotes: string,
+  ): Promise<BSTPartialTransferRequest> {
+    const res = await apiClient.post<BSTPartialTransferRequest>(
+      EP.BST_PARTIAL_TRANSFER_REJECT(requestId),
+      { review_notes: reviewNotes },
+    );
     return res.data;
   },
 

@@ -30,10 +30,12 @@ import type {
   ResolveBreakdownRequest,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
+  UpdateCostRatePayload,
   UpdateLineClearanceRequest,
   UpdateLineSkuConfigPayload,
   UpdateRunRequest,
   UpdateSegmentRequest,
+  UpsertCostRatePayload,
   WasteApprovalRequest,
 } from '../types';
 import { executionApi } from './execution.api';
@@ -1441,5 +1443,47 @@ export function useAutoFillConfig(lineId: number | null, skuCode?: string) {
     queryKey: [...EXECUTION_QUERY_KEYS.all, 'auto-fill', lineId, skuCode],
     queryFn: () => executionApi.getAutoFillConfig(lineId!, skuCode),
     enabled: !!lineId,
+  });
+}
+
+// ============================================================================
+// Cost Master
+// ============================================================================
+
+export function useCostRates(params?: { lineId?: number; scope?: 'global' }) {
+  return useQuery({
+    queryKey: [...EXECUTION_QUERY_KEYS.all, 'cost-rates', params?.lineId ?? null, params?.scope ?? null],
+    queryFn: () => executionApi.getCostRates(params),
+  });
+}
+
+export function useUpsertCostRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpsertCostRatePayload) => executionApi.upsertCostRate(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'cost-rates'] });
+    },
+  });
+}
+
+export function useUpdateCostRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rateId, data }: { rateId: number; data: UpdateCostRatePayload }) =>
+      executionApi.updateCostRate(rateId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'cost-rates'] });
+    },
+  });
+}
+
+export function useDeleteCostRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (rateId: number) => executionApi.deleteCostRate(rateId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'cost-rates'] });
+    },
   });
 }

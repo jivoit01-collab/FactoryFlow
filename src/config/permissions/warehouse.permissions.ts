@@ -31,6 +31,10 @@ export const WAREHOUSE_PERMISSIONS = {
   CREATE_BST: 'warehouse.can_create_bst',
   /** Receive an incoming branch stock transfer */
   MANAGE_BST: 'warehouse.can_receive_bst',
+  /** Raise a partial-transfer approval (seal a BST short of the bill) */
+  REQUEST_BST_PARTIAL: 'warehouse.can_request_bst_partial_transfer',
+  /** Review (approve/reject) BST partial-transfer requests */
+  APPROVE_BST_PARTIAL: 'warehouse.can_approve_bst_partial_transfer',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';

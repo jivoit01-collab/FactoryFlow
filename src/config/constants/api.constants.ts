@@ -828,6 +828,9 @@ export const API_ENDPOINTS = {
     LINE_CONFIGS: '/production-execution/line-configs/',
     LINE_CONFIG_DETAIL: (id: number) => `/production-execution/line-configs/${id}/`,
     LINE_CONFIG_AUTO_FILL: '/production-execution/line-configs/auto-fill/',
+    // Cost Master
+    COST_RATES: '/production-execution/cost-rates/',
+    COST_RATE_DETAIL: (id: number) => `/production-execution/cost-rates/${id}/`,
   },
   // Warehouse
   WAREHOUSE: {
@@ -861,6 +864,14 @@ export const API_ENDPOINTS = {
       `/warehouse/bst/${transferId}/box-scans/${scanId}/`,
     BST_APPROVE: (transferId: number) => `/warehouse/bst/${transferId}/approve/`,
     BST_CANCEL: (transferId: number) => `/warehouse/bst/${transferId}/cancel/`,
+    // Partial-transfer approval (seal a short scan with admin sign-off)
+    BST_PARTIAL_TRANSFER_REQUEST: (transferId: number) =>
+      `/warehouse/bst/${transferId}/partial-transfer/request/`,
+    BST_PARTIAL_TRANSFERS: '/warehouse/bst/partial-transfers/',
+    BST_PARTIAL_TRANSFER_APPROVE: (requestId: number) =>
+      `/warehouse/bst/partial-transfers/${requestId}/approve/`,
+    BST_PARTIAL_TRANSFER_REJECT: (requestId: number) =>
+      `/warehouse/bst/partial-transfers/${requestId}/reject/`,
     BST_INCOMING: '/warehouse/bst/incoming/',
     BST_INCOMING_DETAIL: (transferId: number) => `/warehouse/bst/incoming/${transferId}/`,
     BST_RECEIVE_SCAN: (transferId: number) => `/warehouse/bst/${transferId}/receive-scans/`,
