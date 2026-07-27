@@ -6,6 +6,8 @@ export {
   useCreateOnlineRecord,
   useDeleteOnlineReading,
   useDeleteOnlineRecord,
+  useDeleteReadingAttachment,
+  useUploadReadingAttachment,
   useOnlineMonitoringLines,
   useOnlineMonitoringList,
   useOnlineMonitoringRecord,

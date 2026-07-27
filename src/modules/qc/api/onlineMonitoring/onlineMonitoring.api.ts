@@ -4,6 +4,7 @@ import { apiClient } from '@/core/api';
 import type {
   CreateOnlineRecordRequest,
   OnlineMonitoringListParams,
+  OnlineQualityAttachment,
   OnlineQualityReading,
   OnlineQualityRecord,
   OnlineQualityRecordListItem,
@@ -72,6 +73,27 @@ export const onlineMonitoringApi = {
 
   async deleteReading(recordId: number, readingId: number): Promise<void> {
     await apiClient.delete(EP.ONLINE_MONITORING_READING_DETAIL(recordId, readingId));
+  },
+
+  async uploadReadingAttachment(
+    recordId: number, readingId: number, file: File,
+  ): Promise<OnlineQualityAttachment> {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await apiClient.post<OnlineQualityAttachment>(
+      EP.ONLINE_MONITORING_READING_ATTACHMENTS(recordId, readingId),
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data;
+  },
+
+  async deleteReadingAttachment(
+    recordId: number, readingId: number, attachmentId: number,
+  ): Promise<void> {
+    await apiClient.delete(
+      EP.ONLINE_MONITORING_READING_ATTACHMENT_DETAIL(recordId, readingId, attachmentId),
+    );
   },
 
   async submit(recordId: number): Promise<OnlineQualityRecord> {

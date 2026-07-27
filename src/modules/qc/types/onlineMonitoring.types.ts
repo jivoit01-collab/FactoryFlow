@@ -42,6 +42,15 @@ export interface OnlineQualityTorque {
   torque_value: string | null;
 }
 
+export interface OnlineQualityAttachment {
+  id: number;
+  url: string;
+  original_name: string;
+  content_type: string;
+  uploaded_by_name: string | null;
+  created_at: string;
+}
+
 export interface OnlineQualityReading {
   id: number;
   reading_time: string; // HH:MM[:SS]
@@ -63,6 +72,7 @@ export interface OnlineQualityReading {
   closure_jump_test: PassFail;
   remarks: string;
   torque_heads: OnlineQualityTorque[];
+  attachments: OnlineQualityAttachment[];
 }
 
 export interface OnlineQualityRecord {

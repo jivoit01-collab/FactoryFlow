@@ -83,6 +83,16 @@ export const useDeleteOnlineReading = () =>
     onlineMonitoringApi.deleteReading(recordId, args.readingId),
   );
 
+export const useUploadReadingAttachment = () =>
+  useRecordMutation((recordId: number, args: { readingId: number; file: File }) =>
+    onlineMonitoringApi.uploadReadingAttachment(recordId, args.readingId, args.file),
+  );
+
+export const useDeleteReadingAttachment = () =>
+  useRecordMutation((recordId: number, args: { readingId: number; attachmentId: number }) =>
+    onlineMonitoringApi.deleteReadingAttachment(recordId, args.readingId, args.attachmentId),
+  );
+
 export const useSubmitOnlineRecord = () =>
   useRecordMutation((recordId: number) => onlineMonitoringApi.submit(recordId));
 
