@@ -202,8 +202,12 @@ export const marketplaceApi = {
 
   // ── Orders ─────────────────────────────────────────────────────────────────
   async orders(params?: OrderListParams): Promise<MarketplaceOrder[]> {
-    const { data } = await apiClient.get<MarketplaceOrder[]>(`${EP.ORDERS}${buildQuery(params)}`);
-    return data;
+    const { data } = await apiClient.get<MarketplaceOrder[] | { results: MarketplaceOrder[] }>(
+      `${EP.ORDERS}${buildQuery(params)}`,
+    );
+    // Endpoint returns the shared pagination envelope; unwrap to the list (tolerate
+    // a bare array too, for resilience).
+    return Array.isArray(data) ? data : (data.results ?? []);
   },
   async resolveOrder(channel: MarketplaceChannel, orderId: string): Promise<ResolvedOrder> {
     const { data } = await apiClient.get<ResolvedOrder>(
@@ -214,10 +218,12 @@ export const marketplaceApi = {
 
   // ── Dispatches ─────────────────────────────────────────────────────────────
   async dispatches(params?: DispatchListParams): Promise<MarketplaceDispatch[]> {
-    const { data } = await apiClient.get<MarketplaceDispatch[]>(
+    const { data } = await apiClient.get<MarketplaceDispatch[] | { results: MarketplaceDispatch[] }>(
       `${EP.DISPATCHES}${buildQuery(params)}`,
     );
-    return data;
+    // Endpoint returns the shared pagination envelope; unwrap to the list (tolerate
+    // a bare array too, for resilience).
+    return Array.isArray(data) ? data : (data.results ?? []);
   },
   async dispatch(id: number): Promise<MarketplaceDispatch> {
     const { data } = await apiClient.get<MarketplaceDispatch>(EP.DISPATCH_BY_ID(id));
