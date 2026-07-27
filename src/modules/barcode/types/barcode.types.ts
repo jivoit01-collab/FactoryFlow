@@ -376,6 +376,12 @@ export interface OitmItemRow {
   is_inventory_item: boolean;
   is_sales_item: boolean;
   is_purchase_item: boolean;
+  /** Raw SAP OITM.SalFactor2 (pieces per sales case); 1/null when unset. */
+  sal_factor2: number | null;
+  /** Authoritative pieces-per-box: SalFactor2 when set, else parsed from name. */
+  pieces_per_box: number | null;
+  /** Where pieces_per_box came from: 'sap' | 'name' | 'default'. */
+  pieces_per_box_source: string;
   valid_for: boolean;
   frozen_for: boolean;
 }
