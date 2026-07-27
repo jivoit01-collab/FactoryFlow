@@ -315,6 +315,7 @@ export const API_ENDPOINTS = {
     // Online Quality Monitoring
     ONLINE_MONITORING_LIST: '/quality-control/online-monitoring/',
     ONLINE_MONITORING_LINES: '/quality-control/online-monitoring/lines/',
+    ONLINE_MONITORING_RUNS: '/quality-control/online-monitoring/runs/',
     ONLINE_MONITORING_SPECS: '/quality-control/online-monitoring/specs/',
     ONLINE_MONITORING_SPEC_DETAIL: (specId: number) =>
       `/quality-control/online-monitoring/specs/${specId}/`,

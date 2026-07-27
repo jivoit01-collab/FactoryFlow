@@ -121,6 +121,16 @@ export interface ProductionLineOption {
   name: string;
 }
 
+export interface OnlineProductionRun {
+  id: number;
+  run_number: number;
+  date: string | null;
+  line: number;
+  line_name: string;
+  item_code: string;
+  product: string;
+}
+
 export interface CreateOnlineRecordRequest {
   production_line_id: number;
   date: string;

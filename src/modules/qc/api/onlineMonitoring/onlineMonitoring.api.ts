@@ -4,6 +4,7 @@ import { apiClient } from '@/core/api';
 import type {
   CreateOnlineRecordRequest,
   OnlineMonitoringListParams,
+  OnlineProductionRun,
   OnlineQualityAttachment,
   OnlineQualityReading,
   OnlineQualityRecord,
@@ -142,6 +143,14 @@ export const onlineMonitoringApi = {
 
   async resetSpec(specId: number): Promise<void> {
     await apiClient.delete(EP.ONLINE_MONITORING_SPEC_DETAIL(specId));
+  },
+
+  async runs(lineId?: number): Promise<OnlineProductionRun[]> {
+    const { data } = await apiClient.get<OnlineProductionRun[]>(
+      EP.ONLINE_MONITORING_RUNS,
+      { params: lineId ? { line: lineId } : undefined },
+    );
+    return data;
   },
 
   async lines(): Promise<ProductionLineOption[]> {

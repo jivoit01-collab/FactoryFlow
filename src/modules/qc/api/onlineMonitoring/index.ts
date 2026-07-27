@@ -11,6 +11,7 @@ export {
   useOnlineMonitoringLines,
   useOnlineMonitoringList,
   useOnlineMonitoringRecord,
+  useOnlineMonitoringRuns,
   useOnlineMonitoringSpecs,
   useRejectOnlineRecord,
   useReopenOnlineRecord,

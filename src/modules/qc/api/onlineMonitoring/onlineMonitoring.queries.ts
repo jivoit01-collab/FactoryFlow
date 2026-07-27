@@ -41,6 +41,15 @@ export function useOnlineMonitoringLines(enabled = true) {
   });
 }
 
+export function useOnlineMonitoringRuns(lineId?: number) {
+  return useQuery({
+    queryKey: [...ONLINE_MONITORING_KEYS.all, 'runs', lineId ?? null] as const,
+    queryFn: () => onlineMonitoringApi.runs(lineId),
+    enabled: !!lineId,
+    staleTime: 30_000,
+  });
+}
+
 export function useOnlineMonitoringSpecs() {
   return useQuery({
     queryKey: ONLINE_MONITORING_KEYS.specs(),

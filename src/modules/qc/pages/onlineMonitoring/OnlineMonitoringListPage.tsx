@@ -23,6 +23,7 @@ import {
   useCreateOnlineRecord,
   useOnlineMonitoringLines,
   useOnlineMonitoringList,
+  useOnlineMonitoringRuns,
 } from '../../api/onlineMonitoring';
 import type { OnlineMonitoringListParams, OnlineRecordStatus } from '../../types';
 
@@ -199,6 +200,20 @@ function CreateRecordDialog({
   });
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
 
+  // Currently-running production runs on the chosen line drive the SKU picker.
+  const lineId = form.production_line_id ? Number(form.production_line_id) : undefined;
+  const { data: runs = [] } = useOnlineMonitoringRuns(lineId);
+
+  // Switching line clears any SKU/product picked for the previous line.
+  const onLineChange = (value: string) =>
+    set({ production_line_id: value, sku: '', product_name: '' });
+
+  // Picking a running run fills the SAP item code + product together.
+  const onPickRun = (itemCode: string) => {
+    const run = runs.find((r) => r.item_code === itemCode);
+    set({ sku: itemCode, product_name: run?.product ?? form.product_name });
+  };
+
   function submit() {
     if (!form.production_line_id) {
       toast.error('Select a production line.');
@@ -236,7 +251,7 @@ function CreateRecordDialog({
             <label className="text-xs text-muted-foreground">Production Line *</label>
             <NativeSelect
               value={form.production_line_id}
-              onChange={(e) => set({ production_line_id: e.target.value })}
+              onChange={(e) => onLineChange(e.target.value)}
             >
               <SelectOption value="">Select line…</SelectOption>
               {lines.map((l) => (
@@ -263,7 +278,23 @@ function CreateRecordDialog({
           </div>
           <div>
             <label className="text-xs text-muted-foreground">SKU</label>
-            <Input value={form.sku} onChange={(e) => set({ sku: e.target.value })} />
+            {runs.length > 0 ? (
+              <NativeSelect value={form.sku} onChange={(e) => onPickRun(e.target.value)}>
+                <SelectOption value="">Select running SKU…</SelectOption>
+                {runs.map((r) => (
+                  <SelectOption key={r.id} value={r.item_code}>
+                    {r.item_code}
+                    {r.product ? ` · ${r.product}` : ''}
+                  </SelectOption>
+                ))}
+              </NativeSelect>
+            ) : (
+              <Input
+                value={form.sku}
+                onChange={(e) => set({ sku: e.target.value })}
+                placeholder={lineId ? 'No running run — type SKU' : 'Select a line first'}
+              />
+            )}
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Flavour</label>
