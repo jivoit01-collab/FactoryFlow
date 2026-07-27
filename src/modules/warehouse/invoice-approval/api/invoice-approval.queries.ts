@@ -5,17 +5,19 @@ import { invoiceApprovalApi } from './invoice-approval.api';
 
 export const INVOICE_APPROVAL_QUERY_KEYS = {
   all: ['oms-invoice-approval'] as const,
-  list: (status?: InvoiceStatus) =>
-    [...INVOICE_APPROVAL_QUERY_KEYS.all, 'list', status ?? 'ALL'] as const,
+  list: (warehouse: string, status?: InvoiceStatus) =>
+    [...INVOICE_APPROVAL_QUERY_KEYS.all, 'list', warehouse, status ?? 'ALL'] as const,
   history: (id: number) => [...INVOICE_APPROVAL_QUERY_KEYS.all, 'history', id] as const,
   audit: (id: number) => [...INVOICE_APPROVAL_QUERY_KEYS.all, 'audit', id] as const,
-  pendingCount: () => [...INVOICE_APPROVAL_QUERY_KEYS.all, 'pending-count'] as const,
+  pendingCount: (warehouse: string) =>
+    [...INVOICE_APPROVAL_QUERY_KEYS.all, 'pending-count', warehouse] as const,
 };
 
-export function useInvoiceList(status?: InvoiceStatus) {
+export function useInvoiceList(warehouse: string, status?: InvoiceStatus) {
   return useQuery({
-    queryKey: INVOICE_APPROVAL_QUERY_KEYS.list(status),
-    queryFn: () => invoiceApprovalApi.listInvoices(status),
+    queryKey: INVOICE_APPROVAL_QUERY_KEYS.list(warehouse, status),
+    queryFn: () => invoiceApprovalApi.listInvoices(warehouse, status),
+    enabled: !!warehouse,
     staleTime: 30 * 1000,
   });
 }
@@ -36,10 +38,11 @@ export function useInvoiceAudit(id: number | null) {
   });
 }
 
-export function usePendingCount() {
+export function usePendingCount(warehouse: string) {
   return useQuery({
-    queryKey: INVOICE_APPROVAL_QUERY_KEYS.pendingCount(),
-    queryFn: () => invoiceApprovalApi.getPendingCount(),
+    queryKey: INVOICE_APPROVAL_QUERY_KEYS.pendingCount(warehouse),
+    queryFn: () => invoiceApprovalApi.getPendingCount(warehouse),
+    enabled: !!warehouse,
     staleTime: 60 * 1000,
     refetchInterval: 2 * 60 * 1000,
   });
@@ -51,10 +54,10 @@ export function useUpdateInvoiceStatus() {
     mutationFn: ({ id, data }: { id: number; data: StatusUpdateRequest }) =>
       invoiceApprovalApi.updateStatus(id, data),
     onSuccess: (_response, { id }) => {
-      // The entry moves out of PENDING/EDITED — refresh every tab + the nav badge.
+      // The entry moves out of PENDING/EDITED — `all` covers every tab, the nav
+      // badge (pending-count) and this invoice's audit.
       queryClient.invalidateQueries({ queryKey: INVOICE_APPROVAL_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: INVOICE_APPROVAL_QUERY_KEYS.audit(id) });
-      queryClient.invalidateQueries({ queryKey: INVOICE_APPROVAL_QUERY_KEYS.pendingCount() });
     },
   });
 }

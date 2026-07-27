@@ -160,7 +160,7 @@ function InvoiceDetailBody({
                   <span className="flex items-center gap-2">
                     <InvoiceStatusBadge status={record.status} />
                     <span className="text-muted-foreground">
-                      {record.created_by_name || 'Unknown'}
+                      {record.created_by || record.created_by_name || 'Unknown'}
                     </span>
                   </span>
                   <span className="text-xs text-muted-foreground">

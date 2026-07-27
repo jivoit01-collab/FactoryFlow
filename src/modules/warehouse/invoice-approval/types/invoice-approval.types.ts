@@ -68,6 +68,9 @@ export interface InvoiceLog {
 
 export interface InvoiceHistoryRecord {
   id: number;
+  // OMS now stores the approver's name string directly on `created_by`
+  // (its history author became a free-text field, not a linked account).
+  created_by: string | null;
   created_by_name: string | null;
   so_number: string;
   party_name: string;
@@ -76,7 +79,6 @@ export interface InvoiceHistoryRecord {
   invoice_payload: InvoicePayload;
   created_at: string;
   invoice_log: number;
-  created_by: number | null;
 }
 
 /** Local (JI-side) audit row recorded by our backend for each approve/reject. */

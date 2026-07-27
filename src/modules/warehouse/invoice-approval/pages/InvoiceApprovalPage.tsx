@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { OMS_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { WarehouseSelect } from '@/modules/warehouse/grpo/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -21,6 +22,7 @@ import { INVOICE_APPROVAL_QUERY_KEYS, useInvoiceList } from '../api/invoice-appr
 import { InvoiceDetailSheet } from '../components/InvoiceDetailSheet';
 import { InvoiceStatusBadge } from '../components/InvoiceStatusBadge';
 import { INVOICE_TABS, type InvoiceLog, type InvoiceTab } from '../types';
+import { useSelectedWarehouse } from '../useSelectedWarehouse';
 
 const TAB_LABELS: Record<InvoiceTab, string> = {
   PENDING: 'Pending',
@@ -73,15 +75,17 @@ function InvoiceRow({
 }
 
 function InvoiceList({
+  warehouse,
   status,
   search,
   onSelect,
 }: {
+  warehouse: string;
   status: InvoiceTab;
   search: string;
   onSelect: (invoice: InvoiceLog) => void;
 }) {
-  const { data, isLoading, isError } = useInvoiceList(status);
+  const { data, isLoading, isError } = useInvoiceList(warehouse, status);
 
   const filtered = useMemo(() => {
     const rows = data ?? [];
@@ -135,6 +139,7 @@ export default function InvoiceApprovalPage() {
   const canApprove = hasPermission(OMS_PERMISSIONS.APPROVE_INVOICE);
   const queryClient = useQueryClient();
 
+  const [warehouse, setWarehouse] = useSelectedWarehouse();
   const [tab, setTab] = useState<InvoiceTab>('PENDING');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<InvoiceLog | null>(null);
@@ -147,6 +152,7 @@ export default function InvoiceApprovalPage() {
       >
         <Button
           variant="outline"
+          disabled={!warehouse}
           onClick={() =>
             queryClient.invalidateQueries({ queryKey: INVOICE_APPROVAL_QUERY_KEYS.all })
           }
@@ -155,30 +161,54 @@ export default function InvoiceApprovalPage() {
         </Button>
       </DashboardHeader>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          className="pl-8"
-          placeholder="Search SO number or party…"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="w-full sm:w-72">
+          <WarehouseSelect
+            value={warehouse}
+            onChange={setWarehouse}
+            label="Warehouse"
+            placeholder="Select warehouse"
+            required
+          />
+        </div>
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Search SO number or party…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            disabled={!warehouse}
+          />
+        </div>
       </div>
 
-      <Tabs value={tab} onValueChange={(value) => setTab(value as InvoiceTab)}>
-        <TabsList>
+      {!warehouse ? (
+        <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
+          <FileCheck2 className="h-8 w-8" />
+          <p className="text-sm">Select a warehouse to load invoices for approval.</p>
+        </div>
+      ) : (
+        <Tabs value={tab} onValueChange={(value) => setTab(value as InvoiceTab)}>
+          <TabsList>
+            {INVOICE_TABS.map((value) => (
+              <TabsTrigger key={value} value={value}>
+                {TAB_LABELS[value]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
           {INVOICE_TABS.map((value) => (
-            <TabsTrigger key={value} value={value}>
-              {TAB_LABELS[value]}
-            </TabsTrigger>
+            <TabsContent key={value} value={value} className="mt-4">
+              <InvoiceList
+                warehouse={warehouse}
+                status={value}
+                search={search}
+                onSelect={setSelected}
+              />
+            </TabsContent>
           ))}
-        </TabsList>
-        {INVOICE_TABS.map((value) => (
-          <TabsContent key={value} value={value} className="mt-4">
-            <InvoiceList status={value} search={search} onSelect={setSelected} />
-          </TabsContent>
-        ))}
-      </Tabs>
+        </Tabs>
+      )}
 
       <InvoiceDetailSheet
         invoice={selected}

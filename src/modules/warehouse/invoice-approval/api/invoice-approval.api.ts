@@ -11,9 +11,9 @@ import type {
 } from '../types';
 
 export const invoiceApprovalApi = {
-  async listInvoices(status?: InvoiceStatus): Promise<InvoiceLog[]> {
+  async listInvoices(warehouse: string, status?: InvoiceStatus): Promise<InvoiceLog[]> {
     const response = await apiClient.get<InvoiceLog[]>(API_ENDPOINTS.OMS.INVOICES, {
-      params: status ? { status } : undefined,
+      params: { whs: warehouse, ...(status ? { status } : {}) },
     });
     return response.data;
   },
@@ -33,11 +33,12 @@ export const invoiceApprovalApi = {
     return response.data;
   },
 
-  async getPendingCount(): Promise<PendingCount> {
+  async getPendingCount(warehouse: string): Promise<PendingCount> {
     // Background poll driving the sidebar badge — mounted on every page. Suppress
     // the global error toast so an OMS outage doesn't spam a toast app-wide; the
     // badge simply renders nothing when the count can't be fetched.
     const response = await apiClient.get<PendingCount>(API_ENDPOINTS.OMS.INVOICE_PENDING_COUNT, {
+      params: { whs: warehouse },
       suppressErrorToast: true,
     });
     return response.data;

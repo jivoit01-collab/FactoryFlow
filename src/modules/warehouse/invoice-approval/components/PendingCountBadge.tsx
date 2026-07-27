@@ -1,13 +1,16 @@
 import { cn } from '@/shared/utils';
 
 import { usePendingCount } from '../api/invoice-approval.queries';
+import { useSelectedWarehouse } from '../useSelectedWarehouse';
 
 /**
- * Live count of invoices awaiting action (PENDING + EDITED), rendered next to the
- * "Invoice Approval" sidebar item. Renders nothing when there is nothing to show.
+ * Live count of invoices awaiting action (PENDING + EDITED) in the approver's
+ * selected warehouse, rendered next to the "Invoice Approval" sidebar item.
+ * Renders nothing until a warehouse is chosen or when there is nothing to show.
  */
 export function PendingCountBadge({ className }: { className?: string }) {
-  const { data } = usePendingCount();
+  const [warehouse] = useSelectedWarehouse();
+  const { data } = usePendingCount(warehouse);
   const total = data?.total ?? 0;
   if (!total) return null;
 
