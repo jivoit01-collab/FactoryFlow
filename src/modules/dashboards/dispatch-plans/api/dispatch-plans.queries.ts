@@ -5,6 +5,7 @@ import { useAuth } from '@/core/auth';
 import { DISPATCH_PLAN_STALE_TIME } from '../constants';
 import type {
   DispatchBillSelectionPayload,
+  DispatchPlanBulkDatePayload,
   DispatchPlanFilters,
   DispatchPlanUpdatePayload,
 } from '../types';
@@ -79,6 +80,18 @@ export function useUpdateDispatchPlan() {
   return useMutation({
     mutationFn: ({ docEntry, payload }: { docEntry: number; payload: DispatchPlanUpdatePayload }) =>
       dispatchPlansApi.updatePlan(docEntry, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DISPATCH_PLANS_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useBulkSetDispatchDate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: DispatchPlanBulkDatePayload) =>
+      dispatchPlansApi.bulkSetDispatchDate(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DISPATCH_PLANS_QUERY_KEYS.all });
     },

@@ -29,6 +29,16 @@ export interface DispatchBillSelectionResult {
   deselected: number;
 }
 
+export interface DispatchPlanBulkDatePayload {
+  doc_entries: number[];
+  dispatch_date: string | null;
+}
+
+export interface DispatchPlanBulkDateResult {
+  updated: number;
+  dispatch_date: string | null;
+}
+
 export interface DispatchPlan {
   id: number | null;
   sap_invoice_doc_entry: number;

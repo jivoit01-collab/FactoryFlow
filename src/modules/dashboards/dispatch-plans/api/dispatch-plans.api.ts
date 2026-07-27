@@ -6,6 +6,8 @@ import type {
   DispatchBillSelectionPayload,
   DispatchBillSelectionResult,
   DispatchPlan,
+  DispatchPlanBulkDatePayload,
+  DispatchPlanBulkDateResult,
   DispatchPlanFilters,
   DispatchPlansResponse,
   DispatchPlanUpdatePayload,
@@ -78,6 +80,17 @@ export const dispatchPlansApi = {
       EP.PLAN(docEntry),
       requestBody,
       isFormData(requestBody) ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined,
+    );
+    return response.data;
+  },
+
+  /** Apply one dispatch date to many bills at once (Dispatch Plans bulk action). */
+  async bulkSetDispatchDate(
+    payload: DispatchPlanBulkDatePayload,
+  ): Promise<DispatchPlanBulkDateResult> {
+    const response = await apiClient.post<DispatchPlanBulkDateResult>(
+      EP.BULK_DISPATCH_DATE,
+      payload,
     );
     return response.data;
   },

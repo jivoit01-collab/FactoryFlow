@@ -425,6 +425,7 @@ export const API_ENDPOINTS = {
     BILL_BY_NUMBER: (invoiceNumber: string) =>
       `/dispatch-plans/bills/by-number/${encodeURIComponent(invoiceNumber)}/`,
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,
+    BULK_DISPATCH_DATE: '/dispatch-plans/bills/plan/bulk-dispatch-date/',
   },
   // Dispatch Pipeline Dashboard (vehicle stage board)
   DISPATCH_PIPELINE: {

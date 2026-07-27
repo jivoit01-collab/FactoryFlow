@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   NativeSelect as Select,
   SelectOption,
 } from '@/shared/components/ui';
@@ -28,6 +29,18 @@ interface DispatchPlanTableProps {
   isLoading: boolean;
   canEdit: boolean;
   onEdit: (bill: DispatchBill) => void;
+  /** Doc entries currently ticked for the bulk dispatch-date action. */
+  selected?: Set<number>;
+  onToggle?: (docEntry: number) => void;
+  /** Select/clear every selectable bill in the current filtered set. */
+  onToggleAll?: (selectableDocEntries: number[]) => void;
+}
+
+// Only bills still being planned can be bulk re-dated; already-dispatched or
+// cancelled bills are left out (re-dating them makes no sense).
+function isBulkSelectable(bill: DispatchBill): boolean {
+  const status = bill.plan.booking_status;
+  return status === 'PENDING' || status === 'BOOKED';
 }
 
 type SortCol =
@@ -73,7 +86,17 @@ function hasQuantity(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
 
-export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: DispatchPlanTableProps) {
+export function DispatchPlanTable({
+  bills,
+  isLoading,
+  canEdit,
+  onEdit,
+  selected,
+  onToggle,
+  onToggleAll,
+}: DispatchPlanTableProps) {
+  // Bulk selection is available only with edit rights and wired handlers.
+  const bulkEnabled = canEdit && !!selected && !!onToggle && !!onToggleAll;
   const [sort, setSort] = useState<SortState>({
     col: 'create_date',
     dir: 'desc',
@@ -152,6 +175,14 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
   const startIndex = (currentPage - 1) * pageSize;
   const pageRows = sorted.slice(startIndex, startIndex + pageSize);
 
+  // Select-all spans the whole filtered set (across client-side pages), not just
+  // the visible page — so a header tick selects every selectable bill.
+  const selectableDocEntries = bulkEnabled
+    ? sorted.filter(isBulkSelectable).map((bill) => bill.doc_entry)
+    : [];
+  const allSelected =
+    selectableDocEntries.length > 0 && selectableDocEntries.every((de) => selected!.has(de));
+
   const thClass =
     'cursor-pointer whitespace-nowrap px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground';
   const thRightClass =
@@ -161,9 +192,19 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
     <Card>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1450px] text-sm">
+          <table className="w-full min-w-[1500px] text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
+                {bulkEnabled && (
+                  <th className="w-10 px-4 py-3">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={() => onToggleAll!(selectableDocEntries)}
+                      aria-label="Select all bills for bulk dispatch date"
+                      disabled={selectableDocEntries.length === 0}
+                    />
+                  </th>
+                )}
                 <th className={thClass} onClick={() => toggleSort('create_date')}>
                   Created <SortIcon col="create_date" sort={sort} />
                 </th>
@@ -201,6 +242,7 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
                     'border-b transition-colors',
                     canEdit &&
                       'cursor-pointer hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                    bulkEnabled && selected!.has(bill.doc_entry) && 'bg-primary/5',
                   )}
                   role={canEdit ? 'button' : undefined}
                   tabIndex={canEdit ? 0 : undefined}
@@ -208,6 +250,21 @@ export function DispatchPlanTable({ bills, isLoading, canEdit, onEdit }: Dispatc
                   onClick={canEdit ? () => onEdit(bill) : undefined}
                   onKeyDown={(event) => handleRowKeyDown(event, bill)}
                 >
+                  {bulkEnabled && (
+                    <td
+                      className="px-4 py-3 align-top"
+                      // Ticking a bill must not open its edit sheet.
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {isBulkSelectable(bill) ? (
+                        <Checkbox
+                          checked={selected!.has(bill.doc_entry)}
+                          onCheckedChange={() => onToggle!(bill.doc_entry)}
+                          aria-label={`Select bill ${bill.doc_num} for bulk dispatch date`}
+                        />
+                      ) : null}
+                    </td>
+                  )}
                   <td className="px-4 py-3 align-top">
                     <div className="font-medium">{formatDate(bill.create_date)}</div>
                     <div className="text-xs text-muted-foreground">{bill.create_time}</div>
