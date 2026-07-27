@@ -3,7 +3,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   FileText,
-  Link,
+  IndianRupee,
   Loader2,
   Pencil,
   Play,
@@ -561,7 +561,7 @@ function RunDetailPage() {
             <FileText className="h-4 w-4 mr-1" /> Yield
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/resources`)}>
-            <Link className="h-4 w-4 mr-1" /> Resources
+            <IndianRupee className="h-4 w-4 mr-1" /> Cost
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/waste?run_id=${run.id}`)}>
             <Trash2 className="h-4 w-4 mr-1" /> Waste Logs: {wasteLogs.length}

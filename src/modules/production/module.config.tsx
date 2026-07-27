@@ -47,6 +47,7 @@ const WasteTrendReportPage = lazy(() => import('./execution/pages/WasteTrendRepo
 const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
+const CostMasterPage = lazy(() => import('./execution/pages/CostMasterPage'));
 
 // Lazy load Blowing (preform -> bottle) pages
 const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
@@ -259,6 +260,12 @@ export const productionModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
     },
+    {
+      path: '/production/execution/cost-master',
+      element: <CostMasterPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
+    },
     // ---- Blowing (preform -> bottle) ----
     {
       path: '/production/blowing',
@@ -353,6 +360,11 @@ export const productionModuleConfig: ModuleConfig = {
         {
           path: '/production/execution/line-management',
           title: 'Line Management',
+          permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
+        },
+        {
+          path: '/production/execution/cost-master',
+          title: 'Cost Master',
           permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
         },
       ],
