@@ -116,18 +116,27 @@ export default function LabelGeneratePage() {
     setSelectedItem(item);
     setGeneratedBoxes([]);
     setLabelDataList([]);
+    // Qty per box is locked to the item master (SAP SalFactor2, falling back to
+    // the name's 'N PCS'); operators no longer type it. See pieces_per_box.
+    const lockedQty =
+      item.pieces_per_box && item.pieces_per_box > 0 ? String(item.pieces_per_box) : '';
     setForm((prev) => ({
       ...prev,
       item_code: item.item_code.trim(),
       item_name: item.item_name.trim(),
       batch_number: '',
-      qty: '',
+      qty: lockedQty,
       box_count: '',
       uom: item.inventory_uom.trim() || prev.uom || 'PCS',
       mfg_date: '',
       exp_date: '',
     }));
   };
+
+  // The qty field is read-only whenever we resolved a pack size from the item
+  // master. If the master has none (rare, unconfigured item) it stays editable
+  // so generation can still proceed.
+  const qtyLocked = !!selectedItem && !!selectedItem.pieces_per_box && selectedItem.pieces_per_box > 0;
 
   const handleConfigSelect = (configId: string) => {
     const config = lineConfigs.find((c) => c.id === Number(configId));
@@ -424,9 +433,17 @@ export default function LabelGeneratePage() {
               <div className="mt-1 flex gap-2">
                 <input
                   type="number"
-                  className="flex-1 rounded border px-3 py-2 text-sm"
+                  className={`flex-1 rounded border px-3 py-2 text-sm ${
+                    qtyLocked ? 'bg-muted text-muted-foreground' : ''
+                  }`}
                   value={form.qty}
                   onChange={(e) => updateForm('qty', e.target.value)}
+                  readOnly={qtyLocked}
+                  title={
+                    qtyLocked
+                      ? 'Locked to the item master pack size — cannot be edited'
+                      : undefined
+                  }
                 />
                 <select
                   className="w-24 rounded border px-2 py-2 text-sm"
