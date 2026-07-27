@@ -30,6 +30,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui';
+import { useHasPermission } from '@/core/auth';
+import { WMS_PERMISSIONS } from '@/config/permissions';
 
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
@@ -46,6 +48,7 @@ import type { LayoutTemplate, Warehouse } from '../types';
 export default function WmsWarehousesPage() {
   const enabled = useWmsEnabled();
   const { isAdmin } = useWmsRole();
+  const canDelete = useHasPermission(WMS_PERMISSIONS.DELETE_WAREHOUSE);
   const navigate = useNavigate();
   const { warehouses, loading } = useWarehouses();
   const { data: locations } = useWmsCollection('locations');
@@ -98,7 +101,12 @@ export default function WmsWarehousesPage() {
   }
 
   async function handleDelete(warehouse: Warehouse) {
-    if (!window.confirm(`Delete "${warehouse.name}" and all its locations? This cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Delete "${warehouse.name}" and all its locations? It will be removed from ` +
+          `Warehouse Ops (an admin can recover it if needed).`,
+      )
+    ) {
       return;
     }
     setBusyId(warehouse.id);
@@ -264,13 +272,15 @@ export default function WmsWarehousesPage() {
                   <IconAction title="Export backup" onClick={() => void handleExport(warehouse)}>
                     <Download className="h-4 w-4" />
                   </IconAction>
-                  <IconAction
-                    title="Delete"
-                    disabled={busyId === warehouse.id}
-                    onClick={() => void handleDelete(warehouse)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </IconAction>
+                  {canDelete && (
+                    <IconAction
+                      title="Delete"
+                      disabled={busyId === warehouse.id}
+                      onClick={() => void handleDelete(warehouse)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </IconAction>
+                  )}
                 </div>
               </CardHeader>
             </Card>
