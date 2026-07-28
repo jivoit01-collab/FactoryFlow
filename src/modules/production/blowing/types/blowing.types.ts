@@ -117,6 +117,7 @@ export interface PreformSpec {
   make: string;
   gram: string;
   preforms_per_box: number;
+  preform_rate_per_bottle: string;
   sap_item_code: string;
   sap_item_name: string;
   bottle_weight_g: string | null;
@@ -135,6 +136,7 @@ export interface CreatePreformSpecRequest {
   make: string;
   gram: number | string;
   preforms_per_box: number;
+  preform_rate_per_bottle?: number | string;
   sap_item_code?: string;
   sap_item_name?: string;
   bottle_weight_g?: number | string | null;
@@ -152,7 +154,6 @@ export interface BlowingRateConfig {
   operator_rate_per_day: string;
   labour_rate_per_day: string;
   electricity_rate_per_unit: string;
-  preform_rate_per_kg: string;
   scrap_rate_per_bottle: string;
   packing_rate_per_bottle: string;
   maintenance_per_day: string;
@@ -168,7 +169,6 @@ export interface CreateRateConfigRequest {
   operator_rate_per_day: number | string;
   labour_rate_per_day: number | string;
   electricity_rate_per_unit: number | string;
-  preform_rate_per_kg: number | string;
   scrap_rate_per_bottle: number | string;
   packing_rate_per_bottle: number | string;
   maintenance_per_day?: number | string;
@@ -314,7 +314,7 @@ export interface BlowingRunDetail extends BlowingRun {
   operator_rate_per_day: string;
   labour_rate_per_day: string;
   electricity_rate_per_unit: string;
-  preform_rate_per_kg: string;
+  preform_rate_per_bottle: string;
   scrap_rate_per_bottle: string;
   packing_rate_per_bottle: string;
   sap_preform_item_code: string;

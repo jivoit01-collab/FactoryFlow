@@ -288,6 +288,7 @@ function PreformSpecsTab() {
     setEditing(s);
     reset({
       make: s.make, gram: Number(s.gram), preforms_per_box: s.preforms_per_box,
+      preform_rate_per_bottle: Number(s.preform_rate_per_bottle),
       sap_item_code: s.sap_item_code, sap_item_name: s.sap_item_name,
       bottle_weight_g: nOrUndef(s.bottle_weight_g), bottles_per_kg: nOrUndef(s.bottles_per_kg),
       mould_cost: nOrUndef(s.mould_cost), mould_life_bottles: s.mould_life_bottles ?? undefined,
@@ -329,6 +330,11 @@ function PreformSpecsTab() {
             <Input id="p-ppb" type="number" {...register('preforms_per_box')} />
             {errors.preforms_per_box && <p className="text-sm text-red-600">{errors.preforms_per_box.message}</p>}
           </div>
+          <div>
+            <Label htmlFor="p-prate">Preform rate / bottle (₹)</Label>
+            <Input id="p-prate" type="number" step="0.0001" {...register('preform_rate_per_bottle')} />
+            {errors.preform_rate_per_bottle && <p className="text-sm text-red-600">{errors.preform_rate_per_bottle.message}</p>}
+          </div>
           <div className="sm:col-span-2">
             <SearchableSelect<SAPItem>
               items={sapItems} isLoading={loadingSap && sapSearch.length >= 2} value={sapCode}
@@ -363,7 +369,9 @@ function PreformSpecsTab() {
         <thead>
           <tr className="border-b text-left text-muted-foreground">
             <th className="py-2 pr-4">Make</th><th className="py-2 pr-4">Gram</th>
-            <th className="py-2 pr-4">Preforms/box</th><th className="py-2 pr-4">SAP code</th>
+            <th className="py-2 pr-4">Preforms/box</th>
+            <th className="py-2 pr-4 text-right">Rate/bottle (₹)</th>
+            <th className="py-2 pr-4">SAP code</th>
             <th className="py-2 pr-4">Active</th>
           </tr>
         </thead>
@@ -373,11 +381,12 @@ function PreformSpecsTab() {
               <td className="py-2 pr-4">{s.make}</td>
               <td className="py-2 pr-4">{num(s.gram)}</td>
               <td className="py-2 pr-4">{s.preforms_per_box}</td>
+              <td className="py-2 pr-4 text-right">{num(s.preform_rate_per_bottle, 4)}</td>
               <td className="py-2 pr-4">{s.sap_item_code || '-'}</td>
               <td className="py-2 pr-4">{s.is_active ? 'Yes' : 'No'}</td>
             </tr>
           ))}
-          {specs.length === 0 && <tr><td colSpan={5} className="py-4 text-muted-foreground">No preform specs yet.</td></tr>}
+          {specs.length === 0 && <tr><td colSpan={6} className="py-4 text-muted-foreground">No preform specs yet.</td></tr>}
         </tbody>
       </table>
     </TabShell>
@@ -410,7 +419,7 @@ function RateConfigTab() {
     reset({
       effective_from: c.effective_from,
       operator_rate_per_day: Number(c.operator_rate_per_day), labour_rate_per_day: Number(c.labour_rate_per_day),
-      electricity_rate_per_unit: Number(c.electricity_rate_per_unit), preform_rate_per_kg: Number(c.preform_rate_per_kg),
+      electricity_rate_per_unit: Number(c.electricity_rate_per_unit),
       scrap_rate_per_bottle: Number(c.scrap_rate_per_bottle), packing_rate_per_bottle: Number(c.packing_rate_per_bottle),
       maintenance_per_day: Number(c.maintenance_per_day), factory_overhead_per_day: Number(c.factory_overhead_per_day),
       qa_cost_per_day: Number(c.qa_cost_per_day),
@@ -432,7 +441,6 @@ function RateConfigTab() {
     { name: 'operator_rate_per_day', label: 'Operator rate / day (₹)' },
     { name: 'labour_rate_per_day', label: 'Labour rate / day (₹)' },
     { name: 'electricity_rate_per_unit', label: 'Electricity rate / unit (₹)' },
-    { name: 'preform_rate_per_kg', label: 'Preform rate / kg (₹)' },
     { name: 'scrap_rate_per_bottle', label: 'Scrap rate / bottle (₹)' },
     { name: 'packing_rate_per_bottle', label: 'Packing rate / bottle (₹)' },
     { name: 'maintenance_per_day', label: 'Maintenance / day (₹)' },
@@ -463,14 +471,14 @@ function RateConfigTab() {
         </form>
       }
     >
-      <p className="mb-3 text-xs text-muted-foreground">The green row is the rate currently applied to new runs. Greyed rows are its history.</p>
+      <p className="mb-3 text-xs text-muted-foreground">The green row is the rate currently applied to new runs. Greyed rows are its history. Preform cost is now set per preform (₹/bottle) under the <strong>Preform Specs</strong> tab, since each preform has its own rate.</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-muted-foreground">
               <th className="py-2 pr-4">Effective</th><th className="py-2 pr-4 text-right">Operator/day</th>
               <th className="py-2 pr-4 text-right">Labour/day</th><th className="py-2 pr-4 text-right">Elec/unit</th>
-              <th className="py-2 pr-4 text-right">Preform/kg</th><th className="py-2 pr-4 text-right">Scrap/bottle</th>
+              <th className="py-2 pr-4 text-right">Scrap/bottle</th>
               <th className="py-2 pr-4 text-right">Packing/bottle</th><th className="py-2 pr-4">Status</th>
             </tr>
           </thead>
@@ -483,14 +491,13 @@ function RateConfigTab() {
                   <td className="py-2 pr-4 text-right">{num(c.operator_rate_per_day)}</td>
                   <td className="py-2 pr-4 text-right">{num(c.labour_rate_per_day)}</td>
                   <td className="py-2 pr-4 text-right">{num(c.electricity_rate_per_unit, 4)}</td>
-                  <td className="py-2 pr-4 text-right">{num(c.preform_rate_per_kg)}</td>
                   <td className="py-2 pr-4 text-right">{num(c.scrap_rate_per_bottle, 4)}</td>
                   <td className="py-2 pr-4 text-right">{num(c.packing_rate_per_bottle, 4)}</td>
                   <td className="py-2 pr-4"><Badge className={EFF_BADGE[st].cls}>{EFF_BADGE[st].label}</Badge></td>
                 </tr>
               );
             })}
-            {configs.length === 0 && <tr><td colSpan={8} className="py-4 text-muted-foreground">No rate configs yet.</td></tr>}
+            {configs.length === 0 && <tr><td colSpan={7} className="py-4 text-muted-foreground">No rate configs yet.</td></tr>}
           </tbody>
         </table>
       </div>

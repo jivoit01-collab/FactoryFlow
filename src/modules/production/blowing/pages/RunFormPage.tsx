@@ -77,6 +77,7 @@ function RunFormPage() {
 
   const values = watch();
   const machine = machines.find((m) => m.id === Number(values.machine_id));
+  const spec = specs.find((s) => s.id === Number(values.preform_spec_id));
   const effectiveRate = useMemo(
     () => pickEffectiveRate(rateConfigs, values.date || ''),
     [rateConfigs, values.date],
@@ -172,7 +173,7 @@ function RunFormPage() {
                   { label: 'Operator/day', value: money(num(effectiveRate.operator_rate_per_day)) },
                   { label: 'Labour/day', value: money(num(effectiveRate.labour_rate_per_day)) },
                   { label: 'Electric/unit', value: money(num(effectiveRate.electricity_rate_per_unit), 4) },
-                  { label: 'Preform/kg', value: money(num(effectiveRate.preform_rate_per_kg)) },
+                  { label: 'Preform/bottle', value: spec ? money(num(spec.preform_rate_per_bottle), 4) : '—' },
                   { label: 'Packing/bottle', value: money(num(effectiveRate.packing_rate_per_bottle), 4) },
                   { label: 'Machine dep/day', value: money(num(machine?.depreciation_per_day)) },
                 ].map((t) => (

@@ -355,7 +355,7 @@ function RunDetailPage() {
               >
                 <CostLine
                   label="Preform / resin"
-                  hint={`${fmt(num(run.preform_used_g) / 1000, 2)} kg × ₹${fmt(run.preform_rate_per_kg)}/kg`}
+                  hint={`${fmt(run.total_counter_production, 0)} bottles × ₹${fmt(run.preform_rate_per_bottle, 2)}/bottle`}
                   value={`₹ ${fmt(cost.preform_cost)}`}
                 />
                 <CostLine
