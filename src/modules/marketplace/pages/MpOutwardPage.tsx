@@ -9,6 +9,8 @@
  */
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Circle,
   Download,
   FileSpreadsheet,
@@ -47,6 +49,7 @@ import { MpScanFeedback, type ScanFeedback } from '../components/MpScanFeedback'
 import { MpScanPanel } from '../components/MpScanPanel';
 import { MpVariantPicker } from '../components/MpVariantPicker';
 import type {
+  CarriedOverOrder,
   DispatchBoardOrder,
   DispatchSheetSummary,
   MarketplaceChannel,
@@ -366,9 +369,96 @@ export default function MpOutwardPage() {
               )}
             </CardContent>
           </Card>
+
+          <CarriedOverSection
+            items={board?.carried_over ?? []}
+            onOpenSheet={(id) => { setPickedSheet(id); setFeedback(null); }}
+          />
         </>
       )}
     </div>
+  );
+}
+
+/** Plain-language reason an order was not imported onto this sheet. */
+function carriedReason(c: CarriedOverOrder): string {
+  const where = c.kept_on_filename ? `“${c.kept_on_filename}”` : 'an earlier sheet';
+  if (c.reason === 'DISPATCHED') {
+    const done = (c.dispatch_status || '').toUpperCase() === 'CONFIRMED';
+    return `${done ? 'already dispatched' : 'already being scanned'} on ${where}`;
+  }
+  if (c.reason === 'DUPLICATE') return `already imported on ${where} (not re-imported)`;
+  return `kept on ${where}`;
+}
+
+/** Collapsed-by-default list of orders that stayed on an earlier sheet. Informational —
+ *  these are NOT lost and NOT pending here. */
+function CarriedOverSection({
+  items,
+  onOpenSheet,
+}: {
+  items: CarriedOverOrder[];
+  onOpenSheet: (batchId: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <Card>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-2 p-4 text-left"
+      >
+        <span className="flex items-center gap-2 text-sm font-medium">
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {items.length} order{items.length === 1 ? '' : 's'} carried over from an earlier sheet
+        </span>
+        <Badge variant="secondary">Not lost · not pending here</Badge>
+      </button>
+      {open && (
+        <div className="space-y-2 border-t p-4">
+          <p className="text-xs text-muted-foreground">
+            These orders were in the uploaded file but are already being processed on an earlier
+            sheet, so they were left there. They are not missing, and nothing here is pending for
+            them.
+          </p>
+          {items.map((c) => (
+            <div key={c.order_id} className="rounded-md border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm">
+                  <span className="font-mono font-medium">{c.order_id}</span>
+                  {c.buyer_name ? (
+                    <span className="ml-2 text-muted-foreground">{c.buyer_name}</span>
+                  ) : null}
+                </div>
+                {c.kept_on_batch_id ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onOpenSheet(c.kept_on_batch_id as number)}
+                  >
+                    Open its sheet →
+                  </Button>
+                ) : null}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">{carriedReason(c)}</div>
+              {c.tracking_ids.length > 0 ? (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {c.tracking_ids.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded border px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -405,6 +495,11 @@ function SheetTile({
       <div className="mt-1.5 text-xs text-muted-foreground tabular-nums">
         {i.tracking_scanned}/{i.tracking_total} tracking IDs · {i.pending_orders} pending
       </div>
+      {sheet.carried_over_count > 0 && (
+        <div className="mt-1 text-[11px] text-muted-foreground">
+          +{sheet.carried_over_count} carried over from an earlier sheet
+        </div>
+      )}
     </button>
   );
 }

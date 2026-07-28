@@ -236,6 +236,28 @@ export default function MpImportPage() {
               <Stat label="Refreshed" value={result.summary?.updated ?? 0} />
               <Stat label="Skipped dups" value={result.summary?.duplicates_skipped ?? 0} />
             </div>
+            {/* Row reconciliation so the operator sees no rows were lost. */}
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              <span className="tabular-nums">
+                {result.row_count} rows in file → {result.order_count} orders /{' '}
+                {result.line_count} tracking IDs
+              </span>
+              {(result.summary?.dispatched_skipped ?? 0) > 0 ? (
+                <span className="text-muted-foreground">
+                  {' · '}
+                  {result.summary?.dispatched_skipped} order
+                  {result.summary?.dispatched_skipped === 1 ? '' : 's'} already on an earlier sheet
+                  (shown in Outward, not lost)
+                </span>
+              ) : null}
+              {(result.summary?.blank_sku_skipped ?? 0) > 0 ? (
+                <span className="text-muted-foreground">
+                  {' · '}
+                  {result.summary?.blank_sku_skipped} row
+                  {result.summary?.blank_sku_skipped === 1 ? '' : 's'} had no SKU
+                </span>
+              ) : null}
+            </div>
             {result.unmapped_skus && result.unmapped_skus.length > 0 ? (
               <div className="text-sm text-amber-700 dark:text-amber-400">
                 {result.unmapped_skus.length} SKU(s) still need mapping — resolve them in the batch.

@@ -586,6 +586,9 @@ export interface OrderImportBatch {
     updated?: number;
     skipped?: number;
     duplicates_skipped?: number;
+    dispatched_skipped?: number;
+    blank_sku_skipped?: number;
+    skipped_order_rows?: number;
     orders?: number;
     lines?: number;
   };
@@ -625,6 +628,19 @@ export interface DispatchSheetSummary {
   status: OrderImportBatchStatus;
   created_at: string;
   insights: DispatchSheetInsights;
+  carried_over_count: number;
+}
+
+/** An order present in this sheet's CSV but kept on an earlier sheet (informational). */
+export interface CarriedOverOrder {
+  order_id: string;
+  reason: string; // DISPATCHED | DUPLICATE
+  buyer_name: string;
+  tracking_ids: string[];
+  kept_on_batch_id: number | null;
+  kept_on_filename: string;
+  dispatch_id: number | null;
+  dispatch_status: string | null;
 }
 
 export interface DispatchBoardItem {
@@ -651,9 +667,17 @@ export interface DispatchBoardOrder {
 }
 
 export interface DispatchBoard {
-  sheet: { id: number; filename: string; status: OrderImportBatchStatus; created_at: string };
+  sheet: {
+    id: number;
+    filename: string;
+    status: OrderImportBatchStatus;
+    created_at: string;
+    row_count?: number;
+    summary?: OrderImportBatch['summary'];
+  };
   insights: DispatchSheetInsights;
   orders: DispatchBoardOrder[];
+  carried_over: CarriedOverOrder[];
 }
 
 export interface StockList {
