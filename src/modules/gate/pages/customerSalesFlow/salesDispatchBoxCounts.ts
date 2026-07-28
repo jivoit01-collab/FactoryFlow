@@ -48,6 +48,13 @@ export function getExpectedItemBoxes(item?: SalesDispatchItem | null) {
   return Math.ceil(quantity / packSize);
 }
 
+// Sum the expected boxes over an explicit list of lines. Used when the lines have been
+// pre-processed (e.g. grouped by item code) so the total is derived from the same rows the
+// UI shows, rather than re-reading the document's raw lines.
+export function getExpectedItemsBoxes(items: SalesDispatchItem[]) {
+  return sumPositiveValues(items.map((item) => getExpectedItemBoxes(item)));
+}
+
 export function parsePositiveNumber(value?: string | number | null) {
   const normalized =
     typeof value === 'string' ? value.replace(/,/g, '').trim() : String(value ?? '');

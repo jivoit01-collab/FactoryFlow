@@ -79,14 +79,14 @@ import {
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { ReviewModeBanner } from './ReviewModeBanner';
-import {
-  getExpectedDispatchBoxes,
-  getExpectedDocumentBoxes,
-  getExpectedItemBoxes,
-  parsePositiveNumber,
-} from './salesDispatchBoxCounts';
+import { getExpectedItemsBoxes, parsePositiveNumber } from './salesDispatchBoxCounts';
 import { DOCKING_TOTAL_STEPS, formatTimestamp, formatValue } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
+import {
+  type BillScanSummary,
+  groupItemsByItemCode,
+  summarizeItems,
+} from './salesDispatchScanSummary';
 
 const SCAN_CLOSED_STATUSES = [
   'GATEPASS_PRINTED',
@@ -223,15 +223,14 @@ export default function SalesDispatchBarcodeScanPage() {
     }
   }, [autoFocusBarcode, entry, isReadOnly, canEditDocking, openBillKey]);
 
-  const expectedBoxes = isArrivalMode
-    ? arrivalDockings.dockings.reduce((total, docking) => total + getExpectedDispatchBoxes(docking), 0)
-    : getExpectedDispatchBoxes(entry);
   const scannedQuantity = useMemo(
     () => scans.reduce((total, scan) => total + parsePositiveNumber(scan.quantity), 0),
     [scans],
   );
   // Every company's bills on a multi-company truck, each tagged with its docking so
-  // scans route correctly; otherwise just this docking's bills.
+  // scans route correctly; otherwise just this docking's bills. Each bill's invoice lines
+  // are grouped by item code (see buildBillGroups), so a product invoiced on two lines
+  // shows as one clean row and can't overshoot one line while another sits at 0.
   const billGroups = useMemo(
     () =>
       isArrivalMode
@@ -241,6 +240,12 @@ export default function SalesDispatchBarcodeScanPage() {
         : buildBillGroups(entry, scans),
     [isArrivalMode, arrivalDockings.dockings, entry, scans],
   );
+  // The load's expected boxes = the sum of what each bill card shows, so the header total
+  // always reconciles with the per-bill rows. An entry-level stored total (SAP gave one)
+  // still wins on a single-docking load. Bills already honour their own stored totals.
+  const billBoxTotal = billGroups.reduce((total, bill) => total + bill.expectedBoxes, 0);
+  const entryStoredBoxes = parsePositiveNumber(entry?.total_boxes);
+  const expectedBoxes = !isArrivalMode && entryStoredBoxes > 0 ? entryStoredBoxes : billBoxTotal;
   // Partial = at least one box scanned, but the load still carries unscanned invoiced
   // goods. Judged PER BILL/LINE on exact scanned-vs-invoiced QUANTITY (the same signal as
   // the bill badges and the backend gate) whenever the scans carry a quantity — every
@@ -249,25 +254,14 @@ export default function SalesDispatchBarcodeScanPage() {
   // stores none; the name may lack an "N PCS" token) can't inflate the expected-box count
   // and lock a truck that is in fact fully loaded. The load-wide box COUNT is only a
   // fallback for legacy/quantity-less scans. Mirrors load_scan_status on the backend.
-  // Aggregate scanned-vs-invoiced quantity per item_code within each bill, mirroring the
-  // backend's per-(bill, item_code) check (has_unscanned_bill_lines). Summing across lines
-  // that share an item_code matters: when a bill splits one product into two lines (e.g.
-  // 750 + 250), summarizeItems assigns every scan of that code to the FIRST matching line,
-  // so the second line would otherwise read as unscanned though the load is fully scanned —
-  // a false "Partial" that hard-locks a complete truck.
-  const hasUnscannedBillLine = billGroups.some((bill) => {
-    const byCode = new Map<string, { expected: number; scanned: number }>();
-    for (const item of bill.summary.items) {
-      const code = normalizeItemCode(item.itemCode);
-      const agg = byCode.get(code) ?? { expected: 0, scanned: 0 };
-      agg.expected += item.expectedQuantity;
-      agg.scanned += item.scannedQuantity;
-      byCode.set(code, agg);
-    }
-    return Array.from(byCode.values()).some(
-      (agg) => agg.expected > 0 && agg.scanned < agg.expected,
-    );
-  });
+  // Each bill's lines are grouped by item code, so one row per product already means one
+  // entry per (bill, item_code) — matching the backend's per-(bill, item_code) check
+  // (has_unscanned_bill_lines): a line short of its invoiced quantity flags the load.
+  const hasUnscannedBillLine = billGroups.some((bill) =>
+    bill.summary.items.some(
+      (item) => item.expectedQuantity > 0 && item.scannedQuantity < item.expectedQuantity,
+    ),
+  );
   const hasTrustworthyScanQuantities = scans.some(
     (scan) => scan.document != null && parsePositiveNumber(scan.quantity) > 0,
   );
@@ -1162,21 +1156,6 @@ interface FailedScan {
   reason: string;
 }
 
-interface ItemScanRow {
-  key: string;
-  lineNum: number;
-  itemCode: string;
-  itemName: string;
-  expectedQuantity: number;
-  uom: string;
-  totalWeight: number;
-  expectedBoxes: number;
-  scanCount: number;
-  scannedQuantity: number;
-  progressPercent: number | null;
-  isComplete: boolean;
-}
-
 function BillScanCard({
   bill,
   isOpen,
@@ -1836,11 +1815,6 @@ function getScanClosedMessage(status: SalesDispatchGateOut['status']) {
   return 'Box scanning is closed for this Docking entry.';
 }
 
-interface BillScanSummary {
-  items: ItemScanRow[];
-  unplannedScanCount: number;
-}
-
 interface BillGroup {
   key: number;
   // The docking this bill belongs to. On a multi-company truck the scan page shows
@@ -1869,23 +1843,29 @@ function buildBillGroups(
   const documents = entry.documents ?? [];
   const companyName = entry.company_name || '';
   if (documents.length > 0) {
-    return documents.map((document) =>
-      makeBillGroup({
+    return documents.map((document) => {
+      // Collapse invoice lines that repeat an item code into one row per product, then
+      // derive the bill's expected box count from those same rows so the header total and
+      // the per-line rows always agree. A stored document total (SAP gave one) still wins.
+      const items = groupItemsByItemCode(getDocumentItems(entry, document));
+      const storedBoxes = parsePositiveNumber(document.total_boxes);
+      return makeBillGroup({
         key: document.id,
         dockingId: entry.id,
         companyName,
         documentId: document.id,
         sapDocNum: document.sap_doc_num || String(document.sap_doc_entry || ''),
         customerName: document.customer_name || '',
-        items: getDocumentItems(entry, document),
+        items,
         scans: scans.filter((scan) => scan.document === document.id),
-        expectedBoxes: getExpectedDocumentBoxes(document),
-      }),
-    );
+        expectedBoxes: storedBoxes > 0 ? storedBoxes : getExpectedItemsBoxes(items),
+      });
+    });
   }
   // Legacy single-document docking: synthesize one bill from the entry header.
-  const items = entry.items ?? [];
+  const items = groupItemsByItemCode(entry.items ?? []);
   if (items.length === 0 && scans.length === 0) return [];
+  const storedBoxes = parsePositiveNumber(entry.total_boxes);
   return [
     makeBillGroup({
       key: 0,
@@ -1896,7 +1876,7 @@ function buildBillGroups(
       customerName: entry.customer_name || entry.to_warehouse || '',
       items,
       scans,
-      expectedBoxes: getExpectedDispatchBoxes(entry),
+      expectedBoxes: storedBoxes > 0 ? storedBoxes : getExpectedItemsBoxes(items),
     }),
   ];
 }
@@ -1935,84 +1915,6 @@ function getDocumentItems(
   );
   if (matched.length) return matched;
   return entry.documents?.length ? [] : entry.items;
-}
-
-// Allocate a single bill's scans to its item lines (document already matches), with
-// a greedy fallback for legacy null-document scans so none is double-counted.
-function summarizeItems(
-  expectedItems: SalesDispatchItem[],
-  scans: SalesDispatchBoxScan[],
-): BillScanSummary {
-  const stats = expectedItems.map(() => ({ count: 0, quantity: 0 }));
-  const candidatesByCode = new Map<string, number[]>();
-  expectedItems.forEach((item, index) => {
-    const code = normalizeItemCode(item.item_code);
-    if (!code) return;
-    const list = candidatesByCode.get(code);
-    if (list) list.push(index);
-    else candidatesByCode.set(code, [index]);
-  });
-
-  let unplannedScanCount = 0;
-  for (const scan of scans) {
-    const code = normalizeItemCode(scan.item_code);
-    const candidates = code ? candidatesByCode.get(code) : undefined;
-    if (!candidates || candidates.length === 0) {
-      unplannedScanCount += 1;
-      continue;
-    }
-
-    let targetIndex = -1;
-    // 1) The exact bill the backend attributed this scan to.
-    if (scan.document != null) {
-      const matched = candidates.find((index) => expectedItems[index].document === scan.document);
-      if (matched !== undefined) targetIndex = matched;
-    }
-    // 2) Greedy fill: the first bill that still has un-scanned boxes for the item.
-    if (targetIndex === -1) {
-      const open = candidates.find((index) => {
-        const expectedBoxes = getExpectedItemBoxes(expectedItems[index]);
-        return expectedBoxes <= 0 || stats[index].count < expectedBoxes;
-      });
-      targetIndex = open !== undefined ? open : candidates[0];
-    }
-
-    stats[targetIndex].count += 1;
-    stats[targetIndex].quantity += parsePositiveNumber(scan.quantity);
-  }
-
-  const items = expectedItems.map((item, index) => {
-    const itemCode = item.item_code || '';
-    const scanStats = stats[index];
-    const expectedQuantity = parsePositiveNumber(item.quantity);
-    const progressPercent =
-      expectedQuantity > 0
-        ? Math.min(100, Math.round((scanStats.quantity / expectedQuantity) * 100))
-        : null;
-
-    return {
-      key: String(item.id || `${item.item_code}-${item.line_num}-${index}`),
-      lineNum: Number(item.line_num ?? index),
-      itemCode,
-      itemName: item.item_name || '',
-      expectedQuantity,
-      uom: item.uom || '',
-      totalWeight: parsePositiveNumber(item.total_weight),
-      expectedBoxes: getExpectedItemBoxes(item),
-      scanCount: scanStats.count,
-      scannedQuantity: scanStats.quantity,
-      progressPercent,
-      isComplete: expectedQuantity > 0 ? scanStats.quantity >= expectedQuantity : false,
-    };
-  });
-
-  return { items, unplannedScanCount };
-}
-
-function normalizeItemCode(value?: string | null) {
-  return String(value || '')
-    .trim()
-    .toUpperCase();
 }
 
 function formatQuantity(quantity: number, uom?: string) {
