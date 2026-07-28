@@ -486,15 +486,19 @@ export const marketplaceApi = {
     );
     return data;
   },
-  async packScan(barcode: string): Promise<MarketplacePacking & { already_packed: boolean }> {
+  async packScan(
+    barcode: string, channel: MarketplaceChannel = 'FLIPKART',
+  ): Promise<MarketplacePacking & { already_packed: boolean }> {
     const { data } = await apiClient.post<MarketplacePacking & { already_packed: boolean }>(
       EP.PACKING_SCAN,
-      { barcode },
+      { barcode, channel },
     );
     return data;
   },
-  async openPacking(orderId: string): Promise<MarketplacePacking> {
-    const { data } = await apiClient.post<MarketplacePacking>(EP.PACKING_OPEN, { order_id: orderId });
+  async openPacking(orderId: string, channel: MarketplaceChannel = 'FLIPKART'): Promise<MarketplacePacking> {
+    const { data } = await apiClient.post<MarketplacePacking>(
+      EP.PACKING_OPEN, { order_id: orderId, channel },
+    );
     return data;
   },
   async packing(id: number): Promise<MarketplacePacking> {
