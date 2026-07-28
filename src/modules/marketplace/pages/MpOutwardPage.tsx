@@ -8,6 +8,7 @@
  * SAP delivery note + internal bill (per order or all-scanned in bulk).
  */
 import {
+  Ban,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -18,6 +19,7 @@ import {
   PackageCheck,
   ScanLine,
   Truck,
+  XCircle,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +39,7 @@ import { getErrorMessage } from '@/shared/utils';
 import { marketplaceApi } from '../api/marketplace.api';
 import {
   MARKETPLACE_QUERY_KEYS,
+  useCancelDispatch,
   useConfirmDispatch,
   useDispatchBoard,
   useDispatchSheets,
@@ -72,6 +75,7 @@ const CSV_STATUS_LABEL: Record<DispatchBoardOrder['status'], string> = {
   PARTIAL: 'Partial',
   SCANNED: 'Scanned',
   CONFIRMED: 'Confirmed',
+  CANCELLED: 'Cancelled after scan',
 };
 
 export default function MpOutwardPage() {
@@ -79,7 +83,7 @@ export default function MpOutwardPage() {
   const [pickedSheet, setPickedSheet] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'TODO' | 'SCANNED' | 'CONFIRMED'>('TODO');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'TODO' | 'SCANNED' | 'CONFIRMED' | 'CANCELLED'>('TODO');
   const [sheetRange, setSheetRange] = useState<MpRange>(EMPTY_RANGE);   // sheet upload date
   const [orderRange, setOrderRange] = useState<MpRange>(EMPTY_RANGE);   // order date
   const qc = useQueryClient();
@@ -113,6 +117,7 @@ export default function MpOutwardPage() {
     TODO: orders.filter((o) => o.status === 'PENDING' || o.status === 'PARTIAL').length,
     SCANNED: orders.filter((o) => o.status === 'SCANNED').length,
     CONFIRMED: orders.filter((o) => o.status === 'CONFIRMED').length,
+    CANCELLED: orders.filter((o) => o.status === 'CANCELLED').length,
   }), [orders]);
 
   const visibleOrders = useMemo(() => {
@@ -121,6 +126,10 @@ export default function MpOutwardPage() {
       if (statusFilter === 'TODO' && o.status !== 'PENDING' && o.status !== 'PARTIAL') return false;
       if (statusFilter === 'SCANNED' && o.status !== 'SCANNED') return false;
       if (statusFilter === 'CONFIRMED' && o.status !== 'CONFIRMED') return false;
+      if (statusFilter === 'CANCELLED' && o.status !== 'CANCELLED') return false;
+      // Cancelled-after-scan orders are out of the active flow — hide them unless
+      // the operator is specifically looking at Cancelled (or All).
+      if (statusFilter !== 'CANCELLED' && statusFilter !== 'ALL' && o.status === 'CANCELLED') return false;
       if (!inRange(o.order_date, orderRange)) return false;
       if (!q) return true;
       // Match the order, the buyer, or any of its tracking IDs.
@@ -344,6 +353,7 @@ export default function MpOutwardPage() {
                     { value: 'TODO', label: 'To scan', count: counts.TODO },
                     { value: 'SCANNED', label: 'Scanned', count: counts.SCANNED },
                     { value: 'CONFIRMED', label: 'Confirmed', count: counts.CONFIRMED },
+                    { value: 'CANCELLED', label: 'Cancel after scan', count: counts.CANCELLED },
                     { value: 'ALL', label: 'All', count: counts.ALL },
                   ]}
                 />
@@ -523,6 +533,7 @@ const STATUS_BADGE: Record<DispatchBoardOrder['status'], { label: string; cls: s
   SCANNED: { label: 'Scanned', cls: 'bg-emerald-600' },
   PARTIAL: { label: 'Partial', cls: 'bg-amber-500' },
   PENDING: { label: 'Pending scan', cls: '' },
+  CANCELLED: { label: 'Cancelled', cls: 'bg-rose-500' },
 };
 
 function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
@@ -538,12 +549,16 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
             ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20'
             : s === 'PARTIAL'
               ? 'border-amber-400/60 bg-amber-50/40 dark:bg-amber-950/20'
-              : 'bg-card'
+              : s === 'CANCELLED'
+                ? 'border-rose-300/50 bg-rose-50/30 dark:bg-rose-950/10'
+                : 'bg-card'
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {done ? (
+          {s === 'CANCELLED' ? (
+            <XCircle className="h-5 w-5 text-rose-400" />
+          ) : done ? (
             <CheckCircle2 className={`h-5 w-5 ${s === 'CONFIRMED' ? 'text-sky-500' : 'text-emerald-500'}`} />
           ) : (
             <Circle className={`h-5 w-5 ${s === 'PARTIAL' ? 'text-amber-500' : 'text-muted-foreground/50'}`} />
@@ -561,10 +576,20 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
             {s === 'PARTIAL' ? `${order.tracking_scanned}/${order.tracking_total} scanned` : badge.label}
           </Badge>
           {s === 'SCANNED' && order.dispatch_id ? (
-            <ConfirmButton dispatchId={order.dispatch_id} orderId={order.order_id} />
+            <>
+              <CancelButton dispatchId={order.dispatch_id} orderId={order.order_id} />
+              <ConfirmButton dispatchId={order.dispatch_id} orderId={order.order_id} />
+            </>
           ) : null}
         </div>
       </div>
+
+      {s === 'CANCELLED' ? (
+        <div className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
+          Cancelled after scan — no delivery note; data kept
+          {order.cancel_reason ? ` · ${order.cancel_reason}` : ''}
+        </div>
+      ) : null}
 
       {/* SAP-item variant choice (only when the FSN maps to >1 item) */}
       {order.variants && order.variants.some((v) => v.has_choice) && order.status !== 'CONFIRMED' ? (
@@ -596,6 +621,33 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function CancelButton({ dispatchId, orderId }: { dispatchId: number; orderId: string }) {
+  const cancel = useCancelDispatch(dispatchId);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={cancel.isPending}
+      onClick={() => {
+        const reason = window.prompt(
+          `Cancel ${orderId} after scan? It moves to "Cancel after scan" — no delivery note is cut and its scan data is kept.\n\nReason:`,
+          'Cancelled at pickup',
+        );
+        if (reason === null) return; // operator dismissed the prompt
+        cancel.mutate(
+          { reason },
+          {
+            onSuccess: () => toast.success(`${orderId} marked cancelled — no delivery note.`),
+            onError: (e) => toast.error(getErrorMessage(e, 'Cancel failed')),
+          },
+        );
+      }}
+    >
+      <Ban className="mr-1.5 h-4 w-4" /> {cancel.isPending ? 'Cancelling…' : 'Cancel'}
+    </Button>
   );
 }
 

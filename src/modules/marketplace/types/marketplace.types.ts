@@ -609,13 +609,14 @@ export interface StockListLine {
 }
 
 // ── Sheet-wise dispatch board ──────────────────────────────────────────────
-export type DispatchOrderStatus = 'PENDING' | 'PARTIAL' | 'SCANNED' | 'CONFIRMED';
+export type DispatchOrderStatus = 'PENDING' | 'PARTIAL' | 'SCANNED' | 'CONFIRMED' | 'CANCELLED';
 
 export interface DispatchSheetInsights {
   total_orders: number;
   completed_orders: number;
   pending_orders: number;
   confirmed_orders: number;
+  cancelled_orders: number;
   tracking_total: number;
   tracking_scanned: number;
   tracking_remaining: number;
@@ -660,6 +661,7 @@ export interface DispatchBoardOrder {
   sap_post_status: string | null;
   ready: boolean;
   status: DispatchOrderStatus;
+  cancel_reason?: string;
   tracking_total: number;
   tracking_scanned: number;
   items: DispatchBoardItem[];
