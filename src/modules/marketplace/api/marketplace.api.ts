@@ -239,6 +239,17 @@ export const marketplaceApi = {
     );
     return data;
   },
+  async exportDeliveryNoteCsv(
+    docEntry: number, channel: MarketplaceChannel,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const resp = await apiClient.get<Blob>(
+      `${EP.DELIVERY_NOTE_EXPORT(docEntry)}${buildQuery({ channel })}`,
+      { responseType: 'blob' },
+    );
+    const cd = String(resp.headers?.['content-disposition'] ?? '');
+    const match = /filename="?([^";]+)"?/.exec(cd);
+    return { blob: resp.data, filename: match?.[1] ?? `delivery-note-${docEntry}.csv` };
+  },
   async batchVariants(batchId: number): Promise<{ orders: OrderVariants[] }> {
     const { data } = await apiClient.get<{ orders: OrderVariants[] }>(EP.BATCH_VARIANTS(batchId));
     return data;

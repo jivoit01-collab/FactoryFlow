@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Clipboard,
   Clock,
+  Download,
   FileText,
   PackageCheck,
   PackageX,
@@ -41,6 +42,7 @@ import {
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
+import { marketplaceApi } from '../api/marketplace.api';
 import {
   useAwaitingApprovalCount,
   useCutDeliveryNote,
@@ -60,7 +62,6 @@ import type {
   StockShortfallLine,
 } from '../types/marketplace.types';
 
-const CHANNEL: MarketplaceChannel = 'FLIPKART';
 const inr = (v: string | number) =>
   Number(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
@@ -253,17 +254,33 @@ function StockShortfallDialog({
 
 export default function MpDeliveryNotesPage() {
   const navigate = useNavigate();
+  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+
+  // Download a posted delivery note's items (item, qty + DN/warehouse/order/HSN/amount).
+  async function downloadDnCsv(docEntry: number) {
+    try {
+      const { blob, filename } = await marketplaceApi.exportDeliveryNoteCsv(docEntry, channel);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not download the delivery-note CSV.'));
+    }
+  }
   // Deep-link a short item to its mapping (or combo) editor so the operator can
   // add an alternative SAP item that IS in stock. Masters resolves item → the
   // right SKU mapping or combo (create if unmapped).
   const openAddAlternative = (itemCode: string) => {
-    const qs = new URLSearchParams({ channel: CHANNEL, item: itemCode });
+    const qs = new URLSearchParams({ channel: channel, item: itemCode });
     navigate(`/marketplace/masters?${qs.toString()}`);
   };
   const [warehouseId, setWarehouseId] = useState<number | null>(null);
   // null = all sheets; a number scopes the whole page + cut to that sheet.
   const [batchId, setBatchId] = useState<number | null>(null);
-  const { data: sheetsData } = useDeliveryNoteSheets(CHANNEL);
+  const { data: sheetsData } = useDeliveryNoteSheets(channel);
   const dnSheets = sheetsData?.sheets ?? [];
   const [sheetSearch, setSheetSearch] = useState('');
   const [sheetRange, setSheetRange] = useState<MpRange>(EMPTY_RANGE);
@@ -276,11 +293,11 @@ export default function MpDeliveryNotesPage() {
     const q = sheetSearch.trim().toLowerCase();
     return !q || (s.filename || `#${s.id}`).toLowerCase().includes(q);
   });
-  const { data: summary, isLoading } = useDeliveryNoteSummary(CHANNEL, warehouseId, batchId);
-  const cut = useCutDeliveryNote(CHANNEL);
-  const reconcile = useReconcileDeliveryNotes(CHANNEL);
-  const { data: approval } = useAwaitingApprovalCount(CHANNEL);
-  const { data: posted } = usePostedDeliveryNotes(CHANNEL);
+  const { data: summary, isLoading } = useDeliveryNoteSummary(channel, warehouseId, batchId);
+  const cut = useCutDeliveryNote(channel);
+  const reconcile = useReconcileDeliveryNotes(channel);
+  const { data: approval } = useAwaitingApprovalCount(channel);
+  const { data: posted } = usePostedDeliveryNotes(channel);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shortfallOpen, setShortfallOpen] = useState(false);
@@ -398,7 +415,7 @@ export default function MpDeliveryNotesPage() {
             Cut one SAP delivery note for all confirmed dispatches awaiting one.
           </p>
         </div>
-        <MpChannelSelect value={CHANNEL} onChange={() => {}} />
+        <MpChannelSelect value={channel} onChange={setChannel} />
       </header>
 
       {/* Sheet scope — post the delivery note per sheet, or all sheets together */}
@@ -773,9 +790,19 @@ export default function MpDeliveryNotesPage() {
                               {n.dispatch_count} order{n.dispatch_count === 1 ? '' : 's'}
                             </span>
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            {n.sap?.doc_date ? String(n.sap.doc_date).slice(0, 10) : (n.posted_at ?? '').slice(0, 10)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {n.sap?.doc_date ? String(n.sap.doc_date).slice(0, 10) : (n.posted_at ?? '').slice(0, 10)}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => downloadDnCsv(n.doc_entry)}
+                              title="Download this delivery note's items as CSV"
+                            >
+                              <Download className="mr-1.5 h-3.5 w-3.5" /> CSV
+                            </Button>
+                          </div>
                         </div>
 
                         <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
