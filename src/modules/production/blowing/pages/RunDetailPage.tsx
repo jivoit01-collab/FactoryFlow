@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, CheckCircle2, Loader2, Play, Plus, Send, Warehouse } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Loader2, Play, Plus, Send, Warehouse } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -12,6 +12,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -25,6 +28,7 @@ import {
   SelectValue,
   Textarea,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import {
   useAddBreakdown,
@@ -86,6 +90,53 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{value}</span>
     </div>
+  );
+}
+
+const num = (v: string | number | null | undefined) => Number(v ?? 0);
+
+/** A single line inside a cost dropdown: name + how-it's-worked-out hint + amount. */
+function CostLine({ label, hint, value }: { label: string; hint?: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between py-1 text-sm">
+      <span>
+        <span className="text-muted-foreground">{label}</span>
+        {hint && <span className="block text-xs text-muted-foreground/70">{hint}</span>}
+      </span>
+      <span className="whitespace-nowrap font-medium">{value}</span>
+    </div>
+  );
+}
+
+/** A collapsible cost bucket: click the header to reveal how the total was built up. */
+function CostGroup({
+  title,
+  subtitle,
+  total,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  total: string | number | null | undefined;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="border-b">
+      <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-left text-sm">
+        <span className="flex items-center gap-1.5">
+          <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-90')} />
+          <span>
+            <span className="font-medium">{title}</span>
+            {subtitle && <span className="block text-xs text-muted-foreground">{subtitle}</span>}
+          </span>
+        </span>
+        <span className="font-semibold">₹ {fmt(total)}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pb-1 pl-6">{children}</CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -285,18 +336,103 @@ function RunDetailPage() {
               <Row label="Total production" value={fmt(run.total_counter_production, 0)} />
               <Row label="Rejection" value={`${fmt(run.rejection_pcs, 0)} (${fmt(run.rejection_pct)}%)`} />
               <Row label="Good bottles" value={fmt(cost.good_bottles, 0)} />
-              <Row label="Total units" value={fmt(run.total_units, 2)} />
+              <Row label="Electricity units" value={fmt(run.total_units, 2)} />
               <Row label="Manpower (op/con/own)" value={`${run.operator_count}/${run.contract_labour_count}/${run.own_labour_count}`} />
             </CardContent>
           </Card>
           <Card className="border-primary/40">
-            <CardHeader><CardTitle className="text-base">Cost</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">What it costs to make these bottles</CardTitle>
+              <p className="text-xs text-muted-foreground">Tap a line to see how the number is worked out.</p>
+            </CardHeader>
             <CardContent>
-              <Row label="Preform / resin" value={`₹ ${fmt(cost.preform_cost)}`} />
-              <Row label="Variable total" value={`₹ ${fmt(cost.variable_cost_total)}`} />
-              <Row label="Fixed total" value={`₹ ${fmt(cost.fixed_cost_total)}`} />
-              <Row label="Fully-loaded" value={<span className="font-semibold">₹ {fmt(cost.fully_loaded_cost)}</span>} />
-              <Row label="Make cost / bottle" value={<span className="text-lg font-bold text-primary">₹ {fmt(cost.make_cost_per_bottle, 4)}</span>} />
+              {/* Running (variable) cost — resin now lives inside here, not as a separate line */}
+              <CostGroup
+                title="Running cost"
+                subtitle="Goes up the more bottles you make"
+                total={cost.variable_cost_total}
+                defaultOpen
+              >
+                <CostLine
+                  label="Preform / resin"
+                  hint={`${fmt(num(run.preform_used_g) / 1000, 2)} kg × ₹${fmt(run.preform_rate_per_kg)}/kg`}
+                  value={`₹ ${fmt(cost.preform_cost)}`}
+                />
+                <CostLine
+                  label="Electricity"
+                  hint={`${fmt(run.total_units, 2)} units × ₹${fmt(run.electricity_rate_per_unit)}/unit`}
+                  value={`₹ ${fmt(cost.electricity_cost)}`}
+                />
+                {num(cost.mould_amortization) > 0 && (
+                  <CostLine label="Mould wear" value={`₹ ${fmt(cost.mould_amortization)}`} />
+                )}
+                <CostLine
+                  label="Packing"
+                  hint={`${fmt(cost.good_bottles, 0)} bottles × ₹${fmt(run.packing_rate_per_bottle)}/bottle`}
+                  value={`₹ ${fmt(
+                    num(cost.variable_cost_total) -
+                      num(cost.preform_cost) -
+                      num(cost.electricity_cost) -
+                      num(cost.mould_amortization),
+                  )}`}
+                />
+              </CostGroup>
+
+              {/* Fixed cost */}
+              <CostGroup
+                title="Fixed cost"
+                subtitle="Same for the day, however many bottles you make"
+                total={cost.fixed_cost_total}
+              >
+                <CostLine
+                  label="Operators"
+                  hint={`${run.operator_count} × ₹${fmt(run.operator_rate_per_day)}/day`}
+                  value={`₹ ${fmt(cost.operator_cost)}`}
+                />
+                <CostLine
+                  label="Labour (contract + own)"
+                  hint={`${run.contract_labour_count + run.own_labour_count} × ₹${fmt(run.labour_rate_per_day)}/day`}
+                  value={`₹ ${fmt(cost.labour_cost)}`}
+                />
+                {num(cost.machine_depreciation) > 0 && (
+                  <CostLine label="Machine depreciation" value={`₹ ${fmt(cost.machine_depreciation)}`} />
+                )}
+                {num(cost.maintenance_cost) > 0 && (
+                  <CostLine label="Maintenance" value={`₹ ${fmt(cost.maintenance_cost)}`} />
+                )}
+                {num(cost.overhead_cost) > 0 && (
+                  <CostLine label="Factory overhead" value={`₹ ${fmt(cost.overhead_cost)}`} />
+                )}
+                {num(cost.qa_cost) > 0 && (
+                  <CostLine label="Quality check" value={`₹ ${fmt(cost.qa_cost)}`} />
+                )}
+              </CostGroup>
+
+              {/* Scrap recovery reduces the cost */}
+              {num(cost.scrap_total) > 0 && (
+                <div className="border-b">
+                  <CostLine
+                    label="Less: scrap recovery"
+                    hint={`${fmt(run.rejection_pcs, 0)} rejected bottles sold as scrap`}
+                    value={`− ₹ ${fmt(cost.scrap_total)}`}
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-between py-2 text-sm">
+                <span className="font-medium">Total cost for this run</span>
+                <span className="font-semibold">₹ {fmt(cost.fully_loaded_cost)}</span>
+              </div>
+
+              <div className="mt-1 flex items-center justify-between rounded-md bg-primary/5 px-3 py-2">
+                <span>
+                  <span className="font-medium">Cost per good bottle</span>
+                  <span className="block text-xs text-muted-foreground">
+                    ₹ {fmt(cost.fully_loaded_cost)} ÷ {fmt(cost.good_bottles, 0)} good bottles
+                  </span>
+                </span>
+                <span className="text-lg font-bold text-primary">₹ {fmt(cost.make_cost_per_bottle, 2)}</span>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -479,9 +615,16 @@ function RunDetailPage() {
               <div><Label>Operators</Label><Input type="number" {...completeForm.register('operator_count')} /></div>
               <div><Label>Contract labour</Label><Input type="number" {...completeForm.register('contract_labour_count')} /></div>
               <div><Label>Own labour</Label><Input type="number" {...completeForm.register('own_labour_count')} /></div>
-              <div><Label>Utility units</Label><Input type="number" step="0.0001" {...completeForm.register('utility_units')} /></div>
               <div><Label>Machine start reading</Label><Input type="number" step="0.0001" {...completeForm.register('machine_start_reading')} /></div>
               <div><Label>Machine stop reading</Label><Input type="number" step="0.0001" {...completeForm.register('machine_stop_reading')} /></div>
+              <div className="col-span-2">
+                <Label>Extra utility units (optional)</Label>
+                <Input type="number" step="0.0001" placeholder="0" {...completeForm.register('utility_units')} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  The machine start/stop readings already cover the machine's electricity. Leave this 0 unless a
+                  separate utility sub-meter (e.g. compressor) is being added — do not re-enter the machine units here.
+                </p>
+              </div>
               <div><Label>Carton scrap (₹)</Label><Input type="number" step="0.01" {...completeForm.register('scrap_carton_value')} /></div>
             </div>
             <div className="flex justify-end gap-2">
