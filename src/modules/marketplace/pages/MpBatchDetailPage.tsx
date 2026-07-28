@@ -32,7 +32,7 @@ import {
   useUpsertSkuMapping,
 } from '../api/marketplace.queries';
 import { MpFlowSteps } from '../components/MpFlowSteps';
-import type { StockListLine } from '../types/marketplace.types';
+import type { MarketplaceChannel, StockListLine } from '../types/marketplace.types';
 
 export default function MpBatchDetailPage() {
   const { batchId } = useParams();
@@ -249,7 +249,7 @@ export default function MpBatchDetailPage() {
       </Card>
 
       {resolveSku && (
-        <ResolveDialog sku={resolveSku} onClose={() => setResolveSku(null)} />
+        <ResolveDialog sku={resolveSku} channel={batch?.channel ?? 'FLIPKART'} onClose={() => setResolveSku(null)} />
       )}
     </div>
   );
@@ -281,8 +281,8 @@ function StockRows({ lines, label }: { lines: StockListLine[]; label: string }) 
   );
 }
 
-function ResolveDialog({ sku, onClose }: { sku: string; onClose: () => void }) {
-  const { data: combos = [] } = useCombos('FLIPKART');
+function ResolveDialog({ sku, channel, onClose }: { sku: string; channel: MarketplaceChannel; onClose: () => void }) {
+  const { data: combos = [] } = useCombos(channel);
   const upsert = useUpsertSkuMapping();
   const [type, setType] = useState<'RAW' | 'COMBO'>('RAW');
   const [fgCode, setFgCode] = useState('');
@@ -299,7 +299,7 @@ function ResolveDialog({ sku, onClose }: { sku: string; onClose: () => void }) {
     }
     upsert.mutate(
       {
-        channel: 'FLIPKART',
+        channel,
         marketplace_sku: sku,
         sku_type: type,
         fg_item_code: type === 'RAW' ? fgCode.trim() : '',

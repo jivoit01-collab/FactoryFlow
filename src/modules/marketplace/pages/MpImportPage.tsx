@@ -22,13 +22,15 @@ import {
 } from '@/shared/components/ui';
 
 import { useBatches, useImportOrders, useImportPreview } from '../api/marketplace.queries';
+import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpFlowSteps } from '../components/MpFlowSteps';
-import type { ImportPreview, OrderImportBatch } from '../types/marketplace.types';
+import type { ImportPreview, MarketplaceChannel, OrderImportBatch } from '../types/marketplace.types';
 
 export default function MpImportPage() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<{ name: string; text: string; rows: number } | null>(null);
+  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [file, setFile] = useState<{ name: string; file: File; rows: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [ack, setAck] = useState(false);
@@ -36,7 +38,7 @@ export default function MpImportPage() {
 
   const previewMut = useImportPreview();
   const importMut = useImportOrders();
-  const { data: batches = [] } = useBatches('FLIPKART');
+  const { data: batches = [] } = useBatches(channel);
 
   function reset() {
     setPreview(null);
@@ -45,20 +47,27 @@ export default function MpImportPage() {
   }
 
   async function readFile(f: File) {
-    if (!/\.csv$/i.test(f.name)) {
-      toast.error('Please choose a .csv file exported from Flipkart.');
+    const isCsv = /\.csv$/i.test(f.name);
+    const isXlsx = /\.xlsx$/i.test(f.name);
+    if (!isCsv && !isXlsx) {
+      toast.error('Choose a .csv or .xlsx sheet.');
       return;
     }
-    const text = await f.text();
-    const rows = Math.max(0, text.trim().split(/\r?\n/).length - 1);
-    setFile({ name: f.name, text, rows });
+    // Only CSV can be line-counted in the browser; the server reports the real
+    // counts either way (xlsx is sent as-is).
+    let rows = 0;
+    if (isCsv) {
+      const text = await f.text();
+      rows = Math.max(0, text.trim().split(/\r?\n/).length - 1);
+    }
+    setFile({ name: f.name, file: f, rows });
     reset();
   }
 
   function analyze() {
     if (!file) return;
     previewMut.mutate(
-      { text: file.text, filename: file.name },
+      { file: file.file, channel },
       {
         onSuccess: (p) => setPreview(p),
         onError: (e: unknown) =>
@@ -70,7 +79,7 @@ export default function MpImportPage() {
   function runImport(skipDuplicates: boolean) {
     if (!file) return;
     importMut.mutate(
-      { text: file.text, filename: file.name, skip_duplicates: skipDuplicates },
+      { file: file.file, channel, skip_duplicates: skipDuplicates },
       {
         onSuccess: (batch) => {
           setResult(batch);
@@ -86,9 +95,17 @@ export default function MpImportPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Import Flipkart Orders</h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-2xl font-semibold">Import {channel === 'AMAZON' ? 'Amazon' : 'Flipkart'} Orders</h1>
+          <MpChannelSelect
+            value={channel}
+            onChange={(c) => { setChannel(c); setFile(null); reset(); }}
+            disabled={previewMut.isPending || importMut.isPending}
+          />
+        </div>
         <p className="text-sm text-muted-foreground">
-          Upload the Flipkart order sheet. We check for duplicates before importing.
+          Upload the {channel === 'AMAZON' ? 'Amazon' : 'Flipkart'} order sheet. We check for
+          duplicates before importing. Flipkart and Amazon are kept completely separate.
         </p>
         <MpFlowSteps current={1} />
       </header>
@@ -96,7 +113,11 @@ export default function MpImportPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">1 · Choose order sheet</CardTitle>
-          <CardDescription>CSV exported from the Flipkart Seller portal.</CardDescription>
+          <CardDescription>
+            {channel === 'AMAZON'
+              ? 'Amazon order report — .xlsx or .csv (Merchant Tax Report).'
+              : 'CSV exported from the Flipkart Seller portal.'}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div
@@ -122,13 +143,19 @@ export default function MpImportPage() {
           >
             <Upload className="h-8 w-8 text-muted-foreground" />
             <div className="text-sm font-medium">
-              {file ? file.name : 'Drop the CSV here, or click to choose'}
+              {file
+                ? file.name
+                : channel === 'AMAZON'
+                  ? 'Drop the .xlsx / .csv here, or click to choose'
+                  : 'Drop the CSV here, or click to choose'}
             </div>
-            {file && <div className="text-xs text-muted-foreground">{file.rows} order rows</div>}
+            {file && file.rows > 0 && (
+              <div className="text-xs text-muted-foreground">{file.rows} order rows</div>
+            )}
             <input
               ref={inputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];

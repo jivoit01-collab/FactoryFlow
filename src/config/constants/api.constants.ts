@@ -996,6 +996,8 @@ export const API_ENDPOINTS = {
     DELIVERY_NOTE_CUT: '/marketplace/delivery-notes/cut/',
     DELIVERY_NOTE_RECONCILE: '/marketplace/delivery-notes/reconcile/',
     DELIVERY_NOTE_POSTED: '/marketplace/delivery-notes/posted/',
+    DELIVERY_NOTE_EXPORT: (docEntry: number) =>
+      `/marketplace/delivery-notes/${docEntry}/export.csv`,
     WAREHOUSES: '/marketplace/warehouses/',
     WAREHOUSE_BY_ID: (id: number) => `/marketplace/warehouses/${id}/`,
     SKU_MAPPINGS: '/marketplace/sku-mappings/',

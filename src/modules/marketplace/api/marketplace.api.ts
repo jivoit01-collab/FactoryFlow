@@ -16,7 +16,7 @@ import type {
   DispatchCreateRequest,
   DispatchListParams,
   DispatchSheetSummary,
-  ImportOrdersRequest,
+  ImportSheetRequest,
   ImportPreview,
   LineVariant,
   MarketplaceChannel,
@@ -239,6 +239,17 @@ export const marketplaceApi = {
     );
     return data;
   },
+  async exportDeliveryNoteCsv(
+    docEntry: number, channel: MarketplaceChannel,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const resp = await apiClient.get<Blob>(
+      `${EP.DELIVERY_NOTE_EXPORT(docEntry)}${buildQuery({ channel })}`,
+      { responseType: 'blob' },
+    );
+    const cd = String(resp.headers?.['content-disposition'] ?? '');
+    const match = /filename="?([^";]+)"?/.exec(cd);
+    return { blob: resp.data, filename: match?.[1] ?? `delivery-note-${docEntry}.csv` };
+  },
   async batchVariants(batchId: number): Promise<{ orders: OrderVariants[] }> {
     const { data } = await apiClient.get<{ orders: OrderVariants[] }>(EP.BATCH_VARIANTS(batchId));
     return data;
@@ -352,12 +363,27 @@ export const marketplaceApi = {
   },
 
   // ── Sheet import + warehouse issue ──────────────────────────────────────────
-  async importPreview(payload: ImportOrdersRequest): Promise<ImportPreview> {
-    const { data } = await apiClient.post<ImportPreview>(EP.ORDER_IMPORT_PREVIEW, payload);
+  async importPreview(payload: ImportSheetRequest): Promise<ImportPreview> {
+    const form = new FormData();
+    form.append('file', payload.file);
+    form.append('channel', payload.channel);
+    const { data } = await apiClient.post<ImportPreview>(
+      `${EP.ORDER_IMPORT_PREVIEW}${buildQuery({ channel: payload.channel })}`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
     return data;
   },
-  async importOrders(payload: ImportOrdersRequest): Promise<OrderImportBatch> {
-    const { data } = await apiClient.post<OrderImportBatch>(EP.ORDER_IMPORT, payload);
+  async importOrders(payload: ImportSheetRequest): Promise<OrderImportBatch> {
+    const form = new FormData();
+    form.append('file', payload.file);
+    form.append('channel', payload.channel);
+    if (payload.skip_duplicates) form.append('skip_duplicates', 'true');
+    const { data } = await apiClient.post<OrderImportBatch>(
+      `${EP.ORDER_IMPORT}${buildQuery({ channel: payload.channel })}`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
     return data;
   },
   async batches(channel?: MarketplaceChannel): Promise<OrderImportBatch[]> {
@@ -460,15 +486,19 @@ export const marketplaceApi = {
     );
     return data;
   },
-  async packScan(barcode: string): Promise<MarketplacePacking & { already_packed: boolean }> {
+  async packScan(
+    barcode: string, channel: MarketplaceChannel = 'FLIPKART',
+  ): Promise<MarketplacePacking & { already_packed: boolean }> {
     const { data } = await apiClient.post<MarketplacePacking & { already_packed: boolean }>(
       EP.PACKING_SCAN,
-      { barcode },
+      { barcode, channel },
     );
     return data;
   },
-  async openPacking(orderId: string): Promise<MarketplacePacking> {
-    const { data } = await apiClient.post<MarketplacePacking>(EP.PACKING_OPEN, { order_id: orderId });
+  async openPacking(orderId: string, channel: MarketplaceChannel = 'FLIPKART'): Promise<MarketplacePacking> {
+    const { data } = await apiClient.post<MarketplacePacking>(
+      EP.PACKING_OPEN, { order_id: orderId, channel },
+    );
     return data;
   },
   async packing(id: number): Promise<MarketplacePacking> {
