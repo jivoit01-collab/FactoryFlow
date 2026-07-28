@@ -27,13 +27,13 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { useCompleteItemGroup, usePackingSummary } from '../api/marketplace.queries';
-import type { PackingSummaryItem } from '../types/marketplace.types';
-
-const CHANNEL = 'FLIPKART' as const;
+import { MpChannelSelect } from '../components/MpChannelSelect';
+import type { MarketplaceChannel, PackingSummaryItem } from '../types/marketplace.types';
 
 export default function MpPackingPage() {
-  const { data: summary, isLoading } = usePackingSummary(CHANNEL);
-  const complete = useCompleteItemGroup(CHANNEL);
+  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const { data: summary, isLoading } = usePackingSummary(channel);
+  const complete = useCompleteItemGroup(channel);
   const [confirmItem, setConfirmItem] = useState<PackingSummaryItem | null>(null);
 
   const items = summary?.items ?? [];
@@ -60,7 +60,10 @@ export default function MpPackingPage() {
       <header className="flex items-center gap-3">
         <Boxes className="h-7 w-7 text-primary" />
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Packing</h1>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">Packing</h1>
+            <MpChannelSelect value={channel} onChange={setChannel} />
+          </div>
           <p className="text-sm text-muted-foreground">
             Pack by item. Mark an item group Completed once its orders are packed — they then move to
             Outward.

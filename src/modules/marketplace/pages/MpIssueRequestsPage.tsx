@@ -1,4 +1,5 @@
 /** Step 4 — list of warehouse issue requests raised from imported sheets. */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -11,9 +12,10 @@ import {
 } from '@/shared/components/ui';
 
 import { useIssueRequests, useWarehouseInsights } from '../api/marketplace.queries';
+import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpFlowSteps } from '../components/MpFlowSteps';
 import { WarehouseInsightsPanel } from '../components/WarehouseInsightsPanel';
-import type { MpIssueStatus } from '../types/marketplace.types';
+import type { MarketplaceChannel, MpIssueStatus } from '../types/marketplace.types';
 
 const STATUS_TONE: Record<MpIssueStatus, string> = {
   DRAFT: 'outline',
@@ -27,13 +29,17 @@ const STATUS_TONE: Record<MpIssueStatus, string> = {
 
 export default function MpIssueRequestsPage() {
   const navigate = useNavigate();
-  const { data: requests = [], isLoading } = useIssueRequests('FLIPKART');
-  const { data: insights } = useWarehouseInsights('FLIPKART');
+  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const { data: requests = [], isLoading } = useIssueRequests(channel);
+  const { data: insights } = useWarehouseInsights(channel);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Warehouse Issue Requests</h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-2xl font-semibold">Warehouse Issue Requests</h1>
+          <MpChannelSelect value={channel} onChange={setChannel} />
+        </div>
         <p className="text-sm text-muted-foreground">
           Approve, issue and receive the material the warehouse hands to packing.
         </p>

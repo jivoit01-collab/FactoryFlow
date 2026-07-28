@@ -742,6 +742,13 @@ export interface ImportOrdersRequest {
   skip_duplicates?: boolean;
 }
 
+/** Multipart sheet upload (CSV or .xlsx) for a specific channel. */
+export interface ImportSheetRequest {
+  file: File;
+  channel: MarketplaceChannel;
+  skip_duplicates?: boolean;
+}
+
 export interface ImportPreview {
   row_count: number;
   total_orders: number;

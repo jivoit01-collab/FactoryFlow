@@ -1,5 +1,3 @@
-import { Badge } from '@/shared/components/ui';
-
 import type { MarketplaceChannel } from '../types/marketplace.types';
 
 interface Props {
@@ -8,16 +6,35 @@ interface Props {
   disabled?: boolean;
 }
 
+const CHANNELS: { value: MarketplaceChannel; label: string }[] = [
+  { value: 'FLIPKART', label: 'Flipkart' },
+  { value: 'AMAZON', label: 'Amazon' },
+];
+
 /**
- * Channel indicator. Amazon is parked for now — the marketplace flow is
- * Flipkart-only, so this shows a static "Flipkart" chip instead of a toggle.
- * (Kept as a component, and pages still default their channel state to
- * 'FLIPKART', so re-enabling Amazon later is a one-file change.)
+ * Flipkart / Amazon channel toggle. The whole marketplace module is channel-scoped,
+ * so switching here shows that channel's sheets, orders, mappings, warehouses and
+ * settings — the two channels never share data.
  */
-export function MpChannelSelect(_props: Props) {
+export function MpChannelSelect({ value, onChange, disabled }: Props) {
   return (
-    <Badge variant="outline" className="h-8 px-3 text-sm font-medium">
-      Flipkart
-    </Badge>
+    <div className="inline-flex rounded-lg border p-0.5">
+      {CHANNELS.map((c) => (
+        <button
+          key={c.value}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(c.value)}
+          className={`rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:opacity-50 ${
+            value === c.value
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:bg-muted'
+          }`}
+          aria-pressed={value === c.value}
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
   );
 }

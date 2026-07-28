@@ -6,7 +6,7 @@ import type {
   ConfirmRequest,
   DispatchCreateRequest,
   DispatchListParams,
-  ImportOrdersRequest,
+  ImportSheetRequest,
   MarketplaceChannel,
   MarketplaceWarehouseUpsert,
   MpReturnCondition,
@@ -413,14 +413,14 @@ export function useSkipUnmappedOrders(id: number) {
 
 export function useImportPreview() {
   return useMutation({
-    mutationFn: (payload: ImportOrdersRequest) => marketplaceApi.importPreview(payload),
+    mutationFn: (payload: ImportSheetRequest) => marketplaceApi.importPreview(payload),
   });
 }
 
 export function useImportOrders() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: ImportOrdersRequest) => marketplaceApi.importOrders(payload),
+    mutationFn: (payload: ImportSheetRequest) => marketplaceApi.importOrders(payload),
     onSuccess: () => invalidateMarketplace(qc),
   });
 }

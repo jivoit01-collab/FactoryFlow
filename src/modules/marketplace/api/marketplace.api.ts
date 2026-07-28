@@ -16,7 +16,7 @@ import type {
   DispatchCreateRequest,
   DispatchListParams,
   DispatchSheetSummary,
-  ImportOrdersRequest,
+  ImportSheetRequest,
   ImportPreview,
   LineVariant,
   MarketplaceChannel,
@@ -352,12 +352,27 @@ export const marketplaceApi = {
   },
 
   // ── Sheet import + warehouse issue ──────────────────────────────────────────
-  async importPreview(payload: ImportOrdersRequest): Promise<ImportPreview> {
-    const { data } = await apiClient.post<ImportPreview>(EP.ORDER_IMPORT_PREVIEW, payload);
+  async importPreview(payload: ImportSheetRequest): Promise<ImportPreview> {
+    const form = new FormData();
+    form.append('file', payload.file);
+    form.append('channel', payload.channel);
+    const { data } = await apiClient.post<ImportPreview>(
+      `${EP.ORDER_IMPORT_PREVIEW}${buildQuery({ channel: payload.channel })}`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
     return data;
   },
-  async importOrders(payload: ImportOrdersRequest): Promise<OrderImportBatch> {
-    const { data } = await apiClient.post<OrderImportBatch>(EP.ORDER_IMPORT, payload);
+  async importOrders(payload: ImportSheetRequest): Promise<OrderImportBatch> {
+    const form = new FormData();
+    form.append('file', payload.file);
+    form.append('channel', payload.channel);
+    if (payload.skip_duplicates) form.append('skip_duplicates', 'true');
+    const { data } = await apiClient.post<OrderImportBatch>(
+      `${EP.ORDER_IMPORT}${buildQuery({ channel: payload.channel })}`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
     return data;
   },
   async batches(channel?: MarketplaceChannel): Promise<OrderImportBatch[]> {
