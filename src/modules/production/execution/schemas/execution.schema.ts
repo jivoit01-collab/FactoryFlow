@@ -74,6 +74,50 @@ export const stopProductionSchema = z.object({
 export type StopProductionFormData = z.infer<typeof stopProductionSchema>;
 
 // ============================================================================
+// Manual (backfill) Entries — user supplies start & end time
+// ============================================================================
+
+export const addManualSegmentSchema = z
+  .object({
+    start_time: z.string().min(1, 'Start time is required'),
+    end_time: z.string().min(1, 'End time is required'),
+    produced_cases: z.string().optional().default('0'),
+    remarks: z.string().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.start_time && val.end_time && new Date(val.end_time) <= new Date(val.start_time)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['end_time'],
+        message: 'End time must be after start time.',
+      });
+    }
+  });
+
+export type AddManualSegmentFormData = z.infer<typeof addManualSegmentSchema>;
+
+export const addManualBreakdownSchema = z
+  .object({
+    start_time: z.string().min(1, 'Start time is required'),
+    end_time: z.string().min(1, 'End time is required'),
+    breakdown_category_id: z.number({ required_error: 'Breakdown type is required' }),
+    machine_id: z.number().nullable().optional(),
+    reason: z.string().min(1, 'Reason is required'),
+    remarks: z.string().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.start_time && val.end_time && new Date(val.end_time) <= new Date(val.start_time)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['end_time'],
+        message: 'End time must be after start time.',
+      });
+    }
+  });
+
+export type AddManualBreakdownFormData = z.infer<typeof addManualBreakdownSchema>;
+
+// ============================================================================
 // Complete Run Schema
 // ============================================================================
 

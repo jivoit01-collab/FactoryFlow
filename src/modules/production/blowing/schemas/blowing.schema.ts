@@ -83,6 +83,47 @@ export const addBreakdownSchema = z.object({
 export type AddBreakdownFormData = z.infer<typeof addBreakdownSchema>;
 export type AddBreakdownFormInput = z.input<typeof addBreakdownSchema>;
 
+// Manual (backfill) entries — user supplies explicit start & end time.
+export const addManualSegmentSchema = z
+  .object({
+    start_time: z.string().min(1, 'Start time is required'),
+    end_time: z.string().min(1, 'End time is required'),
+    produced_pcs: z.coerce.number().min(0).default(0),
+    remarks: z.string().optional().default(''),
+  })
+  .superRefine((val, ctx) => {
+    if (val.start_time && val.end_time && new Date(val.end_time) <= new Date(val.start_time)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['end_time'],
+        message: 'End time must be after start time.',
+      });
+    }
+  });
+export type AddManualSegmentFormData = z.infer<typeof addManualSegmentSchema>;
+export type AddManualSegmentFormInput = z.input<typeof addManualSegmentSchema>;
+
+export const addManualBreakdownSchema = z
+  .object({
+    start_time: z.string().min(1, 'Start time is required'),
+    end_time: z.string().min(1, 'End time is required'),
+    breakdown_category_id: optionalNumber,
+    machine_id: optionalNumber,
+    reason: z.string().min(1, 'Reason is required'),
+    remarks: z.string().optional().default(''),
+  })
+  .superRefine((val, ctx) => {
+    if (val.start_time && val.end_time && new Date(val.end_time) <= new Date(val.start_time)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['end_time'],
+        message: 'End time must be after start time.',
+      });
+    }
+  });
+export type AddManualBreakdownFormData = z.infer<typeof addManualBreakdownSchema>;
+export type AddManualBreakdownFormInput = z.input<typeof addManualBreakdownSchema>;
+
 export const completeRunSchema = z.object({
   total_counter_production: z.coerce.number().int().min(1, 'Total production is required'),
   rejection_pcs: z.coerce.number().int().min(0).default(0),

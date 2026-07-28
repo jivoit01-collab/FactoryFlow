@@ -3,6 +3,8 @@ import { apiClient } from '@/core/api';
 
 import type {
   AddBreakdownRequest,
+  AddManualBreakdownRequest,
+  AddManualSegmentRequest,
   BlowingAuditLog,
   BlowingBreakdown,
   BlowingBreakdownCategory,
@@ -127,6 +129,14 @@ export const blowingApi = {
   },
   async addBreakdown(runId: number, data: AddBreakdownRequest): Promise<BlowingBreakdown> {
     const res = await apiClient.post<BlowingBreakdown>(EP.ADD_BREAKDOWN(runId), data);
+    return res.data;
+  },
+  async addManualSegment(runId: number, data: AddManualSegmentRequest): Promise<BlowingSegment> {
+    const res = await apiClient.post<BlowingSegment>(EP.ADD_MANUAL_SEGMENT(runId), data);
+    return res.data;
+  },
+  async addManualBreakdown(runId: number, data: AddManualBreakdownRequest): Promise<BlowingBreakdown> {
+    const res = await apiClient.post<BlowingBreakdown>(EP.ADD_MANUAL_BREAKDOWN(runId), data);
     return res.data;
   },
   async resolveBreakdown(runId: number, breakdownId: number, data: ResolveBreakdownRequest): Promise<BlowingBreakdown> {

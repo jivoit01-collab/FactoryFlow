@@ -818,6 +818,22 @@ export interface StopProductionRequest {
   remarks?: string;
 }
 
+export interface AddManualSegmentRequest {
+  start_time: string;
+  end_time: string;
+  produced_cases?: string;
+  remarks?: string;
+}
+
+export interface AddManualBreakdownRequest {
+  start_time: string;
+  end_time: string;
+  breakdown_category_id: number;
+  machine_id?: number | null;
+  reason: string;
+  remarks?: string;
+}
+
 export interface CompleteRunRequest {
   total_production: string;
 }

@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   AddBreakdownRequest,
+  AddManualBreakdownRequest,
+  AddManualSegmentRequest,
   AnalyticsParams,
   ApproveClearanceRequest,
   BulkChecklistRequest,
@@ -376,6 +378,28 @@ export function useAddBreakdown(runId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: AddBreakdownRequest) => executionApi.addBreakdown(runId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });
+    },
+  });
+}
+
+export function useAddManualSegment(runId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddManualSegmentRequest) => executionApi.addManualSegment(runId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
+      queryClient.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });
+    },
+  });
+}
+
+export function useAddManualBreakdown(runId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddManualBreakdownRequest) => executionApi.addManualBreakdown(runId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: EXECUTION_QUERY_KEYS.runDetail(runId) });
       queryClient.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'runs'] });

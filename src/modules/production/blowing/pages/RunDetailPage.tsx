@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, CheckCircle2, Loader2, Play, Send, Warehouse } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Play, Plus, Send, Warehouse } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -25,8 +25,11 @@ import {
   SelectValue,
   Textarea,
 } from '@/shared/components/ui';
+
 import {
   useAddBreakdown,
+  useAddManualBreakdown,
+  useAddManualSegment,
   useBreakdownCategories,
   useCompleteRun,
   useMachines,
@@ -41,6 +44,12 @@ import {
   type AddBreakdownFormData,
   type AddBreakdownFormInput,
   addBreakdownSchema,
+  type AddManualBreakdownFormData,
+  type AddManualBreakdownFormInput,
+  addManualBreakdownSchema,
+  type AddManualSegmentFormData,
+  type AddManualSegmentFormInput,
+  addManualSegmentSchema,
   type CompleteRunFormData,
   type CompleteRunFormInput,
   completeRunSchema,
@@ -91,6 +100,8 @@ function RunDetailPage() {
   const startProduction = useStartProduction(runIdNum);
   const stopProduction = useStopProduction(runIdNum);
   const addBreakdown = useAddBreakdown(runIdNum);
+  const addManualSegment = useAddManualSegment(runIdNum);
+  const addManualBreakdown = useAddManualBreakdown(runIdNum);
   const resolveBreakdown = useResolveBreakdown(runIdNum);
   const submitPreform = useSubmitPreformRequest(runIdNum);
   const completeRun = useCompleteRun();
@@ -98,10 +109,14 @@ function RunDetailPage() {
   const [stopOpen, setStopOpen] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [manualSegmentOpen, setManualSegmentOpen] = useState(false);
+  const [manualBreakdownOpen, setManualBreakdownOpen] = useState(false);
 
   const stopForm = useForm<StopProductionFormInput, unknown, StopProductionFormData>({ resolver: zodResolver(stopProductionSchema) });
   const breakdownForm = useForm<AddBreakdownFormInput, unknown, AddBreakdownFormData>({ resolver: zodResolver(addBreakdownSchema) });
   const completeForm = useForm<CompleteRunFormInput, unknown, CompleteRunFormData>({ resolver: zodResolver(completeRunSchema) });
+  const manualSegmentForm = useForm<AddManualSegmentFormInput, unknown, AddManualSegmentFormData>({ resolver: zodResolver(addManualSegmentSchema) });
+  const manualBreakdownForm = useForm<AddManualBreakdownFormInput, unknown, AddManualBreakdownFormData>({ resolver: zodResolver(addManualBreakdownSchema) });
 
   if (isLoading || !run) {
     return <div className="p-6 text-muted-foreground">Loading…</div>;
@@ -142,6 +157,28 @@ function RunDetailPage() {
     await act(completeRun.mutateAsync({ id: runIdNum, data: d }), 'Run completed');
     setCompleteOpen(false);
   });
+  // datetime-local yields local wall-clock; convert to timezone-aware ISO.
+  const toIso = (localValue: string) => new Date(localValue).toISOString();
+  const onManualSegment = manualSegmentForm.handleSubmit(async (d) => {
+    await act(addManualSegment.mutateAsync({
+      start_time: toIso(d.start_time),
+      end_time: toIso(d.end_time),
+      produced_pcs: String(d.produced_pcs ?? 0),
+      remarks: d.remarks,
+    }), 'Running period added');
+    setManualSegmentOpen(false); manualSegmentForm.reset();
+  });
+  const onManualBreakdown = manualBreakdownForm.handleSubmit(async (d) => {
+    await act(addManualBreakdown.mutateAsync({
+      start_time: toIso(d.start_time),
+      end_time: toIso(d.end_time),
+      breakdown_category_id: d.breakdown_category_id ?? null,
+      machine_id: d.machine_id ?? null,
+      reason: d.reason,
+      remarks: d.remarks,
+    }), 'Breakdown added');
+    setManualBreakdownOpen(false); manualBreakdownForm.reset();
+  });
 
   const cost = run.cost;
 
@@ -174,6 +211,24 @@ function RunDetailPage() {
           >
             <Play className="mr-1 h-4 w-4" /> Start Production
           </Button>
+        )}
+        {!isCompleted && !hasActiveSegment && !hasActiveBreakdown && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => { manualSegmentForm.reset(); setManualSegmentOpen(true); }}
+              title="Log a completed running period with start & end time"
+            >
+              <Plus className="mr-1 h-4 w-4" /> Add Running
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => { manualBreakdownForm.reset(); setManualBreakdownOpen(true); }}
+              title="Log a past breakdown with start & end time"
+            >
+              <Plus className="mr-1 h-4 w-4" /> Add Past Breakdown
+            </Button>
+          </>
         )}
         {!isCompleted && (
           <Button
@@ -311,6 +366,97 @@ function RunDetailPage() {
               <Button type="button" variant="outline" onClick={() => setBreakdownOpen(false)}>Cancel</Button>
               <Button type="submit" variant="destructive" disabled={addBreakdown.isPending}>
                 {addBreakdown.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Log breakdown
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Running (manual backfill) dialog */}
+      <Dialog open={manualSegmentOpen} onOpenChange={setManualSegmentOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Running Period</DialogTitle></DialogHeader>
+          <form onSubmit={onManualSegment} className="space-y-4">
+            <p className="text-sm text-muted-foreground">Log a completed running period by entering its start and end time.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Start time</Label>
+                <Input type="datetime-local" {...manualSegmentForm.register('start_time')} />
+                {manualSegmentForm.formState.errors.start_time && <p className="text-sm text-red-500">{manualSegmentForm.formState.errors.start_time.message}</p>}
+              </div>
+              <div>
+                <Label>End time</Label>
+                <Input type="datetime-local" {...manualSegmentForm.register('end_time')} />
+                {manualSegmentForm.formState.errors.end_time && <p className="text-sm text-red-500">{manualSegmentForm.formState.errors.end_time.message}</p>}
+              </div>
+            </div>
+            <div>
+              <Label>Bottles produced in this running period</Label>
+              <Input type="number" step="1" {...manualSegmentForm.register('produced_pcs')} placeholder="0" />
+            </div>
+            <div>
+              <Label>Remarks</Label>
+              <Textarea {...manualSegmentForm.register('remarks')} placeholder="Optional" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setManualSegmentOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={addManualSegment.isPending}>
+                {addManualSegment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add Running
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Past Breakdown (manual backfill) dialog */}
+      <Dialog open={manualBreakdownOpen} onOpenChange={setManualBreakdownOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Past Breakdown</DialogTitle></DialogHeader>
+          <form onSubmit={onManualBreakdown} className="space-y-4">
+            <p className="text-sm text-muted-foreground">Log a breakdown that already ended by entering its start and end time.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Start time</Label>
+                <Input type="datetime-local" {...manualBreakdownForm.register('start_time')} />
+                {manualBreakdownForm.formState.errors.start_time && <p className="text-sm text-red-500">{manualBreakdownForm.formState.errors.start_time.message}</p>}
+              </div>
+              <div>
+                <Label>End time</Label>
+                <Input type="datetime-local" {...manualBreakdownForm.register('end_time')} />
+                {manualBreakdownForm.formState.errors.end_time && <p className="text-sm text-red-500">{manualBreakdownForm.formState.errors.end_time.message}</p>}
+              </div>
+            </div>
+            <div>
+              <Label>Category</Label>
+              <Select onValueChange={(v) => manualBreakdownForm.setValue('breakdown_category_id', Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Optional category" /></SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Machine (optional)</Label>
+              <Select onValueChange={(v) => manualBreakdownForm.setValue('machine_id', Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Line-level breakdown" /></SelectTrigger>
+                <SelectContent>
+                  {machines.map((m) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Reason</Label>
+              <Input {...manualBreakdownForm.register('reason')} placeholder="e.g. mould jam" />
+              {manualBreakdownForm.formState.errors.reason && <p className="text-sm text-red-500">{manualBreakdownForm.formState.errors.reason.message}</p>}
+            </div>
+            <div>
+              <Label>Remarks</Label>
+              <Textarea {...manualBreakdownForm.register('remarks')} placeholder="Optional" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setManualBreakdownOpen(false)}>Cancel</Button>
+              <Button type="submit" variant="destructive" disabled={addManualBreakdown.isPending}>
+                {addManualBreakdown.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add Breakdown
               </Button>
             </div>
           </form>

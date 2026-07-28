@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   AddBreakdownRequest,
+  AddManualBreakdownRequest,
+  AddManualSegmentRequest,
   CompleteRunRequest,
   CreateBreakdownCategoryRequest,
   CreateBuyPriceRequest,
@@ -193,6 +195,22 @@ export const useAddBreakdown = (runId: number) => {
   const invalidate = useRunActionInvalidate(runId);
   return useMutation({
     mutationFn: (data: AddBreakdownRequest) => blowingApi.addBreakdown(runId, data),
+    onSuccess: invalidate,
+  });
+};
+
+export const useAddManualSegment = (runId: number) => {
+  const invalidate = useRunActionInvalidate(runId);
+  return useMutation({
+    mutationFn: (data: AddManualSegmentRequest) => blowingApi.addManualSegment(runId, data),
+    onSuccess: invalidate,
+  });
+};
+
+export const useAddManualBreakdown = (runId: number) => {
+  const invalidate = useRunActionInvalidate(runId);
+  return useMutation({
+    mutationFn: (data: AddManualBreakdownRequest) => blowingApi.addManualBreakdown(runId, data),
     onSuccess: invalidate,
   });
 };

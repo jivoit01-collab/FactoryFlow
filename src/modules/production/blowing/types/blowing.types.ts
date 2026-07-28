@@ -51,6 +51,20 @@ export interface AddBreakdownRequest {
   produced_pcs?: string;
   remarks?: string;
 }
+export interface AddManualSegmentRequest {
+  start_time: string;
+  end_time: string;
+  produced_pcs?: string;
+  remarks?: string;
+}
+export interface AddManualBreakdownRequest {
+  start_time: string;
+  end_time: string;
+  breakdown_category_id?: number | null;
+  machine_id?: number | null;
+  reason: string;
+  remarks?: string;
+}
 export interface ResolveBreakdownRequest {
   action: 'start_production' | 'stop_production' | 'stop_unrecovered';
 }

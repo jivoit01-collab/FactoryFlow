@@ -40,6 +40,8 @@ import {
 
 import {
   useAddBreakdown,
+  useAddManualBreakdown,
+  useAddManualSegment,
   useBreakdownCategories,
   useCreateLabour,
   useCreateMaterial,
@@ -64,6 +66,10 @@ import { ProductionTimeline } from '../components/ProductionTimeline';
 import {
   type AddBreakdownFormData,
   addBreakdownSchema,
+  type AddManualBreakdownFormData,
+  addManualBreakdownSchema,
+  type AddManualSegmentFormData,
+  addManualSegmentSchema,
   type CreateLabourFormData,
   createLabourSchema,
   type CreateMaterialFormData,
@@ -176,6 +182,8 @@ function RunDetailPage() {
   const startProduction = useStartProduction(numRunId);
   const stopProduction = useStopProduction(numRunId);
   const addBreakdown = useAddBreakdown(numRunId);
+  const addManualSegment = useAddManualSegment(numRunId);
+  const addManualBreakdown = useAddManualBreakdown(numRunId);
   const resolveBreakdown = useResolveBreakdown(numRunId);
   const updateSegment = useUpdateSegment(numRunId);
   const updateBreakdownRemarks = useUpdateBreakdownRemarks(numRunId);
@@ -215,7 +223,7 @@ function RunDetailPage() {
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
-  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | 'labour' | 'fg-receipt' | null>(null);
+  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | 'labour' | 'fg-receipt' | 'manual-segment' | 'manual-breakdown' | null>(null);
   const [editingLabour, setEditingLabour] = useState<ResourceLabour | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<ProductionSegment | null>(null);
   const [selectedBreakdown, setSelectedBreakdown] = useState<MachineBreakdown | null>(null);
@@ -325,6 +333,70 @@ function RunDetailPage() {
       stopForm.reset();
     } catch {
       toast.error('Failed to stop production');
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Manual (backfill) entry forms — user supplies explicit start & end time
+  // ---------------------------------------------------------------------------
+  // datetime-local yields local wall-clock "YYYY-MM-DDTHH:mm"; convert to a
+  // timezone-aware ISO string for the backend DateTimeField.
+  const toIso = (localValue: string) => new Date(localValue).toISOString();
+
+  const manualSegmentForm = useForm<AddManualSegmentFormData>({
+    resolver: zodResolver(addManualSegmentSchema),
+    defaultValues: { start_time: '', end_time: '', produced_cases: '0', remarks: '' },
+  });
+  const openManualSegmentDialog = () => {
+    manualSegmentForm.reset({ start_time: '', end_time: '', produced_cases: '0', remarks: '' });
+    setDialog('manual-segment');
+  };
+  const onSubmitManualSegment = async (data: AddManualSegmentFormData) => {
+    try {
+      await addManualSegment.mutateAsync({
+        start_time: toIso(data.start_time),
+        end_time: toIso(data.end_time),
+        produced_cases: data.produced_cases,
+        remarks: data.remarks,
+      });
+      toast.success('Running period added');
+      setDialog(null);
+      manualSegmentForm.reset();
+    } catch {
+      /* interceptor surfaces the backend detail (e.g. overlap) */
+    }
+  };
+
+  const manualBreakdownForm = useForm<AddManualBreakdownFormData>({
+    resolver: zodResolver(addManualBreakdownSchema),
+    defaultValues: { start_time: '', end_time: '', reason: '', remarks: '' },
+  });
+  const openManualBreakdownDialog = () => {
+    const defaultMachineId = machineOptions.length === 1 ? machineOptions[0].id : undefined;
+    manualBreakdownForm.reset({
+      start_time: '',
+      end_time: '',
+      machine_id: defaultMachineId,
+      reason: '',
+      remarks: '',
+    });
+    setDialog('manual-breakdown');
+  };
+  const onSubmitManualBreakdown = async (data: AddManualBreakdownFormData) => {
+    try {
+      await addManualBreakdown.mutateAsync({
+        start_time: toIso(data.start_time),
+        end_time: toIso(data.end_time),
+        breakdown_category_id: data.breakdown_category_id,
+        machine_id: data.machine_id,
+        reason: data.reason,
+        remarks: data.remarks,
+      });
+      toast.success('Breakdown added');
+      setDialog(null);
+      manualBreakdownForm.reset();
+    } catch {
+      /* interceptor surfaces the backend detail (e.g. overlap) */
     }
   };
 
@@ -495,6 +567,26 @@ function RunDetailPage() {
             >
               <Play className="h-4 w-4 mr-1" /> Start Production
             </Button>
+          )}
+          {!isCompleted && !hasActiveSegment && !hasActiveBreakdown && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openManualSegmentDialog}
+                title="Log a completed running period with start & end time"
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add Running
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openManualBreakdownDialog}
+                title="Log a past breakdown with start & end time"
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add Past Breakdown
+              </Button>
+            </>
           )}
           {!isCompleted && run.warehouse_approval_status === 'NOT_REQUESTED' && (
             <Button
@@ -761,6 +853,114 @@ function RunDetailPage() {
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
               <Button type="submit" disabled={stopProduction.isPending}>{stopProduction.isPending ? 'Stopping...' : 'Stop Production'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Running (manual backfill) Dialog */}
+      <Dialog open={dialog === 'manual-segment'} onOpenChange={() => setDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Running Period</DialogTitle></DialogHeader>
+          <form onSubmit={manualSegmentForm.handleSubmit(onSubmitManualSegment)} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Log a completed running period by entering its start and end time.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Start Time</Label>
+                <Input type="datetime-local" {...manualSegmentForm.register('start_time')} />
+                {manualSegmentForm.formState.errors.start_time && (
+                  <p className="mt-1 text-xs text-red-600">{manualSegmentForm.formState.errors.start_time.message}</p>
+                )}
+              </div>
+              <div>
+                <Label>End Time</Label>
+                <Input type="datetime-local" {...manualSegmentForm.register('end_time')} />
+                {manualSegmentForm.formState.errors.end_time && (
+                  <p className="mt-1 text-xs text-red-600">{manualSegmentForm.formState.errors.end_time.message}</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label>Cases Produced</Label>
+              <Input type="number" step="0.1" {...manualSegmentForm.register('produced_cases')} placeholder="0" />
+            </div>
+            <div>
+              <Label>Remarks</Label>
+              <Textarea {...manualSegmentForm.register('remarks')} placeholder="Optional remarks..." />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
+              <Button type="submit" disabled={addManualSegment.isPending}>{addManualSegment.isPending ? 'Saving...' : 'Add Running'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Past Breakdown (manual backfill) Dialog */}
+      <Dialog open={dialog === 'manual-breakdown'} onOpenChange={() => setDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Past Breakdown</DialogTitle></DialogHeader>
+          <form onSubmit={manualBreakdownForm.handleSubmit(onSubmitManualBreakdown)} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Log a breakdown that already ended by entering its start and end time.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Start Time</Label>
+                <Input type="datetime-local" {...manualBreakdownForm.register('start_time')} />
+                {manualBreakdownForm.formState.errors.start_time && (
+                  <p className="mt-1 text-xs text-red-600">{manualBreakdownForm.formState.errors.start_time.message}</p>
+                )}
+              </div>
+              <div>
+                <Label>End Time</Label>
+                <Input type="datetime-local" {...manualBreakdownForm.register('end_time')} />
+                {manualBreakdownForm.formState.errors.end_time && (
+                  <p className="mt-1 text-xs text-red-600">{manualBreakdownForm.formState.errors.end_time.message}</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label>Breakdown Type</Label>
+              <Select onValueChange={(v) => manualBreakdownForm.setValue('breakdown_category_id', Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Select breakdown type" /></SelectTrigger>
+                <SelectContent>
+                  {breakdownCategories.length === 0 ? (
+                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">No breakdown categories found.</div>
+                  ) : (
+                    breakdownCategories.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))
+                  )}
+                </SelectContent>
+              </Select>
+              {manualBreakdownForm.formState.errors.breakdown_category_id && (
+                <p className="mt-1 text-xs text-red-600">{manualBreakdownForm.formState.errors.breakdown_category_id.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="manual_breakdown_machine">Machine</Label>
+              <NativeSelect
+                id="manual_breakdown_machine"
+                value={manualBreakdownForm.watch('machine_id') ? String(manualBreakdownForm.watch('machine_id')) : ''}
+                onChange={(event) => {
+                  const machineId = event.target.value ? Number(event.target.value) : null;
+                  manualBreakdownForm.setValue('machine_id', machineId);
+                }}
+              >
+                <SelectOption value="">Line-level breakdown</SelectOption>
+                {machineOptions.map((machine) => (
+                  <SelectOption key={machine.id} value={String(machine.id)}>
+                    {machine.name} - {machine.machine_type}
+                  </SelectOption>
+                ))}
+              </NativeSelect>
+            </div>
+            <div><Label>Reason</Label><Input {...manualBreakdownForm.register('reason')} /></div>
+            <div><Label>Remarks</Label><Textarea {...manualBreakdownForm.register('remarks')} /></div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
+              <Button type="submit" disabled={addManualBreakdown.isPending}>{addManualBreakdown.isPending ? 'Saving...' : 'Add Breakdown'}</Button>
             </div>
           </form>
         </DialogContent>

@@ -3,6 +3,8 @@ import { apiClient } from '@/core/api';
 
 import type {
   AddBreakdownRequest,
+  AddManualBreakdownRequest,
+  AddManualSegmentRequest,
   AnalyticsParams,
   ApproveClearanceRequest,
   BreakdownCategory,
@@ -289,6 +291,22 @@ export const executionApi = {
 
   async addBreakdown(runId: number, data: AddBreakdownRequest): Promise<MachineBreakdown> {
     const res = await apiClient.post<MachineBreakdown>(EP.ADD_BREAKDOWN(runId), data);
+    return res.data;
+  },
+
+  async addManualSegment(
+    runId: number,
+    data: AddManualSegmentRequest,
+  ): Promise<ProductionSegment> {
+    const res = await apiClient.post<ProductionSegment>(EP.ADD_MANUAL_SEGMENT(runId), data);
+    return res.data;
+  },
+
+  async addManualBreakdown(
+    runId: number,
+    data: AddManualBreakdownRequest,
+  ): Promise<MachineBreakdown> {
+    const res = await apiClient.post<MachineBreakdown>(EP.ADD_MANUAL_BREAKDOWN(runId), data);
     return res.data;
   },
 

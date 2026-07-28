@@ -675,6 +675,8 @@ export const API_ENDPOINTS = {
     START_PRODUCTION: (runId: number) => `/blowing/runs/${runId}/start-production/`,
     STOP_PRODUCTION: (runId: number) => `/blowing/runs/${runId}/stop-production/`,
     ADD_BREAKDOWN: (runId: number) => `/blowing/runs/${runId}/add-breakdown/`,
+    ADD_MANUAL_SEGMENT: (runId: number) => `/blowing/runs/${runId}/segments/manual/`,
+    ADD_MANUAL_BREAKDOWN: (runId: number) => `/blowing/runs/${runId}/breakdowns/manual/`,
     RESOLVE_BREAKDOWN: (runId: number, breakdownId: number) =>
       `/blowing/runs/${runId}/breakdowns/${breakdownId}/resolve/`,
     SEGMENT_UPDATE: (runId: number, segmentId: number) =>
@@ -824,6 +826,9 @@ export const API_ENDPOINTS = {
     START_PRODUCTION: (runId: number) => `/production-execution/runs/${runId}/start-production/`,
     STOP_PRODUCTION: (runId: number) => `/production-execution/runs/${runId}/stop-production/`,
     ADD_BREAKDOWN: (runId: number) => `/production-execution/runs/${runId}/add-breakdown/`,
+    ADD_MANUAL_SEGMENT: (runId: number) => `/production-execution/runs/${runId}/segments/manual/`,
+    ADD_MANUAL_BREAKDOWN: (runId: number) =>
+      `/production-execution/runs/${runId}/breakdowns/manual/`,
     RESOLVE_BREAKDOWN: (runId: number, breakdownId: number) =>
       `/production-execution/runs/${runId}/breakdowns/${breakdownId}/resolve/`,
     SEGMENT_UPDATE: (runId: number, segmentId: number) =>
