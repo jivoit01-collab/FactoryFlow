@@ -4,7 +4,7 @@ import { Badge } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import type { BSTBoxScan, BSTTransferItem } from '../../types';
-import { expectedBstItemBoxes } from './bstBoxCounts';
+import { expectedBstItemBoxes, isPmItemCode } from './bstBoxCounts';
 
 type Tally = { qty: number; boxes: number; itemName: string; uom: string };
 
@@ -80,6 +80,9 @@ export function BSTBillTable({
             const boxes = scanned?.boxes ?? 0;
             const expectedBoxes = bill.expected;
             const expectedQty = bill.qty;
+            // Packaging material (PM) isn't scanned on a BST — never short, never
+            // "Open"; mirrors the backend's requires_scan exemption.
+            const requiresScan = !isPmItemCode(code);
             // Completeness on QUANTITY when trustworthy, else the box-count estimate.
             const complete = usesQuantity
               ? expectedQty > 0 && scannedQty >= expectedQty
@@ -89,21 +92,23 @@ export function BSTBillTable({
               : expectedBoxes > 0 && boxes > expectedBoxes;
             const hasScans = boxes > 0;
             const overBy = usesQuantity ? scannedQty - expectedQty : boxes - expectedBoxes;
-            const progress = usesQuantity
-              ? expectedQty > 0
-                ? Math.min(100, Math.round((scannedQty / expectedQty) * 100))
-                : null
-              : expectedBoxes > 0
-                ? Math.min(100, Math.round((boxes / expectedBoxes) * 100))
-                : null;
+            const progress = !requiresScan
+              ? null
+              : usesQuantity
+                ? expectedQty > 0
+                  ? Math.min(100, Math.round((scannedQty / expectedQty) * 100))
+                  : null
+                : expectedBoxes > 0
+                  ? Math.min(100, Math.round((boxes / expectedBoxes) * 100))
+                  : null;
             return (
               <tr
                 key={code}
                 className={cn(
                   'border-b last:border-b-0',
-                  over && 'bg-orange-50/70',
-                  !over && hasScans && !complete && 'bg-amber-50/60',
-                  !over && complete && 'bg-emerald-50/60',
+                  requiresScan && over && 'bg-orange-50/70',
+                  requiresScan && !over && hasScans && !complete && 'bg-amber-50/60',
+                  requiresScan && !over && complete && 'bg-emerald-50/60',
                 )}
               >
                 <td className="whitespace-nowrap p-3 align-top font-mono text-xs font-semibold">
@@ -137,7 +142,11 @@ export function BSTBillTable({
                   ) : null}
                 </td>
                 <td className="p-3 align-top">
-                  {over ? (
+                  {!requiresScan ? (
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                      Scan not required
+                    </Badge>
+                  ) : over ? (
                     <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
                       <AlertTriangle className="mr-1 h-3.5 w-3.5" /> Over +{trimQty(overBy)}
                     </Badge>

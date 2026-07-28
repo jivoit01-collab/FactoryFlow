@@ -159,15 +159,19 @@ export interface BSTScanStatusItem {
   scanned_boxes: number;
   is_complete: boolean;
   is_over: boolean;
+  /** False for packaging-material (PM) lines, which never require box scanning. */
+  requires_scan: boolean;
 }
 
 // The sender's completeness gate: whether the scanned QUANTITY reaches the bill.
 // `is_partial` drives the "scan all boxes" lock and the same rule blocks approve()
 // on the backend, so the two can't disagree. `uses_quantity` is false only for
 // legacy/quantity-less scans, where completeness falls back to the box count.
+// `requires_scanning` is false for a PM-only bill — it needs no scanning to seal.
 export interface BSTScanStatus {
   is_partial: boolean;
   has_scans: boolean;
+  requires_scanning: boolean;
   uses_quantity: boolean;
   scanned_qty: string;
   expected_qty: string;
@@ -236,8 +240,9 @@ export interface BSTCreatePayload {
   /** STOCK_TRANSFER (default) or INVOICE (cross-company dispatch bill). */
   document_type?: BSTSourceType;
   /**
-   * One or more SAP documents. STOCK_TRANSFER docs must share the same source &
-   * destination warehouse; INVOICE docs the same source warehouse and customer.
+   * One or more SAP documents. Source warehouses may differ (virtual warehouses);
+   * STOCK_TRANSFER docs must share the same destination warehouse; INVOICE docs
+   * the same customer.
    */
   sap_doc_entries: number[];
   /** Required for an INVOICE transfer: the receiving company. */

@@ -48,6 +48,9 @@ export default function BSTReviewPage() {
   // backend, so sealing a short load is refused there too. An admin-approved
   // partial-transfer request releases the shortfall; a pending one keeps the lock.
   const scanStatus = t.scan_status;
+  // A PM-only bill needs no scanning to seal; any non-PM line requires it. Mirrors
+  // the backend approve() gate. Default true (require scanning) if not loaded.
+  const requiresScanning = scanStatus?.requires_scanning ?? true;
   const partial = t.partial_transfer;
   const shortLocked = !!scanStatus?.is_partial && !partial?.is_approved;
   const requestPending = !!partial?.is_pending;
@@ -152,6 +155,15 @@ export default function BSTReviewPage() {
         </Card>
       ) : (
         <div className="space-y-3">
+          {!requiresScanning && (
+            <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                <span className="font-medium">No scanning required.</span> This transfer is packaging
+                material (PM) only — {live ? 'seal it' : 'approve it'} without scanning boxes.
+              </span>
+            </div>
+          )}
           {partial?.is_approved && (
             <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
@@ -230,7 +242,7 @@ export default function BSTReviewPage() {
             </Button>
             <Button
               onClick={handleApprove}
-              disabled={totalBoxes === 0 || shortLocked || approveMut.isPending}
+              disabled={(requiresScanning && totalBoxes === 0) || shortLocked || approveMut.isPending}
             >
               {approveMut.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />

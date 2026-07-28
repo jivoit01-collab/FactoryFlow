@@ -1,5 +1,12 @@
 import type { BSTTransferItem } from '../../types';
 
+// Packaging-material item-code prefix. PM lines aren't barcode-tracked, so a BST
+// never requires them to be scanned. Mirrors the backend `is_pm_item_code`
+// (warehouse.services.bst_service) so the FE gating can't drift from the API.
+export function isPmItemCode(itemCode?: string | null): boolean {
+  return !!itemCode && itemCode.trim().toUpperCase().startsWith('PM');
+}
+
 // Pack size embedded in an item name, e.g. "COLD PRESS 1 LTR 20 PCS" -> 20.
 // Mirrors the dispatch flow's salesDispatchBoxCounts.ts and the backend
 // _PACK_SIZE_RE so BST box counts match the docking scan page.

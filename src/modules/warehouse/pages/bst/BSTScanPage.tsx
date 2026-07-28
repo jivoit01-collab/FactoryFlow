@@ -54,6 +54,9 @@ export default function BSTScanPage() {
   // Scanned-vs-expected QUANTITY gate (authoritative — the same rule blocks approve()
   // on the backend). Drives the short-scan lock banner.
   const scanStatus = transfer?.scan_status;
+  // A PM-only bill needs no scanning; any non-PM line requires it. Mirrors the
+  // backend approve() gate. Default true (require scanning) if status not loaded.
+  const requiresScanning = scanStatus?.requires_scanning ?? true;
 
   // What this BST is supposed to move (the SAP lines), shown with live progress.
   const items = useMemo(() => transfer?.items ?? [], [transfer]);
@@ -131,6 +134,16 @@ export default function BSTScanPage() {
           <span>
             This transfer is live — the destination can receive these boxes as you scan. Keep
             scanning, then <span className="font-medium">Finish sending</span> when done.
+          </span>
+        </div>
+      )}
+
+      {!requiresScanning && (
+        <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <span className="font-medium">No scanning required.</span> This transfer is packaging
+            material (PM) only — you can {liveActive && transfer.status !== 'SCANNING' ? 'finish sending' : 'review & approve'} directly.
           </span>
         </div>
       )}
@@ -327,7 +340,7 @@ export default function BSTScanPage() {
           <Button variant="outline" onClick={() => navigate(`/warehouse/bst/${transferId}`)}>
             Save &amp; exit
           </Button>
-          <Button onClick={goToReview} disabled={scans.length === 0}>
+          <Button onClick={goToReview} disabled={requiresScanning && scans.length === 0}>
             <ClipboardCheck className="h-4 w-4 mr-1" />
             {liveActive && transfer.status !== 'SCANNING' ? 'Finish sending' : 'Review & approve'}
           </Button>

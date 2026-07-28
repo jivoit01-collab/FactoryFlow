@@ -32,9 +32,10 @@ export default function BSTNewPage() {
 
   const [search, setSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
-  // A BST entry can combine several SAP documents that share one route (source →
-  // destination warehouse for a transfer; source warehouse + customer for an
-  // invoice). The user searches and adds documents to this list.
+  // A BST entry can combine several SAP documents on one shipment. They may come
+  // from different (virtual) source warehouses, but must share the destination
+  // warehouse for a transfer, or the customer for an invoice. The user searches
+  // and adds documents to this list.
   const [selectedDocs, setSelectedDocs] = useState<SAPStockTransfer[]>([]);
   const [destinationCompanyId, setDestinationCompanyId] = useState<number | null>(null);
   const [invoiceNo, setInvoiceNo] = useState('');
@@ -60,8 +61,10 @@ export default function BSTNewPage() {
   );
   const createMut = useCreateBST();
 
-  // The route is fixed by the first added document; every other document must
-  // match it.
+  // The first added document fixes what the rest must match. Source warehouses
+  // may now differ (virtual warehouses that resolve to the same physical dock),
+  // so we no longer match on `from_warehouse` — a transfer matches on the
+  // destination warehouse, an invoice on the customer. Mirrors the backend.
   const route = selectedDocs[0] ?? null;
   const selectedEntries = useMemo(
     () => new Set(selectedDocs.map((d) => d.doc_entry)),
@@ -71,9 +74,9 @@ export default function BSTNewPage() {
   const sameRoute = (doc: SAPStockTransfer) => {
     if (!route) return true;
     if (isInvoice) {
-      return doc.from_warehouse === route.from_warehouse && doc.card_code === route.card_code;
+      return doc.card_code === route.card_code;
     }
-    return doc.from_warehouse === route.from_warehouse && doc.to_warehouse === route.to_warehouse;
+    return doc.to_warehouse === route.to_warehouse;
   };
 
   const routeLabel = (doc: SAPStockTransfer) =>
@@ -111,10 +114,10 @@ export default function BSTNewPage() {
     if (!sameRoute(doc)) {
       toast.error(
         isInvoice
-          ? `Invoice #${doc.doc_num} (${routeLabel(doc)}, ${doc.from_warehouse}) doesn't match ` +
-              `this entry's customer / source warehouse. All invoices must share one customer and source.`
-          : `Doc #${doc.doc_num} is ${doc.from_warehouse} → ${doc.to_warehouse}, but this entry is ` +
-              `${route?.from_warehouse} → ${route?.to_warehouse}. All documents must share one route.`,
+          ? `Invoice #${doc.doc_num} (${routeLabel(doc)}) is for a different customer than this ` +
+              `entry. All invoices must be for the same customer.`
+          : `Doc #${doc.doc_num} ships to ${doc.to_warehouse}, but this entry ships to ` +
+              `${route?.to_warehouse}. All documents must share one destination warehouse.`,
       );
       return;
     }
@@ -231,7 +234,7 @@ export default function BSTNewPage() {
                         {t.line_count} lines · {t.total_quantity} qty
                         {isInvoice && t.from_warehouse ? ` · from ${t.from_warehouse}` : ''}
                         {t.doc_date ? ` · ${new Date(t.doc_date).toLocaleDateString()}` : ''}
-                        {mismatched ? (isInvoice ? ' · different customer/source' : ' · different route') : ''}
+                        {mismatched ? (isInvoice ? ' · different customer' : ' · different destination') : ''}
                       </div>
                     </div>
                     {added ? (
