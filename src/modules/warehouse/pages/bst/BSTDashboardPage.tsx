@@ -1,4 +1,5 @@
-import { ArrowLeftRight, Plus, Truck } from 'lucide-react';
+import { ArrowLeftRight, Plus, Search, Truck } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useGlobalDateRange } from '@/core/store/hooks';
@@ -7,16 +8,70 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Card,
   CardContent,
+  Input,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import { BST_LIVE_POLL_MS, useBSTIncoming, useBSTTransfers } from '../../api';
 import type { BSTTransferListItem } from '../../types';
 import { formatBstDateTime } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
+
+type StatusFilter = 'all' | 'pending' | 'received';
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'received', label: 'Received' },
+];
+
+// A transfer is "received" once its receipt is finalized (fully or closed);
+// everything still in flight counts as "pending".
+function isReceived(t: BSTTransferListItem): boolean {
+  return t.status === 'RECEIVED' || t.status === 'CLOSED';
+}
+
+// One lowercased haystack per row so a multi-term search can match across every
+// meaningful field (entry, SAP doc, route, customer, vehicle, status…).
+function searchHaystack(t: BSTTransferListItem): string {
+  return [
+    t.entry_no,
+    t.sap_doc_num,
+    t.invoice_no,
+    t.sap_from_warehouse,
+    t.sap_to_warehouse,
+    t.destination_company_code,
+    t.destination_company_name,
+    t.customer_code,
+    t.customer_name,
+    t.vehicle_number,
+    t.driver_name,
+    t.status,
+    t.source_type,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+/** Apply the status filter + multi-term search (every term must match). */
+function filterTransfers(
+  list: BSTTransferListItem[],
+  statusFilter: StatusFilter,
+  terms: string[],
+): BSTTransferListItem[] {
+  return list.filter((t) => {
+    if (statusFilter === 'received' && !isReceived(t)) return false;
+    if (statusFilter === 'pending' && isReceived(t)) return false;
+    if (terms.length === 0) return true;
+    const hay = searchHaystack(t);
+    return terms.every((term) => hay.includes(term));
+  });
+}
 
 function TransferTable({
   transfers,
@@ -110,6 +165,22 @@ export default function BSTDashboardPage() {
 
   const activeTab = searchParams.get('tab') === 'incoming' ? 'incoming' : 'outgoing';
 
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [search, setSearch] = useState('');
+  const terms = useMemo(
+    () => search.toLowerCase().split(/[\s,]+/).filter(Boolean),
+    [search],
+  );
+
+  const outgoingFiltered = useMemo(
+    () => filterTransfers(outgoing, statusFilter, terms),
+    [outgoing, statusFilter, terms],
+  );
+  const incomingFiltered = useMemo(
+    () => filterTransfers(incoming, statusFilter, terms),
+    [incoming, statusFilter, terms],
+  );
+
   return (
     <div className="space-y-6">
       <DashboardHeader
@@ -138,20 +209,54 @@ export default function BSTDashboardPage() {
         value={activeTab}
         onValueChange={(v) => setSearchParams(v === 'incoming' ? { tab: 'incoming' } : {})}
       >
-        <TabsList>
-          <TabsTrigger value="outgoing">Outgoing</TabsTrigger>
-          <TabsTrigger value="incoming">
-            Incoming{incoming.length ? ` (${incoming.length})` : ''}
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList>
+            <TabsTrigger value="outgoing">Outgoing</TabsTrigger>
+            <TabsTrigger value="incoming">
+              Incoming{incoming.length ? ` (${incoming.length})` : ''}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Search (multi-term) + status filter, on the far right of the tabs. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search entry, SAP doc, route, customer…"
+                className="w-64 pl-8"
+              />
+            </div>
+            <div className="inline-flex rounded-md border bg-muted/30 p-0.5">
+              {STATUS_FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setStatusFilter(f.key)}
+                  className={cn(
+                    'rounded px-3 py-1 text-sm transition-colors',
+                    statusFilter === f.key
+                      ? 'bg-background font-medium shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         <TabsContent value="outgoing" className="mt-4">
           {outLoading ? (
             <p className="text-muted-foreground py-8 text-center">Loading…</p>
           ) : (
             <TransferTable
-              transfers={outgoing}
-              emptyLabel="No outgoing transfers yet"
+              transfers={outgoingFiltered}
+              emptyLabel={
+                outgoing.length ? 'No transfers match your filters' : 'No outgoing transfers yet'
+              }
               onRowClick={(t) => navigate(`/warehouse/bst/${t.id}`)}
             />
           )}
@@ -162,8 +267,12 @@ export default function BSTDashboardPage() {
             <p className="text-muted-foreground py-8 text-center">Loading…</p>
           ) : (
             <TransferTable
-              transfers={incoming}
-              emptyLabel="No incoming transfers expected"
+              transfers={incomingFiltered}
+              emptyLabel={
+                incoming.length
+                  ? 'No transfers match your filters'
+                  : 'No incoming transfers expected'
+              }
               onRowClick={(t) => navigate(`/warehouse/bst/incoming/${t.id}`)}
             />
           )}
