@@ -10,6 +10,7 @@ import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard
 const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage'));
 const ExecutiveOverviewPage = lazy(() => import('./overview/pages/ExecutiveOverviewPage'));
 const GateDashboardPage = lazy(() => import('./gate/pages/GateDashboardPage'));
+const ProductionDashboardPage = lazy(() => import('./production/pages/ProductionDashboardPage'));
 const SAPPlanDashboardPage = lazy(() => import('./sap-plan/pages/SAPPlanDashboardPage'));
 const StockLevelDashboardPage = lazy(
   () => import('./stock-level/pages/StockLevelDashboardPage'),
@@ -72,6 +73,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Gate' },
+    },
+    {
+      path: '/dashboards/production',
+      element: <ProductionDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+      breadcrumb: { label: 'Production' },
     },
     {
       path: '/dashboards/sap-plan',
@@ -149,9 +157,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
         DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
         DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
-        // Production Movement intentionally omitted from the module gate so the
-        // Dashboards module doesn't appear for production-only users; it is
-        // surfaced under the Production module instead (still route-accessible here).
+        // Production reports permission — lets production staff reach the
+        // Dashboards menu for the company-aware Production dashboard.
+        DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
         // Gate dashboard lives here too — let gate staff reach the Dashboards menu.
@@ -176,6 +184,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/gate',
           title: 'Gate',
           permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
+        },
+        {
+          path: '/dashboards/production',
+          title: 'Production',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
         },
         {
           path: '/dashboards/sap-plan',
