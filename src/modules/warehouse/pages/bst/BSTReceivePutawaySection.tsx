@@ -22,8 +22,13 @@ import { type BstReceivedPallet, groupAcceptedPallets } from './bstReceivePallet
 
 export function BSTReceivePutawaySection({ transfer }: { transfer: BSTTransferDetail }) {
   const currentCompany = useAppSelector((state) => state.auth.currentCompany);
-  const { data: wmsPallets } = useWmsCollection('pallets');
-  const { data: locations } = useWmsCollection('locations');
+  const { data: wmsPallets, loading: palletsLoading } = useWmsCollection('pallets');
+  const { data: locations, loading: locationsLoading } = useWmsCollection('locations');
+
+  // Until BOTH collections have loaded, `placedByPlate` is empty and every pallet
+  // would fall through to "Assign location" — falsely showing already-placed
+  // pallets as needing putaway. Hold the placement column until the reads resolve.
+  const wmsLoading = palletsLoading || locationsLoading;
 
   const [putawayPallet, setPutawayPallet] = useState<BstReceivedPallet | null>(null);
 
@@ -97,6 +102,8 @@ export function BSTReceivePutawaySection({ transfer }: { transfer: BSTTransferDe
                   <Badge variant="outline" className="shrink-0 text-emerald-700">
                     <MapPin className="mr-1 h-3 w-3" /> {placedCode}
                   </Badge>
+                ) : wmsLoading ? (
+                  <span className="shrink-0 text-xs text-muted-foreground">Checking location…</span>
                 ) : (
                   <Button
                     size="sm"
