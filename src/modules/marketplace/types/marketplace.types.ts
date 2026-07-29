@@ -650,18 +650,42 @@ export interface DispatchBoardItem {
   quantity: string;
   tracking_id: string;
   scanned: boolean;
+  order_item_id?: string;
+  fsn?: string;
+  hsn?: string;
+  unit_price?: string;
+  invoice_amount?: string;
+  tax_amount?: string;
+  order_state?: string;
+  scanned_at?: string | null;
+  scanned_by?: string;
 }
 
 export interface DispatchBoardOrder {
   order_id: string;
   buyer_name: string;
   order_date: string | null;
+  order_type?: string;
+  shipment_id?: string;
+  dispatch_by?: string | null;
+  ship_to_name?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  pin_code?: string;
   dispatch_id: number | null;
   dispatch_status: string | null;
   sap_post_status: string | null;
   ready: boolean;
   status: DispatchOrderStatus;
   cancel_reason?: string;
+  invoice_number?: string;
+  invoice_date?: string | null;
+  dn_number?: string;
+  gi_number?: string;
+  confirmed_at?: string | null;
+  confirmed_by?: string;
   tracking_total: number;
   tracking_scanned: number;
   items: DispatchBoardItem[];
