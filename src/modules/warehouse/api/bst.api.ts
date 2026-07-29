@@ -166,22 +166,6 @@ export const bstApi = {
     return res.data;
   },
 
-  /**
-   * Hand a single received pallet (and its accepted boxes) to the destination
-   * company as it is put away into a destination-warehouse location — the
-   * cross-company intercompany handoff, done per-pallet at putaway. No-ops for
-   * intra-company stock transfers; idempotent and safe to retry.
-   */
-  async putawayPallet(
-    transferId: number,
-    palletCode: string,
-  ): Promise<{ pallet_code: string; moved_boxes: number; moved: boolean }> {
-    const res = await apiClient.post(EP.BST_RECEIVE_PUTAWAY_PALLET(transferId), {
-      pallet_code: palletCode,
-    });
-    return res.data;
-  },
-
   // ---- Gate ----
   async listGateOutwards(params?: {
     from_date?: string;

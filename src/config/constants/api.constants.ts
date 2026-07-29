@@ -891,8 +891,6 @@ export const API_ENDPOINTS = {
     BST_INCOMING_DETAIL: (transferId: number) => `/warehouse/bst/incoming/${transferId}/`,
     BST_RECEIVE_SCAN: (transferId: number) => `/warehouse/bst/${transferId}/receive-scans/`,
     BST_RECEIVE_COMPLETE: (transferId: number) => `/warehouse/bst/${transferId}/receive/complete/`,
-    BST_RECEIVE_PUTAWAY_PALLET: (transferId: number) =>
-      `/warehouse/bst/${transferId}/receive/putaway-pallet/`,
     BST_GATE_OUTWARDS: '/warehouse/bst/gate/expected-outwards/',
     BST_GATE_INWARDS: '/warehouse/bst/gate/expected-inwards/',
     BST_GATE_MARK_OUT: (transferId: number) => `/warehouse/bst/${transferId}/gate/mark-out/`,
