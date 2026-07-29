@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Plus, Search, Truck } from 'lucide-react';
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Plus, Search, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -6,6 +6,7 @@ import { useGlobalDateRange } from '@/core/store/hooks';
 import { DateRangePicker } from '@/modules/gate/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
+  Button,
   Card,
   CardContent,
   Input,
@@ -15,6 +16,8 @@ import {
   TabsTrigger,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
+
+const PAGE_SIZE = 20;
 
 import { BST_LIVE_POLL_MS, useBSTIncoming, useBSTTransfers } from '../../api';
 import type { BSTTransferListItem } from '../../types';
@@ -148,6 +151,63 @@ function TransferTable({
   );
 }
 
+/** TransferTable + a page slice and pager (client-side over the loaded list). */
+function PaginatedTable({
+  transfers,
+  emptyLabel,
+  onRowClick,
+  page,
+  onPageChange,
+}: {
+  transfers: BSTTransferListItem[];
+  emptyLabel: string;
+  onRowClick: (t: BSTTransferListItem) => void;
+  page: number;
+  onPageChange: (page: number) => void;
+}) {
+  const total = transfers.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const current = Math.min(Math.max(1, page), totalPages);
+  const start = (current - 1) * PAGE_SIZE;
+  const rows = transfers.slice(start, start + PAGE_SIZE);
+
+  return (
+    <div className="space-y-3">
+      <TransferTable transfers={rows} emptyLabel={emptyLabel} onRowClick={onRowClick} />
+      {total > PAGE_SIZE && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+          <span>
+            Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of {total}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              disabled={current <= 1}
+              onClick={() => onPageChange(current - 1)}
+            >
+              <ChevronLeft className="mr-1 h-4 w-4" /> Prev
+            </Button>
+            <span className="tabular-nums">
+              Page {current} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              disabled={current >= totalPages}
+              onClick={() => onPageChange(current + 1)}
+            >
+              Next <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BSTDashboardPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -181,6 +241,10 @@ export default function BSTDashboardPage() {
     [incoming, statusFilter, terms],
   );
 
+  // Reset to the first page whenever the tab, filter or search changes the list
+  // (done in each handler below rather than in an effect).
+  const [page, setPage] = useState(1);
+
   return (
     <div className="space-y-6">
       <DashboardHeader
@@ -207,7 +271,10 @@ export default function BSTDashboardPage() {
 
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setSearchParams(v === 'incoming' ? { tab: 'incoming' } : {})}
+        onValueChange={(v) => {
+          setSearchParams(v === 'incoming' ? { tab: 'incoming' } : {});
+          setPage(1);
+        }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList>
@@ -223,7 +290,10 @@ export default function BSTDashboardPage() {
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search entry, SAP doc, route, customer…"
                 className="w-64 pl-8"
               />
@@ -233,7 +303,10 @@ export default function BSTDashboardPage() {
                 <button
                   key={f.key}
                   type="button"
-                  onClick={() => setStatusFilter(f.key)}
+                  onClick={() => {
+                    setStatusFilter(f.key);
+                    setPage(1);
+                  }}
                   className={cn(
                     'rounded px-3 py-1 text-sm transition-colors',
                     statusFilter === f.key
@@ -252,12 +325,14 @@ export default function BSTDashboardPage() {
           {outLoading ? (
             <p className="text-muted-foreground py-8 text-center">Loading…</p>
           ) : (
-            <TransferTable
+            <PaginatedTable
               transfers={outgoingFiltered}
               emptyLabel={
                 outgoing.length ? 'No transfers match your filters' : 'No outgoing transfers yet'
               }
               onRowClick={(t) => navigate(`/warehouse/bst/${t.id}`)}
+              page={page}
+              onPageChange={setPage}
             />
           )}
         </TabsContent>
@@ -266,7 +341,7 @@ export default function BSTDashboardPage() {
           {inLoading ? (
             <p className="text-muted-foreground py-8 text-center">Loading…</p>
           ) : (
-            <TransferTable
+            <PaginatedTable
               transfers={incomingFiltered}
               emptyLabel={
                 incoming.length
@@ -274,6 +349,8 @@ export default function BSTDashboardPage() {
                   : 'No incoming transfers expected'
               }
               onRowClick={(t) => navigate(`/warehouse/bst/incoming/${t.id}`)}
+              page={page}
+              onPageChange={setPage}
             />
           )}
         </TabsContent>
