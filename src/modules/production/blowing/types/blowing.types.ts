@@ -141,8 +141,6 @@ export interface CreatePreformSpecRequest {
   sap_item_name?: string;
   bottle_weight_g?: number | string | null;
   bottles_per_kg?: number | string | null;
-  mould_cost?: number | string | null;
-  mould_life_bottles?: number | null;
   std_make_cost_per_bottle?: number | string | null;
   std_reject_pct?: number | string | null;
   std_units_per_bottle?: number | string | null;
@@ -284,7 +282,7 @@ export interface BottleBuyPrice {
 export interface CreateBuyPriceRequest {
   preform_spec_id: number;
   supplier_name?: string;
-  effective_from: string;
+  effective_from?: string;
   buy_price: number | string;
   freight_per_bottle?: number | string;
   duties_per_bottle?: number | string;

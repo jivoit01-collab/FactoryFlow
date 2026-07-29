@@ -11,7 +11,6 @@ import type { Warehouse } from '@/modules/warehouse/grpo/types/grpo.types';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -160,21 +159,6 @@ function AuditHistory({ entityType, entityId, entityLabel }: { entityType: strin
   );
 }
 
-// Effective-date status for a row (active=applied / scheduled / superseded / inactive).
-type EffStatus = 'applied' | 'scheduled' | 'superseded' | 'inactive';
-const EFF_ROW: Record<EffStatus, string> = {
-  applied: 'bg-green-50 dark:bg-green-950/30',
-  scheduled: 'bg-blue-50/50 dark:bg-blue-950/20',
-  superseded: 'text-muted-foreground opacity-60',
-  inactive: 'text-muted-foreground opacity-40 line-through',
-};
-const EFF_BADGE: Record<EffStatus, { label: string; cls: string }> = {
-  applied: { label: 'Applied', cls: 'bg-green-100 text-green-700' },
-  scheduled: { label: 'Scheduled', cls: 'bg-blue-100 text-blue-700' },
-  superseded: { label: 'Superseded', cls: 'bg-gray-100 text-gray-600' },
-  inactive: { label: 'Inactive', cls: 'bg-gray-100 text-gray-500' },
-};
-
 // --------------------------------------------------------------------------
 function MachinesTab() {
   const { data: machines = [] } = useMachines();
@@ -284,7 +268,6 @@ function PreformSpecsTab() {
       preform_rate_per_bottle: Number(s.preform_rate_per_bottle),
       sap_item_code: s.sap_item_code, sap_item_name: s.sap_item_name,
       bottle_weight_g: nOrUndef(s.bottle_weight_g), bottles_per_kg: nOrUndef(s.bottles_per_kg),
-      mould_cost: nOrUndef(s.mould_cost), mould_life_bottles: s.mould_life_bottles ?? undefined,
       std_make_cost_per_bottle: nOrUndef(s.std_make_cost_per_bottle),
       std_reject_pct: nOrUndef(s.std_reject_pct), std_units_per_bottle: nOrUndef(s.std_units_per_bottle),
     });
@@ -348,8 +331,6 @@ function PreformSpecsTab() {
           </div>
           <div><Label htmlFor="p-bw">Bottle weight (g)</Label><Input id="p-bw" type="number" step="0.01" {...register('bottle_weight_g')} /></div>
           <div><Label htmlFor="p-bpk">Bottles / kg</Label><Input id="p-bpk" type="number" step="0.01" {...register('bottles_per_kg')} /></div>
-          <div><Label htmlFor="p-mc">Mould cost (₹)</Label><Input id="p-mc" type="number" step="0.01" {...register('mould_cost')} /></div>
-          <div><Label htmlFor="p-ml">Mould life (bottles)</Label><Input id="p-ml" type="number" {...register('mould_life_bottles')} /></div>
           <div><Label htmlFor="p-smc">Std make cost / bottle (₹)</Label><Input id="p-smc" type="number" step="0.0001" {...register('std_make_cost_per_bottle')} /></div>
           <div><Label htmlFor="p-srp">Std reject %</Label><Input id="p-srp" type="number" step="0.001" {...register('std_reject_pct')} /></div>
           <div><Label htmlFor="p-sub">Std units / bottle</Label><Input id="p-sub" type="number" step="0.000001" {...register('std_units_per_bottle')} /></div>
@@ -398,8 +379,8 @@ function BuyPricesTab() {
     useForm<BuyPriceFormInput, unknown, BuyPriceFormData>({ resolver: zodResolver(buyPriceFormSchema) });
   const supplierValue = String(watch('supplier_name') ?? '');
 
-  // Applied buy price = latest active effective row per bottle size.
-  const appliedIds = useMemo(() => {
+  // One current buy price per bottle (latest active effective row).
+  const appliedRows = useMemo(() => {
     const t = today();
     const bySpec: Record<number, BottleBuyPrice> = {};
     for (const p of prices) {
@@ -407,20 +388,13 @@ function BuyPricesTab() {
       const cur = bySpec[p.preform_spec];
       if (!cur || p.effective_from > cur.effective_from) bySpec[p.preform_spec] = p;
     }
-    return new Set(Object.values(bySpec).map((p) => p.id));
+    return Object.values(bySpec);
   }, [prices]);
-  const statusOf = (p: BottleBuyPrice): EffStatus =>
-    !p.is_active ? 'inactive' : appliedIds.has(p.id) ? 'applied' : p.effective_from > today() ? 'scheduled' : 'superseded';
 
-  const openAdd = () => { setEditing(null); reset({ supplier_name: '', carrying_pct_annual: 20, inventory_days: 30 }); setOpen(true); };
+  const openAdd = () => { setEditing(null); reset({ supplier_name: '' }); setOpen(true); };
   const openEdit = (p: BottleBuyPrice) => {
     setEditing(p);
-    reset({
-      preform_spec_id: p.preform_spec, supplier_name: p.supplier_name, effective_from: p.effective_from,
-      buy_price: Number(p.buy_price), freight_per_bottle: Number(p.freight_per_bottle), duties_per_bottle: Number(p.duties_per_bottle),
-      carrying_pct_annual: Number(p.carrying_pct_annual), inventory_days: p.inventory_days,
-      qa_allowance_pct: Number(p.qa_allowance_pct), risk_premium_per_bottle: Number(p.risk_premium_per_bottle),
-    });
+    reset({ preform_spec_id: p.preform_spec, supplier_name: p.supplier_name, buy_price: Number(p.buy_price) });
     setOpen(true);
   };
 
@@ -433,16 +407,6 @@ function BuyPricesTab() {
       toast.error((e as { message?: string })?.message ?? 'Failed to save buy price');
     }
   };
-
-  const fields: Array<{ name: keyof BuyPriceFormData; label: string; step?: string }> = [
-    { name: 'buy_price', label: 'Buy price / bottle (₹)', step: '0.0001' },
-    { name: 'freight_per_bottle', label: 'Freight / bottle (₹)', step: '0.0001' },
-    { name: 'duties_per_bottle', label: 'Duties / bottle (₹)', step: '0.0001' },
-    { name: 'carrying_pct_annual', label: 'Carrying % / yr', step: '0.01' },
-    { name: 'inventory_days', label: 'Inventory days' },
-    { name: 'qa_allowance_pct', label: 'QA allowance %', step: '0.01' },
-    { name: 'risk_premium_per_bottle', label: 'Risk premium / bottle (₹)', step: '0.0001' },
-  ];
 
   return (
     <TabShell
@@ -463,47 +427,31 @@ function BuyPricesTab() {
             <VendorSelect label="Supplier" value={supplierValue} onChange={(v) => setValue('supplier_name', v ? v.vendor_name : '')} />
           </div>
           <div>
-            <Label htmlFor="b-eff">Effective from</Label>
-            <Input id="b-eff" type="date" {...register('effective_from')} />
-            {errors.effective_from && <p className="text-sm text-red-600">{errors.effective_from.message}</p>}
+            <Label htmlFor="b-buy">Buy price / bottle (₹)</Label>
+            <Input id="b-buy" type="number" step="0.0001" {...register('buy_price')} />
+            {errors.buy_price && <p className="text-sm text-red-600">{errors.buy_price.message}</p>}
           </div>
-          <div className="hidden sm:block" />
-          {fields.map((f) => (
-            <div key={f.name}>
-              <Label htmlFor={`b-${f.name}`}>{f.label}</Label>
-              <Input id={`b-${f.name}`} type="number" step={f.step ?? '1'} {...register(f.name)} />
-              {errors[f.name] && <p className="text-sm text-red-600">{String(errors[f.name]?.message ?? '')}</p>}
-            </div>
-          ))}
           <div className="sm:col-span-2"><FormFooter pending={createBuy.isPending || updateBuy.isPending} editing={!!editing} onCancel={() => setOpen(false)} /></div>
         </form>
       }
     >
-      <p className="mb-3 text-xs text-muted-foreground">The green row per size is the quote currently used in make‑vs‑buy. Greyed rows are its history.</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-muted-foreground">
-              <th className="py-2 pr-4">Size</th><th className="py-2 pr-4">Supplier</th>
-              <th className="py-2 pr-4">Effective</th><th className="py-2 pr-4 text-right">Buy price</th>
-              <th className="py-2 pr-4 text-right">Landed / bottle</th><th className="py-2 pr-4">Status</th>
+              <th className="py-2 pr-4">Bottle</th><th className="py-2 pr-4">Supplier</th>
+              <th className="py-2 pr-4 text-right">Buy price</th>
             </tr>
           </thead>
           <tbody>
-            {prices.map((p) => {
-              const st = statusOf(p);
-              return (
-                <tr key={p.id} className={`cursor-pointer border-b hover:bg-muted/40 ${EFF_ROW[st]}`} onClick={() => openEdit(p)}>
-                  <td className="py-2 pr-4">{p.preform_make} {Number(p.preform_gram)}g</td>
-                  <td className="py-2 pr-4">{p.supplier_name || '-'}</td>
-                  <td className="py-2 pr-4">{p.effective_from}</td>
-                  <td className="py-2 pr-4 text-right">{num(p.buy_price, 4)}</td>
-                  <td className="py-2 pr-4 text-right font-medium">{num(p.landed_cost_per_bottle, 4)}</td>
-                  <td className="py-2 pr-4"><Badge className={EFF_BADGE[st].cls}>{EFF_BADGE[st].label}</Badge></td>
-                </tr>
-              );
-            })}
-            {prices.length === 0 && <tr><td colSpan={6} className="py-4 text-muted-foreground">No buy prices yet.</td></tr>}
+            {appliedRows.map((p) => (
+              <tr key={p.id} className="cursor-pointer border-b hover:bg-muted/40" onClick={() => openEdit(p)}>
+                <td className="py-2 pr-4">{p.preform_make} {Number(p.preform_gram)}g</td>
+                <td className="py-2 pr-4">{p.supplier_name || '-'}</td>
+                <td className="py-2 pr-4 text-right">{num(p.buy_price, 4)}</td>
+              </tr>
+            ))}
+            {appliedRows.length === 0 && <tr><td colSpan={3} className="py-4 text-muted-foreground">No buy prices yet.</td></tr>}
           </tbody>
         </table>
       </div>
