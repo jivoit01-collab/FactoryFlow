@@ -3,6 +3,7 @@ import {
   BarChart3,
   CalendarClock,
   DoorOpen,
+  Factory,
   Package,
   PackageX,
   Target,
@@ -90,6 +91,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/gate',
     color: 'text-blue-600',
     permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
+  },
+  {
+    title: 'Production',
+    description: 'Company-aware production — cost/unit, OEE, output, waste & plan adherence',
+    icon: <Factory className="h-5 w-5" />,
+    route: '/dashboards/production',
+    color: 'text-emerald-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
   },
 ];
 
