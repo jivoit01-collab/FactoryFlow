@@ -145,7 +145,7 @@ export const productionModuleConfig: ModuleConfig = {
       path: '/production/execution/runs/:runId/resources',
       element: <ResourceTrackingPage />,
       layout: 'main',
-      permissions: [EXECUTION_PERMISSIONS.CREATE_MATERIAL],
+      permissions: [EXECUTION_PERMISSIONS.VIEW_RUN_COST],
     },
     {
       path: '/production/execution/runs/:runId/qc',
@@ -241,7 +241,7 @@ export const productionModuleConfig: ModuleConfig = {
       path: '/production/execution/reports/cost-analysis',
       element: <CostAnalysisReportPage />,
       layout: 'main',
-      permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+      permissions: [EXECUTION_PERMISSIONS.VIEW_RUN_COST],
     },
     {
       path: '/production/execution/reports/waste-trend',

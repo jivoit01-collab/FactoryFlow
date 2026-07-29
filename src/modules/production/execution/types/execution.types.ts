@@ -69,7 +69,7 @@ export type CostCategory =
   | 'WASTE_RECOVERY'
   | 'OTHER';
 
-export type CostBasis = 'PER_UNIT' | 'PER_HOUR' | 'PER_DAY' | 'PER_MONTH';
+export type CostBasis = 'PER_UNIT' | 'PER_PERSON_DAY' | 'PER_DAY' | 'PER_HOUR' | 'PER_MONTH';
 
 export interface CostRate {
   id: number;

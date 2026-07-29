@@ -18,6 +18,8 @@ import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { EXECUTION_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth';
 import { useProductionQCRunSessions, useRequestFinalProductionQC } from '@/modules/qc/api/productionQC';
 import {
   useCreateBOMRequest,
@@ -150,6 +152,8 @@ function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const numRunId = Number(runId);
+  const { hasPermission } = usePermission();
+  const canViewCost = hasPermission(EXECUTION_PERMISSIONS.VIEW_RUN_COST);
 
   // ---------------------------------------------------------------------------
   // Data hooks
@@ -626,9 +630,11 @@ function RunDetailPage() {
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/yield`)}>
             <FileText className="h-4 w-4 mr-1" /> Yield
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/resources`)}>
-            <IndianRupee className="h-4 w-4 mr-1" /> Cost
-          </Button>
+          {canViewCost && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/resources`)}>
+              <IndianRupee className="h-4 w-4 mr-1" /> Cost
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/waste?run_id=${run.id}`)}>
             <Trash2 className="h-4 w-4 mr-1" /> Waste Logs: {wasteLogs.length}
           </Button>
