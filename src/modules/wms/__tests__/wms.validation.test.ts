@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { makeInventoryRecord, makeWarehouseLocation, validateMove } from '../services';
 import type { MoveItem, MoveValidationInput } from '../services';
-import { DEFAULT_WMS_SETTINGS } from '../types';
+import { makeInventoryRecord, makeWarehouseLocation, validateMove } from '../services';
 import type { WarehouseLocation, WmsSettings } from '../types';
+import { DEFAULT_WMS_SETTINGS } from '../types';
 
 const settings: WmsSettings = { ...DEFAULT_WMS_SETTINGS, masterEnabled: true, updatedAt: 'x' };
 
@@ -68,6 +68,20 @@ describe('validateMove', () => {
     const warnOnly = validateMove(input({ destination: small, settings: { ...settings, capacityViolation: 'WARN' } }));
     expect(warnOnly.ok).toBe(true);
     expect(warnOnly.warnings.some((w) => w.code === 'capacity')).toBe(true);
+  });
+
+  it('always blocks placing a pallet into a full pallet-capacity location, even when capacityViolation is WARN', () => {
+    const oneSlot = dest({ capacity: { maxPallets: 1, maxUnits: null, maxWeight: null, maxVolume: null } });
+    const result = validateMove(
+      input({
+        destination: oneSlot,
+        destinationPalletCount: 1,
+        added: { pallets: 1, units: 400, weight: 0, volume: 0 },
+        settings: { ...settings, capacityViolation: 'WARN' },
+      }),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.code === 'capacity_pallets')).toBe(true);
   });
 
   it('enforces allowed material types', () => {

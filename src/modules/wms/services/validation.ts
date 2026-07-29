@@ -129,7 +129,21 @@ export function validateMove(input: MoveValidationInput): ValidationResult {
       );
     }
   };
-  checkCapacity(capacity.maxPallets, input.destinationPalletCount, input.added.pallets, 'pallet');
+  // Pallet slots are a HARD limit: a rack bay physically holds only so many
+  // pallets, so once it is full no further pallet may be placed there —
+  // regardless of `settings.capacityViolation` (which keeps the unit/weight/
+  // volume dimensions advisory). This is the "don't stack a second pallet on an
+  // occupied 1-pallet location" lock.
+  if (
+    capacity.maxPallets != null &&
+    input.destinationPalletCount + input.added.pallets > capacity.maxPallets
+  ) {
+    const would = input.destinationPalletCount + input.added.pallets;
+    fail(
+      'capacity_pallets',
+      `${destination.code} is full: ${would} pallets exceeds its capacity of ${capacity.maxPallets}.`,
+    );
+  }
   checkCapacity(capacity.maxUnits, currentUnits, input.added.units, 'unit');
   checkCapacity(capacity.maxWeight, currentWeight, input.added.weight, 'weight');
   checkCapacity(capacity.maxVolume, currentVolume, input.added.volume, 'volume');
