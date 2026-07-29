@@ -279,9 +279,7 @@ export default function BSTDashboardPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList>
             <TabsTrigger value="outgoing">Outgoing</TabsTrigger>
-            <TabsTrigger value="incoming">
-              Incoming{incoming.length ? ` (${incoming.length})` : ''}
-            </TabsTrigger>
+            <TabsTrigger value="incoming">Incoming</TabsTrigger>
           </TabsList>
 
           {/* Search (multi-term) + status filter, on the far right of the tabs. */}
