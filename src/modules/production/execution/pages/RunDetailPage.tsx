@@ -5,7 +5,6 @@ import {
   FileText,
   IndianRupee,
   Loader2,
-  Pencil,
   Play,
   Plus,
   RefreshCw,
@@ -43,10 +42,7 @@ import {
   useAddManualBreakdown,
   useAddManualSegment,
   useBreakdownCategories,
-  useCreateLabour,
   useCreateMaterial,
-  useDeleteLabour,
-  useLabour,
   useLineClearances,
   useMachines,
   useMaterials,
@@ -55,7 +51,6 @@ import {
   useStartProduction,
   useStopProduction,
   useUpdateBreakdownRemarks,
-  useUpdateLabour,
   useUpdateMaterial,
   useUpdateSegment,
   useWasteLogs,
@@ -70,14 +65,12 @@ import {
   addManualBreakdownSchema,
   type AddManualSegmentFormData,
   addManualSegmentSchema,
-  type CreateLabourFormData,
-  createLabourSchema,
   type CreateMaterialFormData,
   createMaterialSchema,
   type StopProductionFormData,
   stopProductionSchema,
 } from '../schemas';
-import type { MachineBreakdown, ProductionSegment, ResourceLabour } from '../types';
+import type { MachineBreakdown, ProductionSegment } from '../types';
 
 function WarehouseApprovalBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; cls: string }> = {
@@ -163,7 +156,6 @@ function RunDetailPage() {
   // ---------------------------------------------------------------------------
   const { data: run, isLoading } = useRunDetail(numRunId || null);
   const { data: materials = [], refetch: refetchMaterials } = useMaterials(numRunId);
-  const { data: labourEntries = [] } = useLabour(numRunId);
   const { data: breakdownCategories = [] } = useBreakdownCategories();
   const { data: clearances = [] } = useLineClearances(run?.line);
   const { data: wasteLogs = [] } = useWasteLogs(numRunId);
@@ -189,9 +181,6 @@ function RunDetailPage() {
   const updateBreakdownRemarks = useUpdateBreakdownRemarks(numRunId);
   const createMaterial = useCreateMaterial(numRunId);
   const updateMaterial = useUpdateMaterial(numRunId);
-  const addLabour = useCreateLabour(numRunId);
-  const updateLabourMut = useUpdateLabour(numRunId);
-  const removeLabour = useDeleteLabour(numRunId);
   const createBOMRequest = useCreateBOMRequest();
   const reRequestBOM = useReRequestBOMShortfall();
   const createFGReceipt = useCreateFGReceipt();
@@ -223,8 +212,7 @@ function RunDetailPage() {
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
-  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | 'labour' | 'fg-receipt' | 'manual-segment' | 'manual-breakdown' | null>(null);
-  const [editingLabour, setEditingLabour] = useState<ResourceLabour | null>(null);
+  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | 'fg-receipt' | 'manual-segment' | 'manual-breakdown' | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<ProductionSegment | null>(null);
   const [selectedBreakdown, setSelectedBreakdown] = useState<MachineBreakdown | null>(null);
   const [editRemarks, setEditRemarks] = useState('');
@@ -406,20 +394,6 @@ function RunDetailPage() {
   const materialForm = useForm<CreateMaterialFormData>({ resolver: zodResolver(createMaterialSchema) });
   const onSubmitMaterial = async (data: CreateMaterialFormData) => {
     try { await createMaterial.mutateAsync(data); toast.success('Material added'); setDialog(null); materialForm.reset(); } catch { toast.error('Failed to add material'); }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Labour form
-  // ---------------------------------------------------------------------------
-  const labourForm = useForm<CreateLabourFormData>({ resolver: zodResolver(createLabourSchema), defaultValues: { worker_count: 1 } });
-  const openEditLabour = (entry: ResourceLabour) => {
-    setEditingLabour(entry);
-    labourForm.reset({ description: entry.description, worker_count: entry.worker_count, hours_worked: entry.hours_worked, rate_per_hour: entry.rate_per_hour });
-    setDialog('labour');
-  };
-  const handleDeleteLabour = async (id: number) => {
-    if (!confirm('Delete this labour entry?')) return;
-    try { await removeLabour.mutateAsync(id); toast.success('Deleted'); } catch { toast.error('Delete failed'); }
   };
 
   // ---------------------------------------------------------------------------
@@ -1173,86 +1147,6 @@ function RunDetailPage() {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Labour Dialog */}
-      <Dialog open={dialog === 'labour'} onOpenChange={(open) => { if (!open) { setDialog(null); setEditingLabour(null); } }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>{editingLabour ? 'Edit Labour' : 'Labour'}</DialogTitle></DialogHeader>
-          {!editingLabour && (
-            <>
-              {labourEntries.length > 0 && (
-                <div className="overflow-x-auto max-h-60 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Description</th>
-                        <th className="text-right p-2 font-medium">Workers</th>
-                        <th className="text-right p-2 font-medium">Hours</th>
-                        <th className="text-right p-2 font-medium">Rate/hr</th>
-                        <th className="text-right p-2 font-medium">Total</th>
-                        {!isCompleted && <th className="p-2 w-20" />}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {labourEntries.map((e) => (
-                        <tr key={e.id} className="border-b">
-                          <td className="p-2">{e.description || 'Workers'}</td>
-                          <td className="p-2 text-right">{e.worker_count}</td>
-                          <td className="p-2 text-right">{e.hours_worked}</td>
-                          <td className="p-2 text-right">₹{e.rate_per_hour}</td>
-                          <td className="p-2 text-right font-medium">₹{parseFloat(e.total_cost).toLocaleString()}</td>
-                          {!isCompleted && (
-                            <td className="p-2">
-                              <div className="flex items-center gap-1 justify-end">
-                                <Button variant="ghost" size="sm" onClick={() => openEditLabour(e)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleDeleteLabour(e.id)}><Trash2 className="h-3.5 w-3.5 text-red-500" /></Button>
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {!isCompleted && (
-                <Button size="sm" onClick={() => { setEditingLabour(null); labourForm.reset({ worker_count: 1, description: '', hours_worked: '', rate_per_hour: '' }); setEditingLabour({ id: -1 } as ResourceLabour); }}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Labour Entry
-                </Button>
-              )}
-              {labourEntries.length === 0 && isCompleted && (
-                <p className="text-sm text-muted-foreground text-center py-4">No labour entries</p>
-              )}
-            </>
-          )}
-          {editingLabour && (
-            <form onSubmit={labourForm.handleSubmit(async (d) => {
-              try {
-                if (editingLabour.id !== -1) {
-                  await updateLabourMut.mutateAsync({ entryId: editingLabour.id, data: d });
-                  toast.success('Updated');
-                } else {
-                  await addLabour.mutateAsync(d);
-                  toast.success('Added');
-                }
-                setEditingLabour(null);
-                labourForm.reset({ worker_count: 1 });
-              } catch { toast.error('Failed'); }
-            })} className="space-y-4">
-              <div><Label>Description</Label><Input {...labourForm.register('description')} placeholder="e.g., Skilled labourers, Helpers" /></div>
-              <div className="grid grid-cols-3 gap-4">
-                <div><Label>Workers</Label><Input type="number" {...labourForm.register('worker_count', { valueAsNumber: true })} /></div>
-                <div><Label>Hours Worked</Label><Input {...labourForm.register('hours_worked')} /></div>
-                <div><Label>Rate/hr (₹)</Label><Input {...labourForm.register('rate_per_hour')} /></div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setEditingLabour(null)}>Cancel</Button>
-                <Button type="submit">{editingLabour.id !== -1 ? 'Save' : 'Add'}</Button>
-              </div>
-            </form>
-          )}
         </DialogContent>
       </Dialog>
 

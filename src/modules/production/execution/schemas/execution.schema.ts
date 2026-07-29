@@ -12,8 +12,6 @@ export const createRunSchema = z.object({
   item_code: z.string().optional().default(''),
   required_qty: z.string().optional(),
   rated_speed: z.string().optional(),
-  electricity_cost_per_unit: z.string().optional(),
-  labour_cost_per_hour: z.string().optional(),
   machine_ids: z.array(z.number()).optional().default([]),
   labour_count: z.number().int().min(0).optional().default(0),
   other_manpower_count: z.number().int().min(0).optional().default(0),
