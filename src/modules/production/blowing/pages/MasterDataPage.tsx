@@ -33,20 +33,16 @@ import {
   useCreateBuyPrice,
   useCreateMachine,
   useCreatePreformSpec,
-  useCreateRateConfig,
   useMachines,
   usePreformSpecs,
-  useRateConfigs,
   useSearchSAPItems,
   useUpdateBuyPrice,
   useUpdateMachine,
   useUpdatePreformSpec,
-  useUpdateRateConfig,
 } from '../api';
 import type {
   BlowingAuditLog,
   BlowingMachine,
-  BlowingRateConfig,
   BottleBuyPrice,
   PreformSpec,
   SAPItem,
@@ -61,9 +57,6 @@ import {
   type PreformSpecFormData,
   type PreformSpecFormInput,
   preformSpecFormSchema,
-  type RateConfigFormData,
-  type RateConfigFormInput,
-  rateConfigFormSchema,
 } from '../schemas';
 
 const num = (v: string | number | null | undefined, d = 2) =>
@@ -394,118 +387,6 @@ function PreformSpecsTab() {
 }
 
 // --------------------------------------------------------------------------
-function RateConfigTab() {
-  const { data: configs = [] } = useRateConfigs();
-  const createConfig = useCreateRateConfig();
-  const updateConfig = useUpdateRateConfig();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<BlowingRateConfig | null>(null);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<RateConfigFormInput, unknown, RateConfigFormData>({
-    resolver: zodResolver(rateConfigFormSchema),
-  });
-
-  // The currently-applied config: latest active with effective_from <= today.
-  const appliedId = useMemo(() => {
-    const t = today();
-    return [...configs].filter((c) => c.is_active && c.effective_from <= t)
-      .sort((a, b) => (a.effective_from < b.effective_from ? 1 : -1))[0]?.id;
-  }, [configs]);
-  const statusOf = (c: BlowingRateConfig): EffStatus =>
-    !c.is_active ? 'inactive' : c.id === appliedId ? 'applied' : c.effective_from > today() ? 'scheduled' : 'superseded';
-
-  const openAdd = () => { setEditing(null); reset({ packing_rate_per_bottle: 0.2 }); setOpen(true); };
-  const openEdit = (c: BlowingRateConfig) => {
-    setEditing(c);
-    reset({
-      effective_from: c.effective_from,
-      operator_rate_per_day: Number(c.operator_rate_per_day), labour_rate_per_day: Number(c.labour_rate_per_day),
-      electricity_rate_per_unit: Number(c.electricity_rate_per_unit),
-      scrap_rate_per_bottle: Number(c.scrap_rate_per_bottle), packing_rate_per_bottle: Number(c.packing_rate_per_bottle),
-      maintenance_per_day: Number(c.maintenance_per_day), factory_overhead_per_day: Number(c.factory_overhead_per_day),
-      qa_cost_per_day: Number(c.qa_cost_per_day),
-    });
-    setOpen(true);
-  };
-
-  const onSubmit = async (data: RateConfigFormData) => {
-    try {
-      if (editing) { await updateConfig.mutateAsync({ id: editing.id, data }); toast.success('Rate config updated'); }
-      else { await createConfig.mutateAsync(data); toast.success('Rate config added'); }
-      setOpen(false);
-    } catch (e) {
-      toast.error((e as { message?: string })?.message ?? 'Failed to save rate config');
-    }
-  };
-
-  const fields: Array<{ name: keyof RateConfigFormData; label: string }> = [
-    { name: 'operator_rate_per_day', label: 'Operator rate / day (₹)' },
-    { name: 'labour_rate_per_day', label: 'Labour rate / day (₹)' },
-    { name: 'electricity_rate_per_unit', label: 'Electricity rate / unit (₹)' },
-    { name: 'scrap_rate_per_bottle', label: 'Scrap rate / bottle (₹)' },
-    { name: 'packing_rate_per_bottle', label: 'Packing rate / bottle (₹)' },
-    { name: 'maintenance_per_day', label: 'Maintenance / day (₹)' },
-    { name: 'factory_overhead_per_day', label: 'Factory overhead / day (₹)' },
-    { name: 'qa_cost_per_day', label: 'QA cost / day (₹)' },
-  ];
-
-  return (
-    <TabShell
-      title="Rate configs" addLabel="Add rate config" onAdd={openAdd}
-      dialogTitle={editing ? 'Edit rate config' : 'Add rate config'}
-      open={open} setOpen={setOpen}
-      form={
-        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="r-eff">Effective from</Label>
-            <Input id="r-eff" type="date" {...register('effective_from')} />
-            {errors.effective_from && <p className="text-sm text-red-600">{errors.effective_from.message}</p>}
-          </div>
-          {fields.map((f) => (
-            <div key={f.name}>
-              <Label htmlFor={`r-${f.name}`}>{f.label}</Label>
-              <Input id={`r-${f.name}`} type="number" step="0.0001" {...register(f.name)} />
-              {errors[f.name] && <p className="text-sm text-red-600">{String(errors[f.name]?.message ?? '')}</p>}
-            </div>
-          ))}
-          <div className="sm:col-span-2"><FormFooter pending={createConfig.isPending || updateConfig.isPending} editing={!!editing} onCancel={() => setOpen(false)} /></div>
-        </form>
-      }
-    >
-      <p className="mb-3 text-xs text-muted-foreground">The green row is the rate currently applied to new runs. Greyed rows are its history. Preform cost is now set per preform (₹/bottle) under the <strong>Preform Specs</strong> tab, since each preform has its own rate.</p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-muted-foreground">
-              <th className="py-2 pr-4">Effective</th><th className="py-2 pr-4 text-right">Operator/day</th>
-              <th className="py-2 pr-4 text-right">Labour/day</th><th className="py-2 pr-4 text-right">Elec/unit</th>
-              <th className="py-2 pr-4 text-right">Scrap/bottle</th>
-              <th className="py-2 pr-4 text-right">Packing/bottle</th><th className="py-2 pr-4">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {configs.map((c) => {
-              const st = statusOf(c);
-              return (
-                <tr key={c.id} className={`cursor-pointer border-b hover:bg-muted/40 ${EFF_ROW[st]}`} onClick={() => openEdit(c)}>
-                  <td className="py-2 pr-4">{c.effective_from}</td>
-                  <td className="py-2 pr-4 text-right">{num(c.operator_rate_per_day)}</td>
-                  <td className="py-2 pr-4 text-right">{num(c.labour_rate_per_day)}</td>
-                  <td className="py-2 pr-4 text-right">{num(c.electricity_rate_per_unit, 4)}</td>
-                  <td className="py-2 pr-4 text-right">{num(c.scrap_rate_per_bottle, 4)}</td>
-                  <td className="py-2 pr-4 text-right">{num(c.packing_rate_per_bottle, 4)}</td>
-                  <td className="py-2 pr-4"><Badge className={EFF_BADGE[st].cls}>{EFF_BADGE[st].label}</Badge></td>
-                </tr>
-              );
-            })}
-            {configs.length === 0 && <tr><td colSpan={7} className="py-4 text-muted-foreground">No rate configs yet.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </TabShell>
-  );
-}
-
-// --------------------------------------------------------------------------
 function BuyPricesTab() {
   const { data: prices = [] } = useBuyPrices();
   const { data: specs = [] } = usePreformSpecs(true);
@@ -635,21 +516,24 @@ function MasterDataPage() {
   const navigate = useNavigate();
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Blowing — Master Data" description="Machines, preform specs and rate configuration">
-        <Button variant="outline" onClick={() => navigate('/production/blowing')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
+      <DashboardHeader title="Blowing — Master Data" description="Machines, preform specs and buy prices">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/production/blowing/cost-master')}>
+            Cost Master
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/production/blowing')}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        </div>
       </DashboardHeader>
       <Tabs defaultValue="machines">
         <TabsList>
           <TabsTrigger value="machines">Machines</TabsTrigger>
           <TabsTrigger value="preforms">Preform Specs</TabsTrigger>
-          <TabsTrigger value="rates">Rate Config</TabsTrigger>
           <TabsTrigger value="buy">Buy Prices</TabsTrigger>
         </TabsList>
         <TabsContent value="machines" className="pt-4"><MachinesTab /></TabsContent>
         <TabsContent value="preforms" className="pt-4"><PreformSpecsTab /></TabsContent>
-        <TabsContent value="rates" className="pt-4"><RateConfigTab /></TabsContent>
         <TabsContent value="buy" className="pt-4"><BuyPricesTab /></TabsContent>
       </Tabs>
     </div>

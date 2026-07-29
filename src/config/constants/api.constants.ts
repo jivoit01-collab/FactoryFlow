@@ -664,6 +664,8 @@ export const API_ENDPOINTS = {
     PREFORM_SPEC_DETAIL: (specId: number) => `/blowing/preform-specs/${specId}/`,
     RATE_CONFIGS: '/blowing/rate-configs/',
     RATE_CONFIG_DETAIL: (configId: number) => `/blowing/rate-configs/${configId}/`,
+    COST_RATES: '/blowing/cost-rates/',
+    COST_RATE_DETAIL: (rateId: number) => `/blowing/cost-rates/${rateId}/`,
     BUY_PRICES: '/blowing/buy-prices/',
     BUY_PRICE_DETAIL: (buyId: number) => `/blowing/buy-prices/${buyId}/`,
     // Runs

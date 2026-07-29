@@ -201,7 +201,64 @@ export interface BlowingRunCost {
   fully_loaded_cost: string;
   variable_cost_per_bottle: string;
   make_cost_per_bottle: string;
+  // two-bucket model (preform vs blowing)
+  electricity_machine_cost: string;
+  electricity_utility_cost: string;
+  blowing_cost: string;
+  preform_cost_per_bottle: string;
+  total_per_bottle_cost: string;
+  benchmark_blowing_per_bottle: string;
+  market_price_per_bottle: string | null;
   calculated_at: string;
+}
+
+export type BlowingCostCategory =
+  | 'OPERATOR'
+  | 'LABOUR'
+  | 'ELECTRICITY_MACHINE'
+  | 'ELECTRICITY_UTILITY'
+  | 'PACKING'
+  | 'SCRAP_RECOVERY'
+  | 'WASTAGE'
+  | 'BENCHMARK_BLOWING_PER_BOTTLE';
+
+export type BlowingCostBasis = 'PER_DAY' | 'PER_PERSON_DAY' | 'PER_UNIT' | 'PER_BOTTLE';
+
+export interface BlowingCostRate {
+  id: number;
+  machine: number | null; // null = company-wide default; set = per-machine override
+  machine_name: string | null;
+  category: BlowingCostCategory;
+  category_display: string;
+  basis: BlowingCostBasis;
+  basis_display: string;
+  rate: string;
+  is_credit: boolean;
+  label: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpsertBlowingCostRateRequest {
+  machine_id?: number | null; // null / omitted = company-wide default
+  category: BlowingCostCategory;
+  basis: BlowingCostBasis;
+  rate: string | number;
+  is_credit?: boolean;
+  label?: string;
+}
+
+export interface BlowingRunCostLine {
+  id: number;
+  category: BlowingCostCategory;
+  category_display: string;
+  basis: string;
+  quantity: string;
+  rate: string;
+  amount: string;
+  is_credit: boolean;
+  note: string;
 }
 
 export interface BottleBuyPrice {
@@ -320,6 +377,7 @@ export interface BlowingRunDetail extends BlowingRun {
   sap_preform_item_code: string;
   sap_bottle_item_code: string;
   cost: BlowingRunCost | null;
+  cost_lines: BlowingRunCostLine[];
   updated_at: string;
 }
 

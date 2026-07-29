@@ -54,6 +54,7 @@ const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboard
 const BlowingRunFormPage = lazy(() => import('./blowing/pages/RunFormPage'));
 const BlowingRunDetailPage = lazy(() => import('./blowing/pages/RunDetailPage'));
 const BlowingMasterDataPage = lazy(() => import('./blowing/pages/MasterDataPage'));
+const BlowingCostMasterPage = lazy(() => import('./blowing/pages/CostMasterPage'));
 const BlowingReportsPage = lazy(() => import('./blowing/pages/ReportsPage'));
 const BlowingMakeVsBuyPage = lazy(() => import('./blowing/pages/MakeVsBuyPage'));
 
@@ -298,6 +299,12 @@ export const productionModuleConfig: ModuleConfig = {
       permissions: [BLOWING_PERMISSIONS.MANAGE_MACHINES],
     },
     {
+      path: '/production/blowing/cost-master',
+      element: <BlowingCostMasterPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.MANAGE_RATE_CONFIG],
+    },
+    {
       path: '/production/blowing/reports',
       element: <BlowingReportsPage />,
       layout: 'main',
@@ -334,6 +341,11 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/production/blowing/make-vs-buy',
           title: 'Make vs Buy',
           permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
+        },
+        {
+          path: '/production/blowing/cost-master',
+          title: 'Blowing Cost Master',
+          permissions: [BLOWING_PERMISSIONS.MANAGE_RATE_CONFIG],
         },
         {
           path: '/production/execution/line-clearance',

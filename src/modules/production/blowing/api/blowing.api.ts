@@ -8,6 +8,7 @@ import type {
   BlowingAuditLog,
   BlowingBreakdown,
   BlowingBreakdownCategory,
+  BlowingCostRate,
   BlowingMachine,
   BlowingRateConfig,
   BlowingRun,
@@ -32,6 +33,7 @@ import type {
   StopProductionRequest,
   UpdateRunRequest,
   UpdateSegmentRequest,
+  UpsertBlowingCostRateRequest,
   VarianceReport,
 } from '../types';
 
@@ -90,6 +92,24 @@ export const blowingApi = {
   async updateRateConfig(id: number, data: Partial<CreateRateConfigRequest> & { is_active?: boolean }): Promise<BlowingRateConfig> {
     const res = await apiClient.patch<BlowingRateConfig>(EP.RATE_CONFIG_DETAIL(id), data);
     return res.data;
+  },
+
+  // ---- Cost Master (catalog rates) ----
+  async getCostRates(params?: { machineId?: number; scope?: 'global' }): Promise<BlowingCostRate[]> {
+    const query: Record<string, string | number> = {};
+    if (params?.machineId != null) query.machine_id = params.machineId;
+    if (params?.scope) query.scope = params.scope;
+    const res = await apiClient.get<BlowingCostRate[]>(EP.COST_RATES, {
+      params: Object.keys(query).length ? query : undefined,
+    });
+    return res.data;
+  },
+  async upsertCostRate(data: UpsertBlowingCostRateRequest): Promise<BlowingCostRate> {
+    const res = await apiClient.post<BlowingCostRate>(EP.COST_RATES, data);
+    return res.data;
+  },
+  async deleteCostRate(rateId: number): Promise<void> {
+    await apiClient.delete(EP.COST_RATE_DETAIL(rateId));
   },
 
   // ---- Runs ----

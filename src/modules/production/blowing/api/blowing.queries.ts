@@ -15,6 +15,7 @@ import type {
   RunListParams,
   StopProductionRequest,
   UpdateRunRequest,
+  UpsertBlowingCostRateRequest,
 } from '../types';
 import { blowingApi } from './blowing.api';
 
@@ -35,6 +36,8 @@ export const BLOWING_QUERY_KEYS = {
     [...BLOWING_QUERY_KEYS.all, 'monthly-report', { year, month }] as const,
   makeVsBuy: (dateFrom: string, dateTo: string, preformSpecId?: number) =>
     [...BLOWING_QUERY_KEYS.all, 'make-vs-buy', { dateFrom, dateTo, preformSpecId }] as const,
+  costRates: (scope?: 'global', machineId?: number) =>
+    [...BLOWING_QUERY_KEYS.all, 'cost-rates', { scope: scope ?? null, machineId: machineId ?? null }] as const,
   variances: (dateFrom: string, dateTo: string) =>
     [...BLOWING_QUERY_KEYS.all, 'variances', { dateFrom, dateTo }] as const,
   sapItems: (kind: string, search: string) =>
@@ -120,6 +123,29 @@ export const useUpdateRateConfig = () => {
     mutationFn: ({ id, data }: { id: number; data: Partial<CreateRateConfigRequest> & { is_active?: boolean } }) =>
       blowingApi.updateRateConfig(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [...BLOWING_QUERY_KEYS.all, 'rate-configs'] }),
+  });
+};
+
+// ---- Cost Master (catalog rates) ----
+export const useCostRates = (params?: { machineId?: number; scope?: 'global' }) =>
+  useQuery({
+    queryKey: BLOWING_QUERY_KEYS.costRates(params?.scope, params?.machineId),
+    queryFn: () => blowingApi.getCostRates(params),
+  });
+
+export const useUpsertCostRate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpsertBlowingCostRateRequest) => blowingApi.upsertCostRate(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...BLOWING_QUERY_KEYS.all, 'cost-rates'] }),
+  });
+};
+
+export const useDeleteCostRate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (rateId: number) => blowingApi.deleteCostRate(rateId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...BLOWING_QUERY_KEYS.all, 'cost-rates'] }),
   });
 };
 

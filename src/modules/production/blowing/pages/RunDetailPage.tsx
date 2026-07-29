@@ -340,101 +340,109 @@ function RunDetailPage() {
               <Row label="Manpower (op/con/own)" value={`${run.operator_count}/${run.contract_labour_count}/${run.own_labour_count}`} />
             </CardContent>
           </Card>
-          <Card className="border-primary/40">
-            <CardHeader>
-              <CardTitle className="text-base">What it costs to make these bottles</CardTitle>
-              <p className="text-xs text-muted-foreground">Tap a line to see how the number is worked out.</p>
-            </CardHeader>
-            <CardContent>
-              {/* Running (variable) cost — resin now lives inside here, not as a separate line */}
-              <CostGroup
-                title="Running cost"
-                subtitle="Goes up the more bottles you make"
-                total={cost.variable_cost_total}
-                defaultOpen
-              >
-                <CostLine
-                  label="Preform / resin"
-                  hint={`${fmt(run.total_counter_production, 0)} bottles × ₹${fmt(run.preform_rate_per_bottle, 2)}/bottle`}
-                  value={`₹ ${fmt(cost.preform_cost)}`}
-                />
-                <CostLine
-                  label="Electricity"
-                  hint={`${fmt(run.total_units, 2)} units × ₹${fmt(run.electricity_rate_per_unit)}/unit`}
-                  value={`₹ ${fmt(cost.electricity_cost)}`}
-                />
-                {num(cost.mould_amortization) > 0 && (
-                  <CostLine label="Mould wear" value={`₹ ${fmt(cost.mould_amortization)}`} />
-                )}
-                <CostLine
-                  label="Packing"
-                  hint={`${fmt(cost.good_bottles, 0)} bottles × ₹${fmt(run.packing_rate_per_bottle)}/bottle`}
-                  value={`₹ ${fmt(
-                    num(cost.variable_cost_total) -
-                      num(cost.preform_cost) -
-                      num(cost.electricity_cost) -
-                      num(cost.mould_amortization),
-                  )}`}
-                />
-              </CostGroup>
+          {(() => {
+            const benchmark = num(cost.benchmark_blowing_per_bottle);
+            const blowingPB = num(cost.blowing_cost_per_bottle);
+            const hasBenchmark = benchmark > 0;
+            const blowingBelow = hasBenchmark && blowingPB < benchmark;
+            const marketPB = cost.market_price_per_bottle === null ? null : num(cost.market_price_per_bottle);
+            const totalPB = num(cost.total_per_bottle_cost);
+            const makeCheaper = marketPB !== null && totalPB <= marketPB;
+            return (
+              <Card className="border-primary/40">
+                <CardHeader>
+                  <CardTitle className="text-base">What it costs to make these bottles</CardTitle>
+                  <p className="text-xs text-muted-foreground">Tap “Blowing cost” to see how it is worked out.</p>
+                </CardHeader>
+                <CardContent>
+                  {/* Preform cost */}
+                  <div className="flex items-start justify-between border-b py-2 text-sm">
+                    <span>
+                      <span className="font-medium">Preform cost</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {fmt(run.total_counter_production, 0)} bottles × ₹{fmt(run.preform_rate_per_bottle, 2)}/bottle
+                      </span>
+                    </span>
+                    <span className="font-semibold">₹ {fmt(cost.preform_cost)}</span>
+                  </div>
 
-              {/* Fixed cost */}
-              <CostGroup
-                title="Fixed cost"
-                subtitle="Same for the day, however many bottles you make"
-                total={cost.fixed_cost_total}
-              >
-                <CostLine
-                  label="Operators"
-                  hint={`${run.operator_count} × ₹${fmt(run.operator_rate_per_day)}/day`}
-                  value={`₹ ${fmt(cost.operator_cost)}`}
-                />
-                <CostLine
-                  label="Labour (contract + own)"
-                  hint={`${run.contract_labour_count + run.own_labour_count} × ₹${fmt(run.labour_rate_per_day)}/day`}
-                  value={`₹ ${fmt(cost.labour_cost)}`}
-                />
-                {num(cost.machine_depreciation) > 0 && (
-                  <CostLine label="Machine depreciation" value={`₹ ${fmt(cost.machine_depreciation)}`} />
-                )}
-                {num(cost.maintenance_cost) > 0 && (
-                  <CostLine label="Maintenance" value={`₹ ${fmt(cost.maintenance_cost)}`} />
-                )}
-                {num(cost.overhead_cost) > 0 && (
-                  <CostLine label="Factory overhead" value={`₹ ${fmt(cost.overhead_cost)}`} />
-                )}
-                {num(cost.qa_cost) > 0 && (
-                  <CostLine label="Quality check" value={`₹ ${fmt(cost.qa_cost)}`} />
-                )}
-              </CostGroup>
+                  {/* Blowing cost (expandable into its components) */}
+                  <CostGroup
+                    title="Blowing cost"
+                    subtitle="Operator, labour, electricity, wastage, packing − scrap"
+                    total={cost.blowing_cost}
+                    defaultOpen
+                  >
+                    {(run.cost_lines ?? []).map((l) => (
+                      <CostLine
+                        key={l.category}
+                        label={l.category_display}
+                        hint={l.note}
+                        value={`${l.is_credit ? '− ' : ''}₹ ${fmt(l.amount)}`}
+                      />
+                    ))}
+                  </CostGroup>
 
-              {/* Scrap recovery reduces the cost */}
-              {num(cost.scrap_total) > 0 && (
-                <div className="border-b">
-                  <CostLine
-                    label="Less: scrap recovery"
-                    hint={`${fmt(run.rejection_pcs, 0)} rejected bottles sold as scrap`}
-                    value={`− ₹ ${fmt(cost.scrap_total)}`}
-                  />
-                </div>
-              )}
+                  {/* Blowing cost per bottle vs industry benchmark */}
+                  <div
+                    className={cn(
+                      'mt-1 flex items-center justify-between rounded-md px-3 py-2',
+                      !hasBenchmark ? 'bg-primary/5' : blowingBelow ? 'bg-green-500/10' : 'bg-amber-500/10',
+                    )}
+                  >
+                    <span>
+                      <span className="font-medium">Blowing cost / bottle</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {hasBenchmark
+                          ? `${blowingBelow ? 'below' : 'above'} industry benchmark ₹${fmt(benchmark, 2)}`
+                          : 'set a benchmark in Cost Master to compare'}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        'text-lg font-bold',
+                        !hasBenchmark ? 'text-primary' : blowingBelow ? 'text-green-600' : 'text-amber-600',
+                      )}
+                    >
+                      ₹ {fmt(cost.blowing_cost_per_bottle, 2)}
+                    </span>
+                  </div>
 
-              <div className="flex justify-between py-2 text-sm">
-                <span className="font-medium">Total cost for this run</span>
-                <span className="font-semibold">₹ {fmt(cost.fully_loaded_cost)}</span>
-              </div>
-
-              <div className="mt-1 flex items-center justify-between rounded-md bg-primary/5 px-3 py-2">
-                <span>
-                  <span className="font-medium">Cost per good bottle</span>
-                  <span className="block text-xs text-muted-foreground">
-                    ₹ {fmt(cost.fully_loaded_cost)} ÷ {fmt(cost.good_bottles, 0)} good bottles
-                  </span>
-                </span>
-                <span className="text-lg font-bold text-primary">₹ {fmt(cost.make_cost_per_bottle, 2)}</span>
-              </div>
-            </CardContent>
-          </Card>
+                  {/* Total per bottle = preform + blowing, vs market (buy) price */}
+                  <div className="mt-3 flex items-center justify-between border-t pt-2 text-sm">
+                    <span className="font-medium">Total cost / bottle
+                      <span className="block text-xs font-normal text-muted-foreground">preform + blowing</span>
+                    </span>
+                    <span className="text-lg font-bold text-primary">₹ {fmt(cost.total_per_bottle_cost, 2)}</span>
+                  </div>
+                  {marketPB !== null ? (
+                    <div
+                      className={cn(
+                        'mt-1 flex items-center justify-between rounded-md px-3 py-2',
+                        makeCheaper ? 'bg-green-500/10' : 'bg-amber-500/10',
+                      )}
+                    >
+                      <span>
+                        <span className={cn('font-medium', makeCheaper ? 'text-green-700' : 'text-amber-700')}>
+                          {makeCheaper ? 'Making is cheaper' : 'Buying is cheaper'}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          vs market (buy) price ₹{fmt(marketPB, 2)}/bottle
+                        </span>
+                      </span>
+                      <span className={cn('font-semibold', makeCheaper ? 'text-green-600' : 'text-amber-600')}>
+                        {makeCheaper ? '−' : '+'}₹ {fmt(Math.abs(totalPB - marketPB), 2)}/bottle
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Set a Buy Price for this bottle to compare with the market.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </div>
       )}
 
