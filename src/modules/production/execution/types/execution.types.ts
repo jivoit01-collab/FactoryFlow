@@ -275,6 +275,7 @@ export interface ProductionSegment {
   end_time: string | null;
   produced_cases: string;
   is_active: boolean;
+  is_manual: boolean;
   duration_minutes: number;
   remarks: string;
   created_at: string;
@@ -318,6 +319,7 @@ export interface MachineBreakdown {
   breakdown_minutes: number;
   is_unrecovered: boolean;
   is_active: boolean;
+  is_manual: boolean;
   maintenance_work_order_id: number | null;
   maintenance_work_order_no: string;
   maintenance_work_order_status: string;
