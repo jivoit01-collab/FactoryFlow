@@ -24,6 +24,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { getErrorMessage } from '@/shared/utils';
 
+import { bstApi } from '../../api';
 import type { BSTTransferDetail } from '../../types';
 import type { BstReceivedPallet } from './bstReceivePallets';
 
@@ -110,6 +111,23 @@ export function BSTPalletPutawayDialog({ open, onOpenChange, pallet, transfer, o
         uom: pallet.uom,
         note: `BST ${transfer.entry_no} receive putaway`,
       });
+
+      // The pallet is now physically kept in a destination-warehouse location, so
+      // hand ownership of it — and its boxes — to the receiving company (the
+      // cross-company intercompany transfer). No-ops for intra-company transfers
+      // and idempotent. A failure here (e.g. a missing item-code mapping) must not
+      // un-place the pallet, so surface it without throwing.
+      try {
+        await bstApi.putawayPallet(transfer.id, pallet.palletCode);
+      } catch (error) {
+        toast.warning(
+          getErrorMessage(
+            error,
+            'Pallet placed, but the ownership transfer to this company did not complete.',
+          ),
+        );
+      }
+
       toast.success(`Pallet ${pallet.palletCode} placed in ${selection.location.code}.`);
       onPlaced();
       onOpenChange(false);
