@@ -240,10 +240,45 @@ export default function SalesDispatchBarcodeScanPage() {
         : buildBillGroups(entry, scans),
     [isArrivalMode, arrivalDockings.dockings, entry, scans],
   );
-  // The load's expected boxes = the sum of what each bill card shows, so the header total
-  // always reconciles with the per-bill rows. An entry-level stored total (SAP gave one)
-  // still wins on a single-docking load. Bills already honour their own stored totals.
-  const billBoxTotal = billGroups.reduce((total, bill) => total + bill.expectedBoxes, 0);
+  // Which dockings on this truck actually require box scanning. Companies flagged
+  // box_scan_optional (e.g. Jivo Beverages) ride along on the load for context but are
+  // never scanned at the factory, so their bills must not feed the scan gate — otherwise a
+  // truck whose only scan-required company is fully scanned is wrongly held as "partial"
+  // (e.g. 10 oil boxes scanned, 800 beverage boxes "unscanned"). Single-docking loads keep
+  // the current entry's own flag.
+  const scanRequiredDockingIds = useMemo(() => {
+    if (!isArrivalMode) {
+      return new Set<number>(entry && !isBoxScanOptional ? [entry.id] : []);
+    }
+    return new Set<number>(
+      arrivalDockings.dockings
+        .filter((docking) => !(docking.gatepass_readiness?.box_scan_optional ?? false))
+        .map((docking) => docking.id),
+    );
+  }, [isArrivalMode, arrivalDockings.dockings, entry, isBoxScanOptional]);
+  // The bills and scan count the gate is allowed to judge: only those on scan-required
+  // dockings. Optional-company bills stay in `billGroups` for display, just not the gate.
+  const gatingBillGroups = useMemo(
+    () =>
+      isArrivalMode
+        ? billGroups.filter((bill) => scanRequiredDockingIds.has(bill.dockingId))
+        : billGroups,
+    [isArrivalMode, billGroups, scanRequiredDockingIds],
+  );
+  const gatingScanCount = useMemo(
+    () =>
+      isArrivalMode
+        ? arrivalDockings.dockings
+            .filter((docking) => scanRequiredDockingIds.has(docking.id))
+            .reduce((total, docking) => total + (docking.box_scans?.length ?? 0), 0)
+        : scans.length,
+    [isArrivalMode, arrivalDockings.dockings, scanRequiredDockingIds, scans.length],
+  );
+  // The load's expected boxes for the scan step = the boxes that actually get scanned, i.e.
+  // the sum over scan-required bills only. Beverage-type bills (box_scan_optional) are never
+  // scanned here, so they don't inflate the target or the progress bar. An entry-level stored
+  // total (SAP gave one) still wins on a single docking. Bills honour their own stored totals.
+  const billBoxTotal = gatingBillGroups.reduce((total, bill) => total + bill.expectedBoxes, 0);
   const entryStoredBoxes = parsePositiveNumber(entry?.total_boxes);
   const expectedBoxes = !isArrivalMode && entryStoredBoxes > 0 ? entryStoredBoxes : billBoxTotal;
   // Partial = at least one box scanned, but the load still carries unscanned invoiced
@@ -257,7 +292,7 @@ export default function SalesDispatchBarcodeScanPage() {
   // Each bill's lines are grouped by item code, so one row per product already means one
   // entry per (bill, item_code) — matching the backend's per-(bill, item_code) check
   // (has_unscanned_bill_lines): a line short of its invoiced quantity flags the load.
-  const hasUnscannedBillLine = billGroups.some((bill) =>
+  const hasUnscannedBillLine = gatingBillGroups.some((bill) =>
     bill.summary.items.some(
       (item) => item.expectedQuantity > 0 && item.scannedQuantity < item.expectedQuantity,
     ),
@@ -266,10 +301,10 @@ export default function SalesDispatchBarcodeScanPage() {
     (scan) => scan.document != null && parsePositiveNumber(scan.quantity) > 0,
   );
   const isPartialScan =
-    scans.length > 0 &&
+    gatingScanCount > 0 &&
     (hasTrustworthyScanQuantities
       ? hasUnscannedBillLine
-      : expectedBoxes > 0 && scans.length < expectedBoxes);
+      : expectedBoxes > 0 && gatingScanCount < expectedBoxes);
   const progressPercent =
     expectedBoxes > 0 ? Math.min(100, Math.round((scans.length / expectedBoxes) * 100)) : 0;
 
@@ -280,13 +315,13 @@ export default function SalesDispatchBarcodeScanPage() {
   // visible half of the gate; the backend re-checks the same rule at gatepass print.
   const scanGateSatisfied =
     isBoxScanOptional ||
-    (scans.length > 0 && !isPartialScan) ||
-    (scans.length === 0 && isSkipApproved) ||
+    (gatingScanCount > 0 && !isPartialScan) ||
+    (gatingScanCount === 0 && isSkipApproved) ||
     (isPartialScan && isPartialApproved);
   const isScanLocked = !isReview && !isReadOnly && !scanGateSatisfied;
   const scanLockMessage = !isScanLocked
     ? ''
-    : scans.length === 0
+    : gatingScanCount === 0
       ? isSkipPending
         ? 'Locked — box-scan skip is awaiting admin approval. You can continue once it is approved.'
         : 'Locked — scan at least one box, or request approval to skip scanning (panel above), to continue.'
@@ -516,7 +551,7 @@ export default function SalesDispatchBarcodeScanPage() {
       return;
     }
     if (!isBoxScanOptional) {
-      if (scans.length === 0 && !isSkipApproved) {
+      if (gatingScanCount === 0 && !isSkipApproved) {
         setError(
           isSkipPending
             ? 'Box scanning skip is awaiting admin approval. You can continue once it is approved.'
@@ -617,7 +652,7 @@ export default function SalesDispatchBarcodeScanPage() {
 
       {isBoxScanOptional ? (
         <ScanOptionalPanel />
-      ) : scans.length === 0 ? (
+      ) : gatingScanCount === 0 ? (
         <ScanSkipPanel
           skipRequest={skipRequest}
           canRequest={canRequestScanSkip && !isReadOnly && canEditDocking}
@@ -633,7 +668,7 @@ export default function SalesDispatchBarcodeScanPage() {
         <PartialScanPanel
           partialRequest={partialRequest}
           canRequest={canRequestPartial && !isReadOnly && canEditDocking}
-          scanned={scans.length}
+          scanned={gatingScanCount}
           expected={expectedBoxes}
           isSubmitting={createPartialRequest.isPending}
           onRequest={() => {
@@ -859,7 +894,7 @@ export default function SalesDispatchBarcodeScanPage() {
           <DialogHeader>
             <DialogTitle>Request Partial Dispatch Approval</DialogTitle>
             <DialogDescription>
-              Only {scans.length} of {expectedBoxes} boxes are scanned. Send this Docking entry to
+              Only {gatingScanCount} of {expectedBoxes} boxes are scanned. Send this Docking entry to
               Admin for approval to dispatch with a partial scan. You cannot continue until an admin
               approves the request.
             </DialogDescription>
