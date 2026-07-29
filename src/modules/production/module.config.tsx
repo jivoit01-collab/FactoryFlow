@@ -7,6 +7,8 @@ import {
   EXECUTION_MODULE_PREFIX,
   EXECUTION_PERMISSIONS,
   PRODUCTION_MODULE_PREFIX,
+  PRODUCTION_MOVEMENTS_MODULE_PREFIX,
+  PRODUCTION_MOVEMENTS_PERMISSIONS,
   PRODUCTION_PERMISSIONS,
 } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
@@ -48,6 +50,15 @@ const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
 const CostMasterPage = lazy(() => import('./execution/pages/CostMasterPage'));
+
+// Lazy load Production Movements (SAP wrapper) pages
+const ProductionStockBoardPage = lazy(
+  () => import('./movements/pages/ProductionStockBoardPage'),
+);
+const ProductionTransferPage = lazy(
+  () => import('./movements/pages/ProductionTransferPage'),
+);
+const MovementLedgerPage = lazy(() => import('./movements/pages/MovementLedgerPage'));
 
 // Lazy load Blowing (preform -> bottle) pages
 const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
@@ -267,6 +278,25 @@ export const productionModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
     },
+    // ---- Production Movements (SAP wrapper) ----
+    {
+      path: '/production/movements/stock',
+      element: <ProductionStockBoardPage />,
+      layout: 'main',
+      permissions: [PRODUCTION_MOVEMENTS_PERMISSIONS.VIEW_STOCK],
+    },
+    {
+      path: '/production/movements/transfer',
+      element: <ProductionTransferPage />,
+      layout: 'main',
+      permissions: [PRODUCTION_MOVEMENTS_PERMISSIONS.CREATE_MOVEMENT],
+    },
+    {
+      path: '/production/movements/ledger',
+      element: <MovementLedgerPage />,
+      layout: 'main',
+      permissions: [PRODUCTION_MOVEMENTS_PERMISSIONS.VIEW_MOVEMENTS],
+    },
     // ---- Blowing (preform -> bottle) ----
     {
       path: '/production/blowing',
@@ -323,7 +353,12 @@ export const productionModuleConfig: ModuleConfig = {
       title: 'Production',
       icon: Factory,
       showInSidebar: true,
-      modulePrefix: [PRODUCTION_MODULE_PREFIX, EXECUTION_MODULE_PREFIX, BLOWING_MODULE_PREFIX],
+      modulePrefix: [
+        PRODUCTION_MODULE_PREFIX,
+        EXECUTION_MODULE_PREFIX,
+        BLOWING_MODULE_PREFIX,
+        PRODUCTION_MOVEMENTS_MODULE_PREFIX,
+      ],
       permissions: PRODUCTION_DASHBOARD_PERMISSIONS,
       hasSubmenu: true,
       children: [
@@ -331,6 +366,21 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/production/execution',
           title: 'Execution',
           permissions: [EXECUTION_PERMISSIONS.VIEW_RUN],
+        },
+        {
+          path: '/production/movements/stock',
+          title: 'Warehouse Stock',
+          permissions: [PRODUCTION_MOVEMENTS_PERMISSIONS.VIEW_STOCK],
+        },
+        {
+          path: '/production/movements/transfer',
+          title: 'Move PM',
+          permissions: [PRODUCTION_MOVEMENTS_PERMISSIONS.CREATE_MOVEMENT],
+        },
+        {
+          path: '/production/movements/ledger',
+          title: 'Movement Ledger',
+          permissions: [PRODUCTION_MOVEMENTS_PERMISSIONS.VIEW_MOVEMENTS],
         },
         {
           path: '/production/blowing',

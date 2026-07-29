@@ -847,6 +847,15 @@ export const API_ENDPOINTS = {
     COST_RATES: '/production-execution/cost-rates/',
     COST_RATE_DETAIL: (id: number) => `/production-execution/cost-rates/${id}/`,
   },
+  // Production Movements (SAP wrapper: GRPO -> PM stores -> issue point -> BH-PF)
+  PRODUCTION_MOVEMENTS: {
+    WAREHOUSE_ROLES: '/production-movements/warehouse-roles/',
+    STOCK_BOARD: '/production-movements/stock-board/',
+    WAREHOUSE_STOCK: (whsCode: string) => `/production-movements/stock/${whsCode}/`,
+    TRANSFER_OPTIONS: '/production-movements/transfers/options/',
+    TRANSFERS: '/production-movements/transfers/',
+    MOVEMENTS: '/production-movements/movements/',
+  },
   // Warehouse
   WAREHOUSE: {
     // BOM Requests

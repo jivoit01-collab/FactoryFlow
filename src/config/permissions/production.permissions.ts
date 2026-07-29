@@ -167,3 +167,31 @@ export const BLOWING_MODULE_PREFIX = 'blowing';
  */
 export type BlowingPermission =
   (typeof BLOWING_PERMISSIONS)[keyof typeof BLOWING_PERMISSIONS];
+
+/**
+ * Production Movements Module Permissions
+ *
+ * SAP wrapper for production material movements (GRPO -> PM stores -> issue
+ * point -> BH-PF). Maps to the `production_movements` Django app.
+ * Format: 'app_label.permission_codename'
+ */
+export const PRODUCTION_MOVEMENTS_PERMISSIONS = {
+  /** View the role-tagged production warehouse stock board */
+  VIEW_STOCK: 'production_movements.can_view_production_stock',
+  /** View the warehouse-role configuration */
+  VIEW_ROLES: 'production_movements.can_view_warehouse_roles',
+  /** Manage the warehouse-role configuration */
+  MANAGE_ROLES: 'production_movements.can_manage_warehouse_roles',
+  /** View the warehouse-movement ledger */
+  VIEW_MOVEMENTS: 'production_movements.can_view_movements',
+  /** Create warehouse movements (transfers) */
+  CREATE_MOVEMENT: 'production_movements.can_create_movement',
+} as const;
+
+export const PRODUCTION_MOVEMENTS_MODULE_PREFIX = 'production_movements';
+
+/**
+ * Type for Production Movements permission values
+ */
+export type ProductionMovementsPermission =
+  (typeof PRODUCTION_MOVEMENTS_PERMISSIONS)[keyof typeof PRODUCTION_MOVEMENTS_PERMISSIONS];

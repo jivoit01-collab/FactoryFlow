@@ -37,6 +37,9 @@ export {
   EXECUTION_PERMISSIONS,
   type ExecutionPermission,
   PRODUCTION_MODULE_PREFIX,
+  PRODUCTION_MOVEMENTS_MODULE_PREFIX,
+  PRODUCTION_MOVEMENTS_PERMISSIONS,
+  type ProductionMovementsPermission,
   PRODUCTION_PERMISSIONS,
   type ProductionPermission,
 } from './production.permissions';
