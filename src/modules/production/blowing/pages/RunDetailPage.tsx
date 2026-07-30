@@ -634,12 +634,12 @@ function RunDetailPage() {
                 {completeForm.formState.errors.machine_stop_reading && <p className="text-sm text-red-500">{completeForm.formState.errors.machine_stop_reading.message}</p>}
               </div>
               <div className="col-span-2">
-                <Label>Utility cost (₹) *</Label>
-                <Input type="number" step="0.01" {...completeForm.register('utility_cost')} />
-                {completeForm.formState.errors.utility_cost && <p className="text-sm text-red-500">{completeForm.formState.errors.utility_cost.message}</p>}
+                <Label>Utility electricity (units) *</Label>
+                <Input type="number" step="0.01" {...completeForm.register('utility_units')} />
+                {completeForm.formState.errors.utility_units && <p className="text-sm text-red-500">{completeForm.formState.errors.utility_units.message}</p>}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Fixed utility electricity charge for the day (entered as-is). The machine electricity is metered
-                  from the start/stop meter readings above.
+                  Utility electricity units the operator reads for the day. Priced at ₹/unit (same rate as
+                  machine electricity, which is metered from the start/stop readings above).
                 </p>
               </div>
               <div><Label>Carton scrap (₹)</Label><Input type="number" step="0.01" {...completeForm.register('scrap_carton_value')} /></div>

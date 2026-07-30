@@ -19,7 +19,7 @@ export const runFormSchema = z.object({
   preform_boxes_used: z.coerce.number().min(0).default(0),
   machine_start_reading: optionalNumber,
   machine_stop_reading: optionalNumber,
-  utility_cost: z.coerce.number().min(0).default(0),
+  utility_units: z.coerce.number().min(0).default(0),
   total_counter_production: z.coerce.number().int().min(0).default(0),
   rejection_pcs: z.coerce.number().int().min(0).default(0),
   operator_count: z.coerce.number().int().min(0).default(0),
@@ -138,7 +138,7 @@ export const completeRunSchema = z
     own_labour_count: z.coerce.number().int().min(0).default(0),
     machine_start_reading: requiredNonNeg('Machine start reading is required'),
     machine_stop_reading: requiredNonNeg('Machine stop reading is required'),
-    utility_cost: requiredNonNeg('Utility cost is required'),
+    utility_units: requiredNonNeg('Utility electricity units are required'),
     scrap_carton_value: z.coerce.number().min(0).default(0),
   })
   .refine((d) => d.machine_stop_reading >= d.machine_start_reading, {
