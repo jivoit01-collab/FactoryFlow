@@ -134,6 +134,8 @@ export const API_ENDPOINTS = {
     SALES_DISPATCH_BY_VEHICLE_ENTRY: (vehicleEntryId: number) =>
       `/gate-core/sales-dispatch/by-vehicle-entry/${vehicleEntryId}/`,
     SALES_DISPATCH_ATTACHMENTS: (id: number) => `/gate-core/sales-dispatch/${id}/attachments/`,
+    SALES_DISPATCH_ATTACHMENT_DETAIL: (id: number, attachmentId: number) =>
+      `/gate-core/sales-dispatch/${id}/attachments/${attachmentId}/`,
     SALES_DISPATCH_BOX_SCANS: (id: number) => `/gate-core/sales-dispatch/${id}/box-scans/`,
     SALES_DISPATCH_BOX_SCAN: (id: number, scanId: number) =>
       `/gate-core/sales-dispatch/${id}/box-scans/${scanId}/`,

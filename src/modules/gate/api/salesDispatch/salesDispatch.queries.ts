@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   type SalesDispatchAdditionalWeightsRequest,
   salesDispatchApi,
+  type SalesDispatchAttachment,
   type SalesDispatchAttachmentUploadRequest,
   type SalesDispatchBoxScanRequest,
   type SalesDispatchChallanWeightRequest,
@@ -160,6 +161,29 @@ export function useSalesDispatchAttachments(id?: number | null) {
   });
 }
 
+/**
+ * Attachments for several dockings at once (a multi-company truck's sibling dockings),
+ * returned as a dockingId -> attachments[] map. Shares the per-docking `attachments`
+ * cache key, so it dedupes with useSalesDispatchAttachments for the same id.
+ */
+export function useSalesDispatchAttachmentsForDockings(ids: number[]) {
+  const queries = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: SALES_DISPATCH_QUERY_KEYS.attachments(id),
+      queryFn: () => salesDispatchApi.attachments(id),
+      enabled: id > 0,
+    })),
+  });
+  const byDocking: Record<number, SalesDispatchAttachment[]> = {};
+  ids.forEach((id, index) => {
+    byDocking[id] = queries[index]?.data ?? [];
+  });
+  return {
+    byDocking,
+    isLoading: queries.some((query) => query.isLoading),
+  };
+}
+
 export function useSalesDispatchBoxScans(id?: number | null) {
   return useQuery({
     queryKey: SALES_DISPATCH_QUERY_KEYS.boxScans(id),
@@ -224,6 +248,23 @@ export function useUploadSalesDispatchAttachment() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: SalesDispatchAttachmentUploadRequest }) =>
       salesDispatchApi.uploadAttachment(id, data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
+export function useUpdateSalesDispatchAttachment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      attachmentId,
+      data,
+    }: {
+      id: number;
+      attachmentId: number;
+      data: { bilty_no?: string; bilty_date?: string | null };
+    }) => salesDispatchApi.updateAttachment(id, attachmentId, data),
     onSuccess: () => invalidateSalesDispatch(queryClient),
   });
 }
