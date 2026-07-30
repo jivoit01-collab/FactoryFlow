@@ -9,6 +9,13 @@
  * import { QC_PERMISSIONS } from '@/config/permissions'
  */
 
+// Activity Center Module (cross-module pending/completed work per user)
+export {
+  ACTIVITY_MODULE_PREFIX,
+  ACTIVITY_PERMISSIONS,
+  type ActivityPermission,
+} from './activity.permissions';
+
 // Admin Module
 export { ADMIN_MODULE_PREFIX, ADMIN_PERMISSIONS, type AdminPermission } from './admin.permissions';
 

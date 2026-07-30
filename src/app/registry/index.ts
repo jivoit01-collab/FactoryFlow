@@ -3,6 +3,7 @@ import type { Reducer } from '@reduxjs/toolkit';
 import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types';
 // Module configuration imports
 // Each module exports its own routes, navigation, and reducers
+import { activitiesModuleConfig } from '@/modules/activities/module.config';
 import { adminModuleConfig } from '@/modules/admin/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
@@ -29,6 +30,7 @@ import { wmsModuleConfig } from '@/modules/wms/module.config';
 export const moduleRegistry: ModuleConfig[] = [
   authModuleConfig,
   adminModuleConfig,
+  activitiesModuleConfig,
   dashboardModuleConfig,
   dashboardsModuleConfig,
   dispatchModuleConfig,
