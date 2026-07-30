@@ -465,15 +465,6 @@ export const API_ENDPOINTS = {
     INVOICE_PENDING_COUNT: '/oms/invoices/pending-count/',
     INVOICE_AUDIT: (id: number) => `/oms/invoices/${id}/audit/`,
   },
-  // Activity Center — live pending/completed work derived from every other module
-  ACTIVITY: {
-    MY_SUMMARY: '/activity-center/me/summary/',
-    MY_PENDING: '/activity-center/me/pending/',
-    MY_COMPLETED: '/activity-center/me/completed/',
-    DEFINITIONS: '/activity-center/definitions/',
-    USERS: '/activity-center/users/',
-    USER_DETAIL: (userId: number) => `/activity-center/users/${userId}/`,
-  },
   // AI Assistant
   AI: {
     ASSISTANT_CHAT: '/ai/assistant/chat/',
