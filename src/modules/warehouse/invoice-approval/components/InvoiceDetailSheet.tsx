@@ -137,7 +137,10 @@ function InvoiceDetailBody({
 
       <div>
         <h3 className="mb-2 text-sm font-semibold">Line items</h3>
-        <DocumentLinesTable lines={invoice.invoice_payload?.DocumentLines} />
+        <DocumentLinesTable
+          lines={invoice.invoice_payload?.DocumentLines}
+          fgStock={invoice.fg_stock}
+        />
       </div>
 
       <Separator />

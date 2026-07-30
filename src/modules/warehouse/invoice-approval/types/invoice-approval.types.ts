@@ -19,6 +19,14 @@ export type InvoiceStatus =
 export const INVOICE_TABS = ['PENDING', 'APPROVED', 'EDITED', 'REJECTED'] as const;
 export type InvoiceTab = (typeof INVOICE_TABS)[number];
 
+/**
+ * Tabs actually rendered in the UI. EDITED is hidden — OMS now models edits via
+ * supersede chains rather than a distinct EDITED status/tab.
+ */
+export const VISIBLE_INVOICE_TABS: InvoiceTab[] = INVOICE_TABS.filter(
+  (value) => value !== 'EDITED',
+);
+
 /** Tabs where the approver may still act. */
 export const ACTIONABLE_TABS: InvoiceTab[] = ['PENDING', 'EDITED'];
 
@@ -51,6 +59,20 @@ export interface InvoicePayload {
   [key: string]: unknown;
 }
 
+/**
+ * Live HANA on-hand stock for one FG line of an invoice, keyed to the payload
+ * line by `line_num`. `item_name` / `warehouse_stock` are null when OMS could
+ * not resolve the item (no OITW row, or the HANA lookup failed for the batch).
+ */
+export interface FgStock {
+  line_num: number | null;
+  item_code: string;
+  item_name: string | null;
+  quantity: number | null;
+  warehouse_code: string | null;
+  warehouse_stock: number | null;
+}
+
 export interface InvoiceLog {
   id: number;
   so_number: string;
@@ -62,6 +84,8 @@ export interface InvoiceLog {
   rejection_reason: string | null;
   error_message: string | null;
   invoice_payload: InvoicePayload;
+  // Per-line on-hand stock in this invoice's warehouse (FG lines only).
+  fg_stock: FgStock[];
   created_at: string;
   created_by: number | null;
 }

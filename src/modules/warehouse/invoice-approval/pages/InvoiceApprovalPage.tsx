@@ -21,7 +21,7 @@ import { formatCurrency } from '@/shared/utils';
 import { INVOICE_APPROVAL_QUERY_KEYS, useInvoiceList } from '../api/invoice-approval.queries';
 import { InvoiceDetailSheet } from '../components/InvoiceDetailSheet';
 import { InvoiceStatusBadge } from '../components/InvoiceStatusBadge';
-import { INVOICE_TABS, type InvoiceLog, type InvoiceTab } from '../types';
+import { VISIBLE_INVOICE_TABS, type InvoiceLog, type InvoiceTab } from '../types';
 import { useSelectedWarehouse } from '../useSelectedWarehouse';
 
 const TAB_LABELS: Record<InvoiceTab, string> = {
@@ -191,13 +191,13 @@ export default function InvoiceApprovalPage() {
       ) : (
         <Tabs value={tab} onValueChange={(value) => setTab(value as InvoiceTab)}>
           <TabsList>
-            {INVOICE_TABS.map((value) => (
+            {VISIBLE_INVOICE_TABS.map((value) => (
               <TabsTrigger key={value} value={value}>
                 {TAB_LABELS[value]}
               </TabsTrigger>
             ))}
           </TabsList>
-          {INVOICE_TABS.map((value) => (
+          {VISIBLE_INVOICE_TABS.map((value) => (
             <TabsContent key={value} value={value} className="mt-4">
               <InvoiceList
                 warehouse={warehouse}
