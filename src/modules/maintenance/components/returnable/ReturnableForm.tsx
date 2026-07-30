@@ -523,15 +523,14 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
                   </p>
                 </Field>
 
-                {/* UOM comes from the SAP item master. Read-only — the unit is a
-                    property of the item, not a choice the clerk makes. */}
+                {/* UOM prefills from the SAP item master when an item is picked,
+                    but stays editable — the same material can be issued in sets,
+                    grams, kilograms, and so on. */}
                 {!isReturnable ? (
                   <Field id={`uom-${index}`} label="UOM" className="sm:col-span-2">
                     <Input
                       id={`uom-${index}`}
-                      readOnly
-                      placeholder="From SAP"
-                      className="bg-muted/40"
+                      placeholder="e.g. NOS, SET, KG, GM"
                       {...register(`items_input.${index}.uom`)}
                     />
                   </Field>
