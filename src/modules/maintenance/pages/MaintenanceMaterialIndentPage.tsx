@@ -3,12 +3,14 @@ import {
   CheckCircle2,
   ClipboardList,
   FileText,
+  Paperclip,
   Plus,
   RefreshCw,
   Search,
   Send,
   Trash2,
   Upload,
+  X,
   XCircle,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
@@ -80,8 +82,65 @@ function emptyItem(): ItemDraft {
   return { particulars: '', specification: '', quantity: '1', unit: 'NOS', priority: 'NORMAL', remarks: '' };
 }
 
+/** How many images a single indent may carry. */
+const MAX_INDENT_ATTACHMENTS = 15;
+
+/** A single selected-file preview that owns (and cleans up) its object URL.
+ *  Click to open the file in a new tab; shows an image thumbnail for images,
+ *  otherwise a file-icon card with the name. */
+function FileThumb({ file, onRemove }: { file: File; onRemove: () => void }) {
+  const isImage = file.type.startsWith('image/');
+  // Create and revoke the object URL in the same effect so each URL is revoked
+  // exactly when it stops being rendered. (Creating it in useMemo is unreliable
+  // under StrictMode — the cleanup can revoke a URL that's still on screen,
+  // producing an ERR_FILE_NOT_FOUND blob when opened.)
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing a browser object URL to state
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  return (
+    <div className="group relative h-20 w-20 overflow-hidden rounded-md border">
+      <a
+        href={url || undefined}
+        target="_blank"
+        rel="noreferrer"
+        title={`Open ${file.name}`}
+        className="block h-full w-full"
+      >
+        {isImage && url ? (
+          <img src={url} alt={file.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted/40 p-1 text-center">
+            <FileText className="h-6 w-6 text-muted-foreground" />
+            <span className="w-full truncate px-0.5 text-[10px] leading-tight text-muted-foreground">
+              {file.name}
+            </span>
+          </div>
+        )}
+      </a>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        title="Remove"
+        className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition group-hover:opacity-100"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function NewIndentDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
   const createIndent = useCreateMaterialIndent();
+  const uploadAttachment = useUploadMaterialIndentAttachment();
   const optionsQuery = useMaintenanceOptions();
 
   const [indentDate, setIndentDate] = useState(today());
@@ -91,12 +150,29 @@ function NewIndentDialog({ onOpenChange }: { onOpenChange: (open: boolean) => vo
   const [contact, setContact] = useState('');
   const [remarks, setRemarks] = useState('');
   const [rows, setRows] = useState<ItemDraft[]>([emptyItem()]);
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
 
   const departments = optionsQuery.data?.org_departments ?? [];
 
   const setRow = (index: number, patch: Partial<ItemDraft>) => {
     setRows((current) => current.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  };
+
+  const addFiles = (selected: FileList | null) => {
+    if (!selected || selected.length === 0) return;
+    const picked = Array.from(selected);
+    setFiles((current) => {
+      const room = MAX_INDENT_ATTACHMENTS - current.length;
+      if (room <= 0) {
+        toast.error(`You can attach at most ${MAX_INDENT_ATTACHMENTS} files.`);
+        return current;
+      }
+      if (picked.length > room) {
+        toast.error(`Only ${room} more file(s) can be added (limit ${MAX_INDENT_ATTACHMENTS}).`);
+      }
+      return [...current, ...picked.slice(0, room)];
+    });
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -124,7 +200,25 @@ function NewIndentDialog({ onOpenChange }: { onOpenChange: (open: boolean) => vo
           remarks: r.remarks.trim(),
         })),
       });
-      toast.success(`Material indent ${indent.indent_no} created as draft`);
+
+      // Upload any attached files against the freshly-created indent.
+      let failedUploads = 0;
+      if (files.length > 0) {
+        const results = await Promise.allSettled(
+          files.map((file) =>
+            uploadAttachment.mutateAsync({ indent: indent.id, file, doc_type: 'OTHER' }),
+          ),
+        );
+        failedUploads = results.filter((r) => r.status === 'rejected').length;
+      }
+
+      if (failedUploads > 0) {
+        toast.warning(
+          `Indent ${indent.indent_no} created, but ${failedUploads} file(s) failed to upload. Re-attach them from the indent.`,
+        );
+      } else {
+        toast.success(`Material indent ${indent.indent_no} created as draft`);
+      }
       onOpenChange(false);
     } finally {
       setBusy(false);
@@ -286,6 +380,42 @@ function NewIndentDialog({ onOpenChange }: { onOpenChange: (open: boolean) => vo
           <div className="space-y-2">
             <Label htmlFor="mi_remarks">Remarks</Label>
             <Textarea id="mi_remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Attachments</Label>
+              <span className="text-xs text-muted-foreground">
+                {files.length}/{MAX_INDENT_ATTACHMENTS} files
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {files.map((file, index) => (
+                <FileThumb
+                  key={`${file.name}-${file.lastModified}-${index}`}
+                  file={file}
+                  onRemove={() => setFiles((current) => current.filter((_, i) => i !== index))}
+                />
+              ))}
+              {files.length < MAX_INDENT_ATTACHMENTS && (
+                <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs text-muted-foreground hover:bg-muted/40">
+                  <Paperclip className="h-5 w-5" />
+                  Add
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Attach up to {MAX_INDENT_ATTACHMENTS} files (photos, PDFs, documents, etc.).
+            </p>
           </div>
 
           <DialogFooter>
