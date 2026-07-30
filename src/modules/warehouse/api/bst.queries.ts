@@ -21,6 +21,8 @@ export const BST_LIVE_POLL_MS = 4000;
 
 interface PollOptions {
   refetchInterval?: number | false;
+  /** Skip the request entirely — used by permission-gated sidebar badges. */
+  enabled?: boolean;
 }
 
 export const BST_QUERY_KEYS = {
@@ -157,6 +159,7 @@ export function useBSTPartialTransfers(params?: BSTListParams, options?: PollOpt
   return useQuery({
     queryKey: BST_QUERY_KEYS.partialTransfers(params),
     queryFn: () => bstApi.listPartialTransfers(params),
+    enabled: options?.enabled ?? true,
     refetchInterval: options?.refetchInterval,
   });
 }

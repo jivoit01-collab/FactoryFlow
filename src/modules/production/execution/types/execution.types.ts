@@ -1220,11 +1220,20 @@ export interface CostDistributionItem {
   percentage: number;
 }
 
+export interface CostCategoryBreakdown {
+  category: string;
+  label: string;
+  amount: number;
+  is_credit: boolean;
+  percentage: number;
+}
+
 export interface CostAnalysisReport {
   per_run: CostRunDetail[];
   trend: CostTrendPoint[];
   by_line: CostByLine[];
   cost_distribution: Record<string, CostDistributionItem>;
+  category_breakdown?: CostCategoryBreakdown[];
   summary: {
     total_cost: number;
     total_waste_recovery: number;

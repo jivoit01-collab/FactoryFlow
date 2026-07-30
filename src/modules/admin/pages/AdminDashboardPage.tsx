@@ -1,8 +1,13 @@
-import { ClipboardCheck, ClipboardList, Truck } from 'lucide-react';
+import { ClipboardCheck, ClipboardList, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ADMIN_PERMISSIONS, MAINTENANCE_PERMISSIONS } from '@/config/permissions';
+import {
+  ADMIN_PERMISSIONS,
+  MAINTENANCE_PERMISSIONS,
+  RETURNABLE_PERMISSIONS,
+  WAREHOUSE_PERMISSIONS,
+} from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
@@ -48,6 +53,24 @@ const adminModuleCards: AdminModuleCard[] = [
       MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
       MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT,
     ],
+  },
+  {
+    title: 'Returnable / Non-returnable Approvals',
+    description:
+      'Sign off on material leaving the gate for repair, exchange or job work before the gate sees it.',
+    route: '/admin/returnable-approvals',
+    icon: <PackageCheck className="h-5 w-5" />,
+    color: 'text-violet-700',
+    permissions: [RETURNABLE_PERMISSIONS.APPROVE_GATEPASS],
+  },
+  {
+    title: 'BST Partial-Transfer Approvals',
+    description:
+      'Review requests to seal a branch transfer whose scanned quantity is short of the bill.',
+    route: '/admin/bst-approvals',
+    icon: <ShieldCheck className="h-5 w-5" />,
+    color: 'text-teal-700',
+    permissions: [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL],
   },
 ];
 
