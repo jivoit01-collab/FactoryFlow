@@ -1,12 +1,19 @@
 import { ShieldCheck } from 'lucide-react';
 
-import { ADMIN_PERMISSIONS, MAINTENANCE_PERMISSIONS } from '@/config/permissions';
+import {
+  ADMIN_PERMISSIONS,
+  MAINTENANCE_PERMISSIONS,
+  RETURNABLE_PERMISSIONS,
+  WAREHOUSE_PERMISSIONS,
+} from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
+import { BstApprovalsBadge } from './components/BstApprovalsBadge';
 import { DockingApprovalsBadge } from './components/DockingApprovalsBadge';
 import { MaterialIndentApprovalsBadge } from './components/MaterialIndentApprovalsBadge';
 import { PartialApprovalsBadge } from './components/PartialApprovalsBadge';
+import { ReturnableApprovalsBadge } from './components/ReturnableApprovalsBadge';
 
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const DockingScanApprovalsPage = lazy(() => import('./pages/DockingScanApprovalsPage'));
@@ -14,6 +21,12 @@ const DockingPartialScanApprovalsPage = lazy(
   () => import('./pages/DockingPartialScanApprovalsPage'),
 );
 const MaterialIndentApprovalsPage = lazy(() => import('./pages/MaterialIndentApprovalsPage'));
+const ReturnableApprovalsPage = lazy(() => import('./pages/ReturnableApprovalsPage'));
+// Same queue the Warehouse module exposes at /warehouse/bst/partial-approvals —
+// mirrored here so approvers find every queue in one place. One page, two routes.
+const BSTPartialApprovalsPage = lazy(
+  () => import('@/modules/warehouse/pages/bst/BSTPartialApprovalsPage'),
+);
 
 const dockingApprovalPermissions = [
   ADMIN_PERMISSIONS.DOCKING.VIEW_SCAN_SKIP,
@@ -32,10 +45,19 @@ const materialIndentApprovalPermissions = [
   MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT,
 ] as const;
 
+// Approve-only, for the same reason as material indents: VIEW_GATEPASS is held by
+// every department that raises a pass, so it must not pull the Admin module into
+// their sidebar.
+const returnableApprovalPermissions = [RETURNABLE_PERMISSIONS.APPROVE_GATEPASS] as const;
+
+const bstApprovalPermissions = [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL] as const;
+
 const adminPermissions = [
   ...dockingApprovalPermissions,
   ...partialApprovalPermissions,
   ...materialIndentApprovalPermissions,
+  ...returnableApprovalPermissions,
+  ...bstApprovalPermissions,
 ] as const;
 
 export const adminModuleConfig: ModuleConfig = {
@@ -69,6 +91,20 @@ export const adminModuleConfig: ModuleConfig = {
       permissions: materialIndentApprovalPermissions,
       breadcrumb: { label: 'Material Indent Approvals' },
     },
+    {
+      path: '/admin/returnable-approvals',
+      element: <ReturnableApprovalsPage />,
+      layout: 'main',
+      permissions: returnableApprovalPermissions,
+      breadcrumb: { label: 'Returnable / Non-returnable Approvals' },
+    },
+    {
+      path: '/admin/bst-approvals',
+      element: <BSTPartialApprovalsPage />,
+      layout: 'main',
+      permissions: bstApprovalPermissions,
+      breadcrumb: { label: 'BST Approvals' },
+    },
   ],
   navigation: [
     {
@@ -97,6 +133,18 @@ export const adminModuleConfig: ModuleConfig = {
           title: 'Material Indent Approvals',
           permissions: materialIndentApprovalPermissions,
           badge: MaterialIndentApprovalsBadge,
+        },
+        {
+          path: '/admin/returnable-approvals',
+          title: 'Returnable / Non-returnable Approvals',
+          permissions: returnableApprovalPermissions,
+          badge: ReturnableApprovalsBadge,
+        },
+        {
+          path: '/admin/bst-approvals',
+          title: 'BST Approvals',
+          permissions: bstApprovalPermissions,
+          badge: BstApprovalsBadge,
         },
       ],
     },

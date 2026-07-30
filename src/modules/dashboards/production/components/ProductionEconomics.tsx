@@ -1,37 +1,56 @@
+import { Coins, Factory, Info, Layers, Receipt } from 'lucide-react';
 import { useMemo } from 'react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 
 import { useCostAnalysisReport } from '@/modules/production/execution/api/execution.queries';
 import type { AnalyticsParams } from '@/modules/production/execution/types';
-import { ACCENTS } from '@/shared/components/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 import { formatCurrency } from '@/shared/utils';
 
 import {
   CHART_COLORS,
+  count,
   money,
   prettyLabel,
   type ProductionVariant,
 } from '../constants/production-dashboard.constants';
 
-const shortDate = (iso: string) => (iso?.length >= 10 ? iso.slice(5) : iso);
+/** A headline KPI tile. */
+function KpiTile({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  icon: typeof Coins;
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: 'accent' | 'credit';
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card/60 px-4 py-3 shadow-sm">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </div>
+      <div
+        className={`mt-1 text-2xl font-extrabold tabular-nums leading-none ${
+          tone === 'credit' ? 'text-emerald-600 dark:text-emerald-400' : ''
+        } ${tone === 'accent' ? 'text-primary' : ''}`}
+      >
+        {value}
+      </div>
+      {hint && <div className="mt-1 text-[11px] text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
 
 /**
- * Cost economics — where the money goes per unit. Shows the cost-category
- * breakdown (donut), the cost-per-unit trend, and cost-per-unit by line.
+ * Cost analysis — plain-language view of what each case costs. A KPI strip,
+ * a "where the money goes" category breakdown, and a per-SKU cost table
+ * (the clearest read for a single day). Cost is derived on the backend from
+ * running hours × Cost Master rates.
  */
 export function ProductionEconomics({
   params,
@@ -43,152 +62,208 @@ export function ProductionEconomics({
   const query = useCostAnalysisReport(params);
   const data = query.data;
 
-  const distribution = useMemo(() => {
-    const dist = data?.cost_distribution ?? {};
-    return Object.entries(dist)
-      .map(([key, v]) => ({ name: prettyLabel(key), amount: v.amount, percentage: v.percentage }))
-      .filter((d) => d.amount > 0)
-      .sort((a, b) => b.amount - a.amount);
+  const totals = useMemo(() => {
+    const s = data?.summary;
+    if (!s) return undefined;
+    return {
+      totalCost: s.total_cost,
+      wasteRecovery: s.total_waste_recovery ?? 0,
+      netCost: s.total_net_cost ?? s.total_cost,
+      perCase: s.avg_per_unit,
+      runCount: s.run_count,
+    };
   }, [data]);
 
-  const trend = useMemo(
-    () =>
-      (data?.trend ?? []).map((t) => ({
-        date: shortDate(t.date),
-        perUnit: t.per_unit_cost / (variant.unitsPerCase || 1),
-      })),
-    [data, variant.unitsPerCase],
-  );
+  // "Where the money goes" — granular cost lines (same categories as the
+  // per-run Run Cost page). Falls back to the rolled-up distribution.
+  const breakdown = useMemo(() => {
+    const cats = data?.category_breakdown;
+    let rows: { name: string; amount: number; credit: boolean }[];
+    if (cats && cats.length) {
+      rows = cats
+        .filter((c) => c.amount > 0)
+        .map((c) => ({ name: c.label, amount: c.amount, credit: c.is_credit }));
+    } else {
+      rows = Object.entries(data?.cost_distribution ?? {})
+        .map(([key, v]) => ({ name: prettyLabel(key), amount: v.amount, credit: false }))
+        .filter((d) => d.amount > 0);
+    }
+    rows.sort((a, b) => b.amount - a.amount);
+    const max = rows.reduce((m, r) => Math.max(m, r.amount), 0) || 1;
+    return { rows, max };
+  }, [data]);
 
-  const byLine = useMemo(
+  // Per-SKU cost — one row per run (a line usually runs one SKU per day).
+  const skuRows = useMemo(
     () =>
-      (data?.by_line ?? []).map((l) => ({
-        line: l.line,
-        perUnit: l.avg_per_unit / (variant.unitsPerCase || 1),
-      })),
-    [data, variant.unitsPerCase],
+      (data?.per_run ?? [])
+        .map((r) => ({
+          sku: r.product,
+          line: r.line,
+          cases: r.produced_qty,
+          total: r.net_cost || r.total_cost,
+          perCase: r.per_unit_cost,
+        }))
+        .sort((a, b) => b.total - a.total),
+    [data],
   );
 
   if (query.isLoading) {
     return <div className="h-72 animate-pulse rounded-2xl bg-muted/50" />;
   }
 
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {/* cost breakdown donut */}
+  const hasCost = !!totals && totals.totalCost > 0;
+
+  if (!hasCost || !totals) {
+    return (
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Cost breakdown</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {distribution.length === 0 ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">No cost data.</p>
-          ) : (
-            <div className="flex flex-col items-center gap-4 sm:flex-row lg:flex-col">
-              <div className="h-[180px] w-[180px] shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={distribution}
-                      dataKey="amount"
-                      nameKey="name"
-                      innerRadius={52}
-                      outerRadius={78}
-                      paddingAngle={2}
-                      stroke="none"
-                    >
-                      {distribution.map((d, i) => (
-                        <Cell key={d.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value) => formatCurrency(Number(value))}
-                      contentStyle={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', fontSize: 12 }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="min-w-0 flex-1 space-y-1.5">
-                {distribution.map((d, i) => (
-                  <div key={d.name} className="flex items-center gap-2 text-xs">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
-                    />
-                    <span className="min-w-0 flex-1 truncate">{d.name}</span>
-                    <span className="font-medium tabular-nums">{money(d.amount)}</span>
-                    <span className="w-10 text-right tabular-nums text-muted-foreground">
-                      {d.percentage.toFixed(0)}%
-                    </span>
+        <CardContent className="py-14 text-center text-sm text-muted-foreground">
+          No cost yet for this day. Set rates in <strong>Cost Master</strong> and complete a run —
+          cost is computed from running hours × rates.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiTile icon={Receipt} label="Total production cost" value={formatCurrency(totals.totalCost)} />
+        {totals.wasteRecovery > 0 ? (
+          <KpiTile
+            icon={Coins}
+            label="Net cost (after waste sale)"
+            value={formatCurrency(totals.netCost)}
+            hint={`Waste recovery −${money(totals.wasteRecovery)}`}
+          />
+        ) : (
+          <KpiTile icon={Factory} label="Runs costed" value={String(totals.runCount)} />
+        )}
+        <KpiTile
+          icon={Coins}
+          label={`Avg cost / ${variant.unitNoun}`}
+          value={formatCurrency(totals.perCase)}
+          tone="accent"
+        />
+        <KpiTile
+          icon={Layers}
+          label="Cheapest → dearest / case"
+          value={
+            skuRows.length
+              ? `${money(skuRows[skuRows.length - 1].perCase)} – ${money(skuRows[0].perCase)}`
+              : '—'
+          }
+        />
+      </div>
+
+      <p className="flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        Cost is computed automatically from each run&apos;s <strong className="mx-0.5">running
+        hours</strong> × <strong className="mx-0.5">Cost Master</strong> rates (per-line override
+        &gt; company default), plus BOM material at last purchase price.
+      </p>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* where the money goes */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Where the cost goes</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {breakdown.rows.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">No cost categories.</p>
+            ) : (
+              breakdown.rows.map((r, i) => {
+                const pct = (r.amount / totals.totalCost) * 100;
+                const color = r.credit ? '#059669' : CHART_COLORS[i % CHART_COLORS.length];
+                return (
+                  <div key={r.name} className="space-y-1">
+                    <div className="flex items-baseline justify-between gap-2 text-xs">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                        {r.name}
+                        {r.credit && (
+                          <span className="rounded bg-emerald-50 px-1 text-[9px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                            credit
+                          </span>
+                        )}
+                      </span>
+                      <span className="tabular-nums">
+                        <span className="font-semibold">
+                          {r.credit ? '−' : ''}
+                          {money(r.amount)}
+                        </span>
+                        <span className="ml-1.5 text-muted-foreground">{pct.toFixed(0)}%</span>
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${(r.amount / breakdown.max) * 100}%`, backgroundColor: color }}
+                      />
+                    </div>
                   </div>
-                ))}
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        {/* per-SKU cost table */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Cost by SKU</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {skuRows.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">No runs costed.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs text-muted-foreground">
+                      <th className="py-2 pr-2 font-medium">SKU / line</th>
+                      <th className="py-2 px-2 text-right font-medium">Cases</th>
+                      <th className="py-2 px-2 text-right font-medium">Total cost</th>
+                      <th className="py-2 pl-2 text-right font-medium">Cost / {variant.unitNoun}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {skuRows.map((r, i) => (
+                      <tr key={`${r.sku}-${i}`} className="border-b last:border-0">
+                        <td className="max-w-[260px] py-2 pr-2">
+                          <div className="truncate font-medium" title={r.sku}>
+                            {r.sku}
+                          </div>
+                          <div className="truncate text-[11px] text-muted-foreground">{r.line}</div>
+                        </td>
+                        <td className="py-2 px-2 text-right tabular-nums">{count(r.cases)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums">{money(r.total)}</td>
+                        <td className="py-2 pl-2 text-right font-semibold tabular-nums text-primary">
+                          {formatCurrency(r.perCase)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 text-xs font-semibold">
+                      <td className="py-2 pr-2">Total · {totals.runCount} runs</td>
+                      <td className="py-2 px-2 text-right tabular-nums">
+                        {count(skuRows.reduce((s, r) => s + r.cases, 0))}
+                      </td>
+                      <td className="py-2 px-2 text-right tabular-nums">{money(totals.totalCost)}</td>
+                      <td className="py-2 pl-2 text-right tabular-nums text-primary">
+                        {formatCurrency(totals.perCase)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* cost / unit trend */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base">Cost per {variant.unitNoun} · trend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {trend.length === 0 ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">No trend data.</p>
-          ) : (
-            <div className="h-[180px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="costTrend" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={variant.accent.hex} stopOpacity={0.32} />
-                      <stop offset="100%" stopColor={variant.accent.hex} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                  <XAxis dataKey="date" fontSize={10} tickMargin={8} axisLine={false} tickLine={false} />
-                  <YAxis fontSize={10} width={54} axisLine={false} tickLine={false} tickFormatter={(v: number) => money(v)} />
-                  <Tooltip
-                    formatter={(value) => [formatCurrency(Number(value)), `Per ${variant.unitNoun}`]}
-                    contentStyle={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', fontSize: 12 }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="perUnit"
-                    stroke={variant.accent.hex}
-                    strokeWidth={2.5}
-                    fill="url(#costTrend)"
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* cost per unit by line */}
-          {byLine.length > 0 && (
-            <div className="mt-4 h-[140px]">
-              <p className="mb-1 text-xs font-medium text-muted-foreground">
-                Cost per {variant.unitNoun} by line
-              </p>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byLine} layout="vertical" margin={{ left: 8, right: 12 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                  <XAxis type="number" fontSize={10} tickFormatter={(v: number) => money(v)} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="line" width={90} fontSize={10} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    formatter={(value) => [formatCurrency(Number(value)), `Per ${variant.unitNoun}`]}
-                    contentStyle={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', fontSize: 12 }}
-                  />
-                  <Bar dataKey="perUnit" radius={[0, 6, 6, 0]} fill={ACCENTS.amber.hex} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
