@@ -1,23 +1,24 @@
-import { ChevronDown, ChevronUp, Shield, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { ChevronDown, ChevronUp, Shield, SlidersHorizontal, User } from 'lucide-react';
+import { useMemo,useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { getAllNavigation } from '@/app/registry';
 import { ROUTES } from '@/config/routes.config';
 import { useAuth } from '@/core/auth';
-import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
-import { Badge } from '@/shared/components/ui/badge';
-import { Button } from '@/shared/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Collapsible, CollapsibleContent } from '@/shared/components/ui';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { ChangePasswordDialog } from '@/modules/auth/components/ChangePasswordDialog';
 import {
   formatDate,
   getInitials,
   groupPermissionsByApp,
 } from '@/modules/auth/utils/profile.utils';
+import { Collapsible, CollapsibleContent, Switch } from '@/shared/components/ui';
+import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+import { useSettings } from '@/shared/contexts';
 
 /**
  * Build a map from permission app label to module icon.
@@ -80,6 +81,7 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const { aiEnabled, setAiEnabled } = useSettings();
 
   const activeTab = searchParams.get('tab') || 'profile';
 
@@ -131,6 +133,10 @@ export default function SettingsPage() {
           <TabsTrigger value="permissions" className="gap-2">
             <Shield className="h-4 w-4" />
             Permissions
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            Preferences
           </TabsTrigger>
         </TabsList>
 
@@ -272,6 +278,26 @@ export default function SettingsPage() {
                   />
                 ))
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Preferences Tab */}
+        <TabsContent value="preferences" className="mt-6">
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base">Preferences</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+              <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">AI</p>
+                  <p className="text-sm text-muted-foreground">
+                    Show the floating AI assistant button on every page.
+                  </p>
+                </div>
+                <Switch checked={aiEnabled} onCheckedChange={setAiEnabled} aria-label="AI" />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -136,7 +136,11 @@ export function InspectionReportPrintView({
   return (
     <div className="inspection-report-print" aria-hidden="true">
       <div className="inspection-report-page">
-        <ControlledDocumentFrame doc={CONTROLLED_DOCUMENTS.QC_INSPECTION_REPORT}>
+        <ControlledDocumentFrame
+          doc={CONTROLLED_DOCUMENTS.QC_INSPECTION_REPORT}
+          hideHeaderCode
+          documentId={report.print_document_id}
+        >
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
           <span>{formatPrintDateTime(new Date().toISOString())}</span>
           <span>JI</span>

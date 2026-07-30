@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import { SIDEBAR_CONFIG } from '@/config/constants';
 import { AiAssistantWidget } from '@/modules/ai/components';
 import { TooltipProvider } from '@/shared/components/ui';
+import { useSettings } from '@/shared/contexts';
 import { useLocalStorage } from '@/shared/hooks';
 
 import { Breadcrumbs, Header, MobileSidebar, Sidebar } from './components';
@@ -12,6 +13,7 @@ export function MainLayout() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useLocalStorage('sidebar-collapsed', false);
+  const { aiEnabled } = useSettings();
 
   // TODO: create a config variable for the sidebar-collapsed key and use it across the project
 
@@ -52,7 +54,7 @@ export function MainLayout() {
             <Outlet />
           </div>
         </main>
-        <AiAssistantWidget />
+        {aiEnabled && <AiAssistantWidget />}
       </div>
     </TooltipProvider>
   );

@@ -129,8 +129,8 @@ function YieldReportPage() {
     breakdownsByCategory[cat].minutes += bd.breakdown_minutes;
   }
 
-  const totalCost = cost ? parseFloat(cost.total_cost || '0') : 0;
-  const perUnitCost = actualProduction > 0 ? (totalCost / actualProduction).toFixed(2) : '-';
+  const netCost = cost ? parseFloat(cost.net_cost || '0') : 0;
+  const perUnitCost = actualProduction > 0 ? (netCost / actualProduction).toFixed(2) : '-';
 
   const hasActiveSegment = run.segments.some((s) => s.is_active);
   const hasActiveBreakdown = run.breakdowns.some((b) => b.is_active);
@@ -265,11 +265,14 @@ function YieldReportPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
+                <p className="text-muted-foreground">Raw Material</p>
+                <p className="font-bold">Rs.{cost.raw_material_cost}</p>
+              </div>
+              <div>
                 <p className="text-muted-foreground">Labour</p>
                 <p className="font-bold">Rs.{cost.labour_cost}</p>
                 <p className="text-xs text-muted-foreground">{labourCount} labour</p>
               </div>
-              <div><p className="text-muted-foreground">Machine</p><p className="font-bold">Rs.{cost.machine_cost}</p></div>
               <div>
                 <p className="text-muted-foreground">Electricity</p>
                 <p className="font-bold">Rs.{cost.electricity_cost}</p>
@@ -278,14 +281,18 @@ function YieldReportPage() {
                 </p>
               </div>
               <div><p className="text-muted-foreground">Water</p><p className="font-bold">Rs.{cost.water_cost}</p></div>
-              <div><p className="text-muted-foreground">Gas</p><p className="font-bold">Rs.{cost.gas_cost}</p></div>
-              <div><p className="text-muted-foreground">Compressed Air</p><p className="font-bold">Rs.{cost.compressed_air_cost}</p></div>
               <div><p className="text-muted-foreground">Overhead</p><p className="font-bold">Rs.{cost.overhead_cost}</p></div>
+              {parseFloat(cost.waste_recovery_credit || '0') > 0 && (
+                <div>
+                  <p className="text-muted-foreground">Waste Recovery</p>
+                  <p className="font-bold text-green-600">−Rs.{cost.waste_recovery_credit}</p>
+                </div>
+              )}
               <div className="border-l pl-4">
-                <p className="text-muted-foreground">Total Cost</p>
-                <p className="text-xl font-bold text-green-600">Rs.{cost.total_cost}</p>
+                <p className="text-muted-foreground">Net Cost</p>
+                <p className="text-xl font-bold text-green-600">Rs.{cost.net_cost}</p>
                 <p className="text-xs text-muted-foreground">
-                  Per unit: {perUnitCost !== '-' ? `Rs.${perUnitCost}` : '-'}
+                  Total: Rs.{cost.total_cost} · Per unit: {perUnitCost !== '-' ? `Rs.${perUnitCost}` : '-'}
                   {!isCompleted && perUnitCost !== '-' && ' (estimated)'}
                 </p>
               </div>

@@ -147,10 +147,23 @@ export default function MpOutwardPage() {
   // row per shipment (tracking ID) so SKUs and tracking IDs are captured.
   function handleExportCsv() {
     const headers = [
-      'Order ID', 'Buyer', 'Order date', 'Status', 'Ready',
-      'Tracking scanned', 'Tracking total', 'SKU', 'Marketplace SKU',
-      'Quantity', 'Tracking ID', 'Item scanned', 'Dispatch ID',
-      'Dispatch status', 'SAP post status',
+      // Order
+      'Order ID', 'Order item ID', 'Buyer', 'Ship-to name', 'Order type',
+      'Order date', 'Dispatch-by',
+      // Address
+      'Address 1', 'Address 2', 'City', 'State', 'PIN',
+      // Status
+      'Status', 'Ready', 'Dispatch ID', 'Dispatch status', 'SAP post status',
+      'Cancel reason',
+      // Scan
+      'Tracking scanned', 'Tracking total', 'Tracking ID', 'Item scanned',
+      'Scanned at', 'Scanned by',
+      // Item / line
+      'SKU', 'Marketplace SKU', 'FSN/ASIN', 'HSN', 'Quantity',
+      'Unit price', 'Invoice amount', 'Tax amount', 'Order state',
+      // Billing / delivery note
+      'Invoice number', 'Invoice date', 'DN number', 'GI number',
+      'Confirmed at', 'Confirmed by',
     ];
     const rows = [headers.join(',')];
     for (const o of visibleOrders) {
@@ -158,12 +171,25 @@ export default function MpOutwardPage() {
       const items = o.items.length > 0 ? o.items : [null];
       for (const it of items) {
         rows.push([
-          o.order_id, o.buyer_name, o.order_date ?? '', status,
-          o.ready ? 'yes' : 'no', o.tracking_scanned, o.tracking_total,
-          it?.sku_name ?? '', it?.marketplace_sku ?? '',
-          it ? Number(it.quantity) : '', it?.tracking_id ?? '',
-          it ? (it.scanned ? 'yes' : 'no') : '',
-          o.dispatch_id ?? '', o.dispatch_status ?? '', o.sap_post_status ?? '',
+          // Order
+          o.order_id, it?.order_item_id ?? '', o.buyer_name, o.ship_to_name ?? '',
+          o.order_type ?? '', o.order_date ?? '', o.dispatch_by ?? '',
+          // Address
+          o.address_line1 ?? '', o.address_line2 ?? '', o.city ?? '',
+          o.state ?? '', o.pin_code ?? '',
+          // Status
+          status, o.ready ? 'yes' : 'no', o.dispatch_id ?? '',
+          o.dispatch_status ?? '', o.sap_post_status ?? '', o.cancel_reason ?? '',
+          // Scan
+          o.tracking_scanned, o.tracking_total, it?.tracking_id ?? '',
+          it ? (it.scanned ? 'yes' : 'no') : '', it?.scanned_at ?? '', it?.scanned_by ?? '',
+          // Item / line
+          it?.sku_name ?? '', it?.marketplace_sku ?? '', it?.fsn ?? '', it?.hsn ?? '',
+          it ? Number(it.quantity) : '', it?.unit_price ?? '', it?.invoice_amount ?? '',
+          it?.tax_amount ?? '', it?.order_state ?? '',
+          // Billing / delivery note
+          o.invoice_number ?? '', o.invoice_date ?? '', o.dn_number ?? '',
+          o.gi_number ?? '', o.confirmed_at ?? '', o.confirmed_by ?? '',
         ].map(csvCell).join(','));
       }
     }

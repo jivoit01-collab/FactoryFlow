@@ -22,6 +22,8 @@ export interface PrintableInspectionAttachment {
 
 export interface PrintableInspectionReport {
   report_no: string | null;
+  /** Selected controlled-document ID for this inspection; shown in the print footer. */
+  print_document_id?: string | null;
   workflow_status?: string | null;
   final_status?: string | null;
   effective_final_status?: string | null;

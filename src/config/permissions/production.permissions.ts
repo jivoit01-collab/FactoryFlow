@@ -125,6 +125,10 @@ export const EXECUTION_PERMISSIONS = {
   // Reports
   /** View reports and analytics */
   VIEW_REPORTS: 'production_execution.can_view_reports',
+
+  // Cost / costing — dedicated permission, granted to no role by default.
+  /** View run cost / costing pages */
+  VIEW_RUN_COST: 'production_execution.can_view_run_cost',
 } as const;
 
 export const EXECUTION_MODULE_PREFIX = 'production_execution';

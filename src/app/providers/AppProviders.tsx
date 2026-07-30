@@ -6,7 +6,7 @@ import { Toaster } from 'sonner';
 import { queryClient } from '@/core/api';
 import { NotificationPermissionPrompt } from '@/core/notifications';
 import { store } from '@/core/store';
-import { ThemeProvider, useTheme } from '@/shared/contexts';
+import { SettingsProvider, ThemeProvider, useTheme } from '@/shared/contexts';
 
 import { NotificationProvider } from './NotificationProvider';
 
@@ -25,11 +25,13 @@ export function AppProviders({ children }: AppProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <ThemeProvider>
-            <NotificationProvider>
-              {children}
-              <NotificationPermissionPrompt />
-              <ThemedToaster />
-            </NotificationProvider>
+            <SettingsProvider>
+              <NotificationProvider>
+                {children}
+                <NotificationPermissionPrompt />
+                <ThemedToaster />
+              </NotificationProvider>
+            </SettingsProvider>
           </ThemeProvider>
         </BrowserRouter>
       </QueryClientProvider>

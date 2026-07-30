@@ -74,6 +74,7 @@ function MonthlySummaryReportPage() {
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">Total Cost</p>
                 <p className="text-2xl font-bold text-orange-600">{data.annual_summary.grand_total_cost.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Net: {data.annual_summary.grand_total_net.toLocaleString()}</p>
               </CardContent>
             </Card>
           </div>
@@ -92,7 +93,9 @@ function MonthlySummaryReportPage() {
                       <th className="text-right p-2 font-medium">Runs</th>
                       <th className="text-right p-2 font-medium">Production</th>
                       <th className="text-right p-2 font-medium">OEE %</th>
+                      <th className="text-right p-2 font-medium">Material</th>
                       <th className="text-right p-2 font-medium">Total Cost</th>
+                      <th className="text-right p-2 font-medium">Net Cost</th>
                       <th className="text-right p-2 font-medium">Cost/Unit</th>
                       <th className="text-right p-2 font-medium">Waste</th>
                       <th className="text-right p-2 font-medium">Electricity</th>
@@ -115,7 +118,9 @@ function MonthlySummaryReportPage() {
                             {m.avg_oee}%
                           </span>
                         </td>
+                        <td className="p-2 text-right">{m.raw_material_cost.toLocaleString()}</td>
                         <td className="p-2 text-right">{m.total_cost.toLocaleString()}</td>
+                        <td className="p-2 text-right font-medium">{m.net_cost.toLocaleString()}</td>
                         <td className="p-2 text-right">{m.cost_per_unit.toFixed(2)}</td>
                         <td className="p-2 text-right">{m.total_waste}</td>
                         <td className="p-2 text-right">{m.electricity_cost.toLocaleString()}</td>

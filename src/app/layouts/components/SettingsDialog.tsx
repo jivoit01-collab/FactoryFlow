@@ -1,4 +1,4 @@
-import { LogOut, Settings, User, Shield, ChevronRight } from 'lucide-react';
+import { ChevronRight,LogOut, Settings, Shield, SlidersHorizontal, User } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -36,6 +36,12 @@ export function SettingsDialog({ isCollapsed }: SettingsDialogProps) {
       label: 'Permissions',
       description: 'View module-wise permissions',
       onClick: () => handleNavigate('/settings?tab=permissions'),
+    },
+    {
+      icon: SlidersHorizontal,
+      label: 'Preferences',
+      description: 'Toggle the AI assistant and more',
+      onClick: () => handleNavigate('/settings?tab=preferences'),
     },
   ];
 

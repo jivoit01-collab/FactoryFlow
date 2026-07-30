@@ -35,19 +35,6 @@ import {
 import { type CreateRunFormData, createRunSchema } from '../schemas';
 import type { LineSkuConfig, SAPItem } from '../types';
 
-const parseCost = (value: string | number | null | undefined) => {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const formatCost = (value: string | number | null | undefined) => {
-  if (value === null || value === undefined || value === '') return '-';
-  return parseCost(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
-};
-
-const getPresetLabourCost = (config: LineSkuConfig) =>
-  config.labour_count * parseCost(config.labour_cost_per_hour);
-
 // ============================================================================
 // Start Run Page
 // ============================================================================
@@ -82,8 +69,6 @@ function StartRunPage() {
       item_code: '',
       required_qty: '',
       rated_speed: '',
-      electricity_cost_per_unit: '',
-      labour_cost_per_hour: '',
       machine_ids: [],
       labour_count: 0 as number,
       other_manpower_count: 0 as number,
@@ -161,8 +146,6 @@ function StartRunPage() {
       form.setValue('rated_speed', cfg.rated_speed || '');
       form.setValue('labour_count', cfg.labour_count);
       form.setValue('other_manpower_count', cfg.other_manpower_count);
-      form.setValue('electricity_cost_per_unit', cfg.electricity_cost_per_unit || '');
-      form.setValue('labour_cost_per_hour', cfg.labour_cost_per_hour || '');
       form.setValue('supervisor', cfg.supervisor || '');
       form.setValue('operators', cfg.operators || '');
     },
@@ -221,8 +204,6 @@ function StartRunPage() {
       </Button>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <input type="hidden" {...form.register('electricity_cost_per_unit')} />
-        <input type="hidden" {...form.register('labour_cost_per_hour')} />
 
         {/* Product SKU Card */}
         <Card>
@@ -291,8 +272,6 @@ function StartRunPage() {
                     form.setValue('rated_speed', '');
                     form.setValue('labour_count', 0);
                     form.setValue('other_manpower_count', 0);
-                    form.setValue('electricity_cost_per_unit', '');
-                    form.setValue('labour_cost_per_hour', '');
                     form.setValue('supervisor', '');
                     form.setValue('operators', '');
                   }}
@@ -373,7 +352,7 @@ function StartRunPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Label>Select a preset to auto-fill speed, labour, manpower & resource costs</Label>
+                <Label>Select a preset to auto-fill speed, labour & manpower</Label>
                 <Select value={selectedConfigId} onValueChange={applyConfig}>
                   <SelectTrigger className="mt-1.5 bg-background">
                     <SelectValue placeholder="Choose a line configuration..." />
@@ -383,8 +362,7 @@ function StartRunPage() {
                       <SelectItem key={cfg.id} value={String(cfg.id)}>
                         <span className="font-medium">{cfg.config_name}</span>
                         <span className="text-muted-foreground ml-2">
-                          — {cfg.rated_speed || '?'} cases/hr, {cfg.labour_count} labour, labour/hr{' '}
-                          {formatCost(cfg.labour_cost_per_hour)}
+                          — {cfg.rated_speed || '?'} cases/hr, {cfg.labour_count} labour
                         </span>
                       </SelectItem>
                     ))}
@@ -398,20 +376,6 @@ function StartRunPage() {
                   {[
                     { label: 'Speed', value: `${selectedConfig.rated_speed || '-'} cases/hr` },
                     { label: 'Labour', value: selectedConfig.labour_count },
-                    {
-                      label: 'Labour/hr',
-                      value: formatCost(selectedConfig.labour_cost_per_hour),
-                    },
-                    {
-                      label: 'Electric/unit',
-                      value: formatCost(selectedConfig.electricity_cost_per_unit),
-                    },
-                    {
-                      label: 'Labour total/hr',
-                      value: getPresetLabourCost(selectedConfig).toLocaleString('en-IN', {
-                        maximumFractionDigits: 2,
-                      }),
-                    },
                     { label: 'Other', value: selectedConfig.other_manpower_count },
                     { label: 'Supervisor', value: selectedConfig.supervisor || '-' },
                     { label: 'Operators', value: selectedConfig.operators || '-' },

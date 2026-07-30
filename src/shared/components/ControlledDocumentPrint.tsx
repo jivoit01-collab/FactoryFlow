@@ -30,13 +30,19 @@ const cell = (extra?: CSSProperties): CSSProperties => ({
   ...extra,
 });
 
-function ControlledDocumentHeaderBox({ doc }: { doc: ControlledDocumentMeta }) {
+function ControlledDocumentHeaderBox({
+  doc,
+  hideCode,
+}: {
+  doc: ControlledDocumentMeta;
+  hideCode?: boolean;
+}) {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <tbody>
         <tr>
           <td
-            rowSpan={3}
+            rowSpan={hideCode ? 2 : 3}
             style={cell({
               width: 110,
               textAlign: 'center',
@@ -56,16 +62,24 @@ function ControlledDocumentHeaderBox({ doc }: { doc: ControlledDocumentMeta }) {
             {doc.name}
           </td>
         </tr>
-        <tr>
-          <td style={cell({ fontSize: 10, width: '38%' })}>Revision No: {doc.revision}</td>
-          <td style={cell({ fontSize: 10, fontWeight: 700 })}>Document Code: {doc.code}</td>
-        </tr>
+        {!hideCode && (
+          <tr>
+            <td style={cell({ fontSize: 10, width: '38%' })}>Revision No: {doc.revision}</td>
+            <td style={cell({ fontSize: 10, fontWeight: 700 })}>Document Code: {doc.code}</td>
+          </tr>
+        )}
       </tbody>
     </table>
   );
 }
 
-function ControlledDocumentFooterBox({ doc }: { doc: ControlledDocumentMeta }) {
+function ControlledDocumentFooterBox({
+  doc,
+  documentId,
+}: {
+  doc: ControlledDocumentMeta;
+  documentId?: string | null;
+}) {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <tbody>
@@ -77,6 +91,9 @@ function ControlledDocumentFooterBox({ doc }: { doc: ControlledDocumentMeta }) {
             Classified: {doc.classification ?? DEFAULT_CLASSIFICATION}
           </td>
           <td style={cell({ fontSize: 9, textAlign: 'right', width: '28%', fontWeight: 700 })}>
+            {documentId && (
+              <div style={{ fontWeight: 600 }}>Document ID: {documentId}</div>
+            )}
             Controlled Document
           </td>
         </tr>
@@ -88,9 +105,15 @@ function ControlledDocumentFooterBox({ doc }: { doc: ControlledDocumentMeta }) {
 export function ControlledDocumentFrame({
   doc,
   children,
+  hideHeaderCode,
+  documentId,
 }: {
   doc: ControlledDocumentMeta;
   children: ReactNode;
+  /** Hide the revision/document-code row in the header (kept in the footer). */
+  hideHeaderCode?: boolean;
+  /** Per-instance document ID shown in the footer (e.g. the selected QC print document). */
+  documentId?: string | null;
 }) {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -98,7 +121,7 @@ export function ControlledDocumentFrame({
       <thead>
         <tr>
           <td style={{ padding: 0 }}>
-            <ControlledDocumentHeaderBox doc={doc} />
+            <ControlledDocumentHeaderBox doc={doc} hideCode={hideHeaderCode} />
             <div style={{ height: 10 }} />
           </td>
         </tr>
@@ -108,7 +131,7 @@ export function ControlledDocumentFrame({
         <tr>
           <td style={{ padding: 0 }}>
             <div style={{ height: 8 }} />
-            <ControlledDocumentFooterBox doc={doc} />
+            <ControlledDocumentFooterBox doc={doc} documentId={documentId} />
           </td>
         </tr>
       </tfoot>

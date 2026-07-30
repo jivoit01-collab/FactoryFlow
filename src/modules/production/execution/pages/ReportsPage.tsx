@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Calendar, Clock, Trash2, Zap, TrendingUp, Target, Package, AlertTriangle, DollarSign } from 'lucide-react';
 
+import { EXECUTION_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
@@ -12,6 +14,8 @@ import type { AnalyticsParams } from '../types';
 
 function ReportsPage() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermission();
+  const canViewCost = hasPermission(EXECUTION_PERMISSIONS.VIEW_RUN_COST);
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
   const params = useMemo<AnalyticsParams>(() => ({
     date_from: dateRange.from,
@@ -59,9 +63,11 @@ function ReportsPage() {
             <Button variant="outline" onClick={() => navigate('/production/execution/reports/downtime-pareto')}>
               <AlertTriangle className="h-4 w-4 mr-1" /> Downtime Pareto
             </Button>
-            <Button variant="outline" onClick={() => navigate('/production/execution/reports/cost-analysis')}>
-              <DollarSign className="h-4 w-4 mr-1" /> Cost Analysis
-            </Button>
+            {canViewCost && (
+              <Button variant="outline" onClick={() => navigate('/production/execution/reports/cost-analysis')}>
+                <DollarSign className="h-4 w-4 mr-1" /> Cost Analysis
+              </Button>
+            )}
             <Button variant="outline" onClick={() => navigate('/production/execution/reports/waste-trend')}>
               <Trash2 className="h-4 w-4 mr-1" /> Waste Trend
             </Button>

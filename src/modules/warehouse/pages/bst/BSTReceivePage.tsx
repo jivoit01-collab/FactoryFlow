@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Loader2, PackageCheck, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { Check, ChevronRight, Loader2, Package, PackageCheck, X } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -67,6 +67,7 @@ export default function BSTReceivePage() {
 
   const [manualBarcode, setManualBarcode] = useState('');
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [rejectIsPallet, setRejectIsPallet] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [decidingBarcode, setDecidingBarcode] = useState<string | null>(null);
 
@@ -79,10 +80,47 @@ export default function BSTReceivePage() {
     isLiveBst(transfer) &&
     !transfer.scan_approved_at &&
     (transfer.status === 'IN_TRANSIT' || transfer.status === 'RECEIVING');
-  const scans = transfer?.box_scans ?? [];
+  const scans = useMemo(() => transfer?.box_scans ?? [], [transfer?.box_scans]);
   const accepted = scans.filter((s) => s.receive_status === 'ACCEPTED').length;
   const rejected = scans.filter((s) => s.receive_status === 'REJECTED').length;
   const pending = scans.filter((s) => s.receive_status === 'PENDING' && !s.is_unexpected).length;
+
+  // Group the box scans by their pallet so the receive list is pallet-wise:
+  // each pallet is a row that expands to reveal the boxes on it. Loose boxes
+  // (no pallet code) collapse into a single "Loose boxes" group.
+  const palletGroups = useMemo(() => {
+    const groups = new Map<string, { palletCode: string; scans: typeof scans; items: Set<string> }>();
+    for (const s of scans) {
+      const key = s.pallet_code || '';
+      let g = groups.get(key);
+      if (!g) {
+        g = { palletCode: key, scans: [], items: new Set() };
+        groups.set(key, g);
+      }
+      g.scans.push(s);
+      if (s.item_code) g.items.add(s.item_code);
+    }
+    return [...groups.values()]
+      .map((g) => ({
+        palletCode: g.palletCode,
+        items: [...g.items],
+        scans: g.scans,
+        accepted: g.scans.filter((s) => s.receive_status === 'ACCEPTED').length,
+        rejected: g.scans.filter((s) => s.receive_status === 'REJECTED').length,
+        pending: g.scans.filter((s) => s.receive_status === 'PENDING' && !s.is_unexpected).length,
+      }))
+      .sort((a, b) => a.palletCode.localeCompare(b.palletCode));
+  }, [scans]);
+
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = useCallback((key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const decide = useCallback(
     async (barcode: string, decision: 'ACCEPTED' | 'REJECTED', reason = '') => {
@@ -135,11 +173,34 @@ export default function BSTReceivePage() {
     }
   };
 
+  // Deciding a whole pallet: the backend resolves the pallet barcode to every
+  // dispatched box on it and accepts/rejects them in one go.
+  const handlePalletDecision = async (
+    palletCode: string,
+    decision: 'ACCEPTED' | 'REJECTED',
+    reason = '',
+  ) => {
+    setDecidingBarcode(palletCode);
+    try {
+      await decide(palletCode, decision, reason);
+      await refreshBst();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not update pallet'));
+    } finally {
+      setDecidingBarcode(null);
+    }
+  };
+
   const confirmReject = async () => {
     if (!rejectTarget) return;
-    await handleRowDecision(rejectTarget, 'REJECTED', rejectReason);
+    if (rejectIsPallet) {
+      await handlePalletDecision(rejectTarget, 'REJECTED', rejectReason);
+    } else {
+      await handleRowDecision(rejectTarget, 'REJECTED', rejectReason);
+    }
     setRejectTarget(null);
     setRejectReason('');
+    setRejectIsPallet(false);
   };
 
   const handleComplete = async () => {
@@ -259,11 +320,13 @@ export default function BSTReceivePage() {
         </Card>
       )}
 
-      {/* Expected boxes */}
+      {/* Received stock, pallet-wise: each pallet expands to its boxes. */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-3">
-            <p className="font-medium">Boxes ({scans.length})</p>
+            <p className="font-medium">
+              Pallets ({palletGroups.length}) · {scans.length} box{scans.length === 1 ? '' : 'es'}
+            </p>
             <div className="flex gap-2 text-xs">
               <Badge variant="outline" className="text-green-700">{accepted} accepted</Badge>
               <Badge variant="outline" className="text-red-700">{rejected} rejected</Badge>
@@ -273,71 +336,162 @@ export default function BSTReceivePage() {
           {scans.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">No boxes on this transfer</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="py-2 px-3">Box</th>
-                    <th className="py-2 px-3">Item</th>
-                    <th className="py-2 px-3">Status</th>
-                    {receivable && <th className="py-2 px-3 text-right">Action</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {scans.map((s) => (
-                    <tr key={s.id} className="border-b">
-                      <td className="py-2 px-3 font-medium">
-                        {s.box_barcode}
-                        {s.is_unexpected && (
-                          <Badge variant="outline" className="ml-1 text-amber-700">unexpected</Badge>
+            <div className="divide-y">
+              {palletGroups.map((g) => {
+                const key = g.palletCode || '__loose__';
+                const isOpen = expanded.has(key);
+                const label = g.palletCode || 'Loose boxes';
+                const allAccepted = g.accepted === g.scans.length;
+                const allRejected = g.rejected === g.scans.length;
+                const deciding = decidingBarcode === g.palletCode;
+                return (
+                  <div key={key}>
+                    {/* Pallet row */}
+                    <div className="flex items-center gap-2 py-2.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(key)}
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                            isOpen && 'rotate-90',
+                          )}
+                        />
+                        <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 truncate">
+                          <span className="font-mono font-medium">{label}</span>
+                          {g.items.length > 0 && (
+                            <span className="ml-2 text-xs text-muted-foreground">{g.items.join(', ')}</span>
+                          )}
+                        </span>
+                      </button>
+                      <div className="flex shrink-0 items-center gap-1.5 text-xs">
+                        <span className="text-muted-foreground">
+                          {g.scans.length} box{g.scans.length === 1 ? '' : 'es'}
+                        </span>
+                        {g.accepted > 0 && (
+                          <Badge variant="outline" className="text-green-700">{g.accepted} ✓</Badge>
                         )}
-                      </td>
-                      <td className="py-2 px-3">{s.item_code}</td>
-                      <td className="py-2 px-3">
-                        <ReceiveBadge status={s.receive_status} />
-                        {s.reject_reason && (
-                          <span className="text-xs text-muted-foreground ml-1">({s.reject_reason})</span>
+                        {g.rejected > 0 && (
+                          <Badge variant="outline" className="text-red-700">{g.rejected} ✕</Badge>
                         )}
-                      </td>
-                      {receivable && (
-                        <td className="py-2 px-3">
-                          <div className="flex gap-1 justify-end">
-                            {s.receive_status !== 'ACCEPTED' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7"
-                                disabled={decidingBarcode === s.box_barcode}
-                                onClick={() => handleRowDecision(s.box_barcode, 'ACCEPTED')}
-                              >
-                                {decidingBarcode === s.box_barcode ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <Check className="h-3 w-3 text-green-600" />
-                                )}
-                              </Button>
-                            )}
-                            {s.receive_status !== 'REJECTED' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7"
-                                disabled={decidingBarcode === s.box_barcode}
-                                onClick={() => {
-                                  setRejectTarget(s.box_barcode);
-                                  setRejectReason('');
-                                }}
-                              >
-                                <X className="h-3 w-3 text-red-600" />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
+                        {g.pending > 0 && (
+                          <Badge variant="outline" className="text-slate-600">{g.pending}</Badge>
+                        )}
+                      </div>
+                      {receivable && g.palletCode && (
+                        <div className="flex shrink-0 gap-1">
+                          {!allAccepted && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7"
+                              disabled={deciding}
+                              onClick={() => handlePalletDecision(g.palletCode, 'ACCEPTED')}
+                            >
+                              {deciding ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Check className="mr-1 h-3 w-3 text-green-600" /> All
+                                </>
+                              )}
+                            </Button>
+                          )}
+                          {!allRejected && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7"
+                              disabled={deciding}
+                              onClick={() => {
+                                setRejectTarget(g.palletCode);
+                                setRejectReason('');
+                                setRejectIsPallet(true);
+                              }}
+                            >
+                              <X className="h-3 w-3 text-red-600" />
+                            </Button>
+                          )}
+                        </div>
                       )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    </div>
+
+                    {/* Boxes on this pallet */}
+                    {isOpen && (
+                      <div className="overflow-x-auto pb-2 pl-8">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left text-xs text-muted-foreground">
+                              <th className="py-1.5 px-3">Box</th>
+                              <th className="py-1.5 px-3">Item</th>
+                              <th className="py-1.5 px-3">Status</th>
+                              {receivable && <th className="py-1.5 px-3 text-right">Action</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {g.scans.map((s) => (
+                              <tr key={s.id} className="border-b last:border-b-0">
+                                <td className="py-2 px-3 font-medium">
+                                  {s.box_barcode}
+                                  {s.is_unexpected && (
+                                    <Badge variant="outline" className="ml-1 text-amber-700">unexpected</Badge>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3">{s.item_code}</td>
+                                <td className="py-2 px-3">
+                                  <ReceiveBadge status={s.receive_status} />
+                                  {s.reject_reason && (
+                                    <span className="ml-1 text-xs text-muted-foreground">({s.reject_reason})</span>
+                                  )}
+                                </td>
+                                {receivable && (
+                                  <td className="py-2 px-3">
+                                    <div className="flex justify-end gap-1">
+                                      {s.receive_status !== 'ACCEPTED' && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7"
+                                          disabled={decidingBarcode === s.box_barcode}
+                                          onClick={() => handleRowDecision(s.box_barcode, 'ACCEPTED')}
+                                        >
+                                          {decidingBarcode === s.box_barcode ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <Check className="h-3 w-3 text-green-600" />
+                                          )}
+                                        </Button>
+                                      )}
+                                      {s.receive_status !== 'REJECTED' && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7"
+                                          disabled={decidingBarcode === s.box_barcode}
+                                          onClick={() => {
+                                            setRejectTarget(s.box_barcode);
+                                            setRejectReason('');
+                                            setRejectIsPallet(false);
+                                          }}
+                                        >
+                                          <X className="h-3 w-3 text-red-600" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -372,7 +526,7 @@ export default function BSTReceivePage() {
       <Dialog open={!!rejectTarget} onOpenChange={(open) => !open && setRejectTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject box {rejectTarget}</DialogTitle>
+            <DialogTitle>Reject {rejectIsPallet ? 'pallet' : 'box'} {rejectTarget}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <Input

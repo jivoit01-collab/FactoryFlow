@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Play, Wrench, Clock, MessageSquareOff, MessageSquareText } from 'lucide-react';
+import { Play, Wrench, Clock, MessageSquareOff, MessageSquareText, PencilLine } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
 import type { ProductionSegment, MachineBreakdown } from '../types';
 
@@ -177,6 +177,7 @@ function SegmentCard({ segment, now, ratedSpeed, onClick }: { segment: Productio
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
             </span>
           )}
+          {segment.is_manual && <ManualBadge />}
           <RemarksBadge remarks={remarks} tone="green" />
         </div>
         <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">
@@ -248,6 +249,7 @@ function BreakdownCard({
               {breakdown.maintenance_work_order_no}
             </span>
           )}
+          {breakdown.is_manual && <ManualBadge />}
           <RemarksBadge remarks={remarks} tone="red" />
         </div>
         <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">
@@ -301,6 +303,18 @@ function BreakdownCard({
         </div>
       )}
     </div>
+  );
+}
+
+function ManualBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+      title="Added manually via backfill — not recorded live"
+    >
+      <PencilLine className="h-3 w-3" />
+      Manual
+    </span>
   );
 }
 

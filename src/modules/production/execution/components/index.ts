@@ -2,7 +2,6 @@ export { BreakdownTable } from './BreakdownTable';
 export { ClearanceChecklistTable } from './ClearanceChecklistTable';
 export { ClearanceStatusBadge } from './ClearanceStatusBadge';
 export { MachineTimeTable } from './MachineTimeTable';
-export { ManpowerSection } from './ManpowerSection';
 export { MaterialConsumptionTable } from './MaterialConsumptionTable';
 export { ProductionStatusBadge } from './ProductionStatusBadge';
 export { ProductionTimeline } from './ProductionTimeline';

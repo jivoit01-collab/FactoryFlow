@@ -43,8 +43,6 @@ export const preformSpecFormSchema = z.object({
   sap_item_name: z.string().optional().default(''),
   bottle_weight_g: optionalNumber,
   bottles_per_kg: optionalNumber,
-  mould_cost: optionalNumber,
-  mould_life_bottles: optionalNumber,
   std_make_cost_per_bottle: optionalNumber,
   std_reject_pct: optionalNumber,
   std_units_per_bottle: optionalNumber,
@@ -141,14 +139,7 @@ export type CompleteRunFormInput = z.input<typeof completeRunSchema>;
 export const buyPriceFormSchema = z.object({
   preform_spec_id: z.coerce.number().int().positive('Select a bottle size'),
   supplier_name: z.string().optional().default(''),
-  effective_from: z.string().min(1, 'Effective date is required'),
   buy_price: z.coerce.number().positive('Buy price must be > 0'),
-  freight_per_bottle: z.coerce.number().min(0).default(0),
-  duties_per_bottle: z.coerce.number().min(0).default(0),
-  carrying_pct_annual: z.coerce.number().min(0).default(0),
-  inventory_days: z.coerce.number().int().min(0).default(30),
-  qa_allowance_pct: z.coerce.number().min(0).default(0),
-  risk_premium_per_bottle: z.coerce.number().min(0).default(0),
 });
 export type BuyPriceFormData = z.infer<typeof buyPriceFormSchema>;
 export type BuyPriceFormInput = z.input<typeof buyPriceFormSchema>;

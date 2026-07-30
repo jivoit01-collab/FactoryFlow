@@ -69,7 +69,7 @@ export type CostCategory =
   | 'WASTE_RECOVERY'
   | 'OTHER';
 
-export type CostBasis = 'PER_UNIT' | 'PER_HOUR' | 'PER_DAY' | 'PER_MONTH';
+export type CostBasis = 'PER_UNIT' | 'PER_PERSON_DAY' | 'PER_DAY' | 'PER_HOUR' | 'PER_MONTH';
 
 export interface CostRate {
   id: number;
@@ -115,8 +115,6 @@ export interface LineSkuConfig {
   rated_speed: string | null;
   labour_count: number;
   other_manpower_count: number;
-  electricity_cost_per_unit: string | null;
-  labour_cost_per_hour: string | null;
   supervisor: string;
   operators: string;
   is_active: boolean;
@@ -132,8 +130,6 @@ export interface CreateLineSkuConfigPayload {
   rated_speed?: string | number | null;
   labour_count?: number;
   other_manpower_count?: number;
-  electricity_cost_per_unit?: string | number | null;
-  labour_cost_per_hour?: string | number | null;
   supervisor?: string;
   operators?: string;
 }
@@ -145,8 +141,6 @@ export interface UpdateLineSkuConfigPayload {
   rated_speed?: string | number | null;
   labour_count?: number;
   other_manpower_count?: number;
-  electricity_cost_per_unit?: string | number | null;
-  labour_cost_per_hour?: string | number | null;
   supervisor?: string;
   operators?: string;
 }
@@ -248,8 +242,6 @@ export interface ProductionRun {
   item_code: string;
   required_qty: string | null;
   rated_speed: string;
-  electricity_cost_per_unit: string | null;
-  labour_cost_per_hour: string | null;
   total_production: string;
   total_running_minutes: number;
   total_breakdown_time: number;
@@ -283,6 +275,7 @@ export interface ProductionSegment {
   end_time: string | null;
   produced_cases: string;
   is_active: boolean;
+  is_manual: boolean;
   duration_minutes: number;
   remarks: string;
   created_at: string;
@@ -326,6 +319,7 @@ export interface MachineBreakdown {
   breakdown_minutes: number;
   is_unrecovered: boolean;
   is_active: boolean;
+  is_manual: boolean;
   maintenance_work_order_id: number | null;
   maintenance_work_order_no: string;
   maintenance_work_order_status: string;
@@ -776,8 +770,6 @@ export interface CreateRunRequest {
   item_code?: string;
   required_qty?: number | null;
   rated_speed?: string;
-  electricity_cost_per_unit?: string;
-  labour_cost_per_hour?: string;
   machine_ids?: number[];
   labour_count?: number;
   other_manpower_count?: number;
@@ -789,8 +781,6 @@ export interface CreateRunRequest {
 export interface UpdateRunRequest {
   product?: string;
   rated_speed?: string;
-  electricity_cost_per_unit?: string;
-  labour_cost_per_hour?: string;
   machine_ids?: number[];
   labour_count?: number;
   other_manpower_count?: number;
@@ -1027,8 +1017,11 @@ export interface MonthSummary {
   total_runs: number;
   total_production: number;
   avg_oee: number;
+  raw_material_cost: number;
   total_cost: number;
+  net_cost: number;
   cost_per_unit: number;
+  waste_recovery_credit: number;
   total_waste: number;
   electricity_cost: number;
   water_cost: number;
@@ -1048,6 +1041,7 @@ export interface MonthlySummaryReport {
     total_production: number;
     avg_oee: number;
     grand_total_cost: number;
+    grand_total_net: number;
   };
 }
 
