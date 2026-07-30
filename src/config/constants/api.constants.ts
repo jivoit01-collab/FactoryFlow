@@ -1015,6 +1015,7 @@ export const API_ENDPOINTS = {
     DISPATCH_SCAN_TRACKING: '/marketplace/dispatches/scan/',
     DISPATCH_SHEETS: '/marketplace/dispatches/sheets/',
     DISPATCH_ORDERS_RANGE: '/marketplace/dispatches/orders-in-range/',
+    REPORT_EXPORT: (type: string) => `/marketplace/reports/${type}/export.csv`,
     DISPATCH_BOARD: (batchId: number) => `/marketplace/dispatches/board/${batchId}/`,
     ORDER_CHOOSE_VARIANT: '/marketplace/orders/choose-variant/',
     BATCH_VARIANTS: (id: number) => `/marketplace/batches/${id}/variants/`,
