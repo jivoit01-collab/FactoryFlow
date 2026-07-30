@@ -102,41 +102,32 @@ export function RunningLinesSummary({
   const isToday = range.from === range.to && range.from === today;
   const singleDay = range.from === range.to;
 
+  // Fetch every run for the day/range (all statuses — running, stopped,
+  // completed, draft, breakdown) so the dashboard mirrors the execution list.
   const filters = useMemo(() => {
-    if (isToday) return { status: 'IN_PROGRESS', date: range.from };
     if (singleDay) return { date: range.from };
     return { date_from: range.from, date_to: range.to };
-  }, [isToday, singleDay, range.from, range.to]);
+  }, [singleDay, range.from, range.to]);
 
   const query = useRuns(filters);
 
-  // Latest run per line.
+  // One card per run, newest first (matches the execution page order).
   const runs = useMemo(() => {
     const list: ProductionRun[] = query.data ?? [];
-    const latestByLine = new Map<string, ProductionRun>();
-    for (const run of list) {
-      const key = run.line_name || `Line ${run.line}`;
-      const current = latestByLine.get(key);
-      if (!current || (run.run_number ?? 0) > (current.run_number ?? 0)) {
-        latestByLine.set(key, run);
-      }
-    }
-    return Array.from(latestByLine.values());
+    return [...list].sort((a, b) => (b.run_number ?? 0) - (a.run_number ?? 0));
   }, [query.data]);
 
   const openRun = (id: number) => navigate(`/production/execution/runs/${id}`);
 
   const title = isToday
-    ? 'Running lines today'
+    ? 'Production runs today'
     : singleDay
-      ? `Lines on ${range.from}`
-      : `Lines · ${range.from} → ${range.to}`;
+      ? `Production runs · ${range.from}`
+      : `Production runs · ${range.from} → ${range.to}`;
   const subtitle = isToday
-    ? 'Lines currently in production · live output'
-    : 'Lines that produced in the selected range';
-  const emptyText = isToday
-    ? 'No lines are running right now.'
-    : 'No production on the selected date.';
+    ? 'All runs today — running, completed, draft & stopped'
+    : 'All production runs in the selected range';
+  const emptyText = 'No production runs on the selected date.';
 
   return (
     <section className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both rounded-3xl border border-border/60 bg-card p-5 shadow-sm duration-500">
@@ -170,7 +161,7 @@ export function RunningLinesSummary({
               run={run}
               variant={variant}
               index={i}
-              live={isToday}
+              live={isToday && (run.live_status || run.status || '').toUpperCase().includes('RUN')}
               onOpen={openRun}
             />
           ))}
