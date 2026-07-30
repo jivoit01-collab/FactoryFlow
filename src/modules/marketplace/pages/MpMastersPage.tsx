@@ -1,5 +1,5 @@
 /** Masters — SKU→FG mappings, combos (JI sales-BOM), and channel→SAP warehouse links. */
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -89,6 +89,64 @@ function findComboForItem(combos: ComboDefinition[], item: string): ComboDefinit
   );
 }
 
+/** Reverse "where used" lookup: given any item code (FG…/SC…), SL/combo code, SKU
+ *  or FSN, list every SKU mapping and combo that references it, with WHY it matched
+ *  so the operator can jump straight to the right record and edit it. */
+export type WhereUsedResult = {
+  skus: { m: SkuMapping; why: string }[];
+  combos: { c: ComboDefinition; why: string }[];
+};
+
+function whereUsed(
+  query: string,
+  mappings: SkuMapping[],
+  combos: ComboDefinition[],
+): WhereUsedResult {
+  const needle = query.trim().toLowerCase();
+  const hit = (v?: string | null) => !!v && v.toLowerCase().includes(needle);
+  const uniq = (xs: string[]) => [...new Set(xs)];
+
+  // Combos first, so SKU mappings can also match INDIRECTLY (a SKU whose combo
+  // contains the searched item) — searching an item code then shows both the
+  // combos that contain it and the SKUs that ship it through those combos.
+  const combosOut: WhereUsedResult['combos'] = [];
+  const matchedComboCodes = new Set<string>();
+  for (const c of combos) {
+    const why: string[] = [];
+    if (hit(c.code)) why.push('combo code');
+    if (hit(c.name)) why.push('name');
+    if (hit(c.marketplace_sku)) why.push('SKU');
+    if (hit(c.fsn)) why.push('FSN');
+    (c.components ?? []).forEach((cc) => {
+      if (hit(cc.item_code)) why.push(`component ${cc.item_code}`);
+      (cc.options ?? []).forEach((o) => {
+        if (hit(o.item_code)) why.push(`alt ${o.item_code}`);
+      });
+    });
+    if (why.length) {
+      combosOut.push({ c, why: uniq(why).join(', ') });
+      if (c.code) matchedComboCodes.add(c.code);
+    }
+  }
+
+  const skus: WhereUsedResult['skus'] = [];
+  for (const m of mappings) {
+    const why: string[] = [];
+    if (hit(m.marketplace_sku)) why.push('SKU');
+    if (hit(m.fsn)) why.push('FSN');
+    if (hit(m.fg_item_code)) why.push(`ships ${m.fg_item_code}`);
+    if (hit(m.combo_code)) why.push(`combo ${m.combo_code}`);
+    else if (m.combo_code && matchedComboCodes.has(m.combo_code)) why.push(`via combo ${m.combo_code}`);
+    (m.options ?? []).forEach((o) => {
+      if (hit(o.fg_item_code)) why.push(`variant ${o.fg_item_code}`);
+      if (hit(o.combo_code)) why.push(`variant combo ${o.combo_code}`);
+      else if (o.combo_code && matchedComboCodes.has(o.combo_code)) why.push(`variant via combo ${o.combo_code}`);
+    });
+    if (why.length) skus.push({ m, why: uniq(why).join(', ') });
+  }
+  return { skus, combos: combosOut };
+}
+
 export default function MpMastersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const deepItem = searchParams.get('item') ?? '';
@@ -108,6 +166,21 @@ export default function MpMastersPage() {
   // resolve the target to a SKU mapping or a combo and auto-open its editor.
   const [autoOpenSku, setAutoOpenSku] = useState<SkuMapping | 'create' | null>(null);
   const [autoOpenCombo, setAutoOpenCombo] = useState<ComboDefinition | null>(null);
+
+  // "Where used" reverse lookup — find every SKU / combo that references an item
+  // code (FG…/SC…), SL/combo code, SKU or FSN, then jump straight into its editor.
+  const [lookup, setLookup] = useState('');
+  const wu =
+    lookup.trim() && mappings && combos ? whereUsed(lookup, mappings, combos) : null;
+
+  function openSku(m: SkuMapping) {
+    setTab('skus');
+    setAutoOpenSku(m);
+  }
+  function openCombo(c: ComboDefinition) {
+    setTab('combos');
+    setAutoOpenCombo(c);
+  }
 
   useEffect(() => {
     if (!hasDeepLink || !mappings || !combos) return;
@@ -146,6 +219,103 @@ export default function MpMastersPage() {
         </div>
         <MpChannelSelect value={channel} onChange={setChannel} />
       </header>
+
+      {/* Where-used reverse lookup — search an item / SL code and jump to edit it. */}
+      <Card>
+        <CardContent className="space-y-3 p-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={lookup}
+              onChange={(e) => setLookup(e.target.value)}
+              placeholder="Where used? Search an item code (FG… / SC…), SL / combo code, SKU or FSN…"
+              className="pl-9 pr-9"
+            />
+            {lookup && (
+              <button
+                type="button"
+                onClick={() => setLookup('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
+                aria-label="Clear"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {wu && (
+            <div className="space-y-4">
+              {wu.skus.length === 0 && wu.combos.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nothing in {channel} references “{lookup.trim()}”.
+                </p>
+              ) : (
+                <>
+                  {wu.skus.length > 0 && (
+                    <div className="space-y-1.5">
+                      <h3 className="text-xs font-medium text-muted-foreground">
+                        SKU mappings ({wu.skus.length})
+                      </h3>
+                      {wu.skus.map(({ m, why }) => (
+                        <div
+                          key={`sku-${m.id}`}
+                          className="flex items-center justify-between gap-3 rounded-md border p-2 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate font-mono">
+                              {m.marketplace_sku}
+                              {m.fsn ? ` · ${m.fsn}` : ''}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                              {m.sku_type === 'COMBO'
+                                ? `combo ${m.combo_code ?? ''}`
+                                : `ships ${m.fg_item_code ?? '—'}`}{' '}
+                              · matched: {why}
+                            </div>
+                          </div>
+                          <Button size="sm" variant="outline" onClick={() => openSku(m)}>
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {wu.combos.length > 0 && (
+                    <div className="space-y-1.5">
+                      <h3 className="text-xs font-medium text-muted-foreground">
+                        Combos ({wu.combos.length})
+                      </h3>
+                      {wu.combos.map(({ c, why }) => (
+                        <div
+                          key={`combo-${c.id}`}
+                          className="flex items-center justify-between gap-3 rounded-md border p-2 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate font-mono">
+                              {c.code}
+                              {c.name ? ` · ${c.name}` : ''}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                              {(c.components ?? [])
+                                .map((cc) => `${cc.quantity}×${cc.item_code}`)
+                                .join(' + ') || '—'}{' '}
+                              · matched: {why}
+                            </div>
+                          </div>
+                          <Button size="sm" variant="outline" onClick={() => openCombo(c)}>
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
