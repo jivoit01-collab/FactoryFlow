@@ -623,14 +623,23 @@ function RunDetailPage() {
               <div><Label>Operators</Label><Input type="number" {...completeForm.register('operator_count')} /></div>
               <div><Label>Contract labour</Label><Input type="number" {...completeForm.register('contract_labour_count')} /></div>
               <div><Label>Own labour</Label><Input type="number" {...completeForm.register('own_labour_count')} /></div>
-              <div><Label>Machine start reading</Label><Input type="number" step="0.0001" {...completeForm.register('machine_start_reading')} /></div>
-              <div><Label>Machine stop reading</Label><Input type="number" step="0.0001" {...completeForm.register('machine_stop_reading')} /></div>
+              <div>
+                <Label>Machine start reading *</Label>
+                <Input type="number" step="0.0001" {...completeForm.register('machine_start_reading')} />
+                {completeForm.formState.errors.machine_start_reading && <p className="text-sm text-red-500">{completeForm.formState.errors.machine_start_reading.message}</p>}
+              </div>
+              <div>
+                <Label>Machine stop reading *</Label>
+                <Input type="number" step="0.0001" {...completeForm.register('machine_stop_reading')} />
+                {completeForm.formState.errors.machine_stop_reading && <p className="text-sm text-red-500">{completeForm.formState.errors.machine_stop_reading.message}</p>}
+              </div>
               <div className="col-span-2">
-                <Label>Extra utility units (optional)</Label>
-                <Input type="number" step="0.0001" placeholder="0" {...completeForm.register('utility_units')} />
+                <Label>Utility cost (₹) *</Label>
+                <Input type="number" step="0.01" {...completeForm.register('utility_cost')} />
+                {completeForm.formState.errors.utility_cost && <p className="text-sm text-red-500">{completeForm.formState.errors.utility_cost.message}</p>}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  The machine start/stop readings already cover the machine's electricity. Leave this 0 unless a
-                  separate utility sub-meter (e.g. compressor) is being added — do not re-enter the machine units here.
+                  Fixed utility electricity charge for the day (entered as-is). The machine electricity is metered
+                  from the start/stop meter readings above.
                 </p>
               </div>
               <div><Label>Carton scrap (₹)</Label><Input type="number" step="0.01" {...completeForm.register('scrap_carton_value')} /></div>

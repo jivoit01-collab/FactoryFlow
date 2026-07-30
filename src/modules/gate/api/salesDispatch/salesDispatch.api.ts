@@ -146,6 +146,12 @@ export interface SalesDispatchGateOutDocument {
 export interface SalesDispatchAttachment {
   id: number;
   attachment_type: SalesDispatchAttachmentType;
+  /** For BILTY: the customer (consignee) this LR covers. One bilty per distinct customer. */
+  customer_code?: string;
+  customer_name?: string;
+  /** For BILTY: this LR's own number + date. */
+  bilty_no?: string;
+  bilty_date?: string | null;
   file: string;
   original_filename: string;
   latitude?: string | null;
@@ -515,6 +521,11 @@ export type SalesDispatchUpdateRequest = Partial<
 export interface SalesDispatchAttachmentUploadRequest {
   attachment_type: SalesDispatchAttachmentType;
   file: File;
+  /** For BILTY: tag the file with the customer (consignee) it covers + this LR's number/date. */
+  customer_code?: string;
+  customer_name?: string;
+  bilty_no?: string;
+  bilty_date?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
   notes?: string;
@@ -736,6 +747,18 @@ export const salesDispatchApi = {
     const formData = new FormData();
     formData.append('attachment_type', data.attachment_type);
     formData.append('file', data.file);
+    if (data.customer_code) {
+      formData.append('customer_code', data.customer_code);
+    }
+    if (data.customer_name) {
+      formData.append('customer_name', data.customer_name);
+    }
+    if (data.bilty_no) {
+      formData.append('bilty_no', data.bilty_no);
+    }
+    if (data.bilty_date) {
+      formData.append('bilty_date', data.bilty_date);
+    }
     if (data.latitude !== undefined && data.latitude !== null) {
       formData.append('latitude', String(data.latitude));
     }
@@ -755,6 +778,18 @@ export const salesDispatchApi = {
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ATTACHMENTS(id),
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  },
+
+  async updateAttachment(
+    id: number,
+    attachmentId: number,
+    data: { bilty_no?: string; bilty_date?: string | null },
+  ): Promise<SalesDispatchAttachment> {
+    const response = await apiClient.patch<SalesDispatchAttachment>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ATTACHMENT_DETAIL(id, attachmentId),
+      data,
     );
     return response.data;
   },

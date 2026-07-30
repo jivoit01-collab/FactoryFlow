@@ -17,10 +17,13 @@ import { usePermission } from '@/core/auth';
 import {
   type SalesDispatchAttachment,
   type SalesDispatchAttachmentType,
+  type SalesDispatchGateOut,
   usePreviewSalesDispatchGatepass,
   useSalesDispatchAttachments,
+  useSalesDispatchAttachmentsForDockings,
   useSalesDispatchByVehicleEntry,
   useUpdateSalesDispatch,
+  useUpdateSalesDispatchAttachment,
   useUploadSalesDispatchAttachment,
 } from '@/modules/gate/api';
 import {
@@ -56,8 +59,6 @@ interface UploadPanelConfig {
 
 interface TransportDocumentForm {
   eway_bill: string;
-  bilty_no: string;
-  bilty_date: string;
   freight: string;
   total_freight: string;
 }
@@ -66,8 +67,6 @@ type TransportDocumentErrors = Partial<Record<keyof TransportDocumentForm | 'att
 
 const EMPTY_TRANSPORT_DOCUMENT_FORM: TransportDocumentForm = {
   eway_bill: '',
-  bilty_no: '',
-  bilty_date: '',
   freight: '',
   total_freight: '',
 };
@@ -97,16 +96,46 @@ const UPLOAD_PANELS: UploadPanelConfig[] = [
     description: 'E-way bill document',
   },
   {
-    type: 'BILTY',
-    label: 'Bilty / LR',
-    description: 'Freight document or LR copy',
-  },
-  {
     type: 'OTHER',
     label: 'Other Document',
     description: 'Any other supporting file',
   },
 ];
+
+interface DockingCustomer {
+  code: string;
+  name: string;
+  /** Identity used to match a bilty to a customer: code, falling back to name. */
+  key: string;
+  /** The docking (company) that carries this customer's bill — where its bilty attaches. */
+  dockingId?: number;
+}
+
+// The distinct customers (consignees) on a docking. A bilty / LR is issued per
+// consignee, so one bilty is required per distinct customer here.
+function getDockingCustomers(entry: SalesDispatchGateOut): DockingCustomer[] {
+  const rows =
+    entry.documents && entry.documents.length > 0
+      ? entry.documents.map((document) => ({
+          code: document.customer_code || '',
+          name: document.customer_name || '',
+        }))
+      : [{ code: entry.customer_code || '', name: entry.customer_name || '' }];
+  const customers: DockingCustomer[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const key = (row.code || '').trim() || (row.name || '').trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    customers.push({ code: row.code, name: row.name, key });
+  }
+  return customers;
+}
+
+// The customer identity a bilty attachment covers, matching getDockingCustomers' key.
+function biltyCustomerKey(attachment: SalesDispatchAttachment): string {
+  return (attachment.customer_code || '').trim() || (attachment.customer_name || '').trim();
+}
 
 // Docking statuses where box scanning is still the active gate. Only these are subject
 // to the scan-lock redirect; from GATEPASS_PRINTED onward the load has already moved
@@ -122,11 +151,20 @@ export default function SalesDispatchAttachmentsPage() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [uploadingType, setUploadingType] = useState<SalesDispatchAttachmentType | null>(null);
+  // Which per-customer bilty panel is uploading (its customer key), so only that panel
+  // shows the spinner when several bilty panels are on screen.
+  const [uploadingCustomerKey, setUploadingCustomerKey] = useState<string | null>(null);
   const [uploadingMessage, setUploadingMessage] = useState('');
   const [transportForm, setTransportForm] = useState<TransportDocumentForm>(
     EMPTY_TRANSPORT_DOCUMENT_FORM,
   );
   const [transportErrors, setTransportErrors] = useState<TransportDocumentErrors>({});
+  // Per-customer bilty number + date inputs, keyed by customer key. Seeded from the
+  // customer's existing bilty attachment; sent with the file on upload, or PATCHed on
+  // its own via "Save no./date" for an already-uploaded bilty.
+  const [biltyDetails, setBiltyDetails] = useState<
+    Record<string, { bilty_no: string; bilty_date: string }>
+  >({});
 
   const {
     data: entry,
@@ -138,6 +176,7 @@ export default function SalesDispatchAttachmentsPage() {
     entry?.id,
   );
   const uploadAttachment = useUploadSalesDispatchAttachment();
+  const updateAttachment = useUpdateSalesDispatchAttachment();
   const uploadArrivalTruckPhoto = useUploadArrivalTruckPhoto();
   const updateSalesDispatch = useUpdateSalesDispatch();
   // A multi-company truck is one physical load: its photo attaches to (and locks)
@@ -168,19 +207,76 @@ export default function SalesDispatchAttachmentsPage() {
         attachment.latitude !== null &&
         attachment.longitude !== null,
     ) || Boolean(entry?.gatepass_readiness.has_truck_photo_geolocation);
-  const hasBiltyAttachment = attachments.some(
-    (attachment) => attachment.attachment_type === 'BILTY',
+  // One bilty (LR) is required per distinct customer (consignee) on the whole truck, each
+  // carrying its own file + number + date. On a multi-company truck the customers are
+  // spread across sibling dockings, so aggregate across them; each bilty attaches to the
+  // docking that carries that customer's bill.
+  const biltyTargets: DockingCustomer[] = (() => {
+    const sources: SalesDispatchGateOut[] =
+      isMultiCompanyArrival && arrivalDockings.dockings.length
+        ? arrivalDockings.dockings
+        : entry
+          ? [entry]
+          : [];
+    const targets: DockingCustomer[] = [];
+    const seen = new Set<string>();
+    for (const docking of sources) {
+      for (const customer of getDockingCustomers(docking)) {
+        if (seen.has(customer.key)) continue;
+        seen.add(customer.key);
+        targets.push({ ...customer, dockingId: docking.id });
+      }
+    }
+    if (targets.length === 0 && entry) {
+      targets.push({
+        code: entry.customer_code || '',
+        name: entry.customer_name || '',
+        key: 'default',
+        dockingId: entry.id,
+      });
+    }
+    return targets;
+  })();
+  const biltyDockingIds = [
+    ...new Set(biltyTargets.map((target) => target.dockingId).filter((id): id is number => !!id)),
+  ];
+  const { byDocking: biltyAttachmentsByDocking } =
+    useSalesDispatchAttachmentsForDockings(biltyDockingIds);
+  const targetsPerDocking = biltyTargets.reduce<Record<number, number>>((acc, target) => {
+    if (target.dockingId) acc[target.dockingId] = (acc[target.dockingId] ?? 0) + 1;
+    return acc;
+  }, {});
+  const biltyForTarget = (target: DockingCustomer): SalesDispatchAttachment | undefined => {
+    if (!target.dockingId) return undefined;
+    const bilties = (biltyAttachmentsByDocking[target.dockingId] ?? []).filter(
+      (attachment) => attachment.attachment_type === 'BILTY',
+    );
+    const tagged = bilties.find((attachment) => biltyCustomerKey(attachment) === target.key);
+    if (tagged) return tagged;
+    // A single-customer docking accepts an untagged legacy bilty for its one customer.
+    return (targetsPerDocking[target.dockingId] ?? 0) <= 1 ? bilties[0] : undefined;
+  };
+  const biltyAttachmentComplete = (attachment?: SalesDispatchAttachment) =>
+    Boolean(attachment?.file && (attachment.bilty_no || '').trim() && attachment.bilty_date);
+  // The number + date shown/used for a target: the in-progress edit if any, else the
+  // customer's existing bilty (so already-saved values appear without extra state).
+  const getBiltyDetails = (target: DockingCustomer) => {
+    if (biltyDetails[target.key] !== undefined) return biltyDetails[target.key];
+    const existing = biltyForTarget(target);
+    return { bilty_no: existing?.bilty_no || '', bilty_date: existing?.bilty_date || '' };
+  };
+  const targetsMissingBilty = biltyTargets.filter(
+    (target) => !biltyAttachmentComplete(biltyForTarget(target)),
   );
+  const hasBiltyAttachment = biltyTargets.length > 0 && targetsMissingBilty.length === 0;
+  const isMultiCustomerTruck = biltyTargets.length > 1;
   const hasEwayBillAttachment = attachments.some(
     (attachment) => attachment.attachment_type === 'EWAY_BILL',
   );
   const ewayBillRequired = entry ? requiresEwayBill(entry) : false;
   const uploadPanels = UPLOAD_PANELS.map((panel) => ({
     ...panel,
-    required:
-      panel.required ||
-      panel.type === 'BILTY' ||
-      (panel.type === 'EWAY_BILL' && ewayBillRequired),
+    required: panel.required || (panel.type === 'EWAY_BILL' && ewayBillRequired),
   }));
 
   // Hard scan-lock: an un-cleared docking load may not sit on the attachments step.
@@ -206,8 +302,6 @@ export default function SalesDispatchAttachmentsPage() {
 
     setTransportForm({
       eway_bill: entry.eway_bill || '',
-      bilty_no: entry.bilty_no || '',
-      bilty_date: entry.bilty_date || '',
       freight: entry.freight ?? '',
       total_freight: entry.total_freight ?? '',
     });
@@ -224,17 +318,16 @@ export default function SalesDispatchAttachmentsPage() {
 
   const validateTransportDocuments = (includeAttachments: boolean) => {
     const errors: TransportDocumentErrors = {};
-    if (!transportForm.bilty_no.trim()) {
-      errors.bilty_no = 'Bilty / LR number is required.';
-    }
-    if (!transportForm.bilty_date) {
-      errors.bilty_date = 'Bilty date is required.';
-    }
     if (ewayBillRequired && !transportForm.eway_bill.trim()) {
       errors.eway_bill = 'E-way bill is required for invoices above Rs 50,000.';
     }
     if (includeAttachments && !hasBiltyAttachment) {
-      errors.attachments = 'Bilty / LR attachment is required.';
+      errors.attachments =
+        isMultiCustomerTruck && targetsMissingBilty.length > 0
+          ? `A bilty / LR (file + number + date) is required for: ${targetsMissingBilty
+              .map((target) => target.name || target.code || target.key)
+              .join(', ')}.`
+          : 'A bilty / LR file, number and date are required.';
     }
     if (includeAttachments && ewayBillRequired && !hasEwayBillAttachment) {
       errors.attachments = errors.attachments
@@ -258,12 +351,10 @@ export default function SalesDispatchAttachmentsPage() {
 
     setError(null);
     try {
-      // Bilty (one physical LR) + freight are truck-level, so write them to every
-      // company's docking; the e-way bill is per invoice, so only the acting
-      // docking gets the entered value.
+      // Freight is truck-level, so write it to every company's docking; the e-way bill is
+      // per invoice, so only the acting docking gets the entered value. The bilty (LR) is
+      // now per customer and lives on its own attachment, not here.
       const truckLevel = {
-        bilty_no: transportForm.bilty_no.trim(),
-        bilty_date: transportForm.bilty_date || null,
         freight: transportForm.freight || null,
         total_freight: transportForm.total_freight || null,
       };
@@ -293,7 +384,47 @@ export default function SalesDispatchAttachmentsPage() {
     await saveTransportDocuments();
   };
 
-  const handleUpload = async (type: SalesDispatchAttachmentType, file: File) => {
+  const updateBiltyDetail = (
+    target: DockingCustomer,
+    field: 'bilty_no' | 'bilty_date',
+    value: string,
+  ) => {
+    setBiltyDetails((prev) => ({
+      ...prev,
+      [target.key]: { ...(prev[target.key] ?? getBiltyDetails(target)), [field]: value },
+    }));
+    setError(null);
+  };
+
+  // Edit an already-uploaded bilty's number/date without re-picking the file. The bilty
+  // lives on the docking that carries this customer's bill (a sibling on a shared truck).
+  const handleSaveBiltyDetails = async (
+    target: DockingCustomer,
+    attachment: SalesDispatchAttachment,
+  ) => {
+    if (!target.dockingId) return;
+    const details = getBiltyDetails(target);
+    if (!details.bilty_no.trim() || !details.bilty_date) {
+      setError('Enter the Bilty / LR number and date.');
+      return;
+    }
+    try {
+      await updateAttachment.mutateAsync({
+        id: target.dockingId,
+        attachmentId: attachment.id,
+        data: { bilty_no: details.bilty_no.trim(), bilty_date: details.bilty_date },
+      });
+      toast.success('Bilty details saved');
+    } catch (saveError) {
+      setError(getErrorMessage(saveError, 'Failed to save bilty details'));
+    }
+  };
+
+  const handleUpload = async (
+    type: SalesDispatchAttachmentType,
+    file: File,
+    customer?: DockingCustomer,
+  ) => {
     if (!entry) {
       setError('Docking details not found.');
       return;
@@ -304,8 +435,16 @@ export default function SalesDispatchAttachmentsPage() {
       return;
     }
 
+    // A bilty file is meaningless without its number + date, so require both first.
+    const details = customer ? getBiltyDetails(customer) : undefined;
+    if (type === 'BILTY' && (!details?.bilty_no.trim() || !details?.bilty_date)) {
+      setError('Enter the Bilty / LR number and date before uploading the file.');
+      return;
+    }
+
     setError(null);
     setUploadingType(type);
+    setUploadingCustomerKey(customer?.key ?? null);
 
     try {
       setUploadingMessage(
@@ -336,16 +475,23 @@ export default function SalesDispatchAttachmentsPage() {
           notes,
           latitude: location?.latitude ?? null,
           longitude: location?.longitude ?? null,
+          // A bilty (LR) is per consignee, so tag it with its customer + that LR's number
+          // and date, and attach it to this company's own docking only (each docking gates
+          // its own customers).
+          ...(customer
+            ? {
+                customer_code: customer.code,
+                customer_name: customer.name,
+                bilty_no: details?.bilty_no.trim() || '',
+                bilty_date: details?.bilty_date || null,
+              }
+            : {}),
           ...(allowPartial ? { allow_partial: true } : {}),
         };
-        // One bilty (LR) covers the whole physical truck: attach it to every
-        // company's docking so none is left "pending bilty".
-        if (type === 'BILTY' && isMultiCompanyArrival && truckDockingIds.length > 1) {
-          return Promise.all(
-            truckDockingIds.map((id) => uploadAttachment.mutateAsync({ id, data: attachmentData })),
-          );
-        }
-        return uploadAttachment.mutateAsync({ id: entry.id, data: attachmentData });
+        // A bilty attaches to the docking that carries its customer's bill (a sibling on a
+        // multi-company truck); everything else attaches to the current docking.
+        const targetDockingId = type === 'BILTY' ? (customer?.dockingId ?? entry.id) : entry.id;
+        return uploadAttachment.mutateAsync({ id: targetDockingId, data: attachmentData });
       };
       try {
         await uploadOnce(false);
@@ -390,6 +536,7 @@ export default function SalesDispatchAttachmentsPage() {
       setError(getErrorMessage(uploadError, 'Failed to upload attachment'));
     } finally {
       setUploadingType(null);
+      setUploadingCustomerKey(null);
       setUploadingMessage('');
     }
   };
@@ -410,8 +557,6 @@ export default function SalesDispatchAttachmentsPage() {
       // Transport docs already saved and unchanged -> skip the redundant PATCH + toast.
       const seededTransport = {
         eway_bill: entry.eway_bill || '',
-        bilty_no: entry.bilty_no || '',
-        bilty_date: entry.bilty_date || '',
         freight: entry.freight ?? '',
         total_freight: entry.total_freight ?? '',
       };
@@ -490,37 +635,6 @@ export default function SalesDispatchAttachmentsPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="sales-dispatch-bilty-no">
-                Bilty / LR No. <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="sales-dispatch-bilty-no"
-                value={transportForm.bilty_no}
-                disabled={isReadOnly || !canEditDispatch || updateSalesDispatch.isPending}
-                aria-invalid={Boolean(transportErrors.bilty_no)}
-                onChange={(event) => updateTransportField('bilty_no', event.target.value)}
-              />
-              {transportErrors.bilty_no && (
-                <p className="text-xs text-destructive">{transportErrors.bilty_no}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sales-dispatch-bilty-date">
-                Bilty Date <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="sales-dispatch-bilty-date"
-                type="date"
-                value={transportForm.bilty_date}
-                disabled={isReadOnly || !canEditDispatch || updateSalesDispatch.isPending}
-                aria-invalid={Boolean(transportErrors.bilty_date)}
-                onChange={(event) => updateTransportField('bilty_date', event.target.value)}
-              />
-              {transportErrors.bilty_date && (
-                <p className="text-xs text-destructive">{transportErrors.bilty_date}</p>
-              )}
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="sales-dispatch-freight">Freight</Label>
               <Input
                 id="sales-dispatch-freight"
@@ -558,6 +672,99 @@ export default function SalesDispatchAttachmentsPage() {
               )}
               Save Details
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Paperclip className="h-5 w-5" />
+            Bilty / LR <span className="text-destructive">*</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <p className="text-sm text-muted-foreground">
+            {isMultiCustomerTruck
+              ? `Attach one bilty / LR per customer — ${biltyTargets.length} customers on this truck. Enter each LR's number and date, then upload its file.`
+              : 'Enter the bilty / LR number and date, then upload its file.'}
+          </p>
+          <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+            {biltyTargets.map((target) => {
+              const details = getBiltyDetails(target);
+              const existing = biltyForTarget(target);
+              const panelDisabled =
+                isReadOnly ||
+                !canUploadAttachments ||
+                uploadAttachment.isPending ||
+                Boolean(uploadingType);
+              return (
+                <div key={`BILTY-${target.key}`} className="space-y-3 rounded-lg border p-4">
+                  {isMultiCustomerTruck && (
+                    <p className="truncate text-sm font-semibold" title={target.name || target.code}>
+                      {target.name || target.code || 'Customer'}
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor={`bilty-no-${target.key}`}>
+                      Bilty / LR No. <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id={`bilty-no-${target.key}`}
+                      value={details.bilty_no}
+                      disabled={panelDisabled}
+                      onChange={(event) => updateBiltyDetail(target, 'bilty_no', event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`bilty-date-${target.key}`}>
+                      Bilty Date <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id={`bilty-date-${target.key}`}
+                      type="date"
+                      value={details.bilty_date}
+                      disabled={panelDisabled}
+                      onChange={(event) =>
+                        updateBiltyDetail(target, 'bilty_date', event.target.value)
+                      }
+                    />
+                  </div>
+                  <DocumentUploadPanel
+                    panel={{
+                      type: 'BILTY',
+                      label: existing ? 'Replace bilty / LR file' : 'Upload bilty / LR file',
+                      description: 'Freight document or LR copy',
+                      required: true,
+                    }}
+                    customer={target}
+                    disabled={panelDisabled}
+                    isUploading={uploadingType === 'BILTY' && uploadingCustomerKey === target.key}
+                    uploadingMessage={uploadingMessage}
+                    attachments={existing ? [existing] : []}
+                    onUpload={handleUpload}
+                  />
+                  {existing && (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSaveBiltyDetails(target, existing)}
+                        disabled={panelDisabled || updateAttachment.isPending}
+                      >
+                        {updateAttachment.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Save no./date
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -671,6 +878,7 @@ export default function SalesDispatchAttachmentsPage() {
 
 function DocumentUploadPanel({
   panel,
+  customer,
   disabled,
   isUploading,
   uploadingMessage,
@@ -678,18 +886,23 @@ function DocumentUploadPanel({
   onUpload,
 }: {
   panel: UploadPanelConfig;
+  customer?: DockingCustomer;
   disabled: boolean;
   isUploading: boolean;
   uploadingMessage: string;
   attachments: SalesDispatchAttachment[];
-  onUpload: (type: SalesDispatchAttachmentType, file: File) => Promise<void>;
+  onUpload: (
+    type: SalesDispatchAttachmentType,
+    file: File,
+    customer?: DockingCustomer,
+  ) => Promise<void>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    await onUpload(panel.type, file);
+    await onUpload(panel.type, file, customer);
     if (inputRef.current) inputRef.current.value = '';
   };
 

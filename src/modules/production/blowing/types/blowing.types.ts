@@ -75,9 +75,9 @@ export interface CompleteRunRequest {
   operator_count?: number;
   contract_labour_count?: number;
   own_labour_count?: number;
-  machine_start_reading?: number | string | null;
-  machine_stop_reading?: number | string | null;
-  utility_units?: number | string;
+  machine_start_reading: number | string;
+  machine_stop_reading: number | string;
+  utility_cost: number | string;
   scrap_carton_value?: number | string;
 }
 export interface CreateBreakdownCategoryRequest { name: string }
@@ -360,6 +360,7 @@ export interface BlowingRunDetail extends BlowingRun {
   machine_stop_reading: string | null;
   machine_units: string;
   utility_units: string;
+  utility_cost: string;
   operator_count: number;
   contract_labour_count: number;
   own_labour_count: number;
@@ -386,7 +387,7 @@ export interface CreateRunRequest {
   preform_boxes_used?: number | string;
   machine_start_reading?: number | string | null;
   machine_stop_reading?: number | string | null;
-  utility_units?: number | string;
+  utility_cost?: number | string;
   total_counter_production?: number;
   rejection_pcs?: number;
   operator_count?: number;

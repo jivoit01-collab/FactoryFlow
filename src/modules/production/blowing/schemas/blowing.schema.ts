@@ -5,6 +5,13 @@ const optionalNumber = z
   .optional()
   .transform((v) => (v === '' || v === undefined ? undefined : Number(v)));
 
+// Required numeric field: empty/blank fails (must be filled), but 0 is allowed.
+const requiredNonNeg = (msg: string) =>
+  z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+    z.number({ required_error: msg, invalid_type_error: msg }).min(0, msg),
+  );
+
 export const runFormSchema = z.object({
   date: z.string().min(1, 'Date is required'),
   machine_id: z.coerce.number().int().positive('Select a machine'),
@@ -12,7 +19,7 @@ export const runFormSchema = z.object({
   preform_boxes_used: z.coerce.number().min(0).default(0),
   machine_start_reading: optionalNumber,
   machine_stop_reading: optionalNumber,
-  utility_units: z.coerce.number().min(0).default(0),
+  utility_cost: z.coerce.number().min(0).default(0),
   total_counter_production: z.coerce.number().int().min(0).default(0),
   rejection_pcs: z.coerce.number().int().min(0).default(0),
   operator_count: z.coerce.number().int().min(0).default(0),
@@ -122,17 +129,22 @@ export const addManualBreakdownSchema = z
 export type AddManualBreakdownFormData = z.infer<typeof addManualBreakdownSchema>;
 export type AddManualBreakdownFormInput = z.input<typeof addManualBreakdownSchema>;
 
-export const completeRunSchema = z.object({
-  total_counter_production: z.coerce.number().int().min(1, 'Total production is required'),
-  rejection_pcs: z.coerce.number().int().min(0).default(0),
-  operator_count: z.coerce.number().int().min(0).default(0),
-  contract_labour_count: z.coerce.number().int().min(0).default(0),
-  own_labour_count: z.coerce.number().int().min(0).default(0),
-  machine_start_reading: optionalNumber,
-  machine_stop_reading: optionalNumber,
-  utility_units: z.coerce.number().min(0).default(0),
-  scrap_carton_value: z.coerce.number().min(0).default(0),
-});
+export const completeRunSchema = z
+  .object({
+    total_counter_production: z.coerce.number().int().min(1, 'Total production is required'),
+    rejection_pcs: z.coerce.number().int().min(0).default(0),
+    operator_count: z.coerce.number().int().min(0).default(0),
+    contract_labour_count: z.coerce.number().int().min(0).default(0),
+    own_labour_count: z.coerce.number().int().min(0).default(0),
+    machine_start_reading: requiredNonNeg('Machine start reading is required'),
+    machine_stop_reading: requiredNonNeg('Machine stop reading is required'),
+    utility_cost: requiredNonNeg('Utility cost is required'),
+    scrap_carton_value: z.coerce.number().min(0).default(0),
+  })
+  .refine((d) => d.machine_stop_reading >= d.machine_start_reading, {
+    path: ['machine_stop_reading'],
+    message: 'Stop reading must be ≥ start reading.',
+  });
 export type CompleteRunFormData = z.infer<typeof completeRunSchema>;
 export type CompleteRunFormInput = z.input<typeof completeRunSchema>;
 
