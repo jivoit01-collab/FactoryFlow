@@ -13,6 +13,7 @@ import type {
   DeliveryNoteSheet,
   DeliveryNoteSummary,
   DispatchBoard,
+  DispatchBoardOrder,
   DispatchCreateRequest,
   DispatchListParams,
   DispatchSheetSummary,
@@ -276,6 +277,17 @@ export const marketplaceApi = {
   async dispatchBoard(channel: MarketplaceChannel, batchId: number): Promise<DispatchBoard> {
     const { data } = await apiClient.get<DispatchBoard>(
       `${EP.DISPATCH_BOARD(batchId)}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+  /** Orders across ALL sheets within an order-date range — for the date-range CSV export. */
+  async dispatchOrdersInRange(
+    channel: MarketplaceChannel,
+    from?: string,
+    to?: string,
+  ): Promise<{ orders: DispatchBoardOrder[] }> {
+    const { data } = await apiClient.get<{ orders: DispatchBoardOrder[] }>(
+      `${EP.DISPATCH_ORDERS_RANGE}${buildQuery({ channel, from, to })}`,
     );
     return data;
   },

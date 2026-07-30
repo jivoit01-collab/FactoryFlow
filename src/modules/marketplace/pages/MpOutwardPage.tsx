@@ -78,6 +78,58 @@ const CSV_STATUS_LABEL: Record<DispatchBoardOrder['status'], string> = {
   CANCELLED: 'Cancelled after scan',
 };
 
+const OUTWARD_CSV_HEADERS = [
+  // Order
+  'Order ID', 'Order item ID', 'Buyer', 'Ship-to name', 'Order type', 'Order date', 'Dispatch-by',
+  // Address
+  'Address 1', 'Address 2', 'City', 'State', 'PIN',
+  // Status
+  'Status', 'Ready', 'Dispatch ID', 'Dispatch status', 'SAP post status', 'Cancel reason',
+  // Scan
+  'Tracking scanned', 'Tracking total', 'Tracking ID', 'Item scanned', 'Scanned at', 'Scanned by',
+  // Item / line
+  'SKU', 'Marketplace SKU', 'FSN/ASIN', 'HSN', 'Quantity', 'Unit price', 'Invoice amount',
+  'Tax amount', 'Order state',
+  // Billing / delivery note
+  'Invoice number', 'Invoice date', 'DN number', 'GI number', 'Confirmed at', 'Confirmed by',
+];
+
+/** One row per shipment (tracking ID) — shared by both the current-sheet export and
+ *  the date-range (all-sheets) export so the CSV layout is identical. */
+function buildOutwardCsv(orders: DispatchBoardOrder[]): string {
+  const rows = [OUTWARD_CSV_HEADERS.join(',')];
+  for (const o of orders) {
+    const status = CSV_STATUS_LABEL[o.status] ?? o.status;
+    const items = o.items.length > 0 ? o.items : [null];
+    for (const it of items) {
+      rows.push([
+        o.order_id, it?.order_item_id ?? '', o.buyer_name, o.ship_to_name ?? '',
+        o.order_type ?? '', o.order_date ?? '', o.dispatch_by ?? '',
+        o.address_line1 ?? '', o.address_line2 ?? '', o.city ?? '', o.state ?? '', o.pin_code ?? '',
+        status, o.ready ? 'yes' : 'no', o.dispatch_id ?? '',
+        o.dispatch_status ?? '', o.sap_post_status ?? '', o.cancel_reason ?? '',
+        o.tracking_scanned, o.tracking_total, it?.tracking_id ?? '',
+        it ? (it.scanned ? 'yes' : 'no') : '', it?.scanned_at ?? '', it?.scanned_by ?? '',
+        it?.sku_name ?? '', it?.marketplace_sku ?? '', it?.fsn ?? '', it?.hsn ?? '',
+        it ? Number(it.quantity) : '', it?.unit_price ?? '', it?.invoice_amount ?? '',
+        it?.tax_amount ?? '', it?.order_state ?? '',
+        o.invoice_number ?? '', o.invoice_date ?? '', o.dn_number ?? '',
+        o.gi_number ?? '', o.confirmed_at ?? '', o.confirmed_by ?? '',
+      ].map(csvCell).join(','));
+    }
+  }
+  return rows.join('\n');
+}
+
+function triggerCsvDownload(csv: string, filename: string) {
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function MpOutwardPage() {
   const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
   const [pickedSheet, setPickedSheet] = useState<number | null>(null);
@@ -146,65 +198,32 @@ export default function MpOutwardPage() {
   // picks the order type via the existing filter and downloads exactly that. One
   // row per shipment (tracking ID) so SKUs and tracking IDs are captured.
   function handleExportCsv() {
-    const headers = [
-      // Order
-      'Order ID', 'Order item ID', 'Buyer', 'Ship-to name', 'Order type',
-      'Order date', 'Dispatch-by',
-      // Address
-      'Address 1', 'Address 2', 'City', 'State', 'PIN',
-      // Status
-      'Status', 'Ready', 'Dispatch ID', 'Dispatch status', 'SAP post status',
-      'Cancel reason',
-      // Scan
-      'Tracking scanned', 'Tracking total', 'Tracking ID', 'Item scanned',
-      'Scanned at', 'Scanned by',
-      // Item / line
-      'SKU', 'Marketplace SKU', 'FSN/ASIN', 'HSN', 'Quantity',
-      'Unit price', 'Invoice amount', 'Tax amount', 'Order state',
-      // Billing / delivery note
-      'Invoice number', 'Invoice date', 'DN number', 'GI number',
-      'Confirmed at', 'Confirmed by',
-    ];
-    const rows = [headers.join(',')];
-    for (const o of visibleOrders) {
-      const status = CSV_STATUS_LABEL[o.status] ?? o.status;
-      const items = o.items.length > 0 ? o.items : [null];
-      for (const it of items) {
-        rows.push([
-          // Order
-          o.order_id, it?.order_item_id ?? '', o.buyer_name, o.ship_to_name ?? '',
-          o.order_type ?? '', o.order_date ?? '', o.dispatch_by ?? '',
-          // Address
-          o.address_line1 ?? '', o.address_line2 ?? '', o.city ?? '',
-          o.state ?? '', o.pin_code ?? '',
-          // Status
-          status, o.ready ? 'yes' : 'no', o.dispatch_id ?? '',
-          o.dispatch_status ?? '', o.sap_post_status ?? '', o.cancel_reason ?? '',
-          // Scan
-          o.tracking_scanned, o.tracking_total, it?.tracking_id ?? '',
-          it ? (it.scanned ? 'yes' : 'no') : '', it?.scanned_at ?? '', it?.scanned_by ?? '',
-          // Item / line
-          it?.sku_name ?? '', it?.marketplace_sku ?? '', it?.fsn ?? '', it?.hsn ?? '',
-          it ? Number(it.quantity) : '', it?.unit_price ?? '', it?.invoice_amount ?? '',
-          it?.tax_amount ?? '', it?.order_state ?? '',
-          // Billing / delivery note
-          o.invoice_number ?? '', o.invoice_date ?? '', o.dn_number ?? '',
-          o.gi_number ?? '', o.confirmed_at ?? '', o.confirmed_by ?? '',
-        ].map(csvCell).join(','));
-      }
-    }
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
     const sheetName = (board?.sheet.filename || `sheet-${sheetId}`)
       .replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_');
-    a.download = `outward_${channel}_${sheetName}_${statusFilter.toLowerCase()}_${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerCsvDownload(
+      buildOutwardCsv(visibleOrders),
+      `outward_${channel}_${sheetName}_${statusFilter.toLowerCase()}_${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`,
+    );
   }
+
+  // NEW — export EVERY sheet's orders within the order-date range (the button above
+  // is limited to the currently-open sheet). Uses the same columns/layout.
+  const dateExport = useMutation({
+    mutationFn: () =>
+      marketplaceApi.dispatchOrdersInRange(channel, orderRange.from || undefined, orderRange.to || undefined),
+    onSuccess: (res) => {
+      if (!res.orders.length) {
+        toast.info('No orders in that date range.');
+        return;
+      }
+      const span = `${orderRange.from || 'start'}_${orderRange.to || 'end'}`;
+      triggerCsvDownload(buildOutwardCsv(res.orders), `outward_${channel}_${span}_all-sheets.csv`);
+      toast.success(`Downloaded ${res.orders.length} order(s) across all sheets.`);
+    },
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Could not export the date range.')),
+  });
 
   const confirmAll = useMutation({
     mutationFn: async (ids: number[]) => {
@@ -342,6 +361,16 @@ export default function MpOutwardPage() {
                   title="Download the orders currently shown (respects the status filter, search and date range)"
                 >
                   <Download className="mr-2 h-4 w-4" /> Download CSV ({visibleOrders.length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={dateExport.isPending}
+                  onClick={() => dateExport.mutate()}
+                  title="Download every sheet's orders within the Order date range set below (not just this sheet)"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {dateExport.isPending ? 'Preparing…' : 'Download by date (all sheets)'}
                 </Button>
                 <Button
                   size="sm"
