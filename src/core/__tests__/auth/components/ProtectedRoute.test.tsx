@@ -96,6 +96,11 @@ describe('ProtectedRoute — Props Interface', () => {
     expect(content).toMatch(/companyRoles\?\s*:\s*readonly\s+string\[\]/);
   });
 
+  it('has optional companies prop as readonly string array', () => {
+    const content = readSource();
+    expect(content).toMatch(/companies\?\s*:\s*readonly\s+string\[\]/);
+  });
+
   it('has optional requireAll prop of type boolean', () => {
     const content = readSource();
     expect(content).toMatch(/requireAll\?\s*:\s*boolean/);
@@ -158,6 +163,12 @@ describe('ProtectedRoute — Permission Check', () => {
   it('waits for permissions to load before checking', () => {
     const content = readSource();
     expect(content).toContain('if (!permissionsLoaded)');
+  });
+
+  it('checks the active company unit when companies is provided', () => {
+    const content = readSource();
+    expect(content).toContain('companies && companies.length > 0');
+    expect(content).toContain("companies.includes(currentCompany?.company_code ?? '')");
   });
 
   it('checks company roles when provided', () => {

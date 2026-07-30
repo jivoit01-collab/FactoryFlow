@@ -47,8 +47,10 @@ export function AppRoutes() {
               key={route.path}
               path={route.path}
               element={
-                route.permissions ? (
-                  <ProtectedRoute permissions={route.permissions}>{route.element}</ProtectedRoute>
+                route.permissions || route.companies ? (
+                  <ProtectedRoute permissions={route.permissions} companies={route.companies}>
+                    {route.element}
+                  </ProtectedRoute>
                 ) : (
                   route.element
                 )

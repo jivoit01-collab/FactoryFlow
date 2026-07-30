@@ -12,6 +12,9 @@ interface ProtectedRouteProps {
   permissions?: readonly string[];
   /** Required company roles */
   companyRoles?: readonly string[];
+  /** Restrict to specific company units (company_code). When set, the active company
+   *  must be one of these — otherwise the user is sent to /unauthorized. */
+  companies?: readonly string[];
   /** If true, user must have ALL permissions/roles. If false (default), ANY grants access */
   requireAll?: boolean;
 }
@@ -34,10 +37,11 @@ export function ProtectedRoute({
   children,
   permissions,
   companyRoles,
+  companies,
   requireAll = false,
 }: ProtectedRouteProps) {
   const location = useLocation();
-  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, isLoading, currentCompany } = useAppSelector((state) => state.auth);
   const { hasAnyPermission, hasAllPermissions, hasAnyCompanyRole, permissionsLoaded } =
     usePermission();
 
@@ -62,6 +66,13 @@ export function ProtectedRoute({
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
+  }
+
+  // Check company unit access (module restricted to specific company units)
+  if (companies && companies.length > 0) {
+    if (!companies.includes(currentCompany?.company_code ?? '')) {
+      return <Navigate to={AUTH_ROUTES.unauthorized} replace />;
+    }
   }
 
   // Check company role access

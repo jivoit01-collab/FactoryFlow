@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { getAllNavigation } from '@/app/registry';
-import { usePermission } from '@/core/auth';
+import { useAuth, usePermission } from '@/core/auth';
 import type { ModuleNavItem } from '@/core/types';
 import { cn } from '@/shared/utils';
 
@@ -18,11 +18,17 @@ import { accentForPath, MODULE_DIRECTORY_EXCLUDE, moduleDescription } from '../c
 export function ModuleDirectoryGrid() {
   const navigate = useNavigate();
   const { hasAnyPermission, hasModulePermission } = usePermission();
+  const { currentCompany } = useAuth();
 
   const modules = useMemo(() => {
     const isVisible = (item: ModuleNavItem): boolean => {
       if (item.showInSidebar === false) return false;
       if (MODULE_DIRECTORY_EXCLUDE.includes(item.path)) return false;
+      // Company-restricted modules only appear under their configured company unit
+      // (same rule as the sidebar).
+      if (item.companies && !item.companies.includes(currentCompany?.company_code ?? '')) {
+        return false;
+      }
       if (item.permissions && item.permissions.length > 0) {
         return hasAnyPermission(item.permissions);
       }
@@ -31,7 +37,7 @@ export function ModuleDirectoryGrid() {
     };
 
     return getAllNavigation().filter(isVisible);
-  }, [hasAnyPermission, hasModulePermission]);
+  }, [hasAnyPermission, hasModulePermission, currentCompany]);
 
   if (modules.length === 0) {
     return (

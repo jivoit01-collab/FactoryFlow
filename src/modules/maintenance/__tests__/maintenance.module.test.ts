@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { COMPANY_CODES } from '@/config/constants';
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 
 import { maintenanceModuleConfig } from '../module.config';
@@ -27,6 +28,19 @@ describe('maintenanceModuleConfig', () => {
     expect(maintenanceModuleConfig.routes[1].permissions).toContain(
       MAINTENANCE_PERMISSIONS.VIEW_ASSET,
     );
+  });
+
+  it('restricts every route to the Jivo Oil company unit', () => {
+    for (const route of maintenanceModuleConfig.routes) {
+      expect(route.companies, `route ${route.path} is not company-restricted`).toEqual([
+        COMPANY_CODES.JIVO_OIL,
+      ]);
+    }
+  });
+
+  it('restricts the sidebar group to the Jivo Oil company unit', () => {
+    const [nav] = maintenanceModuleConfig.navigation ?? [];
+    expect(nav.companies).toEqual([COMPANY_CODES.JIVO_OIL]);
   });
 
   it('adds a Maintenance sidebar group with phase one and two children', () => {

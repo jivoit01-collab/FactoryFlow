@@ -13,8 +13,8 @@ import {
   Settings,
   Wrench,
 } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
+import { COMPANY_CODES } from '@/config/constants';
 import {
   GATE_PERMISSIONS,
   MAINTENANCE_MODULE_PREFIX,
@@ -22,7 +22,11 @@ import {
   RETURNABLE_MODULE_PREFIX,
   RETURNABLE_PERMISSIONS,
 } from '@/config/permissions';
-import type { ModuleConfig } from '@/core/types';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
+import type { ModuleConfig, ModuleRoute } from '@/core/types';
+
+/** Maintenance is only rolled out for the Jivo Oil unit. */
+const MAINTENANCE_COMPANIES = [COMPANY_CODES.JIVO_OIL] as const;
 
 const MaintenanceHubPage = lazy(() => import('./pages/MaintenanceHubPage'));
 const MaintenanceDashboardPage = lazy(() => import('./pages/MaintenanceDashboardPage'));
@@ -42,154 +46,159 @@ const MaintenanceReturnableDetailPage = lazy(
 );
 const MaintenanceReturnableFormPage = lazy(() => import('./pages/MaintenanceReturnableFormPage'));
 
+const maintenanceRoutes: ModuleRoute[] = [
+  {
+    path: '/maintenance/dashboard',
+    element: <MaintenanceDashboardPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
+    breadcrumb: { label: 'Dashboard' },
+  },
+  {
+    path: '/maintenance/assets',
+    element: <MaintenanceAssetsPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_ASSET],
+    breadcrumb: { label: 'Assets' },
+  },
+  {
+    path: '/maintenance/assets/:assetId',
+    element: <MaintenanceAssetDetailPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_ASSET],
+    breadcrumb: { label: 'Asset' },
+  },
+  {
+    path: '/maintenance/work-orders',
+    element: <MaintenanceWorkOrdersPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER],
+    breadcrumb: { label: 'Work Orders' },
+  },
+  {
+    path: '/maintenance/work-orders/:workOrderId',
+    element: <MaintenanceWorkOrderDetailPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER],
+    breadcrumb: { label: 'Work Order' },
+  },
+  {
+    path: '/maintenance/spares',
+    element: <MaintenanceSparesPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_SPARE],
+    breadcrumb: { label: 'Store / Spares' },
+  },
+  {
+    path: '/maintenance/material-indents',
+    element: <MaintenanceMaterialIndentPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT],
+    breadcrumb: { label: 'Material Indent' },
+  },
+  {
+    path: '/maintenance/returnable',
+    element: <MaintenanceReturnablePage />,
+    layout: 'main',
+    permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
+    breadcrumb: { label: 'Returnable / Non-returnable' },
+  },
+  {
+    // Declared before `:passId` so "new" is never read as a pass id.
+    path: '/maintenance/returnable/new',
+    element: <MaintenanceReturnableFormPage />,
+    layout: 'main',
+    permissions: [RETURNABLE_PERMISSIONS.MANAGE_GATEPASS],
+    breadcrumb: { label: 'New Gate Pass' },
+  },
+  {
+    path: '/maintenance/returnable/:passId/edit',
+    element: <MaintenanceReturnableFormPage />,
+    layout: 'main',
+    permissions: [RETURNABLE_PERMISSIONS.MANAGE_GATEPASS],
+    breadcrumb: { label: 'Edit Gate Pass' },
+  },
+  {
+    path: '/maintenance/returnable/:passId',
+    element: <MaintenanceReturnableDetailPage />,
+    layout: 'main',
+    permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
+    breadcrumb: { label: 'Gate Pass' },
+  },
+  {
+    path: '/maintenance/pm',
+    element: <MaintenancePMPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_PM],
+    breadcrumb: { label: 'PM / Checklist' },
+  },
+  {
+    path: '/maintenance/reports',
+    element: <MaintenanceReportsPage />,
+    layout: 'main',
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_REPORTS],
+    breadcrumb: { label: 'Reports' },
+  },
+  {
+    path: '/maintenance/automation',
+    element: <MaintenanceAutomationPage />,
+    layout: 'main',
+    // Alerts data requires dashboard access (backend MaintenanceAlertsAPI →
+    // CanViewMaintenanceDashboard); gate the page to match, so module-only
+    // roles don't see an Automation page whose data 403s.
+    permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
+    breadcrumb: { label: 'Automation' },
+  },
+  {
+    path: '/maintenance/masters',
+    element: <MaintenanceMastersPage />,
+    layout: 'main',
+    permissions: [
+      MAINTENANCE_PERMISSIONS.VIEW_ASSET_CATEGORY,
+      MAINTENANCE_PERMISSIONS.VIEW_ASSET_LOCATION,
+      MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
+      MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
+    ],
+    breadcrumb: { label: 'Masters' },
+  },
+  {
+    // Module landing: a card hub of sub-modules, each shown only if the user
+    // has access. Gated with any-of every sub-module view permission so anyone
+    // with any Maintenance access can reach it.
+    path: '/maintenance',
+    element: <MaintenanceHubPage />,
+    layout: 'main',
+    permissions: [
+      MAINTENANCE_PERMISSIONS.VIEW_MODULE,
+      MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD,
+      MAINTENANCE_PERMISSIONS.VIEW_ASSET,
+      MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER,
+      MAINTENANCE_PERMISSIONS.VIEW_SPARE,
+      MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
+      MAINTENANCE_PERMISSIONS.VIEW_PM,
+      MAINTENANCE_PERMISSIONS.VIEW_REPORTS,
+      MAINTENANCE_PERMISSIONS.VIEW_ASSET_CATEGORY,
+      MAINTENANCE_PERMISSIONS.VIEW_ASSET_LOCATION,
+      MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
+      MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
+      RETURNABLE_PERMISSIONS.VIEW_GATEPASS,
+    ],
+    breadcrumb: { label: 'Maintenance' },
+  },
+];
+
 export const maintenanceModuleConfig: ModuleConfig = {
   name: 'maintenance',
-  routes: [
-    {
-      path: '/maintenance/dashboard',
-      element: <MaintenanceDashboardPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
-      breadcrumb: { label: 'Dashboard' },
-    },
-    {
-      path: '/maintenance/assets',
-      element: <MaintenanceAssetsPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_ASSET],
-      breadcrumb: { label: 'Assets' },
-    },
-    {
-      path: '/maintenance/assets/:assetId',
-      element: <MaintenanceAssetDetailPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_ASSET],
-      breadcrumb: { label: 'Asset' },
-    },
-    {
-      path: '/maintenance/work-orders',
-      element: <MaintenanceWorkOrdersPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER],
-      breadcrumb: { label: 'Work Orders' },
-    },
-    {
-      path: '/maintenance/work-orders/:workOrderId',
-      element: <MaintenanceWorkOrderDetailPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER],
-      breadcrumb: { label: 'Work Order' },
-    },
-    {
-      path: '/maintenance/spares',
-      element: <MaintenanceSparesPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_SPARE],
-      breadcrumb: { label: 'Store / Spares' },
-    },
-    {
-      path: '/maintenance/material-indents',
-      element: <MaintenanceMaterialIndentPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT],
-      breadcrumb: { label: 'Material Indent' },
-    },
-    {
-      path: '/maintenance/returnable',
-      element: <MaintenanceReturnablePage />,
-      layout: 'main',
-      permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
-      breadcrumb: { label: 'Returnable / Non-returnable' },
-    },
-    {
-      // Declared before `:passId` so "new" is never read as a pass id.
-      path: '/maintenance/returnable/new',
-      element: <MaintenanceReturnableFormPage />,
-      layout: 'main',
-      permissions: [RETURNABLE_PERMISSIONS.MANAGE_GATEPASS],
-      breadcrumb: { label: 'New Gate Pass' },
-    },
-    {
-      path: '/maintenance/returnable/:passId/edit',
-      element: <MaintenanceReturnableFormPage />,
-      layout: 'main',
-      permissions: [RETURNABLE_PERMISSIONS.MANAGE_GATEPASS],
-      breadcrumb: { label: 'Edit Gate Pass' },
-    },
-    {
-      path: '/maintenance/returnable/:passId',
-      element: <MaintenanceReturnableDetailPage />,
-      layout: 'main',
-      permissions: [RETURNABLE_PERMISSIONS.VIEW_GATEPASS],
-      breadcrumb: { label: 'Gate Pass' },
-    },
-    {
-      path: '/maintenance/pm',
-      element: <MaintenancePMPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_PM],
-      breadcrumb: { label: 'PM / Checklist' },
-    },
-    {
-      path: '/maintenance/reports',
-      element: <MaintenanceReportsPage />,
-      layout: 'main',
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_REPORTS],
-      breadcrumb: { label: 'Reports' },
-    },
-    {
-      path: '/maintenance/automation',
-      element: <MaintenanceAutomationPage />,
-      layout: 'main',
-      // Alerts data requires dashboard access (backend MaintenanceAlertsAPI →
-      // CanViewMaintenanceDashboard); gate the page to match, so module-only
-      // roles don't see an Automation page whose data 403s.
-      permissions: [MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD],
-      breadcrumb: { label: 'Automation' },
-    },
-    {
-      path: '/maintenance/masters',
-      element: <MaintenanceMastersPage />,
-      layout: 'main',
-      permissions: [
-        MAINTENANCE_PERMISSIONS.VIEW_ASSET_CATEGORY,
-        MAINTENANCE_PERMISSIONS.VIEW_ASSET_LOCATION,
-        MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
-        MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
-      ],
-      breadcrumb: { label: 'Masters' },
-    },
-    {
-      // Module landing: a card hub of sub-modules, each shown only if the user
-      // has access. Gated with any-of every sub-module view permission so anyone
-      // with any Maintenance access can reach it.
-      path: '/maintenance',
-      element: <MaintenanceHubPage />,
-      layout: 'main',
-      permissions: [
-        MAINTENANCE_PERMISSIONS.VIEW_MODULE,
-        MAINTENANCE_PERMISSIONS.VIEW_DASHBOARD,
-        MAINTENANCE_PERMISSIONS.VIEW_ASSET,
-        MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER,
-        MAINTENANCE_PERMISSIONS.VIEW_SPARE,
-        MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
-        MAINTENANCE_PERMISSIONS.VIEW_PM,
-        MAINTENANCE_PERMISSIONS.VIEW_REPORTS,
-        MAINTENANCE_PERMISSIONS.VIEW_ASSET_CATEGORY,
-        MAINTENANCE_PERMISSIONS.VIEW_ASSET_LOCATION,
-        MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
-        MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
-        RETURNABLE_PERMISSIONS.VIEW_GATEPASS,
-      ],
-      breadcrumb: { label: 'Maintenance' },
-    },
-  ],
+  // Applied to every route, not just the sidebar entry, so a direct URL from
+  // another company unit lands on /unauthorized instead of rendering.
+  routes: maintenanceRoutes.map((route) => ({ ...route, companies: MAINTENANCE_COMPANIES })),
   navigation: [
     {
       path: '/maintenance',
       title: 'Maintenance',
       icon: Wrench,
       showInSidebar: true,
+      companies: MAINTENANCE_COMPANIES,
       // The module spans two Django apps: `maintenance` and `returnable_items`.
       // A user holding only returnable permissions still needs this menu, or the
       // Returnable / Non-returnable section has nowhere to appear.

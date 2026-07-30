@@ -100,10 +100,12 @@ describe('AppRoutes', () => {
     expect(content).toContain('mainRoutes.map');
   });
 
-  it('wraps routes with permissions in per-route ProtectedRoute', () => {
+  it('wraps routes with permissions or company restrictions in per-route ProtectedRoute', () => {
     const content = readSource();
-    expect(content).toContain('route.permissions ?');
-    expect(content).toContain('<ProtectedRoute permissions={route.permissions}>');
+    expect(content).toContain('route.permissions || route.companies ?');
+    expect(content).toContain(
+      '<ProtectedRoute permissions={route.permissions} companies={route.companies}>',
+    );
   });
 
   // ─── Special Routes ─────────────────────────────────────

@@ -43,6 +43,9 @@ export interface ModuleRoute {
   element: React.ReactNode;
   /** Required permissions for this route */
   permissions?: readonly string[];
+  /** Restrict this route to specific company units (company_code). When set, users
+   *  whose active company is not listed are sent to /unauthorized. Omit to allow all. */
+  companies?: readonly string[];
   /** Whether this route requires authentication (default: true for protected modules) */
   requiresAuth?: boolean;
   /** Layout type: 'auth' for AuthLayout, 'main' for MainLayout (default) */
