@@ -19,7 +19,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/core/auth';
 import { useSyncPalletToBarcode } from '@/modules/barcode/hooks/useSyncPalletToBarcode';
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -99,8 +98,9 @@ export default function WmsMapPage() {
   const syncToBarcode = useSyncPalletToBarcode();
 
   const [level, setLevel] = useState(0);
-  // Full view: fit the entire warehouse into one no-scroll view and let the page
-  // stretch edge-to-edge (removing the centred max-width side gaps).
+  // Full view (desktop only): fit the entire warehouse into one no-scroll view
+  // and let the page stretch edge-to-edge. On phones the grid stays a normal
+  // scrollable square grid — no full view there.
   const [fullView, setFullView] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('status');
   const [statusFilter, setStatusFilter] = useState<DisplayStatus | 'all'>('all');
@@ -718,10 +718,12 @@ export default function WmsMapPage() {
 
       <MapLegend purposes={viewMode === 'purpose' ? purposes : undefined} />
 
-      {/* Map (desktop) */}
+      {/* Map — the same visual grid on every screen. It scrolls (square cells,
+          frozen headers) by default; the desktop-only Full view toggle fits the
+          whole warehouse on screen. */}
       {warehouse ? (
         <>
-          <div className="hidden md:block">
+          <div>
             <WarehouseMapGrid
               columns={warehouse.columns}
               rows={warehouse.rows}
@@ -747,30 +749,6 @@ export default function WmsMapPage() {
                 every area.
               </p>
             )}
-          </div>
-
-          {/* Card/list fallback (mobile) */}
-          <div className="space-y-2 md:hidden">
-            {cells.map((cell) => (
-              <button
-                key={cell.id}
-                type="button"
-                onClick={() => {
-                  if (moveSession) requestMove(moveSession, locations.find((l) => l.id === cell.id)!);
-                  else openDetail(cell.id);
-                }}
-                className="flex w-full items-center justify-between rounded-md border p-3 text-left text-sm"
-                style={{ opacity: cell.dimmed ? 0.4 : 1 }}
-              >
-                <span className="flex items-center gap-2 font-medium">
-                  <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: cell.color }} />
-                  {cell.code}
-                  {cell.suggested ? <span className="text-emerald-600">★</span> : null}
-                  {cell.current ? <Badge variant="outline">Here</Badge> : null}
-                </span>
-                <span className="text-xs text-muted-foreground">{Math.round(cell.occupancyPct)}%</span>
-              </button>
-            ))}
           </div>
         </>
       ) : null}

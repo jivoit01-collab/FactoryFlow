@@ -147,14 +147,19 @@ export function WarehouseGrid({
     : `repeat(${columns}, ${cellTrack})`;
 
   return (
-    <div className={cn('rounded-md border bg-muted/20 p-3', fit ? 'overflow-hidden' : 'overflow-auto')}>
-      {/* gap-0 so non-storage plan areas can merge seamlessly; boxes re-create
-          their spacing with a small margin instead. */}
-      <div className="grid gap-0" style={{ gridTemplateColumns }}>
-        {/* Header row: empty corner + column labels (only when headers match) */}
+    // Padding lives on the outer (non-scrolling) box so the frozen headers can
+    // stick flush to the scroll edge without scrolled cells peeking above/beside
+    // them. The inner box is the actual scrollport.
+    <div className="rounded-md border bg-muted/20 p-3">
+      <div className={fit ? 'overflow-hidden' : 'overflow-auto'}>
+        {/* gap-0 so non-storage plan areas can merge seamlessly; boxes re-create
+            their spacing with a small margin instead. */}
+        <div className="grid gap-0" style={{ gridTemplateColumns }}>
+          {/* Header row: empty corner + column labels (only when headers match) */}
         {headersShown && (
           <>
-            <div />
+            {/* Corner: frozen on both axes so it always covers the top-left. */}
+            <div className="sticky left-0 top-0 z-40 bg-background" />
             {columnLabels.map((label, c) => (
               <button
                 key={`col-${c}`}
@@ -162,7 +167,7 @@ export function WarehouseGrid({
                 disabled={!onHeaderClick}
                 onClick={() => onHeaderClick?.('column', c)}
                 className={cn(
-                  'mx-0.5 px-1 text-center text-xs font-semibold text-muted-foreground',
+                  'sticky top-0 z-30 bg-background px-1 pb-1 text-center text-xs font-semibold text-muted-foreground',
                   onHeaderClick && 'cursor-pointer rounded hover:bg-muted hover:text-foreground',
                 )}
               >
@@ -190,6 +195,7 @@ export function WarehouseGrid({
             onHeaderClick={onHeaderClick}
           />
         ))}
+        </div>
       </div>
     </div>
   );
@@ -240,7 +246,7 @@ function Row({
           disabled={!onHeaderClick}
           onClick={() => onHeaderClick?.('row', row)}
           className={cn(
-            'my-0.5 flex items-center pr-1 text-xs font-semibold text-muted-foreground',
+            'sticky left-0 z-20 flex items-center bg-background pr-1 text-xs font-semibold text-muted-foreground',
             onHeaderClick && 'cursor-pointer rounded hover:bg-muted hover:text-foreground',
           )}
         >
