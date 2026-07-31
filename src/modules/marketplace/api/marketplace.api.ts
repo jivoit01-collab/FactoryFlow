@@ -14,6 +14,8 @@ import type {
   DeliveryNoteSummary,
   DispatchBoard,
   DispatchBoardOrder,
+  GateQueue,
+  GateSheetDetail,
   DispatchCreateRequest,
   DispatchListParams,
   DispatchSheetSummary,
@@ -288,6 +290,35 @@ export const marketplaceApi = {
   ): Promise<{ orders: DispatchBoardOrder[] }> {
     const { data } = await apiClient.get<{ orders: DispatchBoardOrder[] }>(
       `${EP.DISPATCH_ORDERS_RANGE}${buildQuery({ channel, from, to })}`,
+    );
+    return data;
+  },
+  // ── Gate check ──────────────────────────────────────────────────────────
+  async gateQueue(channel: MarketplaceChannel): Promise<GateQueue> {
+    const { data } = await apiClient.get<GateQueue>(`${EP.GATE_QUEUE}${buildQuery({ channel })}`);
+    return data;
+  },
+  async gateSheetDetail(channel: MarketplaceChannel, batchId: number): Promise<GateSheetDetail> {
+    const { data } = await apiClient.get<GateSheetDetail>(
+      `${EP.GATE_DETAIL(batchId)}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+  async gateApprove(channel: MarketplaceChannel, batchId: number): Promise<{ approved: number }> {
+    const { data } = await apiClient.post<{ approved: number }>(
+      `${EP.GATE_APPROVE(batchId)}${buildQuery({ channel })}`,
+      {},
+    );
+    return data;
+  },
+  async gateHold(
+    channel: MarketplaceChannel,
+    batchId: number,
+    remarks: string,
+  ): Promise<{ held: number }> {
+    const { data } = await apiClient.post<{ held: number }>(
+      `${EP.GATE_HOLD(batchId)}${buildQuery({ channel })}`,
+      { remarks },
     );
     return data;
   },
