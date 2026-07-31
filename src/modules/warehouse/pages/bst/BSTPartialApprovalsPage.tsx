@@ -77,11 +77,11 @@ function RequestRow({ req }: { req: BSTPartialTransferRequest }) {
 
   return (
     <Card>
-      <CardContent className="space-y-3 pt-6">
+      <CardContent className="space-y-3 p-3 pt-4 sm:p-6 sm:pt-6">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <div className="font-semibold">{req.transfer_entry_no}</div>
-            <div className="text-sm text-muted-foreground">
+          <div className="min-w-0">
+            <div className="truncate font-semibold">{req.transfer_entry_no}</div>
+            <div className="text-xs text-muted-foreground sm:text-sm">
               Requested by {req.requested_by_name || '—'} · {formatWhen(req.requested_at)}
             </div>
           </div>
@@ -100,7 +100,7 @@ function RequestRow({ req }: { req: BSTPartialTransferRequest }) {
           </span>
         </div>
 
-        <div className="rounded-md border bg-muted/30 p-2 text-sm">
+        <div className="break-words rounded-md border bg-muted/30 p-2 text-sm">
           <span className="text-muted-foreground">Reason: </span>
           {req.reason || '—'}
         </div>
@@ -113,8 +113,14 @@ function RequestRow({ req }: { req: BSTPartialTransferRequest }) {
               placeholder="Review note (required to reject)…"
               rows={2}
             />
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="outline" onClick={handleReject} disabled={busy}>
+            {/* Full-width thumb targets on a phone; compact and right-aligned above it. */}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+              <Button
+                className="h-11 sm:h-9"
+                variant="outline"
+                onClick={handleReject}
+                disabled={busy}
+              >
                 {rejectMut.isPending ? (
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                 ) : (
@@ -122,7 +128,7 @@ function RequestRow({ req }: { req: BSTPartialTransferRequest }) {
                 )}
                 Reject
               </Button>
-              <Button size="sm" onClick={handleApprove} disabled={busy}>
+              <Button className="h-11 sm:h-9" onClick={handleApprove} disabled={busy}>
                 {approveMut.isPending ? (
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                 ) : (
@@ -152,13 +158,13 @@ export default function BSTPartialApprovalsPage() {
   const requests = data ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <DashboardHeader
         title="BST Partial-Transfer Approvals"
         description="Review requests to seal a branch transfer whose scanned quantity is short of the bill."
       />
 
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex">
         {FILTERS.map((f) => (
           <Button
             key={f.key || 'all'}
