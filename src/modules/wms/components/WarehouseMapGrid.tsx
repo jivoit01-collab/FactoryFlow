@@ -57,6 +57,9 @@ interface WarehouseMapGridProps {
   naming: WarehouseNamingScheme;
   cells: MapCell[];
   areas?: MapArea[];
+  /** Fit the whole grid into the available width (no horizontal scroll): columns
+   * shrink to share the space and cells render compact. */
+  fit?: boolean;
   onCellClick?: (id: string) => void;
 }
 
@@ -66,8 +69,12 @@ export function WarehouseMapGrid({
   naming,
   cells,
   areas = [],
+  fit = false,
   onCellClick,
 }: WarehouseMapGridProps) {
+  // Fit mode shrinks each cell so 30+ rows/columns fit without scrolling.
+  const cellHeight = fit ? 'h-7' : 'h-12';
+  const regionMinHeight = fit ? 'min-h-[1.75rem]' : 'min-h-[3rem]';
   const cellByPos = useMemo(() => {
     const map = new Map<string, MapCell>();
     for (const cell of cells) map.set(`${cell.column}:${cell.row}`, cell);
@@ -115,9 +122,12 @@ export function WarehouseMapGrid({
     return map;
   }, [areas, cells, hasAreas]);
 
+  // In fit mode columns collapse to share the width (minmax(0,…)) so the whole
+  // grid stays on screen; otherwise they keep a readable minimum and scroll.
+  const cellTrack = fit ? 'minmax(0, 1fr)' : 'minmax(3rem, 1fr)';
   const gridTemplateColumns = hasAreas
-    ? `repeat(${columns}, minmax(3rem, 1fr))`
-    : `auto repeat(${columns}, minmax(3rem, 1fr))`;
+    ? `repeat(${columns}, ${cellTrack})`
+    : `auto repeat(${columns}, ${cellTrack})`;
 
   // Merge key for a cell: its purpose id when non-storage (so adjacent cells of
   // the same purpose join into one plan area), else null (stands alone).
@@ -128,7 +138,7 @@ export function WarehouseMapGrid({
   };
 
   return (
-    <div className="overflow-auto rounded-md border bg-muted/20 p-3">
+    <div className={cn('rounded-md border bg-muted/20 p-3', fit ? 'overflow-hidden' : 'overflow-auto')}>
       {/* gap-0 so non-storage plan areas merge seamlessly; boxes re-create their
           spacing with a small margin instead. */}
       <div className="grid gap-0" style={{ gridTemplateColumns }}>
@@ -157,7 +167,7 @@ export function WarehouseMapGrid({
               const cell = cellByPos.get(`${c}:${r}`);
               if (!cell) {
                 return (
-                  <div key={`empty-${c}-${r}`} className="m-0.5 h-12 rounded-sm border border-dashed border-border/40" />
+                  <div key={`empty-${c}-${r}`} className={cn('m-0.5 rounded-sm border border-dashed border-border/40', cellHeight)} />
                 );
               }
 
@@ -190,7 +200,8 @@ export function WarehouseMapGrid({
                       // min-height (not fixed h-12) so the cell stretches to fill
                       // the row — otherwise the boxes' margin makes rows taller and
                       // the region shows horizontal gaps between its cells.
-                      'relative flex min-h-[3rem] items-center justify-center overflow-visible px-0.5 transition',
+                      'relative flex items-center justify-center overflow-visible px-0.5 transition',
+                      regionMinHeight,
                       'hover:brightness-[1.06]',
                       cell.dimmed && 'opacity-25',
                     )}
@@ -222,7 +233,9 @@ export function WarehouseMapGrid({
                     backgroundImage: cell.hatch ? HATCH : undefined,
                   }}
                   className={cn(
-                    'relative m-0.5 flex h-12 flex-col items-center justify-center overflow-hidden rounded-md border border-black/10 px-0.5 text-[10px] font-semibold leading-none text-white/95 shadow-sm transition',
+                    'relative m-0.5 flex flex-col items-center justify-center overflow-hidden rounded-md border border-black/10 px-0.5 font-semibold leading-none text-white/95 shadow-sm transition',
+                    cellHeight,
+                    fit ? 'text-[8px]' : 'text-[10px]',
                     'hover:ring-2 hover:ring-foreground/40',
                     cell.highlighted && 'ring-2 ring-foreground ring-offset-1',
                     cell.suggested && 'ring-2 ring-emerald-500 ring-offset-1',

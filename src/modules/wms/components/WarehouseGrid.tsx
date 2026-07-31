@@ -66,6 +66,9 @@ interface WarehouseGridProps {
   hideHeaders?: boolean;
   selectable?: boolean;
   selectedIds?: ReadonlySet<string>;
+  /** Fit the whole grid into the available width (no horizontal scroll): columns
+   * shrink to share the space and cells render compact. */
+  fit?: boolean;
   onCellClick?: (cell: GridCell, shiftKey: boolean) => void;
   /** Double-click a cell (e.g. to open its property editor). */
   onCellDoubleClick?: (cell: GridCell) => void;
@@ -83,6 +86,7 @@ export function WarehouseGrid({
   hideHeaders = false,
   selectable = false,
   selectedIds,
+  fit = false,
   onCellClick,
   onCellDoubleClick,
   onHeaderClick,
@@ -135,12 +139,15 @@ export function WarehouseGrid({
     return map;
   }, [areas, cells, hasAreas]);
 
+  // In fit mode columns collapse to share the width (minmax(0,…)) so the whole
+  // grid stays on screen; otherwise they keep a readable minimum and scroll.
+  const cellTrack = fit ? 'minmax(0, 1fr)' : 'minmax(2.75rem, 1fr)';
   const gridTemplateColumns = headersShown
-    ? `auto repeat(${columns}, minmax(2.75rem, 1fr))`
-    : `repeat(${columns}, minmax(2.75rem, 1fr))`;
+    ? `auto repeat(${columns}, ${cellTrack})`
+    : `repeat(${columns}, ${cellTrack})`;
 
   return (
-    <div className="overflow-auto rounded-md border bg-muted/20 p-3">
+    <div className={cn('rounded-md border bg-muted/20 p-3', fit ? 'overflow-hidden' : 'overflow-auto')}>
       {/* gap-0 so non-storage plan areas can merge seamlessly; boxes re-create
           their spacing with a small margin instead. */}
       <div className="grid gap-0" style={{ gridTemplateColumns }}>
@@ -177,6 +184,7 @@ export function WarehouseGrid({
             originLabelById={originLabelById}
             selectable={selectable}
             selectedIds={selectedIds}
+            fit={fit}
             onCellClick={onCellClick}
             onCellDoubleClick={onCellDoubleClick}
             onHeaderClick={onHeaderClick}
@@ -196,6 +204,7 @@ function Row({
   originLabelById,
   selectable,
   selectedIds,
+  fit,
   onCellClick,
   onCellDoubleClick,
   onHeaderClick,
@@ -208,10 +217,14 @@ function Row({
   originLabelById: Map<string, string>;
   selectable: boolean;
   selectedIds?: ReadonlySet<string>;
+  fit?: boolean;
   onCellClick?: (cell: GridCell, shiftKey: boolean) => void;
   onCellDoubleClick?: (cell: GridCell) => void;
   onHeaderClick?: (axis: 'column' | 'row', index: number) => void;
 }) {
+  // Fit mode shrinks each cell so 30+ rows/columns fit without scrolling.
+  const cellHeight = fit ? 'h-6' : 'h-10';
+  const regionMinHeight = fit ? 'min-h-[1.5rem]' : 'min-h-[2.5rem]';
   // Merge key for a cell: its purpose id when non-storage (so adjacent cells of
   // the same purpose join into one plan area), else null (stands alone).
   const mergeKeyAt = (column: number, r: number): string | null => {
@@ -237,7 +250,7 @@ function Row({
       {Array.from({ length: columns }, (_, c) => {
         const cell = cellByPos.get(`${c}:${row}`);
         if (!cell) {
-          return <div key={`empty-${c}-${row}`} className="m-0.5 h-10 rounded-sm border border-dashed border-border/50" />;
+          return <div key={`empty-${c}-${row}`} className={cn('m-0.5 rounded-sm border border-dashed border-border/50', cellHeight)} />;
         }
         const selected = selectedIds?.has(cell.id) ?? false;
 
@@ -275,7 +288,8 @@ function Row({
                 // min-height (not fixed h-10) so the cell stretches to fill the
                 // row — otherwise the boxes' margin makes rows taller and the
                 // region shows horizontal gaps between its cells.
-                'relative flex min-h-[2.5rem] items-center justify-center overflow-visible px-0.5 transition',
+                'relative flex items-center justify-center overflow-visible px-0.5 transition',
+                regionMinHeight,
                 selectable && 'cursor-pointer hover:brightness-[1.06]',
                 selected && 'z-10 ring-2 ring-primary ring-offset-1',
                 cell.enabled === false && 'opacity-60',
@@ -333,7 +347,9 @@ function Row({
             onDoubleClick={() => onCellDoubleClick?.(cell)}
             style={Object.keys(style).length ? style : undefined}
             className={cn(
-              'relative m-0.5 flex h-10 items-center justify-center overflow-hidden rounded-md border bg-background px-0.5 text-[10px] font-medium leading-none shadow-sm transition',
+              'relative m-0.5 flex items-center justify-center overflow-hidden rounded-md border bg-background px-0.5 font-medium leading-none shadow-sm transition',
+              cellHeight,
+              fit ? 'text-[8px]' : 'text-[10px]',
               selectable && 'cursor-pointer hover:ring-1 hover:ring-ring',
               selected && 'ring-2 ring-primary ring-offset-1',
               disabled && 'bg-muted text-muted-foreground line-through opacity-60',

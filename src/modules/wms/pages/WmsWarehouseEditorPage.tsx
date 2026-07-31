@@ -17,6 +17,8 @@ import {
   Download,
   Loader2,
   Map as MapIcon,
+  Maximize2,
+  Minimize2,
   Redo2,
   Save,
   Undo2,
@@ -34,6 +36,7 @@ import {
   CardTitle,
   NativeSelect,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
 import { AreaDialog, type AreaFormValue } from '../components/AreaDialog';
@@ -95,6 +98,9 @@ export default function WmsWarehouseEditorPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<{ column: number; row: number } | null>(null);
   const [showFullGrid, setShowFullGrid] = useState(false);
+  // Full view: fit the entire warehouse into one no-scroll view and let the page
+  // stretch edge-to-edge (removing the centred max-width side gaps).
+  const [fullView, setFullView] = useState(false);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<WarehouseLocation | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -448,7 +454,7 @@ export default function WmsWarehouseEditorPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
+    <div className={cn('mx-auto space-y-5 p-4 md:p-6', fullView ? 'max-w-none' : 'max-w-5xl')}>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -667,6 +673,15 @@ export default function WmsWarehouseEditorPage() {
                 : 'Click to select · shift-click for a range · click a header for a column/row'}
           </CardTitle>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant={fullView ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setFullView((value) => !value)}
+              title="Fit the whole warehouse on screen (no scrolling) and use the full page width"
+            >
+              {fullView ? <Minimize2 className="mr-2 h-4 w-4" /> : <Maximize2 className="mr-2 h-4 w-4" />}
+              {fullView ? 'Exit full view' : 'Full view'}
+            </Button>
             {areas.length > 0 ? (
               <Button
                 variant={showFullGrid ? 'secondary' : 'outline'}
@@ -699,6 +714,7 @@ export default function WmsWarehouseEditorPage() {
             cells={cells}
             areas={showFullGrid ? [] : areas}
             hideHeaders={showFullGrid}
+            fit={fullView}
             selectable
             selectedIds={selectedIds}
             onCellClick={handleCellClick}
