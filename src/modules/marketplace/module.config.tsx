@@ -17,6 +17,7 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import {
   MARKETPLACE_ACCESS,
   MARKETPLACE_ADMIN_ACCESS,
+  MARKETPLACE_GATE_ACCESS,
   MARKETPLACE_COMPANIES,
   MARKETPLACE_ISSUE_ACCESS,
   MARKETPLACE_MODULE_PREFIX,
@@ -94,7 +95,7 @@ export const marketplaceModuleConfig: ModuleConfig = {
       path: '/marketplace/gate',
       element: <MpGatePage />,
       layout: 'main',
-      permissions: MARKETPLACE_ACCESS,
+      permissions: MARKETPLACE_GATE_ACCESS,
       breadcrumb: { label: 'Gate' },
     },
     {
@@ -152,7 +153,7 @@ export const marketplaceModuleConfig: ModuleConfig = {
           title: 'SAP Delivery Notes',
           permissions: MARKETPLACE_ACCESS,
         },
-        { path: '/marketplace/gate', title: 'Gate', permissions: MARKETPLACE_ACCESS },
+        { path: '/marketplace/gate', title: 'Gate', permissions: MARKETPLACE_GATE_ACCESS },
         { path: '/marketplace/inward', title: 'Inward', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/masters', title: 'Masters', permissions: MARKETPLACE_ADMIN_ACCESS },
         {
