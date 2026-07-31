@@ -43,6 +43,22 @@ describe('generateLayout', () => {
     expect(multi[4]?.code).toBe('A-01-02');
   });
 
+  it('numbers a reversed row axis from the far end (bottom-up)', () => {
+    const naming: WarehouseNamingScheme = { ...DEFAULT_NAMING_SCHEME, rowReversed: true };
+    const layout = generateLayout({ columns: 1, rows: 4, levels: 1, naming });
+    // Row index 0 is the top visual row; reversed, it gets the highest number.
+    expect(layout.find((c) => c.row === 0)?.code).toBe('A-04');
+    // Row index 3 is the bottom visual row; reversed, counting starts here at 01.
+    expect(layout.find((c) => c.row === 3)?.code).toBe('A-01');
+  });
+
+  it('numbers a reversed column axis from the far end (right-to-left)', () => {
+    const naming: WarehouseNamingScheme = { ...DEFAULT_NAMING_SCHEME, columnReversed: true };
+    const layout = generateLayout({ columns: 3, rows: 1, levels: 1, naming });
+    expect(layout.find((c) => c.column === 0)?.code).toBe('C-01');
+    expect(layout.find((c) => c.column === 2)?.code).toBe('A-01');
+  });
+
   it('honours prefix and separator', () => {
     const naming: WarehouseNamingScheme = { ...DEFAULT_NAMING_SCHEME, prefix: 'WH', separator: '.' };
     const layout = generateLayout({ columns: 1, rows: 1, levels: 1, naming });

@@ -17,7 +17,7 @@ import { type CSSProperties, useMemo } from 'react';
 
 import { cn } from '@/shared/utils';
 
-import { axisLabel } from '../services/layout';
+import { axisLabelAt } from '../services/layout';
 import type { LocationStatus, WarehouseNamingScheme } from '../types';
 import { regionRadius, regionShapeAt } from './planRegion';
 
@@ -99,12 +99,12 @@ export function WarehouseGrid({
   const headersShown = !hasAreas && !hideHeaders;
 
   const columnLabels = useMemo(
-    () => Array.from({ length: columns }, (_, c) => axisLabel(naming.columnStyle, c, columns)),
-    [columns, naming.columnStyle],
+    () => Array.from({ length: columns }, (_, c) => axisLabelAt(naming.columnStyle, c, columns, naming.columnReversed)),
+    [columns, naming.columnStyle, naming.columnReversed],
   );
   const rowLabels = useMemo(
-    () => Array.from({ length: rows }, (_, r) => axisLabel(naming.rowStyle, r, rows)),
-    [rows, naming.rowStyle],
+    () => Array.from({ length: rows }, (_, r) => axisLabelAt(naming.rowStyle, r, rows, naming.rowReversed)),
+    [rows, naming.rowStyle, naming.rowReversed],
   );
 
   // The A-01 origin of each area = its top-left *named* cell (skipping
