@@ -45,6 +45,7 @@ export {
   generateLayout,
   validateLayoutParams,
 } from './layout';
+export type { AxisSide } from './layoutOps';
 export {
   addAxis,
   addColumn,

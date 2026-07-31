@@ -8,7 +8,19 @@
  * save the layout as a reusable template; and export the locations as CSV.
  * Every edit persists immediately and is undoable.
  */
-import { ArrowLeft, Download, Loader2, Map as MapIcon, Redo2, Save, Undo2 } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  ArrowLeft,
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  ArrowUpToLine,
+  Download,
+  Loader2,
+  Map as MapIcon,
+  Redo2,
+  Save,
+  Undo2,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -30,7 +42,7 @@ import { TextPromptDialog } from '../components/TextPromptDialog';
 import { type GridCell,WarehouseGrid } from '../components/WarehouseGrid';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
-import type { LocationDraft, LocationDraftField } from '../services';
+import type { AxisSide, LocationDraft, LocationDraftField } from '../services';
 import {
   addColumn,
   addLevel,
@@ -373,8 +385,8 @@ export default function WmsWarehouseEditorPage() {
 
   // -- structural edits -----------------------------------------------------
 
-  const addAxisAction = (fn: typeof addColumn, label: string) =>
-    void run(() => mutate((current) => fn(current)), `Added ${label}.`);
+  const addAxisAction = (fn: typeof addColumn, label: string, side: AxisSide = 'end') =>
+    void run(() => mutate((current) => fn(current, side)), `Added ${label}.`);
 
   const removeAxisAction = (fn: typeof removeColumn, index: number, label: string) =>
     void run(() => mutate((current) => fn(current, index)), `Removed ${label}.`);
@@ -479,12 +491,53 @@ export default function WmsWarehouseEditorPage() {
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-3 text-sm">
           <span className="text-muted-foreground">Structure:</span>
-          <Button variant="outline" size="sm" disabled={busy} onClick={() => addAxisAction(addColumn, 'column')}>
-            + Column
-          </Button>
-          <Button variant="outline" size="sm" disabled={busy} onClick={() => addAxisAction(addRow, 'row')}>
-            + Row
-          </Button>
+
+          {/* Columns can be added on the left (start) or the right (end). */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">Column</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title="Add a column on the left"
+              onClick={() => addAxisAction(addColumn, 'column on the left', 'start')}
+            >
+              <ArrowLeftToLine className="mr-1 h-3.5 w-3.5" /> Left
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title="Add a column on the right"
+              onClick={() => addAxisAction(addColumn, 'column on the right', 'end')}
+            >
+              <ArrowRightToLine className="mr-1 h-3.5 w-3.5" /> Right
+            </Button>
+          </div>
+
+          {/* Rows can be added at the top (start) or the bottom (end). */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">Row</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title="Add a row at the top"
+              onClick={() => addAxisAction(addRow, 'row at the top', 'start')}
+            >
+              <ArrowUpToLine className="mr-1 h-3.5 w-3.5" /> Top
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title="Add a row at the bottom"
+              onClick={() => addAxisAction(addRow, 'row at the bottom', 'end')}
+            >
+              <ArrowDownToLine className="mr-1 h-3.5 w-3.5" /> Bottom
+            </Button>
+          </div>
+
           <Button variant="outline" size="sm" disabled={busy} onClick={() => addAxisAction(addLevel, 'level')}>
             + Level
           </Button>
