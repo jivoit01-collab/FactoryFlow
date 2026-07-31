@@ -30,6 +30,8 @@ export const DEFAULT_NAMING_SCHEME: WarehouseNamingScheme = {
   columnStyle: 'LETTERS',
   rowStyle: 'NUMBERS',
   levelStyle: 'NUMBERS',
+  columnReversed: false,
+  rowReversed: false,
   prefix: '',
   separator: '-',
 };
@@ -58,6 +60,25 @@ export function axisLabel(style: AxisStyle, index: number, count: number): strin
 }
 
 /**
+ * Map a cell's *visual* position on an axis to its *numbering* position. When
+ * the axis is reversed the count runs from the far end, so the last visual cell
+ * gets number 1 (e.g. rows numbered from the bottom up). Forward is a no-op.
+ */
+export function orientIndex(index: number, count: number, reversed?: boolean): number {
+  return reversed ? count - 1 - index : index;
+}
+
+/** Format an axis label for a cell at a visual position, honouring direction. */
+export function axisLabelAt(
+  style: AxisStyle,
+  index: number,
+  count: number,
+  reversed?: boolean,
+): string {
+  return axisLabel(style, orientIndex(index, count, reversed), count);
+}
+
+/**
  * Build the code for one location from its grid position. The level segment is
  * only appended when the warehouse has more than one level.
  */
@@ -65,8 +86,8 @@ export function buildLocationCode(params: LayoutParams, column: number, row: num
   const { naming, columns, rows, levels } = params;
   const segments: string[] = [];
   if (naming.prefix.trim()) segments.push(naming.prefix.trim());
-  segments.push(axisLabel(naming.columnStyle, column, columns));
-  segments.push(axisLabel(naming.rowStyle, row, rows));
+  segments.push(axisLabelAt(naming.columnStyle, column, columns, naming.columnReversed));
+  segments.push(axisLabelAt(naming.rowStyle, row, rows, naming.rowReversed));
   if (levels > 1) segments.push(axisLabel(naming.levelStyle, level, levels));
   return segments.join(naming.separator || '-');
 }

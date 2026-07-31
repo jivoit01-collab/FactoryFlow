@@ -12,7 +12,7 @@
  * then lets the operator tap or scan the destination; the shared validation
  * engine vets the move before it is committed to the store.
  */
-import { MoveRight, X } from 'lucide-react';
+import { Maximize2, Minimize2, MoveRight, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -32,6 +32,7 @@ import {
   Input,
   NativeSelect,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import { LocationDetailPanel } from '../components/LocationDetailPanel';
 import { MapLegend } from '../components/MapLegend';
@@ -98,6 +99,9 @@ export default function WmsMapPage() {
   const syncToBarcode = useSyncPalletToBarcode();
 
   const [level, setLevel] = useState(0);
+  // Full view: fit the entire warehouse into one no-scroll view and let the page
+  // stretch edge-to-edge (removing the centred max-width side gaps).
+  const [fullView, setFullView] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('status');
   const [statusFilter, setStatusFilter] = useState<DisplayStatus | 'all'>('all');
   const [search, setSearch] = useState('');
@@ -602,13 +606,23 @@ export default function WmsMapPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
+    <div className={cn('mx-auto space-y-4 p-4 md:p-6', fullView ? 'max-w-none' : 'max-w-5xl')}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Warehouse Map</h1>
           <p className="text-sm text-muted-foreground">Live occupancy, status, and scan-driven moves.</p>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
+          <Button
+            variant={fullView ? 'secondary' : 'outline'}
+            size="sm"
+            className="hidden md:inline-flex"
+            onClick={() => setFullView((value) => !value)}
+            title="Fit the whole warehouse on screen (no scrolling) and use the full page width"
+          >
+            {fullView ? <Minimize2 className="mr-2 h-4 w-4" /> : <Maximize2 className="mr-2 h-4 w-4" />}
+            {fullView ? 'Exit full view' : 'Full view'}
+          </Button>
           {!moveSession ? (
             <>
               <WmsScanButton label="Find pallet" onScan={findPallet} />
@@ -713,6 +727,7 @@ export default function WmsMapPage() {
               rows={warehouse.rows}
               naming={warehouse.namingScheme}
               cells={cells}
+              fit={fullView}
               areas={(warehouse.areas ?? []).map((a) => ({
                 name: a.name,
                 startColumn: a.startColumn,

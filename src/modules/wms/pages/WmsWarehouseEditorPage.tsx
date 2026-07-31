@@ -8,7 +8,21 @@
  * save the layout as a reusable template; and export the locations as CSV.
  * Every edit persists immediately and is undoable.
  */
-import { ArrowLeft, Download, Loader2, Map as MapIcon, Redo2, Save, Undo2 } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  ArrowLeft,
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  ArrowUpToLine,
+  Download,
+  Loader2,
+  Map as MapIcon,
+  Maximize2,
+  Minimize2,
+  Redo2,
+  Save,
+  Undo2,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -22,6 +36,7 @@ import {
   CardTitle,
   NativeSelect,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
 import { AreaDialog, type AreaFormValue } from '../components/AreaDialog';
@@ -30,7 +45,7 @@ import { TextPromptDialog } from '../components/TextPromptDialog';
 import { type GridCell,WarehouseGrid } from '../components/WarehouseGrid';
 import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { WmsPrintLabelButton } from '../components/WmsPrintLabelButton';
-import type { LocationDraft, LocationDraftField } from '../services';
+import type { AxisSide, LocationDraft, LocationDraftField } from '../services';
 import {
   addColumn,
   addLevel,
@@ -83,6 +98,9 @@ export default function WmsWarehouseEditorPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<{ column: number; row: number } | null>(null);
   const [showFullGrid, setShowFullGrid] = useState(false);
+  // Full view: fit the entire warehouse into one no-scroll view and let the page
+  // stretch edge-to-edge (removing the centred max-width side gaps).
+  const [fullView, setFullView] = useState(false);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<WarehouseLocation | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -373,8 +391,8 @@ export default function WmsWarehouseEditorPage() {
 
   // -- structural edits -----------------------------------------------------
 
-  const addAxisAction = (fn: typeof addColumn, label: string) =>
-    void run(() => mutate((current) => fn(current)), `Added ${label}.`);
+  const addAxisAction = (fn: typeof addColumn, label: string, side: AxisSide = 'end') =>
+    void run(() => mutate((current) => fn(current, side)), `Added ${label}.`);
 
   const removeAxisAction = (fn: typeof removeColumn, index: number, label: string) =>
     void run(() => mutate((current) => fn(current, index)), `Removed ${label}.`);
@@ -436,7 +454,7 @@ export default function WmsWarehouseEditorPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6">
+    <div className={cn('mx-auto space-y-5 p-4 md:p-6', fullView ? 'max-w-none' : 'max-w-5xl')}>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -479,12 +497,53 @@ export default function WmsWarehouseEditorPage() {
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-3 text-sm">
           <span className="text-muted-foreground">Structure:</span>
-          <Button variant="outline" size="sm" disabled={busy} onClick={() => addAxisAction(addColumn, 'column')}>
-            + Column
-          </Button>
-          <Button variant="outline" size="sm" disabled={busy} onClick={() => addAxisAction(addRow, 'row')}>
-            + Row
-          </Button>
+
+          {/* Columns can be added on the left (start) or the right (end). */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">Column</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title="Add a column on the left"
+              onClick={() => addAxisAction(addColumn, 'column on the left', 'start')}
+            >
+              <ArrowLeftToLine className="mr-1 h-3.5 w-3.5" /> Left
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title="Add a column on the right"
+              onClick={() => addAxisAction(addColumn, 'column on the right', 'end')}
+            >
+              <ArrowRightToLine className="mr-1 h-3.5 w-3.5" /> Right
+            </Button>
+          </div>
+
+          {/* Rows can be added at the top (start) or the bottom (end). */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">Row</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title="Add a row at the top"
+              onClick={() => addAxisAction(addRow, 'row at the top', 'start')}
+            >
+              <ArrowUpToLine className="mr-1 h-3.5 w-3.5" /> Top
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title="Add a row at the bottom"
+              onClick={() => addAxisAction(addRow, 'row at the bottom', 'end')}
+            >
+              <ArrowDownToLine className="mr-1 h-3.5 w-3.5" /> Bottom
+            </Button>
+          </div>
+
           <Button variant="outline" size="sm" disabled={busy} onClick={() => addAxisAction(addLevel, 'level')}>
             + Level
           </Button>
@@ -614,6 +673,15 @@ export default function WmsWarehouseEditorPage() {
                 : 'Click to select · shift-click for a range · click a header for a column/row'}
           </CardTitle>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant={fullView ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setFullView((value) => !value)}
+              title="Fit the whole warehouse on screen (no scrolling) and use the full page width"
+            >
+              {fullView ? <Minimize2 className="mr-2 h-4 w-4" /> : <Maximize2 className="mr-2 h-4 w-4" />}
+              {fullView ? 'Exit full view' : 'Full view'}
+            </Button>
             {areas.length > 0 ? (
               <Button
                 variant={showFullGrid ? 'secondary' : 'outline'}
@@ -646,6 +714,7 @@ export default function WmsWarehouseEditorPage() {
             cells={cells}
             areas={showFullGrid ? [] : areas}
             hideHeaders={showFullGrid}
+            fit={fullView}
             selectable
             selectedIds={selectedIds}
             onCellClick={handleCellClick}

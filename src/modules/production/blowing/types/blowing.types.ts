@@ -77,7 +77,7 @@ export interface CompleteRunRequest {
   own_labour_count?: number;
   machine_start_reading: number | string;
   machine_stop_reading: number | string;
-  utility_cost: number | string;
+  utility_units: number | string;
   scrap_carton_value?: number | string;
 }
 export interface CreateBreakdownCategoryRequest { name: string }
@@ -387,7 +387,7 @@ export interface CreateRunRequest {
   preform_boxes_used?: number | string;
   machine_start_reading?: number | string | null;
   machine_stop_reading?: number | string | null;
-  utility_cost?: number | string;
+  utility_units?: number | string;
   total_counter_production?: number;
   rejection_pcs?: number;
   operator_count?: number;

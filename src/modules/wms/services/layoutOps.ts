@@ -17,6 +17,9 @@ import type { WarehouseBundle } from './warehouseIO';
 
 type Axis = 'column' | 'row' | 'level';
 
+/** Which end of an axis a new slice is inserted on. */
+export type AxisSide = 'start' | 'end';
+
 /**
  * Recompute every location's code/barcode.
  *
@@ -71,23 +74,40 @@ function withAxisCount(bundle: WarehouseBundle, axis: Axis, count: number): Ware
   return { ...bundle.warehouse, [key]: count, updatedAt: nowIso() };
 }
 
-/** Append a new column / row / level of fresh locations at the end of the axis. */
-export function addAxis(bundle: WarehouseBundle, axis: Axis): WarehouseBundle {
-  const index = axisCount(bundle, axis);
-  const warehouse = withAxisCount(bundle, axis, index + 1);
+/**
+ * Insert a new column / row / level of fresh locations. `side` picks which end
+ * of the axis the new slice lands on: 'end' (default) appends after the last
+ * slice; 'start' prepends before the first, shifting every existing cell — and
+ * any area that references a column/row index — up by one to make room. Grid
+ * index 0 is the top-left, so 'start' means left (columns) / top (rows).
+ */
+export function addAxis(bundle: WarehouseBundle, axis: Axis, side: AxisSide = 'end'): WarehouseBundle {
+  const count = axisCount(bundle, axis);
+  const warehouse = withAxisCount(bundle, axis, count + 1);
+  const insertAt = side === 'start' ? 0 : count;
+  // Anything at/after the insertion point moves up one slice; earlier cells stay.
+  const shift = (value: number) => (value >= insertAt ? value + 1 : value);
 
   const columns = warehouse.columns;
   const rows = warehouse.rows;
   const levels = warehouse.levels;
+
+  // Slide the existing cells to make room for the inserted slice (a no-op when
+  // appending, since nothing sits at/after the end index).
+  const existing = bundle.locations.map((location) => {
+    if (axis === 'column') return { ...location, column: shift(location.column) };
+    if (axis === 'row') return { ...location, row: shift(location.row) };
+    return { ...location, level: shift(location.level) };
+  });
 
   const newLocations = [];
   for (let level = 0; level < levels; level += 1) {
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < columns; column += 1) {
         const onNewAxis =
-          (axis === 'column' && column === index) ||
-          (axis === 'row' && row === index) ||
-          (axis === 'level' && level === index);
+          (axis === 'column' && column === insertAt) ||
+          (axis === 'row' && row === insertAt) ||
+          (axis === 'level' && level === insertAt);
         if (!onNewAxis) continue;
         newLocations.push(
           makeWarehouseLocation(warehouse.id, { code: '', barcode: '', column, row, level }),
@@ -96,11 +116,19 @@ export function addAxis(bundle: WarehouseBundle, axis: Axis): WarehouseBundle {
     }
   }
 
+  // Keep areas aligned with their cells when prepending. Levels don't affect
+  // areas (an area spans every level), so only column/row bounds shift.
+  const areas = (warehouse.areas ?? []).map((area) => {
+    if (axis === 'column') return { ...area, startColumn: shift(area.startColumn), endColumn: shift(area.endColumn) };
+    if (axis === 'row') return { ...area, startRow: shift(area.startRow), endRow: shift(area.endRow) };
+    return area;
+  });
+
   return rebuildCodes({
-    warehouse,
+    warehouse: { ...warehouse, areas },
     zones: bundle.zones,
     purposes: bundle.purposes,
-    locations: [...bundle.locations, ...newLocations],
+    locations: [...existing, ...newLocations],
   });
 }
 
@@ -129,9 +157,9 @@ export function removeAxis(bundle: WarehouseBundle, axis: Axis, index: number): 
   return rebuildCodes({ warehouse, zones: bundle.zones, purposes: bundle.purposes, locations });
 }
 
-export const addColumn = (bundle: WarehouseBundle) => addAxis(bundle, 'column');
-export const addRow = (bundle: WarehouseBundle) => addAxis(bundle, 'row');
-export const addLevel = (bundle: WarehouseBundle) => addAxis(bundle, 'level');
+export const addColumn = (bundle: WarehouseBundle, side: AxisSide = 'end') => addAxis(bundle, 'column', side);
+export const addRow = (bundle: WarehouseBundle, side: AxisSide = 'end') => addAxis(bundle, 'row', side);
+export const addLevel = (bundle: WarehouseBundle, side: AxisSide = 'end') => addAxis(bundle, 'level', side);
 export const removeColumn = (bundle: WarehouseBundle, index: number) => removeAxis(bundle, 'column', index);
 export const removeRow = (bundle: WarehouseBundle, index: number) => removeAxis(bundle, 'row', index);
 export const removeLevel = (bundle: WarehouseBundle, index: number) => removeAxis(bundle, 'level', index);

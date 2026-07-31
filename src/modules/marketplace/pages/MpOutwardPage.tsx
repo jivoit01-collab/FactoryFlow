@@ -208,17 +208,18 @@ export default function MpOutwardPage() {
     );
   }
 
-  // NEW — export EVERY sheet's orders within the order-date range (the button above
-  // is limited to the currently-open sheet). Uses the same columns/layout.
+  // NEW — export EVERY order from sheets UPLOADED in the selected date range (the
+  // per-sheet "Download CSV" is limited to the open sheet). Driven by the same
+  // "Uploaded" filter that narrows the sheet picker. Same columns/layout.
   const dateExport = useMutation({
     mutationFn: () =>
-      marketplaceApi.dispatchOrdersInRange(channel, orderRange.from || undefined, orderRange.to || undefined),
+      marketplaceApi.dispatchOrdersInRange(channel, sheetRange.from || undefined, sheetRange.to || undefined),
     onSuccess: (res) => {
       if (!res.orders.length) {
-        toast.info('No orders in that date range.');
+        toast.info('No orders for sheets uploaded in that date range.');
         return;
       }
-      const span = `${orderRange.from || 'start'}_${orderRange.to || 'end'}`;
+      const span = `${sheetRange.from || 'start'}_${sheetRange.to || 'end'}`;
       triggerCsvDownload(buildOutwardCsv(res.orders), `outward_${channel}_${span}_all-sheets.csv`);
       toast.success(`Downloaded ${res.orders.length} order(s) across all sheets.`);
     },
@@ -279,6 +280,16 @@ export default function MpOutwardPage() {
           <MpFilterBar>
             <MpDateRange value={sheetRange} onChange={setSheetRange} label="Uploaded" />
             <MpResultCount shown={sheets.length} total={allSheets.length} noun="sheet" />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={dateExport.isPending}
+              onClick={() => dateExport.mutate()}
+              title="Download every order from sheets uploaded in the selected date range (all sheets, not just the open one)"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {dateExport.isPending ? 'Preparing…' : 'Download by date (all sheets)'}
+            </Button>
           </MpFilterBar>
           {sheetsQuery.isLoading ? (
             <div className="flex items-center gap-2 py-4 text-muted-foreground">
@@ -361,16 +372,6 @@ export default function MpOutwardPage() {
                   title="Download the orders currently shown (respects the status filter, search and date range)"
                 >
                   <Download className="mr-2 h-4 w-4" /> Download CSV ({visibleOrders.length})
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={dateExport.isPending}
-                  onClick={() => dateExport.mutate()}
-                  title="Download every sheet's orders within the Order date range set below (not just this sheet)"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  {dateExport.isPending ? 'Preparing…' : 'Download by date (all sheets)'}
                 </Button>
                 <Button
                   size="sm"

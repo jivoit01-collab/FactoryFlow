@@ -291,6 +291,25 @@ export const marketplaceApi = {
     );
     return data;
   },
+  /** Download a marketplace report as a CSV blob (Reports section). */
+  async exportReport(
+    reportType: string,
+    params: {
+      channel: MarketplaceChannel;
+      from?: string;
+      to?: string;
+      date_field?: string;
+      status?: string;
+    },
+  ): Promise<{ blob: Blob; filename: string }> {
+    const resp = await apiClient.get<Blob>(
+      `${EP.REPORT_EXPORT(reportType)}${buildQuery({ ...params })}`,
+      { responseType: 'blob' },
+    );
+    const disposition = (resp.headers?.['content-disposition'] as string) ?? '';
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    return { blob: resp.data, filename: match?.[1] ?? `${reportType}.csv` };
+  },
   async scanDispatchByTracking(
     channel: MarketplaceChannel,
     barcode: string,

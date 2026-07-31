@@ -34,6 +34,7 @@ const MpDeliveryNotesPage = lazy(() => import('./pages/MpDeliveryNotesPage'));
 const MpInwardPage = lazy(() => import('./pages/MpInwardPage'));
 const MpMastersPage = lazy(() => import('./pages/MpMastersPage'));
 const MpReconciliationPage = lazy(() => import('./pages/MpReconciliationPage'));
+const MpReportsPage = lazy(() => import('./pages/MpReportsPage'));
 const MpSettingsPage = lazy(() => import('./pages/MpSettingsPage'));
 
 export const marketplaceModuleConfig: ModuleConfig = {
@@ -110,6 +111,13 @@ export const marketplaceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Reconciliation' },
     },
     {
+      path: '/marketplace/reports',
+      element: <MpReportsPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_ACCESS,
+      breadcrumb: { label: 'Reports' },
+    },
+    {
       path: '/marketplace/settings',
       element: <MpSettingsPage />,
       layout: 'main',
@@ -143,6 +151,7 @@ export const marketplaceModuleConfig: ModuleConfig = {
           title: 'Reconciliation',
           permissions: MARKETPLACE_ADMIN_ACCESS,
         },
+        { path: '/marketplace/reports', title: 'Reports', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/settings', title: 'Settings', permissions: MARKETPLACE_ADMIN_ACCESS },
       ],
     },

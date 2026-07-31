@@ -79,6 +79,15 @@ export interface WarehouseNamingScheme {
   columnStyle: 'LETTERS' | 'NUMBERS';
   rowStyle: 'LETTERS' | 'NUMBERS';
   levelStyle: 'LETTERS' | 'NUMBERS';
+  /**
+   * Reverse the numbering direction of an axis (count from the far end). The
+   * grid's visual layout is unchanged — only which cell gets number 1 flips.
+   * Columns: right→left instead of left→right. Rows: bottom→top instead of
+   * top→bottom (so counting starts from the bottom row). Optional; absent =
+   * false = the default forward direction.
+   */
+  columnReversed?: boolean;
+  rowReversed?: boolean;
   /** Optional code prefix applied to generated location codes. */
   prefix: string;
   /** Separator placed between code segments (e.g. `-` → `A-01-1`). */
