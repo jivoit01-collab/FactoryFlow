@@ -15,11 +15,12 @@ import {
 } from '@/shared/components/ui';
 
 import { useReconciliation } from '../api/marketplace.queries';
+import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import type { MarketplaceChannel } from '../types/marketplace.types';
 
 export default function MpReconciliationPage() {
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [onlyDeviations, setOnlyDeviations] = useState(false);

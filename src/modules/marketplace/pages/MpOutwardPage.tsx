@@ -37,6 +37,7 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
+import { useMpChannel } from '../hooks/useMpChannel';
 import {
   MARKETPLACE_QUERY_KEYS,
   useCancelDispatch,
@@ -131,7 +132,7 @@ function triggerCsvDownload(csv: string, filename: string) {
 }
 
 export default function MpOutwardPage() {
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
   const [pickedSheet, setPickedSheet] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
   const [search, setSearch] = useState('');

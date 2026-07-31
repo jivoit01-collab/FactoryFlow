@@ -34,6 +34,7 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
+import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
 import type { GateQueueSheet, MarketplaceChannel } from '../types/marketplace.types';
@@ -48,7 +49,7 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
 ];
 
 export default function MpGatePage() {
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
   const [expanded, setExpanded] = useState<number | null>(null);
   const [holdSheet, setHoldSheet] = useState<GateQueueSheet | null>(null);
   const [holdRemark, setHoldRemark] = useState('');
