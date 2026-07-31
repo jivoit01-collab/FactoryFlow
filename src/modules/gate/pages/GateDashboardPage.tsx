@@ -25,11 +25,6 @@ import { useReturnableGatePasses } from '../api/returnable';
 import { DateRangePicker } from '../components';
 import { GATE_ENTRY_TYPES, type GateEntryTypeConfig } from '../constants/gateEntryTypes';
 import { getJobWorkDisplayStatus, hasLinkedJobWorkProductionOrder } from '../utils';
-import {
-  CUSTOMER_RETURN_KEY,
-  isCustomerReturnAwaitingFactoryHead,
-  readCustomerFlowEntries,
-} from './customerSalesFlow/customerSalesFlow.storage';
 import { readRejectedQCReturnEntries } from './rejectedMaterialPages/rejectedQcReturn.storage';
 import {
   getRepairMovementValue,
@@ -455,15 +450,6 @@ function useGateDashboardStats(
   );
   const bstOutEntries = useBSTGateOutwards(dateParams, { enabled: isVisible('bst-out') });
 
-  const customerReturnEntries = useMemo(
-    () =>
-      filterCustomerFlowEntriesByDate(
-        readCustomerFlowEntries(CUSTOMER_RETURN_KEY),
-        dateRange,
-        'gateInDate',
-      ),
-    [dateRange.from, dateRange.to],
-  );
   const repairPartsOutEntries = useMemo(
     () =>
       filterRepairMovementEntriesByDate(
@@ -550,22 +536,6 @@ function useGateDashboardStats(
         openLabel: 'Inside',
         isOpen: (entry) => !['COMPLETED', 'CANCELLED'].includes(entry.vehicle_entry_status),
         isCompleted: (entry) => entry.vehicle_entry_status === 'COMPLETED',
-      }),
-    },
-    'customer-return': {
-      stats: buildEntryArrayStats(customerReturnEntries, {
-        openLabel: 'Open',
-        isOpen: (entry) =>
-          entry.status !== 'COMPLETED' &&
-          entry.status !== 'CANCELLED' &&
-          !isCustomerReturnAwaitingFactoryHead(entry),
-        extraStats: [
-          {
-            label: 'FH',
-            value: customerReturnEntries.filter(isCustomerReturnAwaitingFactoryHead).length,
-            tone: 'warning',
-          },
-        ],
       }),
     },
     'repair-parts-in': {
@@ -712,18 +682,6 @@ function useGateDashboardStats(
       ],
     },
   };
-}
-
-function filterCustomerFlowEntriesByDate(
-  entries: ReturnType<typeof readCustomerFlowEntries>,
-  dateRange: DateRange,
-  dateField: string,
-) {
-  return entries.filter((entry) => {
-    const storedDate = getCustomerFlowValue(entry, dateField);
-    const comparableDate = storedDate !== '-' ? storedDate : entry.createdAt.slice(0, 10);
-    return isDateInRange(comparableDate, dateRange);
-  });
 }
 
 function filterRepairMovementEntriesByDate(

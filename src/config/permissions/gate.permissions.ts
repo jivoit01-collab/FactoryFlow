@@ -51,6 +51,24 @@ export const GATE_PERMISSIONS = {
   },
 
   // ============================================
+  // FINISHED GOODS GATE-IN PERMISSIONS (traded / purchased FG — no QC)
+  // ============================================
+  FINISHED_GOODS: {
+    /** View finished-goods receipts */
+    VIEW: 'finished_goods_gatein.view_fgreceipt',
+    /** Create finished-goods receipts */
+    CREATE: 'finished_goods_gatein.add_fgreceipt',
+    /** Edit finished-goods receipts */
+    EDIT: 'finished_goods_gatein.change_fgreceipt',
+    /** Delete finished-goods entries */
+    DELETE: 'finished_goods_gatein.delete_fgreceipt',
+    /** Complete finished-goods entry */
+    COMPLETE: 'finished_goods_gatein.can_complete_fg_entry',
+    /** Receive finished-goods PO */
+    RECEIVE_PO: 'finished_goods_gatein.can_receive_fg_po',
+  },
+
+  // ============================================
   // REJECTED QC RETURN
   // ============================================
   REJECTED_QC_RETURN: {
@@ -323,6 +341,7 @@ export const GATE_MODULE_PREFIX = [
   'gate_core',
   'person_gatein',
   'raw_material_gatein',
+  'finished_goods_gatein',
   'daily_needs_gatein',
   'maintenance_gatein',
   'construction_gatein',
@@ -338,6 +357,7 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.DASHBOARD)[keyof typeof GATE_PERMISSIONS.DASHBOARD]
   | (typeof GATE_PERMISSIONS.GATE_ENTRY)[keyof typeof GATE_PERMISSIONS.GATE_ENTRY]
   | (typeof GATE_PERMISSIONS.RAW_MATERIAL)[keyof typeof GATE_PERMISSIONS.RAW_MATERIAL]
+  | (typeof GATE_PERMISSIONS.FINISHED_GOODS)[keyof typeof GATE_PERMISSIONS.FINISHED_GOODS]
   | (typeof GATE_PERMISSIONS.REJECTED_QC_RETURN)[keyof typeof GATE_PERMISSIONS.REJECTED_QC_RETURN]
   | (typeof GATE_PERMISSIONS.EMPTY_VEHICLE_IN)[keyof typeof GATE_PERMISSIONS.EMPTY_VEHICLE_IN]
   | (typeof GATE_PERMISSIONS.EMPTY_VEHICLE_OUT)[keyof typeof GATE_PERMISSIONS.EMPTY_VEHICLE_OUT]

@@ -4,6 +4,7 @@
 
 export const ENTRY_TYPES = {
   RAW_MATERIAL: 'RAW_MATERIAL',
+  FINISHED_GOODS: 'FINISHED_GOODS',
   CONSTRUCTION: 'CONSTRUCTION',
   FIXED_ASSET: 'FIXED_ASSET',
   DAILY_NEED: 'DAILY_NEED',
@@ -22,6 +23,7 @@ export type EntryType = (typeof ENTRY_TYPES)[keyof typeof ENTRY_TYPES];
  */
 export const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
   RAW_MATERIAL: 'Raw Material',
+  FINISHED_GOODS: 'Finished Goods',
   CONSTRUCTION: 'Construction',
   FIXED_ASSET: 'Fixed Asset',
   DAILY_NEED: 'Daily Needs',
@@ -83,6 +85,10 @@ export const WIZARD_CONFIGS: Record<EntryType, WizardStepConfig> = {
       'Review',
     ],
   },
+  FINISHED_GOODS: {
+    totalSteps: 3,
+    stepLabels: ['Vehicle & Driver', 'PO Receipts', 'Review'],
+  },
   CONSTRUCTION: {
     totalSteps: 4,
     stepLabels: ['Vehicle & Driver', 'Security Check', 'Construction Details', 'Review'],
@@ -114,6 +120,10 @@ export const WIZARD_CONFIGS: Record<EntryType, WizardStepConfig> = {
   SALES_DISPATCH: {
     totalSteps: 4,
     stepLabels: ['Docking', 'Weighment', 'Photo & Documents', 'Gatepass'],
+  },
+  JOB_WORK: {
+    totalSteps: 3,
+    stepLabels: ['Vehicle & Driver', 'Job Work Details', 'Review'],
   },
 };
 

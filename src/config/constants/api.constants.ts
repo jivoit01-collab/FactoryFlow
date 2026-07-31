@@ -47,6 +47,8 @@ export const API_ENDPOINTS = {
   PO: {
     OPEN_POS: (supplierCode?: string) =>
       supplierCode ? `/po/open-pos/?supplier_code=${supplierCode}` : '/po/open-pos/',
+    FG_OPEN_POS: (supplierCode?: string) =>
+      supplierCode ? `/po/fg-open-pos/?supplier_code=${supplierCode}` : '/po/fg-open-pos/',
     OPEN_PO_BY_NUMBER: (poNumber: string) => `/po/open-pos/${encodeURIComponent(poNumber)}/items/`,
     WAREHOUSES: '/po/warehouses/',
     VENDORS: '/po/vendors/',
@@ -62,6 +64,19 @@ export const API_ENDPOINTS = {
       `/raw-material-gatein/gate-entries/${entryId}/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
+  },
+  // Finished Goods Gate In (traded / purchased FG — no QC)
+  FINISHED_GOODS_GATEIN: {
+    PO_RECEIPTS: (entryId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/`,
+    PO_RECEIPT_DETAIL: (entryId: number, poReceiptId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/`,
+    GATE_ENTRY_DELETE: (entryId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/`,
+    PO_RECEIPTS_VIEW: (entryId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/view/`,
+    COMPLETE: (entryId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/complete/`,
   },
   // Weighment
   WEIGHMENT: {
@@ -366,6 +381,13 @@ export const API_ENDPOINTS = {
       `/grpo/${postingId}/attachments/${attachmentId}/`,
     ATTACHMENT_RETRY: (postingId: number, attachmentId: number) =>
       `/grpo/${postingId}/attachments/${attachmentId}/retry/`,
+    // Finished-goods (traded FG) material GRPO — same machinery, FG-scoped, no QC
+    FG_SUMMARY: '/grpo/fg/summary/',
+    FG_ALL_ENTRIES: '/grpo/fg/all-entries/',
+    FG_PENDING: '/grpo/fg/pending/',
+    FG_PREVIEW: (vehicleEntryId: number) => `/grpo/fg/preview/${vehicleEntryId}/`,
+    FG_POST: '/grpo/fg/post/',
+    FG_HISTORY: '/grpo/fg/history/',
   },
   // Production Planning
   PRODUCTION_PLANNING: {
@@ -419,6 +441,23 @@ export const API_ENDPOINTS = {
     STATUS: '/dashboards/sales-planning-requirement/status/',
     ANALYSIS: '/dashboards/sales-planning-requirement/analysis/',
     REFRESH: '/dashboards/sales-planning-requirement/refresh/',
+  },
+  // Goods Return (customer returns)
+  GOODS_RETURN: {
+    LIST: '/goods-return/',
+    CREATE: '/goods-return/',
+    BY_ID: (id: number) => `/goods-return/${id}/`,
+    INVOICE_REFS: (id: number) => `/goods-return/${id}/invoice-refs/`,
+    INVOICE_REF_BY_ID: (id: number, refId: number) =>
+      `/goods-return/${id}/invoice-refs/${refId}/`,
+    ITEMS: (id: number) => `/goods-return/${id}/items/`,
+    VEHICLE: (id: number) => `/goods-return/${id}/vehicle/`,
+    ATTACHMENTS: (id: number) => `/goods-return/${id}/attachments/`,
+    ATTACHMENT_BY_ID: (id: number, attachmentId: number) =>
+      `/goods-return/${id}/attachments/${attachmentId}/`,
+    SUBMIT: (id: number) => `/goods-return/${id}/submit/`,
+    GATE_EXPECTED: '/goods-return/gate/expected/',
+    GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,
   },
   // Dispatch Plans Dashboard
   DISPATCH_PLANS: {

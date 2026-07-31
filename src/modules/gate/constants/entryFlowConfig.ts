@@ -30,6 +30,17 @@ export const RAW_MATERIAL_FLOW: EntryFlowConfig = {
   allPageDescription: 'Manage raw materials, packing materials, and assets gate entries',
 };
 
+export const FINISHED_GOODS_FLOW: EntryFlowConfig = {
+  entryType: ENTRY_TYPES.FINISHED_GOODS,
+  routePrefix: '/gate/finished-goods',
+  headerTitle: 'Finished Goods Inward',
+  totalSteps: 2,
+  dashboardTitle: 'Finished Goods (Traded / Purchased)',
+  dashboardDescription: 'Manage purchased finished-goods gate entries (no QC — straight to GRPO)',
+  allPageTitle: 'Finished Goods (Traded / Purchased)',
+  allPageDescription: 'Manage purchased finished-goods gate entries (no QC — straight to GRPO)',
+};
+
 export const CONSTRUCTION_FLOW: EntryFlowConfig = {
   entryType: ENTRY_TYPES.CONSTRUCTION,
   routePrefix: '/gate/construction',
