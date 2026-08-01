@@ -12,6 +12,7 @@ import {
   Shield,
   Trash2,
   Warehouse,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -154,6 +155,7 @@ function RunDetailPage() {
   const numRunId = Number(runId);
   const { hasPermission } = usePermission();
   const canViewCost = hasPermission(EXECUTION_PERMISSIONS.VIEW_RUN_COST);
+  const canEnterElectricity = hasPermission(EXECUTION_PERMISSIONS.CREATE_MATERIAL);
 
   // ---------------------------------------------------------------------------
   // Data hooks
@@ -630,6 +632,11 @@ function RunDetailPage() {
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/yield`)}>
             <FileText className="h-4 w-4 mr-1" /> Yield
           </Button>
+          {canEnterElectricity && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/electricity`)}>
+              <Zap className="h-4 w-4 mr-1" /> Electricity
+            </Button>
+          )}
           {canViewCost && (
             <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/resources`)}>
               <IndianRupee className="h-4 w-4 mr-1" /> Cost
