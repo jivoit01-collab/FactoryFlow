@@ -42,7 +42,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { cn, getErrorMessage } from '@/shared/utils';
 
 type QueueTab = 'PENDING_APPROVAL' | 'PENDING_GATE_OUT';
 type ReviewMode = 'approve' | 'reject';
