@@ -17,6 +17,7 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
+import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { EMPTY_RANGE, MpDateRange, type MpRange } from '../components/MpDateRange';
 import type { MarketplaceChannel } from '../types/marketplace.types';
@@ -77,7 +78,7 @@ function triggerBlobDownload(blob: Blob, filename: string) {
 }
 
 export default function MpReportsPage() {
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
   const [slug, setSlug] = useState('orders');
   const [range, setRange] = useState<MpRange>(EMPTY_RANGE);
   const [dateField, setDateField] = useState<'order' | 'upload'>('order');

@@ -22,6 +22,7 @@ import {
 } from '@/shared/components/ui';
 
 import { useBatches, useImportOrders, useImportPreview } from '../api/marketplace.queries';
+import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpFlowSteps } from '../components/MpFlowSteps';
 import type { ImportPreview, MarketplaceChannel, OrderImportBatch } from '../types/marketplace.types';
@@ -29,7 +30,7 @@ import type { ImportPreview, MarketplaceChannel, OrderImportBatch } from '../typ
 export default function MpImportPage() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
   const [file, setFile] = useState<{ name: string; file: File; rows: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);

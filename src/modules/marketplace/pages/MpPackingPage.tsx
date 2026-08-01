@@ -27,11 +27,12 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { useCompleteItemGroup, usePackingSummary } from '../api/marketplace.queries';
+import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import type { MarketplaceChannel, PackingSummaryItem } from '../types/marketplace.types';
 
 export default function MpPackingPage() {
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
   const { data: summary, isLoading } = usePackingSummary(channel);
   const complete = useCompleteItemGroup(channel);
   const [confirmItem, setConfirmItem] = useState<PackingSummaryItem | null>(null);
