@@ -41,10 +41,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Log error to console in development
-    if (import.meta.env.DEV) {
-      console.error('ErrorBoundary caught an error:', error, errorInfo);
-    }
+    // Always log, production included. A crash that only reproduces on the live
+    // site is undiagnosable if the boundary swallows it, which is exactly what
+    // happened with the returnable approvals page.
+    console.error('ErrorBoundary caught an error:', error, errorInfo.componentStack);
 
     // Call optional error handler
     if (this.props.onError) {
@@ -77,12 +77,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {import.meta.env.DEV && this.state.error && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm">
-                  <p className="font-mono text-xs text-destructive">
+              {this.state.error && (
+                <details className="rounded-md bg-destructive/10 p-3 text-sm" open={import.meta.env.DEV}>
+                  <summary className="cursor-pointer text-xs font-medium text-destructive">
+                    Error details
+                  </summary>
+                  <p className="mt-2 whitespace-pre-wrap break-words font-mono text-xs text-destructive">
                     {this.state.error.toString()}
                   </p>
-                </div>
+                </details>
               )}
               <div className="flex gap-2">
                 <Button onClick={this.handleReset} variant="outline">

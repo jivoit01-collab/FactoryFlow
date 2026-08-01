@@ -17,6 +17,7 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import {
   MARKETPLACE_ACCESS,
   MARKETPLACE_ADMIN_ACCESS,
+  MARKETPLACE_GATE_ACCESS,
   MARKETPLACE_COMPANIES,
   MARKETPLACE_ISSUE_ACCESS,
   MARKETPLACE_MODULE_PREFIX,
@@ -34,6 +35,7 @@ const MpDeliveryNotesPage = lazy(() => import('./pages/MpDeliveryNotesPage'));
 const MpInwardPage = lazy(() => import('./pages/MpInwardPage'));
 const MpMastersPage = lazy(() => import('./pages/MpMastersPage'));
 const MpReconciliationPage = lazy(() => import('./pages/MpReconciliationPage'));
+const MpGatePage = lazy(() => import('./pages/MpGatePage'));
 const MpReportsPage = lazy(() => import('./pages/MpReportsPage'));
 const MpSettingsPage = lazy(() => import('./pages/MpSettingsPage'));
 
@@ -90,6 +92,13 @@ export const marketplaceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'SAP Delivery Notes' },
     },
     {
+      path: '/marketplace/gate',
+      element: <MpGatePage />,
+      layout: 'main',
+      permissions: MARKETPLACE_GATE_ACCESS,
+      breadcrumb: { label: 'Gate' },
+    },
+    {
       path: '/marketplace/inward',
       element: <MpInwardPage />,
       layout: 'main',
@@ -144,6 +153,7 @@ export const marketplaceModuleConfig: ModuleConfig = {
           title: 'SAP Delivery Notes',
           permissions: MARKETPLACE_ACCESS,
         },
+        { path: '/marketplace/gate', title: 'Gate', permissions: MARKETPLACE_GATE_ACCESS },
         { path: '/marketplace/inward', title: 'Inward', permissions: MARKETPLACE_ACCESS },
         { path: '/marketplace/masters', title: 'Masters', permissions: MARKETPLACE_ADMIN_ACCESS },
         {

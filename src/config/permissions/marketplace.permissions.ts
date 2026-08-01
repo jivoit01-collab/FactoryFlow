@@ -38,6 +38,7 @@ export const MARKETPLACE_PERMISSIONS = {
   RECEIVE_ISSUE: 'marketplace.receive_issue',
   VIEW_PACKING: 'marketplace.view_packing',
   PACK_ORDER: 'marketplace.pack_order',
+  GATE_CHECK: 'marketplace.gate_check',
 } as const;
 
 /** Operator-facing access (Outward/Inward/Overview scanning pages). */
@@ -48,6 +49,14 @@ export const MARKETPLACE_ACCESS: readonly string[] = [
   MARKETPLACE_PERMISSIONS.CONFIRM_DISPATCH,
   MARKETPLACE_PERMISSIONS.VIEW_RETURN,
   MARKETPLACE_PERMISSIONS.ADD_RETURN,
+];
+
+/** Gate page — the out-gate check. Marketplace operators (dispatch perms) OR gate
+ *  personnel (the dedicated gate_check permission, granted to the gate_core group). */
+export const MARKETPLACE_GATE_ACCESS: readonly string[] = [
+  MARKETPLACE_PERMISSIONS.GATE_CHECK,
+  MARKETPLACE_PERMISSIONS.VIEW_DISPATCH,
+  MARKETPLACE_PERMISSIONS.CONFIRM_DISPATCH,
 ];
 
 /** Admin access (Masters + Reconciliation). */

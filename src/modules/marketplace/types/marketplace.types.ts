@@ -913,3 +913,48 @@ export interface PackLabelData {
   uom: string;
   source_sku: string;
 }
+
+// ── Gate check (out-gate approval) ───────────────────────────────────────────
+export type MpGateStatus = 'PENDING' | 'APPROVED' | 'HOLD';
+
+export interface GateQueueSheet {
+  batch_id: number;
+  filename: string;
+  created_at: string | null;
+  orders: number;
+  parcels: number;
+  gate_pending: number;
+  gate_approved: number;
+  gate_hold: number;
+}
+
+export interface GateQueue {
+  sheets: GateQueueSheet[];
+  total_sheets: number;
+  total_parcels: number;
+  total_pending: number;
+}
+
+export interface GateOrder {
+  dispatch_id: number;
+  order_id: string;
+  buyer_name: string;
+  city: string;
+  state: string;
+  parcels: number;
+  tracking_ids: string[];
+  items: { name: string; quantity: number }[];
+  dn_number: string;
+  gate_status: MpGateStatus;
+  gate_checked_by: string;
+  gate_checked_at: string | null;
+  gate_remarks: string;
+}
+
+export interface GateSheetDetail {
+  batch_id: number;
+  filename: string;
+  orders: GateOrder[];
+  total_orders: number;
+  total_parcels: number;
+}

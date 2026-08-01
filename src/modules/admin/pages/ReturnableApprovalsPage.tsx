@@ -13,16 +13,19 @@ import { toast } from 'sonner';
 
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
+// Imported by direct path, not through the module barrels. The components barrel
+// re-exports ReturnableForm, which pulls in @/modules/gate/components and its
+// driver/vehicle zod schemas; bundled for production those became side-effect
+// imports evaluated when this page's chunk loads, and the page died before it
+// rendered. Dev never showed it because unbundled modules load in isolation.
 import {
   useApproveReturnable,
   useRejectReturnable,
   useReturnableGatePasses,
   useReturnablePendingApproval,
-} from '@/modules/maintenance/api';
-import {
-  ReturnableStatusBadge,
-  ReturnableTypeBadge,
-} from '@/modules/maintenance/components/returnable';
+} from '@/modules/maintenance/api/returnableGatePass.queries';
+import { ReturnableStatusBadge } from '@/modules/maintenance/components/returnable/ReturnableStatusBadge';
+import { ReturnableTypeBadge } from '@/modules/maintenance/components/returnable/ReturnableTypeBadge';
 import type { ReturnableGatePassListItem } from '@/modules/maintenance/types';
 import {
   Button,
@@ -39,7 +42,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { cn, getErrorMessage } from '@/shared/utils';
 
 type QueueTab = 'PENDING_APPROVAL' | 'PENDING_GATE_OUT';
 type ReviewMode = 'approve' | 'reject';

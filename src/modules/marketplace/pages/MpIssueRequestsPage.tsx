@@ -12,6 +12,7 @@ import {
 } from '@/shared/components/ui';
 
 import { useIssueRequests, useWarehouseInsights } from '../api/marketplace.queries';
+import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpFlowSteps } from '../components/MpFlowSteps';
 import { WarehouseInsightsPanel } from '../components/WarehouseInsightsPanel';
@@ -29,7 +30,7 @@ const STATUS_TONE: Record<MpIssueStatus, string> = {
 
 export default function MpIssueRequestsPage() {
   const navigate = useNavigate();
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
   const { data: requests = [], isLoading } = useIssueRequests(channel);
   const { data: insights } = useWarehouseInsights(channel);
 

@@ -43,6 +43,7 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
+import { useMpChannel } from '../hooks/useMpChannel';
 import {
   useAwaitingApprovalCount,
   useCutDeliveryNote,
@@ -254,7 +255,7 @@ function StockShortfallDialog({
 
 export default function MpDeliveryNotesPage() {
   const navigate = useNavigate();
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
 
   // Download a posted delivery note's items (item, qty + DN/warehouse/order/HSN/amount).
   async function downloadDnCsv(docEntry: number) {

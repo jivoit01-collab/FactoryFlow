@@ -1,4 +1,4 @@
-import { Download, RefreshCw } from 'lucide-react';
+import { ArrowUpDown, Download, Droplets, FileText, RefreshCw } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -7,7 +7,30 @@ import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button } from '@/shared/components/ui';
+import { Button, NativeSelect, SelectOption } from '@/shared/components/ui';
+
+type SortKey =
+  | 'default'
+  | 'customer_asc'
+  | 'customer_desc'
+  | 'city_asc'
+  | 'litres_desc'
+  | 'litres_asc'
+  | 'date_desc'
+  | 'date_asc'
+  | 'docnum_asc';
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'default', label: 'Default order' },
+  { key: 'customer_asc', label: 'Customer (A → Z)' },
+  { key: 'customer_desc', label: 'Customer (Z → A)' },
+  { key: 'city_asc', label: 'City (A → Z)' },
+  { key: 'litres_desc', label: 'Litres (high → low)' },
+  { key: 'litres_asc', label: 'Litres (low → high)' },
+  { key: 'date_desc', label: 'Invoice date (newest)' },
+  { key: 'date_asc', label: 'Invoice date (oldest)' },
+  { key: 'docnum_asc', label: 'Invoice no. (A → Z)' },
+];
 
 import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
 import { useDispatchBills, useUpdateDispatchPlan } from '../api';
@@ -85,6 +108,34 @@ export default function DispatchPlansDashboardPage() {
   const overwriteCount = bills.filter(
     (bill) => selected.has(bill.doc_entry) && !!bill.plan.dispatch_date,
   ).length;
+
+  // Arrange the shown bills (client-side) by the chosen order.
+  const [sortKey, setSortKey] = useState<SortKey>('default');
+  const sortedBills = useMemo(() => {
+    if (sortKey === 'default') return bills;
+    const cmp = (a: string, b: string) => a.localeCompare(b);
+    const arr = [...bills];
+    switch (sortKey) {
+      case 'customer_asc': arr.sort((a, b) => cmp(a.card_name ?? '', b.card_name ?? '')); break;
+      case 'customer_desc': arr.sort((a, b) => cmp(b.card_name ?? '', a.card_name ?? '')); break;
+      case 'city_asc': arr.sort((a, b) => cmp(a.city ?? '', b.city ?? '')); break;
+      case 'litres_desc': arr.sort((a, b) => (b.total_litres ?? 0) - (a.total_litres ?? 0)); break;
+      case 'litres_asc': arr.sort((a, b) => (a.total_litres ?? 0) - (b.total_litres ?? 0)); break;
+      case 'date_desc': arr.sort((a, b) => cmp(b.doc_date ?? '', a.doc_date ?? '')); break;
+      case 'date_asc': arr.sort((a, b) => cmp(a.doc_date ?? '', b.doc_date ?? '')); break;
+      case 'docnum_asc': arr.sort((a, b) => cmp(a.doc_num ?? '', b.doc_num ?? '')); break;
+    }
+    return arr;
+  }, [bills, sortKey]);
+
+  // Totals for the currently ticked bills — shown to the planner.
+  const selectionSummary = useMemo(() => {
+    const sel = bills.filter((b) => selected.has(b.doc_entry));
+    return {
+      count: sel.length,
+      litres: sel.reduce((sum, b) => sum + (b.total_litres ?? 0), 0),
+    };
+  }, [bills, selected]);
 
   // Export the currently filtered bill set (every fetched row, not just the
   // visible page) to an .xlsx workbook. Column order mirrors the on-screen table,
@@ -180,6 +231,21 @@ export default function DispatchPlansDashboardPage() {
         title="Dispatch Plans"
         description="SAP dispatch bills and planning handoff dates"
       >
+        <div className="flex items-center gap-1.5">
+          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <NativeSelect
+            aria-label="Sort bills"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="h-9 w-48"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <SelectOption key={o.key} value={o.key}>
+                {o.label}
+              </SelectOption>
+            ))}
+          </NativeSelect>
+        </div>
         <Button
           type="button"
           variant="outline"
@@ -213,6 +279,26 @@ export default function DispatchPlansDashboardPage() {
       {!sapApiError && (
         <>
           <DispatchPlanMetaCards meta={billsQuery.data?.meta} />
+          {canEdit && selectionSummary.count > 0 && (
+            <div className="flex flex-wrap items-center gap-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <FileText className="h-4 w-4 text-primary" />
+                {selectionSummary.count} bill{selectionSummary.count === 1 ? '' : 's'} selected
+              </span>
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <Droplets className="h-4 w-4 text-primary" />
+                {selectionSummary.litres.toLocaleString(undefined, { maximumFractionDigits: 2 })} L
+                total
+              </span>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="ml-auto text-xs text-muted-foreground underline-offset-2 hover:underline"
+              >
+                Clear
+              </button>
+            </div>
+          )}
           {canEdit && selectedDocEntries.length > 0 && (
             <DispatchPlanBulkDateBar
               selectedDocEntries={selectedDocEntries}
@@ -221,7 +307,7 @@ export default function DispatchPlansDashboardPage() {
             />
           )}
           <DispatchPlanTable
-            bills={bills}
+            bills={sortedBills}
             isLoading={billsQuery.isLoading || billsQuery.isFetching}
             canEdit={canEdit}
             onEdit={handleEdit}
