@@ -12,6 +12,13 @@
 // Admin Module
 export { ADMIN_MODULE_PREFIX, ADMIN_PERMISSIONS, type AdminPermission } from './admin.permissions';
 
+// Daily Tasks Module (per-user daily job sheet, derived from every other module)
+export {
+  DAILY_TASKS_MODULE_PREFIX,
+  DAILY_TASKS_PERMISSIONS,
+  type DailyTasksPermission,
+} from './daily-tasks.permissions';
+
 // Gate Module
 export { GATE_MODULE_PREFIX, GATE_PERMISSIONS, type GatePermission } from './gate.permissions';
 
