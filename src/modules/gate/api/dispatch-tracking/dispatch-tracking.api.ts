@@ -31,6 +31,12 @@ export interface DispatchTrackingTruck {
   current_status_display: string;
   last_update_at: string | null;
   update_count: number;
+  /** Reach-by date captured on the In-Transit update (YYYY-MM-DD), if any. */
+  expected_reach_date: string | null;
+  /** True when the reach-by date has passed and the truck hasn't reached yet. */
+  is_late: boolean;
+  /** Days past the reach-by date (0 when not late). */
+  days_overdue: number;
 }
 
 /** One status event in a truck's post-dispatch timeline. */
@@ -39,6 +45,7 @@ export interface TruckDispatchUpdate {
   status: TruckDispatchStatus;
   status_display: string;
   occurred_at: string;
+  expected_reach_date: string | null;
   location: string;
   remarks: string;
   proof: string | null;
@@ -49,6 +56,8 @@ export interface TruckDispatchUpdate {
 export interface CreateTruckDispatchUpdateRequest {
   status: TruckDispatchStatus;
   occurred_at?: string;
+  /** Expected reach date (YYYY-MM-DD) — set on an In-Transit update. */
+  expected_reach_date?: string;
   location?: string;
   remarks?: string;
   proof?: File | Blob | null;
@@ -99,6 +108,7 @@ export const dispatchTrackingApi = {
     const formData = new FormData();
     formData.append('status', data.status);
     if (data.occurred_at) formData.append('occurred_at', data.occurred_at);
+    if (data.expected_reach_date) formData.append('expected_reach_date', data.expected_reach_date);
     if (data.location) formData.append('location', data.location);
     if (data.remarks) formData.append('remarks', data.remarks);
     if (data.proof) formData.append('proof', data.proof);
