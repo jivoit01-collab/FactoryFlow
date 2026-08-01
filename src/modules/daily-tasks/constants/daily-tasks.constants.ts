@@ -10,7 +10,7 @@ export const MY_SHEET_STALE_MS = 60_000;
 /** The board is ~42 aggregate queries server-side — left to explicit refetch. */
 export const TEAM_BOARD_STALE_MS = 2 * 60_000;
 
-/** Rows shown before the board paginates. 88 users arrive in one payload today. */
+/** Rows shown before the board paginates. The whole user list arrives in one payload. */
 export const TEAM_BOARD_PAGE_SIZE = 50;
 
 export interface CadenceMeta {

@@ -49,8 +49,8 @@ export default function TeamDailyTasksPage() {
 
   const { data: board, isLoading, isError, refetch } = useTeamDailyBoard(date);
 
-  // 88 rows arrive in one payload, so filtering stays on the client. Deferring keeps
-  // typing responsive without a debounce timer.
+  // The whole user list arrives in one payload, so filtering stays on the client.
+  // Deferring keeps typing responsive without a debounce timer.
   const deferredSearch = useDeferredValue(search);
 
   const rows = useMemo(() => {
