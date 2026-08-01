@@ -1,15 +1,6 @@
 import { format } from 'date-fns';
-import {
-  AlertTriangle,
-  CalendarClock,
-  ChevronRight,
-  MapPin,
-  Package,
-  RefreshCw,
-  Search,
-  Truck,
-} from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronRight, MapPin, Package, RefreshCw, Search, Truck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
@@ -96,12 +87,6 @@ function formatDateTime(value: string | null) {
   return Number.isNaN(date.getTime()) ? '-' : format(date, 'dd MMM yyyy, HH:mm');
 }
 
-function formatDate(value: string | null) {
-  if (!value) return '-';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '-' : format(date, 'dd MMM yyyy');
-}
-
 /**
  * Dispatch Tracking — a board of trucks that have left the gate, each showing its
  * current post-dispatch status. Expand a truck to see its status timeline and add
@@ -142,19 +127,6 @@ export default function DispatchTrackingPage() {
   const hasActiveFilters = Boolean(
     search.trim() || statusFilter || dateRange.from || dateRange.to,
   );
-
-  // Overdue trucks — reach-by date passed and not reached yet. Alert once when found.
-  const lateTrucks = useMemo(() => trucks.filter((truck) => truck.is_late), [trucks]);
-  const alertedRef = useRef(false);
-  useEffect(() => {
-    if (lateTrucks.length > 0 && !alertedRef.current) {
-      alertedRef.current = true;
-      toast.warning(
-        `${lateTrucks.length} truck${lateTrucks.length === 1 ? '' : 's'} overdue — expected reach date exceeded.`,
-      );
-    }
-    if (lateTrucks.length === 0) alertedRef.current = false;
-  }, [lateTrucks.length]);
 
   return (
     <div className="space-y-6 p-6">
@@ -202,16 +174,6 @@ export default function DispatchTrackingPage() {
           onDateChange={(date) => setDateRange(date && 'from' in date ? date : undefined)}
         />
       </div>
-
-      {lateTrucks.length > 0 ? (
-        <div className="flex items-center gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <AlertTriangle className="h-5 w-5 shrink-0" />
-          <span className="font-medium">
-            {lateTrucks.length} truck{lateTrucks.length === 1 ? '' : 's'} overdue — the expected reach
-            date has passed and {lateTrucks.length === 1 ? 'it hasn’t' : 'they haven’t'} reached yet.
-          </span>
-        </div>
-      ) : null}
 
       {trucksQuery.isLoading ? (
         <EmptyState text="Loading dispatched trucks..." />
@@ -305,12 +267,10 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
           onOpen();
         }
       }}
-      className={`cursor-pointer transition-colors hover:bg-muted/40 ${
-        truck.is_late ? 'border-red-300 bg-red-50/40' : ''
-      }`}
+      className="cursor-pointer transition-colors hover:bg-muted/40"
     >
       <CardContent className="flex items-start gap-3 p-4">
-        <Truck className={`mt-0.5 h-4 w-4 shrink-0 ${truck.is_late ? 'text-red-600' : 'text-blue-600'}`} />
+        <Truck className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{truck.vehicle_number || '-'}</span>
@@ -320,28 +280,12 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
               </Badge>
             ) : null}
             <StatusBadge status={truck.current_status} label={truck.current_status_display} />
-            {truck.is_late ? (
-              <Badge className="gap-1 bg-red-600 hover:bg-red-600">
-                <AlertTriangle className="h-3 w-3" />
-                Late · {truck.days_overdue}d overdue
-              </Badge>
-            ) : null}
             {truck.companies.map((company) => (
               <Badge key={company} variant="outline">
                 {company}
               </Badge>
             ))}
           </div>
-          {truck.expected_reach_date ? (
-            <p
-              className={`inline-flex items-center gap-1 text-xs ${
-                truck.is_late ? 'font-medium text-red-600' : 'text-muted-foreground'
-              }`}
-            >
-              <CalendarClock className="h-3 w-3" />
-              {truck.is_late ? 'Date exceeded — was due' : 'Reach by'} {formatDate(truck.expected_reach_date)}
-            </p>
-          ) : null}
           <p className="text-sm text-muted-foreground">
             Dispatched {formatDateTime(truck.dispatched_at)} · Driver {truck.driver_name || '-'}
             {truck.gatepass_no ? ` · ${truck.gatepass_no}` : ''}
@@ -365,12 +309,7 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
   );
 }
 
-const EMPTY_FORM = {
-  status: '' as TruckDispatchStatus | '',
-  location: '',
-  remarks: '',
-  expected_reach_date: '',
-};
+const EMPTY_FORM = { status: '' as TruckDispatchStatus | '', location: '', remarks: '' };
 
 function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUpdate: boolean }) {
   const updatesQuery = useTruckDispatchUpdates(arrivalId);
@@ -391,9 +330,6 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
         location: form.location.trim(),
         remarks: form.remarks.trim(),
         proof,
-        ...(form.status === 'IN_TRANSIT' && form.expected_reach_date
-          ? { expected_reach_date: form.expected_reach_date }
-          : {}),
       };
       await addUpdate.mutateAsync({ arrivalId, data: payload });
       toast.success('Status update added');
@@ -446,25 +382,6 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
               />
             </div>
           </div>
-          {form.status === 'IN_TRANSIT' ? (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`reach-${arrivalId}`} className="text-xs">
-                Expected reach date — when the truck should reach the location
-              </Label>
-              <Input
-                id={`reach-${arrivalId}`}
-                type="date"
-                className="w-full sm:w-56"
-                value={form.expected_reach_date}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, expected_reach_date: event.target.value }))
-                }
-              />
-              <span className="text-[11px] text-muted-foreground">
-                If this date passes before the truck reaches, the trip is flagged “late / date exceeded”.
-              </span>
-            </div>
-          ) : null}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={`remarks-${arrivalId}`} className="text-xs">
               Remarks (optional)
@@ -524,12 +441,6 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                     {update.created_by_name || '—'}
                   </span>
                 </div>
-                {update.expected_reach_date ? (
-                  <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <CalendarClock className="h-3 w-3" />
-                    Reach by {formatDate(update.expected_reach_date)}
-                  </p>
-                ) : null}
                 {update.remarks ? <p className="mt-1 text-sm">{update.remarks}</p> : null}
                 {update.proof ? (
                   <a
