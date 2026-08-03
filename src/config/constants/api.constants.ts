@@ -111,6 +111,8 @@ export const API_ENDPOINTS = {
       `/gate-core/dispatch-tracking/${arrivalId}/updates/`,
     DISPATCH_TRACKING_BILLS: (arrivalId: number) =>
       `/gate-core/dispatch-tracking/${arrivalId}/bills/`,
+    DISPATCH_TRACKING_RETURN_NOTE: (arrivalId: number, updateId: number) =>
+      `/gate-core/dispatch-tracking/${arrivalId}/updates/${updateId}/return-note/`,
     ARRIVAL_GATEPASS_READINESS_BY_ID: (id: number) =>
       `/gate-core/arrivals/${id}/gatepass/readiness/`,
     ARRIVAL_GATEPASS_PRINT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/print/`,

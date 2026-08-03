@@ -24,6 +24,7 @@ import {
   useDispatchTrackingTrucks,
   useTruckDispatchBills,
   useTruckDispatchUpdates,
+  useUploadReturnNote,
 } from '@/modules/gate/api/dispatch-tracking/dispatch-tracking.queries';
 import { DateRangePicker } from '@/modules/gate/components/DateRangePicker';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -384,11 +385,43 @@ const EMPTY_FORM = {
 /** Statuses that record a hand-over date the operator can back-date. */
 const DELIVERY_STATUSES: TruckDispatchStatus[] = ['DELIVERED', 'PARTIALLY_DELIVERED'];
 
-/** One bill's row in the partial-delivery table, as the operator edits it. */
-interface BillSplit {
-  checked: boolean;
+/** One item's row in the partial-delivery table, as the operator edits it. */
+interface ItemSplit {
   delivered: string;
   returned: string;
+}
+
+/** Attaches the return note to a partial delivery that was saved without one —
+ *  the signed note usually comes back with the driver a day or two later. */
+function ReturnNoteUpload({ arrivalId, updateId }: { arrivalId: number; updateId: number }) {
+  const upload = useUploadReturnNote();
+  const inputId = `late-return-note-${updateId}`;
+
+  const handleChange = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      await upload.mutateAsync({ arrivalId, updateId, file });
+      toast.success('Return note attached');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to attach the return note'));
+    }
+  };
+
+  return (
+    <span className="mt-1 inline-flex items-center gap-1 text-xs">
+      <Label htmlFor={inputId} className="cursor-pointer text-blue-600 hover:underline">
+        {upload.isPending ? 'Attaching…' : 'Attach return note'}
+      </Label>
+      <input
+        id={inputId}
+        type="file"
+        accept="image/*,application/pdf"
+        className="sr-only"
+        disabled={upload.isPending}
+        onChange={(event) => handleChange(event.target.files?.[0])}
+      />
+    </span>
+  );
 }
 
 function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUpdate: boolean }) {
@@ -397,7 +430,9 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
   const [form, setForm] = useState(EMPTY_FORM);
   const [proof, setProof] = useState<File | null>(null);
   const [returnNote, setReturnNote] = useState<File | null>(null);
-  const [splits, setSplits] = useState<Record<number, BillSplit>>({});
+  // Keyed by item id — a bill is "short" when any of its items has a number.
+  const [splits, setSplits] = useState<Record<number, ItemSplit>>({});
+  const [openBills, setOpenBills] = useState<Record<number, boolean>>({});
 
   const isPartial = form.status === 'PARTIALLY_DELIVERED';
   const showDeliveredDate = DELIVERY_STATUSES.includes(form.status as TruckDispatchStatus);
@@ -406,13 +441,10 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
 
   const updates = updatesQuery.data ?? [];
 
-  const setSplit = (billId: number, patch: Partial<BillSplit>) =>
+  const setSplit = (itemId: number, patch: Partial<ItemSplit>) =>
     setSplits((current) => ({
       ...current,
-      [billId]: {
-        ...(current[billId] ?? { checked: false, delivered: '', returned: '' }),
-        ...patch,
-      },
+      [itemId]: { ...(current[itemId] ?? { delivered: '', returned: '' }), ...patch },
     }));
 
   const resetForm = () => {
@@ -420,6 +452,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
     setProof(null);
     setReturnNote(null);
     setSplits({});
+    setOpenBills({});
   };
 
   const handleSubmit = async () => {
@@ -428,26 +461,28 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
       return;
     }
 
-    // Only the ticked bills are sent — an untouched bill went in full.
+    // Only items the operator actually filled are sent; a bill with no filled
+    // item — and any bill left untouched — went out in full.
     const partial_lines = isPartial
       ? bills
-          .filter((bill) => splits[bill.id]?.checked)
           .map((bill) => ({
             document: bill.id,
-            boxes_delivered: splits[bill.id]?.delivered?.trim() || '0',
-            boxes_returned: splits[bill.id]?.returned?.trim() || '0',
+            items: bill.items
+              .filter((item) => {
+                const split = splits[item.id];
+                return Number(split?.delivered || 0) > 0 || Number(split?.returned || 0) > 0;
+              })
+              .map((item) => ({
+                item: item.id,
+                qty_delivered: splits[item.id]?.delivered?.trim() || '0',
+                qty_returned: splits[item.id]?.returned?.trim() || '0',
+              })),
           }))
+          .filter((line) => line.items.length > 0)
       : [];
 
     if (isPartial && partial_lines.length === 0) {
-      toast.error('Tick the bills that were short and enter how much came back.');
-      return;
-    }
-    const blank = partial_lines.find(
-      (line) => Number(line.boxes_delivered) === 0 && Number(line.boxes_returned) === 0,
-    );
-    if (blank) {
-      toast.error('Enter the boxes delivered and/or returned for every ticked bill.');
+      toast.error('Enter the quantity delivered or returned for at least one item.');
       return;
     }
 
@@ -556,10 +591,11 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
           {isPartial ? (
             <div className="flex flex-col gap-2 rounded-md border border-orange-200 bg-orange-50/50 p-3">
               <div>
-                <p className="text-xs font-medium">Which bills were short?</p>
+                <p className="text-xs font-medium">What came back?</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Tick each bill the customer did not take in full, then enter the boxes
-                  delivered and returned. Untouched bills count as delivered in full.
+                  Open a bill and fill the quantity delivered and returned for each item
+                  the customer was short on. Items you leave blank — and bills you never
+                  open — count as delivered in full.
                 </p>
               </div>
               {billsQuery.isLoading ? (
@@ -567,70 +603,100 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
               ) : bills.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No bills found on this truck.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[520px] text-xs">
-                    <thead>
-                      <tr className="text-left text-muted-foreground">
-                        <th className="w-8 py-1" />
-                        <th className="py-1 pr-2">Bill</th>
-                        <th className="py-1 pr-2">Customer</th>
-                        <th className="py-1 pr-2 text-right">Boxes</th>
-                        <th className="py-1 pr-2 text-right">Delivered</th>
-                        <th className="py-1 text-right">Returned</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bills.map((bill) => {
-                        const split = splits[bill.id];
-                        const checked = !!split?.checked;
-                        return (
-                          <tr key={bill.id} className="border-t border-orange-100">
-                            <td className="py-1.5">
-                              <input
-                                type="checkbox"
-                                aria-label={`Mark bill ${bill.sap_doc_num} partially delivered`}
-                                checked={checked}
-                                onChange={(event) =>
-                                  setSplit(bill.id, { checked: event.target.checked })
-                                }
-                              />
-                            </td>
-                            <td className="py-1.5 pr-2 font-medium">{bill.sap_doc_num || '—'}</td>
-                            <td className="py-1.5 pr-2">{bill.customer_name || '—'}</td>
-                            <td className="py-1.5 pr-2 text-right text-muted-foreground">
-                              {bill.total_boxes ?? '—'}
-                            </td>
-                            <td className="py-1.5 pr-2 text-right">
-                              <Input
-                                type="number"
-                                min="0"
-                                step="any"
-                                className="h-7 w-20 text-right"
-                                disabled={!checked}
-                                value={split?.delivered ?? ''}
-                                onChange={(event) =>
-                                  setSplit(bill.id, { delivered: event.target.value })
-                                }
-                              />
-                            </td>
-                            <td className="py-1.5 text-right">
-                              <Input
-                                type="number"
-                                min="0"
-                                step="any"
-                                className="h-7 w-20 text-right"
-                                disabled={!checked}
-                                value={split?.returned ?? ''}
-                                onChange={(event) =>
-                                  setSplit(bill.id, { returned: event.target.value })
-                                }
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="flex flex-col gap-2">
+                  {bills.map((bill) => {
+                    const open = !!openBills[bill.id];
+                    const filled = bill.items.filter((item) => {
+                      const split = splits[item.id];
+                      return Number(split?.delivered || 0) > 0 || Number(split?.returned || 0) > 0;
+                    }).length;
+                    return (
+                      <div key={bill.id} className="rounded border border-orange-200 bg-white">
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs"
+                          onClick={() =>
+                            setOpenBills((current) => ({ ...current, [bill.id]: !open }))
+                          }
+                        >
+                          <ChevronRight
+                            className={`h-3.5 w-3.5 shrink-0 transition-transform ${
+                              open ? 'rotate-90' : ''
+                            }`}
+                          />
+                          <span className="font-medium">{bill.sap_doc_num || '—'}</span>
+                          <span className="truncate text-muted-foreground">
+                            {bill.customer_name || '—'}
+                          </span>
+                          <span className="ml-auto shrink-0 text-muted-foreground">
+                            {filled > 0 ? (
+                              <span className="font-medium text-orange-700">
+                                {filled} item{filled === 1 ? '' : 's'} short
+                              </span>
+                            ) : (
+                              `${bill.items.length} item${bill.items.length === 1 ? '' : 's'}`
+                            )}
+                          </span>
+                        </button>
+                        {open ? (
+                          <div className="overflow-x-auto border-t border-orange-100 px-2 pb-2">
+                            <table className="w-full min-w-[460px] text-xs">
+                              <thead>
+                                <tr className="text-left text-muted-foreground">
+                                  <th className="py-1 pr-2">Item</th>
+                                  <th className="py-1 pr-2 text-right">Dispatched</th>
+                                  <th className="py-1 pr-2 text-right">Delivered</th>
+                                  <th className="py-1 text-right">Returned</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {bill.items.map((item) => (
+                                  <tr key={item.id} className="border-t border-orange-50">
+                                    <td className="py-1.5 pr-2">
+                                      <span className="font-medium">{item.item_code}</span>
+                                      <span className="block truncate text-muted-foreground">
+                                        {item.item_name}
+                                      </span>
+                                    </td>
+                                    <td className="py-1.5 pr-2 text-right text-muted-foreground">
+                                      {item.quantity} {item.uom}
+                                    </td>
+                                    <td className="py-1.5 pr-2 text-right">
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        aria-label={`Delivered quantity for ${item.item_code}`}
+                                        className="h-7 w-20 text-right"
+                                        value={splits[item.id]?.delivered ?? ''}
+                                        onChange={(event) =>
+                                          setSplit(item.id, { delivered: event.target.value })
+                                        }
+                                      />
+                                    </td>
+                                    <td className="py-1.5 text-right">
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        aria-label={`Returned quantity for ${item.item_code}`}
+                                        className="h-7 w-20 text-right"
+                                        value={splits[item.id]?.returned ?? ''}
+                                        onChange={(event) =>
+                                          setSplit(item.id, { returned: event.target.value })
+                                        }
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <div className="flex flex-col gap-1.5">
@@ -644,7 +710,8 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                   onChange={(event) => setReturnNote(event.target.files?.[0] ?? null)}
                 />
                 <span className="text-[11px] text-muted-foreground">
-                  The signed note for the stock coming back — separate from the delivery proof below.
+                  Not required now — if the signed note comes back with the driver later,
+                  save this update and attach it from the timeline.
                 </span>
               </div>
             </div>
@@ -722,37 +789,58 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                 ) : null}
                 {update.remarks ? <p className="mt-1 text-sm">{update.remarks}</p> : null}
                 {update.partial_lines?.length ? (
-                  <div className="mt-2 overflow-x-auto rounded border border-orange-100 bg-orange-50/40">
-                    <table className="w-full min-w-[380px] text-xs">
-                      <thead>
-                        <tr className="text-left text-muted-foreground">
-                          <th className="px-2 py-1">Bill</th>
-                          <th className="px-2 py-1">Customer</th>
-                          <th className="px-2 py-1 text-right">Delivered</th>
-                          <th className="px-2 py-1 text-right">Returned</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {update.partial_lines.map((line) => (
-                          <tr key={line.id} className="border-t border-orange-100">
-                            <td className="px-2 py-1 font-medium">{line.sap_doc_num || '—'}</td>
-                            <td className="px-2 py-1">{line.customer_name || '—'}</td>
-                            <td className="px-2 py-1 text-right">
-                              {line.boxes_delivered}
-                              {line.total_boxes ? (
-                                <span className="text-muted-foreground"> / {line.total_boxes}</span>
-                              ) : null}
-                            </td>
-                            <td className="px-2 py-1 text-right font-medium text-orange-700">
-                              {line.boxes_returned}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="mt-2 space-y-2">
+                    {update.partial_lines.map((line) => (
+                      <div
+                        key={line.id}
+                        className="overflow-x-auto rounded border border-orange-100 bg-orange-50/40"
+                      >
+                        <div className="flex flex-wrap items-baseline gap-2 px-2 py-1">
+                          <span className="text-xs font-medium">{line.sap_doc_num || '—'}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {line.customer_name || '—'}
+                          </span>
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {line.qty_delivered} delivered ·{' '}
+                            <span className="font-medium text-orange-700">
+                              {line.qty_returned} returned
+                            </span>
+                          </span>
+                        </div>
+                        <table className="w-full min-w-[360px] text-xs">
+                          <thead>
+                            <tr className="text-left text-muted-foreground">
+                              <th className="px-2 py-1">Item</th>
+                              <th className="px-2 py-1 text-right">Dispatched</th>
+                              <th className="px-2 py-1 text-right">Delivered</th>
+                              <th className="px-2 py-1 text-right">Returned</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {line.items.map((item) => (
+                              <tr key={item.id} className="border-t border-orange-100">
+                                <td className="px-2 py-1">
+                                  <span className="font-medium">{item.item_code}</span>
+                                  <span className="block truncate text-muted-foreground">
+                                    {item.item_name}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1 text-right text-muted-foreground">
+                                  {item.quantity} {item.uom}
+                                </td>
+                                <td className="px-2 py-1 text-right">{item.qty_delivered}</td>
+                                <td className="px-2 py-1 text-right font-medium text-orange-700">
+                                  {item.qty_returned}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
                   </div>
                 ) : null}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {update.proof ? (
                     <a
                       href={update.proof}
@@ -772,6 +860,8 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                     >
                       View return note
                     </a>
+                  ) : update.status === 'PARTIALLY_DELIVERED' && canUpdate ? (
+                    <ReturnNoteUpload arrivalId={arrivalId} updateId={update.id} />
                   ) : null}
                 </div>
               </li>

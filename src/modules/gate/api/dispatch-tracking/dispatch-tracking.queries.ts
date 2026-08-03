@@ -64,6 +64,27 @@ export function useTruckDispatchBills(arrivalId?: number | null, enabled = true)
   });
 }
 
+/** Attach the return note to a partial delivery that was logged without one. */
+export function useUploadReturnNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      arrivalId,
+      updateId,
+      file,
+    }: {
+      arrivalId: number;
+      updateId: number;
+      file: File | Blob;
+    }) => dispatchTrackingApi.uploadReturnNote(arrivalId, updateId, file),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: DISPATCH_TRACKING_QUERY_KEYS.updates(variables.arrivalId),
+      });
+    },
+  });
+}
+
 export function useAddTruckDispatchUpdate() {
   const queryClient = useQueryClient();
   return useMutation({

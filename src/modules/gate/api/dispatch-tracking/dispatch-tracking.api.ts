@@ -39,37 +39,68 @@ export interface DispatchTrackingTruck {
   days_overdue: number;
 }
 
-/** One bill riding on a dispatched truck, offered to the partial-delivery form. */
+/** One item line on a bill. `quantity` (in `uom`) is what the operator splits —
+ *  boxes are not populated on dispatched bills. */
+export interface TruckDispatchBillItem {
+  id: number;
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  quantity: string;
+  uom: string;
+}
+
+/** One bill riding on a dispatched truck, with its items. */
 export interface TruckDispatchBill {
   id: number;
   sap_doc_num: string;
   sap_doc_entry: number;
   customer_name: string;
   company: string;
-  /** Boxes dispatched on this bill — the figure the operator splits. */
-  total_boxes: string | null;
   total_quantity: string | null;
   sap_doc_total: string | null;
+  items: TruckDispatchBillItem[];
 }
 
-/** How much of one bill was delivered vs sent back, on a partial delivery. */
+/** How much of one item was delivered vs sent back. */
+export interface TruckDispatchPartialItem {
+  id: number;
+  item: number;
+  item_code: string;
+  item_name: string;
+  uom: string;
+  quantity: string;
+  qty_delivered: string;
+  qty_returned: string;
+  remarks: string;
+}
+
+/** One bill's shortfall on a partial delivery; totals are the sum of its items. */
 export interface TruckDispatchPartialLine {
   id: number;
   document: number;
   sap_doc_num: string;
   customer_name: string;
-  total_boxes: string | null;
-  boxes_delivered: string;
-  boxes_returned: string;
+  total_quantity: string | null;
+  qty_delivered: string;
+  qty_returned: string;
   remarks: string;
+  items: TruckDispatchPartialItem[];
 }
 
-/** One bill's split as submitted by the operator. */
+/** One item's split as submitted by the operator. */
+export interface TruckDispatchPartialItemInput {
+  item: number;
+  qty_delivered: string;
+  qty_returned: string;
+  remarks?: string;
+}
+
+/** One bill's shortfall as submitted by the operator. */
 export interface TruckDispatchPartialLineInput {
   document: number;
-  boxes_delivered: string;
-  boxes_returned: string;
   remarks?: string;
+  items: TruckDispatchPartialItemInput[];
 }
 
 /** One status event in a truck's post-dispatch timeline. */
@@ -101,7 +132,8 @@ export interface CreateTruckDispatchUpdateRequest {
   location?: string;
   remarks?: string;
   proof?: File | Blob | null;
-  /** Return note — set on a Partially Delivered update. */
+  /** Return note — optional on a Partially Delivered update; it can also be
+   *  attached later via `uploadReturnNote`. */
   return_note?: File | Blob | null;
   /** Per-bill delivered/returned split — set on a Partially Delivered update. */
   partial_lines?: TruckDispatchPartialLineInput[];
@@ -196,6 +228,22 @@ export const dispatchTrackingApi = {
   async bills(arrivalId: number): Promise<TruckDispatchBill[]> {
     const response = await apiClient.get<TruckDispatchBill[]>(
       API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING_BILLS(arrivalId),
+    );
+    return response.data;
+  },
+
+  /** Attach (or replace) the return note on an existing partial delivery. */
+  async uploadReturnNote(
+    arrivalId: number,
+    updateId: number,
+    file: File | Blob,
+  ): Promise<TruckDispatchUpdate> {
+    const formData = new FormData();
+    formData.append('return_note', file);
+    const response = await apiClient.post<TruckDispatchUpdate>(
+      API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING_RETURN_NOTE(arrivalId, updateId),
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return response.data;
   },
