@@ -22,6 +22,7 @@ import {
   type TruckDispatchStatus,
   useAddTruckDispatchUpdate,
   useDispatchTrackingTrucks,
+  useTruckDispatchBills,
   useTruckDispatchUpdates,
 } from '@/modules/gate/api/dispatch-tracking/dispatch-tracking.queries';
 import { DateRangePicker } from '@/modules/gate/components/DateRangePicker';
@@ -377,21 +378,79 @@ const EMPTY_FORM = {
   location: '',
   remarks: '',
   expected_reach_date: '',
+  delivered_date: '',
 };
+
+/** Statuses that record a hand-over date the operator can back-date. */
+const DELIVERY_STATUSES: TruckDispatchStatus[] = ['DELIVERED', 'PARTIALLY_DELIVERED'];
+
+/** One bill's row in the partial-delivery table, as the operator edits it. */
+interface BillSplit {
+  checked: boolean;
+  delivered: string;
+  returned: string;
+}
 
 function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUpdate: boolean }) {
   const updatesQuery = useTruckDispatchUpdates(arrivalId);
   const addUpdate = useAddTruckDispatchUpdate();
   const [form, setForm] = useState(EMPTY_FORM);
   const [proof, setProof] = useState<File | null>(null);
+  const [returnNote, setReturnNote] = useState<File | null>(null);
+  const [splits, setSplits] = useState<Record<number, BillSplit>>({});
+
+  const isPartial = form.status === 'PARTIALLY_DELIVERED';
+  const showDeliveredDate = DELIVERY_STATUSES.includes(form.status as TruckDispatchStatus);
+  const billsQuery = useTruckDispatchBills(arrivalId, isPartial);
+  const bills = billsQuery.data ?? [];
 
   const updates = updatesQuery.data ?? [];
+
+  const setSplit = (billId: number, patch: Partial<BillSplit>) =>
+    setSplits((current) => ({
+      ...current,
+      [billId]: {
+        ...(current[billId] ?? { checked: false, delivered: '', returned: '' }),
+        ...patch,
+      },
+    }));
+
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setProof(null);
+    setReturnNote(null);
+    setSplits({});
+  };
 
   const handleSubmit = async () => {
     if (!form.status) {
       toast.error('Pick a status.');
       return;
     }
+
+    // Only the ticked bills are sent — an untouched bill went in full.
+    const partial_lines = isPartial
+      ? bills
+          .filter((bill) => splits[bill.id]?.checked)
+          .map((bill) => ({
+            document: bill.id,
+            boxes_delivered: splits[bill.id]?.delivered?.trim() || '0',
+            boxes_returned: splits[bill.id]?.returned?.trim() || '0',
+          }))
+      : [];
+
+    if (isPartial && partial_lines.length === 0) {
+      toast.error('Tick the bills that were short and enter how much came back.');
+      return;
+    }
+    const blank = partial_lines.find(
+      (line) => Number(line.boxes_delivered) === 0 && Number(line.boxes_returned) === 0,
+    );
+    if (blank) {
+      toast.error('Enter the boxes delivered and/or returned for every ticked bill.');
+      return;
+    }
+
     try {
       const payload: CreateTruckDispatchUpdateRequest = {
         status: form.status,
@@ -401,11 +460,14 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
         ...(form.status === 'IN_TRANSIT' && form.expected_reach_date
           ? { expected_reach_date: form.expected_reach_date }
           : {}),
+        ...(showDeliveredDate && form.delivered_date
+          ? { delivered_date: form.delivered_date }
+          : {}),
+        ...(isPartial ? { partial_lines, return_note: returnNote } : {}),
       };
       await addUpdate.mutateAsync({ arrivalId, data: payload });
       toast.success('Status update added');
-      setForm(EMPTY_FORM);
-      setProof(null);
+      resetForm();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to add the status update'));
     }
@@ -470,6 +532,121 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
               <span className="text-[11px] text-muted-foreground">
                 If this date passes before the truck reaches, the trip is flagged “late / date exceeded”.
               </span>
+            </div>
+          ) : null}
+          {showDeliveredDate ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`delivered-${arrivalId}`} className="text-xs">
+                Delivered date — when the goods were actually handed over
+              </Label>
+              <Input
+                id={`delivered-${arrivalId}`}
+                type="date"
+                className="w-full sm:w-56"
+                value={form.delivered_date}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, delivered_date: event.target.value }))
+                }
+              />
+              <span className="text-[11px] text-muted-foreground">
+                Back-date this if the delivery happened earlier than you are logging it.
+              </span>
+            </div>
+          ) : null}
+          {isPartial ? (
+            <div className="flex flex-col gap-2 rounded-md border border-orange-200 bg-orange-50/50 p-3">
+              <div>
+                <p className="text-xs font-medium">Which bills were short?</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Tick each bill the customer did not take in full, then enter the boxes
+                  delivered and returned. Untouched bills count as delivered in full.
+                </p>
+              </div>
+              {billsQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground">Loading the truck’s bills…</p>
+              ) : bills.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No bills found on this truck.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[520px] text-xs">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="w-8 py-1" />
+                        <th className="py-1 pr-2">Bill</th>
+                        <th className="py-1 pr-2">Customer</th>
+                        <th className="py-1 pr-2 text-right">Boxes</th>
+                        <th className="py-1 pr-2 text-right">Delivered</th>
+                        <th className="py-1 text-right">Returned</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bills.map((bill) => {
+                        const split = splits[bill.id];
+                        const checked = !!split?.checked;
+                        return (
+                          <tr key={bill.id} className="border-t border-orange-100">
+                            <td className="py-1.5">
+                              <input
+                                type="checkbox"
+                                aria-label={`Mark bill ${bill.sap_doc_num} partially delivered`}
+                                checked={checked}
+                                onChange={(event) =>
+                                  setSplit(bill.id, { checked: event.target.checked })
+                                }
+                              />
+                            </td>
+                            <td className="py-1.5 pr-2 font-medium">{bill.sap_doc_num || '—'}</td>
+                            <td className="py-1.5 pr-2">{bill.customer_name || '—'}</td>
+                            <td className="py-1.5 pr-2 text-right text-muted-foreground">
+                              {bill.total_boxes ?? '—'}
+                            </td>
+                            <td className="py-1.5 pr-2 text-right">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="any"
+                                className="h-7 w-20 text-right"
+                                disabled={!checked}
+                                value={split?.delivered ?? ''}
+                                onChange={(event) =>
+                                  setSplit(bill.id, { delivered: event.target.value })
+                                }
+                              />
+                            </td>
+                            <td className="py-1.5 text-right">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="any"
+                                className="h-7 w-20 text-right"
+                                disabled={!checked}
+                                value={split?.returned ?? ''}
+                                onChange={(event) =>
+                                  setSplit(bill.id, { returned: event.target.value })
+                                }
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`return-note-${arrivalId}`} className="text-xs">
+                  Return note (optional)
+                </Label>
+                <Input
+                  id={`return-note-${arrivalId}`}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(event) => setReturnNote(event.target.files?.[0] ?? null)}
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  The signed note for the stock coming back — separate from the delivery proof below.
+                </span>
+              </div>
             </div>
           ) : null}
           <div className="flex flex-col gap-1.5">
@@ -537,17 +714,66 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                     Reach by {formatDate(update.expected_reach_date)}
                   </p>
                 ) : null}
-                {update.remarks ? <p className="mt-1 text-sm">{update.remarks}</p> : null}
-                {update.proof ? (
-                  <a
-                    href={update.proof}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-block text-xs text-blue-600 hover:underline"
-                  >
-                    View proof
-                  </a>
+                {update.delivered_date ? (
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <CalendarClock className="h-3 w-3" />
+                    Delivered on {formatDate(update.delivered_date)}
+                  </p>
                 ) : null}
+                {update.remarks ? <p className="mt-1 text-sm">{update.remarks}</p> : null}
+                {update.partial_lines?.length ? (
+                  <div className="mt-2 overflow-x-auto rounded border border-orange-100 bg-orange-50/40">
+                    <table className="w-full min-w-[380px] text-xs">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="px-2 py-1">Bill</th>
+                          <th className="px-2 py-1">Customer</th>
+                          <th className="px-2 py-1 text-right">Delivered</th>
+                          <th className="px-2 py-1 text-right">Returned</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {update.partial_lines.map((line) => (
+                          <tr key={line.id} className="border-t border-orange-100">
+                            <td className="px-2 py-1 font-medium">{line.sap_doc_num || '—'}</td>
+                            <td className="px-2 py-1">{line.customer_name || '—'}</td>
+                            <td className="px-2 py-1 text-right">
+                              {line.boxes_delivered}
+                              {line.total_boxes ? (
+                                <span className="text-muted-foreground"> / {line.total_boxes}</span>
+                              ) : null}
+                            </td>
+                            <td className="px-2 py-1 text-right font-medium text-orange-700">
+                              {line.boxes_returned}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-3">
+                  {update.proof ? (
+                    <a
+                      href={update.proof}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-block text-xs text-blue-600 hover:underline"
+                    >
+                      View proof
+                    </a>
+                  ) : null}
+                  {update.return_note ? (
+                    <a
+                      href={update.return_note}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-block text-xs text-blue-600 hover:underline"
+                    >
+                      View return note
+                    </a>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ol>

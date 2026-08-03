@@ -39,6 +39,39 @@ export interface DispatchTrackingTruck {
   days_overdue: number;
 }
 
+/** One bill riding on a dispatched truck, offered to the partial-delivery form. */
+export interface TruckDispatchBill {
+  id: number;
+  sap_doc_num: string;
+  sap_doc_entry: number;
+  customer_name: string;
+  company: string;
+  /** Boxes dispatched on this bill — the figure the operator splits. */
+  total_boxes: string | null;
+  total_quantity: string | null;
+  sap_doc_total: string | null;
+}
+
+/** How much of one bill was delivered vs sent back, on a partial delivery. */
+export interface TruckDispatchPartialLine {
+  id: number;
+  document: number;
+  sap_doc_num: string;
+  customer_name: string;
+  total_boxes: string | null;
+  boxes_delivered: string;
+  boxes_returned: string;
+  remarks: string;
+}
+
+/** One bill's split as submitted by the operator. */
+export interface TruckDispatchPartialLineInput {
+  document: number;
+  boxes_delivered: string;
+  boxes_returned: string;
+  remarks?: string;
+}
+
 /** One status event in a truck's post-dispatch timeline. */
 export interface TruckDispatchUpdate {
   id: number;
@@ -46,9 +79,14 @@ export interface TruckDispatchUpdate {
   status_display: string;
   occurred_at: string;
   expected_reach_date: string | null;
+  /** Hand-over date (YYYY-MM-DD) on a Delivered / Partially Delivered update. */
+  delivered_date: string | null;
   location: string;
   remarks: string;
   proof: string | null;
+  /** Signed return note for the stock that came back on a partial delivery. */
+  return_note: string | null;
+  partial_lines: TruckDispatchPartialLine[];
   created_by_name: string;
   created_at: string;
 }
@@ -58,9 +96,15 @@ export interface CreateTruckDispatchUpdateRequest {
   occurred_at?: string;
   /** Expected reach date (YYYY-MM-DD) — set on an In-Transit update. */
   expected_reach_date?: string;
+  /** Delivered date (YYYY-MM-DD) — set on a Delivered / Partially Delivered update. */
+  delivered_date?: string;
   location?: string;
   remarks?: string;
   proof?: File | Blob | null;
+  /** Return note — set on a Partially Delivered update. */
+  return_note?: File | Blob | null;
+  /** Per-bill delivered/returned split — set on a Partially Delivered update. */
+  partial_lines?: TruckDispatchPartialLineInput[];
 }
 
 /** Query params accepted by the dispatch-tracking list endpoint. */
@@ -149,6 +193,13 @@ export const dispatchTrackingApi = {
     return response.data;
   },
 
+  async bills(arrivalId: number): Promise<TruckDispatchBill[]> {
+    const response = await apiClient.get<TruckDispatchBill[]>(
+      API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING_BILLS(arrivalId),
+    );
+    return response.data;
+  },
+
   async addUpdate(
     arrivalId: number,
     data: CreateTruckDispatchUpdateRequest,
@@ -157,9 +208,15 @@ export const dispatchTrackingApi = {
     formData.append('status', data.status);
     if (data.occurred_at) formData.append('occurred_at', data.occurred_at);
     if (data.expected_reach_date) formData.append('expected_reach_date', data.expected_reach_date);
+    if (data.delivered_date) formData.append('delivered_date', data.delivered_date);
     if (data.location) formData.append('location', data.location);
     if (data.remarks) formData.append('remarks', data.remarks);
     if (data.proof) formData.append('proof', data.proof);
+    if (data.return_note) formData.append('return_note', data.return_note);
+    // The per-bill rows ride along as JSON — multipart can't carry nested arrays.
+    if (data.partial_lines?.length) {
+      formData.append('partial_lines', JSON.stringify(data.partial_lines));
+    }
 
     const response = await apiClient.post<TruckDispatchUpdate>(
       API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING_UPDATES(arrivalId),

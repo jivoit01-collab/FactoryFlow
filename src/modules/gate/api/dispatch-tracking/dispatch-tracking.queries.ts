@@ -3,9 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type CreateTruckDispatchUpdateRequest,
   type DispatchSummaryFilters,
-  type DispatchTrackingFilters,
   dispatchTrackingApi,
+  type DispatchTrackingFilters,
 } from './dispatch-tracking.api';
+
+// Callers import the hooks and the shapes they return from this one module.
+export type * from './dispatch-tracking.api';
 
 export const DISPATCH_TRACKING_QUERY_KEYS = {
   all: ['dispatchTracking'] as const,
@@ -14,6 +17,8 @@ export const DISPATCH_TRACKING_QUERY_KEYS = {
     [...DISPATCH_TRACKING_QUERY_KEYS.lists(), filters ?? {}] as const,
   updates: (arrivalId?: number | null) =>
     [...DISPATCH_TRACKING_QUERY_KEYS.all, 'updates', arrivalId] as const,
+  bills: (arrivalId?: number | null) =>
+    [...DISPATCH_TRACKING_QUERY_KEYS.all, 'bills', arrivalId] as const,
   summary: (filters?: DispatchSummaryFilters) =>
     [...DISPATCH_TRACKING_QUERY_KEYS.all, 'summary', filters ?? {}] as const,
 };
@@ -43,6 +48,19 @@ export function useTruckDispatchUpdates(arrivalId?: number | null) {
     queryFn: () => dispatchTrackingApi.updates(arrivalId!),
     enabled: !!arrivalId,
     staleTime: 10 * 1000,
+  });
+}
+
+/** The bills on a truck — the rows the partial-delivery form splits.
+ *
+ * Only fetched when the operator actually picks Partially Delivered, so the
+ * timeline panel doesn't pay for it on every truck it opens. */
+export function useTruckDispatchBills(arrivalId?: number | null, enabled = true) {
+  return useQuery({
+    queryKey: DISPATCH_TRACKING_QUERY_KEYS.bills(arrivalId),
+    queryFn: () => dispatchTrackingApi.bills(arrivalId!),
+    enabled: !!arrivalId && enabled,
+    staleTime: 60 * 1000,
   });
 }
 
