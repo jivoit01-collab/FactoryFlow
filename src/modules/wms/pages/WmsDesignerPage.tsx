@@ -244,11 +244,27 @@ export default function WmsDesignerPage() {
                 value={naming.columnStyle}
                 onChange={(value) => setNamingField('columnStyle', value)}
               />
+              <AxisDirectionField
+                id="naming-col-dir"
+                label="Column order"
+                value={naming.columnReversed ?? false}
+                forwardLabel="Left → Right"
+                reverseLabel="Right → Left"
+                onChange={(value) => setNamingField('columnReversed', value)}
+              />
               <AxisStyleField
                 id="naming-row"
                 label="Rows"
                 value={naming.rowStyle}
                 onChange={(value) => setNamingField('rowStyle', value)}
+              />
+              <AxisDirectionField
+                id="naming-row-dir"
+                label="Row order"
+                value={naming.rowReversed ?? false}
+                forwardLabel="Top → Bottom"
+                reverseLabel="Bottom → Top"
+                onChange={(value) => setNamingField('rowReversed', value)}
               />
               {levels > 1 ? (
                 <AxisStyleField
@@ -398,6 +414,41 @@ function AxisStyleField({
       >
         <option value="LETTERS">Letters</option>
         <option value="NUMBERS">Numbers</option>
+      </NativeSelect>
+    </div>
+  );
+}
+
+/** Which end of an axis numbering starts from. Reversing flips which cell gets
+ * number 1 (e.g. rows from the bottom up) without changing the grid's layout. */
+function AxisDirectionField({
+  id,
+  label,
+  value,
+  forwardLabel,
+  reverseLabel,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: boolean;
+  forwardLabel: string;
+  reverseLabel: string;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Label htmlFor={id} className="text-sm">
+        {label}
+      </Label>
+      <NativeSelect
+        id={id}
+        className="w-32"
+        value={value ? 'REVERSED' : 'FORWARD'}
+        onChange={(event) => onChange(event.target.value === 'REVERSED')}
+      >
+        <option value="FORWARD">{forwardLabel}</option>
+        <option value="REVERSED">{reverseLabel}</option>
       </NativeSelect>
     </div>
   );

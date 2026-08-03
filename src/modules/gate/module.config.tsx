@@ -1,7 +1,12 @@
 import { Truck } from 'lucide-react';
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { BARCODE_PERMISSIONS, GATE_PERMISSIONS, GOODS_RETURN_PERMISSIONS } from '@/config/permissions';
+import {
+  BARCODE_PERMISSIONS,
+  GATE_PERMISSIONS,
+  GOODS_RETURN_PERMISSIONS,
+  MARKETPLACE_GATE_ACCESS,
+} from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
@@ -1134,6 +1139,12 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/sales-dispatch/barcode-reports',
           title: 'Barcode Dispatch Reports',
           permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
+        },
+        {
+          // Marketplace out-gate check — parcels ready to leave, approved from the gate.
+          path: '/marketplace/gate',
+          title: 'Marketplace Gate',
+          permissions: MARKETPLACE_GATE_ACCESS,
         },
       ],
     },

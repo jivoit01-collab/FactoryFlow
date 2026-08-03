@@ -32,6 +32,7 @@ import {
   useSetReturnScanCondition,
   useSubmitReturn,
 } from '../api/marketplace.queries';
+import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpFilterBar, MpFilterChips, MpSearchInput } from '../components/MpFilters';
 import { MpProgressTable } from '../components/MpProgressTable';
@@ -60,7 +61,7 @@ const STATUS_VARIANT: Record<MpReturnStatus, 'default' | 'secondary' | 'outline'
 };
 
 export default function MpInwardPage() {
-  const [channel, setChannel] = useState<MarketplaceChannel>('FLIPKART');
+  const [channel, setChannel] = useMpChannel();
   const [returnId, setReturnId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
   const scanReturn = useScanReturnByTracking(channel);

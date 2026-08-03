@@ -918,7 +918,8 @@ export interface WasteApprovalRequest {
 export interface CreateElectricityRequest {
   description: string;
   units_consumed: string;
-  rate_per_unit: string;
+  /** Optional — the costing engine prices units at the Cost Master rate. */
+  rate_per_unit?: string;
 }
 
 export interface CreateWaterRequest {

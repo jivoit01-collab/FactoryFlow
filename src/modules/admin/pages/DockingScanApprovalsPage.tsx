@@ -38,6 +38,8 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
   { value: 'ALL', label: 'All' },
 ];
 
+type ReviewMode = 'approve' | 'reject';
+
 export default function DockingScanApprovalsPage() {
   const { hasPermission } = usePermission();
   const canApprove = hasPermission(ADMIN_PERMISSIONS.DOCKING.APPROVE_SCAN_SKIP);
@@ -91,17 +93,61 @@ export default function DockingScanApprovalsPage() {
     }
   };
 
+  const emptyLabel = statusFilter === 'ALL' ? '' : statusFilter.toLowerCase();
+
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-4 pb-6 sm:space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Docking — Scan Skip Requests</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Docking — Scan Skip Requests
+        </h2>
+        <p className="text-sm text-muted-foreground sm:text-base">
           Review operator requests to skip box scanning for docking entries. Approving unlocks the
           scanning step for the operator.
         </p>
       </div>
 
-      <Card>
+      {/* Filter tabs sit outside the card on a phone so the list starts higher up. */}
+      <div className="grid grid-cols-4 gap-2 sm:hidden">
+        {STATUS_TABS.map((tab) => (
+          <Button
+            key={tab.value}
+            type="button"
+            size="sm"
+            variant={statusFilter === tab.value ? 'default' : 'outline'}
+            onClick={() => setStatusFilter(tab.value)}
+          >
+            {tab.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* ---- Phone: one card per request, no horizontal scrolling ---- */}
+      <div className="space-y-3 sm:hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-lg border p-8 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading requests...
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-lg border p-8 text-center text-muted-foreground">
+            <ShieldQuestion className="h-8 w-8" />
+            <p>No {emptyLabel} scan skip requests.</p>
+          </div>
+        ) : (
+          requests.map((request) => (
+            <RequestCard
+              key={request.id}
+              request={request}
+              canApprove={canApprove}
+              isSaving={isSaving}
+              onReview={openReview}
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden sm:block">
         <CardHeader className="border-b">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 text-xl">
@@ -132,7 +178,7 @@ export default function DockingScanApprovalsPage() {
           ) : requests.length === 0 ? (
             <div className="flex flex-col items-center gap-2 p-10 text-center text-muted-foreground">
               <ShieldQuestion className="h-8 w-8" />
-              <p>No {statusFilter === 'ALL' ? '' : statusFilter.toLowerCase()} scan skip requests.</p>
+              <p>No {emptyLabel} scan skip requests.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -225,12 +271,12 @@ export default function DockingScanApprovalsPage() {
       </Card>
 
       <Dialog open={Boolean(reviewTarget)} onOpenChange={(open) => (!open ? closeReview() : null)}>
-        <DialogContent>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-left text-base sm:text-lg">
               {reviewMode === 'approve' ? 'Approve Scan Skip' : 'Reject Scan Skip'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-left">
               {reviewMode === 'approve'
                 ? 'The operator will be able to continue past box scanning for this docking entry.'
                 : 'The operator will be required to scan boxes normally. Explain why this request is rejected.'}
@@ -255,13 +301,20 @@ export default function DockingScanApprovalsPage() {
             />
             {reviewError ? <p className="text-sm text-destructive">{reviewError}</p> : null}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeReview} disabled={isSaving}>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={closeReview}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button
               type="button"
               variant={reviewMode === 'reject' ? 'destructive' : 'default'}
+              className="w-full sm:w-auto"
               onClick={() => void submitReview()}
               disabled={isSaving}
             >
@@ -275,11 +328,94 @@ export default function DockingScanApprovalsPage() {
   );
 }
 
+interface RequestCardProps {
+  request: DockingScanSkipRequest;
+  canApprove: boolean;
+  isSaving: boolean;
+  onReview: (request: DockingScanSkipRequest, mode: ReviewMode) => void;
+}
+
+/**
+ * Phone layout for one request. Everything the approver needs to decide is
+ * stacked in reading order, with the two actions as full-width buttons at the
+ * bottom — no sideways scrolling to reach them.
+ */
+function RequestCard({ request, canApprove, isSaving, onReview }: RequestCardProps) {
+  const isPending = request.status === 'PENDING';
+
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate font-semibold">
+            {request.entry_no || `#${request.sales_dispatch}`}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {request.document_type} · {request.vehicle_no || 'no vehicle'}
+          </div>
+        </div>
+        <StatusBadge status={request.status} />
+      </div>
+
+      <div className="mt-2 space-y-0.5 text-sm">
+        <div className="break-words font-medium">{request.customer_name || '-'}</div>
+        <div className="text-xs text-muted-foreground">
+          {request.sap_doc_num || '-'} · {request.requested_by_name || '-'} ·{' '}
+          {formatTimestamp(request.requested_at)}
+        </div>
+      </div>
+
+      <div className="mt-2 break-words rounded-md bg-muted/50 p-2 text-sm">
+        <span className="text-muted-foreground">Reason: </span>
+        {request.reason || '-'}
+      </div>
+
+      {request.review_notes ? (
+        <p className="mt-2 break-words text-xs text-muted-foreground">
+          Note: {request.review_notes}
+        </p>
+      ) : null}
+      {request.reviewed_by_name ? (
+        <p className="mt-1 text-xs text-muted-foreground">by {request.reviewed_by_name}</p>
+      ) : null}
+
+      {isPending && canApprove ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            className="h-11"
+            disabled={isSaving}
+            onClick={() => onReview(request, 'approve')}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Approve
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 border-red-200 text-red-700 hover:bg-red-50"
+            disabled={isSaving}
+            onClick={() => onReview(request, 'reject')}
+          >
+            <XCircle className="h-4 w-4" />
+            Reject
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {isPending ? 'Awaiting approver' : 'Reviewed'}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: DockingScanSkipStatus }) {
   return (
     <Badge
       variant="outline"
       className={cn(
+        'shrink-0',
         status === 'PENDING' && 'border-amber-200 bg-amber-50 text-amber-700',
         status === 'APPROVED' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
         status === 'REJECTED' && 'border-red-200 bg-red-50 text-red-700',

@@ -1,6 +1,8 @@
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
-import { useBSTPartialTransfers } from '@/modules/warehouse/api';
+// Direct path, not the api barrel: this badge renders in the sidebar on every
+// page, so it should not drag the rest of the warehouse module in with it.
+import { useBSTPartialTransfers } from '@/modules/warehouse/api/bst.queries';
 import { cn } from '@/shared/utils';
 
 /**

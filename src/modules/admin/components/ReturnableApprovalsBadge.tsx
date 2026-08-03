@@ -1,6 +1,8 @@
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
-import { useReturnablePendingApproval } from '@/modules/maintenance/api';
+// Direct path, not the api barrel: this badge renders in the sidebar on every
+// page, so it should not drag the rest of the maintenance module in with it.
+import { useReturnablePendingApproval } from '@/modules/maintenance/api/returnableGatePass.queries';
 import { cn } from '@/shared/utils';
 
 /**

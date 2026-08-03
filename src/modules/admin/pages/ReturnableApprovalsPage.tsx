@@ -1,20 +1,31 @@
-import { CheckCircle2, ExternalLink, Loader2, PackageCheck, ShieldQuestion, XCircle } from 'lucide-react';
+import {
+  CheckCircle2,
+  ChevronDown,
+  ExternalLink,
+  Loader2,
+  PackageCheck,
+  ShieldQuestion,
+  XCircle,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
+// Imported by direct path, not through the module barrels. The components barrel
+// re-exports ReturnableForm, which pulls in @/modules/gate/components and its
+// driver/vehicle zod schemas; bundled for production those became side-effect
+// imports evaluated when this page's chunk loads, and the page died before it
+// rendered. Dev never showed it because unbundled modules load in isolation.
 import {
   useApproveReturnable,
   useRejectReturnable,
   useReturnableGatePasses,
   useReturnablePendingApproval,
-} from '@/modules/maintenance/api';
-import {
-  ReturnableStatusBadge,
-  ReturnableTypeBadge,
-} from '@/modules/maintenance/components/returnable';
+} from '@/modules/maintenance/api/returnableGatePass.queries';
+import { ReturnableStatusBadge } from '@/modules/maintenance/components/returnable/ReturnableStatusBadge';
+import { ReturnableTypeBadge } from '@/modules/maintenance/components/returnable/ReturnableTypeBadge';
 import type { ReturnableGatePassListItem } from '@/modules/maintenance/types';
 import {
   Button,
@@ -31,14 +42,18 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { cn, getErrorMessage } from '@/shared/utils';
 
 type QueueTab = 'PENDING_APPROVAL' | 'PENDING_GATE_OUT';
+type ReviewMode = 'approve' | 'reject';
 
-const TABS: { value: QueueTab; label: string }[] = [
-  { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
-  { value: 'PENDING_GATE_OUT', label: 'Approved — At Gate' },
+const TABS: { value: QueueTab; label: string; shortLabel: string }[] = [
+  { value: 'PENDING_APPROVAL', label: 'Pending Approval', shortLabel: 'Pending' },
+  { value: 'PENDING_GATE_OUT', label: 'Approved — At Gate', shortLabel: 'At Gate' },
 ];
+
+/** Items shown on a phone card before the "+N more" toggle. */
+const MOBILE_ITEM_PREVIEW = 2;
 
 /**
  * Admin-side mirror of the returnable / non-returnable approval step. The pass is
@@ -114,19 +129,62 @@ export default function ReturnableApprovalsPage() {
     }
   };
 
+  const emptyLabel = TABS.find((t) => t.value === tab)?.label.toLowerCase();
+
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-4 pb-6 sm:space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Returnable / Non-returnable Approvals
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground sm:text-base">
           Sign off on material leaving the gate for repair, exchange or job work. Approving releases
           the pass to the gate; sending it back returns it to the department as a draft.
         </p>
       </div>
 
-      <Card>
+      {/* Filter tabs sit outside the card on a phone so the list starts higher up. */}
+      <div className="grid grid-cols-2 gap-2 sm:hidden">
+        {TABS.map((item) => (
+          <Button
+            key={item.value}
+            type="button"
+            size="sm"
+            variant={tab === item.value ? 'default' : 'outline'}
+            onClick={() => setTab(item.value)}
+          >
+            {item.shortLabel}
+          </Button>
+        ))}
+      </div>
+
+      {/* ---- Phone: one card per pass, no horizontal scrolling ---- */}
+      <div className="space-y-3 sm:hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-lg border p-8 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading gate passes...
+          </div>
+        ) : passes.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-lg border p-8 text-center text-muted-foreground">
+            <ShieldQuestion className="h-8 w-8" />
+            <p>No {emptyLabel} gate passes.</p>
+          </div>
+        ) : (
+          passes.map((pass) => (
+            <PassCard
+              key={pass.id}
+              pass={pass}
+              canApprove={canApprove}
+              isSaving={isSaving}
+              onReview={openReview}
+              onOpenDetail={() => navigate(`/maintenance/returnable/${pass.id}`)}
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden sm:block">
         <CardHeader className="border-b">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 text-xl">
@@ -157,7 +215,7 @@ export default function ReturnableApprovalsPage() {
           ) : passes.length === 0 ? (
             <div className="flex flex-col items-center gap-2 p-10 text-center text-muted-foreground">
               <ShieldQuestion className="h-8 w-8" />
-              <p>No {TABS.find((t) => t.value === tab)?.label.toLowerCase()} gate passes.</p>
+              <p>No {emptyLabel} gate passes.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -266,13 +324,13 @@ export default function ReturnableApprovalsPage() {
       </Card>
 
       <Dialog open={Boolean(reviewTarget)} onOpenChange={(open) => (!open ? closeReview() : null)}>
-        <DialogContent>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-left text-base sm:text-lg">
               {reviewMode === 'approve' ? 'Approve Gate Pass' : 'Send Back to Department'}
               {reviewTarget ? ` — ${reviewTarget.pass_no}` : ''}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-left">
               {reviewMode === 'approve'
                 ? 'The pass moves to the gate, which will record the vehicle and let the material out.'
                 : 'The pass returns to the department as a draft. Explain what needs to change.'}
@@ -297,13 +355,20 @@ export default function ReturnableApprovalsPage() {
             />
             {reviewError ? <p className="text-sm text-destructive">{reviewError}</p> : null}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeReview} disabled={isSaving}>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={closeReview}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button
               type="button"
               variant={reviewMode === 'reject' ? 'destructive' : 'default'}
+              className="w-full sm:w-auto"
               onClick={() => void submitReview()}
               disabled={isSaving}
             >
@@ -313,6 +378,116 @@ export default function ReturnableApprovalsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+interface PassCardProps {
+  pass: ReturnableGatePassListItem;
+  canApprove: boolean;
+  isSaving: boolean;
+  onReview: (pass: ReturnableGatePassListItem, mode: ReviewMode) => void;
+  onOpenDetail: () => void;
+}
+
+/**
+ * Phone layout for one gate pass. The item list is the only unbounded field, so
+ * it collapses behind a "+N more" toggle — that keeps Approve/Reject within
+ * thumb reach no matter how many lines the pass carries.
+ */
+function PassCard({ pass, canApprove, isSaving, onReview, onOpenDetail }: PassCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  // The list endpoint sends the item names comma-joined, not as an array.
+  const items = pass.item_names ? pass.item_names.split(',').map((name) => name.trim()) : [];
+  const hidden = Math.max(0, items.length - MOBILE_ITEM_PREVIEW);
+  const visibleItems = expanded ? items : items.slice(0, MOBILE_ITEM_PREVIEW);
+  const isPending = pass.status === 'PENDING_APPROVAL';
+
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <button
+          type="button"
+          className="flex min-w-0 items-center gap-1 text-left"
+          onClick={onOpenDetail}
+        >
+          <span className="truncate font-semibold">{pass.pass_no}</span>
+          <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+        </button>
+        <ReturnableStatusBadge
+          status={pass.status}
+          isOverdue={pass.is_overdue}
+          daysOverdue={pass.days_overdue}
+        />
+      </div>
+
+      <div className="mt-1.5">
+        <ReturnableTypeBadge isReturnable={pass.is_returnable} />
+      </div>
+
+      <div className="mt-2 space-y-0.5 text-sm">
+        <div className="break-words font-medium">{pass.purpose_display || '-'}</div>
+        <div className="break-words text-xs text-muted-foreground">
+          To {pass.destination || '-'} · {pass.department_name || '-'}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {pass.created_by_name || '-'} · Back by {formatDate(pass.expected_return_date)}
+        </div>
+      </div>
+
+      <div className="mt-2 rounded-md bg-muted/50 p-2 text-sm">
+        <div className="space-y-1">
+          {visibleItems.map((name, index) => (
+            <div key={`${name}-${index}`} className="break-words">
+              {name}
+            </div>
+          ))}
+          {items.length === 0 ? <span className="text-muted-foreground">No items</span> : null}
+        </div>
+        {hidden > 0 ? (
+          <button
+            type="button"
+            className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary"
+            onClick={() => setExpanded((prev) => !prev)}
+          >
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')} />
+            {expanded ? 'Show less' : `+${hidden} more item${hidden === 1 ? '' : 's'}`}
+          </button>
+        ) : null}
+      </div>
+
+      {pass.material_indent_no ? (
+        <p className="mt-2 text-xs text-muted-foreground">Indent {pass.material_indent_no}</p>
+      ) : null}
+
+      {isPending && canApprove ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            className="h-11"
+            disabled={isSaving}
+            onClick={() => onReview(pass, 'approve')}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Approve
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 border-red-200 text-red-700 hover:bg-red-50"
+            disabled={isSaving}
+            onClick={() => onReview(pass, 'reject')}
+          >
+            <XCircle className="h-4 w-4" />
+            Reject
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {isPending ? 'Awaiting approver' : 'With gate'}
+        </p>
+      )}
     </div>
   );
 }
