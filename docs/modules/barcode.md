@@ -72,6 +72,7 @@ Dedicated pages under `/barcode/move`, `/transfer`, `/split`, `/box-transfer`, `
 
 ### 5. Intercompany Transfer & Traceability — `pages/IntercompanyTransferPage.tsx`, `IntercompanyTransferDetailPage.tsx`, `BarcodeTraceabilityPage.tsx`
 - Pick source + destination company and BOX/PALLET mode, scan barcodes (`useScanIntercompanyBarcode` validates each against the source), then confirm (`useCreateIntercompanyTransfer`). Transfers can be reversed (`useReverseIntercompanyTransfer`).
+- The Confirm button opens a dialog showing which warehouse the stock will land in and a **destination warehouse** picker (`useIntercompanyWarehouses` — the destination company's active SAP warehouses). The pick is required; it pre-selects the stock's current warehouse code when it exists in the destination. The backend relocates the stock into the chosen warehouse in the same transaction, so no separate godown transfer is needed afterwards.
 - **Traceability** searches a barcode across companies (`useBarcodeTrace`) — the one intentionally **global** view, showing manufacturing company, current owner, dispatch status, and full audit history.
 
 ---

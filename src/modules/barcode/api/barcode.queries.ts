@@ -101,6 +101,8 @@ export const BARCODE_QUERY_KEYS = {
     [...BARCODE_QUERY_KEYS.all, 'intercompany-transfers', filters] as const,
   intercompanyTransfer: (id: number) =>
     [...BARCODE_QUERY_KEYS.all, 'intercompany-transfer', id] as const,
+  intercompanyWarehouses: (companyCode: string) =>
+    [...BARCODE_QUERY_KEYS.all, 'intercompany-warehouses', companyCode] as const,
   barcodeTrace: (search: string) => [...BARCODE_QUERY_KEYS.all, 'barcode-trace', search] as const,
   verifyRequests: (filters?: PalletVerifyRequestFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'verify-requests', filters] as const,
@@ -434,6 +436,15 @@ export function useIntercompanyTransfer(transferId: number | null) {
     queryKey: BARCODE_QUERY_KEYS.intercompanyTransfer(transferId!),
     queryFn: () => barcodeApi.getIntercompanyTransfer(transferId!),
     enabled: transferId !== null,
+  });
+}
+
+export function useIntercompanyWarehouses(companyCode: string, enabled = true) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.intercompanyWarehouses(companyCode),
+    queryFn: () => barcodeApi.getIntercompanyWarehouses(companyCode),
+    enabled: Boolean(companyCode) && enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

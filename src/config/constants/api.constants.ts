@@ -952,6 +952,7 @@ export const API_ENDPOINTS = {
     INTERCOMPANY_TRANSFER_REVERSE: (transferId: number) =>
       `/barcode/intercompany/transfers/${transferId}/reverse/`,
     INTERCOMPANY_SCAN: '/barcode/intercompany/scan/',
+    INTERCOMPANY_WAREHOUSES: '/barcode/intercompany/warehouses/',
     INTERCOMPANY_TRACE: '/barcode/intercompany/trace/',
     // Dispatch scanning
     DISPATCH_BILL_LOOKUP: '/barcode/dispatch/bills/lookup/',

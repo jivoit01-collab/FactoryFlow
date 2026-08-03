@@ -36,6 +36,7 @@ import type {
   IntercompanyScanPayload,
   IntercompanyTransfer,
   IntercompanyTransferPayload,
+  IntercompanyWarehouse,
   LabelData,
   LabelPrintLog,
   ListResponse,
@@ -310,6 +311,13 @@ export const barcodeApi = {
     const res = await apiClient.get<IntercompanyTransfer>(
       EP.INTERCOMPANY_TRANSFER_DETAIL(transferId),
     );
+    return res.data;
+  },
+
+  async getIntercompanyWarehouses(companyCode: string): Promise<IntercompanyWarehouse[]> {
+    const res = await apiClient.get<IntercompanyWarehouse[]>(EP.INTERCOMPANY_WAREHOUSES, {
+      params: { company_code: companyCode },
+    });
     return res.data;
   },
 

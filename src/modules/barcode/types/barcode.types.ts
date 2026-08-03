@@ -500,6 +500,7 @@ export interface IntercompanyTransferLine {
   batch_number: string;
   qty: string;
   uom: string;
+  from_warehouse: string;
   from_company_code: string;
   from_company_name: string;
   to_company_code: string;
@@ -519,6 +520,7 @@ export interface IntercompanyTransfer {
   total_barcodes: number;
   total_qty: string;
   uom: string;
+  destination_warehouse: string;
   sap_enabled: boolean;
   sap_doc_entry: number | null;
   sap_doc_num: string;
@@ -569,6 +571,12 @@ export interface IntercompanyTransferPayload {
   notes?: string;
   device_id?: string;
   sap_enabled?: boolean;
+  destination_warehouse?: string;
+}
+
+export interface IntercompanyWarehouse {
+  warehouse_code: string;
+  warehouse_name: string;
 }
 
 export interface IntercompanyReversePayload {
