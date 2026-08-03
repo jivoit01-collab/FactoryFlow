@@ -1,5 +1,4 @@
 import { Factory } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import {
   BLOWING_MODULE_PREFIX,
@@ -9,6 +8,7 @@ import {
   PRODUCTION_MODULE_PREFIX,
   PRODUCTION_PERMISSIONS,
 } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 // Lazy load Production Dashboard
