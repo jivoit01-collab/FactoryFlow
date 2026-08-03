@@ -53,6 +53,7 @@ import {
   formatDocumentType,
   formatTimestamp,
   formatValue,
+  isMultiDockingTruck,
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 
@@ -83,10 +84,10 @@ export default function SalesDispatchDetailPage() {
   const [rejectError, setRejectError] = useState('');
 
   const { data: entry, isLoading, error, refetch } = useSalesDispatch(id);
-  // One physical truck = one page: a multi-company truck pulls in every company's
-  // docking so this page shows all the bills (and scans + photos), not just the
-  // one docking that was opened.
-  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1 && Boolean(entry?.arrival);
+  // One physical truck = one page: a multi-docking truck (multi-company or a
+  // same-company split load) pulls in every docking so this page shows all the
+  // bills (and scans + photos), not just the one docking that was opened.
+  const isMultiCompanyArrival = isMultiDockingTruck(entry);
   const arrivalDockings = useArrivalDockings(entry?.arrival, { enabled: isMultiCompanyArrival });
   const cancelSalesDispatch = useCancelSalesDispatch();
   const rejectSalesDispatch = useRejectSalesDispatch();

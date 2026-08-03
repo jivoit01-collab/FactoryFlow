@@ -45,7 +45,7 @@ import {
 import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
 import { ReviewModeBanner } from './ReviewModeBanner';
-import { DOCKING_TOTAL_STEPS, formatValue } from './salesDispatchFlow.helpers';
+import { DOCKING_TOTAL_STEPS, formatValue, isMultiDockingTruck } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 
 interface UploadPanelConfig {
@@ -193,10 +193,10 @@ export default function SalesDispatchAttachmentsPage() {
   const updateAttachment = useUpdateSalesDispatchAttachment();
   const uploadArrivalTruckPhoto = useUploadArrivalTruckPhoto();
   const updateSalesDispatch = useUpdateSalesDispatch();
-  // A multi-company truck is one physical load: its photo attaches to (and locks)
-  // every company's docking in one upload via the arrival endpoint, instead of a
-  // separate photo per company.
-  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1 && Boolean(entry?.arrival);
+  // A multi-docking truck (multi-company or a same-company split load) is one
+  // physical load: its photo attaches to (and locks) every docking in one upload
+  // via the arrival endpoint, instead of a separate photo per docking.
+  const isMultiCompanyArrival = isMultiDockingTruck(entry);
   const arrivalDockings = useArrivalDockings(entry?.arrival, { enabled: isMultiCompanyArrival });
   // The dockings a truck-level document (bilty / photo) applies to: every company's
   // docking on a multi-company truck, else just this one.

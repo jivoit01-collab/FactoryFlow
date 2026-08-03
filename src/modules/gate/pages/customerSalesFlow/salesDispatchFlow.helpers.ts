@@ -63,6 +63,18 @@ export function buildEntryDocumentLabel(entry: SalesDispatchGateOut) {
     .join(' - ');
 }
 
+/**
+ * True when this docking's physical truck carries more than one docking — a
+ * multi-company truck OR a same-company split load (two bills docked separately).
+ * The truck is one physical load, so the scan/weighment/gatepass/attachment pages
+ * must fold every docking on the arrival in. Falls back to the company count for
+ * backends not yet serving `arrival_docking_count`.
+ */
+export function isMultiDockingTruck(entry?: SalesDispatchGateOut | null) {
+  const dockingCount = entry?.arrival_docking_count ?? entry?.arrival_company_count ?? 0;
+  return dockingCount > 1 && Boolean(entry?.arrival);
+}
+
 export function formatDateTime(date?: string | null, time?: string | null) {
   const value = [date, time].filter(Boolean).join(' ');
   return value || '-';

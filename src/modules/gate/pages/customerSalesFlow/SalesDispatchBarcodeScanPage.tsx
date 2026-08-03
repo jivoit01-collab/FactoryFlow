@@ -80,7 +80,12 @@ import { cn, getErrorMessage } from '@/shared/utils';
 
 import { ReviewModeBanner } from './ReviewModeBanner';
 import { getExpectedItemsBoxes, parsePositiveNumber } from './salesDispatchBoxCounts';
-import { DOCKING_TOTAL_STEPS, formatTimestamp, formatValue } from './salesDispatchFlow.helpers';
+import {
+  DOCKING_TOTAL_STEPS,
+  formatTimestamp,
+  formatValue,
+  isMultiDockingTruck,
+} from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 import {
   type BillScanSummary,
@@ -163,13 +168,14 @@ export default function SalesDispatchBarcodeScanPage() {
   const { data: dockingScans = [], isLoading: isScansLoading } = useSalesDispatchBoxScans(
     entry?.id,
   );
-  // A multi-company truck is one physical load: pull in every company's docking so
-  // this one page shows and scans ALL the bills, each scan routed to its own
-  // docking. When not a multi-company truck, isArrivalMode is false and everything
-  // below falls back to the single-docking path unchanged.
-  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1 && Boolean(entry?.arrival);
-  const arrivalDockings = useArrivalDockings(entry?.arrival, { enabled: isMultiCompanyArrival });
-  const isArrivalMode = isMultiCompanyArrival && arrivalDockings.dockings.length > 0;
+  // A multi-docking truck (multi-company, OR two same-company bills docked
+  // separately) is one physical load: pull in every docking so this one page shows
+  // and scans ALL the bills, each scan routed to its own docking. When the truck
+  // has a single docking, isArrivalMode is false and everything below falls back
+  // to the single-docking path unchanged.
+  const isMultiDockingArrival = isMultiDockingTruck(entry);
+  const arrivalDockings = useArrivalDockings(entry?.arrival, { enabled: isMultiDockingArrival });
+  const isArrivalMode = isMultiDockingArrival && arrivalDockings.dockings.length > 0;
   // The load's scans: every company's on a multi-company truck, else this docking's.
   // Named `scans` so all the progress/dedup/display below is truck-wide for free.
   const scans = useMemo(
@@ -607,7 +613,7 @@ export default function SalesDispatchBarcodeScanPage() {
     }
   };
 
-  if (isEntryLoading || isScansLoading || (isMultiCompanyArrival && arrivalDockings.isLoading)) {
+  if (isEntryLoading || isScansLoading || (isMultiDockingArrival && arrivalDockings.isLoading)) {
     return <StepLoadingSpinner />;
   }
 
