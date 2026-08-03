@@ -4,6 +4,7 @@ import {
   CalendarClock,
   DoorOpen,
   Factory,
+  Navigation,
   Package,
   PackageX,
   Target,
@@ -12,7 +13,7 @@ import {
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { DASHBOARDS_PERMISSIONS, DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
@@ -83,6 +84,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/dispatch-pipeline',
     color: 'text-teal-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE],
+  },
+  {
+    title: 'Dispatch Tracking',
+    description: 'Post-dispatch truck status — in transit, delivered, late/overdue & on-time KPIs',
+    icon: <Navigation className="h-5 w-5" />,
+    route: '/dashboards/dispatch-tracking',
+    color: 'text-indigo-600',
+    permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
   },
   {
     title: 'Gate',

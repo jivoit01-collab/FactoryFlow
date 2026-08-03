@@ -113,8 +113,15 @@ export default function DispatchTrackingPage() {
   const canUpdate = hasPermission(DISPATCH_PERMISSIONS.DISPATCH_TRACKING_UPDATE);
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<TruckDispatchStatus | ''>('');
+  // Seed from the URL so the Dispatch Tracking dashboard can deep-link here
+  // pre-filtered (e.g. ?status=IN_TRANSIT or ?search=<vehicle>).
+  const [search, setSearch] = useState(
+    () => new URLSearchParams(window.location.search).get('search') ?? '',
+  );
+  const [statusFilter, setStatusFilter] = useState<TruckDispatchStatus | ''>(() => {
+    const s = new URLSearchParams(window.location.search).get('status');
+    return s && STATUS_FILTER_OPTIONS.some((o) => o.value === s) ? (s as TruckDispatchStatus) : '';
+  });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [selected, setSelected] = useState<DispatchTrackingTruck | null>(null);
