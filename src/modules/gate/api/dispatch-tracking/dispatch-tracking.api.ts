@@ -85,7 +85,55 @@ export interface DispatchTrackingPage {
   previous: boolean;
 }
 
+/** One late/overdue truck on the dashboard's alert list. */
+export interface LateDispatchTruck {
+  arrival: number;
+  arrival_no: string;
+  vehicle_number: string;
+  expected_reach_date: string | null;
+  days_overdue: number;
+}
+
+/** One stage of the Dispatched → In transit → Reached → Delivered funnel. */
+export interface DispatchFunnelStage {
+  stage: string;
+  count: number;
+}
+
+/** Aggregate insight over dispatched trucks for the tracking dashboard. */
+export interface DispatchTrackingSummary {
+  range: { from: string; to: string };
+  total_dispatched: number;
+  /** Count of trucks whose current status is each key (includes DISPATCHED). */
+  status_counts: Record<TruckDispatchStatus | 'DISPATCHED', number>;
+  active: number;
+  completed: number;
+  /** Trucks still DISPATCHED with no post-dispatch update logged yet. */
+  no_update_yet: number;
+  funnel: DispatchFunnelStage[];
+  late: { count: number; trucks: LateDispatchTruck[] };
+  delivered_today: number;
+  /** Average days from dispatch to delivered, over completed trucks (null if none). */
+  avg_transit_days: number | null;
+  /** Share of delivered-with-ETA trucks that arrived on/before the ETA (null if none). */
+  on_time_rate: number | null;
+}
+
+/** Date-range filter for the dashboard summary (defaults to the current month). */
+export interface DispatchSummaryFilters {
+  from_date?: string;
+  to_date?: string;
+}
+
 export const dispatchTrackingApi = {
+  async summary(filters: DispatchSummaryFilters = {}): Promise<DispatchTrackingSummary> {
+    const response = await apiClient.get<DispatchTrackingSummary>(
+      API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING_SUMMARY,
+      { params: filters },
+    );
+    return response.data;
+  },
+
   async list(filters: DispatchTrackingFilters = {}): Promise<DispatchTrackingPage> {
     const response = await apiClient.get<DispatchTrackingPage>(
       API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING,

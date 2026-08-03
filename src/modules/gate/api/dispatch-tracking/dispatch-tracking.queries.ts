@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   type CreateTruckDispatchUpdateRequest,
+  type DispatchSummaryFilters,
   type DispatchTrackingFilters,
   dispatchTrackingApi,
 } from './dispatch-tracking.api';
@@ -13,7 +14,18 @@ export const DISPATCH_TRACKING_QUERY_KEYS = {
     [...DISPATCH_TRACKING_QUERY_KEYS.lists(), filters ?? {}] as const,
   updates: (arrivalId?: number | null) =>
     [...DISPATCH_TRACKING_QUERY_KEYS.all, 'updates', arrivalId] as const,
+  summary: (filters?: DispatchSummaryFilters) =>
+    [...DISPATCH_TRACKING_QUERY_KEYS.all, 'summary', filters ?? {}] as const,
 };
+
+/** Aggregate dispatch-tracking insight (status counts, funnel, late, KPIs). */
+export function useDispatchTrackingSummary(filters?: DispatchSummaryFilters) {
+  return useQuery({
+    queryKey: DISPATCH_TRACKING_QUERY_KEYS.summary(filters),
+    queryFn: () => dispatchTrackingApi.summary(filters),
+    staleTime: 30 * 1000,
+  });
+}
 
 /** Dispatched trucks (paginated) with their current post-dispatch status. */
 export function useDispatchTrackingTrucks(filters?: DispatchTrackingFilters) {

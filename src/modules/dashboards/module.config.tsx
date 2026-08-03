@@ -2,7 +2,7 @@ import { BarChart3 } from 'lucide-react';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate } from 'react-router-dom';
 
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { DASHBOARDS_PERMISSIONS, DISPATCH_PERMISSIONS } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
@@ -32,6 +32,9 @@ const DispatchPipelineDashboardPage = lazy(
 );
 const DispatchFulfilmentDashboardPage = lazy(
   () => import('./dispatch-fulfilment/pages/DispatchFulfilmentDashboardPage'),
+);
+const DispatchTrackingDashboardPage = lazy(
+  () => import('./dispatch-tracking/pages/DispatchTrackingDashboardPage'),
 );
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
@@ -144,6 +147,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS],
       breadcrumb: { label: 'Dispatch Fulfilment' },
     },
+    {
+      path: '/dashboards/dispatch-tracking',
+      element: <DispatchTrackingDashboardPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
+      breadcrumb: { label: 'Dispatch Tracking' },
+    },
   ],
   navigation: [
     {
@@ -162,10 +172,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+        DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW,
         // Gate dashboard lives here too — let gate staff reach the Dashboards menu.
         ...GATE_DASHBOARD_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
+      // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
+      // (appended after the shared list so it doesn't disturb existing entries)
       children: [
         {
           path: '/dashboards/overview',
@@ -229,6 +242,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/dispatch-fulfilment',
           title: 'Dispatch Fulfilment',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS],
+        },
+        {
+          path: '/dashboards/dispatch-tracking',
+          title: 'Dispatch Tracking',
+          permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
         },
       ],
     },
