@@ -462,6 +462,8 @@ export const API_ENDPOINTS = {
       `/goods-return/${id}/attachments/${attachmentId}/`,
     SUBMIT: (id: number) => `/goods-return/${id}/submit/`,
     RECEIVE: (id: number) => `/goods-return/${id}/receive/`,
+    APPROVE: (id: number) => `/goods-return/${id}/approve/`,
+    REJECT: (id: number) => `/goods-return/${id}/reject/`,
     WAREHOUSES: '/goods-return/warehouses/',
     GATE_EXPECTED: '/goods-return/gate/expected/',
     GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,

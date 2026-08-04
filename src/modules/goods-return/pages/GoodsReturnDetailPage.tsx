@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { Badge, Button, Card, CardContent, Label } from '@/shared/components/ui';
-import { cn } from '@/shared/utils';
+import { cn, resolveFileUrl } from '@/shared/utils';
 
 import {
   type GoodsReturnDetail,
@@ -12,7 +12,15 @@ import {
   useReceiveGoodsReturn,
   useReturnWarehouses,
 } from '../api';
-import { BASIS_LABELS, formatDate, formatDateTime, STATUS_BADGE_CLASS, STATUS_LABELS } from '../utils';
+import {
+  APPROVAL_BADGE_CLASS,
+  APPROVAL_LABELS,
+  BASIS_LABELS,
+  formatDate,
+  formatDateTime,
+  STATUS_BADGE_CLASS,
+  STATUS_LABELS,
+} from '../utils';
 
 export default function GoodsReturnDetailPage() {
   const navigate = useNavigate();
@@ -37,6 +45,11 @@ export default function GoodsReturnDetailPage() {
             <Badge className={cn('border-0', STATUS_BADGE_CLASS[detail.status])}>
               {STATUS_LABELS[detail.status]}
             </Badge>
+            {detail.requires_approval && (
+              <Badge className={cn('border-0', APPROVAL_BADGE_CLASS[detail.approval_status])}>
+                {APPROVAL_LABELS[detail.approval_status]}
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground">{BASIS_LABELS[detail.basis]}</p>
         </div>
@@ -65,6 +78,9 @@ export default function GoodsReturnDetailPage() {
           {detail.sap_gr_doc_num && <Field label="SAP Return Doc" value={detail.sap_gr_doc_num} />}
           {detail.sap_return_warehouse && (
             <Field label="Return Warehouse" value={detail.sap_return_warehouse} />
+          )}
+          {detail.approval_status === 'REJECTED' && detail.approval_remarks && (
+            <Field label="Rejection Reason" value={detail.approval_remarks} />
           )}
           {detail.remarks && <Field label="Remarks" value={detail.remarks} />}
         </CardContent>
@@ -121,7 +137,7 @@ export default function GoodsReturnDetailPage() {
               {detail.attachments.map((attachment) => (
                 <a
                   key={attachment.id}
-                  href={attachment.file_url}
+                  href={resolveFileUrl(attachment.file_url)}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center justify-between rounded-md border p-2 text-sm hover:bg-muted/40"
@@ -142,9 +158,34 @@ export default function GoodsReturnDetailPage() {
 
 function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
   const isInvoiceBasis = detail.basis === 'INVOICE';
+  const awaitingApproval =
+    detail.requires_approval && detail.approval_status === 'PENDING';
+  const approvalRejected =
+    detail.requires_approval && detail.approval_status === 'REJECTED';
+  const blocked = awaitingApproval || approvalRejected;
+
   const receive = useReceiveGoodsReturn(id);
-  const { data: warehouses = [], isLoading: warehousesLoading } = useReturnWarehouses(isInvoiceBasis);
+  const { data: warehouses = [], isLoading: warehousesLoading } = useReturnWarehouses(
+    isInvoiceBasis && !blocked,
+  );
   const [warehouseCode, setWarehouseCode] = useState('');
+
+  if (blocked) {
+    return (
+      <Card className={cn('border', awaitingApproval ? 'border-amber-300' : 'border-rose-300')}>
+        <CardContent className="space-y-1 p-6">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <PackageCheck className="h-4 w-4" /> Confirm Receipt
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {awaitingApproval
+              ? 'This return is flagged “coming on approval” and is awaiting an admin decision. It can be received once approved.'
+              : `Approval was rejected${detail.approval_remarks ? ` — ${detail.approval_remarks}` : ''}. This return cannot be received.`}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   async function handleReceive() {
     if (isInvoiceBasis && !warehouseCode) {

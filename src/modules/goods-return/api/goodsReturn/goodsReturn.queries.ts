@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type CreateGoodsReturnPayload,
   goodsReturnApi,
+  type GoodsReturnApprovalStatus,
   type GoodsReturnAttachmentType,
   type SaveItemsPayload,
   type SetVehiclePayload,
@@ -20,11 +21,46 @@ export function useGoodsReturns(params?: {
   status?: string;
   basis?: string;
   search?: string;
+  approval?: GoodsReturnApprovalStatus;
   all_companies?: boolean;
 }) {
   return useQuery({
     queryKey: goodsReturnKeys.list(params),
     queryFn: () => goodsReturnApi.list(params),
+  });
+}
+
+/** Pending-approval GRs across the user's companies (admin queue + badge). */
+export function usePendingApprovalGoodsReturns(enabled = true) {
+  const params = { approval: 'PENDING' as const, all_companies: true };
+  return useQuery({
+    queryKey: goodsReturnKeys.list(params),
+    queryFn: () => goodsReturnApi.list(params),
+    enabled,
+  });
+}
+
+export function useApproveGoodsReturn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: number; remarks?: string }) =>
+      goodsReturnApi.approve(input.id, input.remarks),
+    onSuccess: (data) => {
+      qc.setQueryData(goodsReturnKeys.detail(data.id), data);
+      qc.invalidateQueries({ queryKey: goodsReturnKeys.all });
+    },
+  });
+}
+
+export function useRejectGoodsReturn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: number; remarks?: string }) =>
+      goodsReturnApi.reject(input.id, input.remarks),
+    onSuccess: (data) => {
+      qc.setQueryData(goodsReturnKeys.detail(data.id), data);
+      qc.invalidateQueries({ queryKey: goodsReturnKeys.all });
+    },
   });
 }
 

@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 
 import { StepHeader } from '@/modules/gate/components';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
+import { resolveFileUrl } from '@/shared/utils';
 
 import {
   type GoodsReturnDetail,
@@ -245,7 +246,7 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
                   className="flex items-center justify-between rounded-md border p-2 text-sm"
                 >
                   <a
-                    href={attachment.file_url}
+                    href={resolveFileUrl(attachment.file_url)}
                     target="_blank"
                     rel="noreferrer"
                     className="truncate hover:underline"

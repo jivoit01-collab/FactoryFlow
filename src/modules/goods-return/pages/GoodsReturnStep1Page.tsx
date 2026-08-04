@@ -36,6 +36,7 @@ export default function GoodsReturnStep1Page() {
   const [customerName, setCustomerName] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [remarks, setRemarks] = useState('');
+  const [requiresApproval, setRequiresApproval] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isInvoiceBasis = basis === 'INVOICE';
@@ -116,6 +117,7 @@ export default function GoodsReturnStep1Page() {
         customer_code: isInvoiceBasis ? undefined : customerCode.trim(),
         customer_name: isInvoiceBasis ? undefined : customerName.trim(),
         remarks: remarks.trim(),
+        requires_approval: requiresApproval,
       });
 
       // Upload staged documents against the freshly-created draft.
@@ -299,16 +301,32 @@ export default function GoodsReturnStep1Page() {
         </CardContent>
       </Card>
 
-      {/* Remarks */}
+      {/* Remarks + approval */}
       <Card>
-        <CardContent className="space-y-2 p-6">
-          <Label>Remarks</Label>
-          <Textarea
-            value={remarks}
-            onChange={(event) => setRemarks(event.target.value)}
-            placeholder="Any notes about this return"
-            rows={2}
-          />
+        <CardContent className="space-y-4 p-6">
+          <div className="space-y-2">
+            <Label>Remarks</Label>
+            <Textarea
+              value={remarks}
+              onChange={(event) => setRemarks(event.target.value)}
+              placeholder="Any notes about this return"
+              rows={2}
+            />
+          </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3">
+            <input
+              type="checkbox"
+              checked={requiresApproval}
+              onChange={(event) => setRequiresApproval(event.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span className="text-sm">
+              <span className="font-medium">This return is coming on approval</span>
+              <span className="block text-xs text-muted-foreground">
+                An admin must approve it before the goods can be received.
+              </span>
+            </span>
+          </label>
         </CardContent>
       </Card>
 

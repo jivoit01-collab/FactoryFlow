@@ -486,10 +486,12 @@ export interface MachineChecklistEntry {
 
 export interface WasteLog {
   id: number;
-  production_run: number;
-  run_number?: number;
-  run_date?: string;
+  production_run: number | null;
+  run_number?: number | null;
+  run_date?: string | null;
   run_product?: string;
+  /** Run date for run-linked logs, creation date for standalone logs. */
+  log_date?: string | null;
   material_code: string;
   material_name: string;
   wastage_qty: string;
@@ -902,7 +904,8 @@ export interface CreateWasteItemRequest {
 }
 
 export interface CreateWasteLogRequest {
-  production_run_id: number;
+  /** Omit for a standalone wastage entry not tied to a production run. */
+  production_run_id?: number | null;
   material_code?: string;
   material_name?: string;
   wastage_qty?: string;

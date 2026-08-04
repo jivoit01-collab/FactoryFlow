@@ -1,4 +1,5 @@
 import type {
+  GoodsReturnApprovalStatus,
   GoodsReturnBasis,
   GoodsReturnItemCondition,
   GoodsReturnStatus,
@@ -24,6 +25,20 @@ export const STATUS_BADGE_CLASS: Record<GoodsReturnStatus, string> = {
   ARRIVED: 'bg-sky-100 text-sky-800',
   POSTED: 'bg-emerald-100 text-emerald-800',
   CANCELLED: 'bg-rose-100 text-rose-800',
+};
+
+export const APPROVAL_LABELS: Record<GoodsReturnApprovalStatus, string> = {
+  NOT_REQUIRED: 'Not required',
+  PENDING: 'Pending approval',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+};
+
+export const APPROVAL_BADGE_CLASS: Record<GoodsReturnApprovalStatus, string> = {
+  NOT_REQUIRED: 'bg-slate-100 text-slate-600',
+  PENDING: 'bg-amber-100 text-amber-800',
+  APPROVED: 'bg-emerald-100 text-emerald-800',
+  REJECTED: 'bg-rose-100 text-rose-800',
 };
 
 export const CONDITION_OPTIONS: { value: GoodsReturnItemCondition; label: string }[] = [

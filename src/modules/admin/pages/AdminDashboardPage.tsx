@@ -1,9 +1,10 @@
-import { ClipboardCheck, ClipboardList, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
+import { ClipboardCheck, ClipboardList, PackageCheck, ShieldCheck, Truck, Undo2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
   ADMIN_PERMISSIONS,
+  GOODS_RETURN_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
   WAREHOUSE_PERMISSIONS,
@@ -71,6 +72,15 @@ const adminModuleCards: AdminModuleCard[] = [
     icon: <ShieldCheck className="h-5 w-5" />,
     color: 'text-teal-700',
     permissions: [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL],
+  },
+  {
+    title: 'Goods Return Approvals',
+    description:
+      'Approve customer returns flagged "coming on approval" so the goods can be received.',
+    route: '/admin/goods-return-approvals',
+    icon: <Undo2 className="h-5 w-5" />,
+    color: 'text-rose-700',
+    permissions: [GOODS_RETURN_PERMISSIONS.APPROVE],
   },
 ];
 

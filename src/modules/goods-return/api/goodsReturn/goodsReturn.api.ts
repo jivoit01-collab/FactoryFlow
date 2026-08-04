@@ -9,6 +9,7 @@ export type GoodsReturnStatus =
   | 'POSTED'
   | 'CANCELLED';
 export type GoodsReturnItemCondition = 'GOOD' | 'DAMAGED' | 'EXPIRED' | 'OTHER';
+export type GoodsReturnApprovalStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 export type GoodsReturnAttachmentType = 'INVOICE_COPY' | 'DEBIT_NOTE' | 'LETTER_PAD' | 'OTHER';
 
 export interface GoodsReturnListItem {
@@ -24,6 +25,8 @@ export interface GoodsReturnListItem {
   company_name: string;
   expected_arrival_at: string | null;
   gated_in_at: string | null;
+  requires_approval: boolean;
+  approval_status: GoodsReturnApprovalStatus;
   line_count: number;
   created_at: string;
 }
@@ -91,6 +94,10 @@ export interface GoodsReturnDetail {
   expected_arrival_at: string | null;
   gated_in_at: string | null;
   received_at: string | null;
+  requires_approval: boolean;
+  approval_status: GoodsReturnApprovalStatus;
+  approval_remarks: string;
+  approved_at: string | null;
   sap_gr_doc_num: string;
   sap_return_warehouse: string;
   remarks: string;
@@ -113,6 +120,7 @@ export interface CreateGoodsReturnPayload {
   customer_code?: string;
   customer_name?: string;
   remarks?: string;
+  requires_approval?: boolean;
 }
 
 export interface SaveItemsPayload {
@@ -160,6 +168,7 @@ export const goodsReturnApi = {
     status?: string;
     basis?: string;
     search?: string;
+    approval?: GoodsReturnApprovalStatus;
     all_companies?: boolean;
   }): Promise<GoodsReturnListItem[]> {
     const response = await apiClient.get<GoodsReturnListItem[]>(API_ENDPOINTS.GOODS_RETURN.LIST, {
@@ -288,6 +297,21 @@ export const goodsReturnApi = {
       API_ENDPOINTS.GOODS_RETURN.GATE_MARK_IN(id),
       { remarks: remarks ?? '' },
     );
+    return response.data;
+  },
+
+  // Admin approval
+  async approve(id: number, remarks?: string): Promise<GoodsReturnDetail> {
+    const response = await apiClient.post<GoodsReturnDetail>(API_ENDPOINTS.GOODS_RETURN.APPROVE(id), {
+      remarks: remarks ?? '',
+    });
+    return response.data;
+  },
+
+  async reject(id: number, remarks?: string): Promise<GoodsReturnDetail> {
+    const response = await apiClient.post<GoodsReturnDetail>(API_ENDPOINTS.GOODS_RETURN.REJECT(id), {
+      remarks: remarks ?? '',
+    });
     return response.data;
   },
 };

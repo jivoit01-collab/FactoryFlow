@@ -18,6 +18,8 @@ export const GOODS_RETURN_PERMISSIONS = {
   SUBMIT: 'goods_return.can_submit_goods_return',
   /** Mark a goods-return vehicle in at the gate */
   GATE_IN: 'goods_return.can_gate_in_goods_return',
+  /** Approve / reject a goods return flagged "coming on approval" (admin) */
+  APPROVE: 'goods_return.can_approve_goods_return',
 } as const;
 
 export const GOODS_RETURN_MODULE_PREFIX = 'goods_return';
