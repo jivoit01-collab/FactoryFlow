@@ -921,7 +921,10 @@ export interface GateQueueSheet {
   batch_id: number;
   filename: string;
   created_at: string | null;
+  /** Distinct orders on the sheet. */
   orders: number;
+  /** Gate rows — one per confirmed dispatch. A re-manifested order has 2. */
+  dispatches: number;
   parcels: number;
   gate_pending: number;
   gate_approved: number;
@@ -931,6 +934,7 @@ export interface GateQueueSheet {
 export interface GateQueue {
   sheets: GateQueueSheet[];
   total_sheets: number;
+  total_orders: number;
   total_parcels: number;
   total_pending: number;
 }
@@ -955,6 +959,8 @@ export interface GateSheetDetail {
   batch_id: number;
   filename: string;
   orders: GateOrder[];
+  /** Distinct orders — may be fewer than ``orders.length`` (one row per parcel). */
   total_orders: number;
+  total_rows: number;
   total_parcels: number;
 }
