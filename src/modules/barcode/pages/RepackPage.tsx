@@ -19,6 +19,7 @@ export default function RepackPage() {
   const [qty, setQty] = useState('');
   const [warehouse, setWarehouse] = useState('');
   const [batchNumber, setBatchNumber] = useState('');
+  const [sourceIds, setSourceIds] = useState<number[]>([]);
 
   const { data: pools = [], isLoading: loadingPools } = useLooseStockSummary();
   const { data: whData } = useWMSWarehouses();
@@ -41,33 +42,43 @@ export default function RepackPage() {
   // Suggest the batch when the pool has exactly one; operator can override
   const selectItem = (pool: LooseStockSummary | null) => {
     setSelectedItem(pool);
+    setSourceIds([]);
     setBatchNumber(pool && pool.batches.length === 1 ? pool.batches[0] : '');
   };
 
-  const available = selectedItem ? Number(selectedItem.total_qty) : 0;
+  const toggleSource = (id: number) => {
+    setSourceIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  };
+
+  // With boxes ticked, only those records are drawn from (still oldest first)
+  const useSelection = sourceIds.length > 0;
+  const eligibleRecords = useMemo(
+    () => (useSelection ? fifoRecords.filter((ls) => sourceIds.includes(ls.id)) : fifoRecords),
+    [useSelection, fifoRecords, sourceIds],
+  );
+  const available = useSelection
+    ? eligibleRecords.reduce((sum, ls) => sum + Number(ls.qty), 0)
+    : selectedItem
+      ? Number(selectedItem.total_qty)
+      : 0;
+
   const qtyNum = Number(qty);
   const qtyValid = qty !== '' && Number.isFinite(qtyNum) && qtyNum > 0 && qtyNum <= available;
   const isValid = !!selectedItem && qtyValid && !!warehouse;
 
-  // FIFO preview: how the entered qty will be drawn from the records
-  const preview = useMemo(() => {
-    if (!qtyValid) return [];
+  // FIFO walk over the eligible records: which record contributes how much
+  const useById = useMemo(() => {
+    const map = new Map<number, number>();
+    if (!qtyValid) return map;
     let remaining = qtyNum;
-    const rows: { id: number; barcode: string; batch: string; qty: number; use: number }[] = [];
-    for (const ls of fifoRecords) {
+    for (const ls of eligibleRecords) {
       if (remaining <= 0) break;
       const use = Math.min(Number(ls.qty), remaining);
-      rows.push({
-        id: ls.id,
-        barcode: ls.source_box_barcode || '—',
-        batch: ls.batch_number,
-        qty: Number(ls.qty),
-        use,
-      });
+      map.set(ls.id, use);
       remaining -= use;
     }
-    return rows;
-  }, [qtyValid, qtyNum, fifoRecords]);
+    return map;
+  }, [qtyValid, qtyNum, eligibleRecords]);
 
   const handleRepack = async () => {
     if (!isValid || !selectedItem) return;
@@ -77,6 +88,7 @@ export default function RepackPage() {
         qty: qtyNum,
         warehouse,
         batch_number: batchNumber.trim(),
+        ...(useSelection ? { loose_ids: sourceIds } : {}),
       });
       toast.success(`Repacked into ${newBox.box_barcode}`);
       navigate(`/barcode/boxes/${newBox.id}`);
@@ -146,7 +158,8 @@ export default function RepackPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Qty to Repack * (available: {selectedItem.total_qty} {selectedItem.uom})
+                  Qty to Repack * ({useSelection ? 'selected boxes' : 'available'}: {available}{' '}
+                  {selectedItem.uom})
                 </label>
                 <input
                   type="number"
@@ -159,7 +172,8 @@ export default function RepackPage() {
                 />
                 {qty !== '' && !qtyValid && (
                   <p className="text-xs text-red-600 mt-1">
-                    Enter a quantity between 0 and {selectedItem.total_qty}
+                    Enter a quantity between 0 and {available}
+                    {useSelection ? ' (from the selected boxes)' : ''}
                   </p>
                 )}
               </div>
@@ -184,20 +198,34 @@ export default function RepackPage() {
         </CardContent>
       </Card>
 
-      {/* FIFO consumption preview */}
-      {selectedItem && preview.length > 0 && (
+      {/* Source records — tick boxes to draw from specific dismantles */}
+      {selectedItem && fifoRecords.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3">
-              Will consume (oldest first)
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                {preview.length} of {selectedItem.record_count} records
-              </span>
-            </h3>
-            <div className="overflow-x-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold">
+                Source records (oldest first)
+                {qtyValid && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    consuming {useById.size} of {useSelection ? eligibleRecords.length : fifoRecords.length}
+                  </span>
+                )}
+              </h3>
+              {useSelection && (
+                <Button size="sm" variant="ghost" onClick={() => setSourceIds([])}>
+                  Clear selection ({sourceIds.length})
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Tick boxes to repack from specific dismantled boxes only — leave all unticked for
+              automatic oldest-first consumption.
+            </p>
+            <div className="overflow-x-auto max-h-80 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
+                    <th className="p-2 w-8"></th>
                     <th className="text-left p-2 font-medium">Dismantled From</th>
                     <th className="text-left p-2 font-medium">Batch</th>
                     <th className="text-right p-2 font-medium">Available</th>
@@ -205,19 +233,33 @@ export default function RepackPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.map((row) => (
-                    <tr key={row.id} className="border-b last:border-0">
-                      <td className="p-2 font-mono text-xs">{row.barcode}</td>
-                      <td className="p-2 font-mono text-xs">{row.batch}</td>
-                      <td className="p-2 text-right">{row.qty}</td>
-                      <td className="p-2 text-right font-bold">
-                        {row.use}
-                        {row.use < row.qty && (
-                          <Badge className="ml-2 bg-amber-100 text-amber-800">partial</Badge>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {fifoRecords.map((ls) => {
+                    const ticked = sourceIds.includes(ls.id);
+                    const excluded = useSelection && !ticked;
+                    const use = useById.get(ls.id) ?? 0;
+                    return (
+                      <tr
+                        key={ls.id}
+                        className={`border-b last:border-0 cursor-pointer hover:bg-muted/30 ${
+                          excluded ? 'opacity-40' : ''
+                        } ${ticked ? 'bg-blue-50' : ''}`}
+                        onClick={() => toggleSource(ls.id)}
+                      >
+                        <td className="p-2">
+                          <input type="checkbox" checked={ticked} readOnly />
+                        </td>
+                        <td className="p-2 font-mono text-xs">{ls.source_box_barcode || '—'}</td>
+                        <td className="p-2 font-mono text-xs">{ls.batch_number}</td>
+                        <td className="p-2 text-right">{Number(ls.qty)}</td>
+                        <td className="p-2 text-right font-bold">
+                          {use > 0 ? use : '—'}
+                          {use > 0 && use < Number(ls.qty) && (
+                            <Badge className="ml-2 bg-amber-100 text-amber-800">partial</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

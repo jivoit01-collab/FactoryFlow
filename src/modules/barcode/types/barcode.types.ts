@@ -785,6 +785,8 @@ export interface RepackPayload {
   qty: number;
   warehouse: string;
   batch_number?: string;
+  /** Optional: restrict consumption to these loose records (FIFO among them). */
+  loose_ids?: number[];
 }
 
 export interface LooseStockFilters extends PaginationParams {
