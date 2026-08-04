@@ -54,6 +54,7 @@ import {
   formatDocumentType,
   formatTimestamp,
   formatValue,
+  isMultiDockingTruck,
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 import {
@@ -179,10 +180,11 @@ export default function SalesDispatchGatepassPage() {
     departArrival.isPending;
   const readiness = entry?.gatepass_readiness;
   const action = useMemo(() => getNextAction(entry, isGateOutMode), [entry, isGateOutMode]);
-  // A multi-company truck dispatches as one unit: dispatching here dispatches every
-  // company's docking together (the backend does it atomically). Used only to label
-  // the action and confirm the whole-truck dispatch -- no separate page.
-  const isMultiCompanyArrival = (entry?.arrival_company_count ?? 0) > 1;
+  // A multi-docking truck (multi-company or a same-company split load) dispatches
+  // as one unit: dispatching here dispatches every docking together (the backend
+  // does it atomically). Used only to label the action, confirm the whole-truck
+  // dispatch, and show the sibling-docking readiness panel -- no separate page.
+  const isMultiCompanyArrival = isMultiDockingTruck(entry);
   // The lock that matters is THIS docking's company's, not the active selector's
   // (the backend enforces the record's lock); resolved from the entry, cross-company.
   const isGatepassPrintLocked = Boolean(entry?.gatepass_print_locked);
@@ -291,7 +293,7 @@ export default function SalesDispatchGatepassPage() {
       await markDispatched.mutateAsync(entry.id);
       toast.success(
         isMultiCompanyArrival
-          ? 'All companies on this truck dispatched'
+          ? 'All dockings on this truck dispatched'
           : 'Entry marked as dispatched',
       );
       // Arrival-backed trucks get an inline Depart step (the single physical exit);
@@ -640,7 +642,7 @@ export default function SalesDispatchGatepassPage() {
                   disabled={isSaving || action !== 'dispatch' || !canDispatchGatepass}
                 >
                   <Send className="mr-2 h-4 w-4" />
-                  {isMultiCompanyArrival ? 'Dispatch Truck (all companies)' : 'Mark Dispatched'}
+                  {isMultiCompanyArrival ? 'Dispatch Truck (all dockings)' : 'Mark Dispatched'}
                 </Button>
               )}
             </>

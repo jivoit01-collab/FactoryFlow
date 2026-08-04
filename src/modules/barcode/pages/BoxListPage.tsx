@@ -13,6 +13,8 @@ import type { BoxStatus } from '../types';
 const STATUS_COLORS: Record<BoxStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
   PARTIAL: 'bg-amber-100 text-amber-800',
+  INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
+  DISPATCHED: 'bg-blue-100 text-blue-800',
   DISMANTLED: 'bg-orange-100 text-orange-800',
   VOID: 'bg-red-100 text-red-800',
 };
@@ -65,6 +67,8 @@ export default function BoxListPage() {
           <option value="">All Statuses</option>
           <option value="ACTIVE">Active</option>
           <option value="PARTIAL">Partial</option>
+          <option value="INSIDE_VEHICLE">Inside Vehicle</option>
+          <option value="DISPATCHED">Dispatched</option>
           <option value="DISMANTLED">Dismantled</option>
           <option value="VOID">Void</option>
         </select>

@@ -56,7 +56,7 @@ export default function IntercompanyTransferDetailPage() {
         )}
       </DashboardHeader>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Status</p>
@@ -83,6 +83,12 @@ export default function IntercompanyTransferDetailPage() {
             <p className="mt-1 text-2xl font-semibold">
               {transfer.total_qty} {transfer.uom}
             </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Received Into</p>
+            <p className="mt-1 font-semibold">{transfer.destination_warehouse || 'Kept source WH'}</p>
           </CardContent>
         </Card>
         <Card>

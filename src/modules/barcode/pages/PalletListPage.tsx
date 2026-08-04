@@ -15,6 +15,11 @@ import { toastBarcodeError } from '../utils/errors';
 
 const STATUS_COLORS: Record<PalletStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
+  PARTIAL: 'bg-amber-100 text-amber-800',
+  INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
+  DISPATCHED: 'bg-blue-100 text-blue-800',
+  EMPTY: 'bg-gray-100 text-gray-800',
+  INACTIVE: 'bg-gray-100 text-gray-800',
   CLEARED: 'bg-gray-100 text-gray-800',
   SPLIT: 'bg-blue-100 text-blue-800',
   VOID: 'bg-red-100 text-red-800',
@@ -153,6 +158,9 @@ export default function PalletListPage() {
         >
           <option value="">All Statuses</option>
           <option value="ACTIVE">Active</option>
+          <option value="PARTIAL">Partial</option>
+          <option value="INSIDE_VEHICLE">Inside Vehicle</option>
+          <option value="DISPATCHED">Dispatched</option>
           <option value="CLEARED">Cleared</option>
           <option value="SPLIT">Split</option>
           <option value="VOID">Void</option>

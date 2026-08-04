@@ -22,6 +22,7 @@ import { toastBarcodeError } from '../utils/errors';
 const STATUS_COLORS: Record<PalletStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
   PARTIAL: 'bg-amber-100 text-amber-800',
+  INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
   DISPATCHED: 'bg-blue-100 text-blue-800',
   EMPTY: 'bg-gray-100 text-gray-800',
   INACTIVE: 'bg-gray-100 text-gray-800',
@@ -33,15 +34,21 @@ const STATUS_COLORS: Record<PalletStatus, string> = {
 const BOX_STATUS_COLORS: Record<BoxStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
   PARTIAL: 'bg-amber-100 text-amber-800',
+  INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
   DISPATCHED: 'bg-blue-100 text-blue-800',
   DISMANTLED: 'bg-orange-100 text-orange-800',
   VOID: 'bg-red-100 text-red-800',
 };
 
-const MOVEMENT_COLORS: Record<PalletMovementType, string> = {
+const MOVEMENT_COLORS: Partial<Record<PalletMovementType, string>> = {
   CREATE: 'text-green-600',
   MOVE: 'text-blue-600',
   TRANSFER: 'text-purple-600',
+  OWNERSHIP_TRANSFER: 'text-purple-600',
+  LOAD_VEHICLE: 'text-indigo-600',
+  UNLOAD_VEHICLE: 'text-cyan-600',
+  DISPATCH: 'text-blue-600',
+  REMOVE_FOR_DISPATCH: 'text-orange-600',
   DISMANTLE: 'text-orange-600',
   CLEAR: 'text-gray-600',
   SPLIT: 'text-amber-600',
@@ -446,7 +453,7 @@ export default function PalletDetailPage() {
                 <div key={movement.id} className="flex items-start gap-3 p-2 bg-muted/30 rounded">
                   <div
                     className={`text-xs font-bold uppercase ${
-                      MOVEMENT_COLORS[movement.movement_type]
+                      MOVEMENT_COLORS[movement.movement_type] ?? 'text-gray-600'
                     }`}
                   >
                     {movement.movement_type}

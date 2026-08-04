@@ -204,6 +204,8 @@ export interface SalesDispatchGateOut {
   arrival_status?: string | null;
   /** >1 = a multi-company truck: dispatching one docking dispatches the whole truck. */
   arrival_company_count?: number;
+  /** >1 = the truck carries several dockings (multi-company OR a same-company split load). */
+  arrival_docking_count?: number;
   /** true once every company on the truck is dispatched and it can make its single exit. */
   arrival_can_depart?: boolean;
   /** Gatepass-print lock of THIS docking's company (not the active selector). */
