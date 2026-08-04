@@ -66,6 +66,21 @@ import type {
 const inr = (v: string | number) =>
   Number(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** Format a plain YYYY-MM-DD posting date. Parsed by parts, never through Date —
+ *  a date-only value has no timezone, and `new Date('2026-07-31')` is UTC midnight,
+ *  which reads as the 30th anywhere west of Greenwich. */
+const fmtDate = (iso: string) => {
+  const [y, m, d] = (iso || '').split('-');
+  return y && m && d ? `${d} ${MONTHS[Number(m) - 1]?.slice(0, 3)} ${y}` : (iso ?? '');
+};
+const fmtMonth = (iso: string) => {
+  const [y, m] = (iso || '').split('-');
+  return y && m ? `${MONTHS[Number(m) - 1]} ${y}` : (iso ?? '');
+};
+
 type Tab = 'READY' | 'HELD' | 'BLOCKED' | 'POSTED';
 
 function LineTable({ title, lines }: { title: string; lines: DeliveryNoteLine[] }) {
@@ -301,6 +316,9 @@ export default function MpDeliveryNotesPage() {
   const { data: posted } = usePostedDeliveryNotes(channel);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // SAP DocDate for the cut. Empty = the server default (today). Set only when the
+  // operator deliberately posts into a closed month.
+  const [docDate, setDocDate] = useState('');
   const [shortfallOpen, setShortfallOpen] = useState(false);
   const [showLines, setShowLines] = useState(false);
   const [tab, setTab] = useState<Tab>('READY');
@@ -361,9 +379,18 @@ export default function MpDeliveryNotesPage() {
           : postedNotes.length;
 
   function doCut() {
-    cut.mutate({ warehouseId: selectedWh, batchId }, {
+    cut.mutate({ warehouseId: selectedWh, batchId, docDate: docDate || null }, {
       onSuccess: (r) => {
         setConfirmOpen(false);
+        setDocDate('');
+        if (r.backdated) {
+          // Posting into a closed month is the exception, so say so on its own —
+          // a line inside the normal success toast would be skimmed past.
+          toast.warning(`Posted into ${r.doc_month}`, {
+            description: `These delivery notes carry ${fmtDate(r.doc_date)}, not today. SAP booked the stock movement into ${r.doc_month}.`,
+            duration: 10000,
+          });
+        }
         const groups = r.groups ?? [];
         if (groups.length > 1) {
           const parts = groups.map(
@@ -389,6 +416,25 @@ export default function MpDeliveryNotesPage() {
       },
     });
   }
+
+  // ── Posting date ──────────────────────────────────────────────────────────
+  // Today unless the operator picks otherwise. A date in an earlier month posts
+  // into that month's books and numbering series, so it is called out loudly.
+  const today = summary?.doc_date ?? '';
+  const chosenDate = docDate || today;
+  const monthOf = (d: string) => d.slice(0, 7);
+  const isBackdated = Boolean(today && chosenDate && monthOf(chosenDate) !== monthOf(today));
+  const spansMonths = (summary?.confirmed_months ?? []).length > 1;
+  const canBackdate = Boolean(summary?.can_backdate);
+  // Earliest selectable: the goods must already be confirmed out, and without the
+  // permission the operator cannot leave the current month at all.
+  const minDate = [
+    summary?.doc_date_min ?? '',
+    canBackdate ? (summary?.doc_date_floor ?? '') : `${monthOf(today)}-01`,
+  ]
+    .filter(Boolean)
+    .sort()
+    .pop() ?? '';
 
   function doReconcile() {
     reconcile.mutate(undefined, {
@@ -878,12 +924,66 @@ export default function MpDeliveryNotesPage() {
             <strong>{count}</strong> dispatch(es) with{' '}
             <strong>{summary?.totals.fg_item_count ?? 0}</strong> line item(s). This can&apos;t be undone.
           </p>
+
+          <div className="space-y-2">
+            <label htmlFor="dn-doc-date" className="text-sm font-medium">
+              Posting date
+            </label>
+            <input
+              id="dn-doc-date"
+              type="date"
+              value={chosenDate}
+              min={minDate || undefined}
+              max={today || undefined}
+              onChange={(e) => setDocDate(e.target.value)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              {canBackdate
+                ? 'Defaults to today. Choose a date in last month to post the note into that month.'
+                : 'Defaults to today. Posting into a previous month needs extra permission.'}
+            </p>
+          </div>
+
+          {isBackdated && (
+            <div className="flex gap-2 rounded-md border border-amber-400/60 bg-amber-50 p-3 text-sm dark:bg-amber-500/10">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div className="space-y-1">
+                <p className="font-medium text-amber-900 dark:text-amber-200">
+                  This posts into a previous month
+                </p>
+                <p className="text-amber-800 dark:text-amber-300/90">
+                  The note will carry <strong>{fmtDate(chosenDate)}</strong>, not today. SAP books
+                  the stock movement into that month and numbers the document from that
+                  month&apos;s series. Make sure the period is still open and accounts expect it.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isBackdated && spansMonths && (
+            <div className="flex gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <p>
+                These dispatches were confirmed across{' '}
+                <strong>{(summary?.confirmed_months ?? []).join(', ')}</strong>. Back-dating a mixed
+                selection is refused — filter to a single month first, otherwise one month&apos;s
+                orders would land in another month&apos;s books.
+              </p>
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={cut.isPending}>
               Cancel
             </Button>
-            <Button onClick={doCut} disabled={cut.isPending}>
-              <Send className="mr-2 h-4 w-4" /> {cut.isPending ? 'Cutting…' : 'Cut delivery note'}
+            <Button onClick={doCut} disabled={cut.isPending || (isBackdated && spansMonths)}>
+              <Send className="mr-2 h-4 w-4" />
+              {cut.isPending
+                ? 'Cutting…'
+                : isBackdated
+                  ? `Cut into ${fmtMonth(chosenDate)}`
+                  : 'Cut delivery note'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -98,7 +98,18 @@ export interface DeliveryNoteSummary {
   warehouse_code: string;
   warehouse_id: number | null;
   warehouses: DeliveryNoteWarehouseOption[];
+  /** Default posting date — today. */
   doc_date: string;
+  /** Earliest date the note may bear: the goods must already have been confirmed
+   *  out. Null when nothing is awaiting. */
+  doc_date_min: string | null;
+  /** Oldest month still open to a back-dated cut (first day of last month). */
+  doc_date_floor: string;
+  /** Whether this user holds marketplace.backdate_delivery_note. */
+  can_backdate: boolean;
+  /** Months (YYYY-MM) the awaiting dispatches were confirmed in. More than one
+   *  and a back-dated cut is refused — filter to a single month first. */
+  confirmed_months: string[];
   post_goods_issue: boolean;
   dispatches: DeliveryNoteDispatch[];
   fg_lines: DeliveryNoteLine[];
@@ -166,6 +177,11 @@ export interface DeliveryNoteCutResult {
   groups: DeliveryNoteCutGroup[];
   dispatch_count: number;
   order_ids: string[];
+  /** The SAP DocDate the note(s) actually posted with, and its month. */
+  doc_date: string;
+  doc_month: string;
+  /** True when that date is not in the current month. */
+  backdated: boolean;
   /** Flat fields, present only when a single note was cut (backward compatible). */
   delivery_note_num?: string;
   delivery_note_doc_entry?: number | null;

@@ -118,11 +118,15 @@ export const marketplaceApi = {
     channel: MarketplaceChannel,
     warehouseId?: number | null,
     batchId?: number | null,
+    /** SAP DocDate (YYYY-MM-DD). Omitted → today. A previous-month date back-dates
+     *  the note; the server validates and permission-gates that. */
+    docDate?: string | null,
   ): Promise<DeliveryNoteCutResult> {
     const { data } = await apiClient.post<DeliveryNoteCutResult>(EP.DELIVERY_NOTE_CUT, {
       channel,
       warehouse_id: warehouseId ?? undefined,
       batch_id: batchId ?? undefined,
+      doc_date: docDate ?? undefined,
     });
     return data;
   },
