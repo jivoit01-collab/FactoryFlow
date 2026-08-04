@@ -12,6 +12,8 @@ import {
   PackageOpen,
   PackagePlus,
   Settings,
+  Trash2,
+  Zap,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -83,6 +85,26 @@ const SUB_MODULES: SubModule[] = [
     to: '/maintenance/pm',
     icon: CalendarCheck,
     permissions: [MAINTENANCE_PERMISSIONS.VIEW_PM],
+  },
+  {
+    title: 'Daily Electricity',
+    description: 'Daily meter readings — units consumed and cost per meter.',
+    to: '/maintenance/daily-electricity',
+    icon: Zap,
+    permissions: [
+      MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
+      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
+    ],
+  },
+  {
+    title: 'Daily Wastage',
+    description: 'Daily wastage register — what was wasted, how much and why.',
+    to: '/maintenance/daily-wastage',
+    icon: Trash2,
+    permissions: [
+      MAINTENANCE_PERMISSIONS.VIEW_DAILY_WASTAGE,
+      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_WASTAGE,
+    ],
   },
   {
     title: 'Reports',

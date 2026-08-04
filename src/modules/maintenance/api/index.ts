@@ -1,3 +1,5 @@
+export { dailyRegisterApi } from './dailyRegister.api';
+export * from './dailyRegister.queries';
 export { fireApi } from './fire.api';
 export * from './fire.queries';
 export { fireIssueApi } from './fireIssue.api';
