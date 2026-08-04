@@ -2,7 +2,12 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 export type GoodsReturnBasis = 'INVOICE' | 'DEBIT_NOTE' | 'LETTER_PAD';
-export type GoodsReturnStatus = 'DRAFT' | 'AWAITING_ARRIVAL' | 'ARRIVED' | 'CANCELLED';
+export type GoodsReturnStatus =
+  | 'DRAFT'
+  | 'AWAITING_ARRIVAL'
+  | 'ARRIVED'
+  | 'POSTED'
+  | 'CANCELLED';
 export type GoodsReturnItemCondition = 'GOOD' | 'DAMAGED' | 'EXPIRED' | 'OTHER';
 export type GoodsReturnAttachmentType = 'INVOICE_COPY' | 'DEBIT_NOTE' | 'LETTER_PAD' | 'OTHER';
 
@@ -85,7 +90,9 @@ export interface GoodsReturnDetail {
   company_name: string;
   expected_arrival_at: string | null;
   gated_in_at: string | null;
+  received_at: string | null;
   sap_gr_doc_num: string;
+  sap_return_warehouse: string;
   remarks: string;
   submitted_at: string | null;
   created_at: string;
@@ -93,6 +100,11 @@ export interface GoodsReturnDetail {
   lines: GoodsReturnItem[];
   attachments: GoodsReturnAttachment[];
   invoice_preview?: GoodsReturnInvoicePreview[];
+}
+
+export interface ReturnWarehouse {
+  warehouse_code: string;
+  warehouse_name: string;
 }
 
 export interface CreateGoodsReturnPayload {
@@ -246,6 +258,19 @@ export const goodsReturnApi = {
     const response = await apiClient.post<GoodsReturnDetail>(
       API_ENDPOINTS.GOODS_RETURN.SUBMIT(id),
       {},
+    );
+    return response.data;
+  },
+
+  async listReturnWarehouses(): Promise<ReturnWarehouse[]> {
+    const response = await apiClient.get<ReturnWarehouse[]>(API_ENDPOINTS.GOODS_RETURN.WAREHOUSES);
+    return response.data;
+  },
+
+  async receive(id: number, warehouseCode?: string): Promise<GoodsReturnDetail> {
+    const response = await apiClient.post<GoodsReturnDetail>(
+      API_ENDPOINTS.GOODS_RETURN.RECEIVE(id),
+      { warehouse_code: warehouseCode ?? '' },
     );
     return response.data;
   },

@@ -13,6 +13,7 @@ const STATUS_FILTERS: { value: '' | GoodsReturnStatus; label: string }[] = [
   { value: 'DRAFT', label: 'Draft' },
   { value: 'AWAITING_ARRIVAL', label: 'Awaiting Arrival' },
   { value: 'ARRIVED', label: 'Arrived' },
+  { value: 'POSTED', label: 'Posted' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 

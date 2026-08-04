@@ -14,13 +14,15 @@ export const STATUS_LABELS: Record<GoodsReturnStatus, string> = {
   DRAFT: 'Draft',
   AWAITING_ARRIVAL: 'Awaiting Arrival',
   ARRIVED: 'Arrived',
+  POSTED: 'Posted to SAP',
   CANCELLED: 'Cancelled',
 };
 
 export const STATUS_BADGE_CLASS: Record<GoodsReturnStatus, string> = {
   DRAFT: 'bg-slate-100 text-slate-700',
   AWAITING_ARRIVAL: 'bg-amber-100 text-amber-800',
-  ARRIVED: 'bg-emerald-100 text-emerald-800',
+  ARRIVED: 'bg-sky-100 text-sky-800',
+  POSTED: 'bg-emerald-100 text-emerald-800',
   CANCELLED: 'bg-rose-100 text-rose-800',
 };
 

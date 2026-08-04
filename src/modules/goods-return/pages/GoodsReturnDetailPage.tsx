@@ -1,10 +1,17 @@
-import { ArrowLeft, FileText, Loader2, Paperclip } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, PackageCheck, Paperclip } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
-import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
+import { Badge, Button, Card, CardContent, Label } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import { useGoodsReturn } from '../api';
+import {
+  type GoodsReturnDetail,
+  useGoodsReturn,
+  useReceiveGoodsReturn,
+  useReturnWarehouses,
+} from '../api';
 import { BASIS_LABELS, formatDate, formatDateTime, STATUS_BADGE_CLASS, STATUS_LABELS } from '../utils';
 
 export default function GoodsReturnDetailPage() {
@@ -46,16 +53,24 @@ export default function GoodsReturnDetailPage() {
           <Field label="Driver" value={detail.driver_name || '-'} />
           <Field label="Expected Arrival" value={formatDate(detail.expected_arrival_at)} />
           <Field label="Gated In" value={formatDateTime(detail.gated_in_at)} />
+          {detail.received_at && (
+            <Field label="Received" value={formatDateTime(detail.received_at)} />
+          )}
           {detail.invoice_refs.length > 0 && (
             <Field
               label="Invoices"
               value={detail.invoice_refs.map((ref) => ref.sap_invoice_doc_num).join(', ')}
             />
           )}
-          {detail.sap_gr_doc_num && <Field label="SAP GR Doc" value={detail.sap_gr_doc_num} />}
+          {detail.sap_gr_doc_num && <Field label="SAP Return Doc" value={detail.sap_gr_doc_num} />}
+          {detail.sap_return_warehouse && (
+            <Field label="Return Warehouse" value={detail.sap_return_warehouse} />
+          )}
           {detail.remarks && <Field label="Remarks" value={detail.remarks} />}
         </CardContent>
       </Card>
+
+      {detail.status === 'ARRIVED' && <ReceivePanel id={id} detail={detail} />}
 
       <Card>
         <CardContent className="space-y-3 p-6">
@@ -122,6 +137,75 @@ export default function GoodsReturnDetailPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
+  const isInvoiceBasis = detail.basis === 'INVOICE';
+  const receive = useReceiveGoodsReturn(id);
+  const { data: warehouses = [], isLoading: warehousesLoading } = useReturnWarehouses(isInvoiceBasis);
+  const [warehouseCode, setWarehouseCode] = useState('');
+
+  async function handleReceive() {
+    if (isInvoiceBasis && !warehouseCode) {
+      toast.error('Select the goods-return warehouse.');
+      return;
+    }
+    try {
+      const updated = await receive.mutateAsync(isInvoiceBasis ? warehouseCode : undefined);
+      toast.success(
+        updated.sap_gr_doc_num
+          ? `Received — SAP Return ${updated.sap_gr_doc_num} posted`
+          : 'Goods return received',
+      );
+    } catch (err) {
+      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(message || 'Could not receive the goods return.');
+    }
+  }
+
+  return (
+    <Card className="border-primary/40">
+      <CardContent className="space-y-4 p-6">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <PackageCheck className="h-4 w-4 text-primary" /> Confirm Receipt
+        </div>
+        <p className="text-sm text-muted-foreground">
+          The vehicle is marked in at the gate. Confirm the goods physically arrived
+          {isInvoiceBasis
+            ? ' — this posts an A/R Returns document to SAP for the returned stock.'
+            : '. No SAP posting is done for non-invoice returns.'}
+        </p>
+
+        {isInvoiceBasis && (
+          <div className="space-y-2 sm:max-w-sm">
+            <Label>Goods-Return Warehouse *</Label>
+            <select
+              value={warehouseCode}
+              onChange={(event) => setWarehouseCode(event.target.value)}
+              disabled={warehousesLoading}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{warehousesLoading ? 'Loading…' : 'Select warehouse'}</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.warehouse_code} value={warehouse.warehouse_code}>
+                  {warehouse.warehouse_code} — {warehouse.warehouse_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <Button onClick={handleReceive} disabled={receive.isPending}>
+          {receive.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <PackageCheck className="mr-2 h-4 w-4" />
+          )}
+          {isInvoiceBasis ? 'Confirm Receipt & Post to SAP' : 'Confirm Receipt'}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

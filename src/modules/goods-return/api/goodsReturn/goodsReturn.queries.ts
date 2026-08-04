@@ -13,6 +13,7 @@ export const goodsReturnKeys = {
   list: (params?: Record<string, unknown>) => ['goods-return', 'list', params ?? {}] as const,
   detail: (id: number) => ['goods-return', 'detail', id] as const,
   expected: () => ['goods-return', 'gate', 'expected'] as const,
+  warehouses: () => ['goods-return', 'warehouses'] as const,
 };
 
 export function useGoodsReturns(params?: {
@@ -111,6 +112,26 @@ export function useSubmitGoodsReturn(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => goodsReturnApi.submit(id),
+    onSuccess: (data) => {
+      qc.setQueryData(goodsReturnKeys.detail(id), data);
+      qc.invalidateQueries({ queryKey: goodsReturnKeys.all });
+    },
+  });
+}
+
+export function useReturnWarehouses(enabled = true) {
+  return useQuery({
+    queryKey: goodsReturnKeys.warehouses(),
+    queryFn: () => goodsReturnApi.listReturnWarehouses(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useReceiveGoodsReturn(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (warehouseCode?: string) => goodsReturnApi.receive(id, warehouseCode),
     onSuccess: (data) => {
       qc.setQueryData(goodsReturnKeys.detail(id), data);
       qc.invalidateQueries({ queryKey: goodsReturnKeys.all });
