@@ -276,6 +276,17 @@ export default function DispatchTrackingPage() {
                   <span className="block">
                     Dispatched {formatDateTime(selected.dispatched_at)} · Driver{' '}
                     {selected.driver_name || '-'}
+                    {selected.driver_mobile ? (
+                      <>
+                        {' · '}
+                        <a
+                          href={`tel:${selected.driver_mobile}`}
+                          className="font-medium text-foreground hover:underline"
+                        >
+                          {selected.driver_mobile}
+                        </a>
+                      </>
+                    ) : null}
                     {selected.gatepass_no ? ` · ${selected.gatepass_no}` : ''}
                   </span>
                   <span className="flex flex-wrap items-center gap-x-2">
@@ -353,6 +364,20 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
           ) : null}
           <p className="text-sm text-muted-foreground">
             Dispatched {formatDateTime(truck.dispatched_at)} · Driver {truck.driver_name || '-'}
+            {truck.driver_mobile ? (
+              <>
+                {' · '}
+                {/* Chasing a truck starts with a call — tappable, and it must not
+                    open the detail sheet the card sits behind. */}
+                <a
+                  href={`tel:${truck.driver_mobile}`}
+                  onClick={(event) => event.stopPropagation()}
+                  className="font-medium text-foreground hover:underline"
+                >
+                  {truck.driver_mobile}
+                </a>
+              </>
+            ) : null}
             {truck.gatepass_no ? ` · ${truck.gatepass_no}` : ''}
           </p>
           <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">

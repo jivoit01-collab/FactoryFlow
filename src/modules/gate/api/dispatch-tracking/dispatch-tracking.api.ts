@@ -166,6 +166,8 @@ export interface LateDispatchTruck {
   arrival: number;
   arrival_no: string;
   vehicle_number: string;
+  driver_name: string;
+  driver_mobile: string;
   expected_reach_date: string | null;
   days_overdue: number;
 }

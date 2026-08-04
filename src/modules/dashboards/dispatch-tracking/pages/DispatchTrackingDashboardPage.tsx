@@ -241,6 +241,12 @@ function DashboardBody({
                         <span className="block truncate text-xs text-muted-foreground">
                           Reach by {t.expected_reach_date ?? '—'} · {t.arrival_no}
                         </span>
+                        {t.driver_name || t.driver_mobile ? (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {t.driver_name || 'Driver'}
+                            {t.driver_mobile ? ` · ${t.driver_mobile}` : ''}
+                          </span>
+                        ) : null}
                       </span>
                       <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
                         {t.days_overdue}d overdue
