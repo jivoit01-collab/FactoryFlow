@@ -22,12 +22,18 @@ import ScanSearchButton from '../components/ScanSearchButton';
 import type { BoxMovementType, Pallet } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
-const MOVEMENT_COLORS: Record<BoxMovementType, string> = {
+const MOVEMENT_COLORS: Partial<Record<BoxMovementType, string>> = {
   CREATE: 'text-green-600',
   MOVE: 'text-blue-600',
   TRANSFER: 'text-purple-600',
+  OWNERSHIP_TRANSFER: 'text-purple-600',
+  LOAD_VEHICLE: 'text-indigo-600',
+  UNLOAD_VEHICLE: 'text-cyan-600',
   PALLETIZE: 'text-indigo-600',
   DEPALLETIZE: 'text-orange-600',
+  DISPATCH: 'text-blue-600',
+  REMOVE_FOR_DISPATCH: 'text-orange-600',
+  DISMANTLE: 'text-orange-600',
   VOID: 'text-red-600',
 };
 
@@ -110,6 +116,8 @@ export default function BoxDetailPage() {
                 {
                   ACTIVE: 'bg-green-100 text-green-800',
                   PARTIAL: 'bg-amber-100 text-amber-800',
+                  INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
+                  DISPATCHED: 'bg-blue-100 text-blue-800',
                   DISMANTLED: 'bg-orange-100 text-orange-800',
                   VOID: 'bg-red-100 text-red-800',
                 }[box.status] || 'bg-gray-100 text-gray-800'
@@ -289,7 +297,7 @@ export default function BoxDetailPage() {
               {box.movements.map((m) => (
                 <div key={m.id} className="flex items-start gap-3 p-2 bg-muted/30 rounded">
                   <div
-                    className={`text-xs font-bold uppercase ${MOVEMENT_COLORS[m.movement_type]}`}
+                    className={`text-xs font-bold uppercase ${MOVEMENT_COLORS[m.movement_type] ?? 'text-gray-600'}`}
                   >
                     {m.movement_type}
                   </div>
@@ -308,6 +316,9 @@ export default function BoxDetailPage() {
                     )}
                     {m.from_pallet_id && (
                       <span className="ml-2 text-xs">← Pallet {m.from_pallet_id}</span>
+                    )}
+                    {m.notes && (
+                      <div className="text-xs text-muted-foreground mt-0.5">{m.notes}</div>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground text-right">

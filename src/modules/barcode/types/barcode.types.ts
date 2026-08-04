@@ -5,19 +5,23 @@
 export type PalletStatus =
   | 'ACTIVE'
   | 'PARTIAL'
+  | 'INSIDE_VEHICLE'
   | 'DISPATCHED'
   | 'EMPTY'
   | 'INACTIVE'
   | 'CLEARED'
   | 'SPLIT'
   | 'VOID';
-export type BoxStatus = 'ACTIVE' | 'PARTIAL' | 'DISPATCHED' | 'DISMANTLED' | 'VOID';
+export type BoxStatus = 'ACTIVE' | 'PARTIAL' | 'INSIDE_VEHICLE' | 'DISPATCHED' | 'DISMANTLED' | 'VOID';
 export type LabelType = 'BOX' | 'PALLET' | 'BIN' | 'WAREHOUSE';
 export type PrintType = 'ORIGINAL' | 'REPRINT';
 export type PalletMovementType =
   | 'CREATE'
   | 'MOVE'
   | 'TRANSFER'
+  | 'OWNERSHIP_TRANSFER'
+  | 'LOAD_VEHICLE'
+  | 'UNLOAD_VEHICLE'
   | 'DISPATCH'
   | 'REMOVE_FOR_DISPATCH'
   | 'DISMANTLE'
@@ -28,6 +32,9 @@ export type BoxMovementType =
   | 'CREATE'
   | 'MOVE'
   | 'TRANSFER'
+  | 'OWNERSHIP_TRANSFER'
+  | 'LOAD_VEHICLE'
+  | 'UNLOAD_VEHICLE'
   | 'PALLETIZE'
   | 'DEPALLETIZE'
   | 'DISPATCH'
@@ -106,6 +113,7 @@ export interface BoxMovement {
   performed_by: number | null;
   performed_by_name: string;
   performed_at: string;
+  notes: string;
 }
 
 // ============================================================================
