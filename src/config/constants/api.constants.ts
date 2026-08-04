@@ -456,6 +456,8 @@ export const API_ENDPOINTS = {
     ATTACHMENT_BY_ID: (id: number, attachmentId: number) =>
       `/goods-return/${id}/attachments/${attachmentId}/`,
     SUBMIT: (id: number) => `/goods-return/${id}/submit/`,
+    RECEIVE: (id: number) => `/goods-return/${id}/receive/`,
+    WAREHOUSES: '/goods-return/warehouses/',
     GATE_EXPECTED: '/goods-return/gate/expected/',
     GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,
   },
@@ -652,6 +654,14 @@ export const API_ENDPOINTS = {
     VENDOR_VISIT_START: (visitId: number) => `/maintenance/vendor-visits/${visitId}/start/`,
     VENDOR_VISIT_COMPLETE: (visitId: number) => `/maintenance/vendor-visits/${visitId}/complete/`,
     VENDOR_VISIT_CANCEL: (visitId: number) => `/maintenance/vendor-visits/${visitId}/cancel/`,
+    // Daily registers — factory-wide electricity readings and wastage logs.
+    ELECTRICITY_METERS: '/maintenance/electricity-meters/',
+    ELECTRICITY_METER_DETAIL: (meterId: number) => `/maintenance/electricity-meters/${meterId}/`,
+    DAILY_ELECTRICITY_READINGS: '/maintenance/daily-electricity-readings/',
+    DAILY_ELECTRICITY_READING_DETAIL: (readingId: number) =>
+      `/maintenance/daily-electricity-readings/${readingId}/`,
+    DAILY_WASTAGE_LOGS: '/maintenance/daily-wastage-logs/',
+    DAILY_WASTAGE_LOG_DETAIL: (logId: number) => `/maintenance/daily-wastage-logs/${logId}/`,
   },
   // Returnable Items — material that leaves the gate temporarily and must come back.
   // Raised by a department, approved by a higher authority, gated out and gated
@@ -977,6 +987,7 @@ export const API_ENDPOINTS = {
     REPACK: '/barcode/repack/',
     // Loose Stock
     LOOSE: '/barcode/loose/',
+    LOOSE_SUMMARY: '/barcode/loose/summary/',
     LOOSE_DETAIL: (looseId: number) => `/barcode/loose/${looseId}/`,
     // Scan
     SCAN: '/barcode/scan/',
@@ -990,6 +1001,7 @@ export const API_ENDPOINTS = {
     INTERCOMPANY_TRANSFER_REVERSE: (transferId: number) =>
       `/barcode/intercompany/transfers/${transferId}/reverse/`,
     INTERCOMPANY_SCAN: '/barcode/intercompany/scan/',
+    INTERCOMPANY_WAREHOUSES: '/barcode/intercompany/warehouses/',
     INTERCOMPANY_TRACE: '/barcode/intercompany/trace/',
     // Dispatch scanning
     DISPATCH_BILL_LOOKUP: '/barcode/dispatch/bills/lookup/',

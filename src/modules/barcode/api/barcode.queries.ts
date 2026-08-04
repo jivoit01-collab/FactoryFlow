@@ -75,6 +75,8 @@ export const BARCODE_QUERY_KEYS = {
   looseStockPage: (filters?: LooseStockFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'loose-page', filters] as const,
   looseStockDetail: (id: number) => [...BARCODE_QUERY_KEYS.all, 'loose', id] as const,
+  looseStockSummary: (search?: string) =>
+    [...BARCODE_QUERY_KEYS.all, 'loose-summary', search] as const,
   boxHistory: (id: number) => [...BARCODE_QUERY_KEYS.all, 'box', id, 'history'] as const,
   palletHistory: (id: number) => [...BARCODE_QUERY_KEYS.all, 'pallet', id, 'history'] as const,
   dispatchSessions: (filters?: DispatchSessionFilters) =>
@@ -101,6 +103,8 @@ export const BARCODE_QUERY_KEYS = {
     [...BARCODE_QUERY_KEYS.all, 'intercompany-transfers', filters] as const,
   intercompanyTransfer: (id: number) =>
     [...BARCODE_QUERY_KEYS.all, 'intercompany-transfer', id] as const,
+  intercompanyWarehouses: (companyCode: string) =>
+    [...BARCODE_QUERY_KEYS.all, 'intercompany-warehouses', companyCode] as const,
   barcodeTrace: (search: string) => [...BARCODE_QUERY_KEYS.all, 'barcode-trace', search] as const,
   verifyRequests: (filters?: PalletVerifyRequestFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'verify-requests', filters] as const,
@@ -437,6 +441,15 @@ export function useIntercompanyTransfer(transferId: number | null) {
   });
 }
 
+export function useIntercompanyWarehouses(companyCode: string, enabled = true) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.intercompanyWarehouses(companyCode),
+    queryFn: () => barcodeApi.getIntercompanyWarehouses(companyCode),
+    enabled: Boolean(companyCode) && enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useScanIntercompanyBarcode() {
   return useMutation({
     mutationFn: (data: IntercompanyScanPayload) => barcodeApi.scanIntercompanyBarcode(data),
@@ -584,10 +597,11 @@ export function useRepack() {
 // Loose Stock
 // ============================================================================
 
-export function useLooseStock(filters?: LooseStockFilters) {
+export function useLooseStock(filters?: LooseStockFilters, options?: BarcodeQueryOptions) {
   return useQuery({
     queryKey: BARCODE_QUERY_KEYS.looseStock(filters),
     queryFn: () => barcodeApi.getLooseStock(filters),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -603,6 +617,13 @@ export function useLooseStockDetail(looseId: number | null) {
     queryKey: BARCODE_QUERY_KEYS.looseStockDetail(looseId!),
     queryFn: () => barcodeApi.getLooseStockDetail(looseId!),
     enabled: looseId !== null,
+  });
+}
+
+export function useLooseStockSummary(search?: string) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.looseStockSummary(search),
+    queryFn: () => barcodeApi.getLooseStockSummary(search ? { search } : undefined),
   });
 }
 

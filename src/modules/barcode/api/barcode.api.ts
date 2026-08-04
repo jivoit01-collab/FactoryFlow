@@ -36,12 +36,14 @@ import type {
   IntercompanyScanPayload,
   IntercompanyTransfer,
   IntercompanyTransferPayload,
+  IntercompanyWarehouse,
   LabelData,
   LabelPrintLog,
   ListResponse,
   LookupResponse,
   LooseStock,
   LooseStockFilters,
+  LooseStockSummary,
   OitmItemGroup,
   OitmItemRow,
   PaginatedResponse,
@@ -313,6 +315,13 @@ export const barcodeApi = {
     return res.data;
   },
 
+  async getIntercompanyWarehouses(companyCode: string): Promise<IntercompanyWarehouse[]> {
+    const res = await apiClient.get<IntercompanyWarehouse[]>(EP.INTERCOMPANY_WAREHOUSES, {
+      params: { company_code: companyCode },
+    });
+    return res.data;
+  },
+
   async scanIntercompanyBarcode(
     data: IntercompanyScanPayload,
   ): Promise<IntercompanyScannedBarcode> {
@@ -439,6 +448,11 @@ export const barcodeApi = {
 
   async getLooseStockDetail(looseId: number): Promise<LooseStock> {
     const res = await apiClient.get<LooseStock>(EP.LOOSE_DETAIL(looseId));
+    return res.data;
+  },
+
+  async getLooseStockSummary(params?: { search?: string }): Promise<LooseStockSummary[]> {
+    const res = await apiClient.get<LooseStockSummary[]>(EP.LOOSE_SUMMARY, { params });
     return res.data;
   },
 
