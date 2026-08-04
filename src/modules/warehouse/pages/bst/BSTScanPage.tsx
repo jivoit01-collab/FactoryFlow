@@ -13,11 +13,19 @@ import {
   CardContent,
   Input,
   Label,
+  Textarea,
 } from '@/shared/components/ui';
 import { useBoxScanQueue } from '@/shared/hooks';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { BST_LIVE_POLL_MS, BST_QUERY_KEYS, bstApi, useBSTTransfer, useRemoveBSTScan } from '../../api';
+import {
+  BST_LIVE_POLL_MS,
+  BST_QUERY_KEYS,
+  bstApi,
+  useBSTTransfer,
+  useRemoveBSTScan,
+  useRequestBSTPartialTransfer,
+} from '../../api';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTBillTable } from './BSTBillTable';
 import { expectedBstItemBoxes } from './bstBoxCounts';
@@ -35,9 +43,11 @@ export default function BSTScanPage() {
     refetchInterval: BST_LIVE_POLL_MS,
   });
   const removeMut = useRemoveBSTScan();
+  const requestMut = useRequestBSTPartialTransfer();
   const queryClient = useQueryClient();
 
   const [manualBarcode, setManualBarcode] = useState('');
+  const [partialReason, setPartialReason] = useState('');
 
   // A live internal transfer stays sender-editable through IN_TRANSIT / RECEIVING
   // (the destination is already receiving) until it's sealed via approve
@@ -108,6 +118,22 @@ export default function BSTScanPage() {
 
   const goToReview = () => navigate(`/warehouse/bst/${transferId}/review`);
 
+  // Same request the review page offers — surfaced here so an operator stuck on a
+  // short load can raise it without leaving the scan screen (mirrors dispatch).
+  const handleRequestPartial = async () => {
+    if (!partialReason.trim()) {
+      toast.error('Add a reason for the partial transfer');
+      return;
+    }
+    try {
+      await requestMut.mutateAsync({ transferId, reason: partialReason.trim() });
+      setPartialReason('');
+      toast.success('Partial-transfer approval requested — waiting for a supervisor');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not request approval'));
+    }
+  };
+
   if (isLoading || !transfer) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
   }
@@ -158,28 +184,54 @@ export default function BSTScanPage() {
         </div>
       )}
       {scanStatus?.is_partial && !transfer.partial_transfer?.is_approved && (
-        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>
-            <span className="font-medium">Short scan — sending is locked.</span> Scanned{' '}
-            {scanStatus.scanned_qty} of {scanStatus.expected_qty} pcs.
-            {scanStatus.short_items.length > 0 && (
-              <>
-                {' '}
-                Still short:{' '}
-                {scanStatus.short_items
-                  .map(
-                    (i) =>
-                      `${i.item_code} (${Number(i.expected_qty) - Number(i.scanned_qty)} ${i.uom})`,
-                  )
-                  .join(', ')}
-                .
-              </>
-            )}{' '}
-            {transfer.partial_transfer?.is_pending
-              ? 'A partial-transfer approval has been requested — waiting for a supervisor.'
-              : 'Scan the remaining boxes, or request a partial-transfer approval on the review page, before you can finish sending.'}
-          </span>
+        <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <span className="font-medium">Short scan — sending is locked.</span> Scanned{' '}
+              {scanStatus.scanned_qty} of {scanStatus.expected_qty} pcs.
+              {scanStatus.short_items.length > 0 && (
+                <>
+                  {' '}
+                  Still short:{' '}
+                  {scanStatus.short_items
+                    .map(
+                      (i) =>
+                        `${i.item_code} (${Number(i.expected_qty) - Number(i.scanned_qty)} ${i.uom})`,
+                    )
+                    .join(', ')}
+                  .
+                </>
+              )}{' '}
+              {transfer.partial_transfer?.is_pending
+                ? 'A partial-transfer approval has been requested — waiting for a supervisor.'
+                : 'Scan the remaining boxes, or request a partial-transfer approval to send it short.'}
+            </span>
+          </div>
+          {editable && !transfer.partial_transfer?.is_pending && (
+            <div className="space-y-2">
+              <Textarea
+                value={partialReason}
+                onChange={(e) => setPartialReason(e.target.value)}
+                placeholder="Reason for sending this transfer short (e.g. damaged boxes held back)…"
+                rows={2}
+                className="bg-white"
+              />
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRequestPartial}
+                  disabled={!partialReason.trim() || requestMut.isPending}
+                >
+                  {requestMut.isPending ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : null}
+                  Request partial-transfer approval
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

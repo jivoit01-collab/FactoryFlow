@@ -138,57 +138,22 @@ export default function DispatchPlansDashboardPage() {
   }, [bills, selected]);
 
   // Export the currently filtered bill set (every fetched row, not just the
-  // visible page) to an .xlsx workbook. Column order mirrors the on-screen table,
-  // then adds the full planning/transport detail that the compact cells collapse.
+  // visible page) to an .xlsx workbook. Kept to the fields dispatch actually needs:
+  // dispatch date, invoice date, party, ship-to, state, invoice no., litres, weight.
   const handleExportExcel = useCallback(() => {
     if (bills.length === 0) {
       toast.info('No dispatch bills to export');
       return;
     }
     const rows = bills.map((bill) => ({
-      'Created Date': bill.create_date ?? '',
-      'Created Time': bill.create_time ?? '',
-      'Invoice Date': bill.doc_date ?? '',
-      Company: bill.company_code ?? '',
-      Branch: bill.branch_name ?? '',
-      Bill: bill.doc_num ?? '',
-      'Base Refs': bill.base_refs ?? '',
-      'Party Code': bill.card_code ?? '',
-      'Party Name': bill.card_name ?? '',
-      'BP GSTIN': bill.bp_gstin ?? '',
-      'Item Summary': bill.item_summary ?? '',
-      'Ship To Code': bill.ship_to_code ?? '',
-      'Ship To Address': bill.ship_to_address ?? '',
-      City: bill.city ?? '',
-      State: bill.state ?? '',
-      Warehouses: bill.warehouses ?? '',
-      'Doc Total': bill.doc_total ?? 0,
-      'Gross Amount': bill.total_gross_amount ?? 0,
-      'Line Amount': bill.total_line_amount ?? 0,
-      'Line Count': bill.line_count ?? 0,
-      Quantity: bill.total_quantity ?? 0,
-      'Total Litres': bill.total_litres ?? 0,
-      'Total Boxes': bill.total_boxes ?? 0,
-      'Total Weight (kg)': bill.total_weight ?? 0,
-      'SAP Transporter': bill.sap_transporter_name ?? '',
-      'SAP Vehicle No': bill.sap_vehicle_no ?? '',
-      'SAP Bilty No': bill.sap_bilty_no ?? '',
-      'SAP LR No': bill.sap_lr_number ?? '',
-      'SAP Eway Bill': bill.sap_eway_bill ?? '',
-      'SAP Dispatch Date': bill.sap_dispatch_date ?? '',
-      Status: bill.plan.booking_status ?? '',
       'Dispatch Date': bill.plan.dispatch_date ?? '',
-      Priority: bill.plan.priority ?? '',
-      Location: bill.plan.location ?? '',
-      'Plan Vehicle No': bill.plan.vehicle_no ?? '',
-      'Plan Driver Name': bill.plan.driver_name ?? '',
-      'Plan Driver Mobile': bill.plan.driver_mobile_no ?? '',
-      'Plan Transporter': bill.plan.transporter_name ?? '',
-      'Plan Bilty No': bill.plan.bilty_no ?? '',
-      'Plan Bilty Date': bill.plan.bilty_date ?? '',
-      'Eway Bill': bill.plan.eway_bill ?? '',
-      Freight: bill.plan.freight ?? '',
-      Remarks: bill.plan.remarks ?? '',
+      'Invoice Date': bill.doc_date ?? '',
+      'Party Name': bill.card_name ?? '',
+      'Ship To Address': bill.ship_to_address ?? '',
+      State: bill.state ?? '',
+      'Invoice No.': bill.doc_num ?? '',
+      Litres: bill.total_litres ?? 0,
+      'Weight (kg)': bill.total_weight ?? 0,
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);

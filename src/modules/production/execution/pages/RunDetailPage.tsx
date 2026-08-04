@@ -226,6 +226,11 @@ function RunDetailPage() {
   const [fgWarehouseError, setFGWarehouseError] = useState('');
   const { data: fgWarehouses = [], isLoading: fgWarehousesLoading, isError: fgWarehousesError } = useWarehouses(dialog === 'fg-receipt');
   const isCompleted = run?.status === 'COMPLETED';
+  // Total produced so far: the run-level figure once completed, else the sum of
+  // stopped segments' produced cases (active segments report at stop time).
+  const totalProduced = isCompleted
+    ? parseFloat(run?.total_production || '0')
+    : run?.segments?.reduce((sum, s) => sum + parseFloat(s.produced_cases || '0'), 0) ?? 0;
   const lockedFGReceipt = fgReceipts.find((receipt) =>
     receipt.status !== 'PENDING' || Boolean(receipt.received_at)
   );
@@ -533,6 +538,10 @@ function RunDetailPage() {
         <p className="text-sm text-muted-foreground">
           {run.date} &middot; {run.line_name} &middot; {run.product}
           {run.required_qty && <> &middot; Qty: {run.required_qty}</>}
+          {' '}&middot;{' '}
+          <span className="font-medium text-foreground">
+            Produced: {totalProduced.toLocaleString()}
+          </span>
           {run.sap_doc_entry && <> &middot; SAP DocEntry: {run.sap_doc_entry}</>}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -729,7 +738,7 @@ function RunDetailPage() {
                 materials={materials}
                 onUpdateClosingQty={handleUpdateClosingQty}
                 readOnly={isCompleted}
-                actualProduction={isCompleted ? parseFloat(run.total_production || '0') : run.segments.reduce((sum, s) => sum + parseFloat(s.produced_cases || '0'), 0)}
+                actualProduction={totalProduced}
                 requiredQty={run.required_qty ? parseFloat(run.required_qty) : undefined}
               />
             </CardContent>
