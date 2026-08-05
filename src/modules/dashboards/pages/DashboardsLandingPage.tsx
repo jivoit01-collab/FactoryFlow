@@ -8,11 +8,12 @@ import {
   PackageX,
   Target,
   Truck,
+  Wind,
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { BLOWING_PERMISSIONS, DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
@@ -99,6 +100,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/production',
     color: 'text-emerald-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+  },
+  {
+    title: 'Blowing',
+    description: 'Preform to bottle — output, rejection, cost per bottle, make-vs-buy & standards',
+    icon: <Wind className="h-5 w-5" />,
+    route: '/dashboards/blowing',
+    color: 'text-cyan-600',
+    permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
   },
 ];
 

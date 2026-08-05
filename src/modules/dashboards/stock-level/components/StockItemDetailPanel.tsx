@@ -88,8 +88,8 @@ export function StockItemDetailPanel({ itemCode, warehouses }: StockItemDetailPa
         <thead>
           <tr className="border-b text-muted-foreground">
             <th className="pb-2 pr-3 text-left font-medium">Warehouse</th>
-            <th className="pb-2 pr-3 text-right font-medium">On Hand</th>
             <th className="pb-2 pr-3 text-right font-medium">Benchmark</th>
+            <th className="pb-2 pr-3 text-right font-medium">On Hand</th>
             <th className="pb-2 pr-3 text-right font-medium">Difference</th>
             <th className="pb-2 pr-3 text-right font-medium">Health</th>
             <th className="pb-2 pr-3 text-left font-medium">UOM</th>
@@ -104,10 +104,10 @@ export function StockItemDetailPanel({ itemCode, warehouses }: StockItemDetailPa
               <tr key={item.warehouse} className="border-b last:border-0">
                 <td className="py-2 pr-3 font-medium">{item.warehouse}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">
-                  {item.on_hand.toLocaleString('en-IN')}
+                  {item.min_stock.toLocaleString('en-IN')}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">
-                  {item.min_stock.toLocaleString('en-IN')}
+                  {item.on_hand.toLocaleString('en-IN')}
                 </td>
                 <td
                   className={cn(

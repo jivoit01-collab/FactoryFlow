@@ -65,9 +65,39 @@ function GateBarrier({ pos }: { pos: number }) {
   );
 }
 
-/** One colored truck + all its vehicle numbers, driven in and parked on the road. */
-function StepTrucks({ step, cards }: { step: (typeof STEPS)[number]; cards: PipelineCard[] }) {
-  if (cards.length === 0) return null;
+/** A unique vehicle at a step + how many dispatch plans it carries there. */
+interface VehiclePlate {
+  key: string;
+  vehicle_no: string;
+  count: number;
+  stage_label?: string;
+}
+
+/**
+ * Collapse the step's cards (one per dispatch plan) to one plate per vehicle.
+ * A vehicle assigned to several plans in the same step shows once with ×N.
+ * Order follows first appearance; blank numbers stay separate.
+ */
+function dedupeByVehicle(cards: PipelineCard[]): VehiclePlate[] {
+  const order: string[] = [];
+  const map = new Map<string, VehiclePlate>();
+  for (const c of cards) {
+    const vno = (c.vehicle_no || '').trim();
+    const key = vno ? `v:${vno.toUpperCase()}` : `p:${c.plan_id}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      map.set(key, { key, vehicle_no: vno || '—', count: 1, stage_label: c.stage_label });
+      order.push(key);
+    }
+  }
+  return order.map((k) => map.get(k)!);
+}
+
+/** One colored truck + its unique vehicle numbers, driven in and parked on the road. */
+function StepTrucks({ step, plates }: { step: (typeof STEPS)[number]; plates: VehiclePlate[] }) {
+  if (plates.length === 0) return null;
 
   return (
     <div
@@ -75,15 +105,24 @@ function StepTrucks({ step, cards }: { step: (typeof STEPS)[number]; cards: Pipe
       style={{ '--df-stop': `${step.pos}%`, top: `${TRUCK_ANCHOR}px` } as React.CSSProperties}
     >
       <div className="animate-df-float flex flex-col items-center gap-1">
-        {/* every vehicle number on this step */}
+        {/* one plate per unique vehicle on this step (×N = plans on that vehicle) */}
         <div className="mb-0.5 flex max-h-[104px] flex-col items-center gap-1 overflow-y-auto">
-          {cards.map((card) => (
+          {plates.map((plate) => (
             <div
-              key={card.plan_id}
-              title={card.stage_label}
-              className="whitespace-nowrap rounded-[5px] border border-slate-300 bg-white px-2 py-[2px] text-[11px] font-extrabold uppercase leading-none tracking-wider text-slate-800 shadow-sm dark:border-slate-500 dark:bg-slate-100"
+              key={plate.key}
+              title={
+                plate.count > 1
+                  ? `${plate.vehicle_no} · ${plate.count} plans${plate.stage_label ? ` · ${plate.stage_label}` : ''}`
+                  : plate.stage_label
+              }
+              className="flex items-center gap-1 whitespace-nowrap rounded-[5px] border border-slate-300 bg-white px-2 py-[2px] text-[11px] font-extrabold uppercase leading-none tracking-wider text-slate-800 shadow-sm dark:border-slate-500 dark:bg-slate-100"
             >
-              {card.vehicle_no || '—'}
+              <span>{plate.vehicle_no}</span>
+              {plate.count > 1 && (
+                <span className="rounded bg-slate-800 px-1 py-[1px] text-[9px] font-bold leading-none tracking-normal text-white dark:bg-slate-700">
+                  ×{plate.count}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -176,7 +215,7 @@ export function GateVehicleJourney({ range }: { range: GateRange }) {
         {/* trucks + plates */}
         {!query.isLoading &&
           STEPS.map((step, si) => (
-            <StepTrucks key={`t-${step.key}`} step={step} cards={byStep[si]} />
+            <StepTrucks key={`t-${step.key}`} step={step} plates={dedupeByVehicle(byStep[si])} />
           ))}
 
         {/* step labels + counts, below the road */}

@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
+  Eye,
   HardHat,
   Plus,
   RefreshCw,
@@ -28,6 +29,7 @@ import {
   CardTitle,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -330,7 +332,29 @@ interface ReturnDraft {
   condition: FireReturnCondition;
 }
 
-function ReturnDialog({
+/** One label + value pair in the issue's detail grid. */
+function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 break-words text-sm">{value || '—'}</dd>
+    </div>
+  );
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+}
+
+/**
+ * The whole issue, exactly as it was filled in — plus the return inputs for
+ * anyone who can record one. Opened by clicking the row: an issue is a record
+ * people need to read back (who took what, on whose authority, due when), not
+ * just a queue item waiting for a return.
+ */
+function IssueDetailDialog({
   issueId,
   canManage,
   onOpenChange,
@@ -346,10 +370,10 @@ function ReturnDialog({
   const issue = issueQuery.data;
 
   const setDraft = (itemId: number, patch: Partial<ReturnDraft>) => {
-    setDrafts((current) => ({
-      ...current,
-      [itemId]: { quantity: '', condition: 'OK', ...current[itemId], ...patch },
-    }));
+    setDrafts((current) => {
+      const existing: ReturnDraft = current[itemId] ?? { quantity: '', condition: 'OK' };
+      return { ...current, [itemId]: { ...existing, ...patch } };
+    });
   };
 
   const handleReturn = async () => {
@@ -382,40 +406,70 @@ function ReturnDialog({
           <DialogTitle>
             {issue ? `${issue.issued_to_name} — issue #${issue.id}` : 'Fire Equipment Issue'}
           </DialogTitle>
+          <DialogDescription>
+            Everything recorded when this gear was issued, and what is still outstanding.
+          </DialogDescription>
         </DialogHeader>
 
         {issueQuery.isLoading || !issue ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
         ) : (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant="outline" className={STATUS_CLASSES[issue.status]}>
                 {issue.status_display}
               </Badge>
-              {issue.employee_code && (
-                <span className="text-muted-foreground">Emp: {issue.employee_code}</span>
-              )}
-              {issue.department && (
-                <span className="text-muted-foreground">· {issue.department}</span>
-              )}
               {issue.is_overdue && (
                 <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
                   Overdue
                 </Badge>
               )}
             </div>
-            <div className="text-xs text-muted-foreground">
-              Issued {new Date(issue.issued_at).toLocaleString()}
-              {issue.expected_return &&
-                ` · due ${new Date(issue.expected_return).toLocaleString()}`}
-              {issue.returned_at && ` · returned ${new Date(issue.returned_at).toLocaleString()}`}
-            </div>
+
+            {/* Everything captured on the issue form, in the order it was filled. */}
+            <dl className="grid gap-4 rounded-md border p-4 sm:grid-cols-2 lg:grid-cols-3">
+              <DetailField label="Issued to" value={issue.issued_to_name} />
+              <DetailField label="Employee code" value={issue.employee_code} />
+              <DetailField label="Department" value={issue.department} />
+              <DetailField label="Contact" value={issue.contact} />
+              <DetailField label="Issued at" value={formatDateTime(issue.issued_at)} />
+              <DetailField
+                label="Expected return"
+                value={
+                  issue.expected_return ? (
+                    <span className={issue.is_overdue ? 'font-medium text-red-600' : undefined}>
+                      {formatDateTime(issue.expected_return)}
+                    </span>
+                  ) : null
+                }
+              />
+              <DetailField label="Purpose" value={issue.purpose} />
+              <DetailField label="Issued by" value={issue.issued_by_name} />
+              <DetailField label="Returned at" value={formatDateTime(issue.returned_at)} />
+              {issue.remarks ? (
+                <DetailField
+                  label="Remarks"
+                  value={<span className="whitespace-pre-wrap">{issue.remarks}</span>}
+                />
+              ) : null}
+              <DetailField
+                label="Recorded by"
+                value={
+                  issue.created_by_name
+                    ? `${issue.created_by_name} · ${formatDateTime(issue.created_at)}`
+                    : formatDateTime(issue.created_at)
+                }
+              />
+            </dl>
 
             <div className="overflow-x-auto rounded-md border">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[720px] text-sm">
                 <thead className="border-b bg-muted/40">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Item</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                      Remarks
+                    </th>
                     <th className="px-3 py-2 text-right font-medium text-muted-foreground">Issued</th>
                     <th className="px-3 py-2 text-right font-medium text-muted-foreground">Returned</th>
                     <th className="px-3 py-2 text-right font-medium text-muted-foreground">Pending</th>
@@ -433,18 +487,23 @@ function ReturnDialog({
                       <tr key={item.id} className="border-b last:border-b-0">
                         <td className="px-3 py-2">
                           <div>{item.equipment_name}</div>
-                          {item.fire_item_part_number && (
+                          {/* Which fire-store item was picked, or nothing when the
+                              line was typed in free-hand. */}
+                          {(item.fire_item_part_number || item.fire_item_name) && (
                             <div className="text-xs text-muted-foreground">
-                              {item.fire_item_part_number}
+                              {[item.fire_item_part_number, item.fire_item_name]
+                                .filter(Boolean)
+                                .join(' · ')}
                             </div>
                           )}
                         </td>
+                        <td className="px-3 py-2 text-muted-foreground">{item.remarks || '—'}</td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           {formatQty(item.quantity_issued)}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           {formatQty(item.quantity_returned)}
-                          {item.quantity_returned > 0 && (
+                          {Number(item.quantity_returned) > 0 && (
                             <span className="ml-1 text-xs text-muted-foreground">
                               ({item.return_condition_display})
                             </span>
@@ -526,7 +585,7 @@ export default function MaintenanceFireIssuePage() {
     is_active: true,
   });
   const [createOpen, setCreateOpen] = useState(false);
-  const [returnId, setReturnId] = useState<number | null>(null);
+  const [detailId, setDetailId] = useState<number | null>(null);
 
   const issuesQuery = useFireIssues(filters);
   const fireItemsQuery = useFireItems({ is_active: true });
@@ -676,7 +735,21 @@ export default function MaintenanceFireIssuePage() {
               </tr>
             ) : (
               issues.map((issue) => (
-                <tr key={issue.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                // The row is the way into the issue — the Actions buttons open
+                // the same dialog, they just say so out loud.
+                <tr
+                  key={issue.id}
+                  className="cursor-pointer border-b last:border-b-0 hover:bg-muted/40"
+                  onClick={() => setDetailId(issue.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setDetailId(issue.id);
+                    }
+                  }}
+                  tabIndex={0}
+                  aria-label={`Open issue for ${issue.issued_to_name}`}
+                >
                   <td className="px-4 py-3">
                     <div className="font-semibold">{issue.issued_to_name}</div>
                     {issue.employee_code && (
@@ -712,15 +785,29 @@ export default function MaintenanceFireIssuePage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap justify-end gap-1">
-                      <Button variant="outline" size="sm" onClick={() => setReturnId(issue.id)}>
-                        <Undo2 className="h-4 w-4" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDetailId(issue.id);
+                        }}
+                      >
+                        {issue.status === 'RETURNED' ? (
+                          <Eye className="h-4 w-4" />
+                        ) : (
+                          <Undo2 className="h-4 w-4" />
+                        )}
                         {issue.status === 'RETURNED' ? 'View' : 'Return'}
                       </Button>
                       {canManage && issue.status === 'ISSUED' && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDelete(issue)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleDelete(issue);
+                          }}
                           disabled={deleteIssue.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -745,12 +832,12 @@ export default function MaintenanceFireIssuePage() {
           onSubmit={handleCreate}
         />
       )}
-      {returnId !== null && (
-        <ReturnDialog
-          issueId={returnId}
+      {detailId !== null && (
+        <IssueDetailDialog
+          issueId={detailId}
           canManage={canManage}
           onOpenChange={(open) => {
-            if (!open) setReturnId(null);
+            if (!open) setDetailId(null);
           }}
         />
       )}

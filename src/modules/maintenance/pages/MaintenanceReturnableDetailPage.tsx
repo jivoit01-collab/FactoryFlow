@@ -124,7 +124,10 @@ export default function MaintenanceReturnableDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {pass.status === 'DRAFT' && canManage ? (
+          {/* The department edits its own draft; the approver edits a pass that
+              is waiting on them, rather than bouncing it back over a typo. */}
+          {(pass.status === 'DRAFT' && canManage) ||
+          (pass.status === 'PENDING_APPROVAL' && canApprove) ? (
             <Button
               variant="outline"
               onClick={() => navigate(`/maintenance/returnable/${id}/edit`)}

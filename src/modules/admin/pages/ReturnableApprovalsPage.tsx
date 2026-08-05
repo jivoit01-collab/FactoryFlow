@@ -4,6 +4,7 @@ import {
   ExternalLink,
   Loader2,
   PackageCheck,
+  Pencil,
   ShieldQuestion,
   XCircle,
 } from 'lucide-react';
@@ -131,6 +132,11 @@ export default function ReturnableApprovalsPage() {
 
   const emptyLabel = TABS.find((t) => t.value === tab)?.label.toLowerCase();
 
+  // `from=approvals` brings the approver back here after saving, instead of
+  // dropping them on the pass detail inside Maintenance.
+  const openEditor = (pass: ReturnableGatePassListItem) =>
+    navigate(`/maintenance/returnable/${pass.id}/edit?from=approvals`);
+
   return (
     <div className="space-y-4 pb-6 sm:space-y-6">
       <div>
@@ -139,7 +145,8 @@ export default function ReturnableApprovalsPage() {
         </h2>
         <p className="text-sm text-muted-foreground sm:text-base">
           Sign off on material leaving the gate for repair, exchange or job work. Approving releases
-          the pass to the gate; sending it back returns it to the department as a draft.
+          the pass to the gate; sending it back returns it to the department as a draft. Anything
+          wrong on a pass — including its type — you can edit here instead of rejecting it.
         </p>
       </div>
 
@@ -178,6 +185,7 @@ export default function ReturnableApprovalsPage() {
               canApprove={canApprove}
               isSaving={isSaving}
               onReview={openReview}
+              onEdit={() => openEditor(pass)}
               onOpenDetail={() => navigate(`/maintenance/returnable/${pass.id}`)}
             />
           ))
@@ -291,6 +299,16 @@ export default function ReturnableApprovalsPage() {
                               size="sm"
                               variant="outline"
                               disabled={isSaving}
+                              onClick={() => openEditor(pass)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={isSaving}
                               onClick={() => openReview(pass, 'approve')}
                             >
                               <CheckCircle2 className="h-4 w-4" />
@@ -387,6 +405,7 @@ interface PassCardProps {
   canApprove: boolean;
   isSaving: boolean;
   onReview: (pass: ReturnableGatePassListItem, mode: ReviewMode) => void;
+  onEdit: () => void;
   onOpenDetail: () => void;
 }
 
@@ -395,7 +414,7 @@ interface PassCardProps {
  * it collapses behind a "+N more" toggle — that keeps Approve/Reject within
  * thumb reach no matter how many lines the pass carries.
  */
-function PassCard({ pass, canApprove, isSaving, onReview, onOpenDetail }: PassCardProps) {
+function PassCard({ pass, canApprove, isSaving, onReview, onEdit, onOpenDetail }: PassCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   // The list endpoint sends the item names comma-joined, not as an array.
@@ -462,25 +481,39 @@ function PassCard({ pass, canApprove, isSaving, onReview, onOpenDetail }: PassCa
       ) : null}
 
       {isPending && canApprove ? (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            className="h-11"
-            disabled={isSaving}
-            onClick={() => onReview(pass, 'approve')}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Approve
-          </Button>
+        <div className="mt-3 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              className="h-11"
+              disabled={isSaving}
+              onClick={() => onReview(pass, 'approve')}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Approve
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 border-red-200 text-red-700 hover:bg-red-50"
+              disabled={isSaving}
+              onClick={() => onReview(pass, 'reject')}
+            >
+              <XCircle className="h-4 w-4" />
+              Reject
+            </Button>
+          </div>
+          {/* Correcting a pass beats rejecting it over a wrong party or the
+              wrong type — but it is the rarer move, so it sits second. */}
           <Button
             type="button"
             variant="outline"
-            className="h-11 border-red-200 text-red-700 hover:bg-red-50"
+            className="h-11 w-full"
             disabled={isSaving}
-            onClick={() => onReview(pass, 'reject')}
+            onClick={onEdit}
           >
-            <XCircle className="h-4 w-4" />
-            Reject
+            <Pencil className="h-4 w-4" />
+            Edit Gate Pass
           </Button>
         </div>
       ) : (

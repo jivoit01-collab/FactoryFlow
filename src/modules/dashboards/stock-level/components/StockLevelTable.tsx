@@ -165,15 +165,15 @@ export function StockLevelTable({
                 </th>
                 <th
                   className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => toggleSort('on_hand')}
-                >
-                  On Hand <SortIcon col="on_hand" sortCol={sortCol} sortDir={sortDir} />
-                </th>
-                <th
-                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => toggleSort('min_stock')}
                 >
                   Benchmark <SortIcon col="min_stock" sortCol={sortCol} sortDir={sortDir} />
+                </th>
+                <th
+                  className="cursor-pointer px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground"
+                  onClick={() => toggleSort('on_hand')}
+                >
+                  On Hand <SortIcon col="on_hand" sortCol={sortCol} sortDir={sortDir} />
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">
                   Difference
@@ -251,10 +251,10 @@ export function StockLevelTable({
                       </td>
                       <td className="px-4 py-3">{item.warehouse}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        {item.on_hand.toLocaleString('en-IN')}
+                        {item.min_stock.toLocaleString('en-IN')}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        {item.min_stock.toLocaleString('en-IN')}
+                        {item.on_hand.toLocaleString('en-IN')}
                       </td>
                       <td
                         className={cn(

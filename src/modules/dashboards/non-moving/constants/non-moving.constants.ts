@@ -13,6 +13,17 @@ export const NON_MOVING_AGE_OPTIONS = [
 ] as const;
 
 // ============================================================================
+// Warehouse Scope
+// ============================================================================
+
+/**
+ * Warehouse-code prefixes that belong to the factory (Bhakharpur, Gupta).
+ * Everything else in `warehouse_summary` is a C&F / trading depot (PB-*, DL-*)
+ * or the backend's "Unassigned" bucket, and is hidden from this dashboard.
+ */
+export const FACTORY_WAREHOUSE_PREFIXES = ['BH', 'GP'] as const;
+
+// ============================================================================
 // Query Config
 // ============================================================================
 

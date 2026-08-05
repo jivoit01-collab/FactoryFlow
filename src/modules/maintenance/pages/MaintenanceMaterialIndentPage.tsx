@@ -57,7 +57,7 @@ import {
   useSubmitMaterialIndent,
   useUploadMaterialIndentAttachment,
 } from '../api';
-import { MaterialIndentStatusBadge } from '../components';
+import { MaterialIndentQuotations, MaterialIndentStatusBadge } from '../components';
 import type {
   MaterialIndent,
   MaterialIndentFilters,
@@ -759,8 +759,27 @@ function IndentDetailDialog({
                 <p className="text-sm text-muted-foreground">Waiting for purchase approval.</p>
               )}
 
-              {/* 4. Purchaser marks purchased */}
-              {indent.status === 'APPROVED' && canPurchase && (
+              {/* 4a. Purchaser collects company quotations; approver picks one */}
+              {['APPROVED', 'PENDING_QUOTATION_SELECTION', 'QUOTATION_SELECTED'].includes(
+                indent.status,
+              ) &&
+                (canPurchase || canApprove) && (
+                  <MaterialIndentQuotations
+                    indent={indent}
+                    canPurchase={canPurchase}
+                    canApprove={canApprove}
+                  />
+                )}
+              {indent.status === 'PENDING_QUOTATION_SELECTION' && !canApprove && (
+                <p className="text-sm text-muted-foreground">
+                  Waiting for the approver to pick a company.
+                </p>
+              )}
+
+              {/* 4b. Purchaser buys from the selected company and closes their step */}
+              {(indent.status === 'QUOTATION_SELECTED' ||
+                (indent.status === 'APPROVED' && indent.quotations.length === 0)) &&
+                canPurchase && (
                 <div className="space-y-2">
                   <Label className="text-xs">Vendor / PO note (optional)</Label>
                   <Textarea
@@ -784,7 +803,7 @@ function IndentDetailDialog({
                   </Button>
                 </div>
               )}
-              {indent.status === 'APPROVED' && !canPurchase && (
+              {['APPROVED', 'QUOTATION_SELECTED'].includes(indent.status) && !canPurchase && (
                 <p className="text-sm text-muted-foreground">Waiting for the purchaser.</p>
               )}
 

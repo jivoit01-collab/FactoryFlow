@@ -10,6 +10,11 @@ import type {
   MaterialIndentGateInPayload,
   MaterialIndentPayload,
   MaterialIndentPurchasePayload,
+  MaterialIndentQuotation,
+  MaterialIndentQuotationPayload,
+  MaterialIndentQuotationReturnPayload,
+  MaterialIndentQuotationSelectPayload,
+  MaterialIndentQuotationUpdatePayload,
   MaterialIndentReceivePayload,
   MaterialIndentReviewPayload,
   MaterialIndentUpdatePayload,
@@ -103,6 +108,71 @@ export const materialIndentApi = {
     return response.data;
   },
 
+  // ---- Quotation round ----
+
+  async getQuotations(indentId: number): Promise<MaterialIndentQuotation[]> {
+    const response = await apiClient.get<MaterialIndentQuotation[]>(
+      EP.MATERIAL_INDENT_QUOTATIONS,
+      { params: { indent: indentId } },
+    );
+    return response.data;
+  },
+
+  async createQuotation(payload: MaterialIndentQuotationPayload): Promise<MaterialIndentQuotation> {
+    const response = await apiClient.post<MaterialIndentQuotation>(
+      EP.MATERIAL_INDENT_QUOTATIONS,
+      payload,
+    );
+    return response.data;
+  },
+
+  async updateQuotation(
+    quotationId: number,
+    payload: MaterialIndentQuotationUpdatePayload,
+  ): Promise<MaterialIndentQuotation> {
+    const response = await apiClient.patch<MaterialIndentQuotation>(
+      EP.MATERIAL_INDENT_QUOTATION_DETAIL(quotationId),
+      payload,
+    );
+    return response.data;
+  },
+
+  async deleteQuotation(quotationId: number): Promise<void> {
+    await apiClient.delete(EP.MATERIAL_INDENT_QUOTATION_DETAIL(quotationId));
+  },
+
+  // Purchaser sends the collected quotations back for company selection.
+  async submitQuotations(indentId: number): Promise<MaterialIndent> {
+    const response = await apiClient.post<MaterialIndent>(
+      EP.MATERIAL_INDENT_SUBMIT_QUOTATIONS(indentId),
+    );
+    return response.data;
+  },
+
+  // Higher authority picks the company to buy from.
+  async selectQuotation(
+    indentId: number,
+    payload: MaterialIndentQuotationSelectPayload,
+  ): Promise<MaterialIndent> {
+    const response = await apiClient.post<MaterialIndent>(
+      EP.MATERIAL_INDENT_SELECT_QUOTATION(indentId),
+      payload,
+    );
+    return response.data;
+  },
+
+  // Higher authority sends the quotes back for more / better prices.
+  async returnQuotations(
+    indentId: number,
+    payload: MaterialIndentQuotationReturnPayload,
+  ): Promise<MaterialIndent> {
+    const response = await apiClient.post<MaterialIndent>(
+      EP.MATERIAL_INDENT_RETURN_QUOTATIONS(indentId),
+      payload,
+    );
+    return response.data;
+  },
+
   // Gate records vehicle when the purchased goods arrive.
   async gateInIndent(
     indentId: number,
@@ -135,6 +205,7 @@ export const materialIndentApi = {
     const formData = new FormData();
     formData.append('indent', String(payload.indent));
     formData.append('file', payload.file);
+    if (payload.quotation) formData.append('quotation', String(payload.quotation));
     formData.append('doc_type', payload.doc_type ?? 'INVOICE');
     if (payload.title?.trim()) formData.append('title', payload.title.trim());
 

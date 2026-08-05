@@ -1,8 +1,8 @@
 import { BarChart3 } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate } from 'react-router-dom';
 
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { BLOWING_PERMISSIONS, DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
@@ -11,6 +11,7 @@ const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage')
 const ExecutiveOverviewPage = lazy(() => import('./overview/pages/ExecutiveOverviewPage'));
 const GateDashboardPage = lazy(() => import('./gate/pages/GateDashboardPage'));
 const ProductionDashboardPage = lazy(() => import('./production/pages/ProductionDashboardPage'));
+const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
 const SAPPlanDashboardPage = lazy(() => import('./sap-plan/pages/SAPPlanDashboardPage'));
 const StockLevelDashboardPage = lazy(
   () => import('./stock-level/pages/StockLevelDashboardPage'),
@@ -49,6 +50,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+        BLOWING_PERMISSIONS.VIEW_REPORTS,
       ],
     },
     {
@@ -80,6 +82,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
       breadcrumb: { label: 'Production' },
+    },
+    {
+      path: '/dashboards/blowing',
+      element: <BlowingDashboardPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
+      breadcrumb: { label: 'Blowing' },
     },
     {
       path: '/dashboards/sap-plan',
@@ -164,6 +173,8 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
         // Gate dashboard lives here too — let gate staff reach the Dashboards menu.
         ...GATE_DASHBOARD_VIEW_PERMISSIONS,
+        // Blowing dashboard lives here too — let blowing staff reach the menu.
+        BLOWING_PERMISSIONS.VIEW_REPORTS,
       ],
       hasSubmenu: true,
       children: [
@@ -189,6 +200,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/production',
           title: 'Production',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+        },
+        {
+          path: '/dashboards/blowing',
+          title: 'Blowing',
+          permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
         },
         {
           path: '/dashboards/sap-plan',

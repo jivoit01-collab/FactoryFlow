@@ -7,6 +7,8 @@ export type MaterialIndentStatus =
   | 'ISSUED'
   | 'PENDING_APPROVAL'
   | 'APPROVED'
+  | 'PENDING_QUOTATION_SELECTION'
+  | 'QUOTATION_SELECTED'
   | 'PURCHASED'
   | 'GATE_IN'
   | 'RECEIVED'
@@ -15,11 +17,12 @@ export type MaterialIndentStatus =
 
 export type MaterialIndentPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 
-export type MaterialIndentDocType = 'INVOICE' | 'BILL' | 'OTHER';
+export type MaterialIndentDocType = 'INVOICE' | 'BILL' | 'QUOTATION' | 'OTHER';
 
 export interface MaterialIndentAttachment {
   id: number;
   indent: number;
+  quotation: number | null;
   file: string;
   doc_type: MaterialIndentDocType;
   doc_type_display: string;
@@ -97,8 +100,20 @@ export interface MaterialIndent {
   received_by: number | null;
   received_by_name: string;
   received_at: string | null;
+  // Quotation round — purchaser collects company prices, approver picks one.
+  quotations_submitted_by: number | null;
+  quotations_submitted_by_name: string;
+  quotations_submitted_at: string | null;
+  selected_quotation: number | null;
+  selected_company_name: string;
+  quotation_selected_by: number | null;
+  quotation_selected_by_name: string;
+  quotation_selected_at: string | null;
+  /** Why that company was chosen, or why the quotes were sent back. */
+  quotation_remarks: string;
   items: MaterialIndentItem[];
   attachments: MaterialIndentAttachment[];
+  quotations: MaterialIndentQuotation[];
   total_items: number;
   /** True when any item has a purchase shortfall. */
   has_shortfall: boolean;
@@ -109,6 +124,83 @@ export interface MaterialIndent {
   updated_by_name: string;
   created_at: string;
   updated_at: string;
+}
+
+/** One company's rate for one item of the indent. */
+export interface MaterialIndentQuotationLine {
+  id: number;
+  item: number;
+  item_particulars: string;
+  item_unit: string;
+  item_line_num: number;
+  quantity: string;
+  unit_price: string;
+  amount: string;
+  remarks: string;
+}
+
+/** One company's price offer for the purchase shortfall of an indent. */
+export interface MaterialIndentQuotation {
+  id: number;
+  indent: number;
+  indent_no: string;
+  company_name: string;
+  contact_person: string;
+  contact_no: string;
+  gstin: string;
+  quotation_no: string;
+  quotation_date: string | null;
+  delivery_days: number | null;
+  payment_terms: string;
+  /** Freight, packing and the like — added on top of the line total. */
+  other_charges: string;
+  remarks: string;
+  lines: MaterialIndentQuotationLine[];
+  attachments: MaterialIndentAttachment[];
+  lines_total: string;
+  total_amount: string;
+  is_selected: boolean;
+  is_active: boolean;
+  created_by: number | null;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaterialIndentQuotationLineInput {
+  item: number;
+  /** Omit to quote the item's full purchase shortfall. */
+  quantity?: string;
+  unit_price: string;
+  remarks?: string;
+}
+
+export interface MaterialIndentQuotationPayload {
+  indent: number;
+  company_name: string;
+  contact_person?: string;
+  contact_no?: string;
+  gstin?: string;
+  quotation_no?: string;
+  quotation_date?: string | null;
+  delivery_days?: number | null;
+  payment_terms?: string;
+  other_charges?: string;
+  remarks?: string;
+  lines_input?: MaterialIndentQuotationLineInput[];
+}
+
+export type MaterialIndentQuotationUpdatePayload = Partial<
+  Omit<MaterialIndentQuotationPayload, 'indent'>
+>;
+
+export interface MaterialIndentQuotationSelectPayload {
+  quotation: number;
+  quotation_remarks?: string;
+}
+
+export interface MaterialIndentQuotationReturnPayload {
+  quotation_remarks: string;
 }
 
 export interface MaterialIndentItemInput {
@@ -158,6 +250,8 @@ export interface MaterialIndentReceivePayload {
 
 export interface MaterialIndentAttachmentUploadPayload {
   indent: number;
+  /** Set to hang the file off a quotation — the written quote behind a price. */
+  quotation?: number;
   file: File;
   doc_type?: MaterialIndentDocType;
   title?: string;
