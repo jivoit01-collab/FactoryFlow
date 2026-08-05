@@ -130,7 +130,8 @@ export interface CreateLineSkuConfigPayload {
   config_name: string;
   sku_code?: string;
   sku_name?: string;
-  rated_speed?: string | number | null;
+  /** Bottles/hr — mandatory: title + speed are the only required preset fields */
+  rated_speed: string | number;
   pieces_per_case?: number | null;
   labour_count?: number;
   other_manpower_count?: number;
@@ -142,7 +143,8 @@ export interface UpdateLineSkuConfigPayload {
   config_name?: string;
   sku_code?: string;
   sku_name?: string;
-  rated_speed?: string | number | null;
+  /** Omit to keep the stored speed; null is rejected (speed is mandatory) */
+  rated_speed?: string | number;
   pieces_per_case?: number | null;
   labour_count?: number;
   other_manpower_count?: number;

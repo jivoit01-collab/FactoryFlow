@@ -117,6 +117,10 @@ function LineManagementPage() {
       toast.error('Configuration name is required');
       return;
     }
+    if (!form.rated_speed || parseFloat(form.rated_speed) <= 0) {
+      toast.error('Rated speed is required');
+      return;
+    }
     try {
       if (editing) {
         await updateConfig.mutateAsync({
@@ -125,7 +129,7 @@ function LineManagementPage() {
             config_name: form.config_name,
             sku_code: form.sku_code,
             sku_name: form.sku_name,
-            rated_speed: form.rated_speed || null,
+            rated_speed: form.rated_speed,
             labour_count: form.labour_count,
             other_manpower_count: form.other_manpower_count,
             supervisor: form.supervisor,
@@ -143,7 +147,7 @@ function LineManagementPage() {
           config_name: form.config_name,
           sku_code: form.sku_code,
           sku_name: form.sku_name,
-          rated_speed: form.rated_speed || null,
+          rated_speed: form.rated_speed,
           labour_count: form.labour_count,
           other_manpower_count: form.other_manpower_count,
           supervisor: form.supervisor,
@@ -428,13 +432,15 @@ function LineManagementPage() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Rated Speed (bottles/hr)</Label>
+                <Label>
+                  Rated Speed (bottles/hr) <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   type="number"
                   step="0.01"
                   value={form.rated_speed}
                   onChange={(e) => setForm({ ...form, rated_speed: e.target.value })}
-                  placeholder="e.g., 150"
+                  placeholder="e.g., 4800"
                 />
               </div>
               <div className="space-y-2">
