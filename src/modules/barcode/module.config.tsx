@@ -34,6 +34,7 @@ const PalletMovePage = lazy(() => import('./pages/PalletMovePage'));
 const PalletTransferPage = lazy(() => import('./pages/PalletTransferPage'));
 const PalletSplitPage = lazy(() => import('./pages/PalletSplitPage'));
 const BoxTransferPage = lazy(() => import('./pages/BoxTransferPage'));
+const PalletizePage = lazy(() => import('./pages/PalletizePage'));
 
 // Loose & Dismantle
 const DismantlePage = lazy(() => import('./pages/DismantlePage'));
@@ -183,6 +184,12 @@ export const barcodeModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [BARCODE_PERMISSIONS.MANAGE_BOX],
     },
+    {
+      path: '/barcode/palletize',
+      element: <PalletizePage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.MANAGE_BOX],
+    },
     // Loose & Dismantle
     {
       path: '/barcode/dismantle',
@@ -302,6 +309,11 @@ export const barcodeModuleConfig: ModuleConfig = {
         {
           path: '/barcode/box-transfer',
           title: 'Box Transfer',
+          permissions: [BARCODE_PERMISSIONS.MANAGE_BOX],
+        },
+        {
+          path: '/barcode/palletize',
+          title: 'Palletize',
           permissions: [BARCODE_PERMISSIONS.MANAGE_BOX],
         },
         {
