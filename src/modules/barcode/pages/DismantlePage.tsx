@@ -40,7 +40,7 @@ export default function DismantlePage() {
 
   const { data: pallets = [], isLoading: loadingPallets } = usePallets(
     mode === 'pallet' && palletSearch.length >= 2
-      ? { search: palletSearch, status: 'ACTIVE' }
+      ? { search: palletSearch, status: 'ACTIVE,PARTIAL' }
       : undefined,
   );
   const { data: boxes = [], isLoading: loadingBoxes } = useBoxes(
@@ -247,20 +247,22 @@ export default function DismantlePage() {
                       selectedBoxIds.length === (palletDetail.boxes?.length || 0)
                         ? []
                         : (palletDetail.boxes || [])
-                            .filter((b) => b.status === 'ACTIVE')
+                            .filter((b) => b.status === 'ACTIVE' || b.status === 'PARTIAL')
                             .map((b) => b.id),
                     )
                   }
                 >
                   {selectedBoxIds.length ===
-                  (palletDetail.boxes?.filter((b) => b.status === 'ACTIVE').length || 0)
+                  (palletDetail.boxes?.filter(
+                    (b) => b.status === 'ACTIVE' || b.status === 'PARTIAL',
+                  ).length || 0)
                     ? 'Deselect all'
                     : 'Select all'}
                 </Button>
               </div>
               <div className="max-h-48 overflow-y-auto space-y-1">
                 {palletDetail.boxes
-                  ?.filter((b) => b.status === 'ACTIVE')
+                  ?.filter((b) => b.status === 'ACTIVE' || b.status === 'PARTIAL')
                   .map((box) => (
                     <label
                       key={box.id}
