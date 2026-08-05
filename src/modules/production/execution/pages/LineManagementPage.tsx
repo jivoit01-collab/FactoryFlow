@@ -298,7 +298,7 @@ function LineManagementPage() {
                     <tr className="border-b bg-muted/50">
                       <th className="text-left p-3 font-medium">Config Name</th>
                       <th className="text-left p-3 font-medium">SKU</th>
-                      <th className="text-right p-3 font-medium">Speed (cases/hr)</th>
+                      <th className="text-right p-3 font-medium">Speed (bottles/hr)</th>
                       <th className="text-right p-3 font-medium">Labour</th>
                       <th className="text-right p-3 font-medium">Other Manpower</th>
                       <th className="text-left p-3 font-medium">Supervisor</th>
@@ -428,7 +428,7 @@ function LineManagementPage() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Rated Speed (cases/hr)</Label>
+                <Label>Rated Speed (bottles/hr)</Label>
                 <Input
                   type="number"
                   step="0.01"

@@ -720,7 +720,12 @@ function RunDetailPage() {
                 segments={run.segments}
                 breakdowns={run.breakdowns}
                 isCompleted={isCompleted}
-                ratedSpeed={run.rated_speed ? parseFloat(run.rated_speed) : null}
+                ratedSpeedCasesPerHr={
+                  // rated_speed is bottles/hr; segments count cases
+                  run.rated_speed
+                    ? parseFloat(run.rated_speed) / (run.pieces_per_case || 1)
+                    : null
+                }
                 onAddBreakdown={openBreakdownDialog}
                 onStopProduction={() => setDialog('stop')}
                 onResolveBreakdown={handleResolveBreakdown}

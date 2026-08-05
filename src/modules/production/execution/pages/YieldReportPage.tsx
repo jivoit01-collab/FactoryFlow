@@ -53,7 +53,10 @@ function YieldReportPage() {
   if (!run) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
 
   const isCompleted = run.status === 'COMPLETED';
-  const ratedSpeed = parseFloat(run.rated_speed || '0');
+  const ratedSpeed = parseFloat(run.rated_speed || '0'); // bottles/hr
+  // Production is counted in cases; speeds are per bottle — convert via the
+  // run's pieces-per-case snapshot (1 when unresolved).
+  const piecesPerCase = run.pieces_per_case || 1;
 
   const segmentProduction = run.segments.reduce(
     (sum, s) => sum + parseFloat(s.produced_cases || '0'),
@@ -82,7 +85,9 @@ function YieldReportPage() {
   }
 
   const totalTimeMinutes = runningMinutes + breakdownMinutes;
-  const expectedProduction = ratedSpeed > 0 ? (runningMinutes / 60) * ratedSpeed : 0;
+  const expectedProduction = ratedSpeed > 0
+    ? (runningMinutes / 60) * (ratedSpeed / piecesPerCase)
+    : 0;
   const productionEfficiency = expectedProduction > 0
     ? ((actualProduction / expectedProduction) * 100).toFixed(1)
     : '-';
@@ -90,7 +95,7 @@ function YieldReportPage() {
     ? ((runningMinutes / totalTimeMinutes) * 100).toFixed(1)
     : '-';
   const actualSpeed = runningMinutes > 0
-    ? ((actualProduction / runningMinutes) * 60).toFixed(1)
+    ? ((actualProduction * piecesPerCase / runningMinutes) * 60).toFixed(1)
     : '-';
 
   const actualLabourCount = labourEntries.reduce((sum, e) => sum + e.worker_count, 0);
@@ -200,7 +205,7 @@ function YieldReportPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Actual Speed</p>
-              <p className="text-xl font-bold">{actualSpeed} {actualSpeed !== '-' ? 'cases/hr' : ''}</p>
+              <p className="text-xl font-bold">{actualSpeed} {actualSpeed !== '-' ? 'bottles/hr' : ''}</p>
               {ratedSpeed > 0 && <p className="text-xs text-muted-foreground">(rated: {ratedSpeed})</p>}
             </div>
           </div>

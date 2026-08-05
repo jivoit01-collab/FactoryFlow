@@ -331,8 +331,8 @@ function StartRunPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Rated Speed (cases/hr)</Label>
-                <Input {...form.register('rated_speed')} placeholder="e.g., 150" />
+                <Label>Rated Speed (bottles/hr)</Label>
+                <Input {...form.register('rated_speed')} placeholder="e.g., 3000" />
               </div>
             </div>
           </CardContent>
@@ -362,7 +362,7 @@ function StartRunPage() {
                       <SelectItem key={cfg.id} value={String(cfg.id)}>
                         <span className="font-medium">{cfg.config_name}</span>
                         <span className="text-muted-foreground ml-2">
-                          — {cfg.rated_speed || '?'} cases/hr, {cfg.labour_count} labour
+                          — {cfg.rated_speed || '?'} bottles/hr, {cfg.labour_count} labour
                         </span>
                       </SelectItem>
                     ))}
@@ -374,7 +374,7 @@ function StartRunPage() {
               {selectedConfig && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 pt-1">
                   {[
-                    { label: 'Speed', value: `${selectedConfig.rated_speed || '-'} cases/hr` },
+                    { label: 'Speed', value: `${selectedConfig.rated_speed || '-'} bottles/hr` },
                     { label: 'Labour', value: selectedConfig.labour_count },
                     { label: 'Other', value: selectedConfig.other_manpower_count },
                     { label: 'Supervisor', value: selectedConfig.supervisor || '-' },

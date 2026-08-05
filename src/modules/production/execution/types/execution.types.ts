@@ -112,7 +112,10 @@ export interface LineSkuConfig {
   config_name: string;
   sku_code: string;
   sku_name: string;
+  /** Bottles/hr */
   rated_speed: string | null;
+  /** Bottles per case (SAP SalFactor2); null when unresolved */
+  pieces_per_case: number | null;
   labour_count: number;
   other_manpower_count: number;
   supervisor: string;
@@ -128,6 +131,7 @@ export interface CreateLineSkuConfigPayload {
   sku_code?: string;
   sku_name?: string;
   rated_speed?: string | number | null;
+  pieces_per_case?: number | null;
   labour_count?: number;
   other_manpower_count?: number;
   supervisor?: string;
@@ -139,6 +143,7 @@ export interface UpdateLineSkuConfigPayload {
   sku_code?: string;
   sku_name?: string;
   rated_speed?: string | number | null;
+  pieces_per_case?: number | null;
   labour_count?: number;
   other_manpower_count?: number;
   supervisor?: string;
@@ -241,7 +246,10 @@ export interface ProductionRun {
   product: string;
   item_code: string;
   required_qty: string | null;
+  /** Bottles/hr */
   rated_speed: string;
+  /** Bottles per case (SAP SalFactor2); null when unresolved */
+  pieces_per_case: number | null;
   total_production: string;
   total_running_minutes: number;
   total_breakdown_time: number;
@@ -772,6 +780,7 @@ export interface CreateRunRequest {
   item_code?: string;
   required_qty?: number | null;
   rated_speed?: string;
+  pieces_per_case?: number | null;
   machine_ids?: number[];
   labour_count?: number;
   other_manpower_count?: number;
@@ -783,6 +792,7 @@ export interface CreateRunRequest {
 export interface UpdateRunRequest {
   product?: string;
   rated_speed?: string;
+  pieces_per_case?: number | null;
   machine_ids?: number[];
   labour_count?: number;
   other_manpower_count?: number;
