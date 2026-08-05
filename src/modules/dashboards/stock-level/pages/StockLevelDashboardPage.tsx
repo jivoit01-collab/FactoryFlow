@@ -1,16 +1,19 @@
+import { Download } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api';
 import { useWMSItemGroups } from '@/modules/warehouse/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { Button } from '@/shared/components/ui';
 
 import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
 import {
   DEFAULT_MATERIAL_TYPE_NAME,
   findDefaultMaterialGroup,
 } from '../../utils/itemGroupDefaults';
-import { useStockLevels } from '../api';
+import { stockLevelApi, useStockLevels } from '../api';
 import { StockLevelFilters, StockLevelMetaCards, StockLevelTable } from '../components';
 import {
   DEFAULT_STOCK_MOVEMENT_FILTER,
@@ -129,12 +132,46 @@ export default function StockLevelDashboardPage() {
   const sapError = query.error ?? statsQuery.error;
   const hasSAPError = sapError && isSAPError(sapError);
 
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const blob = await stockLevelApi.exportStockLevels({
+        ...effectiveFilters,
+        sort_by: sort.col,
+        sort_dir: sort.dir,
+      });
+      const stamp = effectiveFilters.as_of_date ?? new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stock_benchmark_${stamp}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Export downloaded');
+    } catch {
+      toast.error('Could not export stock benchmark');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [effectiveFilters, sort]);
+
   return (
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Stock Benchmark"
         description="Inventory items with benchmark levels — monitor on-hand vs. benchmark requirements"
-      />
+      >
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void handleExport()}
+          disabled={isExporting || Boolean(hasSAPError)}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          {isExporting ? 'Exporting...' : 'Export Excel'}
+        </Button>
+      </DashboardHeader>
 
       <StockLevelFilters
         onFiltersChange={handleFiltersChange}

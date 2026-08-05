@@ -12,7 +12,7 @@ export const STOCK_STATUS_FILTER_OPTIONS = [
   { value: 'unset', label: 'No Benchmark Set' },
 ] as const;
 
-export const DEFAULT_STOCK_WAREHOUSE_FILTER = ['BH-BS', 'BH-PM'];
+export const DEFAULT_STOCK_WAREHOUSE_FILTER = ['BH-BS', 'BH-PM', 'BH-PC'];
 export const DEFAULT_STOCK_STATUS_FILTER: StockHealthStatus[] = ['healthy', 'low', 'critical'];
 export const STOCK_BENCHMARK_STATS_STATUS_FILTER: StockHealthStatus[] = [
   'healthy',
