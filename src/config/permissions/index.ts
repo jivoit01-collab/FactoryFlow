@@ -50,11 +50,7 @@ export {
 } from './production.permissions';
 
 // Dashboards Module
-export {
-  DASHBOARDS_MODULE_PREFIX,
-  DASHBOARDS_PERMISSIONS,
-  type DashboardsPermission,
-} from './dashboards.permissions';
+export { DASHBOARDS_PERMISSIONS, type DashboardsPermission } from './dashboards.permissions';
 
 // Dispatch Module
 export {

@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
+import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import { findDefaultMaterialGroup } from '../../utils/itemGroupDefaults';
 import { useItemGroups, useNonMovingReport } from '../api';
 import {

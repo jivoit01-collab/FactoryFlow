@@ -11,12 +11,8 @@ const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage')
 const ExecutiveOverviewPage = lazy(() => import('./overview/pages/ExecutiveOverviewPage'));
 const GateDashboardPage = lazy(() => import('./gate/pages/GateDashboardPage'));
 const ProductionDashboardPage = lazy(() => import('./production/pages/ProductionDashboardPage'));
-const SAPPlanDashboardPage = lazy(() => import('./sap-plan/pages/SAPPlanDashboardPage'));
 const StockLevelDashboardPage = lazy(
   () => import('./stock-level/pages/StockLevelDashboardPage'),
-);
-const InventoryAgeDashboardPage = lazy(
-  () => import('./inventory-age/pages/InventoryAgeDashboardPage'),
 );
 const NonMovingDashboardPage = lazy(
   () => import('./non-moving/pages/NonMovingDashboardPage'),
@@ -44,9 +40,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       element: <DashboardsLandingPage />,
       layout: 'main',
       permissions: [
-        DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
-        DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
         DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
         DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
@@ -59,9 +53,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       element: <ExecutiveOverviewPage />,
       layout: 'main',
       permissions: [
-        DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
-        DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
         DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
         DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
@@ -85,25 +77,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Production' },
     },
     {
-      path: '/dashboards/sap-plan',
-      element: <SAPPlanDashboardPage />,
-      layout: 'main',
-      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
-      breadcrumb: { label: 'SAP Plan' },
-    },
-    {
       path: '/dashboards/stock-levels',
       element: <StockLevelDashboardPage />,
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
       breadcrumb: { label: 'Stock Benchmark' },
-    },
-    {
-      path: '/dashboards/inventory-age',
-      element: <InventoryAgeDashboardPage />,
-      layout: 'main',
-      permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
-      breadcrumb: { label: 'Inventory Age' },
     },
     {
       path: '/dashboards/non-moving',
@@ -162,9 +140,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       icon: BarChart3,
       showInSidebar: true,
       permissions: [
-        DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
-        DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
         DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
         DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
         // Production reports permission — lets production staff reach the
@@ -184,9 +160,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/overview',
           title: 'Command Centre',
           permissions: [
-            DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD,
             DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
-            DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE,
             DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
             DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
             DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
@@ -204,19 +178,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
         },
         {
-          path: '/dashboards/sap-plan',
-          title: 'SAP Material Plan',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
-        },
-        {
           path: '/dashboards/stock-levels',
           title: 'Stock Benchmark',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
-        },
-        {
-          path: '/dashboards/inventory-age',
-          title: 'Inventory Age',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
         },
         {
           path: '/dashboards/non-moving',

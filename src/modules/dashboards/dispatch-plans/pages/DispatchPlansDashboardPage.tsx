@@ -32,7 +32,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'docnum_asc', label: 'Invoice no. (A → Z)' },
 ];
 
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
+import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import { useDispatchBills, useUpdateDispatchPlan } from '../api';
 import {
   DispatchPlanBulkDateBar,

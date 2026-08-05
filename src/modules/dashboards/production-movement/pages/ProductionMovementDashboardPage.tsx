@@ -6,7 +6,7 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
+import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import {
   useProductionMovementReport,
   useProductionMovementWarehouseBalanceReports,

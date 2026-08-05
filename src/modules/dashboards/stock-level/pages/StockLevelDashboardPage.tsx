@@ -8,7 +8,7 @@ import { useWMSItemGroups } from '@/modules/warehouse/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button } from '@/shared/components/ui';
 
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
+import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import {
   DEFAULT_MATERIAL_TYPE_NAME,
   findDefaultMaterialGroup,

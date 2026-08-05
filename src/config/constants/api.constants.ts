@@ -417,24 +417,12 @@ export const API_ENDPOINTS = {
     DROPDOWN_WAREHOUSES: '/production-planning/dropdown/warehouses/',
     DROPDOWN_BOM: '/production-planning/dropdown/bom/',
   },
-  // SAP Plan Dashboard
-  SAP_PLAN_DASHBOARD: {
-    SUMMARY: '/sap/plan-dashboard/summary/',
-    DETAILS: '/sap/plan-dashboard/details/',
-    PROCUREMENT: '/sap/plan-dashboard/procurement/',
-    SKU_DETAIL: (docEntry: number) => `/sap/plan-dashboard/sku/${docEntry}/`,
-  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
     AS_OF: '/dashboards/stock/as-of/',
     EXPORT: '/dashboards/stock/export/',
     ITEM_DETAIL: (itemCode: string) => `/dashboards/stock/${itemCode}/warehouses/`,
-  },
-  // Inventory Age & Value Dashboard
-  INVENTORY_AGE_DASHBOARD: {
-    FILTER_OPTIONS: '/dashboards/inventory-age/filter-options/',
-    REPORT: '/dashboards/inventory-age/report/',
   },
   // Non-Moving RM Dashboard
   NON_MOVING_RM: {

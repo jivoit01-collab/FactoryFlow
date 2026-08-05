@@ -6,7 +6,7 @@ import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, Checkbox } from '@/shared/components/ui';
 
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
+import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import { useDispatchBills, useSubmitBillSelection } from '../api';
 import { DispatchPlanFilters } from '../components';
 import { createDefaultDispatchPlanFilters } from '../constants';
