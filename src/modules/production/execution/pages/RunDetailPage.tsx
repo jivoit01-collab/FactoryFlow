@@ -12,6 +12,7 @@ import {
   Shield,
   Trash2,
   Warehouse,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -154,6 +155,7 @@ function RunDetailPage() {
   const numRunId = Number(runId);
   const { hasPermission } = usePermission();
   const canViewCost = hasPermission(EXECUTION_PERMISSIONS.VIEW_RUN_COST);
+  const canEnterElectricity = hasPermission(EXECUTION_PERMISSIONS.CREATE_MATERIAL);
 
   // ---------------------------------------------------------------------------
   // Data hooks
@@ -224,6 +226,11 @@ function RunDetailPage() {
   const [fgWarehouseError, setFGWarehouseError] = useState('');
   const { data: fgWarehouses = [], isLoading: fgWarehousesLoading, isError: fgWarehousesError } = useWarehouses(dialog === 'fg-receipt');
   const isCompleted = run?.status === 'COMPLETED';
+  // Total produced so far: the run-level figure once completed, else the sum of
+  // stopped segments' produced cases (active segments report at stop time).
+  const totalProduced = isCompleted
+    ? parseFloat(run?.total_production || '0')
+    : run?.segments?.reduce((sum, s) => sum + parseFloat(s.produced_cases || '0'), 0) ?? 0;
   const lockedFGReceipt = fgReceipts.find((receipt) =>
     receipt.status !== 'PENDING' || Boolean(receipt.received_at)
   );
@@ -531,6 +538,10 @@ function RunDetailPage() {
         <p className="text-sm text-muted-foreground">
           {run.date} &middot; {run.line_name} &middot; {run.product}
           {run.required_qty && <> &middot; Qty: {run.required_qty}</>}
+          {' '}&middot;{' '}
+          <span className="font-medium text-foreground">
+            Produced: {totalProduced.toLocaleString()}
+          </span>
           {run.sap_doc_entry && <> &middot; SAP DocEntry: {run.sap_doc_entry}</>}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -630,6 +641,11 @@ function RunDetailPage() {
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/yield`)}>
             <FileText className="h-4 w-4 mr-1" /> Yield
           </Button>
+          {canEnterElectricity && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/electricity`)}>
+              <Zap className="h-4 w-4 mr-1" /> Electricity
+            </Button>
+          )}
           {canViewCost && (
             <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/resources`)}>
               <IndianRupee className="h-4 w-4 mr-1" /> Cost
@@ -704,7 +720,12 @@ function RunDetailPage() {
                 segments={run.segments}
                 breakdowns={run.breakdowns}
                 isCompleted={isCompleted}
-                ratedSpeed={run.rated_speed ? parseFloat(run.rated_speed) : null}
+                ratedSpeedCasesPerHr={
+                  // rated_speed is bottles/hr; segments count cases
+                  run.rated_speed
+                    ? parseFloat(run.rated_speed) / (run.pieces_per_case || 1)
+                    : null
+                }
                 onAddBreakdown={openBreakdownDialog}
                 onStopProduction={() => setDialog('stop')}
                 onResolveBreakdown={handleResolveBreakdown}
@@ -722,7 +743,7 @@ function RunDetailPage() {
                 materials={materials}
                 onUpdateClosingQty={handleUpdateClosingQty}
                 readOnly={isCompleted}
-                actualProduction={isCompleted ? parseFloat(run.total_production || '0') : run.segments.reduce((sum, s) => sum + parseFloat(s.produced_cases || '0'), 0)}
+                actualProduction={totalProduced}
                 requiredQty={run.required_qty ? parseFloat(run.required_qty) : undefined}
               />
             </CardContent>

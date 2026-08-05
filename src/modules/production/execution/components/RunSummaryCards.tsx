@@ -23,7 +23,10 @@ function minutesSince(isoString: string, now: number): number {
 
 export function RunSummaryCards({ run }: RunSummaryCardsProps) {
   const isCompleted = run.status === 'COMPLETED';
-  const ratedSpeed = run.rated_speed ? parseFloat(run.rated_speed) : null;
+  const ratedSpeed = run.rated_speed ? parseFloat(run.rated_speed) : null; // bottles/hr
+  // Production is counted in cases; rated speed is per bottle — convert via
+  // the run's pieces-per-case snapshot (1 when unresolved).
+  const ratedSpeedCases = ratedSpeed != null ? ratedSpeed / (run.pieces_per_case || 1) : null;
 
   const hasActiveSegment = run.segments?.some((s) => s.is_active) ?? false;
   const hasActiveBreakdown = run.breakdowns?.some((b) => b.is_active) ?? false;
@@ -56,8 +59,8 @@ export function RunSummaryCards({ run }: RunSummaryCardsProps) {
   // Expected = sum of (each segment's duration * ratedSpeed), including live for active
   // Actual = sum of all closed segment produced_cases
   let expectedProduction: number | null = null;
-  if (ratedSpeed != null) {
-    expectedProduction = Math.round((runningMinutes / 60) * ratedSpeed);
+  if (ratedSpeedCases != null) {
+    expectedProduction = Math.round((runningMinutes / 60) * ratedSpeedCases);
   }
 
   // For completed runs, use the run total; otherwise sum from segments
@@ -103,7 +106,7 @@ export function RunSummaryCards({ run }: RunSummaryCardsProps) {
             Rated Speed
           </div>
           <p className="text-2xl font-bold">
-            {ratedSpeed != null ? `${run.rated_speed} cases/hr` : 'N/A'}
+            {ratedSpeed != null ? `${run.rated_speed} bottles/hr` : 'N/A'}
           </p>
         </CardContent>
       </Card>

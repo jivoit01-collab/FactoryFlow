@@ -23,6 +23,17 @@ export const stockLevelApi = {
     return response.data;
   },
 
+  async exportStockLevels(filters?: StockDashboardFilters): Promise<Blob> {
+    const params = buildParams(filters);
+    delete params.page;
+    delete params.page_size;
+    const response = await apiClient.get<Blob>(EP.EXPORT, {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
   async getItemDetail(itemCode: string, warehouses: string[]): Promise<StockItemDetailResponse> {
     const response = await apiClient.get<StockItemDetailResponse>(EP.ITEM_DETAIL(itemCode), {
       params: { warehouse: warehouses.join(',') },

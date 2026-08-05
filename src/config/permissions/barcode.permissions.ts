@@ -11,6 +11,7 @@ export const BARCODE_PERMISSIONS = {
   VIEW_BOX: 'barcode.view_box',
   CREATE_BOX: 'barcode.add_box',
   MANAGE_BOX: 'barcode.change_box',
+  EDIT_BOX_GENERATION_QTY: 'barcode.can_edit_box_generation_qty',
   VIEW_DISPATCH: 'barcode.can_view_barcode_dispatch',
   CREATE_DISPATCH: 'barcode.can_create_barcode_dispatch',
   SCAN_DISPATCH: 'barcode.can_scan_barcode_dispatch',

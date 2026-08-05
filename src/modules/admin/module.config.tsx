@@ -2,6 +2,7 @@ import { ShieldCheck } from 'lucide-react';
 
 import {
   ADMIN_PERMISSIONS,
+  GOODS_RETURN_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
   WAREHOUSE_PERMISSIONS,
@@ -11,6 +12,7 @@ import type { ModuleConfig } from '@/core/types';
 
 import { BstApprovalsBadge } from './components/BstApprovalsBadge';
 import { DockingApprovalsBadge } from './components/DockingApprovalsBadge';
+import { GoodsReturnApprovalsBadge } from './components/GoodsReturnApprovalsBadge';
 import { MaterialIndentApprovalsBadge } from './components/MaterialIndentApprovalsBadge';
 import { PartialApprovalsBadge } from './components/PartialApprovalsBadge';
 import { ReturnableApprovalsBadge } from './components/ReturnableApprovalsBadge';
@@ -22,6 +24,7 @@ const DockingPartialScanApprovalsPage = lazy(
 );
 const MaterialIndentApprovalsPage = lazy(() => import('./pages/MaterialIndentApprovalsPage'));
 const ReturnableApprovalsPage = lazy(() => import('./pages/ReturnableApprovalsPage'));
+const GoodsReturnApprovalsPage = lazy(() => import('./pages/GoodsReturnApprovalsPage'));
 // Same queue the Warehouse module exposes at /warehouse/bst/partial-approvals —
 // mirrored here so approvers find every queue in one place. One page, two routes.
 const BSTPartialApprovalsPage = lazy(
@@ -52,12 +55,15 @@ const returnableApprovalPermissions = [RETURNABLE_PERMISSIONS.APPROVE_GATEPASS] 
 
 const bstApprovalPermissions = [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL] as const;
 
+const goodsReturnApprovalPermissions = [GOODS_RETURN_PERMISSIONS.APPROVE] as const;
+
 const adminPermissions = [
   ...dockingApprovalPermissions,
   ...partialApprovalPermissions,
   ...materialIndentApprovalPermissions,
   ...returnableApprovalPermissions,
   ...bstApprovalPermissions,
+  ...goodsReturnApprovalPermissions,
 ] as const;
 
 export const adminModuleConfig: ModuleConfig = {
@@ -105,6 +111,13 @@ export const adminModuleConfig: ModuleConfig = {
       permissions: bstApprovalPermissions,
       breadcrumb: { label: 'BST Approvals' },
     },
+    {
+      path: '/admin/goods-return-approvals',
+      element: <GoodsReturnApprovalsPage />,
+      layout: 'main',
+      permissions: goodsReturnApprovalPermissions,
+      breadcrumb: { label: 'Goods Return Approvals' },
+    },
   ],
   navigation: [
     {
@@ -145,6 +158,12 @@ export const adminModuleConfig: ModuleConfig = {
           title: 'BST Approvals',
           permissions: bstApprovalPermissions,
           badge: BstApprovalsBadge,
+        },
+        {
+          path: '/admin/goods-return-approvals',
+          title: 'Goods Return Approvals',
+          permissions: goodsReturnApprovalPermissions,
+          badge: GoodsReturnApprovalsBadge,
         },
       ],
     },

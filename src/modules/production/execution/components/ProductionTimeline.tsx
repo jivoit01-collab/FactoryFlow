@@ -11,7 +11,8 @@ interface ProductionTimelineProps {
   segments: ProductionSegment[];
   breakdowns: MachineBreakdown[];
   isCompleted: boolean;
-  ratedSpeed: number | null;
+  /** Rated speed converted to cases/hr (bottles/hr ÷ pieces per case) */
+  ratedSpeedCasesPerHr: number | null;
   onAddBreakdown: () => void;
   onStopProduction: () => void;
   onResolveBreakdown: (
@@ -72,7 +73,7 @@ export function ProductionTimeline({
   segments,
   breakdowns,
   isCompleted,
-  ratedSpeed,
+  ratedSpeedCasesPerHr,
   onAddBreakdown,
   onStopProduction,
   onResolveBreakdown,
@@ -134,7 +135,7 @@ export function ProductionTimeline({
       <div className="space-y-3">
         {timeline.map((item) =>
           item.type === 'segment' ? (
-            <SegmentCard key={`seg-${item.data.id}`} segment={item.data} now={now} ratedSpeed={ratedSpeed} onClick={() => onSegmentClick(item.data)} />
+            <SegmentCard key={`seg-${item.data.id}`} segment={item.data} now={now} ratedSpeed={ratedSpeedCasesPerHr} onClick={() => onSegmentClick(item.data)} />
           ) : (
             <BreakdownCard
               key={`bd-${item.data.id}`}

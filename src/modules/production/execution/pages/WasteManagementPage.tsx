@@ -77,8 +77,16 @@ function WasteManagementPage() {
   const createWaste = useCreateWasteLog();
   const approveWaste = useApproveWaste();
 
+  const STANDALONE = 'standalone';
+
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedRunId, setSelectedRunId] = useState<number | undefined>(runIdFilter);
+  // Run id as a string, the STANDALONE sentinel (waste not tied to a run), or
+  // undefined while nothing is chosen yet.
+  const [runChoice, setRunChoice] = useState<string | undefined>(
+    runIdFilter ? String(runIdFilter) : undefined,
+  );
+  const isStandalone = runChoice === STANDALONE;
+  const selectedRunId = runChoice && !isStandalone ? Number(runChoice) : undefined;
   const [manualRows, setManualRows] = useState<WasteDraftRow[]>([]);
   const [wasteQtyByKey, setWasteQtyByKey] = useState<Record<string, string>>({});
   const [commonReason, setCommonReason] = useState('');
@@ -114,18 +122,20 @@ function WasteManagementPage() {
         w.material_name.toLowerCase().includes(s) ||
         w.material_code.toLowerCase().includes(s) ||
         w.reason.toLowerCase().includes(s) ||
-        String(w.run_number).includes(s) ||
+        (w.run_number != null && String(w.run_number).includes(s)) ||
+        (w.run_number == null && 'standalone'.includes(s)) ||
         (w.run_product || '').toLowerCase().includes(s)
       );
     }
     if (statusFilter !== 'ALL') {
       result = result.filter((w) => w.wastage_approval_status === statusFilter);
     }
+    const logDate = (w: WasteLog) => w.log_date || w.run_date || w.created_at?.slice(0, 10) || '';
     if (dateRange.from) {
-      result = result.filter((w) => (w.run_date || '') >= dateRange.from);
+      result = result.filter((w) => logDate(w) >= dateRange.from);
     }
     if (dateRange.to) {
-      result = result.filter((w) => (w.run_date || '') <= dateRange.to);
+      result = result.filter((w) => logDate(w) <= dateRange.to);
     }
     return result;
   }, [wasteLogs, searchText, statusFilter, dateRange]);
@@ -137,7 +147,7 @@ function WasteManagementPage() {
   const hasFilters = searchText || statusFilter !== 'ALL';
 
   const resetCreateState = () => {
-    setSelectedRunId(runIdFilter);
+    setRunChoice(runIdFilter ? String(runIdFilter) : undefined);
     setManualRows([]);
     setWasteQtyByKey({});
     setCommonReason('');
@@ -155,8 +165,8 @@ function WasteManagementPage() {
     if (!open) resetCreateState();
   };
 
-  const handleRunChange = (runId: number) => {
-    setSelectedRunId(runId);
+  const handleRunChange = (choice: string) => {
+    setRunChoice(choice);
     setManualRows([]);
     setWasteQtyByKey({});
     setShowManualPicker(false);
@@ -199,8 +209,8 @@ function WasteManagementPage() {
   };
 
   const onSubmit = async () => {
-    if (!selectedRunId) {
-      toast.error('Select a production run');
+    if (!runChoice) {
+      toast.error('Select a production run or choose Standalone');
       return;
     }
 
@@ -219,7 +229,7 @@ function WasteManagementPage() {
 
     try {
       await createWaste.mutateAsync({
-        production_run_id: selectedRunId,
+        ...(selectedRunId ? { production_run_id: selectedRunId } : {}),
         reason: commonReason.trim(),
         items,
       });
@@ -333,14 +343,12 @@ function WasteManagementPage() {
                 {runIdFilter && filteredRun ? (
                   <p className="text-sm font-medium mt-2">Run #{filteredRun.run_number} - {filteredRun.product}</p>
                 ) : (
-                  <Select
-                    value={selectedRunId ? String(selectedRunId) : undefined}
-                    onValueChange={(value) => handleRunChange(Number(value))}
-                  >
+                  <Select value={runChoice} onValueChange={handleRunChange}>
                     <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select run" />
+                      <SelectValue placeholder="Select run or standalone" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={STANDALONE}>Standalone — not tied to a run</SelectItem>
                       {runs.map((run) => (
                         <SelectItem key={run.id} value={String(run.id)}>
                           #{run.run_number} - {run.product} ({run.date})
@@ -371,7 +379,11 @@ function WasteManagementPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">
-                  {selectedRun ? `BOM Items - Run #${selectedRun.run_number}` : 'BOM Items'}
+                  {selectedRun
+                    ? `BOM Items - Run #${selectedRun.run_number}`
+                    : isStandalone
+                      ? 'Items (standalone entry)'
+                      : 'BOM Items'}
                 </p>
                 {loadingBOMItems && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
@@ -462,7 +474,11 @@ function WasteManagementPage() {
                   {!loadingBOMItems && wasteRows.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
-                        {selectedRunId ? 'No BOM items found for this run' : 'Select a run to load BOM items'}
+                        {selectedRunId
+                          ? 'No BOM items found for this run'
+                          : isStandalone
+                            ? 'Add items manually using the button above'
+                            : 'Select a run to load BOM items, or choose Standalone and add items manually'}
                       </td>
                     </tr>
                   )}
@@ -486,7 +502,12 @@ function WasteManagementPage() {
           {selectedWaste && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-muted-foreground">Run:</span> #{selectedWaste.run_number || selectedWaste.production_run}</div>
+                <div>
+                  <span className="text-muted-foreground">Run:</span>{' '}
+                  {selectedWaste.production_run
+                    ? `#${selectedWaste.run_number || selectedWaste.production_run}`
+                    : 'Standalone'}
+                </div>
                 <div><span className="text-muted-foreground">Material:</span> {selectedWaste.material_name}</div>
                 <div><span className="text-muted-foreground">Code:</span> {selectedWaste.material_code}</div>
                 <div><span className="text-muted-foreground">Quantity:</span> {selectedWaste.wastage_qty} {selectedWaste.uom}</div>

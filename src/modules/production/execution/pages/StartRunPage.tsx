@@ -148,6 +148,11 @@ function StartRunPage() {
       form.setValue('other_manpower_count', cfg.other_manpower_count);
       form.setValue('supervisor', cfg.supervisor || '');
       form.setValue('operators', cfg.operators || '');
+      if (cfg.sku_code) {
+        form.setValue('product', cfg.sku_name || cfg.sku_code, { shouldValidate: true });
+        form.setValue('item_code', cfg.sku_code);
+        setSelectedItemCode(cfg.sku_code);
+      }
     },
     [form],
   );
@@ -180,7 +185,29 @@ function StartRunPage() {
     toast.success(`Auto-filled config: ${cfg.config_name}`);
   }, [autoFillData, selectedLineId, selectedItemCode, applyConfigValues]);
 
+  const selectedConfig = lineConfigs.find((c) => String(c.id) === selectedConfigId);
+
+  // A line that has presets requires one to be selected; lines without presets
+  // keep the fully manual flow.
+  const configRequired = !!selectedLineId && lineConfigs.length > 0;
+
+  // Fields the selected preset defines are locked; anything the preset leaves
+  // blank stays editable on the run form.
+  const locked = {
+    sku: !!selectedConfig?.sku_code,
+    rated_speed: !!selectedConfig?.rated_speed,
+    labour_count: (selectedConfig?.labour_count ?? 0) > 0,
+    other_manpower_count: (selectedConfig?.other_manpower_count ?? 0) > 0,
+    supervisor: !!selectedConfig?.supervisor?.trim(),
+    operators: !!selectedConfig?.operators?.trim(),
+  };
+  const lockedInputProps = { readOnly: true, className: 'bg-muted/50 cursor-not-allowed' };
+
   const onSubmit = async (data: CreateRunFormData) => {
+    if (configRequired && !selectedConfig) {
+      toast.error('Select a line configuration for this line');
+      return;
+    }
     try {
       const run = await createRun.mutateAsync(data);
       toast.success('Production run created successfully');
@@ -189,8 +216,6 @@ function StartRunPage() {
       toast.error('Failed to create production run');
     }
   };
-
-  const selectedConfig = lineConfigs.find((c) => String(c.id) === selectedConfigId);
 
   return (
     <div className="space-y-6">
@@ -211,6 +236,20 @@ function StartRunPage() {
             <CardTitle>Product SKU</CardTitle>
           </CardHeader>
           <CardContent>
+            {locked.sku ? (
+              <div>
+                <Label>Product SKU</Label>
+                <Input
+                  value={[selectedConfig?.sku_code, selectedConfig?.sku_name]
+                    .filter(Boolean)
+                    .join(' - ')}
+                  {...lockedInputProps}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Set by the selected line configuration
+                </p>
+              </div>
+            ) : (
             <SearchableSelect<SAPItem>
               items={skuItems}
               isLoading={loadingSKU && skuSearch.length >= 2}
@@ -249,6 +288,7 @@ function StartRunPage() {
                 replace([]);
               }}
             />
+            )}
             {form.formState.errors.product && (
               <p className="text-sm text-red-500 mt-1">{form.formState.errors.product.message}</p>
             )}
@@ -331,8 +371,17 @@ function StartRunPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Rated Speed (cases/hr)</Label>
-                <Input {...form.register('rated_speed')} placeholder="e.g., 150" />
+                <Label>Rated Speed (bottles/hr)</Label>
+                <Input
+                  {...form.register('rated_speed')}
+                  placeholder="e.g., 3000"
+                  {...(locked.rated_speed ? lockedInputProps : {})}
+                />
+                {locked.rated_speed && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Set by the selected line configuration
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -352,7 +401,9 @@ function StartRunPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Label>Select a preset to auto-fill speed, labour & manpower</Label>
+                <Label>
+                  Line configuration <span className="text-destructive">*</span>
+                </Label>
                 <Select value={selectedConfigId} onValueChange={applyConfig}>
                   <SelectTrigger className="mt-1.5 bg-background">
                     <SelectValue placeholder="Choose a line configuration..." />
@@ -362,19 +413,28 @@ function StartRunPage() {
                       <SelectItem key={cfg.id} value={String(cfg.id)}>
                         <span className="font-medium">{cfg.config_name}</span>
                         <span className="text-muted-foreground ml-2">
-                          — {cfg.rated_speed || '?'} cases/hr, {cfg.labour_count} labour
+                          — {cfg.rated_speed || '?'} bottles/hr, {cfg.labour_count} labour
                         </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {configRequired && !selectedConfig ? (
+                  <p className="text-sm text-red-500 mt-1">
+                    This line has configurations — selecting one is required.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Fields defined by the configuration are locked; the rest stay editable.
+                  </p>
+                )}
               </div>
 
               {/* Show selected config summary */}
               {selectedConfig && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 pt-1">
                   {[
-                    { label: 'Speed', value: `${selectedConfig.rated_speed || '-'} cases/hr` },
+                    { label: 'Speed', value: `${selectedConfig.rated_speed || '-'} bottles/hr` },
                     { label: 'Labour', value: selectedConfig.labour_count },
                     { label: 'Other', value: selectedConfig.other_manpower_count },
                     { label: 'Supervisor', value: selectedConfig.supervisor || '-' },
@@ -498,6 +558,7 @@ function StartRunPage() {
                   type="number"
                   min={0}
                   {...form.register('labour_count', { valueAsNumber: true })}
+                  {...(locked.labour_count ? lockedInputProps : {})}
                 />
                 {form.formState.errors.labour_count && (
                   <p className="text-sm text-red-500 mt-1">
@@ -511,6 +572,7 @@ function StartRunPage() {
                   type="number"
                   min={0}
                   {...form.register('other_manpower_count', { valueAsNumber: true })}
+                  {...(locked.other_manpower_count ? lockedInputProps : {})}
                 />
                 {form.formState.errors.other_manpower_count && (
                   <p className="text-sm text-red-500 mt-1">
@@ -522,11 +584,19 @@ function StartRunPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Supervisor Name</Label>
-                <Input {...form.register('supervisor')} placeholder="Enter supervisor name" />
+                <Input
+                  {...form.register('supervisor')}
+                  placeholder="Enter supervisor name"
+                  {...(locked.supervisor ? lockedInputProps : {})}
+                />
               </div>
               <div>
                 <Label>Engineer/Operators</Label>
-                <Input {...form.register('operators')} placeholder="Enter engineer/operators" />
+                <Input
+                  {...form.register('operators')}
+                  placeholder="Enter engineer/operators"
+                  {...(locked.operators ? lockedInputProps : {})}
+                />
               </div>
             </div>
           </CardContent>

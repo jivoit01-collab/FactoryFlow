@@ -38,7 +38,7 @@ import { resolveFileUrl } from '@/shared/utils';
 
 import { usePostServiceGRPO, useServiceGRPOOptions, useServiceGRPOPreview } from '../api';
 import { ExtraChargesSection } from '../components';
-import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants';
+import { DEFAULT_BRANCH_ID, DEFAULT_SERVICE_GRPO_GL_ACCOUNT, GRPO_STATUS } from '../constants';
 import type {
   ExtraCharge,
   PostServiceGRPOResponse,
@@ -416,7 +416,11 @@ export default function ServiceGRPOPreviewPage() {
         defaultBranch?.state,
         isMultiInvoice ? '' : preview.default_place_of_supply || preview.source_state,
       ),
-      glAccount: '',
+      glAccount: glAccountOptions.some(
+        (account) => account.account_code === DEFAULT_SERVICE_GRPO_GL_ACCOUNT,
+      )
+        ? DEFAULT_SERVICE_GRPO_GL_ACCOUNT
+        : '',
       placeOfSupply: isMultiInvoice ? '' : preview.default_place_of_supply || 'HR',
       effectiveMonth: monthInputValue(preview.default_effective_month),
       budgetDeliveryPoint: preview.default_budget_delivery_point || '',
@@ -442,7 +446,7 @@ export default function ServiceGRPOPreviewPage() {
       taxDate: date,
       shouldRoundoff: true,
     };
-  }, [branchOptions, locationOptions, preview, sacOptions, taxCodeOptions, varietyOptions]);
+  }, [branchOptions, glAccountOptions, locationOptions, preview, sacOptions, taxCodeOptions, varietyOptions]);
 
   const currentPlanId = preview?.dispatch_plan_id ?? null;
   const form = formDraft && formDraft.planId === currentPlanId ? formDraft.value : defaultForm;

@@ -31,8 +31,10 @@ export function WasteLogTable({ wasteLogs, onView, showRunNumber = false }: Wast
             <tr key={w.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => onView?.(w)}>
               {showRunNumber && (
                 <td className="p-2">
-                  <span className="font-medium">#{w.run_number}</span>
-                  <span className="text-xs text-muted-foreground block">{w.run_date}</span>
+                  <span className="font-medium">
+                    {w.run_number != null ? `#${w.run_number}` : 'Standalone'}
+                  </span>
+                  <span className="text-xs text-muted-foreground block">{w.log_date || w.run_date}</span>
                   <span className="text-xs text-muted-foreground block truncate max-w-[150px]">{w.run_product}</span>
                 </td>
               )}

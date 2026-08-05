@@ -11,7 +11,9 @@ import {
   PackageOpen,
   PackagePlus,
   Settings,
+  Trash2,
   Wrench,
+  Zap,
 } from 'lucide-react';
 
 import { COMPANY_CODES } from '@/config/constants';
@@ -45,6 +47,10 @@ const MaintenanceReturnableDetailPage = lazy(
   () => import('./pages/MaintenanceReturnableDetailPage'),
 );
 const MaintenanceReturnableFormPage = lazy(() => import('./pages/MaintenanceReturnableFormPage'));
+const MaintenanceDailyElectricityPage = lazy(
+  () => import('./pages/MaintenanceDailyElectricityPage'),
+);
+const MaintenanceDailyWastagePage = lazy(() => import('./pages/MaintenanceDailyWastagePage'));
 
 const maintenanceRoutes: ModuleRoute[] = [
   {
@@ -143,6 +149,26 @@ const maintenanceRoutes: ModuleRoute[] = [
     breadcrumb: { label: 'Reports' },
   },
   {
+    path: '/maintenance/daily-electricity',
+    element: <MaintenanceDailyElectricityPage />,
+    layout: 'main',
+    permissions: [
+      MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
+      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
+    ],
+    breadcrumb: { label: 'Daily Electricity' },
+  },
+  {
+    path: '/maintenance/daily-wastage',
+    element: <MaintenanceDailyWastagePage />,
+    layout: 'main',
+    permissions: [
+      MAINTENANCE_PERMISSIONS.VIEW_DAILY_WASTAGE,
+      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_WASTAGE,
+    ],
+    breadcrumb: { label: 'Daily Wastage' },
+  },
+  {
     path: '/maintenance/automation',
     element: <MaintenanceAutomationPage />,
     layout: 'main',
@@ -185,6 +211,10 @@ const maintenanceRoutes: ModuleRoute[] = [
       MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
       MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
       RETURNABLE_PERMISSIONS.VIEW_GATEPASS,
+      MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
+      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
+      MAINTENANCE_PERMISSIONS.VIEW_DAILY_WASTAGE,
+      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_WASTAGE,
     ],
     breadcrumb: { label: 'Maintenance' },
   },
@@ -255,6 +285,24 @@ export const maintenanceModuleConfig: ModuleConfig = {
           title: 'Reports',
           icon: BarChart3,
           permissions: [MAINTENANCE_PERMISSIONS.VIEW_REPORTS],
+        },
+        {
+          path: '/maintenance/daily-electricity',
+          title: 'Daily Electricity',
+          icon: Zap,
+          permissions: [
+            MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
+            MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
+          ],
+        },
+        {
+          path: '/maintenance/daily-wastage',
+          title: 'Daily Wastage',
+          icon: Trash2,
+          permissions: [
+            MAINTENANCE_PERMISSIONS.VIEW_DAILY_WASTAGE,
+            MAINTENANCE_PERMISSIONS.MANAGE_DAILY_WASTAGE,
+          ],
         },
         {
           path: '/maintenance/automation',

@@ -5,7 +5,7 @@ import type { ApiError } from '@/core/api';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 
-import { SAPUnavailableBanner } from '../../sap-plan/components/SAPUnavailableBanner';
+import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import {
   useRefreshSalesPlanningRequirement,
   useSalesPlanningRequirementAnalysis,

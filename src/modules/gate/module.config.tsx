@@ -1,8 +1,13 @@
 import { Truck } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { BARCODE_PERMISSIONS, GATE_PERMISSIONS, MARKETPLACE_GATE_ACCESS } from '@/config/permissions';
+import {
+  BARCODE_PERMISSIONS,
+  GATE_PERMISSIONS,
+  GOODS_RETURN_PERMISSIONS,
+  MARKETPLACE_GATE_ACCESS,
+} from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import {
@@ -26,6 +31,16 @@ const RMArrivalSlipPage = lazy(() => import('./pages/rawMaterialPages/ArrivalSli
 const RMWeighmentPage = lazy(() => import('./pages/rawMaterialPages/Step4Page'));
 const RMAttachmentsPage = lazy(() => import('./pages/rawMaterialPages/AttachmentsPage'));
 const RMReviewPage = lazy(() => import('./pages/rawMaterialPages/ReviewPage'));
+
+const FinishedGoodsDashboard = lazy(
+  () => import('./pages/finishedGoodsPages/FinishedGoodsDashboard'),
+);
+const FinishedGoodsAllPage = lazy(
+  () => import('./pages/finishedGoodsPages/FinishedGoodsAllPage'),
+);
+const FGStep1Page = lazy(() => import('./pages/finishedGoodsPages/Step1Page'));
+const FGStep2Page = lazy(() => import('./pages/finishedGoodsPages/Step2Page'));
+const FGReviewPage = lazy(() => import('./pages/finishedGoodsPages/ReviewPage'));
 
 // Daily Needs wizard pages
 const DNStep1Page = lazy(() => import('./pages/dailyNeedsPages/Step1Page'));
@@ -124,15 +139,8 @@ const EmptyVehicleInAttachmentsPage = lazy(
 const EmptyVehicleInReviewPage = lazy(
   () => import('./pages/emptyVehicleInPages/EmptyVehicleInReviewPage'),
 );
-const CustomerReturnDashboardPage = lazy(
-  () => import('./pages/customerSalesFlow/CustomerReturnDashboardPage'),
-);
-const CustomerReturnNewPage = lazy(() => import('./pages/customerSalesFlow/CustomerReturnNewPage'));
-const CustomerReturnAttachmentsPage = lazy(
-  () => import('./pages/customerSalesFlow/CustomerReturnAttachmentsPage'),
-);
-const CustomerReturnDetailPage = lazy(
-  () => import('./pages/customerSalesFlow/CustomerReturnDetailPage'),
+const GoodsReturnInListPage = lazy(
+  () => import('./pages/goodsReturnInPages/GoodsReturnInListPage'),
 );
 const SalesDispatchDashboardPage = lazy(
   () => import('./pages/customerSalesFlow/SalesDispatchDashboardPage'),
@@ -315,6 +323,66 @@ export const gateModuleConfig: ModuleConfig = {
       element: <RMReviewPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.RAW_MATERIAL.EDIT],
+    },
+
+    // ── Finished Goods (traded / purchased — no QC) ──────────────
+    {
+      path: '/gate/finished-goods',
+      element: <FinishedGoodsDashboard />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FINISHED_GOODS.VIEW],
+      breadcrumb: { label: 'FG' },
+    },
+    {
+      path: '/gate/finished-goods/all',
+      element: <FinishedGoodsAllPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FINISHED_GOODS.VIEW],
+    },
+    {
+      path: '/gate/finished-goods/new',
+      element: <FGStep1Page />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.FINISHED_GOODS.CREATE,
+        GATE_PERMISSIONS.FINISHED_GOODS.RECEIVE_PO,
+      ],
+    },
+    {
+      path: '/gate/finished-goods/new/step2',
+      element: <FGStep2Page />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.FINISHED_GOODS.CREATE,
+        GATE_PERMISSIONS.FINISHED_GOODS.RECEIVE_PO,
+      ],
+    },
+    {
+      path: '/gate/finished-goods/new/review',
+      element: <FGReviewPage />,
+      layout: 'main',
+      permissions: [
+        GATE_PERMISSIONS.FINISHED_GOODS.CREATE,
+        GATE_PERMISSIONS.FINISHED_GOODS.RECEIVE_PO,
+      ],
+    },
+    {
+      path: '/gate/finished-goods/edit/:entryId/step1',
+      element: <FGStep1Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FINISHED_GOODS.EDIT],
+    },
+    {
+      path: '/gate/finished-goods/edit/:entryId/step2',
+      element: <FGStep2Page />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FINISHED_GOODS.EDIT],
+    },
+    {
+      path: '/gate/finished-goods/edit/:entryId/review',
+      element: <FGReviewPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.FINISHED_GOODS.EDIT],
     },
 
     // ── Daily Needs ──────────────────────────────────────────────
@@ -857,32 +925,11 @@ export const gateModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'BST Out' },
     },
     {
-      path: '/gate/customer-return',
-      element: <CustomerReturnDashboardPage />,
+      path: '/gate/goods-return-in',
+      element: <GoodsReturnInListPage />,
       layout: 'main',
-      permissions: [GATE_PERMISSIONS.CUSTOMER_RETURN.VIEW],
-      breadcrumb: { label: 'Goods Return' },
-    },
-    {
-      path: '/gate/customer-return/new',
-      element: <CustomerReturnNewPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.CUSTOMER_RETURN.CREATE],
-      breadcrumb: { label: 'New Goods Return' },
-    },
-    {
-      path: '/gate/customer-return/new/attachments',
-      element: <CustomerReturnAttachmentsPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.CUSTOMER_RETURN.CREATE],
-      breadcrumb: { label: 'Goods Return Attachments' },
-    },
-    {
-      path: '/gate/customer-return/:entryId',
-      element: <CustomerReturnDetailPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.CUSTOMER_RETURN.VIEW],
-      breadcrumb: { label: 'Goods Return Entry' },
+      permissions: [GOODS_RETURN_PERMISSIONS.GATE_IN],
+      breadcrumb: { label: 'Goods Return In' },
     },
     {
       path: '/gate/sales-dispatch',

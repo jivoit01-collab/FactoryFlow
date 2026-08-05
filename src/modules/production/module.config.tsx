@@ -1,5 +1,4 @@
 import { Factory } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import {
   BLOWING_MODULE_PREFIX,
@@ -9,6 +8,7 @@ import {
   PRODUCTION_MODULE_PREFIX,
   PRODUCTION_PERMISSIONS,
 } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 // Lazy load Production Dashboard
@@ -35,6 +35,7 @@ const DailyProductionReportPage = lazy(
   () => import('./execution/pages/DailyProductionReportPage'),
 );
 const ResourceTrackingPage = lazy(() => import('./execution/pages/ResourceTrackingPage'));
+const ElectricityUsagePage = lazy(() => import('./execution/pages/ElectricityUsagePage'));
 const ResourceConsumptionReportPage = lazy(() => import('./execution/pages/ResourceConsumptionReportPage'));
 const MonthlySummaryReportPage = lazy(() => import('./execution/pages/MonthlySummaryReportPage'));
 const PlanVsProductionReportPage = lazy(() => import('./execution/pages/PlanVsProductionReportPage'));
@@ -146,6 +147,12 @@ export const productionModuleConfig: ModuleConfig = {
       element: <ResourceTrackingPage />,
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.VIEW_RUN_COST],
+    },
+    {
+      path: '/production/execution/runs/:runId/electricity',
+      element: <ElectricityUsagePage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.CREATE_MATERIAL],
     },
     {
       path: '/production/execution/runs/:runId/qc',

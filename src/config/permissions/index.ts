@@ -35,6 +35,14 @@ export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permis
 // GRPO Module
 export { GRPO_MODULE_PREFIX, GRPO_PERMISSIONS, type GRPOPermission } from './grpo.permissions';
 
+// Goods Return Module
+export {
+  GOODS_RETURN_ACCESS,
+  GOODS_RETURN_MODULE_PREFIX,
+  GOODS_RETURN_PERMISSIONS,
+  type GoodsReturnPermission,
+} from './goods-return.permissions';
+
 // Production Module
 export {
   BLOWING_MODULE_PREFIX,
@@ -49,11 +57,7 @@ export {
 } from './production.permissions';
 
 // Dashboards Module
-export {
-  DASHBOARDS_MODULE_PREFIX,
-  DASHBOARDS_PERMISSIONS,
-  type DashboardsPermission,
-} from './dashboards.permissions';
+export { DASHBOARDS_PERMISSIONS, type DashboardsPermission } from './dashboards.permissions';
 
 // Dispatch Module
 export {

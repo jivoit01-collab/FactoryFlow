@@ -6,18 +6,30 @@ import {
   RotateCcw,
   Search,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui';
 
 import {
   useCreateIntercompanyTransfer,
   useIntercompanyDashboard,
   useIntercompanyTransfers,
+  useIntercompanyWarehouses,
   useReverseIntercompanyTransfer,
   useScanIntercompanyBarcode,
 } from '../api';
@@ -44,9 +56,12 @@ export default function IntercompanyTransferPage() {
   const [transferType, setTransferType] = useState<IntercompanyTransferType>('BOX');
   const [scanned, setScanned] = useState<IntercompanyScannedBarcode[]>([]);
   const [search, setSearch] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [destinationWarehouse, setDestinationWarehouse] = useState('');
 
   const dashboardQuery = useIntercompanyDashboard();
   const transfersQuery = useIntercompanyTransfers({ search: search || undefined, page_size: 10 });
+  const warehousesQuery = useIntercompanyWarehouses(destinationCompany, confirmOpen);
   const scanMutation = useScanIntercompanyBarcode();
   const createMutation = useCreateIntercompanyTransfer();
   const reverseMutation = useReverseIntercompanyTransfer();
@@ -55,6 +70,25 @@ export default function IntercompanyTransferPage() {
     () => scanned.reduce((sum, row) => sum + toNumber(row.qty), 0),
     [scanned],
   );
+
+  // Warehouse(s) the scanned stock currently sits in (source side). Without a
+  // different pick, the stock keeps this code after the company move.
+  const currentWarehouses = useMemo(
+    () => [...new Set(scanned.map((row) => row.current_warehouse).filter(Boolean))],
+    [scanned],
+  );
+
+  // Preselect the warehouse the stock would land in today (its current code),
+  // when that code exists in the destination company.
+  useEffect(() => {
+    if (!confirmOpen || destinationWarehouse || !warehousesQuery.data) return;
+    if (currentWarehouses.length === 1) {
+      const match = warehousesQuery.data.find(
+        (warehouse) => warehouse.warehouse_code === currentWarehouses[0],
+      );
+      if (match) setDestinationWarehouse(match.warehouse_code);
+    }
+  }, [confirmOpen, destinationWarehouse, warehousesQuery.data, currentWarehouses]);
 
   const canScan = sourceCompany && destinationCompany && sourceCompany !== destinationCompany;
 
@@ -86,8 +120,14 @@ export default function IntercompanyTransferPage() {
     }
   };
 
-  const handleConfirm = async () => {
+  const openConfirmDialog = () => {
     if (scanned.length === 0 || !canScan) return;
+    setDestinationWarehouse('');
+    setConfirmOpen(true);
+  };
+
+  const handleConfirm = async () => {
+    if (scanned.length === 0 || !canScan || !destinationWarehouse) return;
     try {
       const transfer = await createMutation.mutateAsync({
         source_company_code: sourceCompany,
@@ -96,10 +136,15 @@ export default function IntercompanyTransferPage() {
         barcodes: scanned.map((row) => row.barcode),
         notes,
         device_id: 'web',
+        destination_warehouse: destinationWarehouse,
       });
-      toast.success(`Transfer ${transfer.transfer_number} completed`);
+      toast.success(
+        `Transfer ${transfer.transfer_number} completed — stock moved to ${destinationWarehouse}`,
+      );
+      setConfirmOpen(false);
       setScanned([]);
       setNotes('');
+      setDestinationWarehouse('');
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to confirm intercompany transfer.');
     }
@@ -251,11 +296,11 @@ export default function IntercompanyTransferPage() {
               </p>
             </div>
             <Button
-              onClick={handleConfirm}
+              onClick={openConfirmDialog}
               disabled={createMutation.isPending || scanned.length === 0 || !canScan}
             >
               <CheckCircle2 className="h-4 w-4 mr-1" />
-              {createMutation.isPending ? 'Confirming...' : 'Confirm Transfer'}
+              Confirm Transfer
             </Button>
           </div>
 
@@ -422,6 +467,82 @@ export default function IntercompanyTransferPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Intercompany Transfer</DialogTitle>
+            <DialogDescription>
+              {scanned.length} {transferType === 'BOX' ? 'boxes' : 'pallets'} (
+              {totalQty.toLocaleString()} qty) will move to{' '}
+              {activeCompanies.find((company) => company.company_code === destinationCompany)
+                ?.company_name || destinationCompany}
+              .
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {currentWarehouses.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Stock is currently in warehouse{currentWarehouses.length > 1 ? 's' : ''}:{' '}
+                <span className="font-medium text-foreground">
+                  {currentWarehouses.join(', ')}
+                </span>
+              </p>
+            )}
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Receive into warehouse</span>
+              <select
+                className="w-full rounded-md border px-3 py-2"
+                value={destinationWarehouse}
+                onChange={(event) => setDestinationWarehouse(event.target.value)}
+                disabled={warehousesQuery.isLoading}
+              >
+                <option value="">
+                  {warehousesQuery.isLoading ? 'Loading warehouses...' : 'Select warehouse'}
+                </option>
+                {(warehousesQuery.data ?? []).map((warehouse) => (
+                  <option key={warehouse.warehouse_code} value={warehouse.warehouse_code}>
+                    {warehouse.warehouse_code} — {warehouse.warehouse_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {warehousesQuery.isError && (
+              <p className="text-sm text-destructive">
+                Could not load the destination company's warehouses. Please try again.
+              </p>
+            )}
+            {destinationWarehouse &&
+              currentWarehouses.length > 0 &&
+              !currentWarehouses.every((code) => code === destinationWarehouse) && (
+                <p className="text-sm text-muted-foreground">
+                  The stock will be received directly into{' '}
+                  <span className="font-medium text-foreground">{destinationWarehouse}</span> — no
+                  separate godown transfer needed.
+                </p>
+              )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={createMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={createMutation.isPending || !destinationWarehouse}
+            >
+              {createMutation.isPending ? 'Confirming...' : 'Confirm Transfer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

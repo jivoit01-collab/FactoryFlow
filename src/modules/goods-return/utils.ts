@@ -1,0 +1,93 @@
+import type {
+  GoodsReturnApprovalStatus,
+  GoodsReturnBasis,
+  GoodsReturnItemCondition,
+  GoodsReturnStatus,
+} from './api';
+
+export const BASIS_LABELS: Record<GoodsReturnBasis, string> = {
+  INVOICE: 'Against Invoice',
+  DEBIT_NOTE: 'Against Debit Note',
+  LETTER_PAD: 'Against Letter Pad',
+};
+
+export const STATUS_LABELS: Record<GoodsReturnStatus, string> = {
+  DRAFT: 'Draft',
+  AWAITING_ARRIVAL: 'Awaiting Arrival',
+  ARRIVED: 'Arrived',
+  POSTED: 'Posted to SAP',
+  CANCELLED: 'Cancelled',
+};
+
+export const STATUS_BADGE_CLASS: Record<GoodsReturnStatus, string> = {
+  DRAFT: 'bg-slate-100 text-slate-700',
+  AWAITING_ARRIVAL: 'bg-amber-100 text-amber-800',
+  ARRIVED: 'bg-sky-100 text-sky-800',
+  POSTED: 'bg-emerald-100 text-emerald-800',
+  CANCELLED: 'bg-rose-100 text-rose-800',
+};
+
+export const APPROVAL_LABELS: Record<GoodsReturnApprovalStatus, string> = {
+  NOT_REQUIRED: 'Not required',
+  PENDING: 'Pending approval',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+};
+
+export const APPROVAL_BADGE_CLASS: Record<GoodsReturnApprovalStatus, string> = {
+  NOT_REQUIRED: 'bg-slate-100 text-slate-600',
+  PENDING: 'bg-amber-100 text-amber-800',
+  APPROVED: 'bg-emerald-100 text-emerald-800',
+  REJECTED: 'bg-rose-100 text-rose-800',
+};
+
+export const CONDITION_OPTIONS: { value: GoodsReturnItemCondition; label: string }[] = [
+  { value: 'DAMAGED', label: 'Damaged' },
+  { value: 'GOOD', label: 'Good' },
+  { value: 'EXPIRED', label: 'Expired' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+export const ATTACHMENT_TYPE_BY_BASIS: Record<
+  GoodsReturnBasis,
+  'INVOICE_COPY' | 'DEBIT_NOTE' | 'LETTER_PAD'
+> = {
+  INVOICE: 'INVOICE_COPY',
+  DEBIT_NOTE: 'DEBIT_NOTE',
+  LETTER_PAD: 'LETTER_PAD',
+};
+
+export function formatDateTime(value?: string | null): string {
+  if (!value) return '-';
+  try {
+    return new Date(value).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return value;
+  }
+}
+
+/** Date-only display (no time). */
+export function formatDate(value?: string | null): string {
+  if (!value) return '-';
+  try {
+    return new Date(`${String(value).slice(0, 10)}T00:00:00`).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return value;
+  }
+}
+
+/** Value for a <input type="date"> from a date/ISO string. */
+export function toDateInputValue(value?: string | null): string {
+  if (!value) return '';
+  return String(value).slice(0, 10);
+}

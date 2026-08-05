@@ -47,6 +47,8 @@ export const API_ENDPOINTS = {
   PO: {
     OPEN_POS: (supplierCode?: string) =>
       supplierCode ? `/po/open-pos/?supplier_code=${supplierCode}` : '/po/open-pos/',
+    FG_OPEN_POS: (supplierCode?: string) =>
+      supplierCode ? `/po/fg-open-pos/?supplier_code=${supplierCode}` : '/po/fg-open-pos/',
     OPEN_PO_BY_NUMBER: (poNumber: string) => `/po/open-pos/${encodeURIComponent(poNumber)}/items/`,
     WAREHOUSES: '/po/warehouses/',
     VENDORS: '/po/vendors/',
@@ -62,6 +64,19 @@ export const API_ENDPOINTS = {
       `/raw-material-gatein/gate-entries/${entryId}/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
+  },
+  // Finished Goods Gate In (traded / purchased FG — no QC)
+  FINISHED_GOODS_GATEIN: {
+    PO_RECEIPTS: (entryId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/`,
+    PO_RECEIPT_DETAIL: (entryId: number, poReceiptId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/`,
+    GATE_ENTRY_DELETE: (entryId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/`,
+    PO_RECEIPTS_VIEW: (entryId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/view/`,
+    COMPLETE: (entryId: number) =>
+      `/finished-goods-gatein/gate-entries/${entryId}/complete/`,
   },
   // Weighment
   WEIGHMENT: {
@@ -106,8 +121,13 @@ export const API_ENDPOINTS = {
     ARRIVAL_TRUCK_PHOTO_BY_ID: (id: number) => `/gate-core/arrivals/${id}/truck-photo/`,
     ARRIVAL_DISPATCH_BY_ID: (id: number) => `/gate-core/arrivals/${id}/dispatch/`,
     DISPATCH_TRACKING: '/gate-core/dispatch-tracking/',
+    DISPATCH_TRACKING_SUMMARY: '/gate-core/dispatch-tracking/summary/',
     DISPATCH_TRACKING_UPDATES: (arrivalId: number) =>
       `/gate-core/dispatch-tracking/${arrivalId}/updates/`,
+    DISPATCH_TRACKING_BILLS: (arrivalId: number) =>
+      `/gate-core/dispatch-tracking/${arrivalId}/bills/`,
+    DISPATCH_TRACKING_RETURN_NOTE: (arrivalId: number, updateId: number) =>
+      `/gate-core/dispatch-tracking/${arrivalId}/updates/${updateId}/return-note/`,
     ARRIVAL_GATEPASS_READINESS_BY_ID: (id: number) =>
       `/gate-core/arrivals/${id}/gatepass/readiness/`,
     ARRIVAL_GATEPASS_PRINT_BY_ID: (id: number) => `/gate-core/arrivals/${id}/gatepass/print/`,
@@ -366,6 +386,13 @@ export const API_ENDPOINTS = {
       `/grpo/${postingId}/attachments/${attachmentId}/`,
     ATTACHMENT_RETRY: (postingId: number, attachmentId: number) =>
       `/grpo/${postingId}/attachments/${attachmentId}/retry/`,
+    // Finished-goods (traded FG) material GRPO — same machinery, FG-scoped, no QC
+    FG_SUMMARY: '/grpo/fg/summary/',
+    FG_ALL_ENTRIES: '/grpo/fg/all-entries/',
+    FG_PENDING: '/grpo/fg/pending/',
+    FG_PREVIEW: (vehicleEntryId: number) => `/grpo/fg/preview/${vehicleEntryId}/`,
+    FG_POST: '/grpo/fg/post/',
+    FG_HISTORY: '/grpo/fg/history/',
   },
   // Production Planning
   PRODUCTION_PLANNING: {
@@ -390,23 +417,12 @@ export const API_ENDPOINTS = {
     DROPDOWN_WAREHOUSES: '/production-planning/dropdown/warehouses/',
     DROPDOWN_BOM: '/production-planning/dropdown/bom/',
   },
-  // SAP Plan Dashboard
-  SAP_PLAN_DASHBOARD: {
-    SUMMARY: '/sap/plan-dashboard/summary/',
-    DETAILS: '/sap/plan-dashboard/details/',
-    PROCUREMENT: '/sap/plan-dashboard/procurement/',
-    SKU_DETAIL: (docEntry: number) => `/sap/plan-dashboard/sku/${docEntry}/`,
-  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
     AS_OF: '/dashboards/stock/as-of/',
+    EXPORT: '/dashboards/stock/export/',
     ITEM_DETAIL: (itemCode: string) => `/dashboards/stock/${itemCode}/warehouses/`,
-  },
-  // Inventory Age & Value Dashboard
-  INVENTORY_AGE_DASHBOARD: {
-    FILTER_OPTIONS: '/dashboards/inventory-age/filter-options/',
-    REPORT: '/dashboards/inventory-age/report/',
   },
   // Non-Moving RM Dashboard
   NON_MOVING_RM: {
@@ -419,6 +435,27 @@ export const API_ENDPOINTS = {
     STATUS: '/dashboards/sales-planning-requirement/status/',
     ANALYSIS: '/dashboards/sales-planning-requirement/analysis/',
     REFRESH: '/dashboards/sales-planning-requirement/refresh/',
+  },
+  // Goods Return (customer returns)
+  GOODS_RETURN: {
+    LIST: '/goods-return/',
+    CREATE: '/goods-return/',
+    BY_ID: (id: number) => `/goods-return/${id}/`,
+    INVOICE_REFS: (id: number) => `/goods-return/${id}/invoice-refs/`,
+    INVOICE_REF_BY_ID: (id: number, refId: number) =>
+      `/goods-return/${id}/invoice-refs/${refId}/`,
+    ITEMS: (id: number) => `/goods-return/${id}/items/`,
+    VEHICLE: (id: number) => `/goods-return/${id}/vehicle/`,
+    ATTACHMENTS: (id: number) => `/goods-return/${id}/attachments/`,
+    ATTACHMENT_BY_ID: (id: number, attachmentId: number) =>
+      `/goods-return/${id}/attachments/${attachmentId}/`,
+    SUBMIT: (id: number) => `/goods-return/${id}/submit/`,
+    RECEIVE: (id: number) => `/goods-return/${id}/receive/`,
+    APPROVE: (id: number) => `/goods-return/${id}/approve/`,
+    REJECT: (id: number) => `/goods-return/${id}/reject/`,
+    WAREHOUSES: '/goods-return/warehouses/',
+    GATE_EXPECTED: '/goods-return/gate/expected/',
+    GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,
   },
   // Dispatch Plans Dashboard
   DISPATCH_PLANS: {
@@ -628,6 +665,14 @@ export const API_ENDPOINTS = {
     VENDOR_VISIT_START: (visitId: number) => `/maintenance/vendor-visits/${visitId}/start/`,
     VENDOR_VISIT_COMPLETE: (visitId: number) => `/maintenance/vendor-visits/${visitId}/complete/`,
     VENDOR_VISIT_CANCEL: (visitId: number) => `/maintenance/vendor-visits/${visitId}/cancel/`,
+    // Daily registers — factory-wide electricity readings and wastage logs.
+    ELECTRICITY_METERS: '/maintenance/electricity-meters/',
+    ELECTRICITY_METER_DETAIL: (meterId: number) => `/maintenance/electricity-meters/${meterId}/`,
+    DAILY_ELECTRICITY_READINGS: '/maintenance/daily-electricity-readings/',
+    DAILY_ELECTRICITY_READING_DETAIL: (readingId: number) =>
+      `/maintenance/daily-electricity-readings/${readingId}/`,
+    DAILY_WASTAGE_LOGS: '/maintenance/daily-wastage-logs/',
+    DAILY_WASTAGE_LOG_DETAIL: (logId: number) => `/maintenance/daily-wastage-logs/${logId}/`,
   },
   // Returnable Items — material that leaves the gate temporarily and must come back.
   // Raised by a department, approved by a higher authority, gated out and gated
@@ -953,6 +998,7 @@ export const API_ENDPOINTS = {
     REPACK: '/barcode/repack/',
     // Loose Stock
     LOOSE: '/barcode/loose/',
+    LOOSE_SUMMARY: '/barcode/loose/summary/',
     LOOSE_DETAIL: (looseId: number) => `/barcode/loose/${looseId}/`,
     // Scan
     SCAN: '/barcode/scan/',
@@ -966,6 +1012,7 @@ export const API_ENDPOINTS = {
     INTERCOMPANY_TRANSFER_REVERSE: (transferId: number) =>
       `/barcode/intercompany/transfers/${transferId}/reverse/`,
     INTERCOMPANY_SCAN: '/barcode/intercompany/scan/',
+    INTERCOMPANY_WAREHOUSES: '/barcode/intercompany/warehouses/',
     INTERCOMPANY_TRACE: '/barcode/intercompany/trace/',
     // Dispatch scanning
     DISPATCH_BILL_LOOKUP: '/barcode/dispatch/bills/lookup/',

@@ -8,6 +8,7 @@ import {
   LogIn,
   LogOut,
   Package,
+  PackageCheck,
   PackageOpen,
   PackageX,
   RotateCcw,
@@ -20,7 +21,7 @@ import {
   Wrench,
 } from 'lucide-react';
 
-import { GATE_PERMISSIONS } from '@/config/permissions';
+import { GATE_PERMISSIONS, GOODS_RETURN_PERMISSIONS } from '@/config/permissions';
 
 export type GateEntryDirection = 'in' | 'out' | 'return';
 export type GateVehicleMode = 'vehicle' | 'non_vehicle';
@@ -62,6 +63,23 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     icon: Package,
     colorClassName: 'text-blue-600',
     keywords: ['purchase', 'po', 'packing', 'asset', 'material'],
+  },
+  {
+    id: 'finished-goods',
+    title: 'Finished Goods (Traded/Purchased)',
+    description: 'Purchased finished-goods inward entries (no QC — straight to GRPO).',
+    direction: 'in',
+    vehicleMode: 'vehicle',
+    dashboardRoute: '/gate/finished-goods',
+    newEntryRoute: '/gate/finished-goods/new',
+    viewPermissions: [GATE_PERMISSIONS.FINISHED_GOODS.VIEW],
+    createPermissions: [
+      GATE_PERMISSIONS.FINISHED_GOODS.CREATE,
+      GATE_PERMISSIONS.FINISHED_GOODS.RECEIVE_PO,
+    ],
+    icon: PackageCheck,
+    colorClassName: 'text-green-600',
+    keywords: ['finished goods', 'fg', 'traded', 'purchase', 'po', 'resale'],
   },
   {
     id: 'daily-needs',
@@ -195,20 +213,6 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     keywords: ['empty', 'vehicle', 'bst', 'dispatch'],
   },
   {
-    id: 'customer-return',
-    title: 'Goods Return',
-    description: 'Customer returned goods inward entries against SAP invoices.',
-    direction: 'return',
-    vehicleMode: 'vehicle',
-    dashboardRoute: '/gate/customer-return',
-    newEntryRoute: '/gate/customer-return/new',
-    viewPermissions: [GATE_PERMISSIONS.CUSTOMER_RETURN.VIEW],
-    createPermissions: [GATE_PERMISSIONS.CUSTOMER_RETURN.CREATE],
-    icon: Undo2,
-    colorClassName: 'text-rose-700',
-    keywords: ['goods return', 'customer', 'return', 'invoice', 'credit note', 'finished goods'],
-  },
-  {
     id: 'repair-parts-in',
     title: 'Repair Parts In',
     description: 'Receive repairable parts, tools, or maintenance items back.',
@@ -330,6 +334,23 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     icon: Undo2,
     colorClassName: 'text-indigo-700',
     keywords: ['material', 'returnable', 'non-returnable', 'rgp', 'gate pass', 'return', 'back', 'overdue', 'in'],
+    hideFromNewEntry: true,
+  },
+  {
+    // Gate-side of a Goods Return. The return is raised in the Goods Return
+    // module; the gate only works the queue of expected returning vehicles.
+    id: 'goods-return-in',
+    title: 'Goods Return In',
+    description: 'Customer return vehicles expected at the gate, waiting to be marked in.',
+    direction: 'return',
+    vehicleMode: 'vehicle',
+    dashboardRoute: '/gate/goods-return-in',
+    newEntryRoute: '/gate/goods-return-in',
+    viewPermissions: [GOODS_RETURN_PERMISSIONS.GATE_IN],
+    createPermissions: [GOODS_RETURN_PERMISSIONS.GATE_IN],
+    icon: Undo2,
+    colorClassName: 'text-rose-700',
+    keywords: ['goods return', 'customer', 'return', 'gr', 'in'],
     hideFromNewEntry: true,
   },
   {

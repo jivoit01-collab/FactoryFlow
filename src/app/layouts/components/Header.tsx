@@ -2,6 +2,7 @@ import { Menu, Monitor, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { type Theme, THEME_OPTIONS } from '@/config/constants/app.constants';
+import { COMPANY_CODES } from '@/config/constants/company.constants';
 import { ROUTES } from '@/config/routes.config';
 import { useAuth } from '@/core/auth';
 import { NotificationBell } from '@/core/notifications';
@@ -22,10 +23,31 @@ interface HeaderProps {
   sidebarWidth: number;
 }
 
+/** Per-company header accent so users always know which company they're working in. */
+const COMPANY_ACCENTS: Record<string, { wash: string; chip: string; border: string }> = {
+  [COMPANY_CODES.JIVO_OIL]: {
+    wash: 'bg-amber-50 dark:bg-amber-950',
+    chip: 'bg-amber-200 text-amber-900 hover:bg-amber-300 dark:bg-amber-900 dark:text-amber-200 dark:hover:bg-amber-800',
+    border: 'border-b-2 border-b-amber-600 dark:border-b-amber-500',
+  },
+  [COMPANY_CODES.JIVO_MART]: {
+    wash: 'bg-emerald-50 dark:bg-emerald-950',
+    chip: 'bg-emerald-200 text-emerald-900 hover:bg-emerald-300 dark:bg-emerald-900 dark:text-emerald-200 dark:hover:bg-emerald-800',
+    border: 'border-b-2 border-b-emerald-600 dark:border-b-emerald-500',
+  },
+  [COMPANY_CODES.JIVO_BEVERAGES]: {
+    wash: 'bg-blue-50 dark:bg-blue-950',
+    chip: 'bg-blue-200 text-blue-900 hover:bg-blue-300 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800',
+    border: 'border-b-2 border-b-blue-600 dark:border-b-blue-500',
+  },
+};
+
 export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
   const { currentCompany } = useAuth();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
+
+  const accent = currentCompany ? COMPANY_ACCENTS[currentCompany.company_code] : undefined;
 
   const getThemeIcon = () => {
     if (theme === THEME_OPTIONS.SYSTEM) {
@@ -36,7 +58,9 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
 
   return (
     <header
-      className="fixed right-0 top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4 transition-all duration-300"
+      className={`fixed right-0 top-0 z-30 flex h-16 items-center justify-between border-b px-4 transition-all duration-300 ${
+        accent ? `${accent.wash} ${accent.border}` : 'bg-background'
+      }`}
       style={{ left: sidebarWidth }}
     >
       <div className="flex items-center gap-4">
@@ -47,7 +71,9 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
         {currentCompany && (
           <button
             onClick={() => navigate(ROUTES.COMPANY_SELECTION.path)}
-            className="text-sm font-semibold truncate max-w-48 hover:underline cursor-pointer"
+            className={`text-sm font-semibold truncate max-w-48 cursor-pointer rounded-full px-3 py-1 transition-colors ${
+              accent?.chip ?? 'hover:underline'
+            }`}
           >
             {currentCompany.company_name}
           </button>

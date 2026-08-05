@@ -27,6 +27,7 @@ import {
   useWeighment,
   type Weighment,
 } from '@/modules/gate/api';
+import { useArrivalDockings } from '@/modules/gate/api/arrivals/arrivals.queries';
 import {
   RequiredWeighmentForm,
   StepFooter,
@@ -51,7 +52,12 @@ import {
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { getExpectedDispatchBoxes, parsePositiveNumber } from './salesDispatchBoxCounts';
-import { formatTimestamp, formatValue, toTimeInputValue } from './salesDispatchFlow.helpers';
+import {
+  formatTimestamp,
+  formatValue,
+  isMultiDockingTruck,
+  toTimeInputValue,
+} from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes } from './salesDispatchRoutes';
 
 const GATE_OUT_WEIGHMENT_TOTAL_STEPS = 2;
@@ -112,6 +118,12 @@ export default function SalesDispatchGateOutWeighmentPage() {
     isLoading: isWeighmentLoading,
     error: weighmentError,
   } = useWeighment(vehicleEntryId);
+  // One physical truck can carry several dockings (a multi-company truck, or two
+  // same-company bills docked separately). The weighbridge weighs the whole truck,
+  // so the invoice-weight/box comparisons below must span every docking on the
+  // arrival, not just the one this entryId resolves to.
+  const isMultiDocking = isMultiDockingTruck(entry);
+  const arrivalDockings = useArrivalDockings(entry?.arrival, { enabled: isMultiDocking });
   const saveWeighment = useCreateWeighment(vehicleEntryId || 0);
   const saveChallanWeight = useSetSalesDispatchChallanWeight();
   const saveAdditionalWeights = useSetSalesDispatchAdditionalWeights();
@@ -258,7 +270,9 @@ export default function SalesDispatchGateOutWeighmentPage() {
     }
   };
 
-  if (isEntryLoading || isWeighmentLoading) {
+  // Also wait for the sibling dockings on a multi-docking truck: rendering before
+  // they arrive would flash single-bill totals that then jump to the combined load.
+  if (isEntryLoading || isWeighmentLoading || (isMultiDocking && arrivalDockings.isLoading)) {
     return <StepLoadingSpinner />;
   }
 
@@ -291,19 +305,51 @@ export default function SalesDispatchGateOutWeighmentPage() {
     ? getErrorMessage(weighmentError, 'Unable to load existing weighment')
     : '';
 
-  const scans = entry.box_scans ?? [];
+  // The whole load on this truck: every docking on the arrival when there are
+  // several (their bills all ride out on this one weighbridge pass), else just
+  // this docking. All the scan/box/weight numbers below are truck-wide.
+  const truckDockings =
+    isMultiDocking && arrivalDockings.dockings.length > 1 ? arrivalDockings.dockings : [entry];
+  const isCombinedLoad = truckDockings.length > 1;
+
+  const scans = truckDockings.flatMap((docking) => docking.box_scans ?? []);
   const scannedBoxes = scans.length;
   const scannedQty = scans.reduce((sum, scan) => sum + parsePositiveNumber(scan.quantity), 0);
   const scannedNetWeight = scans.reduce(
     (sum, scan) => sum + parsePositiveNumber(scan.net_weight),
     0,
   );
-  const expectedBoxes = getExpectedDispatchBoxes(entry);
-  const invoiceItems = getInvoiceItems(entry);
-  const sapInvoiceWeight = parsePositiveNumber(entry.total_weight);
-  const invoiceBoxes = parsePositiveNumber(entry.total_boxes);
-  const scanSkipApproved = Boolean(entry.gatepass_readiness?.scan_skip_approved);
-  const partialScanApproved = Boolean(entry.gatepass_readiness?.partial_scan_approved);
+  const expectedBoxes = truckDockings.reduce(
+    (sum, docking) => sum + getExpectedDispatchBoxes(docking),
+    0,
+  );
+  const invoiceItems = truckDockings.flatMap((docking) => getInvoiceItems(docking));
+  const sapInvoiceWeight = truckDockings.reduce(
+    (sum, docking) => sum + parsePositiveNumber(docking.total_weight),
+    0,
+  );
+  const invoiceBoxes = truckDockings.reduce(
+    (sum, docking) => sum + parsePositiveNumber(docking.total_boxes),
+    0,
+  );
+  const scanSkipApproved = truckDockings.some((docking) =>
+    Boolean(docking.gatepass_readiness?.scan_skip_approved),
+  );
+  const partialScanApproved = truckDockings.some((docking) =>
+    Boolean(docking.gatepass_readiness?.partial_scan_approved),
+  );
+
+  // Truck-wide identity fields: on a combined load, name every gatepass/bill/customer
+  // on the truck rather than only this docking's.
+  const displayGatepassNo = isCombinedLoad
+    ? joinUnique(truckDockings.map((docking) => docking.gatepass_no))
+    : entry.gatepass_no;
+  const displayDocNums = isCombinedLoad
+    ? joinUnique(truckDockings.map((docking) => docking.sap_doc_num))
+    : entry.sap_doc_num;
+  const displayCustomer = isCombinedLoad
+    ? joinUnique(truckDockings.map((docking) => docking.customer_name || docking.to_warehouse))
+    : entry.customer_name || entry.to_warehouse;
 
   const enteredChallanWeight = toFiniteNumber(challanWeight);
   const isManualChallanWeight = enteredChallanWeight !== null && enteredChallanWeight > 0;
@@ -333,6 +379,8 @@ export default function SalesDispatchGateOutWeighmentPage() {
         expectedBoxes={expectedBoxes}
       />
 
+      {isCombinedLoad ? <CombinedLoadNotice dockings={truckDockings} currentId={entry.id} /> : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -343,15 +391,21 @@ export default function SalesDispatchGateOutWeighmentPage() {
         <CardContent className="grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-4">
           <InfoItem label="Vehicle" value={entry.vehicle_no} />
           <InfoItem label="Driver" value={entry.driver_name} />
-          <InfoItem label="Gatepass No." value={entry.gatepass_no} />
           <InfoItem
-            label={entry.document_type === 'STOCK_TRANSFER' ? 'SAP Document' : 'Invoice'}
-            value={entry.sap_doc_num}
+            label={isCombinedLoad ? 'Gatepass Nos.' : 'Gatepass No.'}
+            value={displayGatepassNo}
           />
           <InfoItem
-            label="Customer / Destination"
-            value={entry.customer_name || entry.to_warehouse}
+            label={
+              entry.document_type === 'STOCK_TRANSFER'
+                ? 'SAP Document'
+                : isCombinedLoad
+                  ? 'Invoices'
+                  : 'Invoice'
+            }
+            value={displayDocNums}
           />
+          <InfoItem label="Customer / Destination" value={displayCustomer} />
           <InfoItem label="Tare Weight" value={formatWeight(values.tareWeight)} />
           <InfoItem label="Gatepass Printed" value={formatTimestamp(entry.printed_at)} />
           <InfoItem label="Print Committed" value={formatTimestamp(entry.print_committed_at)} />
@@ -466,6 +520,59 @@ function ScanApprovalNotice({
       </div>
     </div>
   );
+}
+
+// One physical truck, several dockings (multi-company or a same-company split load):
+// tell the weighbridge operator up front that every number on this page is truck-wide,
+// and list the bills/gatepasses riding on this load so none is missed at the gate.
+function CombinedLoadNotice({
+  dockings,
+  currentId,
+}: {
+  dockings: SalesDispatchGateOut[];
+  currentId: number;
+}) {
+  return (
+    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+      <div className="flex items-start gap-3">
+        <Boxes className="mt-0.5 h-5 w-5 shrink-0" />
+        <div className="space-y-2">
+          <p className="font-medium">
+            One truck, {dockings.length} dockings — comparing against the combined load
+          </p>
+          <p>
+            The weighbridge weighs the whole vehicle, so the invoice weight, box, and scan totals on
+            this page cover every bill on this truck, not just this docking&apos;s.
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            {dockings.map((docking) => {
+              const weight = parsePositiveNumber(docking.total_weight);
+              return (
+                <li key={docking.id}>
+                  <span className="font-medium">{docking.sap_doc_num || docking.entry_no}</span>
+                  {' — '}
+                  {docking.customer_name || docking.to_warehouse || 'Unknown customer'}
+                  {docking.gatepass_no ? ` · ${docking.gatepass_no}` : ''}
+                  {weight > 0 ? ` · ${formatKg(weight)}` : ''}
+                  {docking.id === currentId ? ' (this page)' : ''}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Join distinct, non-empty values with ", " (mirrors the backend header aggregate). */
+function joinUnique(values: Array<string | null | undefined>) {
+  const result: string[] = [];
+  for (const value of values) {
+    const trimmed = (value ?? '').trim();
+    if (trimmed && !result.includes(trimmed)) result.push(trimmed);
+  }
+  return result.join(', ');
 }
 
 function InfoItem({ label, value }: { label: string; value?: string | number | null }) {

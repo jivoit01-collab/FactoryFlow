@@ -176,18 +176,6 @@ export const ROUTES = {
         path: '/gate/bst-return/new',
         title: 'New BST Return',
       },
-      CUSTOMER_RETURN: {
-        path: '/gate/customer-return',
-        title: 'Goods Return',
-      },
-      CUSTOMER_RETURN_NEW: {
-        path: '/gate/customer-return/new',
-        title: 'New Goods Return',
-      },
-      CUSTOMER_RETURN_ATTACHMENTS: {
-        path: '/gate/customer-return/new/attachments',
-        title: 'Goods Return Attachments',
-      },
       SALES_DISPATCH: {
         path: '/gate/sales-dispatch',
         title: 'Sales Dispatch Out',

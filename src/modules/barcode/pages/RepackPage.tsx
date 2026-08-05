@@ -1,5 +1,5 @@
 import { PackagePlus } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -9,35 +9,86 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
-import { useLooseStock, useRepack } from '../api';
+import { useLooseStock, useLooseStockSummary, useRepack } from '../api';
+import type { LooseStockSummary } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
 export default function RepackPage() {
   const navigate = useNavigate();
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedItem, setSelectedItem] = useState<LooseStockSummary | null>(null);
+  const [qty, setQty] = useState('');
   const [warehouse, setWarehouse] = useState('');
-  const { data: looseItems = [], isLoading } = useLooseStock({ status: 'ACTIVE' });
+  const [batchNumber, setBatchNumber] = useState('');
+  const [sourceIds, setSourceIds] = useState<number[]>([]);
+
+  const { data: pools = [], isLoading: loadingPools } = useLooseStockSummary();
   const { data: whData } = useWMSWarehouses();
   const warehouses: WarehouseOption[] = whData?.warehouses ?? [];
   const repackMutation = useRepack();
 
-  const toggleSelect = (id: number) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  // Records behind the selected item, oldest first — the order repack consumes them
+  const { data: itemRecords = [] } = useLooseStock(
+    selectedItem ? { status: 'ACTIVE', item_code: selectedItem.item_code } : undefined,
+    { enabled: !!selectedItem },
+  );
+  const fifoRecords = useMemo(
+    () =>
+      [...itemRecords].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      ),
+    [itemRecords],
+  );
+
+  // Suggest the batch when the pool has exactly one; operator can override
+  const selectItem = (pool: LooseStockSummary | null) => {
+    setSelectedItem(pool);
+    setSourceIds([]);
+    setBatchNumber(pool && pool.batches.length === 1 ? pool.batches[0] : '');
   };
 
-  const selectedItems = looseItems.filter((i) => selectedIds.includes(i.id));
-  const totalQty = selectedItems.reduce((sum, i) => sum + Number(i.qty), 0);
+  const toggleSource = (id: number) => {
+    setSourceIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  };
 
-  // Validate: all selected must be same item + batch
-  const combos = new Set(selectedItems.map((i) => `${i.item_code}|${i.batch_number}`));
-  const isValid = combos.size <= 1 && selectedIds.length > 0 && warehouse;
+  // With boxes ticked, only those records are drawn from (still oldest first)
+  const useSelection = sourceIds.length > 0;
+  const eligibleRecords = useMemo(
+    () => (useSelection ? fifoRecords.filter((ls) => sourceIds.includes(ls.id)) : fifoRecords),
+    [useSelection, fifoRecords, sourceIds],
+  );
+  const available = useSelection
+    ? eligibleRecords.reduce((sum, ls) => sum + Number(ls.qty), 0)
+    : selectedItem
+      ? Number(selectedItem.total_qty)
+      : 0;
+
+  const qtyNum = Number(qty);
+  const qtyValid = qty !== '' && Number.isFinite(qtyNum) && qtyNum > 0 && qtyNum <= available;
+  const isValid = !!selectedItem && qtyValid && !!warehouse;
+
+  // FIFO walk over the eligible records: which record contributes how much
+  const useById = useMemo(() => {
+    const map = new Map<number, number>();
+    if (!qtyValid) return map;
+    let remaining = qtyNum;
+    for (const ls of eligibleRecords) {
+      if (remaining <= 0) break;
+      const use = Math.min(Number(ls.qty), remaining);
+      map.set(ls.id, use);
+      remaining -= use;
+    }
+    return map;
+  }, [qtyValid, qtyNum, eligibleRecords]);
 
   const handleRepack = async () => {
-    if (!isValid) return;
+    if (!isValid || !selectedItem) return;
     try {
       const newBox = await repackMutation.mutateAsync({
-        loose_ids: selectedIds,
+        item_code: selectedItem.item_code,
+        qty: qtyNum,
         warehouse,
+        batch_number: batchNumber.trim(),
+        ...(useSelection ? { loose_ids: sourceIds } : {}),
       });
       toast.success(`Repacked into ${newBox.box_barcode}`);
       navigate(`/barcode/boxes/${newBox.id}`);
@@ -48,12 +99,38 @@ export default function RepackPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Repack" subtitle="Combine loose stock into a new box" />
+      <DashboardHeader title="Repack" subtitle="Pack any quantity of loose stock into a new box" />
 
-      {/* Warehouse selection */}
       <Card>
-        <CardContent className="p-4">
-          <div className="w-[300px]">
+        <CardContent className="p-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SearchableSelect<LooseStockSummary>
+              items={pools}
+              isLoading={loadingPools}
+              getItemKey={(p) => p.item_code}
+              getItemLabel={(p) => `${p.item_code} — ${p.item_name || ''}`}
+              renderItem={(p) => (
+                <div className="flex items-center justify-between w-full">
+                  <div>
+                    <span className="font-mono text-xs font-medium">{p.item_code}</span>
+                    <span className="ml-2 text-sm truncate">{p.item_name}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {p.total_qty} {p.uom} loose
+                  </span>
+                </div>
+              )}
+              placeholder="Select item with loose stock..."
+              label="Item"
+              required
+              inputId="repack-item"
+              loadingText="Loading..."
+              emptyText="No active loose stock"
+              notFoundText="No match"
+              onItemSelect={(p) => selectItem(p)}
+              onClear={() => selectItem(null)}
+            />
+
             <SearchableSelect<WarehouseOption>
               items={warehouses}
               isLoading={false}
@@ -76,93 +153,128 @@ export default function RepackPage() {
               onClear={() => setWarehouse('')}
             />
           </div>
+
+          {selectedItem && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Qty to Repack * ({useSelection ? 'selected boxes' : 'available'}: {available}{' '}
+                  {selectedItem.uom})
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={available}
+                  className="w-full border rounded px-3 py-2 text-sm mt-1"
+                  value={qty}
+                  onChange={(e) => setQty(e.target.value)}
+                  placeholder="Any quantity up to the loose total"
+                />
+                {qty !== '' && !qtyValid && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Enter a quantity between 0 and {available}
+                    {useSelection ? ' (from the selected boxes)' : ''}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Batch for New Box
+                </label>
+                <input
+                  className="w-full border rounded px-3 py-2 text-sm mt-1 font-mono"
+                  value={batchNumber}
+                  onChange={(e) => setBatchNumber(e.target.value)}
+                  placeholder="Blank → source batch, or MIXED"
+                />
+                {selectedItem.batches.length > 1 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pool spans batches: {selectedItem.batches.join(', ')}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Loose stock selection */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Active Loose Stock</h3>
-            {selectedIds.length > 0 && (
-              <div className="text-sm">
-                Selected: <span className="font-bold">{selectedIds.length}</span> records, Total
-                qty: <span className="font-bold">{totalQty}</span>
-                {combos.size > 1 && (
-                  <span className="text-red-600 ml-2">Mixed items/batches — must be same</span>
+      {/* Source records — tick boxes to draw from specific dismantles */}
+      {selectedItem && fifoRecords.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold">
+                Source records (oldest first)
+                {qtyValid && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    consuming {useById.size} of {useSelection ? eligibleRecords.length : fifoRecords.length}
+                  </span>
                 )}
-              </div>
-            )}
-          </div>
-
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
-          ) : looseItems.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No active loose stock to repack
+              </h3>
+              {useSelection && (
+                <Button size="sm" variant="ghost" onClick={() => setSourceIds([])}>
+                  Clear selection ({sourceIds.length})
+                </Button>
+              )}
             </div>
-          ) : (
-            <div className="overflow-x-auto">
+            <p className="text-xs text-muted-foreground mb-3">
+              Tick boxes to repack from specific dismantled boxes only — leave all unticked for
+              automatic oldest-first consumption.
+            </p>
+            <div className="overflow-x-auto max-h-80 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-3 w-8"></th>
-                    <th className="text-left p-3 font-medium">Item</th>
-                    <th className="text-left p-3 font-medium">Batch</th>
-                    <th className="text-right p-3 font-medium">Qty</th>
-                    <th className="text-left p-3 font-medium">Source Box</th>
-                    <th className="text-left p-3 font-medium">Reason</th>
-                    <th className="text-left p-3 font-medium">Warehouse</th>
+                    <th className="p-2 w-8"></th>
+                    <th className="text-left p-2 font-medium">Dismantled From</th>
+                    <th className="text-left p-2 font-medium">Batch</th>
+                    <th className="text-right p-2 font-medium">Available</th>
+                    <th className="text-right p-2 font-medium">Will Use</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {looseItems.map((ls) => (
-                    <tr
-                      key={ls.id}
-                      className={`border-b cursor-pointer hover:bg-muted/30 ${selectedIds.includes(ls.id) ? 'bg-blue-50' : ''}`}
-                      onClick={() => toggleSelect(ls.id)}
-                    >
-                      <td className="p-3">
-                        <input type="checkbox" checked={selectedIds.includes(ls.id)} readOnly />
-                      </td>
-                      <td className="p-3">
-                        <div className="font-medium">{ls.item_code}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                          {ls.item_name}
-                        </div>
-                      </td>
-                      <td className="p-3 text-xs font-mono">{ls.batch_number}</td>
-                      <td className="p-3 text-right font-bold">
-                        {ls.qty} {ls.uom}
-                      </td>
-                      <td className="p-3 font-mono text-xs">{ls.source_box_barcode || '—'}</td>
-                      <td className="p-3">
-                        <Badge className="bg-gray-100 text-gray-800">{ls.reason}</Badge>
-                      </td>
-                      <td className="p-3">{ls.current_warehouse}</td>
-                    </tr>
-                  ))}
+                  {fifoRecords.map((ls) => {
+                    const ticked = sourceIds.includes(ls.id);
+                    const excluded = useSelection && !ticked;
+                    const use = useById.get(ls.id) ?? 0;
+                    return (
+                      <tr
+                        key={ls.id}
+                        className={`border-b last:border-0 cursor-pointer hover:bg-muted/30 ${
+                          excluded ? 'opacity-40' : ''
+                        } ${ticked ? 'bg-blue-50' : ''}`}
+                        onClick={() => toggleSource(ls.id)}
+                      >
+                        <td className="p-2">
+                          <input type="checkbox" checked={ticked} readOnly />
+                        </td>
+                        <td className="p-2 font-mono text-xs">{ls.source_box_barcode || '—'}</td>
+                        <td className="p-2 font-mono text-xs">{ls.batch_number}</td>
+                        <td className="p-2 text-right">{Number(ls.qty)}</td>
+                        <td className="p-2 text-right font-bold">
+                          {use > 0 ? use : '—'}
+                          {use > 0 && use < Number(ls.qty) && (
+                            <Badge className="ml-2 bg-amber-100 text-amber-800">partial</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Repack button */}
-          <div className="mt-4">
-            <Button onClick={handleRepack} disabled={!isValid || repackMutation.isPending}>
-              <PackagePlus className="h-4 w-4 mr-1" />
-              {repackMutation.isPending
-                ? 'Repacking...'
-                : `Repack ${selectedIds.length} Records (${totalQty} units) → New Box`}
-            </Button>
-            {combos.size > 1 && selectedIds.length > 0 && (
-              <p className="text-sm text-red-600 mt-2">
-                Cannot repack different items or batches together
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <Button onClick={handleRepack} disabled={!isValid || repackMutation.isPending}>
+        <PackagePlus className="h-4 w-4 mr-1" />
+        {repackMutation.isPending
+          ? 'Repacking...'
+          : isValid
+            ? `Repack ${qty} ${selectedItem?.uom ?? ''} → New Box`
+            : 'Repack → New Box'}
+      </Button>
     </div>
   );
 }

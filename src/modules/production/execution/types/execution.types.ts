@@ -112,7 +112,10 @@ export interface LineSkuConfig {
   config_name: string;
   sku_code: string;
   sku_name: string;
+  /** Bottles/hr */
   rated_speed: string | null;
+  /** Bottles per case (SAP SalFactor2); null when unresolved */
+  pieces_per_case: number | null;
   labour_count: number;
   other_manpower_count: number;
   supervisor: string;
@@ -127,7 +130,9 @@ export interface CreateLineSkuConfigPayload {
   config_name: string;
   sku_code?: string;
   sku_name?: string;
-  rated_speed?: string | number | null;
+  /** Bottles/hr — mandatory: title + speed are the only required preset fields */
+  rated_speed: string | number;
+  pieces_per_case?: number | null;
   labour_count?: number;
   other_manpower_count?: number;
   supervisor?: string;
@@ -138,7 +143,9 @@ export interface UpdateLineSkuConfigPayload {
   config_name?: string;
   sku_code?: string;
   sku_name?: string;
-  rated_speed?: string | number | null;
+  /** Omit to keep the stored speed; null is rejected (speed is mandatory) */
+  rated_speed?: string | number;
+  pieces_per_case?: number | null;
   labour_count?: number;
   other_manpower_count?: number;
   supervisor?: string;
@@ -241,7 +248,10 @@ export interface ProductionRun {
   product: string;
   item_code: string;
   required_qty: string | null;
+  /** Bottles/hr */
   rated_speed: string;
+  /** Bottles per case (SAP SalFactor2); null when unresolved */
+  pieces_per_case: number | null;
   total_production: string;
   total_running_minutes: number;
   total_breakdown_time: number;
@@ -486,10 +496,12 @@ export interface MachineChecklistEntry {
 
 export interface WasteLog {
   id: number;
-  production_run: number;
-  run_number?: number;
-  run_date?: string;
+  production_run: number | null;
+  run_number?: number | null;
+  run_date?: string | null;
   run_product?: string;
+  /** Run date for run-linked logs, creation date for standalone logs. */
+  log_date?: string | null;
   material_code: string;
   material_name: string;
   wastage_qty: string;
@@ -770,6 +782,7 @@ export interface CreateRunRequest {
   item_code?: string;
   required_qty?: number | null;
   rated_speed?: string;
+  pieces_per_case?: number | null;
   machine_ids?: number[];
   labour_count?: number;
   other_manpower_count?: number;
@@ -781,6 +794,7 @@ export interface CreateRunRequest {
 export interface UpdateRunRequest {
   product?: string;
   rated_speed?: string;
+  pieces_per_case?: number | null;
   machine_ids?: number[];
   labour_count?: number;
   other_manpower_count?: number;
@@ -902,7 +916,8 @@ export interface CreateWasteItemRequest {
 }
 
 export interface CreateWasteLogRequest {
-  production_run_id: number;
+  /** Omit for a standalone wastage entry not tied to a production run. */
+  production_run_id?: number | null;
   material_code?: string;
   material_name?: string;
   wastage_qty?: string;
@@ -918,7 +933,8 @@ export interface WasteApprovalRequest {
 export interface CreateElectricityRequest {
   description: string;
   units_consumed: string;
-  rate_per_unit: string;
+  /** Optional — the costing engine prices units at the Cost Master rate. */
+  rate_per_unit?: string;
 }
 
 export interface CreateWaterRequest {

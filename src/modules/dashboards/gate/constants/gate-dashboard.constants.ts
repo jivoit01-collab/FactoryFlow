@@ -9,7 +9,6 @@ import {
   PackageCheck,
   RotateCcw,
   Truck,
-  Undo2,
   Users,
   Wrench,
 } from 'lucide-react';
@@ -128,15 +127,6 @@ export const GATE_ACTIVITIES: readonly GateActivity[] = [
     accent: 'indigo',
     flow: 'in',
     permissions: [GATE_PERMISSIONS.FIXED_ASSET.VIEW],
-  },
-  {
-    title: 'Customer Return',
-    description: 'Goods returned by customers, back in',
-    route: '/gate/customer-return',
-    icon: Undo2,
-    accent: 'rose',
-    flow: 'in',
-    permissions: [GATE_PERMISSIONS.CUSTOMER_RETURN.VIEW],
   },
   {
     title: 'Rejected QC Return',

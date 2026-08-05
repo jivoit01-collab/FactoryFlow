@@ -11,6 +11,8 @@ const AllEntriesPage = lazy(() => import('./pages/AllEntriesPage'));
 const GRPOPreviewPage = lazy(() => import('./pages/GRPOPreviewPage'));
 const GRPOHistoryPage = lazy(() => import('./pages/GRPOHistoryPage'));
 const GRPOHistoryDetailPage = lazy(() => import('./pages/GRPOHistoryDetailPage'));
+const FGPendingEntriesPage = lazy(() => import('./pages/FGPendingEntriesPage'));
+const FGGRPOPreviewPage = lazy(() => import('./pages/FGGRPOPreviewPage'));
 
 function ServicePreviewRedirect() {
   const { dispatchPlanId } = useParams<{ dispatchPlanId: string }>();
@@ -96,6 +98,20 @@ export const grpoRoutes: ModuleRoute[] = [
     element: <GRPOHistoryDetailPage />,
     layout: 'main',
     permissions: [GRPO_PERMISSIONS.VIEW_POSTING],
+  },
+  // ── Finished Goods (traded FG) material GRPO — no QC, direct post ──
+  {
+    path: '/warehouse/grpo/fg',
+    element: <FGPendingEntriesPage />,
+    layout: 'main',
+    permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
+    breadcrumb: { label: 'Finished Goods GRPO' },
+  },
+  {
+    path: '/warehouse/grpo/fg/preview/:vehicleEntryId',
+    element: <FGGRPOPreviewPage />,
+    layout: 'main',
+    permissions: [GRPO_PERMISSIONS.PREVIEW],
   },
   {
     path: '/warehouse/grpo/pending',
@@ -191,6 +207,11 @@ export const grpoNavChildren: ModuleNavItem[] = [
   {
     path: '/warehouse/grpo/material',
     title: 'Material GRPO',
+    permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
+  },
+  {
+    path: '/warehouse/grpo/fg',
+    title: 'Finished Goods GRPO',
     permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
   },
 ];

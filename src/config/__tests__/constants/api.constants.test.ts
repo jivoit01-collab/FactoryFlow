@@ -250,14 +250,19 @@ describe('API_ENDPOINTS.GRPO', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('API_ENDPOINTS.STOCK_DASHBOARD', () => {
-  it('has LIST, AS_OF, ITEM_DETAIL', () => {
+  it('has LIST, AS_OF, EXPORT, ITEM_DETAIL', () => {
     expect(API_ENDPOINTS.STOCK_DASHBOARD).toHaveProperty('LIST');
     expect(API_ENDPOINTS.STOCK_DASHBOARD).toHaveProperty('AS_OF');
+    expect(API_ENDPOINTS.STOCK_DASHBOARD).toHaveProperty('EXPORT');
     expect(API_ENDPOINTS.STOCK_DASHBOARD).toHaveProperty('ITEM_DETAIL');
   });
 
   it('AS_OF points to the Stock Benchmark reconstruction endpoint', () => {
     expect(API_ENDPOINTS.STOCK_DASHBOARD.AS_OF).toBe('/dashboards/stock/as-of/');
+  });
+
+  it('EXPORT points to the Stock Benchmark Excel export endpoint', () => {
+    expect(API_ENDPOINTS.STOCK_DASHBOARD.EXPORT).toBe('/dashboards/stock/export/');
   });
 
   it('ITEM_DETAIL returns correct parameterized path', () => {

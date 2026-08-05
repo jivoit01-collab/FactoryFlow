@@ -5,19 +5,23 @@
 export type PalletStatus =
   | 'ACTIVE'
   | 'PARTIAL'
+  | 'INSIDE_VEHICLE'
   | 'DISPATCHED'
   | 'EMPTY'
   | 'INACTIVE'
   | 'CLEARED'
   | 'SPLIT'
   | 'VOID';
-export type BoxStatus = 'ACTIVE' | 'PARTIAL' | 'DISPATCHED' | 'DISMANTLED' | 'VOID';
+export type BoxStatus = 'ACTIVE' | 'PARTIAL' | 'INSIDE_VEHICLE' | 'DISPATCHED' | 'DISMANTLED' | 'VOID';
 export type LabelType = 'BOX' | 'PALLET' | 'BIN' | 'WAREHOUSE';
 export type PrintType = 'ORIGINAL' | 'REPRINT';
 export type PalletMovementType =
   | 'CREATE'
   | 'MOVE'
   | 'TRANSFER'
+  | 'OWNERSHIP_TRANSFER'
+  | 'LOAD_VEHICLE'
+  | 'UNLOAD_VEHICLE'
   | 'DISPATCH'
   | 'REMOVE_FOR_DISPATCH'
   | 'DISMANTLE'
@@ -28,6 +32,9 @@ export type BoxMovementType =
   | 'CREATE'
   | 'MOVE'
   | 'TRANSFER'
+  | 'OWNERSHIP_TRANSFER'
+  | 'LOAD_VEHICLE'
+  | 'UNLOAD_VEHICLE'
   | 'PALLETIZE'
   | 'DEPALLETIZE'
   | 'DISPATCH'
@@ -106,6 +113,7 @@ export interface BoxMovement {
   performed_by: number | null;
   performed_by_name: string;
   performed_at: string;
+  notes: string;
 }
 
 // ============================================================================
@@ -500,6 +508,7 @@ export interface IntercompanyTransferLine {
   batch_number: string;
   qty: string;
   uom: string;
+  from_warehouse: string;
   from_company_code: string;
   from_company_name: string;
   to_company_code: string;
@@ -519,6 +528,7 @@ export interface IntercompanyTransfer {
   total_barcodes: number;
   total_qty: string;
   uom: string;
+  destination_warehouse: string;
   sap_enabled: boolean;
   sap_doc_entry: number | null;
   sap_doc_num: string;
@@ -569,6 +579,12 @@ export interface IntercompanyTransferPayload {
   notes?: string;
   device_id?: string;
   sap_enabled?: boolean;
+  destination_warehouse?: string;
+}
+
+export interface IntercompanyWarehouse {
+  warehouse_code: string;
+  warehouse_name: string;
 }
 
 export interface IntercompanyReversePayload {
@@ -731,6 +747,25 @@ export interface LooseStock {
   created_by_name: string;
   created_at: string;
   updated_at: string;
+  consumptions?: LooseStockConsumption[];
+}
+
+export interface LooseStockConsumption {
+  id: number;
+  box: number;
+  box_barcode: string;
+  qty: string;
+  created_at: string;
+}
+
+export interface LooseStockSummary {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  total_qty: string;
+  record_count: number;
+  batches: string[];
+  warehouses: string[];
 }
 
 export interface DismantlePalletPayload {
@@ -746,9 +781,12 @@ export interface DismantleBoxPayload {
 }
 
 export interface RepackPayload {
-  loose_ids: number[];
-  qty_per_loose?: Record<number, string>;
+  item_code: string;
+  qty: number;
   warehouse: string;
+  batch_number?: string;
+  /** Optional: restrict consumption to these loose records (FIFO among them). */
+  loose_ids?: number[];
 }
 
 export interface LooseStockFilters extends PaginationParams {

@@ -114,8 +114,12 @@ export function useDeliveryNoteSummary(
 export function useCutDeliveryNote(channel: MarketplaceChannel) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars?: { warehouseId?: number | null; batchId?: number | null }) =>
-      marketplaceApi.cutDeliveryNote(channel, vars?.warehouseId, vars?.batchId),
+    mutationFn: (vars?: {
+      warehouseId?: number | null;
+      batchId?: number | null;
+      docDate?: string | null;
+    }) =>
+      marketplaceApi.cutDeliveryNote(channel, vars?.warehouseId, vars?.batchId, vars?.docDate),
     onSuccess: () => invalidateMarketplace(qc),
   });
 }

@@ -69,6 +69,10 @@ export const MAINTENANCE_PERMISSIONS = {
   VIEW_VENDOR: 'maintenance.can_view_vendor',
   MANAGE_VENDOR: 'maintenance.can_manage_vendor',
   VIEW_REPORTS: 'maintenance.can_view_maintenance_reports',
+  VIEW_DAILY_ELECTRICITY: 'maintenance.can_view_daily_electricity',
+  MANAGE_DAILY_ELECTRICITY: 'maintenance.can_manage_daily_electricity',
+  VIEW_DAILY_WASTAGE: 'maintenance.can_view_daily_wastage',
+  MANAGE_DAILY_WASTAGE: 'maintenance.can_manage_daily_wastage',
 } as const;
 
 export type MaintenancePermission =

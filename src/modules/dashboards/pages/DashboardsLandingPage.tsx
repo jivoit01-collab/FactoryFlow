@@ -1,9 +1,8 @@
 import {
   ArrowLeftRight,
-  BarChart3,
-  CalendarClock,
   DoorOpen,
   Factory,
+  Navigation,
   Package,
   PackageX,
   Target,
@@ -13,7 +12,11 @@ import {
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { BLOWING_PERMISSIONS, DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import {
+  BLOWING_PERMISSIONS,
+  DASHBOARDS_PERMISSIONS,
+  DISPATCH_PERMISSIONS,
+} from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
@@ -30,28 +33,12 @@ interface DashboardsModuleCard {
 
 const dashboardsModules: DashboardsModuleCard[] = [
   {
-    title: 'SAP Material Plan',
-    description: 'Production order shortfall, BOM detail & procurement requirements from SAP',
-    icon: <BarChart3 className="h-5 w-5" />,
-    route: '/dashboards/sap-plan',
-    color: 'text-indigo-600',
-    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PLAN_DASHBOARD],
-  },
-  {
     title: 'Stock Benchmark',
     description: 'Monitor on-hand inventory against benchmark levels across warehouses',
     icon: <Package className="h-5 w-5" />,
     route: '/dashboards/stock-levels',
     color: 'text-emerald-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
-  },
-  {
-    title: 'Inventory',
-    description: 'Stock age, valuation, and group breakdown across all warehouses',
-    icon: <CalendarClock className="h-5 w-5" />,
-    route: '/dashboards/inventory-age',
-    color: 'text-amber-600',
-    permissions: [DASHBOARDS_PERMISSIONS.VIEW_INVENTORY_AGE],
   },
   {
     title: 'Non-Moving',
@@ -84,6 +71,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/dispatch-pipeline',
     color: 'text-teal-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE],
+  },
+  {
+    title: 'Dispatch Tracking',
+    description: 'Post-dispatch truck status — in transit, delivered, late/overdue & on-time KPIs',
+    icon: <Navigation className="h-5 w-5" />,
+    route: '/dashboards/dispatch-tracking',
+    color: 'text-indigo-600',
+    permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
   },
   {
     title: 'Gate',

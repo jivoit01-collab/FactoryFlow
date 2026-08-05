@@ -272,9 +272,12 @@ function SheetRow({
     enabled: open,
   });
 
+  // Gate approval is per dispatch (parcel), not per order — a re-manifested order
+  // has two dispatches, so ``orders`` would under-count the denominator.
+  const total = sheet.dispatches ?? sheet.gate_pending + sheet.gate_approved + sheet.gate_hold;
   const done = sheet.gate_approved;
-  const pct = sheet.orders ? Math.round((done / sheet.orders) * 100) : 0;
-  const allDone = sheet.gate_pending === 0 && sheet.gate_hold === 0 && sheet.orders > 0;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const allDone = sheet.gate_pending === 0 && sheet.gate_hold === 0 && total > 0;
 
   return (
     <Card className={`overflow-hidden ${allDone ? 'border-emerald-500/40' : ''}`}>
@@ -296,7 +299,7 @@ function SheetRow({
                 <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
                   <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
                 </div>
-                <span className="text-[11px] text-muted-foreground">{done}/{sheet.orders} approved</span>
+                <span className="text-[11px] text-muted-foreground">{done}/{total} approved</span>
               </div>
             </div>
           </button>
@@ -330,13 +333,14 @@ function SheetRow({
                   {detail.data?.total_orders} orders · {detail.data?.total_parcels} parcels total
                 </div>
                 <div className="-mx-2 overflow-x-auto sm:mx-0">
-                  <table className="w-full min-w-[720px] text-sm">
+                  <table className="w-full min-w-[840px] text-sm">
                     <thead className="text-left text-xs text-muted-foreground">
                       <tr className="border-b">
                         <th className="p-2">Order</th>
                         <th className="p-2">Buyer</th>
                         <th className="p-2">Destination</th>
                         <th className="p-2 text-center">Parcels</th>
+                        <th className="p-2">Tracking</th>
                         <th className="p-2">Items</th>
                         <th className="p-2">DN</th>
                         <th className="p-2">Gate</th>
@@ -351,6 +355,9 @@ function SheetRow({
                             {[o.city, o.state].filter(Boolean).join(', ') || '—'}
                           </td>
                           <td className="p-2 text-center font-medium">{o.parcels}</td>
+                          <td className="p-2 font-mono text-xs text-muted-foreground">
+                            {o.tracking_ids.length ? o.tracking_ids.join(', ') : '—'}
+                          </td>
                           <td className="p-2 text-xs text-muted-foreground">
                             {o.items.map((it) => `${it.name} ×${it.quantity}`).join(', ')}
                           </td>

@@ -8,10 +8,10 @@ import { useRunCost, useRunDetail } from '../api';
 import { CostBreakdownCard } from '../components/CostBreakdownCard';
 
 /**
- * Read-only run cost view. Costs are derived automatically from the Cost Master
- * rates + BOM snapshot + running hours / produced cases — there is no manual
- * per-run resource entry any more. Adjust rates in Cost Master and the line's
- * operating profile in Line Management.
+ * Read-only run cost view (confidential — gated by VIEW_RUN_COST). Costs are
+ * derived automatically from the Cost Master rates + BOM snapshot + running
+ * hours / produced cases. Metered electricity units are entered on the
+ * separate Electricity page (data-entry staff don't see this page).
  */
 function ResourceTrackingPage() {
   const { runId } = useParams<{ runId: string }>();
@@ -37,7 +37,8 @@ function ResourceTrackingPage() {
       <Card>
         <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 py-4 text-sm text-muted-foreground">
           <span>
-            Costs are computed automatically — no manual entry. To change them, edit:
+            Costs are computed automatically — electricity units come from the run&apos;s
+            Electricity page. To change rates, edit:
           </span>
           <Link
             to="/production/execution/cost-master"
