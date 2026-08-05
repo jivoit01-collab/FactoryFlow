@@ -3,6 +3,8 @@ import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
 
+import { BARCODE_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth';
 import { useLineConfigs, useLines } from '@/modules/production/execution/api';
 import { useWMSWarehouses } from '@/modules/warehouse/api';
 import type { WarehouseOption } from '@/modules/warehouse/types';
@@ -135,8 +137,15 @@ export default function LabelGeneratePage() {
 
   // The qty field is read-only whenever we resolved a pack size from the item
   // master. If the master has none (rare, unconfigured item) it stays editable
-  // so generation can still proceed.
-  const qtyLocked = !!selectedItem && !!selectedItem.pieces_per_box && selectedItem.pieces_per_box > 0;
+  // so generation can still proceed. Users holding the edit permission can
+  // override the item-master value; the pack size still prefills for them.
+  const { hasPermission } = usePermission();
+  const canEditLockedQty = hasPermission(BARCODE_PERMISSIONS.EDIT_BOX_GENERATION_QTY);
+  const qtyLocked =
+    !canEditLockedQty &&
+    !!selectedItem &&
+    !!selectedItem.pieces_per_box &&
+    selectedItem.pieces_per_box > 0;
 
   const handleConfigSelect = (configId: string) => {
     const config = lineConfigs.find((c) => c.id === Number(configId));
