@@ -41,6 +41,7 @@ Screens (routes in `module.config.tsx`):
 | `/dashboards/non-moving` | Non-Moving | `non_moving_rm` | `VIEW_NON_MOVING_RM` |
 | `/dashboards/sales-planning-requirement` | Sales Planning vs Requirement | `sales_planning_requirement` | `VIEW_SALES_PLANNING_REQUIREMENT` |
 | `/dashboards/production-movement` | Production Movement *(out of scope)* | `production_execution` | `VIEW_PRODUCTION_MOVEMENT` |
+| `/dashboards/blowing` | Blowing *(out of scope)* | `blowing` | `BLOWING_PERMISSIONS.VIEW_REPORTS` |
 | `/dashboards/dispatch-pipeline` | Dispatch Pipeline *(out of scope)* | `dispatch_plans` | `VIEW_DISPATCH_PIPELINE` |
 | `/dashboards/dispatch-fulfilment` | Dispatch Fulfilment *(out of scope)* | `dispatch_plans` | `VIEW_DISPATCH_PLANS` |
 | `/dashboards/dispatch-plans` | → redirects to `/dispatch/plans` | `dispatch_plans` | `VIEW_DISPATCH_PLANS` |
@@ -153,12 +154,29 @@ Movement remain reachable — see the comment in `module.config.tsx`.
    the API. Default `age = 45`.
 3. **Client-side:** the page re-applies the age filter, `sub_group`, and
    `search`, then **groups rows by `branch::item_code`**
-   (`groupNonMovingItemsBySku`) — merging multi-warehouse rows into one line
-   labelled "N warehouses" and keeping the freshest movement date. The branch
-   summary + meta cards are recomputed from the grouped rows.
-4. `NonMovingWarehouseSummary` uses the backend's `warehouse_summary`
-   (pro-rated), while the table uses the client-grouped rows — the two panels
-   count items differently (see edge cases).
+   (`groupNonMovingItemsBySku`) — merging multi-warehouse rows into one line and
+   keeping the freshest movement date. Those grouped rows now feed **only the
+   meta cards** (`filteredSummary`).
+4. `NonMovingWarehouseSummary` is the **only** item view — there is no separate
+   flat item table. Each warehouse row expands into its items, with the full
+   column set (code, name, branch, sub group, quantity, value, days idle,
+   status, last movement, consumption), age-coloured rows and its own sortable
+   headers; the sort persists as you open other warehouses. Report rows carry
+   **no warehouse** (`hana_reader` sets `warehouse: ""`), so the item↔warehouse
+   link comes from `warehouse_summary[].items` — the backend's pro-rated split
+   of each item across the warehouses where it currently holds stock.
+   `buildNonMovingWarehouseGroups` resolves those item codes against the
+   client-filtered rows and **recomputes each warehouse's item count, quantity,
+   and value** from what survived, so the row totals always match the expanded
+   list. A warehouse whose items are all filtered out disappears; if the
+   backend omits `items`, the row keeps its server totals and simply doesn't
+   expand. Clicking an item code or name inside a warehouse feeds it to the
+   search filter.
+5. **Factory scope:** only warehouses whose code starts with a
+   `FACTORY_WAREHOUSE_PREFIXES` entry (`BH`, `GP`) are shown. C&F depots
+   (`PB-*`, `DL-*`) and the backend's `Unassigned` bucket are dropped — so the
+   warehouse rows cover **less** stock than the meta cards, which still total
+   the whole report. Add a prefix to that constant to widen the scope.
 
 ### 6. Sales Planning vs Requirement (`sales-planning-requirement/pages/…`)
 1. **Refresh panel** (`SalesPlanningRequirementRefreshPanel`) shows last-success
@@ -279,10 +297,12 @@ Each: **trigger → current behaviour → operator-visible symptom → risk/gap.
    → Risk: browser jank; ties to the backend pagination gap.
 
 9. **Non-Moving item counts don't reconcile.**
-   → The table groups by `branch::item_code` (client) while
-   `NonMovingWarehouseSummary` uses the backend's pro-rated `warehouse_summary`.
-   → Symptom: "item count" differs between the table and the warehouse panel.
-   → Risk: users question data integrity.
+   → The meta cards count distinct `branch::item_code`, while the warehouse
+   panel counts each item once **per warehouse** it holds stock in, on
+   backend-pro-rated quantity/value. Both derive from the same filtered rows,
+   but an item split across three warehouses counts three times in the panel.
+   → Symptom: warehouse item counts sum to more than the "Total Items" card.
+   → Risk: users question data integrity; by design for a warehouse breakdown.
 
 10. **Slow-moving item missing from Stock "Critical" tile.**
     → The backend reports slow-moving (>30 days unconsumed) items as `none` and
@@ -409,7 +429,18 @@ though its route remains reachable.
   `types/sales-planning-requirement.types.ts`.
 
 **Out-of-scope siblings (same folder):** `production-movement/`,
-`dispatch-pipeline/`, `dispatch-fulfilment/`, `dispatch-plans/`.
+`dispatch-pipeline/`, `dispatch-fulfilment/`, `dispatch-plans/`, `blowing/`.
+
+**`blowing/`** is the one dashboard with **no `api/` folder of its own** — it
+reads the blowing feature module's hooks (`@/modules/production/blowing/api`:
+`useMonthlyReport`, `useDailyReport`, `useRuns`, `useMakeVsBuy`, `useVariances`,
+`useMachines`) so its numbers are identical to the Blowing section's own Reports
+page. Month drives every panel except the machine/preform split, which follows a
+separate day picker because `/blowing/reports/daily/` is single-date. Files:
+`pages/BlowingDashboardPage.tsx`; `components/` (`BlowingFilters`,
+`BlowingKpiStrip`, `BlowingCostBreakdown`, `BlowingTrend`, `BlowingDayBreakdown`,
+`BlowingRunsTable`, `BlowingMakeVsBuyPanel`, `BlowingVariancePanel`);
+`constants/blowing-dashboard.constants.ts`; `types/blowing-dashboard.types.ts`.
 
 ---
 

@@ -6,6 +6,7 @@ import { cn } from '@/shared/utils';
 
 import type { ReconReport, ReconRow, ReconSummary } from '../api/reconciliation.api';
 import { count } from '../constants/production-dashboard.constants';
+import { formatLitres, formatLitresSigned, litresNote, litresPerCase } from '../utils/litres';
 
 function statusChip(status: string | undefined): { label: string; cls: string } {
   const s = (status || '').toUpperCase();
@@ -40,10 +41,11 @@ function summarize(rows: ReconRow[]): ReconSummary {
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
-function StatTile({ label, value }: { label: string; value: string }) {
+function StatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
       <div className="text-lg font-bold tabular-nums leading-none">{value}</div>
+      {sub && <div className="mt-1 text-xs font-semibold tabular-nums text-primary">{sub}</div>}
       <div className="mt-1 text-[11px] text-muted-foreground">{label}</div>
     </div>
   );
@@ -76,6 +78,8 @@ interface Props {
   filterSkus?: Set<string>;
   /** Empty-state text when the filter yields nothing. */
   emptyLabel?: string;
+  /** Also show litres (derived from the SKU name) alongside the case figures. */
+  showLitres?: boolean;
 }
 
 /**
@@ -98,6 +102,7 @@ export function ReconciliationPanel({
   hideEmpty = false,
   filterSkus,
   emptyLabel = 'No records in this range.',
+  showLitres = false,
 }: Props) {
   const rows = useMemo(() => {
     if (!report) return [];
@@ -119,6 +124,27 @@ export function ReconciliationPanel({
   }, [report, filterSkus, appOnly, appColumnsOnly, hideEmpty, rows]);
 
   const overall = statusChip(summary?.status);
+
+  /**
+   * Litres per row plus the column totals. A SKU whose name carries no volume
+   * contributes `null` (rendered as —) and is counted in `unknown` rather than
+   * silently summing as zero.
+   */
+  const litres = useMemo(() => {
+    const perRow = rows.map((r) => litresPerCase(r.sku, r.item_code));
+    let app = 0;
+    let sap = 0;
+    let unknown = 0;
+    perRow.forEach((perCase, i) => {
+      if (perCase == null) {
+        unknown += 1;
+        return;
+      }
+      app += perCase * (rows[i].app_qty || 0);
+      sap += perCase * (rows[i].sap_qty || 0);
+    });
+    return { perRow, app, sap, unknown };
+  }, [rows]);
 
   return (
     <Card>
@@ -146,14 +172,30 @@ export function ReconciliationPanel({
             {/* summary tiles */}
             {appColumnsOnly ? (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <StatTile label={`${appLabel} (${unitNoun}s)`} value={count(summary.app_qty)} />
+                <StatTile
+                  label={`${appLabel} (${unitNoun}s)`}
+                  value={count(summary.app_qty)}
+                  sub={showLitres ? formatLitres(litres.app) : undefined}
+                />
                 <StatTile label="Materials" value={count(rows.length)} />
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <StatTile label={`${appLabel} (${unitNoun}s)`} value={count(summary.app_qty)} />
-                <StatTile label={`${sapLabel} (${unitNoun}s)`} value={count(summary.sap_qty)} />
-                <StatTile label="Difference" value={count(summary.difference)} />
+                <StatTile
+                  label={`${appLabel} (${unitNoun}s)`}
+                  value={count(summary.app_qty)}
+                  sub={showLitres ? formatLitres(litres.app) : undefined}
+                />
+                <StatTile
+                  label={`${sapLabel} (${unitNoun}s)`}
+                  value={count(summary.sap_qty)}
+                  sub={showLitres ? formatLitres(litres.sap) : undefined}
+                />
+                <StatTile
+                  label="Difference"
+                  value={count(summary.difference)}
+                  sub={showLitres ? formatLitresSigned(litres.app - litres.sap) : undefined}
+                />
                 <StatTile label="Difference %" value={`${summary.difference_pct.toFixed(1)}%`} />
               </div>
             )}
@@ -168,6 +210,7 @@ export function ReconciliationPanel({
                     <tr className="border-b text-left text-xs text-muted-foreground">
                       <th className="py-2 pr-2 font-medium">SKU</th>
                       <th className="py-2 px-2 text-right font-medium">{appLabel}</th>
+                      {showLitres && <th className="py-2 px-2 text-right font-medium">Litres</th>}
                       {showInProgress && (
                         <th className="py-2 px-2 text-right font-medium">In-progress</th>
                       )}
@@ -184,6 +227,7 @@ export function ReconciliationPanel({
                   <tbody>
                     {rows.map((row, i) => {
                       const chip = statusChip(row.status);
+                      const perCase = litres.perRow[i];
                       return (
                         <tr key={`${row.sku}-${row.item_code}-${i}`} className="border-b last:border-0">
                           <td className="max-w-[220px] py-2 pr-2">
@@ -197,6 +241,14 @@ export function ReconciliationPanel({
                             )}
                           </td>
                           <td className="py-2 px-2 text-right tabular-nums">{count(row.app_qty)}</td>
+                          {showLitres && (
+                            <td
+                              className="py-2 px-2 text-right font-medium tabular-nums text-primary"
+                              title={perCase == null ? 'No volume in the SKU name' : `${formatLitres(perCase)} per ${unitNoun}`}
+                            >
+                              {formatLitres(perCase == null ? null : perCase * (row.app_qty || 0))}
+                            </td>
+                          )}
                           {showInProgress && (
                             <td className="py-2 px-2 text-right tabular-nums text-emerald-600">
                               {count(row.in_progress ?? 0)}
@@ -220,6 +272,12 @@ export function ReconciliationPanel({
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {showLitres && rows.length > 0 && (
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                {litresNote(litres.unknown)}
+              </p>
             )}
 
             {report.meta.note && (

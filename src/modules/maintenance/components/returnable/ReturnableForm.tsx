@@ -36,8 +36,15 @@ import { SapItemSelect } from './SapItemSelect';
 import { WorkOrderSelect } from './WorkOrderSelect';
 
 interface ReturnableFormProps {
-  /** Present when editing. Only DRAFT passes are editable. */
+  /** Present when editing — a draft, or a pass awaiting the approver's sign-off. */
   gatePass?: ReturnableGatePass | null;
+  /**
+   * Unlock the returnable / non-returnable toggle on an existing pass. Only the
+   * approver gets this, and only while the pass is still with them: the backend
+   * renumbers the pass into the other series, which it will not do once the gate
+   * is working off it.
+   */
+  canChangeType?: boolean;
   /** Called with the saved pass id — the page navigates to its detail view. */
   onSaved: (passId: number) => void;
   onCancel: () => void;
@@ -162,8 +169,14 @@ function Field({
   );
 }
 
-export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormProps) {
+export function ReturnableForm({
+  gatePass,
+  canChangeType = false,
+  onSaved,
+  onCancel,
+}: ReturnableFormProps) {
   const isEdit = Boolean(gatePass);
+  const typeLocked = isEdit && !canChangeType;
   const createMutation = useCreateReturnableGatePass();
   const updateMutation = useUpdateReturnableGatePass();
   const [attachments, setAttachments] = useState<StagedAttachment[]>([]);
@@ -184,6 +197,9 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
   });
 
   const isReturnable = watch('is_returnable');
+  // The toggle is live, the pass is not: this is true only once the approver has
+  // actually flipped it away from what is stored.
+  const typeSwitched = isEdit && isReturnable !== gatePass!.is_returnable;
   const { fields, append, remove } = useFieldArray({ control, name: 'items_input' });
 
   // Re-seed once the pass being edited actually arrives from the server.
@@ -282,16 +298,31 @@ export function ReturnableForm({ gatePass, onSaved, onCancel }: ReturnableFormPr
             <Switch
               id="is_returnable"
               checked={isReturnable}
-              disabled={isEdit}
+              disabled={typeLocked}
               onChange={(checked) => setValue('is_returnable', checked, { shouldValidate: true })}
             />
           </div>
         }
       >
-        {isEdit ? (
+        {typeLocked ? (
           <p className="text-xs text-amber-700">
-            The type is fixed once created — {gatePass!.pass_no} already carries its number series.
-            To change it, cancel this pass and raise a new one.
+            The type is fixed here — {gatePass!.pass_no} already carries its number series. Send the
+            pass for approval and the approver can switch it, or cancel this one and raise a new one.
+          </p>
+        ) : isEdit ? (
+          <p className="text-xs text-amber-700">
+            {typeSwitched ? (
+              <>
+                On save, {gatePass!.pass_no} is renumbered into the{' '}
+                {isReturnable ? 'RGP' : 'NRGP'} series and the fields this type does not use are
+                cleared.
+              </>
+            ) : (
+              <>
+                As the approver you can switch the type. Doing so renumbers {gatePass!.pass_no} into
+                the other series and clears the fields that type does not use.
+              </>
+            )}
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">

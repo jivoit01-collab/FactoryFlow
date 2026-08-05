@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { useApproveMaterialIndent, useMaterialIndents, useRejectMaterialIndent } from '@/modules/maintenance/api';
+import { MaterialIndentQuotations } from '@/modules/maintenance/components/MaterialIndentQuotations';
 import type { MaterialIndent, MaterialIndentStatus } from '@/modules/maintenance/types';
 import {
   Badge,
@@ -31,10 +32,15 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-type QueueStatus = Extract<MaterialIndentStatus, 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'>;
+type QueueStatus = Extract<
+  MaterialIndentStatus,
+  'PENDING_APPROVAL' | 'PENDING_QUOTATION_SELECTION' | 'APPROVED' | 'REJECTED'
+>;
 
 const STATUS_TABS: { value: QueueStatus; label: string; shortLabel: string }[] = [
   { value: 'PENDING_APPROVAL', label: 'Pending Approval', shortLabel: 'Pending' },
+  // The second decision the approver owns: which company to buy from.
+  { value: 'PENDING_QUOTATION_SELECTION', label: 'Company Selection', shortLabel: 'Quotes' },
   { value: 'APPROVED', label: 'Approved', shortLabel: 'Approved' },
   { value: 'REJECTED', label: 'Rejected', shortLabel: 'Rejected' },
 ];
@@ -114,7 +120,7 @@ export default function MaterialIndentApprovalsPage() {
       </div>
 
       {/* Filter tabs sit outside the card on a phone so the list starts higher up. */}
-      <div className="grid grid-cols-3 gap-2 sm:hidden">
+      <div className="grid grid-cols-2 gap-2 sm:hidden">
         {STATUS_TABS.map((tab) => (
           <Button
             key={tab.value}
@@ -128,6 +134,46 @@ export default function MaterialIndentApprovalsPage() {
         ))}
       </div>
 
+      {statusFilter === 'PENDING_QUOTATION_SELECTION' ? (
+        <div className="space-y-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2 rounded-lg border p-8 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading indents...
+            </div>
+          ) : indents.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-lg border p-8 text-center text-muted-foreground">
+              <ShieldQuestion className="h-8 w-8" />
+              <p>No indents waiting for company selection.</p>
+            </div>
+          ) : (
+            indents.map((indent) => (
+              <Card key={indent.id}>
+                <CardHeader className="border-b p-3 sm:p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <CardTitle className="text-base sm:text-lg">{indent.indent_no}</CardTitle>
+                      <p className="text-xs text-muted-foreground">
+                        {indent.purpose || '-'} · {indent.department_name || '-'} ·{' '}
+                        {indent.requested_by_name || '-'}
+                      </p>
+                    </div>
+                    <StatusBadge status={indent.status} />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <MaterialIndentQuotations
+                    indent={indent}
+                    canPurchase={false}
+                    canApprove={canApprove}
+                  />
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      ) : (
+        <>
       {/* ---- Phone: one card per indent, no horizontal scrolling ---- */}
       <div className="space-y-3 sm:hidden">
         {isLoading ? (
@@ -283,6 +329,9 @@ export default function MaterialIndentApprovalsPage() {
           )}
         </CardContent>
       </Card>
+
+        </>
+      )}
 
       <Dialog open={Boolean(reviewTarget)} onOpenChange={(open) => (!open ? closeReview() : null)}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">

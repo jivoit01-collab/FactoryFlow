@@ -39,12 +39,30 @@ export interface BranchSummary {
   total_quantity: number;
 }
 
+/** One item's pro-rated share of a warehouse, as returned by the backend. */
+export interface WarehouseItemBreakdown {
+  item_code: string;
+  quantity: number;
+  value: number;
+}
+
 export interface WarehouseSummary {
   warehouse: string;
   warehouse_name?: string;
   item_count: number;
   total_value: number;
   total_quantity: number;
+  items?: WarehouseItemBreakdown[];
+}
+
+/** A warehouse row with its items resolved against the visible report rows. */
+export interface WarehouseGroup {
+  warehouse: string;
+  warehouse_name?: string;
+  item_count: number;
+  total_value: number;
+  total_quantity: number;
+  items: NonMovingItem[];
 }
 
 export interface ReportSummary {

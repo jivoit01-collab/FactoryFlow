@@ -7,6 +7,10 @@ import type {
   MaterialIndentGateInPayload,
   MaterialIndentPayload,
   MaterialIndentPurchasePayload,
+  MaterialIndentQuotationPayload,
+  MaterialIndentQuotationReturnPayload,
+  MaterialIndentQuotationSelectPayload,
+  MaterialIndentQuotationUpdatePayload,
   MaterialIndentReceivePayload,
   MaterialIndentReviewPayload,
   MaterialIndentUpdatePayload,
@@ -18,6 +22,8 @@ export const MATERIAL_INDENT_QUERY_KEYS = {
   list: (filters?: MaterialIndentFilters) =>
     [...MATERIAL_INDENT_QUERY_KEYS.all, 'list', filters ?? {}] as const,
   detail: (indentId: number) => [...MATERIAL_INDENT_QUERY_KEYS.all, 'detail', indentId] as const,
+  quotations: (indentId: number) =>
+    [...MATERIAL_INDENT_QUERY_KEYS.all, 'quotations', indentId] as const,
 };
 
 function invalidateIndents(queryClient: ReturnType<typeof useQueryClient>) {
@@ -163,6 +169,85 @@ export function useCancelMaterialIndent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (indentId: number) => materialIndentApi.cancelIndent(indentId),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+// ---- Quotation round ---------------------------------------------------------
+// Every mutation here can move the indent between the purchaser's and the
+// approver's queue, so they all invalidate the whole indent tree.
+
+export function useMaterialIndentQuotations(indentId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: MATERIAL_INDENT_QUERY_KEYS.quotations(indentId!),
+    queryFn: () => materialIndentApi.getQuotations(indentId!),
+    enabled: indentId !== null && enabled,
+  });
+}
+
+export function useCreateMaterialIndentQuotation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: MaterialIndentQuotationPayload) =>
+      materialIndentApi.createQuotation(payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useUpdateMaterialIndentQuotation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      quotationId,
+      payload,
+    }: {
+      quotationId: number;
+      payload: MaterialIndentQuotationUpdatePayload;
+    }) => materialIndentApi.updateQuotation(quotationId, payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useDeleteMaterialIndentQuotation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (quotationId: number) => materialIndentApi.deleteQuotation(quotationId),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useSubmitMaterialIndentQuotations() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (indentId: number) => materialIndentApi.submitQuotations(indentId),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useSelectMaterialIndentQuotation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      indentId,
+      payload,
+    }: {
+      indentId: number;
+      payload: MaterialIndentQuotationSelectPayload;
+    }) => materialIndentApi.selectQuotation(indentId, payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useReturnMaterialIndentQuotations() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      indentId,
+      payload,
+    }: {
+      indentId: number;
+      payload: MaterialIndentQuotationReturnPayload;
+    }) => materialIndentApi.returnQuotations(indentId, payload),
     onSuccess: () => invalidateIndents(queryClient),
   });
 }

@@ -15,8 +15,14 @@ export function MaterialIndentApprovalsBadge({ className }: { className?: string
   ]);
 
   const { data } = useMaterialIndents({ status: 'PENDING_APPROVAL' }, canView);
+  // The approver owns two decisions on an indent: approve the purchase, then
+  // pick the company to buy from. Both belong in the one pill.
+  const { data: awaitingCompany } = useMaterialIndents(
+    { status: 'PENDING_QUOTATION_SELECTION' },
+    canView,
+  );
 
-  const count = data?.length ?? 0;
+  const count = (data?.length ?? 0) + (awaitingCompany?.length ?? 0);
   if (count <= 0) return null;
 
   return (

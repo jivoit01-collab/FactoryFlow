@@ -9,6 +9,7 @@ import {
   Send,
   ThumbsUp,
   Truck,
+  X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +25,7 @@ import {
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
+import { sessionStorage } from '@/shared/utils';
 
 import { useReturnableGatePasses } from '../api/returnableGatePass.queries';
 import { ReturnableStatusBadge, ReturnableTypeBadge } from '../components/returnable';
@@ -33,22 +35,77 @@ import {
 } from '../constants/returnable.constants';
 import type { ReturnableFilters } from '../types';
 
+type TypeFilter = 'ALL' | 'RETURNABLE' | 'NON_RETURNABLE';
+
+/** Everything the filter bar holds, in one object so it persists as one value. */
+interface ListFilters {
+  q: string;
+  status: string;
+  purpose: ReturnableFilters['purpose'];
+  type: TypeFilter;
+  overdueOnly: boolean;
+}
+
+const DEFAULT_FILTERS: ListFilters = {
+  q: '',
+  status: 'ALL',
+  purpose: 'ALL',
+  type: 'ALL',
+  overdueOnly: false,
+};
+
+/**
+ * The register is a working queue: people filter it down, open a pass, come
+ * back, and open the next one. Losing the filter on every trip into a pass
+ * meant re-picking it a dozen times an hour, so it outlives the page.
+ *
+ * Session-scoped on purpose — a filter should survive navigation, not a closed
+ * browser. A new tab starts on the full list.
+ */
+const FILTERS_STORAGE_KEY = 'maintenance_returnable_filters';
+
+function readStoredFilters(): ListFilters {
+  // Merged over the defaults: a value stored by an older build of this page is
+  // missing whichever key was added since.
+  const stored = sessionStorage.get<Partial<ListFilters>>(FILTERS_STORAGE_KEY);
+  return stored ? { ...DEFAULT_FILTERS, ...stored } : DEFAULT_FILTERS;
+}
+
 export default function MaintenanceReturnablePage() {
   const navigate = useNavigate();
   const { hasPermission } = usePermission();
   const canManage = hasPermission(RETURNABLE_PERMISSIONS.MANAGE_GATEPASS);
 
-  const [filters, setFilters] = useState<ReturnableFilters>({ status: 'ALL', purpose: 'ALL' });
-  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'RETURNABLE' | 'NON_RETURNABLE'>('ALL');
+  const [filters, setFilters] = useState<ListFilters>(readStoredFilters);
+
+  const updateFilters = (patch: Partial<ListFilters>) =>
+    setFilters((previous) => {
+      const next = { ...previous, ...patch };
+      sessionStorage.set(FILTERS_STORAGE_KEY, next);
+      return next;
+    });
+
+  const isFiltered =
+    filters.q !== '' ||
+    filters.status !== 'ALL' ||
+    filters.purpose !== 'ALL' ||
+    filters.type !== 'ALL' ||
+    filters.overdueOnly;
+
+  const clearFilters = () => {
+    sessionStorage.remove(FILTERS_STORAGE_KEY);
+    setFilters(DEFAULT_FILTERS);
+  };
 
   const queryFilters = useMemo<ReturnableFilters>(
     () => ({
-      ...filters,
-      overdue: showOverdueOnly ? true : undefined,
-      is_returnable: typeFilter === 'ALL' ? undefined : typeFilter === 'RETURNABLE',
+      q: filters.q || undefined,
+      status: filters.status,
+      purpose: filters.purpose,
+      overdue: filters.overdueOnly ? true : undefined,
+      is_returnable: filters.type === 'ALL' ? undefined : filters.type === 'RETURNABLE',
     }),
-    [filters, showOverdueOnly, typeFilter],
+    [filters],
   );
 
   const { data: passes, isLoading } = useReturnableGatePasses(queryFilters);
@@ -65,9 +122,6 @@ export default function MaintenanceReturnablePage() {
       overdue: rows.filter((row) => row.is_overdue).length,
     };
   }, [passes]);
-
-  const updateFilter = <K extends keyof ReturnableFilters>(key: K, value: ReturnableFilters[K]) =>
-    setFilters((previous) => ({ ...previous, [key]: value }));
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -96,26 +150,26 @@ export default function MaintenanceReturnablePage() {
           value={counts.overdue}
           icon={AlertTriangle}
           className={counts.overdue > 0 ? 'border-rose-200' : undefined}
-          onClick={() => setShowOverdueOnly((previous) => !previous)}
+          onClick={() => updateFilters({ overdueOnly: !filters.overdueOnly })}
         />
       </div>
 
       <Card>
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-8"
               placeholder="Search pass no, party, item or serial number"
-              value={filters.q ?? ''}
-              onChange={(event) => updateFilter('q', event.target.value)}
+              value={filters.q}
+              onChange={(event) => updateFilters({ q: event.target.value })}
             />
           </div>
 
           <NativeSelect
             className="sm:w-52"
-            value={filters.status ?? 'ALL'}
-            onChange={(event) => updateFilter('status', event.target.value)}
+            value={filters.status}
+            onChange={(event) => updateFilters({ status: event.target.value })}
           >
             {RETURNABLE_STATUS_OPTIONS.map((option) => (
               <SelectOption key={option.value} value={option.value}>
@@ -126,8 +180,8 @@ export default function MaintenanceReturnablePage() {
 
           <NativeSelect
             className="sm:w-52"
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value as typeof typeFilter)}
+            value={filters.type}
+            onChange={(event) => updateFilters({ type: event.target.value as TypeFilter })}
           >
             <SelectOption value="ALL">Returnable &amp; Non-returnable</SelectOption>
             <SelectOption value="RETURNABLE">Returnable only</SelectOption>
@@ -138,7 +192,7 @@ export default function MaintenanceReturnablePage() {
             className="sm:w-52"
             value={filters.purpose ?? 'ALL'}
             onChange={(event) =>
-              updateFilter('purpose', event.target.value as ReturnableFilters['purpose'])
+              updateFilters({ purpose: event.target.value as ReturnableFilters['purpose'] })
             }
           >
             <SelectOption value="ALL">All Purposes</SelectOption>
@@ -151,12 +205,21 @@ export default function MaintenanceReturnablePage() {
 
           <Button
             type="button"
-            variant={showOverdueOnly ? 'default' : 'outline'}
-            onClick={() => setShowOverdueOnly((previous) => !previous)}
+            variant={filters.overdueOnly ? 'default' : 'outline'}
+            onClick={() => updateFilters({ overdueOnly: !filters.overdueOnly })}
           >
             <AlertTriangle className="mr-2 h-4 w-4" />
             Overdue only
           </Button>
+
+          {/* Filters now stick across navigation, so there has to be one
+              obvious way back to the whole register. */}
+          {isFiltered ? (
+            <Button type="button" variant="ghost" onClick={clearFilters}>
+              <X className="mr-2 h-4 w-4" />
+              Clear filters
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
 

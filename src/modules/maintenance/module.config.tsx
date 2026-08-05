@@ -115,7 +115,10 @@ const maintenanceRoutes: ModuleRoute[] = [
     path: '/maintenance/returnable/:passId/edit',
     element: <MaintenanceReturnableFormPage />,
     layout: 'main',
-    permissions: [RETURNABLE_PERMISSIONS.MANAGE_GATEPASS],
+    // Either permission opens the route; the page itself checks which one
+    // applies to this pass's status. Approvers edit a pass sitting in their
+    // queue, departments edit their own draft.
+    permissions: [RETURNABLE_PERMISSIONS.MANAGE_GATEPASS, RETURNABLE_PERMISSIONS.APPROVE_GATEPASS],
     breadcrumb: { label: 'Edit Gate Pass' },
   },
   {

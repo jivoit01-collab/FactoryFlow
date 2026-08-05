@@ -465,6 +465,11 @@ export const API_ENDPOINTS = {
     INVOICE_PENDING_COUNT: '/oms/invoices/pending-count/',
     INVOICE_AUDIT: (id: number) => `/oms/invoices/${id}/audit/`,
   },
+  // Daily Tasks — each user's job sheet for one day, derived from every other module
+  DAILY_TASKS: {
+    MY_TODAY: '/activity-center/me/today/',
+    TEAM_TODAY: '/activity-center/users/today/',
+  },
   // AI Assistant
   AI: {
     ASSISTANT_CHAT: '/ai/assistant/chat/',
@@ -583,6 +588,16 @@ export const API_ENDPOINTS = {
     MATERIAL_INDENT_ATTACHMENTS: '/maintenance/material-indent-attachments/',
     MATERIAL_INDENT_ATTACHMENT_DETAIL: (attachmentId: number) =>
       `/maintenance/material-indent-attachments/${attachmentId}/`,
+    // Quotation round — purchaser collects company prices, approver picks one.
+    MATERIAL_INDENT_QUOTATIONS: '/maintenance/material-indent-quotations/',
+    MATERIAL_INDENT_QUOTATION_DETAIL: (quotationId: number) =>
+      `/maintenance/material-indent-quotations/${quotationId}/`,
+    MATERIAL_INDENT_SUBMIT_QUOTATIONS: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/submit-quotations/`,
+    MATERIAL_INDENT_SELECT_QUOTATION: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/select-quotation/`,
+    MATERIAL_INDENT_RETURN_QUOTATIONS: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/return-quotations/`,
     // Safety fines — PPE violations recorded by the Fire Department Head.
     SAFETY_VIOLATION_TYPES: '/maintenance/safety-violation-types/',
     SAFETY_VIOLATION_TYPE_DETAIL: (typeId: number) =>

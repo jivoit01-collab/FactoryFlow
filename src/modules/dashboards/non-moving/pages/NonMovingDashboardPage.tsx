@@ -9,7 +9,6 @@ import { useItemGroups, useNonMovingReport } from '../api';
 import {
   NonMovingFilters,
   NonMovingMetaCards,
-  NonMovingTable,
   NonMovingWarehouseSummary,
 } from '../components';
 import type {
@@ -17,7 +16,10 @@ import type {
   NonMovingFilters as NonMovingFiltersType,
   ReportSummary,
 } from '../types';
-import { groupNonMovingItemsBySku } from '../utils/nonMovingGrouping';
+import {
+  buildNonMovingWarehouseGroups,
+  groupNonMovingItemsBySku,
+} from '../utils/nonMovingGrouping';
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;
@@ -84,6 +86,11 @@ export default function NonMovingDashboardPage() {
 
   const groupedItems = useMemo(() => groupNonMovingItemsBySku(filteredItems), [filteredItems]);
 
+  const warehouseGroups = useMemo(
+    () => buildNonMovingWarehouseGroups(reportQuery.data?.warehouse_summary ?? [], filteredItems),
+    [reportQuery.data, filteredItems],
+  );
+
   const filteredSummary = useMemo((): ReportSummary | undefined => {
     if (!reportQuery.data) return undefined;
     const branchMap = new Map<string, BranchSummary>();
@@ -146,11 +153,10 @@ export default function NonMovingDashboardPage() {
       {!(reportQuery.error && isSAPError(reportQuery.error)) && materialTypesResolved && (
         <>
           <NonMovingMetaCards summary={filteredSummary} />
-          <NonMovingWarehouseSummary warehouses={reportQuery.data?.warehouse_summary ?? []} />
-          <NonMovingTable
-            items={groupedItems}
+          <NonMovingWarehouseSummary
+            warehouses={warehouseGroups}
             isLoading={reportQuery.isLoading || reportQuery.isFetching}
-            onSearchSelect={handleItemSearchSelect}
+            onItemSelect={handleItemSearchSelect}
           />
         </>
       )}

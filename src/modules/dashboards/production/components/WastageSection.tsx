@@ -1,10 +1,7 @@
 import { Recycle } from 'lucide-react';
 import { useMemo } from 'react';
 
-import type { AnalyticsParams } from '@/modules/production/execution/types';
-
 import { useWastageReconciliation } from '../api/reconciliation.queries';
-import { ProductionWaste } from './ProductionWaste';
 import { ReconciliationPanel } from './ReconciliationPanel';
 
 /**
@@ -17,7 +14,6 @@ export function WastageSection({ range }: { range: { from: string; to: string } 
     [range.from, range.to],
   );
   const query = useWastageReconciliation(params);
-  const trendParams: AnalyticsParams = params;
 
   return (
     <section className="space-y-4">
@@ -33,8 +29,8 @@ export function WastageSection({ range }: { range: { from: string; to: string } 
         isLoading={query.isLoading}
         isError={query.isError}
         unitNoun="unit"
+        showLitres
       />
-      <ProductionWaste params={trendParams} />
     </section>
   );
 }

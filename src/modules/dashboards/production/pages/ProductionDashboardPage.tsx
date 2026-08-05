@@ -154,6 +154,7 @@ export default function ProductionDashboardPage() {
           appLabel="Produced"
           showInProgress
           appOnly
+          showLitres
           filterSkus={isToday ? todaySkus : undefined}
           emptyLabel={isToday ? 'No SKUs are running today.' : 'No production in this range.'}
         />
@@ -171,9 +172,11 @@ export default function ProductionDashboardPage() {
         <ProductionEconomics params={params} variant={variant} />
         <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Output is measured in <strong className="mx-1">cases</strong>, so cost and reconciliation
-          are shown per {variant.unitNoun}. A true <em className="mx-1">per-bottle</em> figure needs
-          a pack size (units per case) on the SKU master.
+          Output is recorded in <strong className="mx-1">cases</strong>, so cost and reconciliation
+          are shown per {variant.unitNoun} with litres alongside. Litres are derived from the SKU
+          name (unit volume × pack size) — SAP&apos;s item master
+          (<code className="mx-1">U_UNE_TOTL</code>) is the authoritative source and would also cover
+          weight-based and combo packs, which the name can&apos;t describe.
         </p>
       </section>
     </div>

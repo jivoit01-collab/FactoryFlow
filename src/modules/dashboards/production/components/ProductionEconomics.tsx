@@ -1,4 +1,4 @@
-import { Coins, Factory, Info, Layers, Receipt } from 'lucide-react';
+import { Coins, Factory, Info, Receipt } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { useCostAnalysisReport } from '@/modules/production/execution/api/execution.queries';
@@ -13,6 +13,7 @@ import {
   prettyLabel,
   type ProductionVariant,
 } from '../constants/production-dashboard.constants';
+import { formatLitres, litresNote, litresOf } from '../utils/litres';
 
 /** A headline KPI tile. */
 function KpiTile({
@@ -94,19 +95,39 @@ export function ProductionEconomics({
   }, [data]);
 
   // Per-SKU cost — one row per run (a line usually runs one SKU per day).
+  // `litres` is null when the SKU name carries no volume, which also keeps that
+  // run out of the litre totals rather than dragging them down as a zero.
   const skuRows = useMemo(
     () =>
       (data?.per_run ?? [])
-        .map((r) => ({
-          sku: r.product,
-          line: r.line,
-          cases: r.produced_qty,
-          total: r.net_cost || r.total_cost,
-          perCase: r.per_unit_cost,
-        }))
+        .map((r) => {
+          const litres = litresOf(r.produced_qty, r.product);
+          const total = r.net_cost || r.total_cost;
+          return {
+            sku: r.product,
+            line: r.line,
+            cases: r.produced_qty,
+            litres,
+            total,
+            perCase: r.per_unit_cost,
+            perLitre: litres && litres > 0 ? total / litres : null,
+          };
+        })
         .sort((a, b) => b.total - a.total),
     [data],
   );
+
+  /** Litre totals across the costed runs, and how many runs had no volume. */
+  const litreTotals = useMemo(() => {
+    const known = skuRows.filter((r) => r.litres != null);
+    const litres = known.reduce((s, r) => s + (r.litres ?? 0), 0);
+    const cost = known.reduce((s, r) => s + r.total, 0);
+    return {
+      litres,
+      unknown: skuRows.length - known.length,
+      perLitre: litres > 0 ? cost / litres : null,
+    };
+  }, [skuRows]);
 
   if (query.isLoading) {
     return <div className="h-72 animate-pulse rounded-2xl bg-muted/50" />;
@@ -128,7 +149,7 @@ export function ProductionEconomics({
   return (
     <div className="space-y-4">
       {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         <KpiTile icon={Receipt} label="Total production cost" value={formatCurrency(totals.totalCost)} />
         {totals.wasteRecovery > 0 ? (
           <KpiTile
@@ -140,28 +161,13 @@ export function ProductionEconomics({
         ) : (
           <KpiTile icon={Factory} label="Runs costed" value={String(totals.runCount)} />
         )}
-        <KpiTile
-          icon={Coins}
-          label={`Avg cost / ${variant.unitNoun}`}
-          value={formatCurrency(totals.perCase)}
-          tone="accent"
-        />
-        <KpiTile
-          icon={Layers}
-          label="Cheapest → dearest / case"
-          value={
-            skuRows.length
-              ? `${money(skuRows[skuRows.length - 1].perCase)} – ${money(skuRows[0].perCase)}`
-              : '—'
-          }
-        />
       </div>
 
       <p className="flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         Cost is computed automatically from each run&apos;s <strong className="mx-0.5">running
         hours</strong> × <strong className="mx-0.5">Cost Master</strong> rates (per-line override
-        &gt; company default), plus BOM material at last purchase price.
+        &gt; company default), plus BOM material at last purchase price. {litresNote(litreTotals.unknown)}
       </p>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -225,8 +231,10 @@ export function ProductionEconomics({
                     <tr className="border-b text-left text-xs text-muted-foreground">
                       <th className="py-2 pr-2 font-medium">SKU / line</th>
                       <th className="py-2 px-2 text-right font-medium">Cases</th>
+                      <th className="py-2 px-2 text-right font-medium">Litres</th>
                       <th className="py-2 px-2 text-right font-medium">Total cost</th>
-                      <th className="py-2 pl-2 text-right font-medium">Cost / {variant.unitNoun}</th>
+                      <th className="py-2 px-2 text-right font-medium">Cost / {variant.unitNoun}</th>
+                      <th className="py-2 pl-2 text-right font-medium">Cost / litre</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -239,9 +247,18 @@ export function ProductionEconomics({
                           <div className="truncate text-[11px] text-muted-foreground">{r.line}</div>
                         </td>
                         <td className="py-2 px-2 text-right tabular-nums">{count(r.cases)}</td>
+                        <td
+                          className="py-2 px-2 text-right tabular-nums"
+                          title={r.litres == null ? 'No volume in the SKU name' : undefined}
+                        >
+                          {formatLitres(r.litres)}
+                        </td>
                         <td className="py-2 px-2 text-right tabular-nums">{money(r.total)}</td>
-                        <td className="py-2 pl-2 text-right font-semibold tabular-nums text-primary">
+                        <td className="py-2 px-2 text-right font-semibold tabular-nums text-primary">
                           {formatCurrency(r.perCase)}
+                        </td>
+                        <td className="py-2 pl-2 text-right font-semibold tabular-nums text-primary">
+                          {r.perLitre == null ? '—' : formatCurrency(r.perLitre)}
                         </td>
                       </tr>
                     ))}
@@ -252,9 +269,15 @@ export function ProductionEconomics({
                       <td className="py-2 px-2 text-right tabular-nums">
                         {count(skuRows.reduce((s, r) => s + r.cases, 0))}
                       </td>
+                      <td className="py-2 px-2 text-right tabular-nums">
+                        {formatLitres(litreTotals.litres)}
+                      </td>
                       <td className="py-2 px-2 text-right tabular-nums">{money(totals.totalCost)}</td>
-                      <td className="py-2 pl-2 text-right tabular-nums text-primary">
+                      <td className="py-2 px-2 text-right tabular-nums text-primary">
                         {formatCurrency(totals.perCase)}
+                      </td>
+                      <td className="py-2 pl-2 text-right tabular-nums text-primary">
+                        {litreTotals.perLitre == null ? '—' : formatCurrency(litreTotals.perLitre)}
                       </td>
                     </tr>
                   </tfoot>
