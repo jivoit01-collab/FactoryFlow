@@ -26,6 +26,23 @@ import type {
   WorkType,
 } from '../types';
 
+/**
+ * When the request was raised, split into date + clock.
+ *
+ * Built from local date parts rather than slicing the ISO string: `created_at`
+ * comes back UTC, and anything logged after 18:30 UTC is already the next day
+ * in IST — slicing would show it a day early. The YYYY-MM-DD shape matches the
+ * Target column so the two dates line up.
+ */
+function raisedOn(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { date: '-', time: '' };
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+  return { date, time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) };
+}
+
 function useInitialWorkStatus(): WorkOrderStatus | 'ALL' {
   const searchParams = new URLSearchParams(useLocation().search);
   const status = searchParams.get('status');
@@ -262,7 +279,7 @@ export default function MaintenanceWorkOrdersPage() {
       </div>
 
       <div className="overflow-x-auto rounded-md border">
-        <table className="w-full min-w-[1180px] text-sm">
+        <table className="w-full min-w-[1300px] text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Work</th>
@@ -272,6 +289,7 @@ export default function MaintenanceWorkOrdersPage() {
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Assignee</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Production</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Raised</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Target</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
             </tr>
@@ -279,13 +297,13 @@ export default function MaintenanceWorkOrdersPage() {
           <tbody>
             {workOrdersQuery.isLoading ? (
               <tr>
-                <td colSpan={9} className="h-28 px-4 py-3 text-center text-muted-foreground">
+                <td colSpan={10} className="h-28 px-4 py-3 text-center text-muted-foreground">
                   Loading work orders...
                 </td>
               </tr>
             ) : workOrders.length === 0 ? (
               <tr>
-                <td colSpan={9} className="h-28 px-4 py-3 text-center text-muted-foreground">
+                <td colSpan={10} className="h-28 px-4 py-3 text-center text-muted-foreground">
                   <SlidersHorizontal className="mx-auto mb-2 h-5 w-5" />
                   No work orders found.
                 </td>
@@ -336,6 +354,19 @@ export default function MaintenanceWorkOrdersPage() {
                     ) : (
                       '-'
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const raised = raisedOn(workOrder.created_at);
+                      return (
+                        <>
+                          <div className="whitespace-nowrap">{raised.date}</div>
+                          {raised.time && (
+                            <div className="text-xs text-muted-foreground">{raised.time}</div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">{workOrder.target_date || '-'}</td>
                   <td className="px-4 py-3">
