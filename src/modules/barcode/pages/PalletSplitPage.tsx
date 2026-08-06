@@ -23,7 +23,7 @@ export default function PalletSplitPage() {
   const [selectedBoxIds, setSelectedBoxIds] = useState<number[]>([]);
 
   const { data: pallets = [], isLoading } = usePallets(
-    palletSearch.length >= 2 ? { search: palletSearch, status: 'ACTIVE' } : undefined,
+    palletSearch.length >= 2 ? { search: palletSearch, status: 'ACTIVE,PARTIAL' } : undefined,
   );
   const { data: targetPallets = [], isLoading: loadingTargetPallets } = usePallets(
     targetPalletSearch.length >= 2 ? { search: targetPalletSearch } : undefined,

@@ -23,7 +23,7 @@ export default function PalletTransferPage() {
   const [toBin, setToBin] = useState('');
 
   const { data: pallets = [], isLoading } = usePallets(
-    palletSearch.length >= 2 ? { search: palletSearch, status: 'ACTIVE' } : undefined,
+    palletSearch.length >= 2 ? { search: palletSearch, status: 'ACTIVE,PARTIAL' } : undefined,
   );
   const { data: whData } = useWMSWarehouses();
   const warehouses: WarehouseOption[] = whData?.warehouses ?? [];

@@ -26,7 +26,7 @@ export default function PalletMovePage() {
   const [notes, setNotes] = useState('');
 
   const { data: pallets = [], isLoading: loadingPallets } = usePallets(
-    palletSearch.length >= 2 ? { search: palletSearch, status: 'ACTIVE' } : undefined,
+    palletSearch.length >= 2 ? { search: palletSearch, status: 'ACTIVE,PARTIAL' } : undefined,
   );
   const { data: palletDetail } = usePalletDetail(selectedPalletId);
   const { data: whData } = useWMSWarehouses();
