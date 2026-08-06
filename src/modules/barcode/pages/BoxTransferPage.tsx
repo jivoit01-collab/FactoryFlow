@@ -47,7 +47,9 @@ export default function BoxTransferPage() {
 
   const { data: sourcePallets = [], isLoading: loadingSourcePallets } = usePallets({
     search: sourceSearch.trim() || undefined,
-    status: 'ACTIVE',
+    // A PARTIAL pallet (some boxes dispatched, some still live) is a valid box
+    // source too -- its active boxes can move -- so don't restrict to ACTIVE.
+    status: 'ACTIVE,PARTIAL',
   });
   const { data: sourcePallet } = usePalletDetail(sourcePalletId);
   const { data: targetPallets = [], isLoading: loadingTargetPallets } = usePallets(
