@@ -10,6 +10,7 @@ import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useLooseStock, useLooseStockSummary, useRepack } from '../api';
+import ScanSearchButton from '../components/ScanSearchButton';
 import type { LooseStockSummary } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
@@ -20,6 +21,7 @@ export default function RepackPage() {
   const [warehouse, setWarehouse] = useState('');
   const [batchNumber, setBatchNumber] = useState('');
   const [sourceIds, setSourceIds] = useState<number[]>([]);
+  const [sourceSearch, setSourceSearch] = useState('');
 
   const { data: pools = [], isLoading: loadingPools } = useLooseStockSummary();
   const { data: whData } = useWMSWarehouses();
@@ -39,15 +41,46 @@ export default function RepackPage() {
     [itemRecords],
   );
 
+  // Source rows shown in the table — filtered by the search box (barcode/batch).
+  // Filtering is display-only; ticked selection (sourceIds) and FIFO consumption
+  // are unaffected, so a ticked box stays selected even when filtered out of view.
+  const displayedRecords = useMemo(() => {
+    const query = sourceSearch.trim().toLowerCase();
+    if (!query) return fifoRecords;
+    return fifoRecords.filter(
+      (ls) =>
+        (ls.source_box_barcode || '').toLowerCase().includes(query) ||
+        (ls.batch_number || '').toLowerCase().includes(query),
+    );
+  }, [fifoRecords, sourceSearch]);
+
   // Suggest the batch when the pool has exactly one; operator can override
   const selectItem = (pool: LooseStockSummary | null) => {
     setSelectedItem(pool);
     setSourceIds([]);
+    setSourceSearch('');
     setBatchNumber(pool && pool.batches.length === 1 ? pool.batches[0] : '');
   };
 
   const toggleSource = (id: number) => {
     setSourceIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  };
+
+  // Scan/type a dismantled-box barcode to tick that exact source record.
+  const handleScanSource = (barcode: string) => {
+    const needle = barcode.trim().toLowerCase();
+    if (!needle) return;
+    const match = fifoRecords.find(
+      (ls) => (ls.source_box_barcode || '').toLowerCase() === needle,
+    );
+    if (!match) {
+      setSourceSearch(barcode.trim());
+      toast.error(`No source box "${barcode.trim()}" in this pool.`);
+      return;
+    }
+    setSourceIds((prev) => (prev.includes(match.id) ? prev : [...prev, match.id]));
+    setSourceSearch(barcode.trim());
+    toast.success(`Selected ${match.source_box_barcode}`);
   };
 
   // With boxes ticked, only those records are drawn from (still oldest first)
@@ -221,6 +254,20 @@ export default function RepackPage() {
               Tick boxes to repack from specific dismantled boxes only — leave all unticked for
               automatic oldest-first consumption.
             </p>
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                className="flex-1 border rounded px-3 py-2 text-sm font-mono"
+                value={sourceSearch}
+                onChange={(e) => setSourceSearch(e.target.value)}
+                placeholder="Search source box or batch..."
+              />
+              <ScanSearchButton onScan={handleScanSource} expectedType="BOX" />
+              {sourceSearch && (
+                <Button size="sm" variant="ghost" onClick={() => setSourceSearch('')}>
+                  Clear
+                </Button>
+              )}
+            </div>
             <div className="overflow-x-auto max-h-80 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -233,7 +280,14 @@ export default function RepackPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {fifoRecords.map((ls) => {
+                  {displayedRecords.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-3 text-center text-xs text-muted-foreground">
+                        No source box matches “{sourceSearch}”.
+                      </td>
+                    </tr>
+                  )}
+                  {displayedRecords.map((ls) => {
                     const ticked = sourceIds.includes(ls.id);
                     const excluded = useSelection && !ticked;
                     const use = useById.get(ls.id) ?? 0;
