@@ -1,4 +1,4 @@
-import { Boxes, ClipboardCheck, Coins, Factory, Info } from 'lucide-react';
+import { Boxes, ClipboardCheck, Coins, Factory, Info, OctagonAlert } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { useAuth } from '@/core/auth';
@@ -13,6 +13,7 @@ function todayISO(): string {
 
 import { useProductionReconciliation } from '../api/reconciliation.queries';
 import {
+  BreakdownAnalysis,
   MaterialSection,
   ProductionEconomics,
   ReconciliationPanel,
@@ -166,7 +167,13 @@ export default function ProductionDashboardPage() {
       {/* ---------------- Section 3: Wastage ---------------- */}
       <WastageSection range={range} />
 
-      {/* ---------------- Section 3: Cost analysis ---------------- */}
+      {/* ---------------- Section 4: Breakdowns ---------------- */}
+      <section className="space-y-4">
+        <SectionHeading icon={OctagonAlert} title="Breakdown analysis — what stopped the line" />
+        <BreakdownAnalysis params={params} />
+      </section>
+
+      {/* ---------------- Section 5: Cost analysis ---------------- */}
       <section className="space-y-4">
         <SectionHeading icon={Coins} title="Cost analysis" />
         <ProductionEconomics params={params} variant={variant} />

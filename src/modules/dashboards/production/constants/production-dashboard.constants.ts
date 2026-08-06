@@ -99,6 +99,15 @@ export function count(value: number): string {
   return Math.round(value || 0).toLocaleString('en-IN');
 }
 
+/** Minutes as `45m` / `2h 15m` / `3h` — downtime reads badly in raw minutes. */
+export function duration(minutes: number): string {
+  const m = Math.round(minutes || 0);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem ? `${h}h ${rem}m` : `${h}h`;
+}
+
 /** Turn a cost_distribution key (e.g. "raw_material") into a label. */
 export function prettyLabel(key: string): string {
   return key

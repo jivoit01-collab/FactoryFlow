@@ -1154,12 +1154,27 @@ export interface OEETrendReport {
 }
 
 // Downtime Pareto
+export interface DowntimeReasonItem {
+  reason: string;
+  count: number;
+  total_minutes: number;
+  avg_minutes: number;
+  /** share of this reason's parent category, not of the whole period */
+  pct_of_category: number;
+}
+
 export interface DowntimeParetoItem {
   category: string;
   count: number;
   total_minutes: number;
   percentage: number;
   cumulative_pct: number;
+  /**
+   * The free-text reasons logged under this category, worst first.
+   * Optional because the frontend and backend deploy from separate repos — a
+   * frontend that ships first will see this field absent.
+   */
+  reasons?: DowntimeReasonItem[];
 }
 
 export interface DowntimeByMachine {

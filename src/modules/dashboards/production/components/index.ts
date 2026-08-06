@@ -1,3 +1,4 @@
+export { BreakdownAnalysis } from './BreakdownAnalysis';
 export { MaterialSection } from './MaterialSection';
 export { MaterialVariancePanel } from './MaterialVariancePanel';
 export { ProductionEconomics } from './ProductionEconomics';
