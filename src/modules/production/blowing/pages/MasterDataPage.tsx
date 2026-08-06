@@ -331,7 +331,7 @@ function PreformSpecsTab() {
           </div>
           <div><Label htmlFor="p-bw">Bottle weight (g)</Label><Input id="p-bw" type="number" step="0.01" {...register('bottle_weight_g')} /></div>
           <div><Label htmlFor="p-bpk">Bottles / kg</Label><Input id="p-bpk" type="number" step="0.01" {...register('bottles_per_kg')} /></div>
-          <div><Label htmlFor="p-smc">Std make cost / bottle (₹)</Label><Input id="p-smc" type="number" step="0.0001" {...register('std_make_cost_per_bottle')} /></div>
+          <div><Label htmlFor="p-smc">Std blowing cost / bottle (₹)</Label><Input id="p-smc" type="number" step="0.0001" {...register('std_make_cost_per_bottle')} /><p className="mt-1 text-[11px] text-muted-foreground">Conversion only — do not include the preform.</p></div>
           <div><Label htmlFor="p-srp">Std reject %</Label><Input id="p-srp" type="number" step="0.001" {...register('std_reject_pct')} /></div>
           <div><Label htmlFor="p-sub">Std units / bottle</Label><Input id="p-sub" type="number" step="0.000001" {...register('std_units_per_bottle')} /></div>
           {editing && <div className="sm:col-span-2"><AuditHistory entityType="preform_spec" entityId={editing.id} entityLabel={`${editing.make} ${Number(editing.gram)}g`} /></div>}

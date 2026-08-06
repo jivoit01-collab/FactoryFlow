@@ -209,7 +209,7 @@ function VariancesTab() {
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="py-2 pr-4">Date</th><th className="py-2 pr-4">Run</th>
                     <th className="py-2 pr-4">Preform</th>
-                    <th className="py-2 pr-4">Make ₹/bottle (act/std)</th>
+                    <th className="py-2 pr-4">Blowing ₹/bottle (act/std)</th>
                     <th className="py-2 pr-4">Reject % (act/std)</th>
                     <th className="py-2 pr-4">Units/bottle (act/std)</th>
                     <th className="py-2 pr-4">Status</th>
@@ -221,7 +221,7 @@ function VariancesTab() {
                       <td className="py-2 pr-4">{r.date}</td>
                       <td className="py-2 pr-4">#{r.run_number} · {r.machine_name}</td>
                       <td className="py-2 pr-4">{r.preform}</td>
-                      <td className="py-2 pr-4"><VarCell cell={r.make_cost} /></td>
+                      <td className="py-2 pr-4"><VarCell cell={r.blowing_cost} /></td>
                       <td className="py-2 pr-4"><VarCell cell={r.reject_pct} digits={2} /></td>
                       <td className="py-2 pr-4"><VarCell cell={r.units_per_bottle} digits={5} /></td>
                       <td className="py-2 pr-4">

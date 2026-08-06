@@ -463,7 +463,8 @@ export interface VarianceRow {
   run_number: number;
   machine_name: string;
   preform: string;
-  make_cost: VarianceCell;
+  /** Blowing (conversion) cost per bottle vs the spec's standard — excludes preform. */
+  blowing_cost: VarianceCell;
   reject_pct: VarianceCell;
   units_per_bottle: VarianceCell;
   any_breach: boolean;

@@ -38,9 +38,13 @@ function CellView({ cell, format }: { cell: VarianceCell; format: (v: number) =>
 }
 
 /**
- * Runs graded against the preform spec's standards — make cost per bottle,
+ * Runs graded against the preform spec's standards — blowing cost per bottle,
  * rejection %, and electricity units per bottle. A breach is the backend's
  * call (actual worse than target by more than its tolerance), not ours.
+ *
+ * The cost column grades CONVERSION only, excluding the preform: resin is
+ * bought at market and would otherwise swamp a signal about how the shop floor
+ * is running. Total bottle economics live in the make-vs-buy panel instead.
  */
 export function BlowingVariancePanel({ report, isLoading }: BlowingVariancePanelProps) {
   const navigate = useNavigate();
@@ -101,7 +105,7 @@ export function BlowingVariancePanel({ report, isLoading }: BlowingVariancePanel
                 <tr className="border-b text-left text-xs text-muted-foreground">
                   <th className="py-2 pr-2 font-medium">Date · run</th>
                   <th className="px-2 py-2 font-medium">Preform</th>
-                  <th className="px-2 py-2 text-right font-medium">Make ₹ / bottle</th>
+                  <th className="px-2 py-2 text-right font-medium">Blowing ₹ / bottle</th>
                   <th className="px-2 py-2 text-right font-medium">Reject %</th>
                   <th className="px-2 py-2 text-right font-medium">Units / bottle</th>
                   <th className="py-2 pl-2 font-medium">Result</th>
@@ -130,7 +134,7 @@ export function BlowingVariancePanel({ report, isLoading }: BlowingVariancePanel
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap">{r.preform}</td>
                     <td className="px-2 py-2">
-                      <CellView cell={r.make_cost} format={(v) => `₹${v.toFixed(4)}`} />
+                      <CellView cell={r.blowing_cost} format={(v) => `₹${v.toFixed(4)}`} />
                     </td>
                     <td className="px-2 py-2">
                       <CellView cell={r.reject_pct} format={(v) => pct(v, 2)} />
