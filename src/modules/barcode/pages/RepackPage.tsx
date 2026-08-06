@@ -41,13 +41,16 @@ export default function RepackPage() {
     [itemRecords],
   );
 
-  // Source rows shown in the table — filtered by the search box (barcode/batch).
-  // Filtering is display-only; ticked selection (sourceIds) and FIFO consumption
-  // are unaffected, so a ticked box stays selected even when filtered out of view.
+  // Source rows shown in the table — most-recently-dismantled first (the reverse
+  // of the oldest-first FIFO order the automatic consumption still walks), then
+  // filtered by the search box (barcode/batch). Display-only: ticked selection
+  // (sourceIds) and FIFO consumption are unaffected, so a ticked box stays
+  // selected even when filtered out of view.
   const displayedRecords = useMemo(() => {
+    const newestFirst = [...fifoRecords].reverse();
     const query = sourceSearch.trim().toLowerCase();
-    if (!query) return fifoRecords;
-    return fifoRecords.filter(
+    if (!query) return newestFirst;
+    return newestFirst.filter(
       (ls) =>
         (ls.source_box_barcode || '').toLowerCase().includes(query) ||
         (ls.batch_number || '').toLowerCase().includes(query),
@@ -237,7 +240,7 @@ export default function RepackPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-semibold">
-                Source records (oldest first)
+                Source records (newest first)
                 {qtyValid && (
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
                     consuming {useById.size} of {useSelection ? eligibleRecords.length : fifoRecords.length}
