@@ -1,23 +1,22 @@
-import { ArrowRightLeft, Boxes, Clock, Package, ScanBarcode, XCircle } from 'lucide-react';
+import { Boxes, Layers, Package, Radio, ScanBarcode } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Card, CardContent } from '@/shared/components/ui';
+import { Button, Card, CardContent } from '@/shared/components/ui';
 
-import { useBoxesPage, usePalletsPage } from '../api';
+import { useBoxesPage, usePalletsPage, useRecentActivity } from '../api';
+import { ActivityRow } from '../components/ActivityRow';
 
 export default function BarcodeDashboardPage() {
   const navigate = useNavigate();
   // Read the true totals from the paginated endpoints' ``count`` -- the plain list
   // is capped at 500 rows, so counting its length pinned every stat card at 500.
-  // The active-pallets page doubles as the Recent Pallets source (newest first),
-  // so page_size 5 serves both the card count and the list.
-  const { data: activePalletsPage } = usePalletsPage({ status: 'ACTIVE', page_size: 5 });
+  const { data: activePalletsPage } = usePalletsPage({ status: 'ACTIVE', page_size: 1 });
   const { data: allPalletsPage } = usePalletsPage({ page_size: 1 });
   const { data: activeBoxesPage } = useBoxesPage({ status: 'ACTIVE', page_size: 1 });
-  const { data: voidedPalletsPage } = usePalletsPage({ status: 'VOID', page_size: 1 });
+  const { data: allBoxesPage } = useBoxesPage({ page_size: 1 });
 
-  const recentPallets = activePalletsPage?.results ?? [];
+  const { data: activity = [] } = useRecentActivity(15);
 
   const cards = [
     {
@@ -28,13 +27,6 @@ export default function BarcodeDashboardPage() {
       path: '/barcode/pallets?status=ACTIVE',
     },
     {
-      title: 'Total Boxes',
-      value: activeBoxesPage?.count ?? 0,
-      icon: Boxes,
-      color: 'text-green-600 bg-green-50',
-      path: '/barcode/boxes?status=ACTIVE',
-    },
-    {
       title: 'All Pallets',
       value: allPalletsPage?.count ?? 0,
       icon: ScanBarcode,
@@ -42,18 +34,18 @@ export default function BarcodeDashboardPage() {
       path: '/barcode/pallets',
     },
     {
-      title: 'Intercompany',
-      value: 'Transfer',
-      icon: ArrowRightLeft,
-      color: 'text-cyan-700 bg-cyan-50',
-      path: '/barcode/intercompany',
+      title: 'Active Boxes',
+      value: activeBoxesPage?.count ?? 0,
+      icon: Boxes,
+      color: 'text-green-600 bg-green-50',
+      path: '/barcode/boxes?status=ACTIVE',
     },
     {
-      title: 'Voided Pallets',
-      value: voidedPalletsPage?.count ?? 0,
-      icon: XCircle,
-      color: 'text-red-600 bg-red-50',
-      path: '/barcode/pallets?status=VOID',
+      title: 'All Boxes',
+      value: allBoxesPage?.count ?? 0,
+      icon: Layers,
+      color: 'text-amber-600 bg-amber-50',
+      path: '/barcode/boxes',
     },
   ];
 
@@ -61,7 +53,7 @@ export default function BarcodeDashboardPage() {
     <div className="space-y-6">
       <DashboardHeader title="Barcode" subtitle="Pallet and box tracking, label management" />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
@@ -84,40 +76,34 @@ export default function BarcodeDashboardPage() {
         })}
       </div>
 
-      {/* Recent pallets */}
-      {recentPallets.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-blue-600" />
-              Recent Pallets
-            </h3>
+      {/* Live activity — polls every few seconds so scans, prints, and moves
+          show up here moments after they happen on the floor. */}
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <Radio className="h-4 w-4 text-green-600 animate-pulse" />
+            Live Activity
+          </h3>
+          {activity.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No recent activity. Scans, label prints, and pallet moves will appear here live.
+            </p>
+          ) : (
             <div className="space-y-2">
-              {recentPallets.slice(0, 5).map((pallet) => (
-                <div
-                  key={pallet.id}
-                  className="flex items-center justify-between p-2 bg-muted/50 rounded cursor-pointer hover:bg-muted"
-                  onClick={() => navigate(`/barcode/pallets/${pallet.id}`)}
-                >
-                  <div>
-                    <p className="text-sm font-medium">{pallet.pallet_id}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {pallet.item_name || pallet.item_code} &middot; Batch: {pallet.batch_number}{' '}
-                      &middot; {pallet.box_count} boxes
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">
-                      {pallet.total_qty} {pallet.uom}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{pallet.current_warehouse}</p>
-                  </div>
-                </div>
+              {activity.map((event, index) => (
+                <ActivityRow key={`${event.kind}-${event.at}-${index}`} event={event} />
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+          <Button
+            variant="outline"
+            className="w-full mt-3"
+            onClick={() => navigate('/barcode/activity')}
+          >
+            View all
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

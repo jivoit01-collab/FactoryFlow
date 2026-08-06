@@ -5,6 +5,7 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 const BarcodeDashboardPage = lazy(() => import('./pages/BarcodeDashboardPage'));
+const ActivityLogPage = lazy(() => import('./pages/ActivityLogPage'));
 const PalletListPage = lazy(() => import('./pages/PalletListPage'));
 const PalletDetailPage = lazy(() => import('./pages/PalletDetailPage'));
 const BoxListPage = lazy(() => import('./pages/BoxListPage'));
@@ -49,6 +50,12 @@ export const barcodeModuleConfig: ModuleConfig = {
     {
       path: '/barcode',
       element: <BarcodeDashboardPage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
+    },
+    {
+      path: '/barcode/activity',
+      element: <ActivityLogPage />,
       layout: 'main',
       permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
     },
@@ -234,6 +241,11 @@ export const barcodeModuleConfig: ModuleConfig = {
         {
           path: '/barcode',
           title: 'Dashboard',
+          permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
+        },
+        {
+          path: '/barcode/activity',
+          title: 'Activity Log',
           permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
         },
         {

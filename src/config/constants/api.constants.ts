@@ -966,6 +966,9 @@ export const API_ENDPOINTS = {
     BOX_DETAIL: (boxId: number) => `/barcode/boxes/${boxId}/`,
     BOX_VOID: (boxId: number) => `/barcode/boxes/${boxId}/void/`,
     BOX_HISTORY: (boxId: number) => `/barcode/boxes/${boxId}/history/`,
+    // Dashboard
+    ACTIVITY_RECENT: '/barcode/activity/recent/',
+    ACTIVITY_LIST: '/barcode/activity/',
     // Pallets
     PALLET_CREATE: '/barcode/pallets/create/',
     PALLETS: '/barcode/pallets/',

@@ -2,6 +2,8 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  ActivityFilters,
+  BarcodeActivityEvent,
   BarcodeTraceability,
   Box,
   BoxDetail,
@@ -383,6 +385,26 @@ export const barcodeApi = {
   ): Promise<PaginatedResponse<LabelPrintLog>> {
     const res = await apiClient.get<ListResponse<LabelPrintLog>>(EP.PRINT_HISTORY, { params });
     return normalizePage(res.data, params);
+  },
+
+  // =========================================================================
+  // Dashboard — Recent Activity
+  // =========================================================================
+
+  async getRecentActivity(limit = 15): Promise<BarcodeActivityEvent[]> {
+    const res = await apiClient.get<{ results: BarcodeActivityEvent[] }>(EP.ACTIVITY_RECENT, {
+      params: { limit },
+    });
+    return res.data.results;
+  },
+
+  async getActivityPage(
+    params?: ActivityFilters,
+  ): Promise<PaginatedResponse<BarcodeActivityEvent>> {
+    const res = await apiClient.get<PaginatedResponse<BarcodeActivityEvent>>(EP.ACTIVITY_LIST, {
+      params,
+    });
+    return res.data;
   },
 
   async getProductionReleaseOil(params?: {
