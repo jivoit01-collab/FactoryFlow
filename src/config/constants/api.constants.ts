@@ -91,6 +91,9 @@ export const API_ENDPOINTS = {
   // Gate Attachments
   GATE_ATTACHMENTS: {
     BY_ENTRY: (entryId: number) => `/gate-core/gate-attachments/${entryId}/`,
+    HISTORY: (entryId: number) => `/gate-core/gate-attachments/${entryId}/?history=1`,
+    DETAIL: (entryId: number, attachmentId: number) =>
+      `/gate-core/gate-attachments/${entryId}/${attachmentId}/`,
   },
   // Gate Core - Full View
   GATE_CORE: {
