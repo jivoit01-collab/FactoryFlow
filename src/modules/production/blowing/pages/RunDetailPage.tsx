@@ -331,13 +331,30 @@ function RunDetailPage() {
       {cost && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader><CardTitle className="text-base">Production &amp; readings</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Production &amp; readings</CardTitle>
+              <p className="text-xs text-muted-foreground">Exactly what the operator entered to finish this run.</p>
+            </CardHeader>
             <CardContent>
-              <Row label="Total production" value={fmt(run.total_counter_production, 0)} />
+              {/* Operator entries — mirrors the "Complete run" form, so it can be verified. */}
+              <Row label="Total counter production" value={fmt(run.total_counter_production, 0)} />
               <Row label="Rejection" value={`${fmt(run.rejection_pcs, 0)} (${fmt(run.rejection_pct)}%)`} />
+              <Row label="Operators" value={fmt(run.operator_count, 0)} />
+              <Row label="Contract labour" value={fmt(run.contract_labour_count, 0)} />
+              <Row label="Own labour" value={fmt(run.own_labour_count, 0)} />
+              <Row label="Machine start reading" value={fmt(run.machine_start_reading, 4)} />
+              <Row label="Machine stop reading" value={fmt(run.machine_stop_reading, 4)} />
+              <Row label="Utility electricity (units)" value={fmt(run.utility_units, 2)} />
+              <Row label="Carton scrap" value={`₹ ${fmt(run.scrap_carton_value, 2)}`} />
+              {run.remarks && <Row label="Remarks" value={run.remarks} />}
+
+              {/* Values worked out from the entries above. */}
+              <div className="mt-3 mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Worked out from the above
+              </div>
+              <Row label="Machine units (stop − start)" value={fmt(run.machine_units, 4)} />
+              <Row label="Total electricity units (machine + utility)" value={fmt(run.total_units, 2)} />
               <Row label="Good bottles" value={fmt(cost.good_bottles, 0)} />
-              <Row label="Electricity units" value={fmt(run.total_units, 2)} />
-              <Row label="Manpower (op/con/own)" value={`${run.operator_count}/${run.contract_labour_count}/${run.own_labour_count}`} />
             </CardContent>
           </Card>
           {(() => {
