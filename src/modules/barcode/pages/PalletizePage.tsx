@@ -33,11 +33,8 @@ function sameText(left?: string | null, right?: string | null) {
 }
 
 function sameContext(box: Box, other: Box) {
-  return (
-    sameText(box.item_code, other.item_code) &&
-    sameText(box.batch_number, other.batch_number) &&
-    sameText(box.uom, other.uom)
-  );
+  // A pallet holds a single ITEM; batch and UOM may be mixed (header reads MIXED).
+  return sameText(box.item_code, other.item_code);
 }
 
 export default function PalletizePage() {
@@ -70,7 +67,7 @@ export default function PalletizePage() {
   const selectedIds = selectedBoxes.map((box) => box.id);
 
   const { data: targetPallets = [], isLoading: loadingTargetPallets } = usePallets(
-    { search: targetSearch.trim() || undefined, status: 'ACTIVE,CLEARED' },
+    { search: targetSearch.trim() || undefined, status: 'ACTIVE,PARTIAL,CLEARED' },
     { enabled: selectedBoxes.length > 0 },
   );
 
@@ -81,13 +78,13 @@ export default function PalletizePage() {
       }
 
       const isEmpty = pallet.box_count === 0;
-      const matchesContext =
-        sameText(pallet.item_code, contextBox.item_code) &&
-        sameText(pallet.batch_number, contextBox.batch_number) &&
-        sameText(pallet.uom, contextBox.uom);
+      // A pallet holds a single ITEM; batch/UOM may be mixed (header reads MIXED).
+      const sameItem = sameText(pallet.item_code, contextBox.item_code);
       const canReceiveByStatus =
-        pallet.status === 'ACTIVE' || (pallet.status === 'CLEARED' && isEmpty);
-      const canReceiveByContext = matchesContext || isEmpty;
+        pallet.status === 'ACTIVE' ||
+        pallet.status === 'PARTIAL' ||
+        (pallet.status === 'CLEARED' && isEmpty);
+      const canReceiveByContext = sameItem || isEmpty;
       // Palletize goes through the add-boxes endpoint, which enforces max_box_count.
       const hasSpace = getRemainingSpace(pallet) >= selectedBoxes.length;
 
@@ -343,7 +340,7 @@ export default function PalletizePage() {
               inputId="palletize-target"
               loadingText="Searching..."
               emptyText="No compatible pallets available"
-              notFoundText="No matching pallet with enough space"
+              notFoundText="No compatible pallet with space (must be the same item)"
               value={targetPallet?.pallet_id || ''}
               defaultDisplayText={targetPallet?.pallet_id || ''}
               onSearchChange={handleTargetSearchChange}
@@ -351,9 +348,9 @@ export default function PalletizePage() {
               onClear={() => setTargetPalletId(null)}
             />
             <p className="text-xs text-muted-foreground">
-              Compatible pallets carry the same item, batch, and UOM — or are empty (an empty
-              pallet adopts the boxes&apos; item and batch). Boxes take the pallet&apos;s
-              warehouse and bin.
+              Compatible pallets carry the same item — or are empty (an empty pallet adopts the
+              boxes&apos; item). Batch and UOM may be mixed (the pallet then reads MIXED). Boxes
+              take the pallet&apos;s warehouse and bin.
             </p>
 
             <div className="p-3 bg-blue-50 rounded-lg text-sm">

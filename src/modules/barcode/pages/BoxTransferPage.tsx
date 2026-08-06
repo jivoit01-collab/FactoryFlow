@@ -76,22 +76,16 @@ export default function BoxTransferPage() {
     }
 
     const isEmpty = pallet.box_count === 0;
-    const hasNoContext = !pallet.item_code && !pallet.batch_number && !pallet.uom;
-    const isReusableClearedPallet = pallet.status === 'CLEARED' && isEmpty;
-    const matchesSourceContext =
-      sameText(pallet.item_code, sourcePallet.item_code) &&
-      sameText(pallet.batch_number, sourcePallet.batch_number) &&
-      sameText(pallet.uom, sourcePallet.uom);
-    const canReceiveByStatus =
-      pallet.status === 'CLEARED' ||
-      (pallet.status === 'ACTIVE' && (isEmpty || matchesSourceContext));
-    const canReceiveByContext =
-      isReusableClearedPallet || (isEmpty && hasNoContext) || matchesSourceContext;
-
-    // Capacity is intentionally NOT gated here: a transfer may consolidate boxes onto
-    // a pallet past its nominal max_box_count (the backend skips the cap for transfers
-    // too). The item/batch/uom compatibility above still applies.
-    return canReceiveByStatus && canReceiveByContext;
+    const sameItem = sameText(pallet.item_code, sourcePallet.item_code);
+    // A pallet holds a single ITEM; batch/UOM may be mixed (header reads MIXED).
+    // Any live pallet (ACTIVE/PARTIAL) of the same item, or an empty/CLEARED
+    // pallet, can receive. Capacity is intentionally NOT gated: a transfer may
+    // consolidate past the nominal max_box_count (the backend skips the cap too).
+    const statusOk =
+      pallet.status === 'ACTIVE' ||
+      pallet.status === 'PARTIAL' ||
+      (pallet.status === 'CLEARED' && isEmpty);
+    return statusOk && (isEmpty || sameItem);
   });
 
   const handleSourceSearchChange = useCallback((search: string) => {
@@ -267,7 +261,7 @@ export default function BoxTransferPage() {
                   ? 'No compatible target pallets available'
                   : 'Select boxes before choosing target'
               }
-              notFoundText="No matching pallet with enough space"
+              notFoundText="No compatible pallet (must be the same item)"
               value={targetPallet?.pallet_id || ''}
               defaultDisplayText={targetPallet?.pallet_id || ''}
               onSearchChange={handleTargetSearchChange}
