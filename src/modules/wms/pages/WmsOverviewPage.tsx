@@ -11,6 +11,7 @@
  */
 import {
   ArrowRight,
+  Boxes,
   ClipboardList,
   MapPin,
   Package,
@@ -83,6 +84,9 @@ export default function WmsOverviewPage() {
     const fullCount = locations.filter((l) => (occupancy.get(l.id)?.occupancyPct ?? 0) >= 100).length;
     const expiring = expiryReport({ inventory, locations, withinDays: 30, today: new Date().toISOString() }).length;
     const replenish = replenishmentList(locations, inventory).length;
+    const fgPallets = activePallets.filter((p) =>
+      (p.itemCode ?? '').toUpperCase().startsWith('FG'),
+    ).length;
     return {
       warehouses: warehouses.length,
       locations: locations.length,
@@ -91,6 +95,7 @@ export default function WmsOverviewPage() {
       fullCount,
       expiring,
       replenish,
+      fgPallets,
     };
   }, [warehouses, locations, pallets, inventory, occupancy]);
 
@@ -233,11 +238,11 @@ export default function WmsOverviewPage() {
 
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            <Kpi label="Warehouses" value={kpis.warehouses} icon={<Warehouse className="h-4 w-4" />} />
-            <Kpi label="Locations" value={kpis.locations} icon={<MapPin className="h-4 w-4" />} />
-            <Kpi label="Active pallets" value={kpis.activePallets} icon={<Package className="h-4 w-4" />} />
-            <Kpi label="Avg occupancy" value={`${kpis.avgOccupancy}%`} icon={<PackageCheck className="h-4 w-4" />} />
-            <Kpi label="Full locations" value={kpis.fullCount} icon={<MapPin className="h-4 w-4" />} />
+            <Kpi label="Warehouses" value={kpis.warehouses} icon={<Warehouse className="h-4 w-4" />} to="/warehouse-ops/warehouses" />
+            <Kpi label="Locations" value={kpis.locations} icon={<MapPin className="h-4 w-4" />} to="/warehouse-ops/map" />
+            <Kpi label="Active pallets" value={kpis.activePallets} icon={<Package className="h-4 w-4" />} to="/warehouse-ops/map" />
+            <Kpi label="Avg occupancy" value={`${kpis.avgOccupancy}%`} icon={<PackageCheck className="h-4 w-4" />} to="/warehouse-ops/reports" />
+            <Kpi label="Full locations" value={kpis.fullCount} icon={<MapPin className="h-4 w-4" />} to="/warehouse-ops/map" />
             <Kpi
               label="Expiring ≤30d"
               value={kpis.expiring}
@@ -251,6 +256,12 @@ export default function WmsOverviewPage() {
               icon={<PackageSearch className="h-4 w-4" />}
               tone={kpis.replenish > 0 ? 'warn' : undefined}
               to="/warehouse-ops/reports"
+            />
+            <Kpi
+              label="FG pallets"
+              value={kpis.fgPallets}
+              icon={<Boxes className="h-4 w-4" />}
+              to="/warehouse-ops/map"
             />
           </div>
 

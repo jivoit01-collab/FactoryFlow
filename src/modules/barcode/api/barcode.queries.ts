@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
+  ActivityFilters,
   BoxFilters,
   BoxTransferPayload,
   BulkPrintItem,
@@ -109,6 +110,10 @@ export const BARCODE_QUERY_KEYS = {
   verifyRequests: (filters?: PalletVerifyRequestFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'verify-requests', filters] as const,
   verifyRequest: (id: number) => [...BARCODE_QUERY_KEYS.all, 'verify-request', id] as const,
+  recentActivity: (limit: number) =>
+    [...BARCODE_QUERY_KEYS.all, 'recent-activity', limit] as const,
+  activityPage: (filters?: ActivityFilters) =>
+    [...BARCODE_QUERY_KEYS.all, 'activity-page', filters] as const,
 };
 
 // ============================================================================
@@ -500,6 +505,25 @@ export function usePrintHistoryPage(filters?: PrintHistoryFilters) {
   return useQuery({
     queryKey: BARCODE_QUERY_KEYS.printHistoryPage(filters),
     queryFn: () => barcodeApi.getPrintHistoryPage(filters),
+  });
+}
+
+// Live dashboard feed — polls so new scans/prints appear without a reload.
+export function useRecentActivity(limit = 15) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.recentActivity(limit),
+    queryFn: () => barcodeApi.getRecentActivity(limit),
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+// Full paginated/searchable activity log for the "View all" page.
+export function useActivityPage(filters?: ActivityFilters) {
+  return useQuery({
+    queryKey: BARCODE_QUERY_KEYS.activityPage(filters),
+    queryFn: () => barcodeApi.getActivityPage(filters),
+    refetchInterval: 10000,
   });
 }
 

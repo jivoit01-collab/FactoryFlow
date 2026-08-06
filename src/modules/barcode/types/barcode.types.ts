@@ -719,6 +719,32 @@ export interface PrintHistoryFilters extends PaginationParams {
 }
 
 // ============================================================================
+// Dashboard — Recent Activity
+// ============================================================================
+
+export type BarcodeActivityKind =
+  | 'LABEL_PRINT'
+  | 'PALLET_MOVEMENT'
+  | 'DISPATCH_SCAN'
+  | 'BST_SCAN'
+  | 'BST_RECEIVE';
+
+export interface BarcodeActivityEvent {
+  kind: BarcodeActivityKind;
+  title: string;
+  detail: string;
+  user: string;
+  at: string;
+}
+
+export interface ActivityFilters extends PaginationParams {
+  kind?: string;
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+// ============================================================================
 // Dismantle, Loose Stock, Repack
 // ============================================================================
 
