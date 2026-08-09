@@ -1,7 +1,9 @@
 import {
   ArrowLeft,
   CalendarClock,
+  ChevronDown,
   FileText,
+  Filter,
   PackageCheck,
   Paperclip,
   Printer,
@@ -39,14 +41,24 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
+import { cn, getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
 import {
-  getExpectedDispatchBoxes,
   getExpectedDocumentBoxes,
   getExpectedItemBoxes,
+  getExpectedItemsBoxes,
 } from './salesDispatchBoxCounts';
 import {
   formatDateTime,
@@ -56,10 +68,19 @@ import {
   isMultiDockingTruck,
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
+import {
+  groupItemsByItemCode,
+  type ItemScanRow,
+  normalizeItemCode,
+  summarizeItems,
+} from './salesDispatchScanSummary';
 
 interface DetailDocument extends SalesDispatchGateOutDocument {
   key: string;
   items: SalesDispatchItem[];
+  // The company (docking) this bill came from — a cross-company truck carries bills
+  // from several companies, so each bill is tagged to tell them apart.
+  companyName?: string;
 }
 
 interface AuditEvent {
@@ -195,6 +216,13 @@ export default function SalesDispatchDetailPage() {
           attachments: truckDockings.flatMap((docking) => docking.attachments ?? []),
         }
       : entry;
+  // Box-scan progress is a whole-load figure: expected = every bill on the truck (all
+  // dockings), scanned = the merged scans. Using the opened docking alone would ignore a
+  // cross-company sibling bill's boxes (e.g. show 0/3 for a load that's really 0/38).
+  const loadScannedBoxes = loadEntry.box_scans?.length ?? 0;
+  const loadExpectedBoxes = getExpectedLoadBoxes(detailDocuments);
+  // Only flag companies when the truck actually carries bills from more than one.
+  const showCompany = new Set(detailDocuments.map((doc) => doc.companyName).filter(Boolean)).size > 1;
 
   return (
     <div className="space-y-6 pb-6">
@@ -257,23 +285,18 @@ export default function SalesDispatchDetailPage() {
         </div>
       </div>
 
-      <DockingOverviewCard entry={entry} documents={detailDocuments} />
+      <DockingOverviewCard
+        entry={entry}
+        scanScanned={loadScannedBoxes}
+        scanExpected={loadExpectedBoxes}
+      />
 
-      <DocumentsCard documents={detailDocuments} />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PackageCheck className="h-5 w-5" />
-            Items to Load
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DocumentItemsByDocument documents={detailDocuments} itemSummary={entry.item_summary} />
-        </CardContent>
-      </Card>
-
-      <BoxScansCard entry={loadEntry} />
+      <DocumentsCard
+        documents={detailDocuments}
+        entry={loadEntry}
+        itemSummary={entry.item_summary}
+        showCompany={showCompany}
+      />
 
       <Card>
         <CardHeader>
@@ -391,28 +414,13 @@ export default function SalesDispatchDetailPage() {
 
 function DockingOverviewCard({
   entry,
-  documents,
+  scanScanned,
+  scanExpected,
 }: {
   entry: SalesDispatchGateOut;
-  documents: DetailDocument[];
+  scanScanned: number;
+  scanExpected: number;
 }) {
-  const primaryDocument = documents[0];
-  // A multi-company truck carries several bills; show them all (and all their
-  // customers) here, not just the opened docking's one.
-  const documentNumbers =
-    documents
-      .map((document) => formatValue(document.sap_doc_num))
-      .filter((value) => value && value !== '-')
-      .join(', ') || formatDocumentNumbers(entry);
-  const customerNames = Array.from(
-    new Set(documents.map((document) => document.customer_name).filter(Boolean)),
-  );
-  const customer = customerNames.length
-    ? customerNames.join(', ')
-    : entry.customer_name || primaryDocument?.customer_name || entry.to_warehouse;
-  const destination = primaryDocument
-    ? formatDocumentDestination(primaryDocument)
-    : entry.ship_to_address || entry.warehouses;
   const showGatepass = hasDisplayValue(entry.gatepass_no);
   const showActualGateOut = entry.status === 'DISPATCHED';
   const showRemarks = hasDisplayValue(entry.remarks);
@@ -426,7 +434,7 @@ function DockingOverviewCard({
         </CardTitle>
         <GateStatusBadge status={entry.status} />
       </CardHeader>
-      <CardContent className="grid gap-6 text-sm lg:grid-cols-3">
+      <CardContent className="grid gap-6 text-sm lg:grid-cols-2">
         <InfoGroup title="Vehicle & Driver">
           <InfoItem label="Vehicle" value={entry.vehicle_no} />
           <InfoItem label="Driver" value={entry.driver_name} />
@@ -435,22 +443,16 @@ function DockingOverviewCard({
           <InfoItem label="Bilty / LR" value={entry.bilty_no} />
         </InfoGroup>
 
-        <InfoGroup title="Document">
-          <InfoItem label="SAP Document" value={documentNumbers} />
-          <InfoItem label="Customer" value={customer} />
-          <InfoItem label="Destination" value={destination} />
-          <InfoItem label="GSTIN" value={entry.bp_gstin || primaryDocument?.bp_gstin} />
-          {hasDisplayValue(entry.eway_bill || primaryDocument?.eway_bill) ? (
-            <InfoItem label="E-way Bill" value={entry.eway_bill || primaryDocument?.eway_bill} />
-          ) : null}
-        </InfoGroup>
-
         <InfoGroup title="Docking">
           <InfoItem label="Vehicle Entry" value={entry.vehicle_entry_no} />
           <InfoItem label="Docked At" value={formatTimestamp(entry.docked_at)} />
-          <InfoItem label="Box Scan Progress" value={formatScanProgress(entry)} />
+          <ScanProgressField
+            label="Box Scan Progress"
+            scanned={scanScanned}
+            expected={scanExpected}
+          />
           <InfoItem label="Invoice Weight" value={formatInvoiceWeightValue(entry.total_weight)} />
-          {hasDisplayValue(entry.challan_weight) ? (
+          {hasPositiveWeight(entry.challan_weight) ? (
             <InfoItem
               label="Challan Weight"
               value={`${formatWeightValue(entry.challan_weight)}${
@@ -458,14 +460,18 @@ function DockingOverviewCard({
               }`}
             />
           ) : null}
-          <InfoItem label="Tare Weight" value={formatWeightValue(entry.tare_weight)} />
-          {hasDisplayValue(entry.gross_weight) ? (
+          {hasPositiveWeight(entry.tare_weight) ? (
+            <InfoItem label="Tare Weight" value={formatWeightValue(entry.tare_weight)} />
+          ) : null}
+          {hasPositiveWeight(entry.gross_weight) ? (
             <InfoItem label="Gross Weight" value={formatWeightValue(entry.gross_weight)} />
           ) : null}
-          {hasDisplayValue(entry.net_weight) ? (
+          {hasPositiveWeight(entry.net_weight) ? (
             <InfoItem label="Net Weight" value={formatWeightValue(entry.net_weight)} />
           ) : null}
-          <InfoItem label="Security" value={entry.security_name} />
+          {hasDisplayValue(entry.security_name) ? (
+            <InfoItem label="Security" value={entry.security_name} />
+          ) : null}
           {showGatepass ? <InfoItem label="Gatepass No." value={entry.gatepass_no} /> : null}
           {showActualGateOut ? (
             <InfoItem label="Actual Gate Out" value={formatActualGateOut(entry)} />
@@ -477,30 +483,153 @@ function DockingOverviewCard({
   );
 }
 
-function BoxScansCard({ entry }: { entry: SalesDispatchGateOut }) {
-  const scans = entry.box_scans ?? [];
+interface ScanSheetFilter {
+  document: string;
+  item: string;
+}
+
+// Right-side panel of all scanned boxes for the load, with Bill + Item filters. Opened
+// either from the header button (unfiltered) or by clicking an item row (pre-filtered to
+// that bill + item). Filtering is display-only — it never changes what was scanned.
+function ScannedBoxesSheet({
+  entry,
+  documents,
+  open,
+  onOpenChange,
+  filter,
+  onFilterChange,
+}: {
+  entry: SalesDispatchGateOut;
+  documents: DetailDocument[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  filter: ScanSheetFilter;
+  onFilterChange: (filter: ScanSheetFilter) => void;
+}) {
+  const selectedDoc =
+    filter.document !== 'ALL' ? documents.find((doc) => doc.sap_doc_num === filter.document) : null;
+  const scopeDocs = selectedDoc ? [selectedDoc] : documents;
+
+  const scans = (entry.box_scans ?? []).filter((scan) => {
+    if (filter.document !== 'ALL') {
+      const matchesDoc =
+        (selectedDoc != null && scan.document === selectedDoc.id) ||
+        scan.document_sap_doc_num === filter.document;
+      if (!matchesDoc) return false;
+    }
+    if (
+      filter.item !== 'ALL' &&
+      normalizeItemCode(scan.item_code) !== normalizeItemCode(filter.item)
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const expected =
+    filter.item !== 'ALL'
+      ? getExpectedItemsBoxes(
+          scopeDocs.flatMap((doc) =>
+            doc.items.filter(
+              (item) => normalizeItemCode(item.item_code) === normalizeItemCode(filter.item),
+            ),
+          ),
+        )
+      : selectedDoc
+        ? getExpectedDocumentBoxes(selectedDoc)
+        : getExpectedLoadBoxes(documents);
+
+  const billOptions = documents
+    .filter((doc) => hasDisplayValue(doc.sap_doc_num))
+    .map((doc) => ({
+      value: doc.sap_doc_num,
+      label: `${doc.sap_doc_num}${doc.customer_name ? ` · ${doc.customer_name}` : ''}`,
+    }));
+  const itemOptions = buildScanItemOptions(scopeDocs);
+  const hasActiveFilter = filter.document !== 'ALL' || filter.item !== 'ALL';
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <PackageCheck className="h-5 w-5" />
-          Scanned Boxes
-        </CardTitle>
-        <div className="text-sm text-muted-foreground">{formatScanProgress(entry)}</div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-4 overflow-y-auto sm:max-w-2xl lg:max-w-3xl"
+      >
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <PackageCheck className="h-5 w-5" />
+            Scanned Boxes
+          </SheetTitle>
+          <SheetDescription asChild>
+            <div>
+              <ScanProgressBadge scanned={scans.length} expected={expected} />
+            </div>
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="flex flex-col gap-3 rounded-md border bg-muted/20 p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            Filters
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Select
+              value={filter.document}
+              onValueChange={(value) => onFilterChange({ document: value, item: 'ALL' })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All bills" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All bills</SelectItem>
+                {billOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={filter.item}
+              onValueChange={(value) => onFilterChange({ ...filter, item: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All items" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All items</SelectItem>
+                {itemOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {hasActiveFilter ? (
+            <div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onFilterChange({ document: 'ALL', item: 'ALL' })}
+              >
+                Clear filters
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-3 text-sm sm:grid-cols-2">
           <InfoItem label="Scanned Boxes" value={scans.length} />
-          <InfoItem label="Expected Boxes" value={formatCount(getExpectedDispatchBoxes(entry))} />
-          <InfoItem label="Total Scanned Quantity" value={formatScannedQuantity(entry)} />
+          <InfoItem label="Expected Boxes" value={formatCount(expected)} />
+          <InfoItem label="Total Scanned Quantity" value={formatScannedQuantity(scans, entry.uom)} />
           <InfoItem label="Last Scan" value={formatTimestamp(scans[0]?.scanned_at || null)} />
         </div>
 
         {scans.length > 0 ? (
           <div className="overflow-hidden rounded-md border">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px]">
+              <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium">Barcode</th>
@@ -543,11 +672,112 @@ function BoxScansCard({ entry }: { entry: SalesDispatchGateOut }) {
           </div>
         ) : (
           <div className="flex min-h-20 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-            No boxes scanned yet
+            {hasActiveFilter ? 'No boxes match the current filter.' : 'No boxes scanned yet'}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function buildScanItemOptions(docs: DetailDocument[]) {
+  const seen = new Map<string, { code: string; name: string }>();
+  docs.forEach((doc) =>
+    doc.items.forEach((item) => {
+      const normalized = normalizeItemCode(item.item_code);
+      if (normalized && !seen.has(normalized)) {
+        seen.set(normalized, { code: item.item_code || '', name: item.item_name || '' });
+      }
+    }),
+  );
+  return Array.from(seen.values()).map((option) => ({
+    value: option.code,
+    label: `${option.code}${option.name ? ` · ${option.name}` : ''}`,
+  }));
+}
+
+type ScanTone = 'complete' | 'partial' | 'none' | 'unknown';
+
+const SCAN_TONE_CLASSES: Record<ScanTone, string> = {
+  complete: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
+  partial: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  none: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+  unknown: 'bg-muted text-muted-foreground',
+};
+
+function getScanTone(scanned: number, expected: number): ScanTone {
+  if (expected <= 0) return scanned > 0 ? 'partial' : 'unknown';
+  if (scanned >= expected) return 'complete';
+  if (scanned > 0) return 'partial';
+  return 'none';
+}
+
+// Subtle row tint mirroring the scan tone (green = fully scanned, amber = partial,
+// red = nothing scanned yet). Kept faint so the row text stays readable.
+const SCAN_ROW_CLASSES: Record<ScanTone, string> = {
+  complete: 'bg-green-50/70 dark:bg-green-950/20',
+  partial: 'bg-amber-50/70 dark:bg-amber-950/20',
+  none: 'bg-red-50/60 dark:bg-red-950/20',
+  unknown: '',
+};
+
+// Per-item tone is judged on invoiced vs scanned QUANTITY (the barcode signal), matching
+// the scan page and backend gate — not on a possibly-underived box count.
+function getItemScanTone(row?: ItemScanRow): ScanTone {
+  if (!row || row.expectedQuantity <= 0) return row && row.scanCount > 0 ? 'partial' : 'unknown';
+  if (row.isComplete) return 'complete';
+  return row.scanCount > 0 ? 'partial' : 'none';
+}
+
+// Colour-coded scan progress pill used everywhere box scanning is surfaced:
+// green = fully scanned, amber = partially scanned, red = nothing scanned yet.
+function ScanProgressBadge({
+  scanned,
+  expected,
+  className,
+}: {
+  scanned: number;
+  expected: number;
+  className?: string;
+}) {
+  const tone = getScanTone(scanned, expected);
+  const label =
+    expected > 0
+      ? `${scanned} / ${formatCount(expected)} boxes`
+      : scanned > 0
+        ? `${scanned} scanned`
+        : 'No boxes scanned';
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium',
+        SCAN_TONE_CLASSES[tone],
+        className,
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {label}
+    </span>
+  );
+}
+
+function ScanProgressField({
+  label,
+  scanned,
+  expected,
+}: {
+  label: string;
+  scanned: number;
+  expected: number;
+}) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="mt-1">
+        <ScanProgressBadge scanned={scanned} expected={expected} />
+      </div>
+    </div>
   );
 }
 
@@ -588,9 +818,25 @@ function InfoGroup({ title, children }: { title: string; children: ReactNode }) 
   );
 }
 
-function DocumentsCard({ documents }: { documents: DetailDocument[] }) {
-  const showEwayBill = documents.some((document) => hasDisplayValue(document.eway_bill));
-  const showAmount = documents.some((document) => hasDisplayValue(document.sap_doc_total));
+function DocumentsCard({
+  documents,
+  entry,
+  itemSummary,
+  showCompany,
+}: {
+  documents: DetailDocument[];
+  entry: SalesDispatchGateOut;
+  itemSummary?: string;
+  showCompany: boolean;
+}) {
+  const scans = entry.box_scans ?? [];
+  const [isScanSheetOpen, setIsScanSheetOpen] = useState(false);
+  const [scanFilter, setScanFilter] = useState<ScanSheetFilter>({ document: 'ALL', item: 'ALL' });
+
+  const openScanSheet = (filter: ScanSheetFilter) => {
+    setScanFilter(filter);
+    setIsScanSheetOpen(true);
+  };
 
   return (
     <Card>
@@ -599,146 +845,218 @@ function DocumentsCard({ documents }: { documents: DetailDocument[] }) {
           <FileText className="h-5 w-5" />
           SAP Documents
         </CardTitle>
-        <div className="text-sm text-muted-foreground">{formatDocumentCount(documents)}</div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">{formatDocumentCount(documents)}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => openScanSheet({ document: 'ALL', item: 'ALL' })}
+          >
+            <PackageCheck className="mr-2 h-4 w-4" />
+            Scanned Boxes
+            <ScanProgressBadge
+              scanned={scans.length}
+              expected={getExpectedLoadBoxes(documents)}
+              className="ml-2"
+            />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-hidden rounded-md border">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px]">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="w-[190px] p-3 text-left text-sm font-medium">Document</th>
-                  <th className="w-[260px] p-3 text-left text-sm font-medium">
-                    Customer / Destination
-                  </th>
-                  <th className="p-3 text-left text-sm font-medium">Address / Warehouse</th>
-                  {showEwayBill ? (
-                    <th className="w-[150px] p-3 text-left text-sm font-medium">E-way Bill</th>
-                  ) : null}
-                  {showAmount ? (
-                    <th className="w-[120px] p-3 text-right text-sm font-medium">Amount</th>
-                  ) : null}
-                  <th className="w-[210px] p-3 text-left text-sm font-medium">Load</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((document) => (
-                  <tr key={document.key} className="border-t align-top">
-                    <td className="p-3 text-sm">
-                      <div className="font-semibold">{formatValue(document.sap_doc_num)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDocumentType(document.document_type)}
-                        {document.sap_doc_date ? ` - ${document.sap_doc_date}` : ''}
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm">
-                      <div className="font-medium">
-                        {formatValue(document.customer_name || document.to_warehouse)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatValue(document.customer_code || document.place_of_supply)}
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm">
-                      {formatValue(formatDocumentDestination(document))}
-                    </td>
-                    {showEwayBill ? (
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {formatValue(document.eway_bill)}
-                      </td>
-                    ) : null}
-                    {showAmount ? (
-                      <td className="whitespace-nowrap p-3 text-right text-sm tabular-nums">
-                        {formatValue(document.sap_doc_total)}
-                      </td>
-                    ) : null}
-                    <td className="p-3 text-sm">{formatDocumentLoad(document)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {documents.length === 0 ? (
+          <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+            {itemSummary || 'No SAP documents'}
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3">
+            {documents.map((document) => (
+              <DocumentSection
+                key={document.key}
+                document={document}
+                scans={getDocumentScans(scans, document)}
+                showCompany={showCompany}
+                onOpenItem={(itemCode) =>
+                  openScanSheet({ document: document.sap_doc_num, item: itemCode })
+                }
+              />
+            ))}
+          </div>
+        )}
       </CardContent>
+
+      <ScannedBoxesSheet
+        entry={entry}
+        documents={documents}
+        open={isScanSheetOpen}
+        onOpenChange={setIsScanSheetOpen}
+        filter={scanFilter}
+        onFilterChange={setScanFilter}
+      />
     </Card>
   );
 }
 
-function DocumentItemsByDocument({
-  documents,
-  itemSummary,
-}: {
-  documents: DetailDocument[];
-  itemSummary?: string;
-}) {
-  const itemGroups = documents.filter((document) => document.items.length > 0);
+// Whole-load expected boxes = every bill on the truck (across all dockings). Summing per
+// bill (not reading a single docking's stored total) is what makes the count span
+// companies on a cross-company truck.
+function getExpectedLoadBoxes(documents: DetailDocument[]) {
+  return documents.reduce((total, document) => total + getExpectedDocumentBoxes(document), 0);
+}
 
-  if (itemGroups.length === 0) {
-    return (
-      <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-        {itemSummary || 'No document lines found'}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {itemGroups.map((document) => (
-        <DocumentItemsTable key={document.key} document={document} />
-      ))}
-    </div>
+// Attribute a box scan to a bill by its document id, falling back to the SAP doc number
+// (the single-document fallback row keys off sap_doc_entry, not the document row id).
+function getDocumentScans(scans: SalesDispatchBoxScan[], document: DetailDocument) {
+  return scans.filter(
+    (scan) =>
+      (scan.document != null && scan.document === document.id) ||
+      (hasDisplayValue(scan.document_sap_doc_num) &&
+        scan.document_sap_doc_num === document.sap_doc_num),
   );
 }
 
-function DocumentItemsTable({ document }: { document: DetailDocument }) {
+// Each SAP document is a collapsible block: header (customer, destination, amount,
+// load rollup, e-way) stays visible, line items expand/collapse. Merges what used to
+// be the separate "SAP Documents" table and "Items to Load" section.
+function DocumentSection({
+  document,
+  scans,
+  showCompany,
+  onOpenItem,
+}: {
+  document: DetailDocument;
+  scans: SalesDispatchBoxScan[];
+  showCompany: boolean;
+  onOpenItem: (itemCode: string) => void;
+}) {
+  const load = formatDocumentLoad(document);
+  const destination = formatValue(formatDocumentDestination(document));
+  const expectedBoxes = getExpectedDocumentBoxes(document);
+  // Per-item scan status, keyed by item code, computed the same way the barcode scan
+  // page does (lines grouped by code, scanned qty vs invoiced qty) so the colours and
+  // completion here match the scanning screen exactly.
+  const scanStatusByCode = new Map<string, ItemScanRow>(
+    summarizeItems(groupItemsByItemCode(document.items), scans).items.map((row) => [
+      normalizeItemCode(row.itemCode),
+      row,
+    ]),
+  );
+
   return (
-    <div className="overflow-hidden rounded-md border">
-      <div className="flex flex-col gap-1 border-b bg-muted/30 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="font-semibold">
-          {formatDocumentType(document.document_type)} {formatValue(document.sap_doc_num)}
+    <details className="group overflow-hidden rounded-md border">
+      <summary className="flex cursor-pointer list-none flex-col gap-3 bg-muted/30 p-3 text-sm sm:flex-row sm:items-start sm:justify-between [&::-webkit-details-marker]:hidden">
+        <div className="flex items-start gap-2">
+          <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 -rotate-90 text-muted-foreground transition-transform group-open:rotate-0" />
+          <div className="space-y-0.5">
+            {showCompany && document.companyName ? (
+              <span className="inline-flex rounded-full border bg-background px-2 py-0.5 text-xs font-medium">
+                {document.companyName}
+              </span>
+            ) : null}
+            <div className="font-semibold">
+              {formatValue(document.sap_doc_num)}
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {formatDocumentType(document.document_type)}
+                {document.sap_doc_date ? ` · ${document.sap_doc_date}` : ''}
+              </span>
+            </div>
+            <div>
+              {formatValue(document.customer_name || document.to_warehouse)}
+              {hasDisplayValue(document.customer_code) ? (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {document.customer_code}
+                </span>
+              ) : null}
+            </div>
+            <div className="text-xs text-muted-foreground">{destination}</div>
+            {hasDisplayValue(document.bp_gstin) ? (
+              <div className="text-xs text-muted-foreground">GSTIN: {document.bp_gstin}</div>
+            ) : null}
+          </div>
         </div>
-        <div className="text-muted-foreground">
-          {document.customer_name || formatDocumentDestination(document)}
+        <div className="ml-6 flex flex-col items-start gap-1 text-xs text-muted-foreground sm:ml-0 sm:items-end">
+          <ScanProgressBadge scanned={scans.length} expected={expectedBoxes} />
+          {hasDisplayValue(document.sap_doc_total) ? (
+            <div className="text-sm font-medium tabular-nums text-foreground">
+              {formatValue(document.sap_doc_total)}
+            </div>
+          ) : null}
+          {load !== '-' ? <div>{load}</div> : null}
+          {hasDisplayValue(document.eway_bill) ? <div>E-way: {document.eway_bill}</div> : null}
         </div>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px]">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="p-3 text-left text-sm font-medium">Item Code</th>
-              <th className="p-3 text-left text-sm font-medium">Item</th>
-              <th className="p-3 text-right text-sm font-medium">Quantity</th>
-              <th className="p-3 text-left text-sm font-medium">UOM</th>
-              <th className="p-3 text-left text-sm font-medium">Warehouse</th>
-              <th className="p-3 text-left text-sm font-medium">Metrics</th>
-            </tr>
-          </thead>
-          <tbody>
-            {document.items.map((item, index) => (
-              <tr key={item.id || `${document.key}-${index}`} className="border-t align-top">
-                <td className="whitespace-nowrap p-3 text-sm font-semibold">
-                  {formatValue(item.item_code)}
-                </td>
-                <td className="p-3 text-sm">
-                  <div className="font-medium">{formatValue(item.item_name)}</div>
-                  {item.base_ref ? (
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      Base Ref: {item.base_ref}
-                    </div>
-                  ) : null}
-                </td>
-                <td className="whitespace-nowrap p-3 text-right text-sm tabular-nums">
-                  {formatValue(item.quantity)}
-                </td>
-                <td className="whitespace-nowrap p-3 text-sm">{formatValue(item.uom)}</td>
-                <td className="whitespace-nowrap p-3 text-sm">{formatItemWarehouse(item)}</td>
-                <td className="p-3 text-sm text-muted-foreground">{formatItemMetrics(item)}</td>
+      </summary>
+
+      {document.items.length > 0 ? (
+        <div className="overflow-x-auto border-t">
+          <table className="w-full">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="p-3 text-left text-sm font-medium">Item Code</th>
+                <th className="p-3 text-left text-sm font-medium">Item</th>
+                <th className="p-3 text-right text-sm font-medium">Quantity</th>
+                <th className="p-3 text-left text-sm font-medium">UOM</th>
+                <th className="p-3 text-left text-sm font-medium">Warehouse</th>
+                <th className="p-3 text-left text-sm font-medium">Metrics</th>
+                <th className="p-3 text-left text-sm font-medium">Scan</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            </thead>
+            <tbody>
+              {document.items.map((item, index) => {
+                const status = scanStatusByCode.get(normalizeItemCode(item.item_code));
+                const tone = getItemScanTone(status);
+                return (
+                  <tr
+                    key={item.id || `${document.key}-${index}`}
+                    role="button"
+                    tabIndex={0}
+                    title="Open barcode scanning for this item"
+                    onClick={() => onOpenItem(item.item_code)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onOpenItem(item.item_code);
+                      }
+                    }}
+                    className={cn(
+                      'cursor-pointer border-t align-top transition-colors hover:bg-muted/50',
+                      SCAN_ROW_CLASSES[tone],
+                    )}
+                  >
+                    <td className="whitespace-nowrap p-3 text-sm font-semibold">
+                      {formatValue(item.item_code)}
+                    </td>
+                    <td className="p-3 text-sm">
+                      <div className="font-medium">{formatValue(item.item_name)}</div>
+                      {item.base_ref ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Base Ref: {item.base_ref}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="whitespace-nowrap p-3 text-right text-sm tabular-nums">
+                      {formatValue(item.quantity)}
+                    </td>
+                    <td className="whitespace-nowrap p-3 text-sm">{formatValue(item.uom)}</td>
+                    <td className="whitespace-nowrap p-3 text-sm">{formatItemWarehouse(item)}</td>
+                    <td className="p-3 text-sm text-muted-foreground">{formatItemMetrics(item)}</td>
+                    <td className="whitespace-nowrap p-3 text-sm">
+                      <ScanProgressBadge
+                        scanned={status?.scanCount ?? 0}
+                        expected={status?.expectedBoxes ?? getExpectedItemBoxes(item)}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="border-t p-3 text-sm text-muted-foreground">
+          No line items on this document
+        </div>
+      )}
+    </details>
   );
 }
 
@@ -748,6 +1066,7 @@ function getDetailDocuments(entry: SalesDispatchGateOut): DetailDocument[] {
       ...document,
       key: String(document.id),
       items: getDocumentItems(entry, document),
+      companyName: entry.company_name,
     }));
   }
 
@@ -755,6 +1074,7 @@ function getDetailDocuments(entry: SalesDispatchGateOut): DetailDocument[] {
     {
       id: entry.sap_doc_entry,
       key: `${entry.document_type}:${entry.sap_doc_entry}`,
+      companyName: entry.company_name,
       document_type: entry.document_type,
       sap_doc_entry: entry.sap_doc_entry,
       sap_doc_num: entry.sap_doc_num,
@@ -801,15 +1121,6 @@ function getDocumentItems(
   return entry.documents?.length ? [] : entry.items;
 }
 
-function formatDocumentNumbers(entry: SalesDispatchGateOut) {
-  const numbers = entry.document_numbers?.length
-    ? entry.document_numbers
-    : entry.sap_doc_num
-      ? [entry.sap_doc_num]
-      : [];
-  return numbers.join(', ') || '-';
-}
-
 function formatDocumentCount(documents: DetailDocument[]) {
   if (documents.length === 0) return 'No SAP documents';
   return documents.length === 1 ? '1 SAP document' : `${documents.length} SAP documents`;
@@ -831,17 +1142,10 @@ function formatDocumentLoad(document: DetailDocument) {
   return parts.length ? parts.join(' / ') : '-';
 }
 
-function formatScanProgress(entry: SalesDispatchGateOut) {
-  const scanned = entry.box_scans?.length ?? 0;
-  const expected = getExpectedDispatchBoxes(entry);
-  if (expected) return `${scanned} / ${formatCount(expected)} boxes`;
-  return scanned > 0 ? `${scanned} scanned` : 'No boxes scanned';
-}
-
-function formatScannedQuantity(entry: SalesDispatchGateOut) {
-  const quantity = sumScannedQuantity(entry.box_scans);
+function formatScannedQuantity(scans: SalesDispatchBoxScan[], fallbackUom?: string) {
+  const quantity = sumScannedQuantity(scans);
   if (!quantity) return '';
-  const uom = entry.box_scans?.find((scan) => hasDisplayValue(scan.uom))?.uom || entry.uom;
+  const uom = scans.find((scan) => hasDisplayValue(scan.uom))?.uom || fallbackUom;
   return [quantity, uom].filter(Boolean).join(' ');
 }
 
@@ -921,6 +1225,11 @@ function toFiniteNumber(value?: string | number | null) {
   if (value === null || value === undefined || value === '') return null;
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function hasPositiveWeight(value?: string | number | null) {
+  const numeric = toFiniteNumber(value);
+  return numeric !== null && numeric > 0;
 }
 
 function buildAuditEvents(entry: SalesDispatchGateOut): AuditEvent[] {
