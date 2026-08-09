@@ -333,7 +333,7 @@ export default function LooseStockPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Loose Stock"
-        subtitle="Dismantled items pooled by item — expand a row to see source boxes"
+        description="Dismantled items pooled by item — expand a row to see source boxes"
       />
 
       <div className="flex flex-wrap gap-3 items-center">
@@ -342,6 +342,7 @@ export default function LooseStockPage() {
           <input
             className="w-full pl-9 pr-3 py-2 border rounded-md text-sm"
             placeholder="Search by item code..."
+            aria-label="Search loose stock by item code"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

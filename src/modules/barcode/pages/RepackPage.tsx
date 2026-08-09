@@ -99,7 +99,8 @@ export default function RepackPage() {
       : 0;
 
   const qtyNum = Number(qty);
-  const qtyValid = qty !== '' && Number.isFinite(qtyNum) && qtyNum > 0 && qtyNum <= available;
+  const qtyValid =
+    qty !== '' && Number.isInteger(qtyNum) && qtyNum > 0 && qtyNum <= available;
   const isValid = !!selectedItem && qtyValid && !!warehouse;
 
   // FIFO walk over the eligible records: which record contributes how much
@@ -135,7 +136,7 @@ export default function RepackPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Repack" subtitle="Pack any quantity of loose stock into a new box" />
+      <DashboardHeader title="Repack" description="Pack any quantity of loose stock into a new box" />
 
       <Card>
         <CardContent className="p-4 space-y-4">
@@ -199,8 +200,9 @@ export default function RepackPage() {
                 </label>
                 <input
                   type="number"
-                  min={0}
+                  min={1}
                   max={available}
+                  step={1}
                   className="w-full border rounded px-3 py-2 text-sm mt-1"
                   value={qty}
                   onChange={(e) => setQty(e.target.value)}
@@ -208,7 +210,7 @@ export default function RepackPage() {
                 />
                 {qty !== '' && !qtyValid && (
                   <p className="text-xs text-red-600 mt-1">
-                    Enter a quantity between 0 and {available}
+                    Enter a quantity between 1 and {available}
                     {useSelection ? ' (from the selected boxes)' : ''}
                   </p>
                 )}
@@ -297,13 +299,26 @@ export default function RepackPage() {
                     return (
                       <tr
                         key={ls.id}
+                        role="button"
+                        tabIndex={0}
                         className={`border-b last:border-0 cursor-pointer hover:bg-muted/30 ${
                           excluded ? 'opacity-40' : ''
                         } ${ticked ? 'bg-blue-50' : ''}`}
                         onClick={() => toggleSource(ls.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleSource(ls.id);
+                          }
+                        }}
                       >
                         <td className="p-2">
-                          <input type="checkbox" checked={ticked} readOnly />
+                          <input
+                            type="checkbox"
+                            checked={ticked}
+                            onChange={() => toggleSource(ls.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                         </td>
                         <td className="p-2 font-mono text-xs">{ls.source_box_barcode || '—'}</td>
                         <td className="p-2 font-mono text-xs">{ls.batch_number}</td>

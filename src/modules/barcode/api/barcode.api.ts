@@ -375,11 +375,6 @@ export const barcodeApi = {
     return res.data;
   },
 
-  async getPrintHistory(params?: PrintHistoryFilters): Promise<LabelPrintLog[]> {
-    const res = await apiClient.get<ListResponse<LabelPrintLog>>(EP.PRINT_HISTORY, { params });
-    return unwrapList(res.data);
-  },
-
   async getPrintHistoryPage(
     params?: PrintHistoryFilters,
   ): Promise<PaginatedResponse<LabelPrintLog>> {
@@ -511,15 +506,6 @@ export const barcodeApi = {
       params,
     });
     return unwrapList(res.data);
-  },
-
-  async getDispatchSessionsPage(
-    params?: DispatchSessionFilters,
-  ): Promise<PaginatedResponse<DispatchSession>> {
-    const res = await apiClient.get<ListResponse<DispatchSession>>(EP.DISPATCH_SESSIONS, {
-      params,
-    });
-    return normalizePage(res.data, params);
   },
 
   async getDispatchSession(sessionId: number): Promise<DispatchSession> {

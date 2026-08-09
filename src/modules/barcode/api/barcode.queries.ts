@@ -82,8 +82,6 @@ export const BARCODE_QUERY_KEYS = {
   palletHistory: (id: number) => [...BARCODE_QUERY_KEYS.all, 'pallet', id, 'history'] as const,
   dispatchSessions: (filters?: DispatchSessionFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'dispatch-sessions', filters] as const,
-  dispatchSessionsPage: (filters?: DispatchSessionFilters) =>
-    [...BARCODE_QUERY_KEYS.all, 'dispatch-sessions-page', filters] as const,
   dispatchSession: (id: number) => [...BARCODE_QUERY_KEYS.all, 'dispatch-session', id] as const,
   dispatchScanLogs: (id: number) =>
     [...BARCODE_QUERY_KEYS.all, 'dispatch-session', id, 'scan-logs'] as const,
@@ -92,7 +90,8 @@ export const BARCODE_QUERY_KEYS = {
   dispatchSettings: () => [...BARCODE_QUERY_KEYS.all, 'dispatch-settings'] as const,
   dispatchReport: (filters?: DispatchReportFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'dispatch-report', filters] as const,
-  dispatchDetailReport: (id: number) => [...BARCODE_QUERY_KEYS.all, 'dispatch-report', id] as const,
+  dispatchDetailReport: (id: number) =>
+    [...BARCODE_QUERY_KEYS.all, 'dispatch-report-detail', id] as const,
   dispatchPalletReport: (filters?: DispatchReportFilters) =>
     [...BARCODE_QUERY_KEYS.all, 'dispatch-pallet-report', filters] as const,
   dispatchBoxReport: (filters?: DispatchReportFilters) =>
@@ -494,13 +493,6 @@ export function useBarcodeTrace(search: string, enabled = false) {
 // Print Queries & Mutations
 // ============================================================================
 
-export function usePrintHistory(filters?: PrintHistoryFilters) {
-  return useQuery({
-    queryKey: BARCODE_QUERY_KEYS.printHistory(filters),
-    queryFn: () => barcodeApi.getPrintHistory(filters),
-  });
-}
-
 export function usePrintHistoryPage(filters?: PrintHistoryFilters) {
   return useQuery({
     queryKey: BARCODE_QUERY_KEYS.printHistoryPage(filters),
@@ -700,13 +692,6 @@ export function useUpdateDispatchSettings() {
     onSuccess: (settings) => {
       qc.setQueryData(BARCODE_QUERY_KEYS.dispatchSettings(), settings);
     },
-  });
-}
-
-export function useDispatchSessionsPage(filters?: DispatchSessionFilters) {
-  return useQuery({
-    queryKey: BARCODE_QUERY_KEYS.dispatchSessionsPage(filters),
-    queryFn: () => barcodeApi.getDispatchSessionsPage(filters),
   });
 }
 

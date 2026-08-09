@@ -34,6 +34,7 @@ export default function BarcodeTraceabilityPage() {
                   if (event.key === 'Enter') submit();
                 }}
                 placeholder="Barcode, batch, item code, or transfer number"
+                aria-label="Search barcode, batch, item code, or transfer number"
               />
             </div>
             <Button onClick={submit} disabled={!search.trim() || traceQuery.isFetching}>
@@ -42,6 +43,30 @@ export default function BarcodeTraceabilityPage() {
           </div>
         </CardContent>
       </Card>
+
+      {submittedSearch && traceQuery.isFetching && (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            Searching...
+          </CardContent>
+        </Card>
+      )}
+
+      {submittedSearch && !traceQuery.isFetching && traceQuery.isError && (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-rose-600">
+            Unable to load traceability for "{submittedSearch}". Please try again.
+          </CardContent>
+        </Card>
+      )}
+
+      {submittedSearch && !traceQuery.isFetching && !traceQuery.isError && !trace && (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            No record found for "{submittedSearch}".
+          </CardContent>
+        </Card>
+      )}
 
       {trace && (
         <>
@@ -76,7 +101,7 @@ export default function BarcodeTraceabilityPage() {
                 </Badge>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[720px] text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
                       <th className="p-2 text-left">Date</th>

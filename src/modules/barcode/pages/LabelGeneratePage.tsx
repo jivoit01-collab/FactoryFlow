@@ -147,9 +147,7 @@ export default function LabelGeneratePage() {
     !!selectedItem.pieces_per_box &&
     selectedItem.pieces_per_box > 0;
 
-  const handleConfigSelect = (configId: string) => {
-    const config = lineConfigs.find((c) => c.id === Number(configId));
-    if (!config) return;
+  const handleConfigSelect = () => {
     const lineName = lines.find((l) => l.id === selectedLineId)?.name || '';
     setForm((prev) => ({
       ...prev,
@@ -168,6 +166,7 @@ export default function LabelGeneratePage() {
       !itemCode && 'Item Code',
       !batchNumber && 'Batch Number',
       !form.qty.trim() && 'Qty per Label',
+      !form.uom.trim() && 'UOM',
       !form.box_count.trim() && 'Items per Pallet',
       !form.mfg_date && 'Mfg Date',
       !warehouse && 'Warehouse',
@@ -268,7 +267,7 @@ export default function LabelGeneratePage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Pallet QR Print"
-        subtitle="Select pallet, fetch item from SAP, then print linked labels"
+        description="Select pallet, fetch item from SAP, then print linked labels"
       />
 
       <Card>
@@ -395,7 +394,7 @@ export default function LabelGeneratePage() {
             {selectedLineId && lineConfigs.length > 0 && (
               <div className="w-[300px]">
                 <FormLabel className="text-xs">Configuration (SKU)</FormLabel>
-                <Select onValueChange={handleConfigSelect}>
+                <Select onValueChange={() => handleConfigSelect()}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select config for line only" />
                   </SelectTrigger>

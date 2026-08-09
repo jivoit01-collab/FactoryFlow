@@ -39,7 +39,7 @@ export default function ActivityLogPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Activity Log"
-        subtitle="Every barcode event — prints, pallet moves, dispatch scans, and BST transfers"
+        description="Every barcode event — prints, pallet moves, dispatch scans, and BST transfers"
       />
 
       {/* Filters */}
@@ -49,6 +49,7 @@ export default function ActivityLogPage() {
           <input
             type="text"
             placeholder="Search barcode, pallet, bill, user..."
+            aria-label="Search barcode, pallet, bill, or user"
             className="w-full pl-9 pr-3 py-2 border rounded-md text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -56,6 +57,7 @@ export default function ActivityLogPage() {
         </div>
         <select
           className="border rounded-md px-3 py-2 text-sm"
+          aria-label="Filter by activity type"
           value={kind}
           onChange={(e) => setKind(e.target.value)}
         >

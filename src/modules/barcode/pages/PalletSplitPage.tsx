@@ -78,7 +78,7 @@ export default function PalletSplitPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Split Pallet"
-        subtitle="Move selected boxes from one pallet into an existing empty pallet"
+        description="Move selected boxes from one pallet into an existing empty pallet"
       />
 
       <Card>
@@ -235,6 +235,14 @@ export default function PalletSplitPage() {
                 Cannot split all boxes. Use Move Pallet instead to move the entire pallet.
               </p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {palletDetail && activeBoxes.length === 0 && (
+        <Card>
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            No transferable boxes on this pallet.
           </CardContent>
         </Card>
       )}

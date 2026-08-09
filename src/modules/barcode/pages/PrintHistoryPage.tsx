@@ -44,7 +44,7 @@ export default function PrintHistoryPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Print History"
-        subtitle="Audit trail for all label prints and reprints"
+        description="Audit trail for all label prints and reprints"
       />
 
       {/* Filters */}
@@ -54,6 +54,7 @@ export default function PrintHistoryPage() {
           <input
             type="text"
             placeholder="Search by barcode..."
+            aria-label="Search by barcode"
             className="w-full pl-9 pr-3 py-2 border rounded-md text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -62,6 +63,7 @@ export default function PrintHistoryPage() {
         <ScanSearchButton onScan={setSearch} />
         <select
           className="border rounded-md px-3 py-2 text-sm"
+          aria-label="Filter by label type"
           value={labelTypeFilter}
           onChange={(e) => setLabelTypeFilter(e.target.value)}
         >
@@ -71,6 +73,7 @@ export default function PrintHistoryPage() {
         </select>
         <select
           className="border rounded-md px-3 py-2 text-sm"
+          aria-label="Filter by print type"
           value={printTypeFilter}
           onChange={(e) => setPrintTypeFilter(e.target.value)}
         >

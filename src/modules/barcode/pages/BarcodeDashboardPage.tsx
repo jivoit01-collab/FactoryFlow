@@ -51,7 +51,7 @@ export default function BarcodeDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Barcode" subtitle="Pallet and box tracking, label management" />
+      <DashboardHeader title="Barcode" description="Pallet and box tracking, label management" />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {cards.map((card) => {
@@ -60,7 +60,15 @@ export default function BarcodeDashboardPage() {
             <Card
               key={card.title}
               className="cursor-pointer hover:shadow-md transition-shadow"
+              role="button"
+              tabIndex={0}
               onClick={() => navigate(card.path)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(card.path);
+                }
+              }}
             >
               <CardContent className="p-4 flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${card.color}`}>

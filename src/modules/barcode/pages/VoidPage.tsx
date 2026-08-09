@@ -15,6 +15,7 @@ import {
   useVoidBox,
   useVoidPallet,
 } from '../api';
+import { ConfirmDialog } from '../components';
 import ScanSearchButton from '../components/ScanSearchButton';
 import type { Box, Pallet } from '../types';
 import { toastBarcodeError } from '../utils/errors';
@@ -30,6 +31,8 @@ export default function VoidPage() {
   const [voidBoxes, setVoidBoxes] = useState(false);
   const [selectedBoxIds, setSelectedBoxIds] = useState<number[]>([]);
   const [reason, setReason] = useState('');
+  const [confirmPalletOpen, setConfirmPalletOpen] = useState(false);
+  const [confirmBoxOpen, setConfirmBoxOpen] = useState(false);
 
   const { data: pallets = [], isLoading: loadingPallets } = usePallets(
     mode === 'pallet' && palletSearch.length >= 2
@@ -81,6 +84,7 @@ export default function VoidPage() {
           ? `Pallet voided — ${voided} box${voided === 1 ? '' : 'es'} voided`
           : 'Pallet voided — boxes disassociated',
       );
+      setConfirmPalletOpen(false);
       resetSelection();
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to void pallet.');
@@ -92,6 +96,7 @@ export default function VoidPage() {
     try {
       await voidBoxMutation.mutateAsync({ boxId: selectedId, data: { reason } });
       toast.success('Box voided');
+      setConfirmBoxOpen(false);
       resetSelection();
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to void box.');
@@ -102,7 +107,7 @@ export default function VoidPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Void"
-        subtitle="Void pallets (and optionally their boxes) or void an individual box"
+        description="Void pallets (and optionally their boxes) or void an individual box"
       />
 
       <Button variant="ghost" size="sm" onClick={() => navigate('/barcode/void')}>
@@ -311,7 +316,7 @@ export default function VoidPage() {
 
             <Button
               variant="destructive"
-              onClick={handleVoidPallet}
+              onClick={() => setConfirmPalletOpen(true)}
               disabled={voidPalletMutation.isPending || !reason.trim()}
             >
               <XCircle className="h-4 w-4 mr-1" />
@@ -321,6 +326,23 @@ export default function VoidPage() {
                   ? `Void Pallet + ${selectedBoxIds.length} Box${selectedBoxIds.length === 1 ? '' : 'es'}`
                   : 'Void Pallet'}
             </Button>
+
+            <ConfirmDialog
+              open={confirmPalletOpen}
+              onOpenChange={setConfirmPalletOpen}
+              title="Void pallet?"
+              description={
+                voidBoxes && selectedBoxIds.length > 0
+                  ? `Void pallet ${palletDetail.pallet_id} and ${selectedBoxIds.length} box${selectedBoxIds.length === 1 ? '' : 'es'}? This cannot be undone.`
+                  : `Void pallet ${palletDetail.pallet_id}? Its boxes will be disassociated and stay ACTIVE as loose boxes. This cannot be undone.`
+              }
+              confirmLabel="Void"
+              destructive
+              pending={voidPalletMutation.isPending}
+              onConfirm={async () => {
+                await handleVoidPallet();
+              }}
+            />
           </CardContent>
         </Card>
       )}
@@ -361,12 +383,25 @@ export default function VoidPage() {
 
             <Button
               variant="destructive"
-              onClick={handleVoidBox}
+              onClick={() => setConfirmBoxOpen(true)}
               disabled={voidBoxMutation.isPending || !reason.trim()}
             >
               <XCircle className="h-4 w-4 mr-1" />
               {voidBoxMutation.isPending ? 'Voiding...' : 'Void Box'}
             </Button>
+
+            <ConfirmDialog
+              open={confirmBoxOpen}
+              onOpenChange={setConfirmBoxOpen}
+              title="Void box?"
+              description={`Void box ${boxDetail.box_barcode}? This cannot be undone.`}
+              confirmLabel="Void"
+              destructive
+              pending={voidBoxMutation.isPending}
+              onConfirm={async () => {
+                await handleVoidBox();
+              }}
+            />
           </CardContent>
         </Card>
       )}

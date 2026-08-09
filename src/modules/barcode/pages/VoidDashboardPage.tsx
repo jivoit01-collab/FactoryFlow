@@ -105,7 +105,15 @@ export default function VoidDashboardPage() {
                     <tr
                       key={row.id}
                       className="border-b hover:bg-muted/30 cursor-pointer"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => navigate(`/barcode/pallets/${row.pallet_id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          navigate(`/barcode/pallets/${row.pallet_id}`);
+                        }
+                      }}
                     >
                       <td className="p-2 font-mono text-xs">{row.pallet_code}</td>
                       <td className="p-2">
@@ -127,7 +135,15 @@ export default function VoidDashboardPage() {
                     <tr
                       key={row.id}
                       className="border-b hover:bg-muted/30 cursor-pointer"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => navigate(`/barcode/boxes/${row.box_id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          navigate(`/barcode/boxes/${row.box_id}`);
+                        }
+                      }}
                     >
                       <td className="p-2 font-mono text-xs">{row.box_barcode}</td>
                       <td className="p-2">

@@ -139,7 +139,7 @@ export default function PalletDetailPage() {
     <div className="space-y-6">
       <DashboardHeader
         title={pallet.pallet_id}
-        subtitle={`${pallet.current_warehouse || 'No warehouse'} - ${
+        description={`${pallet.current_warehouse || 'No warehouse'} - ${
           isEmpty ? 'Empty pallet' : `${pallet.box_count} linked boxes`
         }`}
       />

@@ -83,7 +83,7 @@ export default function PalletMovePage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Move Pallet" subtitle="Transfer a pallet to a different warehouse" />
+      <DashboardHeader title="Move Pallet" description="Transfer a pallet to a different warehouse" />
 
       <Card>
         <CardContent className="p-4 space-y-4">

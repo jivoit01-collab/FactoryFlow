@@ -52,6 +52,7 @@ import {
   useUpdateDispatchScannedBoxQty,
   useUpdateDispatchSettings,
 } from '../api';
+import { ConfirmDialog } from '../components';
 import PalletVerifyDialog from '../components/verify/PalletVerifyDialog';
 import { useScanner } from '../hooks/useScanner';
 import type {
@@ -466,7 +467,12 @@ function ScannerDock({
           placeholder={disabled ? 'Scanner locked' : 'Scan barcode'}
           autoFocus
         />
-        <Button type="submit" className="h-12 px-4" disabled={!value.trim() || disabled || loading}>
+        <Button
+          type="submit"
+          aria-label="Submit scan"
+          className="h-12 px-4"
+          disabled={!value.trim() || disabled || loading}
+        >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -1124,6 +1130,7 @@ export default function BarcodeDispatchPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
   const [closeReason, setCloseReason] = useState('');
+  const [completeOpen, setCompleteOpen] = useState(false);
   const [highlightedBoxBarcode, setHighlightedBoxBarcode] = useState('');
   const [filters, setFilters] = useState({
     bill_number: '',
@@ -1443,13 +1450,26 @@ export default function BarcodeDispatchPage() {
                 closeReason={closeReason}
                 setCloseReason={setCloseReason}
                 completeEnabled={completeEnabled}
-                onComplete={handleComplete}
+                onComplete={() => setCompleteOpen(true)}
                 onClose={handleClose}
                 onCancel={handleCancel}
                 loading={{
                   complete: completeMutation.isPending,
                   close: closeMutation.isPending,
                   cancel: cancelMutation.isPending,
+                }}
+              />
+              <ConfirmDialog
+                open={completeOpen}
+                onOpenChange={setCompleteOpen}
+                title="Confirm dispatch?"
+                description={`Confirm dispatch for ${session.bill_number}? This completes the session and syncs to SAP — it can't be undone.`}
+                confirmLabel="Confirm Dispatch"
+                destructive
+                pending={completeMutation.isPending}
+                onConfirm={async () => {
+                  await handleComplete();
+                  setCompleteOpen(false);
                 }}
               />
             </>

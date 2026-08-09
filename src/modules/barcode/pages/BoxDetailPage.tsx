@@ -18,6 +18,7 @@ import {
 } from '@/shared/components/ui';
 
 import { useAddBoxesToPallet, useBoxDetail, usePallets, useVoidBox } from '../api';
+import { ConfirmDialog } from '../components';
 import ScanSearchButton from '../components/ScanSearchButton';
 import type { BoxMovementType, Pallet } from '../types';
 import { toastBarcodeError } from '../utils/errors';
@@ -43,6 +44,7 @@ export default function BoxDetailPage() {
   const { data: box, isLoading } = useBoxDetail(boxId ? Number(boxId) : null);
   const voidMutation = useVoidBox();
   const addBoxesMutation = useAddBoxesToPallet();
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   // Link to pallet dialog
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [palletSearch, setPalletSearch] = useState('');
@@ -70,11 +72,15 @@ export default function BoxDetailPage() {
     return isReusableStatus && hasCapacity && (isEmptyPallet || isCompatiblePallet);
   });
 
-  const handleVoid = () => {
+  const handleVoid = async (reason: string) => {
     if (!box) return;
-    const reason = prompt('Void this box? Enter a reason (required):')?.trim();
-    if (!reason) return;
-    voidMutation.mutate({ boxId: box.id, data: { reason } });
+    try {
+      await voidMutation.mutateAsync({ boxId: box.id, data: { reason } });
+      toast.success('Box voided');
+      setVoidDialogOpen(false);
+    } catch (err: unknown) {
+      toastBarcodeError(err, 'Unable to void this box.');
+    }
   };
 
   const handleLinkToPallet = async () => {
@@ -99,7 +105,7 @@ export default function BoxDetailPage() {
     <div className="space-y-6">
       <DashboardHeader
         title={box.box_barcode}
-        subtitle={`${box.item_name || box.item_code} — Batch: ${box.batch_number}`}
+        description={`${box.item_name || box.item_code} — Batch: ${box.batch_number}`}
       />
 
       <Button variant="ghost" size="sm" onClick={() => navigate('/barcode/boxes')}>
@@ -145,12 +151,13 @@ export default function BoxDetailPage() {
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Pallet</p>
             {box.pallet_code ? (
-              <p
+              <button
+                type="button"
                 className="text-lg font-bold text-blue-600 cursor-pointer hover:underline"
                 onClick={() => navigate(`/barcode/pallets/${box.pallet}`)}
               >
                 {box.pallet_code}
-              </p>
+              </button>
             ) : (
               <p className="text-lg text-muted-foreground">Not palletized</p>
             )}
@@ -209,7 +216,7 @@ export default function BoxDetailPage() {
           <Button
             variant="destructive"
             size="sm"
-            onClick={handleVoid}
+            onClick={() => setVoidDialogOpen(true)}
             disabled={voidMutation.isPending}
           >
             <XCircle className="h-4 w-4 mr-1" /> Void Box
@@ -239,12 +246,13 @@ export default function BoxDetailPage() {
                   </div>
                   <div className="text-right">
                     {ls.repacked_into_barcode ? (
-                      <span
+                      <button
+                        type="button"
                         className="font-mono text-xs text-blue-600 cursor-pointer hover:underline"
                         onClick={() => navigate(`/barcode/boxes/${ls.repacked_into_box_id}`)}
                       >
                         → {ls.repacked_into_barcode}
-                      </span>
+                      </button>
                     ) : (
                       <span className="text-xs text-muted-foreground">Not yet repacked</span>
                     )}
@@ -272,12 +280,13 @@ export default function BoxDetailPage() {
                     <span className="ml-2 text-muted-foreground">Reason: {ls.reason}</span>
                   </div>
                   {ls.source_box_barcode && (
-                    <span
+                    <button
+                      type="button"
                       className="font-mono text-xs text-blue-600 cursor-pointer hover:underline"
                       onClick={() => navigate(`/barcode/boxes/${ls.source_box_id}`)}
                     >
                       ← {ls.source_box_barcode}
-                    </span>
+                    </button>
                   )}
                 </div>
               ))}
@@ -409,6 +418,19 @@ export default function BoxDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={voidDialogOpen}
+        onOpenChange={setVoidDialogOpen}
+        title="Void this box?"
+        description="Voiding removes it from inventory. This cannot be undone."
+        confirmLabel="Void"
+        destructive
+        requireReason
+        reasonLabel="Reason"
+        pending={voidMutation.isPending}
+        onConfirm={handleVoid}
+      />
     </div>
   );
 }

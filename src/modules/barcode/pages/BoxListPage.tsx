@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Badge, Card, CardContent } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
 
 import { useBoxesPage } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
@@ -26,17 +27,18 @@ export default function BoxListPage() {
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [unpalletized, setUnpalletized] = useState(false);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, unpalletized, search, pageSize]);
+  }, [statusFilter, unpalletized, debouncedSearch, pageSize]);
 
   const { data: boxPage, isLoading } = useBoxesPage({
     status: statusFilter || undefined,
     unpalletized: unpalletized ? 'true' : undefined,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     page,
     page_size: pageSize,
   });
@@ -44,7 +46,7 @@ export default function BoxListPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Boxes" subtitle="Individual carton barcode tracking" />
+      <DashboardHeader title="Boxes" description="Individual carton barcode tracking" />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -52,6 +54,7 @@ export default function BoxListPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
+            aria-label="Search by barcode"
             placeholder="Search by barcode..."
             className="w-full pl-9 pr-3 py-2 border rounded-md text-sm"
             value={search}

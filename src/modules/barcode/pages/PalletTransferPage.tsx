@@ -13,7 +13,7 @@ import { useMovePallet, usePallets } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
 import { type BinOption,useDestinationBins } from '../hooks/useDestinationBins';
 import type { Pallet } from '../types';
-import { getBarcodeErrorMessage } from '../utils/errors';
+import { toastBarcodeError } from '../utils/errors';
 
 export default function PalletTransferPage() {
   const [palletSearch, setPalletSearch] = useState('');
@@ -53,6 +53,7 @@ export default function PalletTransferPage() {
       return;
     }
     let successCount = 0;
+    let failureCount = 0;
     for (const pallet of selectedPallets) {
       try {
         await moveMutation.mutateAsync({
@@ -83,17 +84,20 @@ export default function PalletTransferPage() {
           }
         }
       } catch (err: unknown) {
-        const status = (err as { status?: number; response?: { status?: number } })?.status;
-        const responseStatus = (err as { response?: { status?: number } })?.response?.status;
-        if (!status && !responseStatus) {
-          toast.error(
-            `${pallet.pallet_id}: ${getBarcodeErrorMessage(err, 'Unable to transfer pallet')}`,
-          );
-        }
+        // Surface every failed pallet. toastBarcodeError skips statuses the API
+        // client already toasts globally (avoiding duplicates), so the aggregate
+        // count below still signals those otherwise-silent failures.
+        failureCount++;
+        toastBarcodeError(err, `${pallet.pallet_id}: Unable to transfer pallet`);
       }
     }
     if (successCount > 0) {
       toast.success(`${successCount} pallets transferred to ${toWarehouse}`);
+    }
+    if (failureCount > 0) {
+      toast.error(`${failureCount} pallet(s) failed to transfer`);
+    }
+    if (successCount > 0) {
       setSelectedPallets([]);
     }
   };
@@ -105,7 +109,7 @@ export default function PalletTransferPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Godown Transfer"
-        subtitle="Bulk transfer pallets between warehouses (e.g., BH-PF → GP-FG)"
+        description="Bulk transfer pallets between warehouses (e.g., BH-PF → GP-FG)"
       />
 
       <Card>

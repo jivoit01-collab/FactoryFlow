@@ -90,7 +90,7 @@ export default function ReprintPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Reprint Labels" subtitle="Search and reprint box or pallet labels" />
+      <DashboardHeader title="Reprint Labels" description="Search and reprint box or pallet labels" />
 
       <Card>
         <CardContent className="p-4 space-y-4">

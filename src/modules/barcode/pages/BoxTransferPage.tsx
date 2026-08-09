@@ -351,6 +351,14 @@ export default function BoxTransferPage() {
           </CardContent>
         </Card>
       )}
+
+      {sourcePallet && activeBoxes.length === 0 && (
+        <Card>
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            No transferable boxes on this pallet.
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

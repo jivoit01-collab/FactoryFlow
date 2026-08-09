@@ -14,6 +14,7 @@ import {
   usePalletDetail,
   usePallets,
 } from '../api';
+import { ConfirmDialog } from '../components';
 import ScanSearchButton from '../components/ScanSearchButton';
 import type { Box, DismantleReason, Pallet } from '../types';
 import { toastBarcodeError } from '../utils/errors';
@@ -37,6 +38,8 @@ export default function DismantlePage() {
   const [reason, setReason] = useState<DismantleReason>('OTHER');
   const [reasonNotes, setReasonNotes] = useState('');
   const [looseQty, setLooseQty] = useState('');
+  const [confirmPalletOpen, setConfirmPalletOpen] = useState(false);
+  const [confirmBoxOpen, setConfirmBoxOpen] = useState(false);
 
   const { data: pallets = [], isLoading: loadingPallets } = usePallets(
     mode === 'pallet' && palletSearch.length >= 2
@@ -63,6 +66,15 @@ export default function DismantlePage() {
     );
   };
 
+  // Box-dismantle qty must be a positive integer no greater than the box qty when provided.
+  // An empty value means "full dismantle" and is always allowed.
+  const looseQtyNum = Number(looseQty);
+  const looseQtyInvalid =
+    looseQty.trim() !== '' &&
+    (!Number.isInteger(looseQtyNum) ||
+      looseQtyNum < 1 ||
+      (boxDetail != null && looseQtyNum > Number(boxDetail.qty)));
+
   const handleDismantlePallet = async () => {
     if (!selectedId) return;
     try {
@@ -75,6 +87,7 @@ export default function DismantlePage() {
         },
       });
       toast.success(`Pallet dismantled — ${selectedBoxIds.length || 'all'} boxes removed`);
+      setConfirmPalletOpen(false);
       setSelectedId(null);
       setSelectedBoxIds([]);
       setReasonNotes('');
@@ -95,6 +108,7 @@ export default function DismantlePage() {
         },
       });
       toast.success('Box dismantled into loose stock');
+      setConfirmBoxOpen(false);
       setSelectedId(null);
       setLooseQty('');
       setReasonNotes('');
@@ -107,7 +121,7 @@ export default function DismantlePage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Dismantle"
-        subtitle="Break down pallets into boxes, or boxes into loose items"
+        description="Break down pallets into boxes, or boxes into loose items"
       />
 
       {/* Mode + Search */}
@@ -309,12 +323,28 @@ export default function DismantlePage() {
               </div>
             </div>
 
-            <Button onClick={handleDismantlePallet} disabled={dismantlePalletMutation.isPending}>
+            <Button
+              onClick={() => setConfirmPalletOpen(true)}
+              disabled={dismantlePalletMutation.isPending}
+            >
               <Scissors className="h-4 w-4 mr-1" />
               {dismantlePalletMutation.isPending
                 ? 'Dismantling...'
                 : `Dismantle ${selectedBoxIds.length || 'All'} Boxes from Pallet`}
             </Button>
+
+            <ConfirmDialog
+              open={confirmPalletOpen}
+              onOpenChange={setConfirmPalletOpen}
+              title="Dismantle pallet?"
+              description={`Dismantle ${selectedBoxIds.length || 'all'} boxes from ${palletDetail.pallet_id}? This cannot be undone.`}
+              confirmLabel="Dismantle"
+              destructive
+              pending={dismantlePalletMutation.isPending}
+              onConfirm={async () => {
+                await handleDismantlePallet();
+              }}
+            />
           </CardContent>
         </Card>
       )}
@@ -353,11 +383,20 @@ export default function DismantlePage() {
                   value={looseQty}
                   onChange={(e) => setLooseQty(e.target.value)}
                   placeholder={`All (${boxDetail.qty})`}
+                  min={1}
+                  step={1}
                   max={Number(boxDetail.qty)}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Leave empty for full dismantle ({boxDetail.qty} {boxDetail.uom})
-                </p>
+                {looseQtyInvalid ? (
+                  <p className="text-xs text-red-500 mt-1">
+                    Enter a whole number between 1 and {boxDetail.qty}, or leave empty for full
+                    dismantle.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Leave empty for full dismantle ({boxDetail.qty} {boxDetail.uom})
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Reason *</label>
@@ -384,12 +423,28 @@ export default function DismantlePage() {
               </div>
             </div>
 
-            <Button onClick={handleDismantleBox} disabled={dismantleBoxMutation.isPending}>
+            <Button
+              onClick={() => setConfirmBoxOpen(true)}
+              disabled={dismantleBoxMutation.isPending || looseQtyInvalid}
+            >
               <Scissors className="h-4 w-4 mr-1" />
               {dismantleBoxMutation.isPending
                 ? 'Dismantling...'
                 : `Dismantle ${looseQty || boxDetail.qty} ${boxDetail.uom} → Loose`}
             </Button>
+
+            <ConfirmDialog
+              open={confirmBoxOpen}
+              onOpenChange={setConfirmBoxOpen}
+              title="Dismantle box?"
+              description={`Dismantle ${looseQty || boxDetail.qty} ${boxDetail.uom} from ${boxDetail.box_barcode} into loose stock? This cannot be undone.`}
+              confirmLabel="Dismantle"
+              destructive
+              pending={dismantleBoxMutation.isPending}
+              onConfirm={async () => {
+                await handleDismantleBox();
+              }}
+            />
           </CardContent>
         </Card>
       )}

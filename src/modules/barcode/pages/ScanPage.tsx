@@ -38,7 +38,7 @@ export default function ScanPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Scan" subtitle="Point your phone camera at a QR code or barcode" />
+      <DashboardHeader title="Scan" description="Point your phone camera at a QR code or barcode" />
 
       <BarcodeScanner onScan={handleScan} />
 

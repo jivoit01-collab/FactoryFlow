@@ -1,4 +1,5 @@
 import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -6,6 +7,7 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useIntercompanyTransfer, useReverseIntercompanyTransfer } from '../api';
+import { ConfirmDialog } from '../components';
 import { toastBarcodeError } from '../utils/errors';
 
 export default function IntercompanyTransferDetailPage() {
@@ -15,17 +17,17 @@ export default function IntercompanyTransferDetailPage() {
   const transferQuery = useIntercompanyTransfer(id);
   const reverseMutation = useReverseIntercompanyTransfer();
   const transfer = transferQuery.data;
+  const [reverseOpen, setReverseOpen] = useState(false);
 
-  const handleReverse = async () => {
+  const handleReverse = async (reason: string) => {
     if (!transfer) return;
-    const reason = window.prompt('Reverse reason');
-    if (reason === null) return;
     try {
       await reverseMutation.mutateAsync({
         transferId: transfer.id,
         data: { reason, device_id: 'web' },
       });
       toast.success('Transfer reversed');
+      setReverseOpen(false);
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to reverse this transfer.');
     }
@@ -49,7 +51,11 @@ export default function IntercompanyTransferDetailPage() {
           Back
         </Button>
         {transfer.status !== 'REVERSED' && (
-          <Button variant="outline" onClick={handleReverse} disabled={reverseMutation.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => setReverseOpen(true)}
+            disabled={reverseMutation.isPending}
+          >
             <RotateCcw className="h-4 w-4 mr-1" />
             Reverse
           </Button>
@@ -141,6 +147,19 @@ export default function IntercompanyTransferDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={reverseOpen}
+        onOpenChange={setReverseOpen}
+        title="Reverse this transfer?"
+        description="Reversing returns the stock to the source company. This cannot be undone."
+        confirmLabel="Reverse"
+        destructive
+        requireReason
+        reasonLabel="Reason"
+        pending={reverseMutation.isPending}
+        onConfirm={handleReverse}
+      />
     </div>
   );
 }

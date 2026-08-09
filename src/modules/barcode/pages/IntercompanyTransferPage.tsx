@@ -33,6 +33,7 @@ import {
   useReverseIntercompanyTransfer,
   useScanIntercompanyBarcode,
 } from '../api';
+import { ConfirmDialog } from '../components';
 import BarcodeScanner from '../components/BarcodeScanner';
 import type { IntercompanyScannedBarcode, IntercompanyTransferType } from '../types';
 import { toastBarcodeError } from '../utils/errors';
@@ -58,6 +59,7 @@ export default function IntercompanyTransferPage() {
   const [search, setSearch] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [destinationWarehouse, setDestinationWarehouse] = useState('');
+  const [reverseTarget, setReverseTarget] = useState<number | null>(null);
 
   const dashboardQuery = useIntercompanyDashboard();
   const transfersQuery = useIntercompanyTransfers({ search: search || undefined, page_size: 10 });
@@ -150,15 +152,15 @@ export default function IntercompanyTransferPage() {
     }
   };
 
-  const handleReverse = async (transferId: number) => {
-    const reason = window.prompt('Reverse reason');
-    if (reason === null) return;
+  const handleReverse = async (reason: string) => {
+    if (reverseTarget === null) return;
     try {
       await reverseMutation.mutateAsync({
-        transferId,
+        transferId: reverseTarget,
         data: { reason, device_id: 'web' },
       });
       toast.success('Transfer reversed');
+      setReverseTarget(null);
     } catch (err: unknown) {
       toastBarcodeError(err, 'Unable to reverse this transfer.');
     }
@@ -174,6 +176,13 @@ export default function IntercompanyTransferPage() {
         title="Intercompany Barcode Transfer"
         description="Move box and pallet ownership between companies with barcode traceability"
       />
+
+      {dashboardQuery.isLoading && (
+        <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+      )}
+      {dashboardQuery.isError && (
+        <p className="text-sm text-destructive">Could not load dashboard totals. Please try again.</p>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
@@ -269,6 +278,7 @@ export default function IntercompanyTransferPage() {
                 if (event.key === 'Enter') handleScan(manualBarcode);
               }}
               placeholder="Enter or paste barcode"
+              aria-label="Enter or paste barcode"
               disabled={!canScan}
             />
             <Button onClick={() => handleScan(manualBarcode)} disabled={!manualBarcode || !canScan}>
@@ -367,6 +377,7 @@ export default function IntercompanyTransferPage() {
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             placeholder="Notes"
+            aria-label="Transfer notes"
             rows={2}
           />
         </CardContent>
@@ -416,10 +427,21 @@ export default function IntercompanyTransferPage() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search"
+                  aria-label="Search recent transfers"
                 />
               </div>
             </div>
             <div className="space-y-2">
+              {(transfersQuery.isLoading || dashboardQuery.isLoading) &&
+                recentTransfers.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Loading transfers...</p>
+                )}
+              {(transfersQuery.isError || dashboardQuery.isError) &&
+                recentTransfers.length === 0 && (
+                  <p className="text-sm text-destructive">
+                    Could not load recent transfers. Please try again.
+                  </p>
+                )}
               {recentTransfers.map((transfer) => (
                 <div key={transfer.id} className="rounded border p-3">
                   <div className="flex items-center justify-between gap-2">
@@ -450,7 +472,7 @@ export default function IntercompanyTransferPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleReverse(transfer.id)}
+                        onClick={() => setReverseTarget(transfer.id)}
                         disabled={reverseMutation.isPending}
                       >
                         <RotateCcw className="h-3 w-3 mr-1" />
@@ -460,9 +482,13 @@ export default function IntercompanyTransferPage() {
                   </div>
                 </div>
               ))}
-              {recentTransfers.length === 0 && (
-                <p className="text-sm text-muted-foreground">No transfers found.</p>
-              )}
+              {recentTransfers.length === 0 &&
+                !transfersQuery.isLoading &&
+                !dashboardQuery.isLoading &&
+                !transfersQuery.isError &&
+                !dashboardQuery.isError && (
+                  <p className="text-sm text-muted-foreground">No transfers found.</p>
+                )}
             </div>
           </CardContent>
         </Card>
@@ -543,6 +569,21 @@ export default function IntercompanyTransferPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={reverseTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setReverseTarget(null);
+        }}
+        title="Reverse this transfer?"
+        description="Reversing returns the stock to the source company. This cannot be undone."
+        confirmLabel="Reverse"
+        destructive
+        requireReason
+        reasonLabel="Reason"
+        pending={reverseMutation.isPending}
+        onConfirm={handleReverse}
+      />
     </div>
   );
 }

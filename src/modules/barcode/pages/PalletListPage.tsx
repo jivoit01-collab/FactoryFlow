@@ -7,6 +7,7 @@ import { useWMSWarehouses } from '@/modules/warehouse/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
 
 import { useCreatePallet, useDeleteEmptyPallet, usePalletsPage } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
@@ -36,6 +37,7 @@ export default function PalletListPage() {
   const initialStatus = searchParams.get('status') || '';
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [showCreate, setShowCreate] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -52,11 +54,11 @@ export default function PalletListPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, search, pageSize]);
+  }, [statusFilter, debouncedSearch, pageSize]);
 
   const { data: palletPage, isLoading } = usePalletsPage({
     status: statusFilter || undefined,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     page,
     page_size: pageSize,
   });
@@ -99,7 +101,7 @@ export default function PalletListPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <DashboardHeader title="Pallets" subtitle="All pallets with barcode tracking" />
+        <DashboardHeader title="Pallets" description="All pallets with barcode tracking" />
         <Button size="sm" onClick={() => setShowCreate((prev) => !prev)}>
           <Plus className="h-4 w-4 mr-1" /> New Pallet
         </Button>
@@ -144,6 +146,7 @@ export default function PalletListPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
+            aria-label="Search by pallet ID"
             placeholder="Search by pallet ID..."
             className="w-full pl-9 pr-3 py-2 border rounded-md text-sm"
             value={search}
