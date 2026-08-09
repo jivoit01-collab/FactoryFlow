@@ -5,7 +5,11 @@ import { toast } from 'sonner';
 
 import { ENTRY_STATUS, ENTRY_TYPES } from '@/config/constants';
 import { useGlobalDateRange } from '@/core/store/hooks';
-import { GateStatusBadge } from '@/modules/gate/components';
+import {
+  useEmptyVehicleEligibleEntries,
+  useEmptyVehicleGateOutEntries,
+} from '@/modules/gate/api';
+import { EmptyVehicleOutButton, GateStatusBadge } from '@/modules/gate/components';
 import {
   Button,
   Dialog,
@@ -55,6 +59,25 @@ export default function RawMaterialsPage() {
   }, [dateRange, statusFilter]);
 
   const { data: entries = [], isLoading } = useVehicleEntries(apiParams);
+
+  // Empty-vehicle-out overlay: which RM vehicles can still leave empty (by vehicle-entry
+  // id), and the exit date/time for those already marked out.
+  const { data: eligibleEntries = [] } = useEmptyVehicleEligibleEntries({
+    entry_type: ENTRY_TYPES.RAW_MATERIAL,
+  });
+  const { data: emptyOuts = [] } = useEmptyVehicleGateOutEntries({
+    entry_type: ENTRY_TYPES.RAW_MATERIAL,
+    from_date: dateRange.from,
+    to_date: dateRange.to,
+  });
+  const eligibleByEntryId = useMemo(
+    () => new Map(eligibleEntries.map((eligible) => [eligible.id, eligible])),
+    [eligibleEntries],
+  );
+  const outByEntryId = useMemo(
+    () => new Map(emptyOuts.map((out) => [out.vehicle_entry, out])),
+    [emptyOuts],
+  );
 
   const deleteEntry = useDeleteRawMaterialEntry();
   const [deleteTarget, setDeleteTarget] = useState<VehicleEntry | null>(null);
@@ -178,7 +201,7 @@ export default function RawMaterialsPage() {
       ) : (
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto max-w-full">
-            <table className="w-full min-w-[950px]">
+            <table className="w-full min-w-[1080px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-3 text-left text-sm font-medium">Entry No.</th>
@@ -187,6 +210,7 @@ export default function RawMaterialsPage() {
                   <th className="p-3 text-left text-sm font-medium">Driver</th>
                   <th className="p-3 text-left text-sm font-medium">Entry Time</th>
                   <th className="p-3 text-left text-sm font-medium">Status</th>
+                  <th className="p-3 text-left text-sm font-medium">Empty Out</th>
                   <th className="p-3 text-left text-sm font-medium">Remarks</th>
                   <th className="p-3 w-8" aria-hidden="true" />
                 </tr>
@@ -240,6 +264,20 @@ export default function RawMaterialsPage() {
                           />
                         ) : null}
                       </div>
+                    </td>
+                    <td className="p-3 text-sm whitespace-nowrap">
+                      {eligibleByEntryId.has(entry.id) ? (
+                        <EmptyVehicleOutButton entry={eligibleByEntryId.get(entry.id)!} />
+                      ) : outByEntryId.has(entry.id) ? (
+                        <span className="text-muted-foreground">
+                          Out ·{' '}
+                          {formatDateTime(
+                            `${outByEntryId.get(entry.id)!.gate_out_date}T${outByEntryId.get(entry.id)!.out_time}`,
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </td>
                     <td className="p-3 text-sm text-muted-foreground">{entry.remarks || '-'}</td>
                     <td className="p-3 text-right">

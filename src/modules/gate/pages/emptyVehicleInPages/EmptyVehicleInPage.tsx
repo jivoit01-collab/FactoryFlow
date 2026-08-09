@@ -12,15 +12,18 @@ import { type KeyboardEvent, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { ENTRY_TYPES } from '@/config/constants';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
 import { getPipelineStageRowClass } from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import { useDispatchBills } from '@/modules/dashboards/dispatch-plans/api';
 import {
   type EmptyVehicleGateInEntry,
+  useEmptyVehicleEligibleEntries,
   useEmptyVehicleGateInEntries,
+  useEmptyVehicleGateOutEntries,
 } from '@/modules/gate/api';
-import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
+import { DateRangePicker, EmptyVehicleOutButton, GateStatusBadge } from '@/modules/gate/components';
 import {
   Badge,
   Button,
@@ -103,6 +106,27 @@ export default function EmptyVehicleInPage() {
     refetch: refetchExpectedDispatch,
   } = useDispatchBills(expectedDispatchParams);
 
+  // Empty-vehicle-out overlay: which chains can leave empty (by vehicle-entry id) and the
+  // exit time for those already out. Cross-company, matching this board's aggregation.
+  const { data: eligibleEntries = [] } = useEmptyVehicleEligibleEntries({
+    entry_type: ENTRY_TYPES.EMPTY_VEHICLE,
+    all_companies: 1,
+  });
+  const { data: emptyOuts = [] } = useEmptyVehicleGateOutEntries({
+    entry_type: ENTRY_TYPES.EMPTY_VEHICLE,
+    all_companies: 1,
+    from_date: dateRange.from,
+    to_date: dateRange.to,
+  });
+  const eligibleByEntryId = useMemo(
+    () => new Map(eligibleEntries.map((eligible) => [eligible.id, eligible])),
+    [eligibleEntries],
+  );
+  const outByEntryId = useMemo(
+    () => new Map(emptyOuts.map((out) => [out.vehicle_entry, out])),
+    [emptyOuts],
+  );
+
   const insideEntries = entries.filter(
     (entry) => !['COMPLETED', 'CANCELLED'].includes(entry.vehicle_entry_status),
   );
@@ -147,6 +171,27 @@ export default function EmptyVehicleInPage() {
   // cross-company gate-in shows as a single vehicle entry; single-entry groups
   // render exactly as before.
   const vehicleGroups = useMemo(() => buildEmptyVehicleGroups(filteredEntries), [filteredEntries]);
+
+  const formatOutDateTime = (date?: string, time?: string) =>
+    [date, time ? time.slice(0, 5) : ''].filter(Boolean).join(' ') || '-';
+
+  // Render the "Empty Out" cell content for one vehicle-entry chain: a button when it can
+  // still leave empty, the exit time once it has, else a dash.
+  const renderEmptyOutCell = (vehicleEntryId: number) => {
+    const eligible = eligibleByEntryId.get(vehicleEntryId);
+    if (eligible) {
+      return <EmptyVehicleOutButton entry={eligible} onCompleted={() => refetchEntries()} />;
+    }
+    const out = outByEntryId.get(vehicleEntryId);
+    if (out) {
+      return (
+        <span className="text-xs text-muted-foreground">
+          Out · {formatOutDateTime(out.gate_out_date, out.out_time)}
+        </span>
+      );
+    }
+    return <span className="text-muted-foreground">-</span>;
+  };
 
   const renderEntryRow = (entry: EmptyVehicleGateInEntry, indent: boolean) => (
     <tr
@@ -194,6 +239,7 @@ export default function EmptyVehicleInPage() {
       <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
         {entry.security_name || '-'}
       </td>
+      <td className="whitespace-nowrap p-3 text-sm">{renderEmptyOutCell(entry.vehicle_entry)}</td>
     </tr>
   );
 
@@ -257,6 +303,40 @@ export default function EmptyVehicleInPage() {
         <td className="whitespace-nowrap p-3 text-sm">{primary.in_time}</td>
         <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
           {primary.security_name || '-'}
+        </td>
+        <td className="whitespace-nowrap p-3 text-sm">
+          <div className="flex flex-col gap-1">
+            {group.subEntries.map((sub) => {
+              const eligible = eligibleByEntryId.get(sub.vehicle_entry);
+              if (eligible) {
+                const company = eligible.company_code || eligible.company_name || '';
+                return (
+                  <EmptyVehicleOutButton
+                    key={sub.id}
+                    entry={eligible}
+                    label={company ? `Out · ${company}` : undefined}
+                    onCompleted={() => refetchEntries()}
+                  />
+                );
+              }
+              const out = outByEntryId.get(sub.vehicle_entry);
+              if (out) {
+                return (
+                  <span key={sub.id} className="text-xs text-muted-foreground">
+                    Out · {formatOutDateTime(out.gate_out_date, out.out_time)}
+                  </span>
+                );
+              }
+              return null;
+            })}
+            {group.subEntries.every(
+              (sub) =>
+                !eligibleByEntryId.has(sub.vehicle_entry) &&
+                !outByEntryId.has(sub.vehicle_entry),
+            ) ? (
+              <span className="text-muted-foreground">-</span>
+            ) : null}
+          </div>
         </td>
       </tr>
     );
@@ -491,7 +571,7 @@ export default function EmptyVehicleInPage() {
         ) : (
           <div className="overflow-hidden rounded-md border">
             <div className="max-h-[520px] overflow-auto">
-              <table className="w-full min-w-[1040px]">
+              <table className="w-full min-w-[1180px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium">Entry No.</th>
@@ -504,6 +584,7 @@ export default function EmptyVehicleInPage() {
                     <th className="p-3 text-left text-sm font-medium">In Date</th>
                     <th className="p-3 text-left text-sm font-medium">In Time</th>
                     <th className="p-3 text-left text-sm font-medium">Security</th>
+                    <th className="p-3 text-left text-sm font-medium">Empty Out</th>
                   </tr>
                 </thead>
                 <tbody>

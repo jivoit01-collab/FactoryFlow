@@ -354,10 +354,12 @@ export const GATE_ENTRY_TYPES: GateEntryTypeConfig[] = [
     hideFromNewEntry: true,
   },
   {
+    // Oil arrives refined at the factory (a gate-IN); the emptied vehicle is later marked
+    // out via empty-vehicle-out, so this belongs under Gate In, not Gate Out.
     id: 'job-work',
     title: 'Job Work / Oil Refining',
     description: 'Oil refining vehicle movement with production order linking later.',
-    direction: 'out',
+    direction: 'in',
     vehicleMode: 'vehicle',
     dashboardRoute: '/gate/job-work',
     newEntryRoute: '/gate/job-work/new',

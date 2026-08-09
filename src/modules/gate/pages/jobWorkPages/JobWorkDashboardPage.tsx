@@ -2,9 +2,15 @@ import { CheckCircle2, Clock, Factory, FileText, Plus, RefreshCw, Search, User }
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { ENTRY_TYPES } from '@/config/constants';
 import { useGlobalDateRange } from '@/core/store/hooks';
-import { type JobWorkGateInEntry, useJobWorkGateInEntries } from '@/modules/gate/api';
-import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
+import {
+  type JobWorkGateInEntry,
+  useEmptyVehicleEligibleEntries,
+  useEmptyVehicleGateOutEntries,
+  useJobWorkGateInEntries,
+} from '@/modules/gate/api';
+import { DateRangePicker, EmptyVehicleOutButton, GateStatusBadge } from '@/modules/gate/components';
 import { getLastStep } from '@/modules/gate/hooks';
 import { getJobWorkDisplayStatus, hasLinkedJobWorkProductionOrder } from '@/modules/gate/utils';
 import { Button, Card, CardContent, Input } from '@/shared/components/ui';
@@ -63,6 +69,25 @@ export default function JobWorkDashboardPage() {
     isLoading,
     refetch,
   } = useJobWorkGateInEntries(queryParams);
+
+  // Empty-vehicle-out overlay: which job-work vehicles can leave empty (by vehicle-entry
+  // id), and the exit time for those already out.
+  const { data: eligibleEntries = [] } = useEmptyVehicleEligibleEntries({
+    entry_type: ENTRY_TYPES.JOB_WORK,
+  });
+  const { data: emptyOuts = [] } = useEmptyVehicleGateOutEntries({
+    entry_type: ENTRY_TYPES.JOB_WORK,
+    from_date: dateRange.from,
+    to_date: dateRange.to,
+  });
+  const eligibleByEntryId = useMemo(
+    () => new Map(eligibleEntries.map((eligible) => [eligible.id, eligible])),
+    [eligibleEntries],
+  );
+  const outByEntryId = useMemo(
+    () => new Map(emptyOuts.map((out) => [out.vehicle_entry, out])),
+    [emptyOuts],
+  );
 
   const pendingCount = entries.filter((entry) => getJobWorkDisplayStatus(entry) === 'PENDING').length;
   const completedCount = entries.filter((entry) => getJobWorkDisplayStatus(entry) === 'COMPLETED').length;
@@ -187,7 +212,7 @@ export default function JobWorkDashboardPage() {
         ) : (
           <div className="overflow-hidden rounded-md border">
             <div className="max-h-[520px] overflow-auto">
-              <table className="w-full min-w-[1040px]">
+              <table className="w-full min-w-[1180px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium">Entry No.</th>
@@ -197,6 +222,7 @@ export default function JobWorkDashboardPage() {
                     <th className="p-3 text-left text-sm font-medium">Item</th>
                     <th className="p-3 text-left text-sm font-medium">Gate In</th>
                     <th className="p-3 text-left text-sm font-medium">Status</th>
+                    <th className="p-3 text-left text-sm font-medium">Empty Out</th>
                     <th className="p-3 text-left text-sm font-medium">Components</th>
                   </tr>
                 </thead>
@@ -249,6 +275,23 @@ export default function JobWorkDashboardPage() {
                         </td>
                         <td className="whitespace-nowrap p-3 text-sm">
                           <GateStatusBadge status={displayStatus} />
+                        </td>
+                        <td className="whitespace-nowrap p-3 text-sm">
+                          {eligibleByEntryId.has(entry.vehicle_entry) ? (
+                            <EmptyVehicleOutButton
+                              entry={eligibleByEntryId.get(entry.vehicle_entry)!}
+                            />
+                          ) : outByEntryId.has(entry.vehicle_entry) ? (
+                            <span className="text-muted-foreground">
+                              Out ·{' '}
+                              {formatDateTime(
+                                outByEntryId.get(entry.vehicle_entry)!.gate_out_date,
+                                outByEntryId.get(entry.vehicle_entry)!.out_time,
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="whitespace-nowrap p-3 text-sm">{entry.items.length}</td>
                       </tr>

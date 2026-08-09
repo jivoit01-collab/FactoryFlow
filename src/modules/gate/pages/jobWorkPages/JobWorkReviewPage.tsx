@@ -10,13 +10,16 @@ import {
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { ENTRY_TYPES } from '@/config/constants';
 import {
   useCompleteJobWorkGateIn,
+  useEmptyVehicleEligibleEntries,
   useGateAttachments,
   useJobWorkGateInByVehicleEntry,
   useWeighment,
 } from '@/modules/gate/api';
 import {
+  EmptyVehicleOutButton,
   GateSuccessScreen,
   StepFooter,
   StepHeader,
@@ -54,6 +57,12 @@ export default function JobWorkReviewPage() {
   const completeJobWork = useCompleteJobWorkGateIn();
   const displayStatus = jobWork ? getJobWorkDisplayStatus(jobWork) : null;
   const isGateCompleted = jobWork?.status === 'COMPLETED';
+
+  // Show the one-step "out empty" action once this vehicle can leave empty.
+  const { data: eligibleEntries = [] } = useEmptyVehicleEligibleEntries({
+    entry_type: ENTRY_TYPES.JOB_WORK,
+  });
+  const emptyOutEntry = eligibleEntries.find((eligible) => eligible.id === entryIdNumber);
 
   const handleComplete = async () => {
     if (!entryIdNumber) {
@@ -99,7 +108,14 @@ export default function JobWorkReviewPage() {
 
       {jobWork && (
         <>
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-3">
+            {emptyOutEntry ? (
+              <EmptyVehicleOutButton
+                entry={emptyOutEntry}
+                size="default"
+                onCompleted={() => navigate('/gate/job-work')}
+              />
+            ) : null}
             <Button
               type="button"
               variant="outline"

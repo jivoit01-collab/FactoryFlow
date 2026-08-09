@@ -25,9 +25,11 @@ export { VehicleTypeSelect } from './VehicleTypeSelect';
 export { VendorSelect } from './VendorSelect';
 
 // Dialog components
+export { ChallanWeightCard } from './ChallanWeightCard';
 export { CreateDriverDialog } from './CreateDriverDialog';
 export { CreateTransporterDialog } from './CreateTransporterDialog';
 export { CreateVehicleDialog } from './CreateVehicleDialog';
+export { EmptyVehicleOutButton, EmptyVehicleOutDialog } from './EmptyVehicleOutButton';
 
 // Reusable form shells
 export type {

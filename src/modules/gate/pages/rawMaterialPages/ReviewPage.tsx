@@ -15,8 +15,9 @@ import {
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ENTRY_STATUS } from '@/config/constants';
-import { GateStatusBadge } from '@/modules/gate/components';
+import { ENTRY_STATUS, ENTRY_TYPES } from '@/config/constants';
+import { useEmptyVehicleEligibleEntries } from '@/modules/gate/api';
+import { EmptyVehicleOutButton, GateStatusBadge } from '@/modules/gate/components';
 import { isAllRmLoad } from '@/modules/gate/utils';
 import { EntryTimeSummary } from '@/shared/components';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '@/shared/components/ui';
@@ -128,6 +129,13 @@ export default function ReviewPage() {
   const { data: gateEntry, isLoading, error: fetchError } = useGateEntryFullView(entryIdNumber);
 
   const completeGateEntry = useCompleteGateEntry();
+
+  // Offer a one-step "out empty" once this vehicle can leave empty (the eligible-entries
+  // API keys on the vehicle-entry id, which for RM is this entry's own id).
+  const { data: eligibleEntries = [] } = useEmptyVehicleEligibleEntries({
+    entry_type: ENTRY_TYPES.RAW_MATERIAL,
+  });
+  const emptyOutEntry = eligibleEntries.find((eligible) => eligible.id === entryIdNumber);
 
   const handlePrevious = () => {
     if (isEditMode && entryId) {
@@ -269,14 +277,23 @@ export default function ReviewPage() {
             Review all details before completing the gate entry
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate(`/gate/raw-materials/edit/${entryId}/step1`)}
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View Full Entry
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {emptyOutEntry ? (
+            <EmptyVehicleOutButton
+              entry={emptyOutEntry}
+              size="default"
+              onCompleted={handleNavigateToList}
+            />
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(`/gate/raw-materials/edit/${entryId}/step1`)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Full Entry
+          </Button>
+        </div>
       </div>
 
       {apiErrors.general && (
