@@ -13,7 +13,13 @@ describe('dark mode form control visibility', () => {
     expect(css).toContain('textarea,');
     expect(css).toContain('select {');
     expect(css).toContain('@apply bg-background text-foreground;');
-    expect(css).toContain('color-scheme: light dark;');
+    // Native controls must track the app's manual theme (light by default, dark
+    // under `.dark`) rather than the OS `prefers-color-scheme`, so the native
+    // date-picker text/icon stays visible in light mode.
+    expect(css).toContain('color-scheme: light;');
+    expect(css).toContain('color-scheme: dark;');
+    expect(css).not.toContain('color-scheme: light dark;');
+    expect(css).toContain(".dark input:not([type='checkbox']):not([type='radio'])");
     expect(css).toContain('option {');
   });
 
