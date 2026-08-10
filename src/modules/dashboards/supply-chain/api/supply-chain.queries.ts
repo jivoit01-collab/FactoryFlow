@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { useAuth } from '@/core/auth';
 import { getErrorMessage } from '@/shared/utils';
 
-import { supplyChainApi } from './supply-chain.api';
+import type { VerdictOutcome } from '../types';
+import { dailyRunApi, supplyChainApi } from './supply-chain.api';
 
 export const SUPPLY_CHAIN_QUERY_KEYS = {
   all: ['supply-chain'] as const,
@@ -86,4 +87,104 @@ export function useUploadReferenceTemplate() {
     },
     onError: (error) => toast.error(getErrorMessage(error, 'Could not read that workbook.')),
   });
+}
+
+/* ── The daily operating loop ─────────────────────────────────────────────── */
+
+export const DAILY_RUN_QUERY_KEYS = {
+  all: ['supply-chain-run'] as const,
+  latest: (companyId?: number | string) =>
+    [...DAILY_RUN_QUERY_KEYS.all, 'latest', companyId] as const,
+  detail: (id: number, companyId?: number | string) =>
+    [...DAILY_RUN_QUERY_KEYS.all, 'detail', id, companyId] as const,
+  weekly: (weeks: number, companyId?: number | string) =>
+    [...DAILY_RUN_QUERY_KEYS.all, 'weekly', weeks, companyId] as const,
+};
+
+export function useDailyRun(runId?: number) {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: runId
+      ? DAILY_RUN_QUERY_KEYS.detail(runId, currentCompany?.company_id)
+      : DAILY_RUN_QUERY_KEYS.latest(currentCompany?.company_id),
+    queryFn: () => (runId ? dailyRunApi.detail(runId) : dailyRunApi.latest()),
+    // A run is a snapshot of one morning; it does not drift while you read it.
+    staleTime: 60 * 1000,
+    retry: (count, error) => {
+      // "No run yet" is a real state to show, not a failure to retry into.
+      if ((error as { status?: number })?.status === 404) return false;
+      return count < 2;
+    },
+  });
+}
+
+export function useWeeklyReview(weeks = 4) {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: DAILY_RUN_QUERY_KEYS.weekly(weeks, currentCompany?.company_id),
+    queryFn: () => dailyRunApi.weekly(weeks),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+function useRunMutation<TArgs>(
+  fn: (args: TArgs) => Promise<unknown>,
+  success: string,
+  fallback: string,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      toast.success(success);
+      void queryClient.invalidateQueries({ queryKey: DAILY_RUN_QUERY_KEYS.all });
+    },
+    onError: (error) => toast.error(getErrorMessage(error, fallback)),
+  });
+}
+
+export function useGenerateRun() {
+  return useRunMutation(
+    () => dailyRunApi.generate(),
+    "Today's run is ready.",
+    'Could not build the run.',
+  );
+}
+
+export function useReviewRun(runId?: number) {
+  return useRunMutation(
+    ({ comment, override }: { comment: string; override: boolean }) =>
+      dailyRunApi.review(runId!, comment, override),
+    'Reviewed. It can now be published.',
+    'Could not review the run.',
+  );
+}
+
+export function usePublishRun(runId?: number) {
+  return useRunMutation(
+    (comment: string) => dailyRunApi.publish(runId!, comment),
+    'Published to the buyer and HODs.',
+    'Could not publish the run.',
+  );
+}
+
+export function useSetRowOwner() {
+  return useRunMutation(
+    ({ rowId, owner }: { rowId: number; owner: string }) =>
+      dailyRunApi.setOwner(rowId, owner),
+    'Owner set.',
+    'Could not set the owner.',
+  );
+}
+
+export function useSetVerdict() {
+  return useRunMutation(
+    ({ rowId, outcome, note }: { rowId: number; outcome: VerdictOutcome; note: string }) =>
+      dailyRunApi.setVerdict(rowId, outcome, note),
+    'Verdict recorded.',
+    'Could not record the verdict.',
+  );
 }

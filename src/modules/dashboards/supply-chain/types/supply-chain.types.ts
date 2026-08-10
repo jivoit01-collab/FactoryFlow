@@ -148,3 +148,112 @@ export interface AlarmPreviewEntry {
 export interface AlarmPreviewResponse {
   subscriptions: AlarmPreviewEntry[];
 }
+
+/* ── The daily operating loop ─────────────────────────────────────────────── */
+
+export type RunStatus = 'GENERATED' | 'REVIEWED' | 'PUBLISHED' | 'BLOCKED';
+export type CoverVerdict = 'RED' | 'AMBER' | 'GREEN' | 'UNKNOWN';
+export type VerdictOutcome = 'REAL' | 'WRONG_DATA' | 'ALREADY_HANDLED';
+
+export interface RowVerdict {
+  outcome: VerdictOutcome;
+  note: string;
+  supplier_promised_date: string | null;
+  recorded_by: string;
+  recorded_at: string;
+}
+
+/** One material in one run. Every intermediate number is present so the row can
+ *  be checked on paper — which is the whole point of this method. */
+export interface DailyRunRow {
+  id: number;
+  sku_code: string;
+  material_code: string;
+  material_name: string;
+  material_type: string;
+  supplier_name: string;
+  unit: string;
+  units_per_day: string;
+  quantity_per_unit: string;
+  consumption_per_day: string;
+  on_hand: string;
+  committed: string;
+  free_stock: string;
+  days_of_cover: string;
+  cover_calendar_days: string;
+  lead_time_days: number | null;
+  lead_time_source: string;
+  lead_time_samples: number;
+  stockout_date: string | null;
+  order_by_date: string | null;
+  days_late: number;
+  verdict: CoverVerdict;
+  owner: string;
+  row_verdict: RowVerdict | null;
+}
+
+export interface DataQualityIssue {
+  id: number;
+  code: string;
+  sku_code: string;
+  item_code: string;
+  message: string;
+  blocking: boolean;
+}
+
+export interface DailyRun {
+  id: number;
+  company_code: string;
+  run_date: string;
+  status: RunStatus;
+  red_count: number;
+  amber_count: number;
+  green_count: number;
+  unknown_count: number;
+  issue_count: number;
+  comment: string;
+  parameters_snapshot: Record<string, unknown>;
+  is_credible: boolean;
+  generated_at: string;
+  reviewed_by: string;
+  reviewed_at: string | null;
+  published_by: string;
+  published_at: string | null;
+  recipients: number;
+}
+
+export interface DailyRunPayload {
+  run: DailyRun;
+  rows: DailyRunRow[];
+  issues: DataQualityIssue[];
+  verdict_progress: {
+    red_rows: number;
+    verdicts_recorded: number;
+    outstanding: number;
+    complete: boolean;
+  };
+  unassigned_red_rows: number;
+  message?: { title: string; body: string; recipients: number };
+}
+
+export interface WeeklyReview {
+  from: string;
+  to: string;
+  runs: number;
+  weeks: {
+    week_starting: string;
+    total: number;
+    real: number;
+    wrong_data: number;
+    already_handled: number;
+    real_share_percent: number;
+  }[];
+  totals: {
+    verdicts: number;
+    real: number;
+    wrong_data: number;
+    already_handled: number;
+    real_share_percent: number;
+  };
+  recommendation: string;
+}

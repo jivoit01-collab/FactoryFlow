@@ -454,6 +454,18 @@ export const API_ENDPOINTS = {
     SKU_MACHINES: '/supply-chain/reference/sku-machines/',
     REFERENCE_UPLOAD: '/supply-chain/reference/upload/',
     REFERENCE_IMPORTS: '/supply-chain/reference/imports/',
+    // The daily operating loop
+    RUNS: '/supply-chain/runs/',
+    RUN_GENERATE: '/supply-chain/runs/generate/',
+    RUN_LATEST: '/supply-chain/runs/latest/',
+    RUN_DETAIL: (id: number) => `/supply-chain/runs/${id}/`,
+    RUN_REVIEW: (id: number) => `/supply-chain/runs/${id}/review/`,
+    RUN_PUBLISH: (id: number) => `/supply-chain/runs/${id}/publish/`,
+    ROW_OWNER: (id: number) => `/supply-chain/rows/${id}/owner/`,
+    ROW_VERDICT: (id: number) => `/supply-chain/rows/${id}/verdict/`,
+    WEEKLY: '/supply-chain/weekly/',
+    MONITORED_SKUS: '/supply-chain/monitored-skus/',
+    PARAMETERS: '/supply-chain/parameters/',
   },
   // Goods Return (customer returns)
   GOODS_RETURN: {
