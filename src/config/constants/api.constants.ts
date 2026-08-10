@@ -439,6 +439,22 @@ export const API_ENDPOINTS = {
     ANALYSIS: '/dashboards/sales-planning-requirement/analysis/',
     REFRESH: '/dashboards/sales-planning-requirement/refresh/',
   },
+  // Smart Supply Chain (lead-time alarms + line capacity)
+  SUPPLY_CHAIN: {
+    DASHBOARD: '/supply-chain/dashboard/',
+    PROCUREMENT: '/supply-chain/procurement/',
+    CAPACITY: '/supply-chain/capacity/',
+    POLICY: '/supply-chain/policy/',
+    FLOORS: '/supply-chain/floors/',
+    FLOOR_CONVENTION: '/supply-chain/floor-convention/',
+    ALARM_PREVIEW: '/supply-chain/alarms/preview/',
+    ALARM_SEND: '/supply-chain/alarms/send/',
+    LEAD_TIMES: '/supply-chain/reference/lead-times/',
+    MACHINES: '/supply-chain/reference/machines/',
+    SKU_MACHINES: '/supply-chain/reference/sku-machines/',
+    REFERENCE_UPLOAD: '/supply-chain/reference/upload/',
+    REFERENCE_IMPORTS: '/supply-chain/reference/imports/',
+  },
   // Goods Return (customer returns)
   GOODS_RETURN: {
     LIST: '/goods-return/',

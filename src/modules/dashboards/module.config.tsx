@@ -25,6 +25,9 @@ const NonMovingDashboardPage = lazy(
 const SalesPlanningRequirementDashboardPage = lazy(
   () => import('./sales-planning-requirement/pages/SalesPlanningRequirementDashboardPage'),
 );
+const SupplyChainDashboardPage = lazy(
+  () => import('./supply-chain/pages/SupplyChainDashboardPage'),
+);
 const ProductionMovementDashboardPage = lazy(
   () => import('./production-movement/pages/ProductionMovementDashboardPage'),
 );
@@ -109,6 +112,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
       breadcrumb: { label: 'Sales Planning vs Requirement' },
+    },
+    {
+      path: '/dashboards/supply-chain',
+      element: <SupplyChainDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_SUPPLY_CHAIN],
+      breadcrumb: { label: 'Smart Supply Chain' },
     },
     {
       path: '/dashboards/production-movement',
@@ -211,6 +221,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/sales-planning-requirement',
           title: 'Sales Plan vs Req.',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
+        },
+        {
+          path: '/dashboards/supply-chain',
+          title: 'Smart Supply Chain',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_SUPPLY_CHAIN],
         },
         {
           path: '/dashboards/production-movement',
