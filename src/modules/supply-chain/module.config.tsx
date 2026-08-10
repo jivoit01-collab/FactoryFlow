@@ -9,6 +9,8 @@
  *   Daily run   the morning routine — what to order today, and the verdict log
  *   Weekly      were the alarms worth raising?
  *   Planning    the monthly view — lead-time alarms and line capacity
+ *   Live trail  the whole order book read live from SAP, order to purchase
+ *               order, across every book the factory fills
  *
  * Sidebar hides the module from users with no `supply_chain.*` permission
  * (`modulePrefix`). Reading and recording a verdict need VIEW; uploading
@@ -27,6 +29,7 @@ import type { ModuleConfig } from '@/core/types';
 const SupplyChainDailyRunPage = lazy(() => import('./pages/SupplyChainDailyRunPage'));
 const SupplyChainWeeklyPage = lazy(() => import('./pages/SupplyChainWeeklyPage'));
 const SupplyChainDashboardPage = lazy(() => import('./pages/SupplyChainDashboardPage'));
+const SupplyChainLiveTrailPage = lazy(() => import('./pages/SupplyChainLiveTrailPage'));
 
 export const supplyChainModuleConfig: ModuleConfig = {
   name: 'supply-chain',
@@ -62,6 +65,13 @@ export const supplyChainModuleConfig: ModuleConfig = {
       permissions: [SUPPLY_CHAIN_PERMISSIONS.VIEW],
       breadcrumb: { label: 'Planning' },
     },
+    {
+      path: '/supply-chain/live-trail',
+      element: <SupplyChainLiveTrailPage />,
+      layout: 'main',
+      permissions: [SUPPLY_CHAIN_PERMISSIONS.VIEW],
+      breadcrumb: { label: 'Live Trail' },
+    },
   ],
   navigation: [
     {
@@ -80,6 +90,11 @@ export const supplyChainModuleConfig: ModuleConfig = {
         {
           path: '/supply-chain/weekly',
           title: 'Weekly Review',
+          permissions: SUPPLY_CHAIN_ACCESS,
+        },
+        {
+          path: '/supply-chain/live-trail',
+          title: 'Live Trail',
           permissions: SUPPLY_CHAIN_ACCESS,
         },
         {

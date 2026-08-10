@@ -6,7 +6,9 @@ import type {
   DailyRun,
   DailyRunPayload,
   DailyRunRow,
+  LiveTrail,
   SupplyChainDashboard,
+  TrailScope,
   VerdictOutcome,
   WeeklyReview,
 } from '../types';
@@ -18,6 +20,14 @@ export const supplyChainApi = {
     const response = await apiClient.get<SupplyChainDashboard>(EP.DASHBOARD, {
       params: forecastId ? { forecast_id: forecastId } : undefined,
     });
+    return response.data;
+  },
+
+  /** Read live from SAP, so this is a slow call by design — several seconds on
+   *  a full order book. It is never cached server-side; a stale trail would
+   *  defeat the point of it. */
+  async getLiveTrail(scope: TrailScope): Promise<LiveTrail> {
+    const response = await apiClient.get<LiveTrail>(EP.LIVE_TRAIL, { params: { scope } });
     return response.data;
   },
 

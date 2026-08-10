@@ -25,6 +25,18 @@
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
     color-scheme: light;
+
+    /*
+     * Supply-chain Live Trail series colours — the three ways an open order can
+     * be answered: ship it, it is already being made, or it still has to be
+     * made. Categorical, so they carry identity and must stay distinguishable
+     * under colour-vision deficiency; validated against this surface (#fff) for
+     * lightness band, chroma, CVD separation and 3:1 contrast. The dark set
+     * below is chosen for its own surface, not derived from these.
+     */
+    --trail-stock: #2a78d6;
+    --trail-wip: #eb6834;
+    --trail-produce: #4a3aa7;
   }
 
   .dark {
@@ -48,6 +60,11 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
     color-scheme: dark;
+
+    /* Re-stepped for the dark surface (#020817) and validated there. */
+    --trail-stock: #3987e5;
+    --trail-wip: #d95926;
+    --trail-produce: #9085e9;
   }
 }
 

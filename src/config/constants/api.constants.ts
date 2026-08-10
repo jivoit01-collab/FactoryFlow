@@ -442,6 +442,7 @@ export const API_ENDPOINTS = {
   // Smart Supply Chain (lead-time alarms + line capacity)
   SUPPLY_CHAIN: {
     DASHBOARD: '/supply-chain/dashboard/',
+    LIVE_TRAIL: '/supply-chain/live-trail/',
     PROCUREMENT: '/supply-chain/procurement/',
     CAPACITY: '/supply-chain/capacity/',
     POLICY: '/supply-chain/policy/',

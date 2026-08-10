@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/core/auth';
 import { getErrorMessage } from '@/shared/utils';
 
-import type { VerdictOutcome } from '../types';
+import type { TrailScope, VerdictOutcome } from '../types';
 import { dailyRunApi, supplyChainApi } from './supply-chain.api';
 
 export const SUPPLY_CHAIN_QUERY_KEYS = {
@@ -13,6 +13,10 @@ export const SUPPLY_CHAIN_QUERY_KEYS = {
     [...SUPPLY_CHAIN_QUERY_KEYS.all, 'dashboard', companyId, forecastId ?? null] as const,
   alarmPreview: (companyId?: number | string) =>
     [...SUPPLY_CHAIN_QUERY_KEYS.all, 'alarm-preview', companyId] as const,
+  // Deliberately NOT keyed on the current company: the trail is a group view
+  // built from every book the factory fills, so switching company must not
+  // refetch a different answer.
+  liveTrail: (scope: TrailScope) => [...SUPPLY_CHAIN_QUERY_KEYS.all, 'live-trail', scope] as const,
 };
 
 /** The dashboard reads planning rows already in Postgres, so it is cheap and can
@@ -27,6 +31,22 @@ export function useSupplyChainDashboard(forecastId?: number | null) {
     queryKey: SUPPLY_CHAIN_QUERY_KEYS.dashboard(currentCompany?.company_id, forecastId),
     queryFn: () => supplyChainApi.getDashboard(forecastId),
     staleTime: STALE_TIME,
+  });
+}
+
+/** The Live Trail, read straight from SAP.
+ *
+ * A few seconds per call, so it does not refetch on focus and holds for a
+ * minute — long enough to read the page, short enough that "Refresh" means
+ * something. Both scopes are cached separately, so toggling between the
+ * external and group readings is instant after the first look at each.
+ */
+export function useLiveTrail(scope: TrailScope) {
+  return useQuery({
+    queryKey: SUPPLY_CHAIN_QUERY_KEYS.liveTrail(scope),
+    queryFn: () => supplyChainApi.getLiveTrail(scope),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
