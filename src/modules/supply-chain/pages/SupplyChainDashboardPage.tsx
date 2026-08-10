@@ -8,7 +8,7 @@
 import { Bell, RefreshCw, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { SUPPLY_CHAIN_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, CardHeader } from '@/shared/components/ui';
@@ -30,7 +30,7 @@ type TabKey = 'procurement' | 'capacity' | 'floors';
 
 export default function SupplyChainDashboardPage() {
   const { hasPermission } = usePermission();
-  const canManage = hasPermission(DASHBOARDS_PERMISSIONS.MANAGE_SUPPLY_CHAIN_REFERENCE);
+  const canManage = hasPermission(SUPPLY_CHAIN_PERMISSIONS.MANAGE_REFERENCE);
 
   const [tab, setTab] = useState<TabKey>('procurement');
   const fileInput = useRef<HTMLInputElement>(null);

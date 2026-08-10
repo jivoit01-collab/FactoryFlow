@@ -58,6 +58,12 @@ export {
 
 // Dashboards Module
 export { DASHBOARDS_PERMISSIONS, type DashboardsPermission } from './dashboards.permissions';
+export {
+  SUPPLY_CHAIN_ACCESS,
+  SUPPLY_CHAIN_MODULE_PREFIX,
+  SUPPLY_CHAIN_PERMISSIONS,
+  type SupplyChainPermission,
+} from './supply-chain.permissions';
 
 // Dispatch Module
 export {

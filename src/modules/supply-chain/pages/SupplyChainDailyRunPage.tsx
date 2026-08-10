@@ -9,7 +9,7 @@
 import { AlertTriangle, CheckCircle2, Play, Send } from 'lucide-react';
 import { useState } from 'react';
 
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { SUPPLY_CHAIN_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input } from '@/shared/components/ui';
@@ -37,7 +37,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function SupplyChainDailyRunPage() {
   const { hasPermission } = usePermission();
-  const canAct = hasPermission(DASHBOARDS_PERMISSIONS.MANAGE_SUPPLY_CHAIN_REFERENCE);
+  const canAct = hasPermission(SUPPLY_CHAIN_PERMISSIONS.MANAGE_REFERENCE);
 
   const [tab, setTab] = useState<TabKey>('quality');
   const [comment, setComment] = useState('');

@@ -5,8 +5,6 @@ export const DASHBOARDS_PERMISSIONS = {
     'sales_planning_requirement.can_view_sales_planning_requirement',
   REFRESH_SALES_PLANNING_REQUIREMENT:
     'sales_planning_requirement.can_refresh_sales_planning_requirement',
-  VIEW_SUPPLY_CHAIN: 'supply_chain.can_view_supply_chain',
-  MANAGE_SUPPLY_CHAIN_REFERENCE: 'supply_chain.can_manage_supply_chain_reference',
   VIEW_PRODUCTION_MOVEMENT: 'production_execution.can_view_reports',
   VIEW_DISPATCH_PLANS: 'dispatch_plans.can_view_dispatch_plans',
   EDIT_DISPATCH_PLANS: 'dispatch_plans.can_edit_dispatch_plans',
