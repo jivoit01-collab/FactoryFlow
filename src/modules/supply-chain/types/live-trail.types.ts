@@ -309,6 +309,118 @@ export interface UnresolvedDemand {
   value: number;
 }
 
+/** The five the brief names. Every issue lands on exactly one of them. */
+export type DepartmentCode =
+  | 'PRODUCTION'
+  | 'PACKAGING_PROCUREMENT'
+  | 'RAW_PROCUREMENT'
+  | 'INFRASTRUCTURE'
+  | 'FINANCE';
+
+/**
+ * Earned from the data, never assigned.
+ *
+ * CRITICAL — the date it had to be acted on has passed; expedite.
+ * PLAN — there is lead time left; schedule it.
+ * WATCH — a decision or a data gap, not a deadline.
+ */
+export type ActionSeverity = 'CRITICAL' | 'PLAN' | 'WATCH';
+
+export type ActionKind =
+  | 'RAISE_PO'
+  | 'CHASE_PO'
+  | 'MISSING_BOM'
+  | 'NO_WORK_ORDER'
+  | 'UNMATCHED_ITEM'
+  | 'OVER_CAPACITY'
+  | 'UNMAPPED_SKU'
+  | 'MISSING_REFERENCE'
+  | 'RELEASE_FUNDS'
+  | 'STALE_PO_DECISION';
+
+export interface DepartmentAction {
+  id: string;
+  department: DepartmentCode;
+  material_type: string;
+  severity: ActionSeverity;
+  kind: ActionKind;
+  title: string;
+  detail: string;
+  /** What to open to check it. `none` when the action is about the book as a whole. */
+  subject: { kind: 'component' | 'sku' | 'machine' | 'none'; code: string; name: string };
+  due: string | null;
+  days_late: number;
+  value: number;
+  /** The SKUs this is holding up. */
+  blocks: string[];
+}
+
+export interface Department {
+  code: DepartmentCode;
+  label: string;
+  remit: string;
+  total: number;
+  critical: number;
+  plan: number;
+  watch: number;
+  value: number;
+  headline: string;
+  actions: DepartmentAction[];
+}
+
+/** Why a run is the size it is: the gap, the material, or the line. */
+export type RunLimit = 'DEMAND' | 'MATERIAL' | 'CAPACITY';
+
+export interface TomorrowRow {
+  priority: number;
+  sku: string;
+  name: string;
+  variety: string;
+  uom: string;
+  orders: number;
+  value: number;
+  earliest_due: string | null;
+  days_late: number;
+  /** The whole gap for this SKU. */
+  to_produce: number;
+  /** What the REMAINING component stock allows, after the rows above it took theirs. */
+  buildable: number;
+  /** What to actually run. */
+  planned: number;
+  limited_by: RunLimit;
+  /** Named only when material is what bit. */
+  blocker: {
+    item: string;
+    name: string;
+    uom: string;
+    onhand: number;
+    per_unit: number;
+    needed_for_gap: number;
+    short: number;
+  } | null;
+  machine: string | null;
+  hours: number | null;
+  rate_per_hour: number | null;
+  litres: number;
+}
+
+export interface TomorrowPlan {
+  date: string;
+  /** False until the reference template is on file — then it is demand and
+   *  material only, with no line-hours ceiling. */
+  capacity_limited: boolean;
+  rows: TomorrowRow[];
+  totals: {
+    skus: number;
+    pieces: number;
+    litres: number;
+    value: number;
+    blocked_skus: number;
+    blocked_pieces: number;
+    hours: number;
+  };
+}
+
 export interface LiveTrail {
   generated_at: string;
   production_company: DemandCompany;
@@ -317,6 +429,10 @@ export interface LiveTrail {
   unavailable_books: { code: DemandCompany; label: string; reason: string }[];
   scope: TrailScope;
   summary: TrailSummary;
+  /** Who has to do what. Always all five, including the ones with nothing to do. */
+  departments: Department[];
+  /** What to actually run on the next working day. */
+  tomorrow: TomorrowPlan;
   orders: TrailOrder[];
   skus: TrailSku[];
   components: TrailComponent[];

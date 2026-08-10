@@ -15,11 +15,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  TrailAlarms,
   TrailCover,
+  TrailDepartments,
   TrailDrill,
   TrailStages,
   TrailTables,
+  TrailTomorrow,
   UnresolvedDemandPanel,
 } from '../components/live-trail';
 import type { LiveTrail } from '../types';
@@ -72,18 +73,6 @@ describe('TrailCover', () => {
   });
 });
 
-describe('TrailAlarms', () => {
-  it('leads with the production gap and quantifies what it blocks', () => {
-    render(<TrailAlarms data={trail} />);
-    expect(screen.getByText(/SKUs cannot ship from stock/)).toBeInTheDocument();
-  });
-
-  it('reports order age as age, not as a confirmed missed date', () => {
-    render(<TrailAlarms data={trail} />);
-    expect(screen.getByText(/order age, not a confirmed date breach/)).toBeInTheDocument();
-  });
-});
-
 describe('TrailTables', () => {
   const renderTables = (tab: 'orders' | 'skus' | 'materials' | 'buy' | 'capacity') =>
     render(
@@ -128,6 +117,93 @@ describe('TrailTables', () => {
     expect(screen.queryByText(/Filling Cost Commodities/)).not.toBeInTheDocument();
     renderTables('capacity');
     expect(screen.getAllByText(/Filling Cost/).length).toBeGreaterThan(0);
+  });
+});
+
+describe('TrailDepartments', () => {
+  const openSubject = vi.fn();
+
+  it('shows all five departments, including the ones with nothing to do', () => {
+    render(<TrailDepartments data={trail} onOpenSubject={openSubject} />);
+    ['Production', 'Packaging Procurement', 'Oil & Raw-Material Procurement',
+      'Infrastructure', 'Finance'].forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+  });
+
+  it('opens the busiest desk first, so the page lands on the problem', () => {
+    render(<TrailDepartments data={trail} onOpenSubject={openSubject} />);
+    const busiest = trail.departments.find((d) => d.critical > 0)!;
+    // Twice on purpose: once as the card's headline, once as the expanded row.
+    expect(screen.getAllByText(busiest.actions[0].title).length).toBe(2);
+  });
+
+  it('separates what is past due from what is merely scheduled', () => {
+    render(<TrailDepartments data={trail} onOpenSubject={openSubject} />);
+    expect(screen.getAllByText(/past due/).length).toBeGreaterThan(0);
+  });
+
+  it('opens the evidence when an action is clicked', () => {
+    const onOpenSubject = vi.fn();
+    render(<TrailDepartments data={trail} onOpenSubject={onOpenSubject} />);
+    const action = trail.departments
+      .find((d) => d.critical > 0)!
+      .actions.find((a) => a.subject.kind === 'component')!;
+    const matches = screen.getAllByText(action.title);
+    fireEvent.click(matches[matches.length - 1]);
+    expect(onOpenSubject).toHaveBeenCalledWith('component', action.subject.code);
+  });
+
+  it('says a clear department is clear rather than hiding it', () => {
+    const cleared = {
+      ...trail,
+      departments: trail.departments.map((d) => ({
+        ...d, actions: [], total: 0, critical: 0, plan: 0, watch: 0,
+      })),
+    };
+    render(<TrailDepartments data={cleared} onOpenSubject={openSubject} />);
+    expect(screen.getAllByText('clear')).toHaveLength(5);
+  });
+});
+
+describe('TrailTomorrow', () => {
+  const noop = vi.fn();
+
+  it('leads with what to run, not with what is owed', () => {
+    render(<TrailTomorrow data={trail} onOpenSku={noop} onOpenComponent={noop} />);
+    expect(screen.getByText('SKUs to run')).toBeInTheDocument();
+    expect(screen.getByText('Litres to fill')).toBeInTheDocument();
+  });
+
+  it('names the component that capped a run, so the plan points at the buy', () => {
+    render(<TrailTomorrow data={trail} onOpenSku={noop} onOpenComponent={noop} />);
+    const capped = trail.tomorrow.rows.find((r) => r.blocker)!;
+    expect(
+      screen.getAllByText(new RegExp(capped.blocker!.name.slice(0, 18))).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('opens the blocking component straight from the plan', () => {
+    const onOpenComponent = vi.fn();
+    render(
+      <TrailTomorrow data={trail} onOpenSku={noop} onOpenComponent={onOpenComponent} />,
+    );
+    const capped = trail.tomorrow.rows.find((r) => r.blocker)!;
+    const [blockerLink] = screen.getAllByText(
+      new RegExp(`${capped.blocker!.name.slice(0, 18)}.*left`),
+    );
+    fireEvent.click(blockerLink);
+    expect(onOpenComponent).toHaveBeenCalledWith(capped.blocker!.item);
+  });
+
+  it('declares that no line hours are on file rather than implying a full check', () => {
+    render(<TrailTomorrow data={trail} onOpenSku={noop} onOpenComponent={noop} />);
+    expect(screen.getByText(/machine hours are not on file/)).toBeInTheDocument();
+  });
+
+  it('counts the SKUs that cannot be started at all', () => {
+    render(<TrailTomorrow data={trail} onOpenSku={noop} onOpenComponent={noop} />);
+    expect(screen.getByText('Cannot run at all')).toBeInTheDocument();
   });
 });
 

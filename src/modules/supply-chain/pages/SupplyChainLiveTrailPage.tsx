@@ -29,12 +29,14 @@ import type { Focus, StageTab } from '../components/live-trail';
 import {
   inr,
   n0,
-  TrailAlarms,
+  onDate,
   TrailBuyBox,
   TrailCover,
+  TrailDepartments,
   TrailDrill,
   TrailStages,
   TrailTables,
+  TrailTomorrow,
   UnresolvedDemandPanel,
 } from '../components/live-trail';
 import type { TrailScope } from '../types';
@@ -167,9 +169,49 @@ export default function SupplyChainLiveTrailPage() {
         )}
       </div>
 
-      <TrailAlarms data={data} />
-
       <TrailStages data={data} active={tab} onOpen={setTab} />
+
+      {/* The two questions someone actually opens this page with: what do I run
+          tomorrow, and who has to move for it. Everything below is the evidence
+          under these two answers. */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-[15px]">
+              Produce on {onDate(data.tomorrow.date)}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Oldest promise first, capped by the material actually on the shelf.
+              Stock is allocated down the list, so nothing is promised twice.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <TrailTomorrow
+              data={data}
+              onOpenSku={openSku}
+              onOpenComponent={openComponent}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-[15px]">Who has to act</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Every open issue on one desk, with the date it missed. Sent to each
+              department automatically each morning — this is the same list.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <TrailDepartments
+              data={data}
+              onOpenSubject={(kind, code) =>
+                kind === 'sku' ? openSku(code) : openComponent(code)
+              }
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
         <Card>
