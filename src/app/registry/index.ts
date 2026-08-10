@@ -6,9 +6,9 @@ import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types';
 import { adminModuleConfig } from '@/modules/admin/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
+import { dailyTasksModuleConfig } from '@/modules/daily-tasks/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
-import { dailyTasksModuleConfig } from '@/modules/daily-tasks/module.config';
 import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
@@ -20,6 +20,7 @@ import { notificationsModuleConfig } from '@/modules/notifications/module.config
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
 import { settingsModuleConfig } from '@/modules/settings/module.config';
+import { supplyChainModuleConfig } from '@/modules/supply-chain/module.config';
 import { vehicleManagementModuleConfig } from '@/modules/vehicle-management/module.config';
 import { warehouseModuleConfig } from '@/modules/warehouse/module.config';
 import { wmsModuleConfig } from '@/modules/wms/module.config';
@@ -48,6 +49,7 @@ export const moduleRegistry: ModuleConfig[] = [
   wmsModuleConfig,
   barcodeModuleConfig,
   marketplaceModuleConfig,
+  supplyChainModuleConfig,
   notificationsModuleConfig,
   settingsModuleConfig,
 ];
