@@ -21,5 +21,11 @@ export const SUPPLY_CHAIN_ACCESS: string[] = [
   SUPPLY_CHAIN_PERMISSIONS.MANAGE_REFERENCE,
 ];
 
-/** Hides the whole sidebar entry from users with no `supply_chain.*` permission. */
-export const SUPPLY_CHAIN_MODULE_PREFIX = 'supply_chain.';
+/**
+ * Hides the whole sidebar entry from users with no `supply_chain.*` permission.
+ *
+ * No trailing dot: `hasModulePermission` appends one itself, so a prefix written
+ * as `supply_chain.` becomes `supply_chain..` and matches nothing — the entry
+ * then stays hidden even from users who DO hold the permission.
+ */
+export const SUPPLY_CHAIN_MODULE_PREFIX = 'supply_chain';
