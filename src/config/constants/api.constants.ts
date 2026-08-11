@@ -468,6 +468,21 @@ export const API_ENDPOINTS = {
     MONITORED_SKUS: '/supply-chain/monitored-skus/',
     PARAMETERS: '/supply-chain/parameters/',
   },
+  // Order Processing (OMS order -> stock -> production -> procurement)
+  ORDER_PROCESSING: {
+    DASHBOARD: '/order-processing/dashboard/',
+    ORDERS: '/order-processing/orders/',
+    ORDER_DETAIL: (id: number) => `/order-processing/orders/${id}/`,
+    ORDER_TIMELINE: (id: number) => `/order-processing/orders/${id}/timeline/`,
+    ORDER_CHECK_STOCK: (id: number) => `/order-processing/orders/${id}/check-stock/`,
+    PRODUCTION: '/order-processing/production/',
+    PRODUCTION_DETAIL: (id: number) => `/order-processing/production/${id}/`,
+    MATERIALS: '/order-processing/materials/',
+    MATERIALS_PLAN: '/order-processing/materials/plan/',
+    PROCUREMENT: '/order-processing/procurement/',
+    LINE_ISSUES: '/order-processing/line-issues/',
+    SYNC: '/order-processing/sync/',
+  },
   // Goods Return (customer returns)
   GOODS_RETURN: {
     LIST: '/goods-return/',
