@@ -1,10 +1,11 @@
-import { LayoutGrid, Sparkles } from 'lucide-react';
+import { LayoutGrid, Sparkles, TruckIcon } from 'lucide-react';
 
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { DASHBOARDS_PERMISSIONS, DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 
 import {
   DispatchAnalytics,
+  DispatchDeliveryKpis,
   DispatchPipelineFlow,
   DispatchSectionCards,
 } from '../components/dashboard';
@@ -20,6 +21,7 @@ export default function DispatchDashboardPage() {
   const { hasPermission } = usePermission();
   const canViewAnalytics = hasPermission(DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS);
   const canViewPipeline = hasPermission(DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE);
+  const canViewTracking = hasPermission(DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW);
 
   return (
     <div className="relative min-h-full space-y-8 p-6">
@@ -46,6 +48,17 @@ export default function DispatchDashboardPage() {
 
       {/* KPIs + charts */}
       {canViewAnalytics && <DispatchAnalytics />}
+
+      {/* what happened after the truck left the gate */}
+      {canViewTracking && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <TruckIcon className="h-5 w-5 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Delivery tracking</h2>
+          </div>
+          <DispatchDeliveryKpis />
+        </section>
+      )}
 
       {/* module sections */}
       <section className="space-y-4">

@@ -1,4 +1,12 @@
-import { Boxes, ClipboardList, IndianRupee, Truck } from 'lucide-react';
+import {
+  Boxes,
+  CalendarCheck,
+  ClipboardList,
+  Hourglass,
+  IndianRupee,
+  Truck,
+  Weight,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -55,6 +63,16 @@ export function DispatchAnalytics() {
     () => (data?.by_status ?? []).map((s) => ({ status: s.status, value: s.amount })),
     [data],
   );
+  // Backlog split by booking status. A status with nothing open is absent from
+  // by_status entirely, so missing must read as zero rather than blank.
+  const backlogByStatus = useMemo(() => {
+    const rows = data?.by_status ?? [];
+    const of = (status: string) => rows.find((s) => s.status === status);
+    return {
+      pending: of('PENDING'),
+      booked: of('BOOKED'),
+    };
+  }, [data]);
 
   const goToFulfilment = () => navigate('/dashboards/dispatch-fulfilment');
 
@@ -117,6 +135,44 @@ export function DispatchAnalytics() {
           accent={ACCENTS.amber}
           onClick={goToFulfilment}
           delayMs={180}
+        />
+        <KpiStat
+          icon={Hourglass}
+          label="Pending"
+          value={backlogByStatus.pending?.count ?? 0}
+          sub={`${money(backlogByStatus.pending?.amount ?? 0)} not yet booked`}
+          accent={ACCENTS.orange}
+          onClick={goToFulfilment}
+          delayMs={240}
+        />
+        <KpiStat
+          icon={CalendarCheck}
+          label="Booked"
+          value={backlogByStatus.booked?.count ?? 0}
+          sub={`${money(backlogByStatus.booked?.amount ?? 0)} awaiting the truck`}
+          accent={ACCENTS.blue}
+          onClick={goToFulfilment}
+          delayMs={300}
+        />
+        <KpiStat
+          icon={Weight}
+          label="Backlog weight"
+          value={`${abbreviate(data.totals.backlog.weight)} kg`}
+          sub="Still to leave the gate"
+          accent={ACCENTS.violet}
+          onClick={goToFulfilment}
+          delayMs={360}
+        />
+        <KpiStat
+          icon={Truck}
+          label="Invoices shipped"
+          value={data.totals.dispatched.bills}
+          sub={`across ${data.totals.dispatched.count} truck${
+            data.totals.dispatched.count === 1 ? '' : 's'
+          }`}
+          accent={ACCENTS.cyan}
+          onClick={goToFulfilment}
+          delayMs={420}
         />
       </div>
 
