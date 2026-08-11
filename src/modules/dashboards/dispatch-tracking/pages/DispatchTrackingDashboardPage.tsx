@@ -219,6 +219,13 @@ function LateTrucksCard({
                   className="flex w-full items-center justify-between gap-2 py-2 text-left text-sm hover:bg-accent/50">
                   <span className="min-w-0">
                     <span className="font-medium">{t.vehicle_number || t.arrival_no}</span>
+                    {/* The escalation path, in the order you use it: whose truck
+                        it is, then the driver to call. */}
+                    {t.transporter_name ? (
+                      <span className="block truncate text-xs font-medium text-foreground">
+                        {t.transporter_name}
+                      </span>
+                    ) : null}
                     <span className="block truncate text-xs text-muted-foreground">
                       Reach by {t.expected_reach_date ?? '—'} · {t.arrival_no}
                     </span>

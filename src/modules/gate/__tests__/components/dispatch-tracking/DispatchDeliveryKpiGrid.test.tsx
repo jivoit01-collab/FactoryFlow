@@ -33,8 +33,8 @@ const DATA: DispatchTrackingSummary = {
   late: {
     count: 3,
     trucks: [
-      { arrival: 1, arrival_no: 'A-1', vehicle_number: 'HR55', driver_name: '', driver_mobile: '', expected_reach_date: '2026-08-05', days_overdue: 6 },
-      { arrival: 2, arrival_no: 'A-2', vehicle_number: 'HR56', driver_name: '', driver_mobile: '', expected_reach_date: '2026-08-09', days_overdue: 2 },
+      { arrival: 1, arrival_no: 'A-1', vehicle_number: 'HR55', transporter_name: 'Bhargave Road Carrier', driver_name: '', driver_mobile: '', expected_reach_date: '2026-08-05', days_overdue: 6 },
+      { arrival: 2, arrival_no: 'A-2', vehicle_number: 'HR56', transporter_name: 'Arnav Transport Service', driver_name: '', driver_mobile: '', expected_reach_date: '2026-08-09', days_overdue: 2 },
     ],
   },
   delivered_today: 4,

@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import {
   AlertTriangle,
+  Building2,
   CalendarClock,
   ChevronRight,
   MapPin,
@@ -189,7 +190,7 @@ export default function DispatchTrackingPage() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search vehicle, arrival, bill, customer, company, status"
+            placeholder="Search vehicle, transporter, arrival, bill, customer, company, status"
             className="pl-9"
           />
         </div>
@@ -273,6 +274,12 @@ export default function DispatchTrackingPage() {
                   />
                 </SheetTitle>
                 <SheetDescription className="space-y-1 text-left">
+                  {selected.transporter_name ? (
+                    <span className="flex items-center gap-1 font-medium text-foreground">
+                      <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      {selected.transporter_name}
+                    </span>
+                  ) : null}
                   <span className="block">
                     Dispatched {formatDateTime(selected.dispatched_at)} · Driver{' '}
                     {selected.driver_name || '-'}
@@ -360,6 +367,12 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
             >
               <CalendarClock className="h-3 w-3" />
               {truck.is_late ? 'Date exceeded — was due' : 'Reach by'} {formatDate(truck.expected_reach_date)}
+            </p>
+          ) : null}
+          {truck.transporter_name ? (
+            <p className="flex items-center gap-1 text-sm">
+              <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate font-medium">{truck.transporter_name}</span>
             </p>
           ) : null}
           <p className="text-sm text-muted-foreground">
