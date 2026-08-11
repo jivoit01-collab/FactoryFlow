@@ -59,6 +59,12 @@ export {
 // Dashboards Module
 export { DASHBOARDS_PERMISSIONS, type DashboardsPermission } from './dashboards.permissions';
 export {
+  ORDER_PROCESSING_ACCESS,
+  ORDER_PROCESSING_MODULE_PREFIX,
+  ORDER_PROCESSING_PERMISSIONS,
+  type OrderProcessingPermission,
+} from './order-processing.permissions';
+export {
   SUPPLY_CHAIN_ACCESS,
   SUPPLY_CHAIN_MODULE_PREFIX,
   SUPPLY_CHAIN_PERMISSIONS,
