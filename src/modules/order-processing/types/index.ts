@@ -31,6 +31,35 @@ export interface OrderLine {
   /** Empty means the line is trustworthy. Anything here means it is not. */
   issues: string[];
   is_trustworthy: boolean;
+  /** Server-rendered so every client shows the gap identically: the warehouse
+   *  code, or the literal words NO WAREHOUSE when there is none. */
+  warehouse_label: string;
+  has_warehouse: boolean;
+}
+
+export interface LineIssueRow {
+  id: number;
+  oms_order_id: number;
+  order_number: string;
+  customer_name: string;
+  oms_status: string;
+  delivery_date: string | null;
+  item_code: string;
+  item_name: string;
+  category: string;
+  quantity: string;
+  warehouse_code: string;
+  warehouse_label: string;
+  issues: string[];
+}
+
+export interface LineIssueResponse {
+  issue: string;
+  summary: Record<string, number>;
+  total_lines: number;
+  orders_affected: number;
+  by_item: { item_code: string; item_name: string; category: string; lines: number }[];
+  results: LineIssueRow[];
 }
 
 export interface OrderListRow {

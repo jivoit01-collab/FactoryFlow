@@ -16,6 +16,7 @@ export const OP_KEYS = {
   production: (s: string, c?: number | string) => [...OP_KEYS.all, 'production', c, s] as const,
   materials: (short: boolean, c?: number | string) => [...OP_KEYS.all, 'materials', c, short] as const,
   procurement: (s: string, c?: number | string) => [...OP_KEYS.all, 'procurement', c, s] as const,
+  lineIssues: (i: string, c?: number | string) => [...OP_KEYS.all, 'line-issues', c, i] as const,
   sync: (c?: number | string) => [...OP_KEYS.all, 'sync', c] as const,
 };
 
@@ -84,6 +85,15 @@ export function useOpProcurement(status = 'open') {
   return useQuery({
     queryKey: OP_KEYS.procurement(status, currentCompany?.company_id),
     queryFn: () => orderProcessingApi.procurement(status),
+    staleTime: STALE,
+  });
+}
+
+export function useOpLineIssues(issue = 'NO_WAREHOUSE') {
+  const { currentCompany } = useAuth();
+  return useQuery({
+    queryKey: OP_KEYS.lineIssues(issue, currentCompany?.company_id),
+    queryFn: () => orderProcessingApi.lineIssues(issue),
     staleTime: STALE,
   });
 }

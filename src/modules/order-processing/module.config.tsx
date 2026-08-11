@@ -22,6 +22,7 @@ const DashboardPage = lazy(() => import('./pages/OrderProcessingDashboardPage'))
 const OrdersPage = lazy(() => import('./pages/OrdersPage'));
 const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage'));
 const PlanningPage = lazy(() => import('./pages/PlanningPage'));
+const DataQualityPage = lazy(() => import('./pages/DataQualityPage'));
 
 export const orderProcessingModuleConfig: ModuleConfig = {
   name: 'order-processing',
@@ -54,6 +55,13 @@ export const orderProcessingModuleConfig: ModuleConfig = {
       permissions: [ORDER_PROCESSING_PERMISSIONS.VIEW],
       breadcrumb: { label: 'Planning' },
     },
+    {
+      path: '/order-processing/data-quality',
+      element: <DataQualityPage />,
+      layout: 'main',
+      permissions: [ORDER_PROCESSING_PERMISSIONS.VIEW],
+      breadcrumb: { label: 'Data Quality' },
+    },
   ],
   navigation: [
     {
@@ -67,6 +75,7 @@ export const orderProcessingModuleConfig: ModuleConfig = {
         { path: '/order-processing', title: 'Overview', permissions: ORDER_PROCESSING_ACCESS },
         { path: '/order-processing/orders', title: 'Orders', permissions: ORDER_PROCESSING_ACCESS },
         { path: '/order-processing/planning', title: 'Planning', permissions: ORDER_PROCESSING_ACCESS },
+        { path: '/order-processing/data-quality', title: 'Data Quality', permissions: ORDER_PROCESSING_ACCESS },
       ],
     },
   ],

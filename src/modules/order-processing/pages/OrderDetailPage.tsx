@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom';
 import { ORDER_PROCESSING_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent } from '@/shared/components/ui';
+import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
 import { useOpCheckStock, useOpOrder, useOpTimeline } from '../api/order-processing.queries';
@@ -92,7 +92,11 @@ export default function OrderDetailPage() {
                     <td className="px-3 py-2 text-right tabular-nums">{l.quantity}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{l.pack_size}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{l.cases}</td>
-                    <td className="px-3 py-2">{l.warehouse_code || <span className="text-amber-600">none</span>}</td>
+                    <td className="px-3 py-2">
+                      {l.has_warehouse
+                        ? l.warehouse_label
+                        : <Badge className="bg-amber-500 text-white">{l.warehouse_label}</Badge>}
+                    </td>
                     <td className="px-3 py-2"><IssueList issues={l.issues} /></td>
                   </tr>
                 ))}

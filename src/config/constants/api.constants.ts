@@ -480,6 +480,7 @@ export const API_ENDPOINTS = {
     MATERIALS: '/order-processing/materials/',
     MATERIALS_PLAN: '/order-processing/materials/plan/',
     PROCUREMENT: '/order-processing/procurement/',
+    LINE_ISSUES: '/order-processing/line-issues/',
     SYNC: '/order-processing/sync/',
   },
   // Goods Return (customer returns)

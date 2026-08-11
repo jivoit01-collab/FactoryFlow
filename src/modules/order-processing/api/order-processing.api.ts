@@ -3,6 +3,7 @@ import { apiClient } from '@/core/api';
 
 import type {
   Dashboard,
+  LineIssueResponse,
   MaterialRequirement,
   OrderDetail,
   OrderListResponse,
@@ -19,6 +20,8 @@ export interface OrderFilters {
   state?: string;
   oms_status?: string;
   search?: string;
+  /** A LineIssue code, or 'any' — orders carrying a flagged line. */
+  issue?: string;
   page?: number;
 }
 
@@ -63,6 +66,10 @@ export const orderProcessingApi = {
 
   async procurement(status = 'open'): Promise<ProcurementRequirement[]> {
     return (await apiClient.get<ProcurementRequirement[]>(EP.PROCUREMENT, { params: { status } })).data;
+  },
+
+  async lineIssues(issue = 'NO_WAREHOUSE'): Promise<LineIssueResponse> {
+    return (await apiClient.get<LineIssueResponse>(EP.LINE_ISSUES, { params: { issue } })).data;
   },
 
   async syncStatus(): Promise<{ oms_reachable: boolean; detail: string; runs: SyncRun[] }> {

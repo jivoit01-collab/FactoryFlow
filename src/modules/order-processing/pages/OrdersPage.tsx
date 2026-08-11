@@ -19,9 +19,13 @@ const STATES = [
 
 export default function OrdersPage() {
   const [state, setState] = useState('');
+  const [issue, setIssue] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const query = useOpOrders({ state: state || undefined, search: search || undefined, page });
+  const query = useOpOrders({
+    state: state || undefined, issue: issue || undefined,
+    search: search || undefined, page,
+  });
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -35,6 +39,10 @@ export default function OrdersPage() {
             {s.label}
           </Button>
         ))}
+        <Button size="sm" variant={issue === 'NO_WAREHOUSE' ? 'default' : 'outline'}
+                onClick={() => { setIssue(issue === 'NO_WAREHOUSE' ? '' : 'NO_WAREHOUSE'); setPage(1); }}>
+          No warehouse
+        </Button>
         <Input className="h-9 w-56" placeholder="Order, customer or item code"
                value={search}
                onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
