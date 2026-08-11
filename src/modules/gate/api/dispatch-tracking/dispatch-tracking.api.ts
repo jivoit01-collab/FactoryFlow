@@ -20,6 +20,10 @@ export interface DispatchTrackingTruck {
   arrival_status: string;
   vehicle: number | null;
   vehicle_number: string;
+  /** The transporter carrying the trip, read off its dispatched dockings.
+   *  Blank if none was recorded; comma-joined on the rare truck whose dockings
+   *  were booked under more than one. */
+  transporter_name: string;
   driver_name: string;
   driver_mobile: string;
   gatepass_no: string | null;
@@ -166,6 +170,8 @@ export interface LateDispatchTruck {
   arrival: number;
   arrival_no: string;
   vehicle_number: string;
+  /** Who to escalate to once the driver stops answering. */
+  transporter_name: string;
   driver_name: string;
   driver_mobile: string;
   expected_reach_date: string | null;

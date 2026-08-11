@@ -125,6 +125,74 @@ const monthInputValue = (dateStr?: string | null) => (dateStr ? dateStr.slice(0,
 
 const monthPayloadValue = (month: string) => (month ? month : null);
 
+/** Server field name -> the form field its message belongs under. */
+const POST_ERROR_FIELDS: Record<string, string> = {
+  vendor_code: 'vendorCode',
+  branch_id: 'branchId',
+  service_description: 'serviceDescription',
+  amount: 'amount',
+  unit_price: 'amount',
+  tax_code: 'taxCode',
+  gl_account: 'glAccount',
+  place_of_supply: 'placeOfSupply',
+  effective_month: 'effectiveMonth',
+  budget_delivery_point: 'budgetDeliveryPoint',
+  sub_account: 'subAccount',
+  location_code: 'locationCode',
+  location_name: 'locationCode',
+  sac_entry: 'sacEntry',
+  sac_code: 'sacEntry',
+  product_variety: 'productVariety',
+  total_litres: 'totalLitres',
+  invoice_number: 'invoiceNumber',
+  eway_bill: 'ewayBill',
+  invoice_weight: 'invoiceWeight',
+  invoice_amount: 'invoiceAmount',
+  bilty_no: 'biltyNo',
+  bilty_date: 'biltyNo',
+  vendor_ref: 'vendorRef',
+  extra_charges: 'extraCharges',
+  attachments: 'attachments',
+};
+
+/**
+ * Turn a failed post into something the operator can act on.
+ *
+ * The server answers a rejected payload with `{detail: "Invalid request data",
+ * errors: {field: [reason]}}`. Showing only `detail` — as this page used to —
+ * leaves a message that names nothing: a Jivo Mart booking was rejected on
+ * `sac_entry` for months and the screen only ever said "Invalid request data".
+ * So each field's reason is put under its own input, and anything that has no
+ * input on this form is spelled out in the banner rather than dropped.
+ */
+function describePostFailure(error: ApiError): Record<string, string> {
+  const fieldErrors = error.errors;
+  if (!fieldErrors || Object.keys(fieldErrors).length === 0) {
+    return { general: error.message || 'Failed to post Service GRPO' };
+  }
+
+  const mapped: Record<string, string> = {};
+  const unmapped: string[] = [];
+
+  Object.entries(fieldErrors).forEach(([field, messages]) => {
+    const reason = Array.isArray(messages) ? messages.join(' ') : String(messages);
+    const formField = POST_ERROR_FIELDS[field];
+    if (formField) {
+      // Two server fields can share one input (e.g. sac_entry + sac_code);
+      // keep both reasons rather than letting the later one win.
+      mapped[formField] = mapped[formField] ? `${mapped[formField]} ${reason}` : reason;
+    } else {
+      unmapped.push(`${field}: ${reason}`);
+    }
+  });
+
+  const named = Object.keys(fieldErrors).join(', ');
+  mapped.general = unmapped.length
+    ? `${error.message || 'Could not post'} — ${unmapped.join('; ')}`
+    : `${error.message || 'Could not post'} — check ${named} below.`;
+  return mapped;
+}
+
 const formatCurrency = (amount: number) =>
   amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
 
@@ -656,7 +724,7 @@ export default function ServiceGRPOPreviewPage() {
     } catch (err) {
       setShowConfirm(false);
       const postError = err as ApiError;
-      setApiErrors({ general: postError.message || 'Failed to post Service GRPO' });
+      setApiErrors(describePostFailure(postError));
     }
   };
 

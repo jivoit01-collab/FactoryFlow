@@ -1,26 +1,15 @@
+import { ArrowRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  AlertTriangle,
-  ArrowRight,
-  CalendarClock,
-  CheckCircle2,
-  Clock,
-  Navigation,
-  PackageCheck,
-  RotateCcw,
-  Timer,
-  Truck,
-} from 'lucide-react';
 
-import { ACCENTS, KpiStat } from '@/shared/components/dashboard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { cn } from '@/shared/utils/cn';
 import {
   type DispatchTrackingSummary,
   type TruckDispatchStatus,
 } from '@/modules/gate/api/dispatch-tracking/dispatch-tracking.api';
 import { useDispatchTrackingSummary } from '@/modules/gate/api/dispatch-tracking/dispatch-tracking.queries';
+import { DispatchDeliveryKpiGrid } from '@/modules/gate/components/dispatch-tracking';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { cn } from '@/shared/utils/cn';
 
 /** Board path — the dashboard deep-links here, optionally filtered. */
 const BOARD = '/dispatch/tracking';
@@ -124,24 +113,14 @@ function DashboardBody({
   goBoard: (params?: Record<string, string>) => void;
 }) {
   const s = data.status_counts;
-  const inTransit = (s.IN_TRANSIT ?? 0) + (s.DELAYED ?? 0);
-  const delivered = (s.DELIVERED ?? 0) + (s.PARTIALLY_DELIVERED ?? 0);
 
   return (
     <div className="space-y-6">
-      {/* Headline KPIs */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-        <KpiStat icon={Truck} label="Dispatched" value={data.total_dispatched} accent={ACCENTS.blue}
-          sub={`${data.active} active · ${data.completed} completed`} onClick={() => goBoard()} />
-        <KpiStat icon={Navigation} label="In transit" value={inTransit} accent={ACCENTS.indigo}
-          onClick={() => goBoard({ status: 'IN_TRANSIT' })} />
-        <KpiStat icon={PackageCheck} label="Delivered" value={delivered} accent={ACCENTS.emerald}
-          sub={`${data.delivered_today} today`} onClick={() => goBoard({ status: 'DELIVERED' })} />
-        <KpiStat icon={AlertTriangle} label="Late / overdue" value={data.late.count} accent={ACCENTS.rose}
-          onClick={() => goBoard({ status: 'DELAYED' })} />
-        <KpiStat icon={RotateCcw} label="Returned" value={s.RETURNED ?? 0} accent={ACCENTS.amber}
-          onClick={() => goBoard({ status: 'RETURNED' })} />
-      </div>
+      {/* Headline KPIs — shared with the dispatch module dashboard */}
+      <DispatchDeliveryKpiGrid
+        data={data}
+        onOpen={(status) => goBoard(status ? { status } : undefined)}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Lifecycle funnel */}
@@ -171,27 +150,16 @@ function DashboardBody({
           </CardContent>
         </Card>
 
-        {/* Delivery KPIs + adoption nudge */}
-        <Card>
-          <CardHeader><CardTitle className="text-base">Delivery performance</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
-            <MiniStat icon={CheckCircle2} label="On-time rate"
-              value={data.on_time_rate == null ? '—' : `${Math.round(data.on_time_rate * 100)}%`}
-              tone="text-teal-600 dark:text-teal-400" />
-            <MiniStat icon={Timer} label="Avg transit"
-              value={data.avg_transit_days == null ? '—' : `${data.avg_transit_days} d`}
-              tone="text-violet-600 dark:text-violet-400" />
-            <MiniStat icon={CalendarClock} label="Delivered today" value={data.delivered_today}
-              tone="text-cyan-600 dark:text-cyan-400" />
-            <MiniStat icon={Clock} label="No update yet" value={data.no_update_yet}
-              tone="text-slate-600 dark:text-slate-400"
-              hint={data.no_update_yet > 0 ? 'Trucks awaiting their first status update' : undefined} />
-          </CardContent>
-        </Card>
+        {/* Late / overdue list — the funnel's counterpart: what is stuck, by name.
+            (On-time rate, avg transit, delivered-today and no-update-yet used to
+            sit here as a "Delivery performance" card; they are tiles in the KPI
+            grid above now, and showing them twice on one screen invites the two
+            copies to disagree.) */}
+        <LateTrucksCard data={data} goBoard={goBoard} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Status breakdown */}
+      {/* Status breakdown */}
+      <div className="grid gap-6">
         <Card>
           <CardHeader><CardTitle className="text-base">By status</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -214,85 +182,80 @@ function DashboardBody({
             })}
           </CardContent>
         </Card>
-
-        {/* Late / overdue list */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Late / overdue</CardTitle>
-            {data.late.count > 0 && (
-              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                {data.late.count} truck{data.late.count === 1 ? '' : 's'}
-              </span>
-            )}
-          </CardHeader>
-          <CardContent>
-            {data.late.trucks.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No trucks are overdue in this window. 🎉
-              </p>
-            ) : (
-              <ul className="divide-y">
-                {data.late.trucks.map((t) => (
-                  <li key={t.arrival}>
-                    <button onClick={() => goBoard({ search: t.vehicle_number || t.arrival_no })}
-                      className="flex w-full items-center justify-between gap-2 py-2 text-left text-sm hover:bg-accent/50">
-                      <span className="min-w-0">
-                        <span className="font-medium">{t.vehicle_number || t.arrival_no}</span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          Reach by {t.expected_reach_date ?? '—'} · {t.arrival_no}
-                        </span>
-                        {t.driver_name || t.driver_mobile ? (
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {t.driver_name || 'Driver'}
-                            {t.driver_mobile ? ` · ${t.driver_mobile}` : ''}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
-                        {t.days_overdue}d overdue
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
 }
 
-function MiniStat({
-  icon: Icon,
-  label,
-  value,
-  tone,
-  hint,
+/** The overdue trucks by name — the funnel tells you how many are stuck, this
+ *  tells you which, with the driver's number so the chase can start here. */
+function LateTrucksCard({
+  data,
+  goBoard,
 }: {
-  icon: typeof Clock;
-  label: string;
-  value: number | string;
-  tone: string;
-  hint?: string;
+  data: DispatchTrackingSummary;
+  goBoard: (params?: Record<string, string>) => void;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-3">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Icon className={cn('h-4 w-4', tone)} />
-        {label}
-      </div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
-      {hint && <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>}
-    </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Late / overdue</CardTitle>
+        {data.late.count > 0 && (
+          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+            {data.late.count} truck{data.late.count === 1 ? '' : 's'}
+          </span>
+        )}
+      </CardHeader>
+      <CardContent>
+        {data.late.trucks.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No trucks are overdue in this window. 🎉
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {data.late.trucks.map((t) => (
+              <li key={t.arrival}>
+                <button onClick={() => goBoard({ search: t.vehicle_number || t.arrival_no })}
+                  className="flex w-full items-center justify-between gap-2 py-2 text-left text-sm hover:bg-accent/50">
+                  <span className="min-w-0">
+                    <span className="font-medium">{t.vehicle_number || t.arrival_no}</span>
+                    {/* The escalation path, in the order you use it: whose truck
+                        it is, then the driver to call. */}
+                    {t.transporter_name ? (
+                      <span className="block truncate text-xs font-medium text-foreground">
+                        {t.transporter_name}
+                      </span>
+                    ) : null}
+                    <span className="block truncate text-xs text-muted-foreground">
+                      Reach by {t.expected_reach_date ?? '—'} · {t.arrival_no}
+                    </span>
+                    {t.driver_name || t.driver_mobile ? (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {t.driver_name || 'Driver'}
+                        {t.driver_mobile ? ` · ${t.driver_mobile}` : ''}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+                    {t.days_overdue}d overdue
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
+      {/* ten tiles — matches DispatchDeliveryKpiGrid, so the page does not jump
+          as the summary lands */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: 10 }).map((_, i) => (
           <div key={i} className="h-24 animate-pulse rounded-xl border bg-muted/40" />
         ))}
       </div>
@@ -300,6 +263,7 @@ function DashboardSkeleton() {
         <div className="h-64 animate-pulse rounded-xl border bg-muted/40" />
         <div className="h-64 animate-pulse rounded-xl border bg-muted/40" />
       </div>
+      <div className="h-40 animate-pulse rounded-xl border bg-muted/40" />
     </div>
   );
 }
