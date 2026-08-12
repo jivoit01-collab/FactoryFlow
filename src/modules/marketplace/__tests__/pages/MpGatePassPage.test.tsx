@@ -199,6 +199,39 @@ describe('MpGatePassPage — send an approved sheet out', () => {
     expect(btn(/Save & continue/)).toBeDisabled();
   });
 
+  it('shows trips already sent out from this sheet, with their detail', async () => {
+    // Once a trip left there was nowhere to see it again — the record existed
+    // and nothing rendered it.
+    api.list.mockResolvedValue([
+      trip({
+        id: 5,
+        status: 'DISPATCHED',
+        tare_weight: '2450.000',
+        gross_weight: '2712.500',
+        net_weight: '262.500',
+        weighbridge_slip_no: 'WB-88213',
+        is_weighed: true,
+        weight_error: '',
+        order_count: 3,
+        parcel_count: 4,
+        gatepass_no: 'MKT/JIVO_MART/2026-27/000001',
+        gate_out_date: '2026-08-12',
+        out_time: '14:58:28',
+        security_name: 'Rakesh',
+      }),
+    ]);
+    renderPage();
+    await shows(/Already sent out/);
+    await shows(/Out 2026-08-12 14:58:28/);
+    await shows(/net 262.5 kg/);
+    await shows(/slip WB-88213/);
+    await shows(/3 orders · 4 parcels/);
+    await shows(/security Rakesh/);
+    await shows(/MKT\/JIVO_MART\/2026-27\/000001/);
+    // And it can still be printed for the driver.
+    expect(btn(/Print gatepass/)).toBeTruthy();
+  });
+
   it('after marking out, shows the load and offers the gatepass — nothing else', async () => {
     api.create.mockResolvedValue(trip({ is_weighed: true, weight_error: '' }));
     api.dispatch.mockResolvedValue(
