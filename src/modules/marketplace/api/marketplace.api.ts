@@ -16,6 +16,10 @@ import type {
   DispatchBoardOrder,
   GateQueue,
   GateSheetDetail,
+  MpGatePass,
+  MpGatePassCreatePayload,
+  MpGatePassDispatchPayload,
+  MpGatePassWeighmentPayload,
   DispatchCreateRequest,
   DispatchListParams,
   DispatchSheetSummary,
@@ -324,6 +328,42 @@ export const marketplaceApi = {
       `${EP.GATE_HOLD(batchId)}${buildQuery({ channel })}`,
       { remarks },
     );
+    return data;
+  },
+  // ── Gate pass: the outward trip ─────────────────────────────────────────
+  async gatePasses(
+    channel: MarketplaceChannel,
+    params: { status?: string; batch_id?: number } = {},
+  ): Promise<MpGatePass[]> {
+    const { data } = await apiClient.get<MpGatePass[]>(
+      `${EP.GATE_PASSES}${buildQuery({ channel, ...params })}`,
+    );
+    return data;
+  },
+  async gatePassCreate(
+    channel: MarketplaceChannel,
+    payload: MpGatePassCreatePayload,
+  ): Promise<MpGatePass> {
+    const { data } = await apiClient.post<MpGatePass>(
+      `${EP.GATE_PASSES}${buildQuery({ channel })}`,
+      payload,
+    );
+    return data;
+  },
+  async gatePassWeigh(id: number, payload: MpGatePassWeighmentPayload): Promise<MpGatePass> {
+    const { data } = await apiClient.post<MpGatePass>(EP.GATE_PASS_WEIGHMENT(id), payload);
+    return data;
+  },
+  async gatePassPrint(id: number): Promise<MpGatePass> {
+    const { data } = await apiClient.post<MpGatePass>(EP.GATE_PASS_PRINT(id), {});
+    return data;
+  },
+  async gatePassDispatch(id: number, payload: MpGatePassDispatchPayload): Promise<MpGatePass> {
+    const { data } = await apiClient.post<MpGatePass>(EP.GATE_PASS_DISPATCH(id), payload);
+    return data;
+  },
+  async gatePassCancel(id: number, reason: string): Promise<MpGatePass> {
+    const { data } = await apiClient.post<MpGatePass>(EP.GATE_PASS_CANCEL(id), { reason });
     return data;
   },
   /** Download a marketplace report as a CSV blob (Reports section). */

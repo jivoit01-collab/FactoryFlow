@@ -980,3 +980,93 @@ export interface GateSheetDetail {
   total_rows: number;
   total_parcels: number;
 }
+
+// ── Gate pass: the outward trip ───────────────────────────────────────────────
+
+/** DRAFT → WEIGHED → GATEPASS_PRINTED → DISPATCHED, or CANCELLED. */
+export type MpGatePassStatus =
+  | 'DRAFT'
+  | 'WEIGHED'
+  | 'GATEPASS_PRINTED'
+  | 'DISPATCHED'
+  | 'CANCELLED';
+
+/**
+ * One vehicle taking a sheet's gate-approved parcels off site.
+ *
+ * Transport is served from the frozen snapshot the pass was raised with, not
+ * the live master — renaming a transporter must not rewrite a printed pass.
+ */
+export interface MpGatePass {
+  id: number;
+  channel: MarketplaceChannel;
+  status: MpGatePassStatus;
+  status_display: string;
+  import_batch: number;
+  sheet: string;
+
+  vehicle: number | null;
+  vehicle_no: string;
+  transporter: number | null;
+  transporter_name: string;
+  transporter_gstin: string;
+  driver: number | null;
+  driver_name: string;
+  driver_mobile_no: string;
+  driver_license_no: string;
+
+  /** Decimals arrive as strings; null until recorded. */
+  tare_weight: string | null;
+  gross_weight: string | null;
+  /** Derived — null until BOTH halves are in, so "not weighed" stays
+   *  distinguishable from "weighed and empty". */
+  net_weight: string | null;
+  is_weighed: boolean;
+  weighbridge_slip_no: string;
+  first_weighment_at: string | null;
+  second_weighment_at: string | null;
+  /** Why this trip cannot leave yet, or '' — lets a screen disable the button
+   *  and say why without posting to find out. */
+  weight_error: string;
+
+  order_count: number;
+  parcel_count: number;
+
+  gatepass_no: string | null;
+  random_code: string;
+  qr_payload: string;
+  printed_by_name: string;
+  printed_at: string | null;
+
+  gate_out_date: string | null;
+  out_time: string | null;
+  security_name: string;
+  dispatched_by_name: string;
+  dispatched_at: string | null;
+
+  remarks: string;
+  cancel_reason: string;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MpGatePassCreatePayload {
+  batch_id: number;
+  vehicle_id?: number | null;
+  transporter_id?: number | null;
+  driver_id?: number | null;
+  remarks?: string;
+}
+
+export interface MpGatePassWeighmentPayload {
+  tare_weight?: string | null;
+  gross_weight?: string | null;
+  weighbridge_slip_no?: string;
+}
+
+export interface MpGatePassDispatchPayload {
+  security_name?: string;
+  out_date?: string | null;
+  out_time?: string | null;
+}
