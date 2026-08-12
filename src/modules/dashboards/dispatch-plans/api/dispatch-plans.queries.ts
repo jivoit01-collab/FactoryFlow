@@ -62,8 +62,7 @@ const MIN_BILL_LOOKUP_DIGITS = 6;
 
 export function useLookupDispatchBill(invoiceNumber: string, companyCode?: string) {
   const term = invoiceNumber.trim();
-  const enabled =
-    !!companyCode && term.length >= MIN_BILL_LOOKUP_DIGITS && /^\d+$/.test(term);
+  const enabled = !!companyCode && term.length >= MIN_BILL_LOOKUP_DIGITS && /^\d+$/.test(term);
 
   return useQuery({
     queryKey: [...DISPATCH_PLANS_QUERY_KEYS.all, 'bill-by-number', companyCode, term],
@@ -93,6 +92,19 @@ export function useBulkSetDispatchDate() {
     mutationFn: (payload: DispatchPlanBulkDatePayload) =>
       dispatchPlansApi.bulkSetDispatchDate(payload),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DISPATCH_PLANS_QUERY_KEYS.all });
+    },
+  });
+}
+
+/** Take a bill back off the Plan page. Invalidates the bill list so the row
+ *  disappears without a manual refresh. */
+export function useRemoveFromPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (docEntry: number) => dispatchPlansApi.removeFromPlan(docEntry),
+    onSuccess: () => {
+      // Same as the selection submit: what the Plan page shows has changed.
       queryClient.invalidateQueries({ queryKey: DISPATCH_PLANS_QUERY_KEYS.all });
     },
   });

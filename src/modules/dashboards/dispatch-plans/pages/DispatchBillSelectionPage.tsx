@@ -30,11 +30,12 @@ export default function DispatchBillSelectionPage() {
   const [filters, setFilters] = useState<DispatchPlanFiltersType>(createDefaultDispatchPlanFilters);
   const billsQuery = useDispatchBills(filters);
 
-  // Selected bills stay on this page. They used to be filtered out the moment
-  // they were submitted, which meant a bill added by mistake could never be
-  // taken back off — the only screen that can reverse a selection was the one
-  // screen that refused to show it.
-  const bills = useMemo<DispatchBill[]>(() => billsQuery.data?.data ?? [], [billsQuery.data]);
+  // Show only bills NOT yet selected — once a bill is selected + submitted it
+  // moves to the Plan page and leaves this "bills to add" queue.
+  const bills = useMemo<DispatchBill[]>(
+    () => (billsQuery.data?.data ?? []).filter((b) => !b.is_selected),
+    [billsQuery.data],
+  );
   // Remount the board when the shown set of bills changes (e.g. after a submit
   // removes the just-selected bills) — avoids seeding state inside an effect.
   const boardKey = useMemo(() => bills.map((b) => b.doc_entry).join(','), [bills]);
@@ -78,39 +79,6 @@ export default function DispatchBillSelectionPage() {
   );
 }
 
-/**
- * A selection may only be taken back while the plan behind it is untouched.
- * Once a vehicle is booked or the truck has gone, removing the bill here would
- * hide live work from the Plan page, so those rows are locked and say why.
- * The API enforces the same rule — this only keeps the operator from trying.
- */
-function isReversible(bill: DispatchBill): boolean {
-  return !bill.is_selected || (bill.plan?.booking_status ?? 'PENDING') === 'PENDING';
-}
-
-function SelectionStatus({ bill }: { bill: DispatchBill }) {
-  if (!bill.is_selected) {
-    return <span className="text-muted-foreground">Not added</span>;
-  }
-  const status = bill.plan?.booking_status ?? 'PENDING';
-  if (status === 'PENDING') {
-    return (
-      <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-        In planning
-      </span>
-    );
-  }
-  const label = status.charAt(0) + status.slice(1).toLowerCase();
-  return (
-    <span
-      className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-      title={`Already ${label.toLowerCase()} — remove it from the Plan page instead`}
-    >
-      {label} · locked
-    </span>
-  );
-}
-
 function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading: boolean }) {
   const submit = useSubmitBillSelection();
   // Seeded once on mount from the server's is_selected (the board remounts via
@@ -119,18 +87,9 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
     () => new Set(bills.filter((b) => b.is_selected).map((b) => b.doc_entry)),
   );
 
-  // Locked rows are never toggled — not by a click, not by select-all — so a
-  // bulk action can't quietly try to reverse something the API will refuse.
-  const toggleable = useMemo(() => bills.filter(isReversible), [bills]);
-  const allChecked = toggleable.length > 0 && toggleable.every((b) => selected.has(b.doc_entry));
-  const removing = useMemo(
-    () => bills.filter((b) => b.is_selected && isReversible(b) && !selected.has(b.doc_entry)),
-    [bills, selected],
-  );
+  const allChecked = bills.length > 0 && bills.every((b) => selected.has(b.doc_entry));
 
   function toggle(docEntry: number) {
-    const bill = bills.find((b) => b.doc_entry === docEntry);
-    if (!bill || !isReversible(bill)) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(docEntry)) next.delete(docEntry);
@@ -140,17 +99,7 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
   }
 
   function toggleAll() {
-    setSelected((prev) => {
-      // Keep the locked rows exactly as they were.
-      const next = new Set(
-        [...prev].filter((entry) => {
-          const bill = bills.find((b) => b.doc_entry === entry);
-          return bill ? !isReversible(bill) : false;
-        }),
-      );
-      if (!allChecked) toggleable.forEach((b) => next.add(b.doc_entry));
-      return next;
-    });
+    setSelected(allChecked ? new Set() : new Set(bills.map((b) => b.doc_entry)));
   }
 
   function handleSubmit() {
@@ -160,16 +109,8 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
         selected_doc_entries: [...selected],
       },
       {
-        onSuccess: (r) => {
-          toast.success(`Selection saved · ${r.selected} selected, ${r.deselected} removed`);
-          // The API refuses to reverse a bill whose plan has moved on. Say so
-          // rather than letting the count quietly come up short.
-          if (r.blocked?.length) {
-            toast.warning(
-              `${r.blocked.length} bill(s) could not be removed — already booked or dispatched.`,
-            );
-          }
-        },
+        onSuccess: (r) =>
+          toast.success(`Selection saved · ${r.selected} selected, ${r.deselected} removed`),
         onError: () => toast.error('Could not save the bill selection'),
       },
     );
@@ -181,11 +122,6 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm text-muted-foreground">
             {selected.size} of {bills.length} bill(s) selected
-            {removing.length > 0 && (
-              <span className="ml-2 font-medium text-amber-600">
-                · {removing.length} will be removed from planning
-              </span>
-            )}
           </span>
           <Button
             type="button"
@@ -199,7 +135,7 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
         </div>
 
         <div className="-mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[960px] text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className="border-y bg-muted/40 text-left text-xs text-muted-foreground">
               <tr>
                 <th className="p-3">
@@ -211,7 +147,6 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
                   />
                 </th>
                 <th className="p-3">Invoice</th>
-                <th className="p-3">Status</th>
                 <th className="p-3">Date</th>
                 <th className="p-3">Party</th>
                 <th className="p-3">Location</th>
@@ -223,46 +158,33 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
                     Loading bills…
                   </td>
                 </tr>
               ) : bills.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-muted-foreground">
-                    No bills in this window.
+                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                    No bills left to select in this window — all are already added to planning.
                   </td>
                 </tr>
               ) : (
                 bills.map((b) => {
                   const checked = selected.has(b.doc_entry);
-                  const reversible = isReversible(b);
                   return (
                     <tr
                       key={b.doc_entry}
-                      className={`border-b last:border-0 ${
-                        reversible ? 'cursor-pointer hover:bg-muted/40' : 'opacity-60'
-                      } ${checked ? 'bg-primary/5' : ''}`}
+                      className={`border-b last:border-0 hover:bg-muted/40 ${checked ? 'bg-primary/5' : ''}`}
                       onClick={() => toggle(b.doc_entry)}
                     >
                       <td className="p-3" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={checked}
                           onCheckedChange={() => toggle(b.doc_entry)}
-                          disabled={!reversible}
-                          aria-label={
-                            reversible
-                              ? `Select bill ${b.doc_num}`
-                              : `Bill ${b.doc_num} cannot be removed — already ${(
-                                  b.plan?.booking_status ?? ''
-                                ).toLowerCase()}`
-                          }
+                          aria-label={`Select bill ${b.doc_num}`}
                         />
                       </td>
                       <td className="p-3 font-mono font-medium">{b.doc_num}</td>
-                      <td className="p-3 text-xs">
-                        <SelectionStatus bill={b} />
-                      </td>
                       <td className="p-3 text-muted-foreground">{b.doc_date ?? '—'}</td>
                       <td className="p-3">{b.card_name || b.card_code}</td>
                       <td className="p-3 text-muted-foreground">
