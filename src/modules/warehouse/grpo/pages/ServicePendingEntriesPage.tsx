@@ -8,7 +8,8 @@ import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
 import { usePendingServiceGRPOEntries } from '../api';
-import { GRPOMonthFilter } from '../components';
+import { GRPOMonthFilter, ServiceGRPOInsights } from '../components';
+import type { ServiceGRPOPendingEntry, ServiceGRPOStage } from '../types';
 
 const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return '-';
@@ -29,6 +30,40 @@ const formatCurrency = (value?: string | null) => {
   return amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
 };
 
+/** What is missing, in words the operator can act on. */
+const BLOCKER_LABELS: Record<string, string> = {
+  NO_BILTY_NO: 'No bilty number',
+  NO_BILTY_ATTACHMENT: 'No bilty document',
+};
+
+function StageBadge({ entry }: { entry: ServiceGRPOPendingEntry }) {
+  if (entry.stage === 'READY') {
+    return (
+      <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
+        Ready
+      </span>
+    );
+  }
+  const reasons = (entry.blockers ?? []).map((b) => BLOCKER_LABELS[b] ?? b);
+  return (
+    <span
+      className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+      title={reasons.join(' · ') || undefined}
+    >
+      Awaiting bilty
+    </span>
+  );
+}
+
+/** Age reads as a warning only once it is genuinely old — colouring everything
+ *  amber would make the column say nothing. */
+function AgeCell({ days }: { days?: number | null }) {
+  if (days === null || days === undefined) return <span className="text-muted-foreground">-</span>;
+  const tone =
+    days > 30 ? 'text-red-600 font-medium' : days > 7 ? 'text-amber-600' : 'text-muted-foreground';
+  return <span className={tone}>{days}d</span>;
+}
+
 export default function ServicePendingEntriesPage({
   embedded = false,
 }: { embedded?: boolean } = {}) {
@@ -40,11 +75,14 @@ export default function ServicePendingEntriesPage({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [stage, setStage] = useState<ServiceGRPOStage | ''>('');
+  const [state, setState] = useState('');
+  const [transporter, setTransporter] = useState('');
   const debouncedSearch = useDebounce(search);
 
   useEffect(() => {
     setPage(1);
-  }, [year, month, debouncedSearch, pageSize]);
+  }, [year, month, debouncedSearch, pageSize, stage, state, transporter]);
 
   const { data, isLoading, refetch, error } = usePendingServiceGRPOEntries({
     page,
@@ -52,6 +90,9 @@ export default function ServicePendingEntriesPage({
     year,
     month,
     search: debouncedSearch || undefined,
+    stage: stage || undefined,
+    state: state || undefined,
+    transporter: transporter || undefined,
   });
 
   const pendingEntries = data?.results ?? [];
@@ -80,7 +121,12 @@ export default function ServicePendingEntriesPage({
               Booked dispatch vehicle bookings pending transport service GRPO
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="w-full sm:w-auto"
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -118,7 +164,42 @@ export default function ServicePendingEntriesPage({
       )}
 
       {!isPermissionError && (
+        <ServiceGRPOInsights
+          year={year}
+          month={month}
+          stage={stage}
+          onStageChange={setStage}
+          onStateChange={(value) => setState((prev) => (prev === value ? '' : value))}
+          onTransporterChange={(value) => setTransporter((prev) => (prev === value ? '' : value))}
+        />
+      )}
+
+      {!isPermissionError && (
         <div>
+          {(stage || state || transporter) && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Filtered by</span>
+              {stage && (
+                <FilterChip
+                  label={stage === 'READY' ? 'Ready to post' : 'Awaiting bilty'}
+                  onClear={() => setStage('')}
+                />
+              )}
+              {transporter && <FilterChip label={transporter} onClear={() => setTransporter('')} />}
+              {state && <FilterChip label={state} onClear={() => setState('')} />}
+              <button
+                type="button"
+                onClick={() => {
+                  setStage('');
+                  setState('');
+                  setTransporter('');
+                }}
+                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
           <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative w-full sm:max-w-md">
@@ -166,9 +247,10 @@ export default function ServicePendingEntriesPage({
           ) : (
             <div className="rounded-md border overflow-hidden">
               <div className="overflow-x-auto max-w-full">
-                <table className="w-full min-w-[1040px]">
+                <table className="w-full min-w-[1220px]">
                   <thead className="bg-muted/50">
                     <tr>
+                      <th className="p-3 text-left text-sm font-medium">Status</th>
                       <th className="p-3 text-left text-sm font-medium">Dispatch Bill</th>
                       <th className="p-3 text-left text-sm font-medium">Invoices</th>
                       <th className="p-3 text-left text-sm font-medium">State</th>
@@ -177,6 +259,7 @@ export default function ServicePendingEntriesPage({
                       <th className="p-3 text-left text-sm font-medium">Driver</th>
                       <th className="p-3 text-left text-sm font-medium">Bilty</th>
                       <th className="p-3 text-left text-sm font-medium">Dispatch Date</th>
+                      <th className="p-3 text-left text-sm font-medium">Age</th>
                       <th className="p-3 text-left text-sm font-medium">Freight</th>
                       <th className="p-3 w-8" aria-hidden="true" />
                     </tr>
@@ -190,10 +273,15 @@ export default function ServicePendingEntriesPage({
                           navigate(`/dispatch/bilty-grpo/preview/${entry.dispatch_plan_id}`)
                         }
                       >
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          <StageBadge entry={entry} />
+                        </td>
                         <td className="p-3 text-sm font-medium whitespace-nowrap">
                           {entry.sap_invoice_doc_num || entry.sap_invoice_doc_entry}
                         </td>
-                        <td className="p-3 text-sm whitespace-nowrap">{entry.invoice_count || 1}</td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          {entry.invoice_count || 1}
+                        </td>
                         <td className="p-3 text-sm whitespace-nowrap">
                           {entry.source_state || '-'}
                         </td>
@@ -217,7 +305,9 @@ export default function ServicePendingEntriesPage({
                             )}
                           </div>
                         </td>
-                        <td className="p-3 text-sm whitespace-nowrap">{entry.driver_name || '-'}</td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          {entry.driver_name || '-'}
+                        </td>
                         <td className="p-3 text-sm whitespace-nowrap">
                           <div className="flex flex-col">
                             <span>{entry.bilty_no || '-'}</span>
@@ -228,6 +318,9 @@ export default function ServicePendingEntriesPage({
                         </td>
                         <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
                           {formatDate(entry.dispatch_date)}
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          <AgeCell days={entry.age_days} />
                         </td>
                         <td className="p-3 text-sm whitespace-nowrap">
                           {formatCurrency(entry.total_freight || entry.freight)}
@@ -254,5 +347,22 @@ export default function ServicePendingEntriesPage({
         </div>
       )}
     </div>
+  );
+}
+
+/** An active filter, clearable in place. */
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        className="rounded-full p-0.5 hover:bg-background"
+        aria-label={`Clear ${label} filter`}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
   );
 }

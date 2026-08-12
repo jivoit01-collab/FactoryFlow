@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 // ═══════════════════════════════════════════════════════════════
 // GRPOHistoryPage — File Content Verification
@@ -123,7 +123,9 @@ describe('GRPOHistoryPage — Filters', () => {
   it('offers a Retry action on failed rows that opens the preview to re-post', () => {
     const content = readSource();
     expect(content).toContain('Retry');
-    expect(content).toContain('navigate(`/warehouse/grpo/material/preview/${entry.vehicle_entry}`)');
+    expect(content).toContain(
+      'navigate(`/warehouse/grpo/material/preview/${entry.vehicle_entry}`)',
+    );
   });
 
   it('gets status filter from URL search params', () => {

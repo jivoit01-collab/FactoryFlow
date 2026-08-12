@@ -1,7 +1,7 @@
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { DISPATCH_PERMISSIONS, GRPO_PERMISSIONS } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleNavItem, ModuleRoute } from '@/core/types';
 
 // Lazy load GRPO pages

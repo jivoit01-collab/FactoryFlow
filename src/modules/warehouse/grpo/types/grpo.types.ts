@@ -42,6 +42,11 @@ export interface GRPOListParams {
   phase?: 'GATE' | 'QC' | 'DONE';
   vehicle_entry_id?: number;
   dispatch_plan_id?: number;
+  /** Service GRPO queue narrowing — see ServiceGRPOStage. */
+  stage?: string;
+  transporter?: string;
+  state?: string;
+  min_age_days?: number;
 }
 
 // GRPO Status
@@ -389,8 +394,45 @@ export interface AllGRPOEntry {
 }
 
 // Booked dispatch plan shown in Service GRPO pending queue
+/** Why a queued booking cannot be posted yet — exactly what the post form
+ *  refuses to submit without. Freight is deliberately absent: the operator
+ *  types the amount on the form, so a booking without one is still postable. */
+export type ServiceGRPOBlocker = 'NO_BILTY_NO' | 'NO_BILTY_ATTACHMENT';
+
+/** READY once nothing is missing. A booked truck has no bilty until it has
+ *  gone, so AWAITING_BILTY is a stage in the flow, not a fault. */
+export type ServiceGRPOStage = 'READY' | 'AWAITING_BILTY';
+
+/** KPIs and breakdowns over the Service GRPO queue, for the page header.
+ *  Built from the same queue the table renders, so the two always agree. */
+export interface ServiceGRPOSummary {
+  period: { year: number | null; month: number | null };
+  queue: {
+    total: number;
+    ready: number;
+    awaiting_bilty: number;
+    oldest_days: number;
+    /** How many queued bookings already carry a freight figure. Not a blocker. */
+    freight_known: number;
+    freight_value: string;
+    age_buckets: Record<'0-7' | '8-30' | '31-90' | '90+' | 'undated', number>;
+  };
+  postings: {
+    posted: number;
+    posted_value: string;
+    failed: number;
+    pending: number;
+  };
+  by_transporter: { transporter_name: string; count: number }[];
+  by_state: { state: string; count: number }[];
+}
+
 export interface ServiceGRPOPendingEntry {
   dispatch_plan_id: number;
+  stage?: ServiceGRPOStage;
+  blockers?: ServiceGRPOBlocker[];
+  /** Days since dispatch; null when the booking has no dispatch date. */
+  age_days?: number | null;
   sap_invoice_doc_entry: number;
   sap_invoice_doc_num: string;
   booking_status: string;

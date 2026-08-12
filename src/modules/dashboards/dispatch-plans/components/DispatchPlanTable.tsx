@@ -5,6 +5,7 @@ import {
   ChevronsUpDown,
   ChevronUp,
   SquarePen,
+  Trash2,
 } from 'lucide-react';
 import { type KeyboardEvent, useMemo, useState } from 'react';
 
@@ -34,6 +35,21 @@ interface DispatchPlanTableProps {
   onToggle?: (docEntry: number) => void;
   /** Select/clear every selectable bill in the current filtered set. */
   onToggleAll?: (selectableDocEntries: number[]) => void;
+  /** Take a bill back off the Plan page. Omitted when the user cannot curate
+   *  the selection, in which case no Remove button is rendered. */
+  onRemove?: (bill: DispatchBill) => void;
+  /** Doc entry currently being removed, so its button can show progress. */
+  removingDocEntry?: number | null;
+}
+
+/**
+ * A bill can only be taken off the Plan page while nothing has been booked
+ * against it. Once a vehicle is linked or the truck has gone, removing it would
+ * hide live work from this page while it stays live everywhere else. The server
+ * enforces this too — the button is only hidden so nobody tries.
+ */
+function isRemovable(bill: DispatchBill): boolean {
+  return bill.plan.booking_status === 'PENDING';
 }
 
 // Only bills still being planned can be bulk re-dated; already-dispatched or
@@ -94,6 +110,8 @@ export function DispatchPlanTable({
   selected,
   onToggle,
   onToggleAll,
+  onRemove,
+  removingDocEntry,
 }: DispatchPlanTableProps) {
   // Bulk selection is available only with edit rights and wired handlers.
   const bulkEnabled = canEdit && !!selected && !!onToggle && !!onToggleAll;
@@ -389,6 +407,23 @@ export function DispatchPlanTable({
                       </Button>
                     ) : (
                       <span className="text-xs text-muted-foreground">-</span>
+                    )}
+                    {canEdit && onRemove && isRemovable(bill) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1 whitespace-nowrap text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={removingDocEntry === bill.doc_entry}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onRemove(bill);
+                        }}
+                        aria-label={`Remove bill ${bill.doc_num} from planning`}
+                      >
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                        {removingDocEntry === bill.doc_entry ? 'Removing…' : 'Remove'}
+                      </Button>
                     )}
                   </td>
                 </tr>

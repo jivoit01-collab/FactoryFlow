@@ -9,5 +9,6 @@ export {
 export type { QCReportButtonItem } from './QCReportButton';
 export { QCReportButton } from './QCReportButton';
 export { QCStatusBadge } from './QCStatusBadge';
+export { ServiceGRPOInsights } from './ServiceGRPOInsights';
 export { useQCReportPrint } from './useQCReportPrint';
 export { WarehouseSelect } from './WarehouseSelect';

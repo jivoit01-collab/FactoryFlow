@@ -21,6 +21,7 @@ import type {
   ServiceGRPOOptions,
   ServiceGRPOPendingEntry,
   ServiceGRPOPreview,
+  ServiceGRPOSummary,
   Warehouse,
 } from '../types';
 
@@ -30,11 +31,7 @@ const SAP_SERVICE_GRPO_POST_TIMEOUT_MS = 5 * 60 * 1000;
 // bare array. isPaginated narrows the envelope; normalizePage tolerates both so
 // the UI never crashes if an endpoint's shape is unexpected.
 function isPaginated<T>(data: unknown): data is PaginatedResponse<T> {
-  return (
-    !!data &&
-    !Array.isArray(data) &&
-    Array.isArray((data as PaginatedResponse<T>).results)
-  );
+  return !!data && !Array.isArray(data) && Array.isArray((data as PaginatedResponse<T>).results);
 }
 
 function normalizePage<T>(
@@ -86,8 +83,7 @@ export const grpoApi = {
   // Get all gate entries visible to GRPO (gate, QC, done) — paginated + counts
   async getAllEntries(params: GRPOListParams = {}): Promise<AllGRPOEntriesResponse> {
     const response = await apiClient.get<
-      | AllGRPOEntry[]
-      | (PaginatedResponse<AllGRPOEntry> & { counts?: AllGRPOEntriesCounts })
+      AllGRPOEntry[] | (PaginatedResponse<AllGRPOEntry> & { counts?: AllGRPOEntriesCounts })
     >(API_ENDPOINTS.GRPO.ALL_ENTRIES, { params });
     const page = normalizePage(response.data, params);
     const counts =
@@ -188,9 +184,10 @@ export const grpoApi = {
 
   // Get posting history (paginated)
   async getHistory(params: GRPOListParams = {}): Promise<PaginatedResponse<GRPOHistoryEntry>> {
-    const response = await apiClient.get<
-      GRPOHistoryEntry[] | PaginatedResponse<GRPOHistoryEntry>
-    >(API_ENDPOINTS.GRPO.HISTORY, { params });
+    const response = await apiClient.get<GRPOHistoryEntry[] | PaginatedResponse<GRPOHistoryEntry>>(
+      API_ENDPOINTS.GRPO.HISTORY,
+      { params },
+    );
     return normalizePage(response.data, params);
   },
 
@@ -207,6 +204,14 @@ export const grpoApi = {
       ServiceGRPOPendingEntry[] | PaginatedResponse<ServiceGRPOPendingEntry>
     >(API_ENDPOINTS.DISPATCH.BILTY_GRPO_PENDING, { params });
     return normalizePage(response.data, params);
+  },
+
+  async getServiceSummary(params: { year?: number; month?: number } = {}) {
+    const response = await apiClient.get<ServiceGRPOSummary>(
+      API_ENDPOINTS.DISPATCH.BILTY_GRPO_SUMMARY,
+      { params },
+    );
+    return response.data;
   },
 
   async getServiceOptions(): Promise<ServiceGRPOOptions> {

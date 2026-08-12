@@ -60,23 +60,19 @@ export const API_ENDPOINTS = {
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/`,
     PO_RECEIPT_REPLACE: (entryId: number, poReceiptId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/replace/`,
-    GATE_ENTRY_DELETE: (entryId: number) =>
-      `/raw-material-gatein/gate-entries/${entryId}/`,
+    GATE_ENTRY_DELETE: (entryId: number) => `/raw-material-gatein/gate-entries/${entryId}/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
   },
   // Finished Goods Gate In (traded / purchased FG — no QC)
   FINISHED_GOODS_GATEIN: {
-    PO_RECEIPTS: (entryId: number) =>
-      `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/`,
+    PO_RECEIPTS: (entryId: number) => `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/`,
     PO_RECEIPT_DETAIL: (entryId: number, poReceiptId: number) =>
       `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/`,
-    GATE_ENTRY_DELETE: (entryId: number) =>
-      `/finished-goods-gatein/gate-entries/${entryId}/`,
+    GATE_ENTRY_DELETE: (entryId: number) => `/finished-goods-gatein/gate-entries/${entryId}/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/finished-goods-gatein/gate-entries/${entryId}/po-receipts/view/`,
-    COMPLETE: (entryId: number) =>
-      `/finished-goods-gatein/gate-entries/${entryId}/complete/`,
+    COMPLETE: (entryId: number) => `/finished-goods-gatein/gate-entries/${entryId}/complete/`,
   },
   // Weighment
   WEIGHMENT: {
@@ -112,8 +108,7 @@ export const API_ENDPOINTS = {
     EMPTY_VEHICLE_OUT_CANCEL_BY_ID: (id: number) => `/gate-core/empty-vehicle-outs/${id}/cancel/`,
     INSIDE_DISPATCH_VEHICLES: '/gate-core/inside-dispatch-vehicles/',
     INSIDE_VEHICLE_ADD_BILL: '/gate-core/inside-dispatch-vehicles/add-bill/',
-    INSIDE_VEHICLE_ADD_BILL_TO_TRUCK:
-      '/gate-core/inside-dispatch-vehicles/add-bill-to-truck/',
+    INSIDE_VEHICLE_ADD_BILL_TO_TRUCK: '/gate-core/inside-dispatch-vehicles/add-bill-to-truck/',
     INSIDE_VEHICLE_REMOVE_BILL: '/gate-core/inside-dispatch-vehicles/remove-bill/',
     INSIDE_VEHICLE_MOVE_BILL: '/gate-core/inside-dispatch-vehicles/move-bill/',
     INSIDE_VEHICLE_UNLINK_ALL: '/gate-core/inside-dispatch-vehicles/unlink-all/',
@@ -162,8 +157,7 @@ export const API_ENDPOINTS = {
     SALES_DISPATCH_BOX_SCANS: (id: number) => `/gate-core/sales-dispatch/${id}/box-scans/`,
     SALES_DISPATCH_BOX_SCAN: (id: number, scanId: number) =>
       `/gate-core/sales-dispatch/${id}/box-scans/${scanId}/`,
-    SALES_DISPATCH_BARCODE_SCANS: (id: number) =>
-      `/gate-core/sales-dispatch/${id}/barcode-scans/`,
+    SALES_DISPATCH_BARCODE_SCANS: (id: number) => `/gate-core/sales-dispatch/${id}/barcode-scans/`,
     SALES_DISPATCH_BARCODE_SCANS_IMPORT: (id: number) =>
       `/gate-core/sales-dispatch/${id}/barcode-scans/import/`,
     SALES_DISPATCH_GATEPASS_PREVIEW: (id: number) =>
@@ -182,8 +176,7 @@ export const API_ENDPOINTS = {
     SALES_DISPATCH_MARK_DISPATCHED: (id: number) => `/gate-core/sales-dispatch/${id}/dispatch/`,
     SALES_DISPATCH_REJECT: (id: number) => `/gate-core/sales-dispatch/${id}/reject/`,
     SALES_DISPATCH_CANCEL: (id: number) => `/gate-core/sales-dispatch/${id}/cancel/`,
-    SALES_DISPATCH_ADD_DOCUMENT: (id: number) =>
-      `/gate-core/sales-dispatch/${id}/documents/add/`,
+    SALES_DISPATCH_ADD_DOCUMENT: (id: number) => `/gate-core/sales-dispatch/${id}/documents/add/`,
     SALES_DISPATCH_REMOVE_DOCUMENT: (id: number, documentId: number) =>
       `/gate-core/sales-dispatch/${id}/documents/${documentId}/remove/`,
     SALES_DISPATCH_PARTIAL_APPROVAL: (id: number) =>
@@ -250,10 +243,8 @@ export const API_ENDPOINTS = {
     SCAN_SKIP_REQUESTS: '/docking-admin/scan-skip-requests/',
     SCAN_SKIP_REQUEST_BY_DISPATCH: (entryId: number) =>
       `/docking-admin/scan-skip-requests/by-sales-dispatch/${entryId}/`,
-    SCAN_SKIP_REQUEST_APPROVE: (id: number) =>
-      `/docking-admin/scan-skip-requests/${id}/approve/`,
-    SCAN_SKIP_REQUEST_REJECT: (id: number) =>
-      `/docking-admin/scan-skip-requests/${id}/reject/`,
+    SCAN_SKIP_REQUEST_APPROVE: (id: number) => `/docking-admin/scan-skip-requests/${id}/approve/`,
+    SCAN_SKIP_REQUEST_REJECT: (id: number) => `/docking-admin/scan-skip-requests/${id}/reject/`,
     PARTIAL_SCAN_REQUESTS: '/docking-admin/partial-scan-requests/',
     PARTIAL_SCAN_REQUEST_BY_DISPATCH: (entryId: number) =>
       `/docking-admin/partial-scan-requests/by-sales-dispatch/${entryId}/`,
@@ -363,7 +354,9 @@ export const API_ENDPOINTS = {
     ONLINE_MONITORING_READING_ATTACHMENTS: (recordId: number, readingId: number) =>
       `/quality-control/online-monitoring/${recordId}/readings/${readingId}/attachments/`,
     ONLINE_MONITORING_READING_ATTACHMENT_DETAIL: (
-      recordId: number, readingId: number, attachmentId: number,
+      recordId: number,
+      readingId: number,
+      attachmentId: number,
     ) =>
       `/quality-control/online-monitoring/${recordId}/readings/${readingId}/attachments/${attachmentId}/`,
     ONLINE_MONITORING_SUBMIT: (recordId: number) =>
@@ -499,8 +492,7 @@ export const API_ENDPOINTS = {
     CREATE: '/goods-return/',
     BY_ID: (id: number) => `/goods-return/${id}/`,
     INVOICE_REFS: (id: number) => `/goods-return/${id}/invoice-refs/`,
-    INVOICE_REF_BY_ID: (id: number, refId: number) =>
-      `/goods-return/${id}/invoice-refs/${refId}/`,
+    INVOICE_REF_BY_ID: (id: number, refId: number) => `/goods-return/${id}/invoice-refs/${refId}/`,
     ITEMS: (id: number) => `/goods-return/${id}/items/`,
     VEHICLE: (id: number) => `/goods-return/${id}/vehicle/`,
     ATTACHMENTS: (id: number) => `/goods-return/${id}/attachments/`,
@@ -521,6 +513,7 @@ export const API_ENDPOINTS = {
     BILL_BY_NUMBER: (invoiceNumber: string) =>
       `/dispatch-plans/bills/by-number/${encodeURIComponent(invoiceNumber)}/`,
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,
+    PLAN_REMOVE: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/remove/`,
     BULK_DISPATCH_DATE: '/dispatch-plans/bills/plan/bulk-dispatch-date/',
   },
   // Dispatch Pipeline Dashboard (vehicle stage board)
@@ -540,6 +533,7 @@ export const API_ENDPOINTS = {
     BILTY_GRPO_PREVIEW: (dispatchPlanId: number) =>
       `/dispatch/bilty-grpo/preview/${dispatchPlanId}/`,
     BILTY_GRPO_POST: '/dispatch/bilty-grpo/post/',
+    BILTY_GRPO_SUMMARY: '/dispatch/bilty-grpo/summary/',
     BILTY_GRPO_HISTORY: '/dispatch/bilty-grpo/history/',
     BILTY_GRPO_DETAIL: (postingId: number) => `/dispatch/bilty-grpo/${postingId}/`,
     TRANSPORTER_INVOICE_PREVIEW: '/dispatch/transporter-invoices/preview/',
@@ -974,7 +968,8 @@ export const API_ENDPOINTS = {
     BOM_REQUEST_DETAIL: (requestId: number) => `/warehouse/bom-requests/${requestId}/`,
     BOM_REQUEST_APPROVE: (requestId: number) => `/warehouse/bom-requests/${requestId}/approve/`,
     BOM_REQUEST_REJECT: (requestId: number) => `/warehouse/bom-requests/${requestId}/reject/`,
-    BOM_REQUEST_RE_REQUEST: (requestId: number) => `/warehouse/bom-requests/${requestId}/re-request/`,
+    BOM_REQUEST_RE_REQUEST: (requestId: number) =>
+      `/warehouse/bom-requests/${requestId}/re-request/`,
     BOM_REQUEST_ISSUE: (requestId: number) => `/warehouse/bom-requests/${requestId}/issue/`,
     // Stock
     STOCK_CHECK: '/warehouse/stock/check/',

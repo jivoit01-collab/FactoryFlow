@@ -33,7 +33,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ];
 
 import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
-import { useDispatchBills, useUpdateDispatchPlan } from '../api';
+import { useDispatchBills, useRemoveFromPlan, useUpdateDispatchPlan } from '../api';
 import {
   DispatchPlanBulkDateBar,
   DispatchPlanEditSheet,
@@ -69,6 +69,41 @@ export default function DispatchPlansDashboardPage() {
 
   const billsQuery = useDispatchBills(filters);
   const updatePlanMutation = useUpdateDispatchPlan();
+  const removeFromPlan = useRemoveFromPlan();
+
+  /**
+   * Take a bill back off the Plan page — for one added by mistake.
+   *
+   * Confirmed first because it changes what the whole planning team sees, and
+   * the row simply disappears afterwards. It is not destructive: anything
+   * already typed against the plan is kept, so re-selecting the bill in Bill
+   * Selection brings it back as it was, which is what the prompt says.
+   */
+  const handleRemove = useCallback(
+    (bill: DispatchBill) => {
+      const confirmed = window.confirm(
+        `Remove bill ${bill.doc_num} from dispatch planning?\n\n` +
+          'It leaves this page and returns to Bill Selection. Anything already ' +
+          'planned against it is kept, so you can add it back.',
+      );
+      if (!confirmed) return;
+
+      removeFromPlan.mutate(bill.doc_entry, {
+        onSuccess: (result) => {
+          if (result.removed) toast.success(`Bill ${bill.doc_num} removed from planning`);
+          else toast.info(result.detail);
+        },
+        // The server refuses once the plan has moved past PENDING; show its
+        // reason rather than a generic failure.
+        onError: (error) => {
+          const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data
+            ?.detail;
+          toast.error(detail || `Could not remove bill ${bill.doc_num}`);
+        },
+      });
+    },
+    [removeFromPlan],
+  );
 
   // Memoized so the reference stays stable across renders (react-query keeps
   // `data` stable via structural sharing). A fresh `?? []` every render would
@@ -116,14 +151,30 @@ export default function DispatchPlansDashboardPage() {
     const cmp = (a: string, b: string) => a.localeCompare(b);
     const arr = [...bills];
     switch (sortKey) {
-      case 'customer_asc': arr.sort((a, b) => cmp(a.card_name ?? '', b.card_name ?? '')); break;
-      case 'customer_desc': arr.sort((a, b) => cmp(b.card_name ?? '', a.card_name ?? '')); break;
-      case 'city_asc': arr.sort((a, b) => cmp(a.city ?? '', b.city ?? '')); break;
-      case 'litres_desc': arr.sort((a, b) => (b.total_litres ?? 0) - (a.total_litres ?? 0)); break;
-      case 'litres_asc': arr.sort((a, b) => (a.total_litres ?? 0) - (b.total_litres ?? 0)); break;
-      case 'date_desc': arr.sort((a, b) => cmp(b.doc_date ?? '', a.doc_date ?? '')); break;
-      case 'date_asc': arr.sort((a, b) => cmp(a.doc_date ?? '', b.doc_date ?? '')); break;
-      case 'docnum_asc': arr.sort((a, b) => cmp(a.doc_num ?? '', b.doc_num ?? '')); break;
+      case 'customer_asc':
+        arr.sort((a, b) => cmp(a.card_name ?? '', b.card_name ?? ''));
+        break;
+      case 'customer_desc':
+        arr.sort((a, b) => cmp(b.card_name ?? '', a.card_name ?? ''));
+        break;
+      case 'city_asc':
+        arr.sort((a, b) => cmp(a.city ?? '', b.city ?? ''));
+        break;
+      case 'litres_desc':
+        arr.sort((a, b) => (b.total_litres ?? 0) - (a.total_litres ?? 0));
+        break;
+      case 'litres_asc':
+        arr.sort((a, b) => (a.total_litres ?? 0) - (b.total_litres ?? 0));
+        break;
+      case 'date_desc':
+        arr.sort((a, b) => cmp(b.doc_date ?? '', a.doc_date ?? ''));
+        break;
+      case 'date_asc':
+        arr.sort((a, b) => cmp(a.doc_date ?? '', b.doc_date ?? ''));
+        break;
+      case 'docnum_asc':
+        arr.sort((a, b) => cmp(a.doc_num ?? '', b.doc_num ?? ''));
+        break;
     }
     return arr;
   }, [bills, sortKey]);
@@ -279,6 +330,8 @@ export default function DispatchPlansDashboardPage() {
             selected={canEdit ? selected : undefined}
             onToggle={canEdit ? toggleSelect : undefined}
             onToggleAll={canEdit ? toggleSelectAll : undefined}
+            onRemove={canEdit ? handleRemove : undefined}
+            removingDocEntry={removeFromPlan.isPending ? removeFromPlan.variables : null}
           />
         </>
       )}
