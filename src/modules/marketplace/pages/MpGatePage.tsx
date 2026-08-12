@@ -67,9 +67,24 @@ export default function MpGatePage() {
     queryFn: () => marketplaceApi.gateQueue(channel),
   });
 
+  // Trips already sent out, so a sheet can say so on its own row. Without this
+  // there was no sign anywhere that a sheet had left the site.
+  const passes = useQuery({
+    queryKey: ['mp-gate-passes', channel],
+    queryFn: () => marketplaceApi.gatePasses(channel, { status: 'DISPATCHED' }),
+  });
+  const sentByBatch = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const p of passes.data ?? []) {
+      map.set(p.import_batch, (map.get(p.import_batch) ?? 0) + 1);
+    }
+    return map;
+  }, [passes.data]);
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['mp-gate-queue', channel] });
     qc.invalidateQueries({ queryKey: ['mp-gate-detail'] });
+    qc.invalidateQueries({ queryKey: ['mp-gate-passes'] });
   };
 
   const goSendOut = (batchId: number) =>
@@ -225,6 +240,7 @@ export default function MpGatePage() {
               onToggle={() => setExpanded((v) => (v === s.batch_id ? null : s.batch_id))}
               onApprove={() => approve.mutate(s.batch_id)}
               onSendOut={() => goSendOut(s.batch_id)}
+              sentOut={sentByBatch.get(s.batch_id) ?? 0}
               onHold={() => setHoldSheet(s)}
               busy={approve.isPending || hold.isPending}
             />
@@ -275,6 +291,7 @@ function SheetRow({
   onToggle,
   onApprove,
   onSendOut,
+  sentOut,
   onHold,
   busy,
 }: {
@@ -284,6 +301,8 @@ function SheetRow({
   onToggle: () => void;
   onApprove: () => void;
   onSendOut: () => void;
+  /** Trips from this sheet that have already left. */
+  sentOut: number;
   onHold: () => void;
   busy: boolean;
 }) {
@@ -344,6 +363,12 @@ function SheetRow({
             )}
             {sheet.gate_hold > 0 && <Badge variant="destructive">{sheet.gate_hold} hold</Badge>}
             {allDone && <Badge className="bg-emerald-600">All approved</Badge>}
+            {sentOut > 0 && (
+              <Badge variant="outline" className="border-emerald-600 text-emerald-700">
+                <Truck className="mr-1 h-3 w-3" />
+                {sentOut} sent out
+              </Badge>
+            )}
             <Button
               size="sm"
               onClick={onApprove}

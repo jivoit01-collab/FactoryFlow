@@ -65,9 +65,12 @@ export default function MpGatePassPage() {
     enabled: !!batchId,
   });
 
-  const open = (existing.data ?? []).find(
-    (p) => p.status !== 'DISPATCHED' && p.status !== 'CANCELLED',
-  );
+  const all = existing.data ?? [];
+  const open = all.find((p) => p.status !== 'DISPATCHED' && p.status !== 'CANCELLED');
+  // Trips already gone from this sheet. A sheet can be sent out on more than one
+  // vehicle, and once a trip has left there was nowhere to see it again — the
+  // record existed and nothing rendered it.
+  const sentOut = all.filter((p) => p.status === 'DISPATCHED');
   // Adopt it once, then let the local copy lead — the query would otherwise
   // overwrite each step's result with a stale row.
   if (open && !trip) setTrip(open);
@@ -156,6 +159,15 @@ export default function MpGatePassPage() {
     mutationFn: () => marketplaceApi.gatePassPrint(trip!.id),
     onSuccess: (p) => {
       setTrip(p);
+      window.print();
+    },
+    onError: fail('Could not print the gatepass.'),
+  });
+
+  const printOne = useMutation({
+    mutationFn: (id: number) => marketplaceApi.gatePassPrint(id),
+    onSuccess: () => {
+      existing.refetch();
       window.print();
     },
     onError: fail('Could not print the gatepass.'),
@@ -390,6 +402,20 @@ export default function MpGatePassPage() {
         )}
       </Step>
 
+      {sentOut.length > 0 && (
+        <section className="space-y-3 rounded-xl border p-4">
+          <h2 className="font-semibold">
+            Already sent out
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              {sentOut.length} trip{sentOut.length === 1 ? '' : 's'} from this sheet
+            </span>
+          </h2>
+          {sentOut.map((p) => (
+            <SentTrip key={p.id} pass={p} onPrint={() => printOne.mutate(p.id)} />
+          ))}
+        </section>
+      )}
+
       {gone && (
         <Button variant="outline" onClick={() => navigate('/marketplace/gate')}>
           Back to Gate
@@ -426,5 +452,40 @@ function Step({
       </div>
       {children}
     </section>
+  );
+}
+
+/** One trip that has already left, with everything it took. */
+function SentTrip({ pass, onPrint }: { pass: MpGatePass; onPrint: () => void }) {
+  return (
+    <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-semibold">{pass.vehicle_no || '—'}</span>
+        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/10 dark:text-green-300">
+          Out {pass.gate_out_date} {pass.out_time}
+        </span>
+      </div>
+      <p className="mt-1 text-muted-foreground">
+        {pass.transporter_name || '—'}
+        {pass.driver_name ? ` · ${pass.driver_name}` : ''}
+        {pass.driver_mobile_no ? ` · ${pass.driver_mobile_no}` : ''}
+      </p>
+      <p className="text-muted-foreground">
+        tare {kg(pass.tare_weight)} · gross {kg(pass.gross_weight)} ·{' '}
+        <span className="font-medium text-foreground">net {kg(pass.net_weight)}</span>
+        {pass.weighbridge_slip_no ? ` · slip ${pass.weighbridge_slip_no}` : ''}
+      </p>
+      <p className="text-muted-foreground">
+        {pass.order_count} orders · {pass.parcel_count} parcels
+        {pass.security_name ? ` · security ${pass.security_name}` : ''}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span className="font-mono text-xs">{pass.gatepass_no}</span>
+        <Button size="sm" variant="outline" className="h-7" onClick={onPrint}>
+          <Printer className="mr-1.5 h-3.5 w-3.5" />
+          Print gatepass
+        </Button>
+      </div>
+    </div>
   );
 }
