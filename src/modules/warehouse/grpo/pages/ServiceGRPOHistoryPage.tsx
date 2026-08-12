@@ -8,9 +8,10 @@ import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
 import { useServiceGRPOHistory } from '../api';
-import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants';
 import { GRPOMonthFilter } from '../components';
+import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants';
 import type { GRPOStatus } from '../types';
+import { failureReason } from '../utils';
 
 // Status filter buttons map to the server `status` query param (a single
 // GRPOStatus value, or undefined for "all").
@@ -70,9 +71,7 @@ const formatCurrency = (value?: string | null) => {
   return amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
 };
 
-export default function ServiceGRPOHistoryPage({
-  embedded = false,
-}: { embedded?: boolean } = {}) {
+export default function ServiceGRPOHistoryPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -150,7 +149,12 @@ export default function ServiceGRPOHistoryPage({
             <p className="text-muted-foreground">View transport service GRPO postings to SAP</p>
           </div>
           <div className="flex w-full gap-2 sm:w-auto">
-            <Button variant="outline" size="sm" onClick={handlePrint} className="flex-1 sm:flex-none">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              className="flex-1 sm:flex-none"
+            >
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
@@ -262,7 +266,7 @@ export default function ServiceGRPOHistoryPage({
           ) : (
             <div className="rounded-md border bg-card overflow-hidden">
               <div className="service-grpo-history-print-table overflow-x-auto">
-                <table className="w-full min-w-[1040px]">
+                <table className="w-full min-w-[1240px]">
                   <thead className="bg-muted/50">
                     <tr>
                       <th className="p-3 text-left text-sm font-medium">Bilty</th>
@@ -270,6 +274,7 @@ export default function ServiceGRPOHistoryPage({
                       <th className="p-3 text-left text-sm font-medium">Vehicle</th>
                       <th className="p-3 text-left text-sm font-medium">Transporter</th>
                       <th className="p-3 text-left text-sm font-medium">Status</th>
+                      <th className="p-3 text-left text-sm font-medium">Vendor</th>
                       <th className="p-3 text-left text-sm font-medium">SAP GRPO</th>
                       <th className="p-3 text-right text-sm font-medium">Total</th>
                       <th className="p-3 text-right text-sm font-medium">Posted At</th>
@@ -279,6 +284,11 @@ export default function ServiceGRPOHistoryPage({
                     {historyEntries.map((entry) => {
                       const statusConfig = GRPO_STATUS_CONFIG[entry.status];
                       const detailPath = `/dispatch/bilty-grpo/history/${entry.id}`;
+                      // Only worth the row space when the posting actually failed.
+                      const reason =
+                        entry.status === GRPO_STATUS.FAILED
+                          ? failureReason(entry.error_message)
+                          : '';
 
                       return (
                         <tr
@@ -311,6 +321,22 @@ export default function ServiceGRPOHistoryPage({
                             >
                               {statusConfig?.label || entry.status}
                             </span>
+                            {reason && (
+                              <div
+                                className="mt-1 max-w-[22rem] text-xs text-red-600 dark:text-red-400 line-clamp-2"
+                                title={entry.error_message || undefined}
+                              >
+                                {reason}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-3 text-sm">
+                            <div>{entry.vendor_name || '-'}</div>
+                            {entry.vendor_code && (
+                              <div className="text-xs text-muted-foreground">
+                                {entry.vendor_code}
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 text-sm">
                             <div className="font-medium">
