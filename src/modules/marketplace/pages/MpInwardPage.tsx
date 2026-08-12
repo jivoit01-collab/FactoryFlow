@@ -32,13 +32,13 @@ import {
   useSetReturnScanCondition,
   useSubmitReturn,
 } from '../api/marketplace.queries';
-import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpFilterBar, MpFilterChips, MpSearchInput } from '../components/MpFilters';
 import { MpProgressTable } from '../components/MpProgressTable';
 import { MpScanFeedback, type ScanFeedback } from '../components/MpScanFeedback';
 import { MpScanPanel } from '../components/MpScanPanel';
 import { ReturnNoteButton } from '../components/ReturnNote';
+import { useMpChannel } from '../hooks/useMpChannel';
 import {
   type MarketplaceChannel,
   MP_RETURN_CONDITIONS,

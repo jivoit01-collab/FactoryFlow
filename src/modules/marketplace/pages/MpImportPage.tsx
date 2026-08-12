@@ -22,9 +22,9 @@ import {
 } from '@/shared/components/ui';
 
 import { useBatches, useImportOrders, useImportPreview } from '../api/marketplace.queries';
-import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpFlowSteps } from '../components/MpFlowSteps';
+import { useMpChannel } from '../hooks/useMpChannel';
 import type { ImportPreview, MarketplaceChannel, OrderImportBatch } from '../types/marketplace.types';
 
 export default function MpImportPage() {

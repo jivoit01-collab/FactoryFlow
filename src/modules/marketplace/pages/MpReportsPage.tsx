@@ -17,9 +17,9 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
-import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { EMPTY_RANGE, MpDateRange, type MpRange } from '../components/MpDateRange';
+import { useMpChannel } from '../hooks/useMpChannel';
 import type { MarketplaceChannel } from '../types/marketplace.types';
 
 type ReportDef = {

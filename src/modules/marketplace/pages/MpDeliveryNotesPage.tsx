@@ -43,7 +43,6 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
-import { useMpChannel } from '../hooks/useMpChannel';
 import {
   useAwaitingApprovalCount,
   useCutDeliveryNote,
@@ -56,6 +55,7 @@ import { MpChannelSelect } from '../components/MpChannelSelect';
 import { EMPTY_RANGE, inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
 import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import { MpVariantPicker } from '../components/MpVariantPicker';
+import { useMpChannel } from '../hooks/useMpChannel';
 import type {
   DeliveryNoteLine,
   DeliveryNoteSummary,
