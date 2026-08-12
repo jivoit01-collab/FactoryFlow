@@ -15,8 +15,8 @@ import {
 } from '@/shared/components/ui';
 
 import { useReconciliation } from '../api/marketplace.queries';
-import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { useMpChannel } from '../hooks/useMpChannel';
 import type { MarketplaceChannel } from '../types/marketplace.types';
 
 export default function MpReconciliationPage() {

@@ -12,10 +12,10 @@ import {
 } from '@/shared/components/ui';
 
 import { useIssueRequests, useWarehouseInsights } from '../api/marketplace.queries';
-import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { MpFlowSteps } from '../components/MpFlowSteps';
 import { WarehouseInsightsPanel } from '../components/WarehouseInsightsPanel';
+import { useMpChannel } from '../hooks/useMpChannel';
 import type { MarketplaceChannel, MpIssueStatus } from '../types/marketplace.types';
 
 const STATUS_TONE: Record<MpIssueStatus, string> = {

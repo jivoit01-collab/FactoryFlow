@@ -34,9 +34,10 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
-import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
+import { MpGatePassPanel } from '../components/MpGatePassPanel';
+import { useMpChannel } from '../hooks/useMpChannel';
 import type { GateQueueSheet, MarketplaceChannel } from '../types/marketplace.types';
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -54,6 +55,9 @@ export default function MpGatePage() {
   const [holdSheet, setHoldSheet] = useState<GateQueueSheet | null>(null);
   const [holdRemark, setHoldRemark] = useState('');
   // Filters — default to TODAY's sheets.
+  // Two jobs on one screen: pass the parcels, then move the vehicle that takes
+  // them. Tabs rather than a second page — the gate person does both in one go.
+  const [tab, setTab] = useState<'sheets' | 'trips'>('sheets');
   const [range, setRange] = useState<MpRange>({ from: TODAY, to: '' });
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [search, setSearch] = useState('');
@@ -130,90 +134,127 @@ export default function MpGatePage() {
         <MpChannelSelect value={channel} onChange={setChannel} />
       </header>
 
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-3">
-        <StatTile icon={<PackageCheck className="h-4 w-4" />} label="Sheets" value={totals.sheets} />
-        <StatTile icon={<Package className="h-4 w-4" />} label="Parcels" value={totals.parcels} />
-        <StatTile
-          icon={<ShieldAlert className="h-4 w-4" />}
-          label="Pending gate"
-          value={totals.pending}
-          tone={totals.pending ? 'amber' : undefined}
-        />
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ['sheets', 'Sheets'],
+            ['trips', 'Gate passes'],
+          ] as const
+        ).map(([key, label]) => (
+          <Button
+            key={key}
+            size="sm"
+            variant={tab === key ? 'default' : 'outline'}
+            className="h-8"
+            onClick={() => setTab(key)}
+          >
+            {label}
+          </Button>
+        ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-3">
-        <MpDateRange value={range} onChange={setRange} label="Uploaded" />
-        <div className="flex rounded-lg border bg-background p-0.5">
-          {STATUS_TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setStatusFilter(t.key)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition ${
-                statusFilter === t.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative min-w-[12rem] flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sheet…"
-            className="h-9 pl-8 pr-8"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted"
-              aria-label="Clear"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* List */}
-      {queue.isLoading ? (
-        <div className="flex items-center justify-center gap-2 rounded-md border p-10 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading gate queue…
-        </div>
-      ) : sheets.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <PackageCheck className="h-10 w-10 text-emerald-500" />
-            <p className="font-medium">
-              {all.length === 0 ? 'Nothing waiting at the gate.' : 'No sheets match these filters.'}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {all.length === 0
-                ? "Orders appear here once they're confirmed in Outward."
-                : 'Try a wider date range or clear the status filter.'}
-            </p>
-          </CardContent>
-        </Card>
+      {tab === 'trips' ? (
+        <MpGatePassPanel channel={channel} />
       ) : (
-        <div className="space-y-3">
-          {sheets.map((s) => (
-            <SheetRow
-              key={s.batch_id}
-              sheet={s}
-              channel={channel}
-              open={expanded === s.batch_id}
-              onToggle={() => setExpanded((v) => (v === s.batch_id ? null : s.batch_id))}
-              onApprove={() => approve.mutate(s.batch_id)}
-              onHold={() => setHoldSheet(s)}
-              busy={approve.isPending || hold.isPending}
+        <>
+          {/* Summary */}
+          <div className="grid grid-cols-3 gap-3">
+            <StatTile
+              icon={<PackageCheck className="h-4 w-4" />}
+              label="Sheets"
+              value={totals.sheets}
             />
-          ))}
-        </div>
+            <StatTile
+              icon={<Package className="h-4 w-4" />}
+              label="Parcels"
+              value={totals.parcels}
+            />
+            <StatTile
+              icon={<ShieldAlert className="h-4 w-4" />}
+              label="Pending gate"
+              value={totals.pending}
+              tone={totals.pending ? 'amber' : undefined}
+            />
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-3">
+            <MpDateRange value={range} onChange={setRange} label="Uploaded" />
+            <div className="flex rounded-lg border bg-background p-0.5">
+              {STATUS_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setStatusFilter(t.key)}
+                  className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                    statusFilter === t.key
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <div className="relative min-w-[12rem] flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search sheet…"
+                className="h-9 pl-8 pr-8"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted"
+                  aria-label="Clear"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* List */}
+          {queue.isLoading ? (
+            <div className="flex items-center justify-center gap-2 rounded-md border p-10 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading gate queue…
+            </div>
+          ) : sheets.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+                <PackageCheck className="h-10 w-10 text-emerald-500" />
+                <p className="font-medium">
+                  {all.length === 0
+                    ? 'Nothing waiting at the gate.'
+                    : 'No sheets match these filters.'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {all.length === 0
+                    ? "Orders appear here once they're confirmed in Outward."
+                    : 'Try a wider date range or clear the status filter.'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {sheets.map((s) => (
+                <SheetRow
+                  key={s.batch_id}
+                  sheet={s}
+                  channel={channel}
+                  open={expanded === s.batch_id}
+                  onToggle={() => setExpanded((v) => (v === s.batch_id ? null : s.batch_id))}
+                  onApprove={() => approve.mutate(s.batch_id)}
+                  onHold={() => setHoldSheet(s)}
+                  busy={approve.isPending || hold.isPending}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Hold dialog */}
@@ -238,7 +279,10 @@ export default function MpGatePage() {
             <Button
               variant="destructive"
               disabled={hold.isPending || !holdRemark.trim()}
-              onClick={() => holdSheet && hold.mutate({ batchId: holdSheet.batch_id, remarks: holdRemark.trim() })}
+              onClick={() =>
+                holdSheet &&
+                hold.mutate({ batchId: holdSheet.batch_id, remarks: holdRemark.trim() })
+              }
             >
               <ShieldAlert className="mr-2 h-4 w-4" /> Hold at gate
             </Button>
@@ -283,10 +327,18 @@ function SheetRow({
     <Card className={`overflow-hidden ${allDone ? 'border-emerald-500/40' : ''}`}>
       <CardContent className="p-0">
         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-          <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-            <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition ${open ? 'rotate-180' : ''}`} />
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          >
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-muted-foreground transition ${open ? 'rotate-180' : ''}`}
+            />
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium">{sheet.filename || `Sheet #${sheet.batch_id}`}</div>
+              <div className="truncate font-medium">
+                {sheet.filename || `Sheet #${sheet.batch_id}`}
+              </div>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1 font-medium text-foreground">
                   <Package className="h-3.5 w-3.5" /> {sheet.parcels} parcels
@@ -297,15 +349,22 @@ function SheetRow({
               {/* progress */}
               <div className="mt-2 flex items-center gap-2">
                 <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
-                <span className="text-[11px] text-muted-foreground">{done}/{total} approved</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {done}/{total} approved
+                </span>
               </div>
             </div>
           </button>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            {sheet.gate_pending > 0 && <Badge variant="secondary">{sheet.gate_pending} pending</Badge>}
+            {sheet.gate_pending > 0 && (
+              <Badge variant="secondary">{sheet.gate_pending} pending</Badge>
+            )}
             {sheet.gate_hold > 0 && <Badge variant="destructive">{sheet.gate_hold} hold</Badge>}
             {allDone && <Badge className="bg-emerald-600">All approved</Badge>}
             <Button
@@ -364,7 +423,9 @@ function SheetRow({
                           <td className="p-2 font-mono text-xs">{o.dn_number || '—'}</td>
                           <td className="p-2">
                             <GateBadge status={o.gate_status} />
-                            {o.gate_remarks && <div className="text-[11px] text-destructive">{o.gate_remarks}</div>}
+                            {o.gate_remarks && (
+                              <div className="text-[11px] text-destructive">{o.gate_remarks}</div>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -402,7 +463,9 @@ function StatTile({
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         {icon} {label}
       </div>
-      <div className={`mt-1 text-2xl font-semibold ${tone === 'amber' ? 'text-amber-600' : ''}`}>{value}</div>
+      <div className={`mt-1 text-2xl font-semibold ${tone === 'amber' ? 'text-amber-600' : ''}`}>
+        {value}
+      </div>
     </div>
   );
 }

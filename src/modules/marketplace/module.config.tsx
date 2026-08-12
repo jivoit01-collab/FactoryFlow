@@ -12,17 +12,17 @@
  * reconciliation on `MARKETPLACE_ADMIN_ACCESS`.
  */
 import { ShoppingCart } from 'lucide-react';
-import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
 import {
   MARKETPLACE_ACCESS,
   MARKETPLACE_ADMIN_ACCESS,
-  MARKETPLACE_GATE_ACCESS,
   MARKETPLACE_COMPANIES,
+  MARKETPLACE_GATE_ACCESS,
   MARKETPLACE_ISSUE_ACCESS,
   MARKETPLACE_MODULE_PREFIX,
   MARKETPLACE_SHEET_ACCESS,
 } from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 const MpOverviewPage = lazy(() => import('./pages/MpOverviewPage'));

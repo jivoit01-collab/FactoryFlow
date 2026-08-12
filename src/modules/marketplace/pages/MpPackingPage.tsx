@@ -6,7 +6,7 @@
  * to Outward. No label printing — the Flipkart Tracking ID on each shipment is the
  * scan key used later in Outward/Inward.
  */
-import { Boxes, CheckCircle2, PackageCheck, PackageSearch, Loader2 } from 'lucide-react';
+import { Boxes, CheckCircle2, Loader2,PackageCheck, PackageSearch } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -27,8 +27,8 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { useCompleteItemGroup, usePackingSummary } from '../api/marketplace.queries';
-import { useMpChannel } from '../hooks/useMpChannel';
 import { MpChannelSelect } from '../components/MpChannelSelect';
+import { useMpChannel } from '../hooks/useMpChannel';
 import type { MarketplaceChannel, PackingSummaryItem } from '../types/marketplace.types';
 
 export default function MpPackingPage() {
