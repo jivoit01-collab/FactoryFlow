@@ -1,8 +1,9 @@
-import { AlertCircle, ArrowLeft, Edit, FlaskConical, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { AlertCircle, ArrowLeft, Copy, Edit, FlaskConical, Plus, Trash2, Users } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { VendorSelect } from '@/modules/gate/components/VendorSelect';
 import {
   Button,
   Card,
@@ -19,11 +20,18 @@ import {
   Label,
 } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
+import {
+  useCopyParameters,
+  useCreateParameterSet,
+  useDeleteParameterSet,
+  useParameterSets,
+} from '../../api/parameterSet';
 import {
   useCreateQCParameter,
   useDeleteQCParameter,
-  useQCParametersByMaterialType,
+  useQCParametersByParameterSet,
   useUpdateQCParameter,
 } from '../../api/qcParameter/qcParameter.queries';
 import { MaterialTypeSelect } from '../../components';
@@ -33,8 +41,41 @@ import type { CreateQCParameterRequest, ParameterType, QCParameter } from '../..
 export default function QCParametersPage() {
   const navigate = useNavigate();
   const [selectedMaterialType, setSelectedMaterialType] = useState<number | null>(null);
+
+  // A material type carries one parameter set per vendor, plus a default that
+  // covers every vendor without one of their own.
+  const { data: parameterSets = [], isLoading: isLoadingSets } =
+    useParameterSets(selectedMaterialType);
+  // Only the tab the user clicked is held in state; the set in force is derived.
+  // That way changing material type, or deleting the set being viewed, falls
+  // back to the default on its own instead of leaving a dangling selection.
+  const [chosenSetId, setChosenSetId] = useState<number | null>(null);
+
+  const selectedSet = useMemo(() => {
+    if (parameterSets.length === 0) return null;
+    return (
+      parameterSets.find((set) => set.id === chosenSetId) ??
+      parameterSets.find((set) => set.is_default) ??
+      parameterSets[0]
+    );
+  }, [parameterSets, chosenSetId]);
+
+  const selectedSetId = selectedSet?.id ?? null;
+
   const { data: parameters = [], isLoading: isLoadingParams } =
-    useQCParametersByMaterialType(selectedMaterialType);
+    useQCParametersByParameterSet(selectedSetId);
+
+  const createParameterSet = useCreateParameterSet();
+  const deleteParameterSet = useDeleteParameterSet();
+  const copyParameters = useCopyParameters();
+
+  const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
+  const [vendorForm, setVendorForm] = useState<{ code: string; name: string }>({
+    code: '',
+    name: '',
+  });
+  const [seedFromSetId, setSeedFromSetId] = useState<number | null>(null);
+  const [vendorErrors, setVendorErrors] = useState<Record<string, string>>({});
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingParam, setEditingParam] = useState<QCParameter | null>(null);
@@ -110,7 +151,7 @@ export default function QCParametersPage() {
   const handleSave = async () => {
     const errors: Record<string, string> = {};
 
-    if (!selectedMaterialType && !editingParam) {
+    if (!selectedSetId && !editingParam) {
       errors.general = 'Please select a material type first';
     }
     if (!formData.parameter_code.trim()) {
@@ -146,7 +187,7 @@ export default function QCParametersPage() {
         await updateParameter.mutateAsync({ id: editingParam.id, data: dataToSave });
       } else {
         await createParameter.mutateAsync({
-          materialTypeId: selectedMaterialType!,
+          parameterSetId: selectedSetId!,
           data: dataToSave,
         });
       }
@@ -186,6 +227,85 @@ export default function QCParametersPage() {
 
   const isSaving = createParameter.isPending || updateParameter.isPending;
 
+  const readApiErrors = (error: unknown, fallback: string) => {
+    const apiError = error as ApiError;
+    if (apiError.errors) {
+      const fieldErrors: Record<string, string> = {};
+      Object.entries(apiError.errors).forEach(([field, messages]) => {
+        fieldErrors[field] = messages[0];
+      });
+      return fieldErrors;
+    }
+    return { general: apiError.message || fallback };
+  };
+
+  const handleOpenVendorDialog = () => {
+    setVendorForm({ code: '', name: '' });
+    // Seeding from the default is the common case: a vendor usually differs on
+    // a couple of limits, not on the whole list.
+    setSeedFromSetId(parameterSets.find((set) => set.is_default)?.id ?? null);
+    setVendorErrors({});
+    setIsVendorDialogOpen(true);
+  };
+
+  const handleCreateVendorSet = async () => {
+    if (!vendorForm.code.trim()) {
+      setVendorErrors({ vendor_code: 'Pick a vendor' });
+      return;
+    }
+
+    try {
+      setVendorErrors({});
+      const created = await createParameterSet.mutateAsync({
+        materialTypeId: selectedMaterialType!,
+        data: {
+          vendor_code: vendorForm.code,
+          vendor_name: vendorForm.name,
+          copy_parameters_from_set_id: seedFromSetId,
+        },
+      });
+      setChosenSetId(created.id);
+      setIsVendorDialogOpen(false);
+    } catch (error) {
+      setVendorErrors(readApiErrors(error, 'Failed to add the vendor'));
+    }
+  };
+
+  const handleDeleteVendorSet = async () => {
+    if (!selectedSet || selectedSet.is_default) return;
+    if (
+      !confirm(
+        `Remove ${selectedSet.label}'s own parameters? Inspections for this vendor ` +
+          `will fall back to the default set. Existing reports are not affected.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await deleteParameterSet.mutateAsync(selectedSet.id);
+      setChosenSetId(null);  // falls back to the default set
+    } catch (error) {
+      setApiErrors(readApiErrors(error, 'Failed to remove the vendor'));
+    }
+  };
+
+  const handleCopyIntoSelectedSet = async (sourceSetId: number) => {
+    if (!selectedSet) return;
+
+    try {
+      setApiErrors({});
+      await copyParameters.mutateAsync({
+        parameterSetId: selectedSet.id,
+        data: { source_parameter_set_id: sourceSetId },
+      });
+    } catch (error) {
+      setApiErrors(readApiErrors(error, 'Failed to copy parameters'));
+    }
+  };
+
+  const otherSets = parameterSets.filter((set) => set.id !== selectedSetId);
+
   return (
     <div className="space-y-6 pb-6">
       {/* Header */}
@@ -201,7 +321,8 @@ export default function QCParametersPage() {
             </h2>
           </div>
           <p className="text-muted-foreground">
-            Configure inspection parameters for each material type
+            Configure inspection parameters per material type — the same for every vendor,
+            or a separate set for vendors whose limits differ
           </p>
         </div>
       </div>
@@ -226,7 +347,7 @@ export default function QCParametersPage() {
                 placeholder="Select Material Type"
               />
             </div>
-            {selectedMaterialType && (
+            {selectedSetId && (
               <Button onClick={() => handleOpenDialog()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Parameter
@@ -236,11 +357,99 @@ export default function QCParametersPage() {
         </CardContent>
       </Card>
 
-      {/* Parameters Table */}
-      {selectedMaterialType && (
+      {/* Vendor tabs — the default set first, then one per vendor */}
+      {selectedMaterialType && !isLoadingSets && (
         <Card>
-          <CardHeader>
-            <CardTitle>Parameters ({parameters.length})</CardTitle>
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              Whose parameters are you editing?
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {parameterSets.map((set) => (
+                <button
+                  key={set.id}
+                  type="button"
+                  onClick={() => setChosenSetId(set.id)}
+                  className={cn(
+                    'rounded-full border px-4 py-1.5 text-sm transition-colors',
+                    set.id === selectedSetId
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-input hover:bg-muted',
+                  )}
+                >
+                  {set.label}
+                  <span
+                    className={cn(
+                      'ml-2 text-xs',
+                      set.id === selectedSetId
+                        ? 'text-primary-foreground/80'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {set.parameter_count}
+                  </span>
+                </button>
+              ))}
+              <Button variant="outline" size="sm" onClick={handleOpenVendorDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Vendor
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {selectedSet?.is_default
+                ? 'Used for every vendor without their own set, and for production QC.'
+                : `Used only when the purchase order is on ${selectedSet?.label}.`}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Parameters Table */}
+      {selectedSetId && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+            <CardTitle>
+              Parameters ({parameters.length})
+              {selectedSet && !selectedSet.is_default && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  for {selectedSet.label}
+                </span>
+              )}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {otherSets.length > 0 && (
+                <select
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value=""
+                  disabled={copyParameters.isPending}
+                  onChange={(e) => {
+                    if (e.target.value) handleCopyIntoSelectedSet(Number(e.target.value));
+                  }}
+                >
+                  <option value="">Copy parameters from…</option>
+                  {otherSets.map((set) => (
+                    <option key={set.id} value={set.id}>
+                      {set.label} ({set.parameter_count})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {copyParameters.isPending && (
+                <Copy className="h-4 w-4 animate-pulse text-muted-foreground" />
+              )}
+              {selectedSet && !selectedSet.is_default && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteVendorSet}
+                  disabled={deleteParameterSet.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove Vendor
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {isLoadingParams ? (
@@ -249,7 +458,9 @@ export default function QCParametersPage() {
               </div>
             ) : parameters.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
-                No parameters found. Click "Add Parameter" to create one.
+                {selectedSet && !selectedSet.is_default
+                  ? 'This vendor has no parameters yet. Copy them from another set above, or add them one by one — until then, inspections for this vendor use the default set.'
+                  : 'No parameters found. Click "Add Parameter" to create one.'}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -308,7 +519,7 @@ export default function QCParametersPage() {
       )}
 
       {/* No Material Type Selected */}
-      {!selectedMaterialType && (
+      {!selectedMaterialType && !isLoadingSets && (
         <Card>
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
@@ -323,6 +534,79 @@ export default function QCParametersPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Add Vendor Set Dialog */}
+      <Dialog
+        open={isVendorDialogOpen}
+        onOpenChange={(open) => { if (!open) setIsVendorDialogOpen(false) }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add a vendor's own parameters</DialogTitle>
+          </DialogHeader>
+
+          {vendorErrors.general && (
+            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              {vendorErrors.general}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Vendor <span className="text-destructive">*</span></Label>
+              <VendorSelect
+                value={vendorForm.code || undefined}
+                onChange={(vendor) => {
+                  setVendorForm({
+                    code: vendor?.vendor_code ?? '',
+                    name: vendor?.vendor_name ?? '',
+                  });
+                  setVendorErrors({});
+                }}
+                disabled={createParameterSet.isPending}
+                error={vendorErrors.vendor_code}
+              />
+              <p className="text-xs text-muted-foreground">
+                Matched against the supplier on the purchase order, so inspections pick
+                this set on their own.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Start from</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={seedFromSetId ?? ''}
+                onChange={(e) => setSeedFromSetId(e.target.value ? Number(e.target.value) : null)}
+                disabled={createParameterSet.isPending}
+              >
+                <option value="">Empty list</option>
+                {parameterSets.map((set) => (
+                  <option key={set.id} value={set.id}>
+                    Copy of {set.label} ({set.parameter_count})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Copy an existing set, then change only the limits that differ for this vendor.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsVendorDialogOpen(false)}
+              disabled={createParameterSet.isPending}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateVendorSet} disabled={createParameterSet.isPending}>
+              {createParameterSet.isPending ? 'Adding...' : 'Add Vendor'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) handleCloseDialog() }}>

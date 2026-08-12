@@ -22,6 +22,7 @@ vi.mock('@/config/constants', () => ({
   API_ENDPOINTS: {
     QUALITY_CONTROL_V2: {
       MATERIAL_TYPE_PARAMETERS: (id: number) => `/api/v2/qc/material-types/${id}/parameters/`,
+      PARAMETER_SET_PARAMETERS: (id: number) => `/api/v2/qc/parameter-sets/${id}/parameters/`,
       QC_PARAMETER_BY_ID: (id: number) => `/api/v2/qc/parameters/${id}/`,
     },
   },
@@ -59,6 +60,13 @@ describe('qcParameterApi', () => {
     expect(result).toEqual([{ id: 1, parameter_name: 'pH' }]);
   });
 
+  // ─── getByParameterSet ────────────────────────────────────────
+
+  it('getByParameterSet reads one vendor set, not the whole material type', async () => {
+    await qcParameterApi.getByParameterSet(9);
+    expect(mockGet).toHaveBeenCalledWith('/api/v2/qc/parameter-sets/9/parameters/');
+  });
+
   // ─── getById ──────────────────────────────────────────────────
 
   it('getById calls apiClient.get with parameter id', async () => {
@@ -69,7 +77,7 @@ describe('qcParameterApi', () => {
 
   // ─── create ───────────────────────────────────────────────────
 
-  it('create calls apiClient.post with materialTypeId and data', async () => {
+  it('create calls apiClient.post with parameterSetId and data', async () => {
     const data = {
       parameter_code: 'PH',
       parameter_name: 'pH',
@@ -80,7 +88,7 @@ describe('qcParameterApi', () => {
       is_mandatory: true,
     };
     await qcParameterApi.create(3, data);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/qc/material-types/3/parameters/', data);
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/qc/parameter-sets/3/parameters/', data);
   });
 
   // ─── update ───────────────────────────────────────────────────

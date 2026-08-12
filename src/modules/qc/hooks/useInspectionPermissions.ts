@@ -31,6 +31,7 @@ export function useInspectionPermissions(inspection: Inspection | null | undefin
       QC_PERMISSIONS.INSPECTION.EDIT,
     ]);
     const canSubmitInspection = hasAnyPermission([QC_PERMISSIONS.INSPECTION.SUBMIT]);
+    const canOverrideVendor = hasAnyPermission([QC_PERMISSIONS.INSPECTION.OVERRIDE_VENDOR]);
     const canApproveAsChemist = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST]);
     const canApproveAsQAM = hasAnyPermission([QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM]);
     const canReject = hasAnyPermission([
@@ -63,6 +64,7 @@ export function useInspectionPermissions(inspection: Inspection | null | undefin
       canCreateInspection,
       canEditInspection,
       canSubmitInspection,
+      canOverrideVendor,
       canApproveAsChemist,
       canApproveAsQAM,
       canReject,

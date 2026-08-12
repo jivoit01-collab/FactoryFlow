@@ -36,6 +36,8 @@ export const QC_PERMISSIONS = {
     SUBMIT: 'quality_control.can_submit_inspection',
     /** View raw material inspections (Django default: view_rawmaterialinspection) */
     VIEW: 'quality_control.view_rawmaterialinspection',
+    /** Inspect against a vendor other than the one on the PO (custom permission) */
+    OVERRIDE_VENDOR: 'quality_control.can_override_qc_vendor',
   },
 
   // ============================================

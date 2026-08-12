@@ -285,6 +285,16 @@ export const API_ENDPOINTS = {
       `/quality-control/material-types/${materialTypeId}/parameters/`,
     SAP_ITEMS: '/quality-control/sap-items/',
 
+    // QC Parameter Sets (one per vendor, plus a default for everyone else)
+    MATERIAL_TYPE_PARAMETER_SETS: (materialTypeId: number) =>
+      `/quality-control/material-types/${materialTypeId}/parameter-sets/`,
+    PARAMETER_SET_BY_ID: (parameterSetId: number) =>
+      `/quality-control/parameter-sets/${parameterSetId}/`,
+    PARAMETER_SET_PARAMETERS: (parameterSetId: number) =>
+      `/quality-control/parameter-sets/${parameterSetId}/parameters/`,
+    PARAMETER_SET_COPY_PARAMETERS: (parameterSetId: number) =>
+      `/quality-control/parameter-sets/${parameterSetId}/copy-parameters/`,
+
     // QC Print Documents
     PRINT_DOCUMENTS: '/quality-control/print-documents/',
     PRINT_DOCUMENT_BY_ID: (id: number) => `/quality-control/print-documents/${id}/`,

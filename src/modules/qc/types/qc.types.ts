@@ -101,9 +101,46 @@ export interface SaveQCPrintDocumentRequest {
   notes?: string;
 }
 
+// QC Parameter Set — one material type can carry different limits per vendor.
+// The set with a blank vendor_code is the default: it applies to every vendor
+// without one of their own, and to production QC.
+export interface QCParameterSet {
+  id: number;
+  material_type: number;
+  vendor_code: string;
+  vendor_name: string;
+  label: string;
+  is_default: boolean;
+  parameter_count: number;
+  notes: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateQCParameterSetRequest {
+  vendor_code?: string;
+  vendor_name?: string;
+  notes?: string;
+  copy_parameters_from_set_id?: number | null;
+}
+
+export interface CopyQCParametersRequest {
+  source_parameter_set_id: number;
+}
+
+export interface CopyQCParametersResponse {
+  copied: number;
+  updated: number;
+  parameter_set: QCParameterSet;
+}
+
 // QC Parameter
 export interface QCParameter {
   id: number;
+  parameter_set: number;
+  material_type: number;
+  vendor_code: string;
   parameter_code: string;
   parameter_name: string;
   standard_value: string;
@@ -272,6 +309,15 @@ export interface Inspection {
   vehicle_no: string;
   material_type: number;
   material_type_name: string;
+  /** Which vendor's parameter set the readings were judged against. */
+  parameter_set: number | null;
+  parameter_set_label: string;
+  vendor_code: string;
+  vendor_name: string;
+  /** The supplier on the PO — differs from vendor_code only on an override. */
+  po_vendor_code: string;
+  is_vendor_overridden: boolean;
+  vendor_override_reason: string;
   final_status: InspectionFinalStatus;
   qa_chemist: number | null;
   qa_chemist_name: string | null;
@@ -323,6 +369,10 @@ export interface CreateInspectionRequest {
   invoice_bill_no: string;
   vehicle_no: string;
   material_type_id: number;
+  /** Only sent to inspect against a vendor other than the PO's supplier.
+   *  Needs can_override_qc_vendor, and the backend demands a reason with it. */
+  vendor_code?: string;
+  vendor_override_reason?: string;
   remarks?: string;
 }
 

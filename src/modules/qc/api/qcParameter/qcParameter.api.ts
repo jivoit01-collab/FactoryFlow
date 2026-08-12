@@ -8,7 +8,15 @@ export interface ListQCParametersParams {
 }
 
 export const qcParameterApi = {
-  // Get parameters for a material type
+  // Get the parameters of one parameter set (one vendor's, or the default)
+  async getByParameterSet(parameterSetId: number): Promise<QCParameter[]> {
+    const response = await apiClient.get<QCParameter[]>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.PARAMETER_SET_PARAMETERS(parameterSetId),
+    );
+    return response.data;
+  },
+
+  // Get a material type's default parameters, whatever vendor sets exist
   async getByMaterialType(materialTypeId: number): Promise<QCParameter[]> {
     const response = await apiClient.get<QCParameter[]>(
       API_ENDPOINTS.QUALITY_CONTROL_V2.MATERIAL_TYPE_PARAMETERS(materialTypeId),
@@ -24,10 +32,10 @@ export const qcParameterApi = {
     return response.data;
   },
 
-  // Create parameter for material type
-  async create(materialTypeId: number, data: CreateQCParameterRequest): Promise<QCParameter> {
+  // Create a parameter inside one parameter set
+  async create(parameterSetId: number, data: CreateQCParameterRequest): Promise<QCParameter> {
     const response = await apiClient.post<QCParameter>(
-      API_ENDPOINTS.QUALITY_CONTROL_V2.MATERIAL_TYPE_PARAMETERS(materialTypeId),
+      API_ENDPOINTS.QUALITY_CONTROL_V2.PARAMETER_SET_PARAMETERS(parameterSetId),
       data,
     );
     return response.data;

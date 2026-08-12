@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { VendorSelect } from '@/modules/gate/components/VendorSelect';
 import { DocumentCodeBadge, RecordTimestamps, SearchableSelect } from '@/shared/components';
 import {
   Badge,
@@ -162,6 +163,16 @@ export default function InspectionDetailPage() {
     useState<MaterialType | null>(null);
   const [linkMaterialTypeErrors, setLinkMaterialTypeErrors] = useState<Record<string, string>>({});
 
+  // Inspecting against a vendor other than the PO's supplier — rare, permission
+  // gated, and the reason is kept on the inspection.
+  const [isVendorOverrideDialogOpen, setIsVendorOverrideDialogOpen] = useState(false);
+  const [vendorOverrideDraft, setVendorOverrideDraft] = useState<{
+    code: string;
+    name: string;
+    reason: string;
+  }>({ code: '', name: '', reason: '' });
+  const [vendorOverrideErrors, setVendorOverrideErrors] = useState<Record<string, string>>({});
+
   // Scroll to first error when errors occur
   useScrollToError(apiErrors);
 
@@ -265,6 +276,15 @@ export default function InspectionDetailPage() {
       invoice_bill_no: inspection.invoice_bill_no,
       vehicle_no: inspection.vehicle_no,
       material_type_id: inspection.material_type,
+      // Carried forward only while the vendor differs from the PO's supplier.
+      // Sending nothing means "use the PO", so an override that isn't echoed
+      // back would be silently dropped on the next save.
+      ...(inspection.is_vendor_overridden
+        ? {
+            vendor_code: inspection.vendor_code,
+            vendor_override_reason: inspection.vendor_override_reason,
+          }
+        : {}),
       remarks: inspection.remarks,
     });
 
@@ -729,6 +749,7 @@ export default function InspectionDetailPage() {
   // Permission checks using the centralized permission hook
   const {
     canEditInspection,
+    canOverrideVendor,
     showSubmitButton,
     showChemistApproval,
     showQAMApproval,
@@ -862,6 +883,93 @@ export default function InspectionDetailPage() {
           </div>
         ) : null;
       })()}
+
+      <Dialog
+        open={isVendorOverrideDialogOpen}
+        onOpenChange={(open) => { if (!open) setIsVendorOverrideDialogOpen(false) }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Inspect against a different vendor</DialogTitle>
+            <DialogDescription>
+              QC parameters normally follow the supplier on the purchase order
+              {inspection?.po_vendor_code ? ` (${inspection.po_vendor_code})` : ''}. Change this
+              only when the material was actually made by someone else — for example when it
+              was bought through a trader.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>
+                Vendor <span className="text-destructive">*</span>
+              </Label>
+              <VendorSelect
+                value={vendorOverrideDraft.code || undefined}
+                onChange={(vendor) =>
+                  setVendorOverrideDraft((prev) => ({
+                    ...prev,
+                    code: vendor?.vendor_code ?? '',
+                    name: vendor?.vendor_name ?? '',
+                  }))
+                }
+                error={vendorOverrideErrors.vendor_code}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Reason <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={vendorOverrideDraft.reason}
+                onChange={(e) =>
+                  setVendorOverrideDraft((prev) => ({ ...prev, reason: e.target.value }))
+                }
+                placeholder="Why these parameters apply instead of the PO supplier's"
+                rows={3}
+              />
+              {vendorOverrideErrors.vendor_override_reason && (
+                <p className="text-sm text-destructive">
+                  {vendorOverrideErrors.vendor_override_reason}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Kept on the inspection and shown on the report.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsVendorOverrideDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const errors: Record<string, string> = {};
+                if (!vendorOverrideDraft.code.trim()) {
+                  errors.vendor_code = 'Pick a vendor';
+                }
+                if (!vendorOverrideDraft.reason.trim()) {
+                  errors.vendor_override_reason = 'A reason is required';
+                }
+                if (Object.keys(errors).length > 0) {
+                  setVendorOverrideErrors(errors);
+                  return;
+                }
+                setFormData((prev) => ({
+                  ...prev,
+                  vendor_code: vendorOverrideDraft.code,
+                  vendor_override_reason: vendorOverrideDraft.reason,
+                }));
+                setIsVendorOverrideDialogOpen(false);
+              }}
+            >
+              Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={isLinkMaterialTypeDialogOpen}
@@ -1164,6 +1272,49 @@ export default function InspectionDetailPage() {
                 </p>
               ) : null}
             </div>
+
+            {/* Which vendor's limits these readings are judged against. Resolved
+                from the PO's supplier, so it is shown rather than chosen. */}
+            {(inspection?.parameter_set_label || formData.vendor_code) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>QC Parameters Applied</Label>
+                  {canOverrideVendor && canEdit && (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      onClick={() => {
+                        setVendorOverrideDraft({
+                          code: formData.vendor_code || inspection?.vendor_code || '',
+                          name: inspection?.vendor_name || '',
+                          reason: formData.vendor_override_reason || '',
+                        });
+                        setVendorOverrideErrors({});
+                        setIsVendorOverrideDialogOpen(true);
+                      }}
+                    >
+                      Change vendor
+                    </button>
+                  )}
+                </div>
+                <Input
+                  value={
+                    formData.vendor_code && formData.vendor_code !== inspection?.vendor_code
+                      ? `${formData.vendor_code} (pending save)`
+                      : inspection?.parameter_set_label || ''
+                  }
+                  readOnly
+                  disabled
+                />
+                <p className="text-xs text-muted-foreground">
+                  {inspection?.is_vendor_overridden
+                    ? `Overridden — the PO supplier is ${inspection.po_vendor_code}. ${inspection.vendor_override_reason}`
+                    : inspection?.vendor_code
+                      ? `Matched to the PO supplier ${inspection.vendor_name || inspection.vendor_code}.`
+                      : 'Default parameters — this vendor has no set of their own.'}
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>

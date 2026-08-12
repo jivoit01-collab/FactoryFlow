@@ -48,10 +48,18 @@ describe('QCParametersPage — Exports', () => {
 
   it('imports qcParameter query hooks', () => {
     const content = readSource();
-    expect(content).toContain('useQCParametersByMaterialType');
+    expect(content).toContain('useQCParametersByParameterSet');
     expect(content).toContain('useCreateQCParameter');
     expect(content).toContain('useUpdateQCParameter');
     expect(content).toContain('useDeleteQCParameter');
+  });
+
+  it('imports parameter set query hooks for the vendor tabs', () => {
+    const content = readSource();
+    expect(content).toContain('useParameterSets');
+    expect(content).toContain('useCreateParameterSet');
+    expect(content).toContain('useDeleteParameterSet');
+    expect(content).toContain('useCopyParameters');
   });
 
   it('imports PARAMETER_TYPE_LABELS from constants', () => {
@@ -72,9 +80,19 @@ describe('QCParametersPage — Material Type Filter', () => {
     expect(content).toContain('setSelectedMaterialType');
   });
 
-  it('loads parameters for selected material type', () => {
+  it('loads the vendor parameter sets of the selected material type', () => {
     const content = readSource();
-    expect(content).toContain('useQCParametersByMaterialType(selectedMaterialType)');
+    expect(content).toContain('useParameterSets(selectedMaterialType)');
+  });
+
+  it('loads parameters for the selected vendor set, not the material type', () => {
+    const content = readSource();
+    expect(content).toContain('useQCParametersByParameterSet(selectedSetId)');
+  });
+
+  it('falls back to the default set when no vendor tab is chosen', () => {
+    const content = readSource();
+    expect(content).toContain('parameterSets.find((set) => set.is_default)');
   });
 });
 

@@ -35,6 +35,12 @@ export interface PrintableInspectionReport {
   invoice_bill_no?: string | null;
   inspection_date?: string | null;
   material_type_name?: string | null;
+  /** Which vendor's parameter set the readings were judged against. Absent for
+   *  sources that don't carry vendor-specific limits (e.g. GRPO reports). */
+  parameter_set_label?: string | null;
+  is_vendor_overridden?: boolean | null;
+  po_vendor_code?: string | null;
+  vendor_override_reason?: string | null;
   internal_lot_no?: string | null;
   supplier_batch_lot_no?: string | null;
   po_item_code?: string | null;

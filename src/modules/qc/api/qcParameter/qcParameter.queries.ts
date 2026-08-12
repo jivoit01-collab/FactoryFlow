@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { CreateQCParameterRequest } from '../../types';
+import { PARAMETER_SET_QUERY_KEYS } from '../parameterSet/parameterSet.keys';
 import { qcParameterApi } from './qcParameter.api';
 
 // Query keys
@@ -8,10 +9,21 @@ export const QC_PARAMETER_QUERY_KEYS = {
   all: ['qcParameters'] as const,
   byMaterialType: (materialTypeId: number) =>
     [...QC_PARAMETER_QUERY_KEYS.all, 'byMaterialType', materialTypeId] as const,
+  byParameterSet: (parameterSetId: number) =>
+    [...QC_PARAMETER_QUERY_KEYS.all, 'byParameterSet', parameterSetId] as const,
   detail: (id: number) => [...QC_PARAMETER_QUERY_KEYS.all, 'detail', id] as const,
 };
 
-// Get parameters by material type
+// Get the parameters of one parameter set (one vendor's, or the default)
+export function useQCParametersByParameterSet(parameterSetId: number | null) {
+  return useQuery({
+    queryKey: QC_PARAMETER_QUERY_KEYS.byParameterSet(parameterSetId!),
+    queryFn: () => qcParameterApi.getByParameterSet(parameterSetId!),
+    enabled: !!parameterSetId,
+  });
+}
+
+// Get a material type's default parameters
 export function useQCParametersByMaterialType(materialTypeId: number | null) {
   return useQuery({
     queryKey: QC_PARAMETER_QUERY_KEYS.byMaterialType(materialTypeId!),
@@ -34,16 +46,18 @@ export function useCreateQCParameter() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      materialTypeId,
+      parameterSetId,
       data,
     }: {
-      materialTypeId: number;
+      parameterSetId: number;
       data: CreateQCParameterRequest;
-    }) => qcParameterApi.create(materialTypeId, data),
-    onSuccess: (_, { materialTypeId }) => {
+    }) => qcParameterApi.create(parameterSetId, data),
+    onSuccess: (_, { parameterSetId }) => {
       queryClient.invalidateQueries({
-        queryKey: QC_PARAMETER_QUERY_KEYS.byMaterialType(materialTypeId),
+        queryKey: QC_PARAMETER_QUERY_KEYS.byParameterSet(parameterSetId),
       });
+      // The tab for this set shows a parameter count.
+      queryClient.invalidateQueries({ queryKey: PARAMETER_SET_QUERY_KEYS.all });
     },
   });
 }
@@ -56,6 +70,7 @@ export function useUpdateQCParameter() {
       qcParameterApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QC_PARAMETER_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: PARAMETER_SET_QUERY_KEYS.all });
     },
   });
 }
@@ -67,6 +82,7 @@ export function useDeleteQCParameter() {
     mutationFn: (id: number) => qcParameterApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QC_PARAMETER_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: PARAMETER_SET_QUERY_KEYS.all });
     },
   });
 }

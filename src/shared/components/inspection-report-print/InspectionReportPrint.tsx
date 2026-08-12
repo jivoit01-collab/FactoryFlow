@@ -112,6 +112,18 @@ export function InspectionReportPrintView({
     ['Commercial Invoice No.', report.invoice_bill_no],
     ['Inspection Date', formatPrintDate(report.inspection_date)],
     ['Material Type', report.material_type_name],
+    // Which vendor's limits were applied. Only worth a line when the material
+    // type actually carries vendor-specific sets.
+    ...(report.parameter_set_label
+      ? ([
+          [
+            'QC Parameters',
+            report.is_vendor_overridden
+              ? `${report.parameter_set_label} (overridden — PO supplier ${report.po_vendor_code || '-'})`
+              : report.parameter_set_label,
+          ],
+        ] as Array<[string, string | number | null | undefined]>)
+      : []),
     ['Report No.', report.report_no],
     ['Internal Lot No.', report.internal_lot_no],
     ['Supplier Batch/Lot No.', report.supplier_batch_lot_no],
