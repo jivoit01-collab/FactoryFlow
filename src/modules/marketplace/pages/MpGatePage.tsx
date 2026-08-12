@@ -5,6 +5,7 @@
  * Defaults to today's sheets; filter by date, gate status or search.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
   ChevronDown,
@@ -36,7 +37,6 @@ import { getErrorMessage } from '@/shared/utils';
 import { marketplaceApi } from '../api/marketplace.api';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
-import { MpGatePassPanel } from '../components/MpGatePassPanel';
 import { useMpChannel } from '../hooks/useMpChannel';
 import type { GateQueueSheet, MarketplaceChannel } from '../types/marketplace.types';
 
@@ -55,13 +55,11 @@ export default function MpGatePage() {
   const [holdSheet, setHoldSheet] = useState<GateQueueSheet | null>(null);
   const [holdRemark, setHoldRemark] = useState('');
   // Filters — default to TODAY's sheets.
-  // Two jobs on one screen: pass the parcels, then move the vehicle that takes
-  // them. Tabs rather than a second page — the gate person does both in one go.
-  const [tab, setTab] = useState<'sheets' | 'trips'>('sheets');
   const [range, setRange] = useState<MpRange>({ from: TODAY, to: '' });
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [search, setSearch] = useState('');
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const queue = useQuery({
     queryKey: ['mp-gate-queue', channel],
@@ -75,9 +73,12 @@ export default function MpGatePage() {
 
   const approve = useMutation({
     mutationFn: (batchId: number) => marketplaceApi.gateApprove(channel, batchId),
-    onSuccess: (r) => {
+    onSuccess: (r, batchId) => {
       toast.success(`Approved ${r.approved} order(s) out from gate.`);
       invalidate();
+      // The parcels are cleared and the truck is at the gate — go straight to
+      // sending them out rather than making the gate person find the next screen.
+      navigate(`/marketplace/gate/${batchId}/send-out?channel=${channel}`);
     },
     onError: (e: unknown) => toast.error(getErrorMessage(e, 'Could not approve.')),
   });
@@ -134,127 +135,96 @@ export default function MpGatePage() {
         <MpChannelSelect value={channel} onChange={setChannel} />
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            ['sheets', 'Sheets'],
-            ['trips', 'Gate passes'],
-          ] as const
-        ).map(([key, label]) => (
-          <Button
-            key={key}
-            size="sm"
-            variant={tab === key ? 'default' : 'outline'}
-            className="h-8"
-            onClick={() => setTab(key)}
-          >
-            {label}
-          </Button>
-        ))}
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatTile
+          icon={<PackageCheck className="h-4 w-4" />}
+          label="Sheets"
+          value={totals.sheets}
+        />
+        <StatTile icon={<Package className="h-4 w-4" />} label="Parcels" value={totals.parcels} />
+        <StatTile
+          icon={<ShieldAlert className="h-4 w-4" />}
+          label="Pending gate"
+          value={totals.pending}
+          tone={totals.pending ? 'amber' : undefined}
+        />
       </div>
 
-      {tab === 'trips' ? (
-        <MpGatePassPanel channel={channel} />
-      ) : (
-        <>
-          {/* Summary */}
-          <div className="grid grid-cols-3 gap-3">
-            <StatTile
-              icon={<PackageCheck className="h-4 w-4" />}
-              label="Sheets"
-              value={totals.sheets}
-            />
-            <StatTile
-              icon={<Package className="h-4 w-4" />}
-              label="Parcels"
-              value={totals.parcels}
-            />
-            <StatTile
-              icon={<ShieldAlert className="h-4 w-4" />}
-              label="Pending gate"
-              value={totals.pending}
-              tone={totals.pending ? 'amber' : undefined}
-            />
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-3">
-            <MpDateRange value={range} onChange={setRange} label="Uploaded" />
-            <div className="flex rounded-lg border bg-background p-0.5">
-              {STATUS_TABS.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setStatusFilter(t.key)}
-                  className={`rounded-md px-3 py-1 text-xs font-medium transition ${
-                    statusFilter === t.key
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <div className="relative min-w-[12rem] flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search sheet…"
-                className="h-9 pl-8 pr-8"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted"
-                  aria-label="Clear"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* List */}
-          {queue.isLoading ? (
-            <div className="flex items-center justify-center gap-2 rounded-md border p-10 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading gate queue…
-            </div>
-          ) : sheets.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-                <PackageCheck className="h-10 w-10 text-emerald-500" />
-                <p className="font-medium">
-                  {all.length === 0
-                    ? 'Nothing waiting at the gate.'
-                    : 'No sheets match these filters.'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {all.length === 0
-                    ? "Orders appear here once they're confirmed in Outward."
-                    : 'Try a wider date range or clear the status filter.'}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {sheets.map((s) => (
-                <SheetRow
-                  key={s.batch_id}
-                  sheet={s}
-                  channel={channel}
-                  open={expanded === s.batch_id}
-                  onToggle={() => setExpanded((v) => (v === s.batch_id ? null : s.batch_id))}
-                  onApprove={() => approve.mutate(s.batch_id)}
-                  onHold={() => setHoldSheet(s)}
-                  busy={approve.isPending || hold.isPending}
-                />
-              ))}
-            </div>
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-3">
+        <MpDateRange value={range} onChange={setRange} label="Uploaded" />
+        <div className="flex rounded-lg border bg-background p-0.5">
+          {STATUS_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setStatusFilter(t.key)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                statusFilter === t.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative min-w-[12rem] flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search sheet…"
+            className="h-9 pl-8 pr-8"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted"
+              aria-label="Clear"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
-        </>
+        </div>
+      </div>
+
+      {/* List */}
+      {queue.isLoading ? (
+        <div className="flex items-center justify-center gap-2 rounded-md border p-10 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading gate queue…
+        </div>
+      ) : sheets.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <PackageCheck className="h-10 w-10 text-emerald-500" />
+            <p className="font-medium">
+              {all.length === 0 ? 'Nothing waiting at the gate.' : 'No sheets match these filters.'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {all.length === 0
+                ? "Orders appear here once they're confirmed in Outward."
+                : 'Try a wider date range or clear the status filter.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {sheets.map((s) => (
+            <SheetRow
+              key={s.batch_id}
+              sheet={s}
+              channel={channel}
+              open={expanded === s.batch_id}
+              onToggle={() => setExpanded((v) => (v === s.batch_id ? null : s.batch_id))}
+              onApprove={() => approve.mutate(s.batch_id)}
+              onHold={() => setHoldSheet(s)}
+              busy={approve.isPending || hold.isPending}
+            />
+          ))}
+        </div>
       )}
 
       {/* Hold dialog */}

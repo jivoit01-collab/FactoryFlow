@@ -36,6 +36,7 @@ const MpInwardPage = lazy(() => import('./pages/MpInwardPage'));
 const MpMastersPage = lazy(() => import('./pages/MpMastersPage'));
 const MpReconciliationPage = lazy(() => import('./pages/MpReconciliationPage'));
 const MpGatePage = lazy(() => import('./pages/MpGatePage'));
+const MpGatePassPage = lazy(() => import('./pages/MpGatePassPage'));
 const MpReportsPage = lazy(() => import('./pages/MpReportsPage'));
 const MpSettingsPage = lazy(() => import('./pages/MpSettingsPage'));
 
@@ -97,6 +98,15 @@ export const marketplaceModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: MARKETPLACE_GATE_ACCESS,
       breadcrumb: { label: 'Gate' },
+    },
+    {
+      // Reached from the Gate page the moment a sheet is approved — the truck is
+      // at the gate and the parcels are cleared, so this is the next thing done.
+      path: '/marketplace/gate/:batchId/send-out',
+      element: <MpGatePassPage />,
+      layout: 'main',
+      permissions: MARKETPLACE_GATE_ACCESS,
+      breadcrumb: { label: 'Send out' },
     },
     {
       path: '/marketplace/inward',
