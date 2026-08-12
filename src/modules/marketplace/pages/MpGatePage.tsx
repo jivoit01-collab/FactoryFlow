@@ -15,6 +15,7 @@ import {
   PackageCheck,
   Search,
   ShieldAlert,
+  Truck,
   X,
 } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
@@ -71,6 +72,9 @@ export default function MpGatePage() {
     qc.invalidateQueries({ queryKey: ['mp-gate-detail'] });
   };
 
+  const goSendOut = (batchId: number) =>
+    navigate(`/marketplace/gate/${batchId}/send-out?channel=${channel}`);
+
   const approve = useMutation({
     mutationFn: (batchId: number) => marketplaceApi.gateApprove(channel, batchId),
     onSuccess: (r, batchId) => {
@@ -78,7 +82,7 @@ export default function MpGatePage() {
       invalidate();
       // The parcels are cleared and the truck is at the gate — go straight to
       // sending them out rather than making the gate person find the next screen.
-      navigate(`/marketplace/gate/${batchId}/send-out?channel=${channel}`);
+      goSendOut(batchId);
     },
     onError: (e: unknown) => toast.error(getErrorMessage(e, 'Could not approve.')),
   });
@@ -220,6 +224,7 @@ export default function MpGatePage() {
               open={expanded === s.batch_id}
               onToggle={() => setExpanded((v) => (v === s.batch_id ? null : s.batch_id))}
               onApprove={() => approve.mutate(s.batch_id)}
+              onSendOut={() => goSendOut(s.batch_id)}
               onHold={() => setHoldSheet(s)}
               busy={approve.isPending || hold.isPending}
             />
@@ -269,6 +274,7 @@ function SheetRow({
   open,
   onToggle,
   onApprove,
+  onSendOut,
   onHold,
   busy,
 }: {
@@ -277,6 +283,7 @@ function SheetRow({
   open: boolean;
   onToggle: () => void;
   onApprove: () => void;
+  onSendOut: () => void;
   onHold: () => void;
   busy: boolean;
 }) {
@@ -347,6 +354,14 @@ function SheetRow({
             <Button size="sm" variant="outline" onClick={onHold} disabled={busy}>
               <ShieldAlert className="mr-1.5 h-4 w-4" /> Hold
             </Button>
+            {/* Approving navigates here once, but Approve is disabled the moment a
+                sheet is fully approved — so without a standing entry point an
+                already-approved sheet could never be sent out at all. */}
+            {sheet.gate_approved > 0 && (
+              <Button size="sm" variant="outline" onClick={onSendOut} disabled={busy}>
+                <Truck className="mr-1.5 h-4 w-4" /> Send out
+              </Button>
+            )}
           </div>
         </div>
 

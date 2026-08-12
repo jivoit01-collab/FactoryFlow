@@ -9,6 +9,7 @@ const api = vi.hoisted(() => ({
   weigh: vi.fn(),
   dispatch: vi.fn(),
   print: vi.fn(),
+  list: vi.fn(),
 }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -21,6 +22,7 @@ vi.mock('@/core/api', () => ({
 }));
 vi.mock('../../api/marketplace.api', () => ({
   marketplaceApi: {
+    gatePasses: (...a: unknown[]) => api.list(...a),
     gatePassCreate: (...a: unknown[]) => api.create(...a),
     gatePassWeigh: (...a: unknown[]) => api.weigh(...a),
     gatePassDispatch: (...a: unknown[]) => api.dispatch(...a),
@@ -80,6 +82,7 @@ async function pickVehicle() {
 }
 
 beforeEach(() => {
+  api.list.mockReset().mockResolvedValue([]);
   api.create.mockReset().mockResolvedValue(trip());
   api.weigh.mockReset();
   api.dispatch.mockReset();
@@ -138,6 +141,29 @@ describe('MpGatePassPage — send an approved sheet out', () => {
     fireEvent.click(btn(/Save & continue/));
     await shows(/net 262.5 kg/);
     expect(btn(/Mark out/)).not.toBeDisabled();
+  });
+
+  it('resumes a trip already open on the sheet instead of starting a second', async () => {
+    // A refresh mid-flow, or reopening the page, must not leave two DRAFTs
+    // against one sheet with no way to tell which is live.
+    api.list.mockResolvedValue([
+      trip({ is_weighed: true, tare_weight: '2450.000', gross_weight: '2712.500',
+             net_weight: '262.500', weight_error: '' }),
+    ]);
+    renderPage();
+    await shows(/Arnav Transport Service/);
+    await shows(/net 262.5 kg/);
+    // Step 1 is already done, so nothing was created.
+    expect(api.create).not.toHaveBeenCalled();
+    expect(btn(/Mark out/)).not.toBeDisabled();
+  });
+
+  it('ignores a finished trip on the same sheet and starts fresh', async () => {
+    api.list.mockResolvedValue([trip({ status: 'DISPATCHED' })]);
+    renderPage();
+    // The vehicle form is offered again rather than resuming a trip that has gone.
+    await screen.findByRole('option', { name: 'DL01LAT2433' });
+    expect(btn(/Save & continue/)).toBeTruthy();
   });
 
   it('after marking out, shows the load and offers the gatepass — nothing else', async () => {

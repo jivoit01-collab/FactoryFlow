@@ -48,6 +48,22 @@ export default function MpGatePassPage() {
   const [security, setSecurity] = useState('');
   const [trip, setTrip] = useState<MpGatePass | null>(null);
 
+  // Resume a trip already open on this sheet instead of starting a second one.
+  // Without this, reopening the page (or a refresh mid-flow) would leave two
+  // DRAFTs against the same sheet and the operator would not know which is live.
+  const existing = useQuery({
+    queryKey: ['mp-gate-pass-for-batch', batchId, channel],
+    queryFn: () => marketplaceApi.gatePasses(channel, { batch_id: Number(batchId) }),
+    enabled: !!batchId,
+  });
+
+  const open = (existing.data ?? []).find(
+    (p) => p.status !== 'DISPATCHED' && p.status !== 'CANCELLED',
+  );
+  // Adopt it once, then let the local copy lead — the query would otherwise
+  // overwrite each step's result with a stale row.
+  if (open && !trip) setTrip(open);
+
   const vehicles = useQuery({
     queryKey: ['mp-vehicles'],
     queryFn: () => fetchList(API_ENDPOINTS.VEHICLE.VEHICLES),
