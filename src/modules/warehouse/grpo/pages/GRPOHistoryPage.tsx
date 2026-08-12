@@ -8,8 +8,8 @@ import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
 import { useGRPOHistory } from '../api';
-import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants';
 import { GRPOMonthFilter } from '../components';
+import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants';
 import type { GRPOStatus } from '../types';
 
 // Status filter buttons map to the server `status` query param (a single
@@ -129,7 +129,12 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
             </div>
             <p className="text-muted-foreground">View all GRPO postings to SAP</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="w-full sm:w-auto"
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>

@@ -9,6 +9,7 @@ import type {
   DispatchPlanBulkDatePayload,
   DispatchPlanBulkDateResult,
   DispatchPlanFilters,
+  DispatchPlanRemoveResult,
   DispatchPlansResponse,
   DispatchPlanUpdatePayload,
 } from '../types';
@@ -48,10 +49,7 @@ export const dispatchPlansApi = {
    * Inside Vehicle Manager picker is cross-company); the request interceptor
    * leaves an explicit Company-Code header untouched. Returns null if not found.
    */
-  async getBillByNumber(
-    invoiceNumber: string,
-    companyCode?: string,
-  ): Promise<DispatchBill | null> {
+  async getBillByNumber(invoiceNumber: string, companyCode?: string): Promise<DispatchBill | null> {
     try {
       const response = await apiClient.get<DispatchBill>(EP.BILL_BY_NUMBER(invoiceNumber), {
         headers: companyCode ? { 'Company-Code': companyCode } : undefined,
@@ -67,10 +65,7 @@ export const dispatchPlansApi = {
   async submitBillSelection(
     payload: DispatchBillSelectionPayload,
   ): Promise<DispatchBillSelectionResult> {
-    const response = await apiClient.post<DispatchBillSelectionResult>(
-      EP.BILL_SELECTION,
-      payload,
-    );
+    const response = await apiClient.post<DispatchBillSelectionResult>(EP.BILL_SELECTION, payload);
     return response.data;
   },
 
@@ -81,6 +76,13 @@ export const dispatchPlansApi = {
       requestBody,
       isFormData(requestBody) ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined,
     );
+    return response.data;
+  },
+
+  /** Take one bill back off the Plan page. Refused (409) once its plan has
+   *  moved past PENDING — the server decides, not the caller. */
+  async removeFromPlan(docEntry: number): Promise<DispatchPlanRemoveResult> {
+    const response = await apiClient.post<DispatchPlanRemoveResult>(EP.PLAN_REMOVE(docEntry));
     return response.data;
   },
 

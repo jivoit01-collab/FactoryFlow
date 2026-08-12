@@ -1,10 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('GRPO Module Index Exports', () => {
   it('index.ts contains expected re-export statements', async () => {
     const { readFileSync } = await import('node:fs');
     const { resolve } = await import('node:path');
-    const content = readFileSync(resolve(process.cwd(), 'src/modules/warehouse/grpo/index.ts'), 'utf-8');
+    const content = readFileSync(
+      resolve(process.cwd(), 'src/modules/warehouse/grpo/index.ts'),
+      'utf-8',
+    );
 
     // Module config
     expect(content).toContain('./module.config');

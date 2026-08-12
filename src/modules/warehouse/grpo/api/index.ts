@@ -21,6 +21,7 @@ export {
   useServiceGRPOHistory,
   useServiceGRPOOptions,
   useServiceGRPOPreview,
+  useServiceGRPOSummary,
   useUploadGRPOAttachment,
   useWarehouses,
 } from './grpo.queries';

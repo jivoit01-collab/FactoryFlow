@@ -24,6 +24,13 @@ export interface DispatchBillSelectionPayload {
   selected_doc_entries: number[];
 }
 
+/** Outcome of taking a bill back off the Plan page. */
+export interface DispatchPlanRemoveResult {
+  removed: boolean;
+  booking_status: string;
+  detail: string;
+}
+
 export interface DispatchBillSelectionResult {
   selected: number;
   deselected: number;
