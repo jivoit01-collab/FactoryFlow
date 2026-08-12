@@ -23,6 +23,9 @@ async function fetchList(url: string): Promise<Named[]> {
   return Array.isArray(data) ? data : (data.results ?? []);
 }
 
+/** Sentinel option: the vehicle or driver is not on file yet. */
+const NEW = '__new__';
+
 const kg = (v: string | null) => (v === null ? '—' : `${Number(v).toLocaleString('en-IN')} kg`);
 
 /**
@@ -47,6 +50,11 @@ export default function MpGatePassPage() {
   const [slip, setSlip] = useState('');
   const [security, setSecurity] = useState('');
   const [trip, setTrip] = useState<MpGatePass | null>(null);
+  // A truck can turn up that nobody has registered. Making the gate person leave
+  // for the masters screen and come back would lose the trip they are mid-way
+  // through, so it is added from here.
+  const [newVehicleNo, setNewVehicleNo] = useState('');
+  const [newDriver, setNewDriver] = useState({ name: '', mobile_no: '', license_no: '' });
 
   // Resume a trip already open on this sheet instead of starting a second one.
   // Without this, reopening the page (or a refresh mid-flow) would leave two
@@ -75,14 +83,49 @@ export default function MpGatePassPage() {
 
   const fail = (msg: string) => (e: unknown) => toast.error(getErrorMessage(e, msg));
 
+  const addVehicle = useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<Named>(API_ENDPOINTS.VEHICLE.VEHICLES, {
+        vehicle_number: newVehicleNo.trim(),
+      });
+      return data;
+    },
+    onSuccess: (v) => {
+      // Select what was just added, so the gate person does not have to find it.
+      setVehicleId(String(v.id));
+      setNewVehicleNo('');
+      vehicles.refetch();
+      toast.success(`Vehicle ${v.vehicle_number} added.`);
+    },
+    onError: fail('Could not add the vehicle.'),
+  });
+
+  const addDriver = useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<Named>(API_ENDPOINTS.DRIVER.DRIVERS, {
+        name: newDriver.name.trim(),
+        mobile_no: newDriver.mobile_no.trim(),
+        license_no: newDriver.license_no.trim(),
+      });
+      return data;
+    },
+    onSuccess: (d) => {
+      setDriverId(String(d.id));
+      setNewDriver({ name: '', mobile_no: '', license_no: '' });
+      drivers.refetch();
+      toast.success(`Driver ${d.name} added.`);
+    },
+    onError: fail('Could not add the driver.'),
+  });
+
   // Step 1 — the trip is opened by saving the vehicle, so there is no separate
   // "create" the gate person has to think about.
   const start = useMutation({
     mutationFn: () =>
       marketplaceApi.gatePassCreate(channel, {
         batch_id: Number(batchId),
-        vehicle_id: vehicleId ? Number(vehicleId) : undefined,
-        driver_id: driverId ? Number(driverId) : undefined,
+        vehicle_id: vehicleId && vehicleId !== NEW ? Number(vehicleId) : undefined,
+        driver_id: driverId && driverId !== NEW ? Number(driverId) : undefined,
       }),
     onSuccess: setTrip,
     onError: fail('Could not start the trip.'),
@@ -165,6 +208,7 @@ export default function MpGatePassPage() {
                       {v.vehicle_number}
                     </SelectOption>
                   ))}
+                  <SelectOption value={NEW}>+ Not listed — add one</SelectOption>
                 </NativeSelect>
               </label>
               <label className="space-y-1 text-xs text-muted-foreground">
@@ -181,13 +225,75 @@ export default function MpGatePassPage() {
                       {d.name}
                     </SelectOption>
                   ))}
+                  <SelectOption value={NEW}>+ Not listed — add one</SelectOption>
                 </NativeSelect>
               </label>
             </div>
+            {vehicleId === NEW && (
+              <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                <p className="text-xs font-medium">New vehicle</p>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    placeholder="Vehicle number"
+                    value={newVehicleNo}
+                    onChange={(e) => setNewVehicleNo(e.target.value)}
+                    className="w-48"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!newVehicleNo.trim() || addVehicle.isPending}
+                    onClick={() => addVehicle.mutate()}
+                  >
+                    {addVehicle.isPending ? 'Adding…' : 'Add vehicle'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {driverId === NEW && (
+              <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                <p className="text-xs font-medium">New driver</p>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    placeholder="Name"
+                    value={newDriver.name}
+                    onChange={(e) => setNewDriver((d) => ({ ...d, name: e.target.value }))}
+                    className="w-40"
+                  />
+                  <Input
+                    placeholder="Mobile"
+                    value={newDriver.mobile_no}
+                    onChange={(e) => setNewDriver((d) => ({ ...d, mobile_no: e.target.value }))}
+                    className="w-36"
+                  />
+                  <Input
+                    placeholder="Licence no."
+                    value={newDriver.license_no}
+                    onChange={(e) => setNewDriver((d) => ({ ...d, license_no: e.target.value }))}
+                    className="w-40"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      !newDriver.name.trim() ||
+                      !newDriver.mobile_no.trim() ||
+                      !newDriver.license_no.trim() ||
+                      addDriver.isPending
+                    }
+                    onClick={() => addDriver.mutate()}
+                  >
+                    {addDriver.isPending ? 'Adding…' : 'Add driver'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground">The transporter comes from the vehicle.</p>
             <Button
               size="sm"
-              disabled={!vehicleId || start.isPending}
+              disabled={!vehicleId || vehicleId === NEW || start.isPending}
               onClick={() => start.mutate()}
             >
               {start.isPending ? 'Saving…' : 'Save & continue'}

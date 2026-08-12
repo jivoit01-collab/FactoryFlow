@@ -13,11 +13,13 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const post = vi.hoisted(() => vi.fn());
 vi.mock('@/core/api', () => ({
   apiClient: {
     get: vi.fn().mockResolvedValue({
       data: [{ id: 1, vehicle_number: 'DL01LAT2433', name: 'Soyab' }],
     }),
+    post: (...a: unknown[]) => post(...a),
   },
 }));
 vi.mock('../../api/marketplace.api', () => ({
@@ -147,8 +149,13 @@ describe('MpGatePassPage — send an approved sheet out', () => {
     // A refresh mid-flow, or reopening the page, must not leave two DRAFTs
     // against one sheet with no way to tell which is live.
     api.list.mockResolvedValue([
-      trip({ is_weighed: true, tare_weight: '2450.000', gross_weight: '2712.500',
-             net_weight: '262.500', weight_error: '' }),
+      trip({
+        is_weighed: true,
+        tare_weight: '2450.000',
+        gross_weight: '2712.500',
+        net_weight: '262.500',
+        weight_error: '',
+      }),
     ]);
     renderPage();
     await shows(/Arnav Transport Service/);
@@ -164,6 +171,32 @@ describe('MpGatePassPage — send an approved sheet out', () => {
     // The vehicle form is offered again rather than resuming a trip that has gone.
     await screen.findByRole('option', { name: 'DL01LAT2433' });
     expect(btn(/Save & continue/)).toBeTruthy();
+  });
+
+  it('lets a vehicle that is not on file be added without leaving the page', async () => {
+    // A truck can turn up unregistered; sending the gate person to the masters
+    // screen would lose the trip they are mid-way through.
+    post.mockReset().mockResolvedValue({ data: { id: 9, vehicle_number: 'HR55AZ3926' } });
+    renderPage();
+    await screen.findByRole('option', { name: 'DL01LAT2433' });
+    const [vehicle] = screen.getAllByRole('combobox');
+    fireEvent.change(vehicle, { target: { value: '__new__' } });
+
+    fireEvent.change(screen.getByPlaceholderText('Vehicle number'), {
+      target: { value: 'HR55AZ3926' },
+    });
+    fireEvent.click(btn(/Add vehicle/));
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    // The sentinel must never reach the server as a vehicle id.
+    expect(api.create).not.toHaveBeenCalled();
+  });
+
+  it('will not open a trip while "not listed" is still selected', async () => {
+    renderPage();
+    await screen.findByRole('option', { name: 'DL01LAT2433' });
+    const [vehicle] = screen.getAllByRole('combobox');
+    fireEvent.change(vehicle, { target: { value: '__new__' } });
+    expect(btn(/Save & continue/)).toBeDisabled();
   });
 
   it('after marking out, shows the load and offers the gatepass — nothing else', async () => {
