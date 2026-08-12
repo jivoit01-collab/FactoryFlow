@@ -97,6 +97,43 @@ describe('QCParametersPage — Material Type Filter', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// Removing a vendor added by mistake
+// ═══════════════════════════════════════════════════════════════
+
+describe('QCParametersPage — Remove Vendor', () => {
+  it('puts a remove control on each vendor tab', () => {
+    const content = readSource();
+    expect(content).toContain('handleDeleteVendorSet(set)');
+    expect(content).toContain('aria-label={`Remove ${set.label}`}');
+  });
+
+  it('never offers to remove the default set', () => {
+    const content = readSource();
+    // Both the tab control and the header button are gated on !is_default.
+    expect(content).toContain('{!set.is_default && (');
+    expect(content).toContain('if (!set || set.is_default) return;');
+  });
+
+  it('warns about the parameters being discarded', () => {
+    const content = readSource();
+    expect(content).toContain('set.parameter_count');
+    expect(content).toContain('fall back to the default set');
+  });
+
+  it('confirms before deleting', () => {
+    const content = readSource();
+    expect(content).toContain('if (!confirm(warning)) return;');
+  });
+
+  it('does not move the selection by hand after deleting', () => {
+    const content = readSource();
+    // The set in force is derived, so a stale chosen id resolves on its own.
+    expect(content).toContain('await deleteParameterSet.mutateAsync(set.id)');
+    expect(content).not.toContain('setChosenSetId(null);  // falls back');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
 // CRUD Operations
 // ═══════════════════════════════════════════════════════════════
 

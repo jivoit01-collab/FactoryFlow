@@ -1,4 +1,14 @@
-import { AlertCircle, ArrowLeft, Copy, Edit, FlaskConical, Plus, Trash2, Users } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Copy,
+  Edit,
+  FlaskConical,
+  Plus,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -36,7 +46,12 @@ import {
 } from '../../api/qcParameter/qcParameter.queries';
 import { MaterialTypeSelect } from '../../components';
 import { PARAMETER_TYPE_LABELS } from '../../constants';
-import type { CreateQCParameterRequest, ParameterType, QCParameter } from '../../types';
+import type {
+  CreateQCParameterRequest,
+  ParameterType,
+  QCParameter,
+  QCParameterSet,
+} from '../../types';
 
 export default function QCParametersPage() {
   const navigate = useNavigate();
@@ -271,20 +286,24 @@ export default function QCParametersPage() {
     }
   };
 
-  const handleDeleteVendorSet = async () => {
-    if (!selectedSet || selectedSet.is_default) return;
-    if (
-      !confirm(
-        `Remove ${selectedSet.label}'s own parameters? Inspections for this vendor ` +
-          `will fall back to the default set. Existing reports are not affected.`,
-      )
-    ) {
-      return;
-    }
+  const handleDeleteVendorSet = async (set: QCParameterSet | null) => {
+    if (!set || set.is_default) return;
+
+    // A vendor added by mistake is usually still empty, so don't make that case
+    // sound alarming — but spell out what is being thrown away when it isn't.
+    const warning = set.parameter_count
+      ? `Remove ${set.label} and its ${set.parameter_count} parameter${
+          set.parameter_count === 1 ? '' : 's'
+        }?\n\nInspections for this vendor will fall back to the default set. ` +
+        `Completed inspections and their reports keep the values they were judged on.`
+      : `Remove ${set.label}? It has no parameters of its own yet.`;
+    if (!confirm(warning)) return;
 
     try {
-      await deleteParameterSet.mutateAsync(selectedSet.id);
-      setChosenSetId(null);  // falls back to the default set
+      setApiErrors({});
+      await deleteParameterSet.mutateAsync(set.id);
+      // No need to move the selection: the set in force is derived, so a
+      // chosen id that no longer exists falls back to the default on its own.
     } catch (error) {
       setApiErrors(readApiErrors(error, 'Failed to remove the vendor'));
     }
@@ -366,31 +385,60 @@ export default function QCParametersPage() {
               Whose parameters are you editing?
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {parameterSets.map((set) => (
-                <button
-                  key={set.id}
-                  type="button"
-                  onClick={() => setChosenSetId(set.id)}
-                  className={cn(
-                    'rounded-full border px-4 py-1.5 text-sm transition-colors',
-                    set.id === selectedSetId
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-input hover:bg-muted',
-                  )}
-                >
-                  {set.label}
-                  <span
+              {parameterSets.map((set) => {
+                const isSelected = set.id === selectedSetId;
+                return (
+                  // A chip carries two controls (select, remove), so it is a
+                  // container rather than a button — buttons can't nest.
+                  <div
+                    key={set.id}
                     className={cn(
-                      'ml-2 text-xs',
-                      set.id === selectedSetId
-                        ? 'text-primary-foreground/80'
-                        : 'text-muted-foreground',
+                      'flex items-center rounded-full border text-sm transition-colors',
+                      isSelected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-input hover:bg-muted',
                     )}
                   >
-                    {set.parameter_count}
-                  </span>
-                </button>
-              ))}
+                    <button
+                      type="button"
+                      onClick={() => setChosenSetId(set.id)}
+                      className={cn(
+                        'py-1.5 pl-4 rounded-l-full',
+                        set.is_default ? 'pr-4 rounded-r-full' : 'pr-2',
+                      )}
+                    >
+                      {set.label}
+                      <span
+                        className={cn(
+                          'ml-2 text-xs',
+                          isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground',
+                        )}
+                      >
+                        {set.parameter_count}
+                      </span>
+                    </button>
+                    {/* The default set has no remove: it is the fallback every
+                        vendor without their own parameters lands on. */}
+                    {!set.is_default && (
+                      <button
+                        type="button"
+                        aria-label={`Remove ${set.label}`}
+                        title={`Remove ${set.label}`}
+                        onClick={() => handleDeleteVendorSet(set)}
+                        disabled={deleteParameterSet.isPending}
+                        className={cn(
+                          'rounded-r-full py-1.5 pl-1 pr-3 disabled:opacity-50',
+                          isSelected
+                            ? 'text-primary-foreground/70 hover:text-primary-foreground'
+                            : 'text-muted-foreground hover:text-destructive',
+                        )}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
               <Button variant="outline" size="sm" onClick={handleOpenVendorDialog}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Vendor
@@ -442,7 +490,7 @@ export default function QCParametersPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleDeleteVendorSet}
+                  onClick={() => handleDeleteVendorSet(selectedSet)}
                   disabled={deleteParameterSet.isPending}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
