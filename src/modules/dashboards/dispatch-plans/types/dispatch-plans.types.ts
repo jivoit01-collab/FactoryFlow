@@ -27,6 +27,9 @@ export interface DispatchBillSelectionPayload {
 export interface DispatchBillSelectionResult {
   selected: number;
   deselected: number;
+  /** Bills the server refused to remove because their plan has moved past
+   *  PENDING — already booked or dispatched. */
+  blocked?: { sap_invoice_doc_entry: number; booking_status: string }[];
 }
 
 export interface DispatchPlanBulkDatePayload {
