@@ -109,10 +109,12 @@ export default function StockLevelDashboardPage() {
     { ...effectiveFilters, sort_by: sort.col, sort_dir: sort.dir, page },
     materialTypesResolved,
   );
+  // KPI cards track the warehouse filter only — status, movement, material type
+  // and search stay at their defaults so the cards keep showing the full split.
   const statsQuery = useStockLevels(
     {
       item_group: defaultItemGroup,
-      warehouse: [...DEFAULT_STOCK_WAREHOUSE_FILTER],
+      ...(effectiveFilters.warehouse?.length ? { warehouse: effectiveFilters.warehouse } : {}),
       status: [...STOCK_BENCHMARK_STATS_STATUS_FILTER],
       movement_status: [...DEFAULT_STOCK_MOVEMENT_FILTER],
       ...(effectiveFilters.as_of_date ? { as_of_date: effectiveFilters.as_of_date } : {}),
