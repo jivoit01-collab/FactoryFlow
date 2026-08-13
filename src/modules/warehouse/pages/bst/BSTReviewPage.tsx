@@ -131,7 +131,7 @@ export default function BSTReviewPage() {
       <Card>
         <CardContent className="pt-6">
           <p className="font-medium mb-3">Bill vs scanned ({t.items.length} items)</p>
-          <BSTBillTable items={t.items} scans={t.box_scans} />
+          <BSTBillTable items={t.items} scans={t.box_scans} manualEntries={t.manual_entries} />
         </CardContent>
       </Card>
 

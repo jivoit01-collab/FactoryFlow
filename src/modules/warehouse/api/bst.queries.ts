@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { BSTCreatePayload, BSTReceiveScanPayload, BSTUpdatePayload } from '../types';
+import type {
+  BSTCreatePayload,
+  BSTManualEntryPayload,
+  BSTReceiveScanPayload,
+  BSTUpdatePayload,
+} from '../types';
 import { bstApi } from './bst.api';
 
 // ============================================================================
@@ -121,6 +126,24 @@ export function useRemoveBSTScan() {
       bstApi.removeScan(transferId, scanId),
     onSuccess: (_res, { transferId }) =>
       qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.detail(transferId) }),
+  });
+}
+
+/** Type a scan-exempt (PM) line's quantity — the response is the fresh transfer. */
+export function useSaveBSTManualEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      transferId,
+      payload,
+    }: {
+      transferId: number;
+      payload: BSTManualEntryPayload;
+    }) => bstApi.saveManualEntry(transferId, payload),
+    onSuccess: (res, { transferId }) => {
+      qc.setQueryData(BST_QUERY_KEYS.detail(transferId), res);
+      qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.detail(transferId) });
+    },
   });
 }
 

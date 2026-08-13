@@ -991,6 +991,8 @@ export const API_ENDPOINTS = {
     BST_BOX_SCANS_BATCH: (transferId: number) => `/warehouse/bst/${transferId}/box-scans/batch/`,
     BST_BOX_SCAN_DETAIL: (transferId: number, scanId: number) =>
       `/warehouse/bst/${transferId}/box-scans/${scanId}/`,
+    // Hand-typed quantity for a scan-exempt (PM) line, which has no box scans
+    BST_MANUAL_ENTRIES: (transferId: number) => `/warehouse/bst/${transferId}/manual-entries/`,
     BST_APPROVE: (transferId: number) => `/warehouse/bst/${transferId}/approve/`,
     BST_CANCEL: (transferId: number) => `/warehouse/bst/${transferId}/cancel/`,
     // Partial-transfer approval (seal a short scan with admin sign-off)

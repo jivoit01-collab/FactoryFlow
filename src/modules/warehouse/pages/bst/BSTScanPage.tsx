@@ -25,6 +25,7 @@ import {
   useBSTTransfer,
   useRemoveBSTScan,
   useRequestBSTPartialTransfer,
+  useSaveBSTManualEntry,
 } from '../../api';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTBillTable } from './BSTBillTable';
@@ -44,6 +45,7 @@ export default function BSTScanPage() {
   });
   const removeMut = useRemoveBSTScan();
   const requestMut = useRequestBSTPartialTransfer();
+  const manualMut = useSaveBSTManualEntry();
   const queryClient = useQueryClient();
 
   const [manualBarcode, setManualBarcode] = useState('');
@@ -107,6 +109,23 @@ export default function BSTScanPage() {
     setManualBarcode('');
   };
 
+  // Packaging material has no barcodes to scan, so its quantity is typed on the
+  // bill row. Rethrown on failure so the cell reverts to the stored value.
+  const handleSaveManualQty = useCallback(
+    async (itemCode: string, quantity: string | null) => {
+      try {
+        await manualMut.mutateAsync({ transferId, payload: { item_code: itemCode, quantity } });
+        toast.success(
+          quantity === null ? `${itemCode}: entry cleared` : `${itemCode}: ${quantity} recorded`,
+        );
+      } catch (err) {
+        toast.error(getErrorMessage(err, 'Could not save the quantity'));
+        throw err;
+      }
+    },
+    [manualMut, transferId],
+  );
+
   const handleRemove = async (scanId: number) => {
     try {
       await removeMut.mutateAsync({ transferId, scanId });
@@ -169,7 +188,9 @@ export default function BSTScanPage() {
           <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             <span className="font-medium">No scanning required.</span> This transfer is packaging
-            material (PM) only — you can {liveActive && transfer.status !== 'SCANNING' ? 'finish sending' : 'review & approve'} directly.
+            material (PM) only — type the quantity sent in the{' '}
+            <span className="font-medium">Sent (manual)</span> column below, then{' '}
+            {liveActive && transfer.status !== 'SCANNING' ? 'finish sending' : 'review & approve'}.
           </span>
         </div>
       )}
@@ -244,7 +265,12 @@ export default function BSTScanPage() {
               {scans.length} of {totalBoxes} box{totalBoxes === 1 ? '' : 'es'} scanned
             </Badge>
           </div>
-          <BSTBillTable items={items} scans={scans} />
+          <BSTBillTable
+            items={items}
+            scans={scans}
+            manualEntries={transfer.manual_entries}
+            onSaveManualQty={editable ? handleSaveManualQty : undefined}
+          />
         </CardContent>
       </Card>
 

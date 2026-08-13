@@ -4,6 +4,7 @@ import { apiClient } from '@/core/api';
 import type {
   BSTBatchScanResult,
   BSTCreatePayload,
+  BSTManualEntryPayload,
   BSTPartialTransferRequest,
   BSTReceiveScanPayload,
   BSTReceiveScanResult,
@@ -77,6 +78,19 @@ export const bstApi = {
 
   async removeScan(transferId: number, scanId: number): Promise<void> {
     await apiClient.delete(EP.BST_BOX_SCAN_DETAIL(transferId, scanId));
+  },
+
+  // Scan-exempt (PM) lines carry no box scans — the sender types the quantity.
+  // Returns the refreshed transfer so the bill table updates in one round trip.
+  async saveManualEntry(
+    transferId: number,
+    payload: BSTManualEntryPayload,
+  ): Promise<BSTTransferDetail> {
+    const res = await apiClient.post<BSTTransferDetail>(
+      EP.BST_MANUAL_ENTRIES(transferId),
+      payload,
+    );
+    return res.data;
   },
 
   async approve(transferId: number): Promise<BSTTransferDetail> {

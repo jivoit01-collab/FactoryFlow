@@ -103,6 +103,12 @@ DRAFT ─▶ SCANNING ─▶ (approve)
   **blocked** (rejected onto the failed-scan queue), not merely flagged. The page
   leads with the **bill** (`BSTBillTable`) showing **boxes scanned of boxes to scan**
   per item, and the scan header shows the running total against the bill's box count.
+- **Packaging material (PM) is typed, not scanned.** PM lines carry no barcodes, so
+  the bill grows a **Sent (manual)** column whenever the bill has a `PM*` line: the
+  sender types the quantity actually sent (`POST /warehouse/bst/:id/manual-entries/`,
+  one row per item code, capped at the bill quantity; send `quantity: null` to clear).
+  It's **recording only** — a PM line still never counts short, so it can't block
+  sealing — and the entry is read-only on the review, gate-out and detail screens.
 
 ### 3. Review & approve (warehouse) — `BSTReviewPage`, `/warehouse/bst/:id/review`
 

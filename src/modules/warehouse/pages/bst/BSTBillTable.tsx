@@ -1,17 +1,109 @@
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { type KeyboardEvent, useEffect, useState } from 'react';
 
-import { Badge } from '@/shared/components/ui';
+import { Badge, Input } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import type { BSTBoxScan, BSTTransferItem } from '../../types';
+import type { BSTBoxScan, BSTManualEntry, BSTTransferItem } from '../../types';
 import { expectedBstItemBoxes, isPmItemCode } from './bstBoxCounts';
 
 type Tally = { qty: number; boxes: number; itemName: string; uom: string };
 
 type BillLine = { expected: number; qty: number; uom: string; itemName: string };
 
+/** Save a scan-exempt line's typed quantity; `null` clears it. Rejects surface as a throw. */
+export type SaveManualQty = (itemCode: string, quantity: string | null) => Promise<unknown>;
+
 function trimQty(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
+}
+
+// Up to 3 decimals — the quantity precision the BST API stores.
+const QTY_PATTERN = /^\d+(\.\d{1,3})?$/;
+
+/**
+ * The typed quantity for one scan-exempt (PM) line. Commits on Enter/blur and only
+ * when the value actually changed, so the 4s detail poll doesn't fire writes. The
+ * server owns the rules (PM-only, on-bill, not over the bill) — a rejected save
+ * reverts the box to the stored value and the caller shows the reason.
+ */
+function ManualQtyCell({
+  itemCode,
+  entry,
+  uom,
+  onSave,
+}: {
+  itemCode: string;
+  entry?: BSTManualEntry;
+  uom: string;
+  onSave: SaveManualQty;
+}) {
+  const saved = entry ? trimQty(Number(entry.quantity)) : '';
+  const [value, setValue] = useState(saved);
+  const [saving, setSaving] = useState(false);
+  const [invalid, setInvalid] = useState(false);
+
+  // Re-sync only when the stored value itself changes, so a poll landing mid-typing
+  // doesn't overwrite what the operator is entering.
+  useEffect(() => setValue(saved), [saved]);
+
+  const commit = async () => {
+    const raw = value.trim();
+    if (raw === saved) return;
+    if (raw !== '' && !QTY_PATTERN.test(raw)) {
+      setInvalid(true);
+      return;
+    }
+    setInvalid(false);
+    setSaving(true);
+    try {
+      await onSave(itemCode, raw === '' ? null : raw);
+    } catch {
+      setValue(saved); // caller reports why
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.currentTarget.blur(); // blur commits
+    } else if (e.key === 'Escape') {
+      setValue(saved);
+      setInvalid(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <Input
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setInvalid(false);
+          }}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+          inputMode="decimal"
+          disabled={saving}
+          aria-label={`Quantity sent for ${itemCode}`}
+          placeholder="Enter qty"
+          className={cn('h-8 w-24 tabular-nums', invalid && 'border-red-400')}
+        />
+        <span className="text-xs text-muted-foreground">{uom}</span>
+        {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+      </div>
+      {invalid ? (
+        <p className="text-xs text-red-600">Numbers only (up to 3 decimals).</p>
+      ) : entry ? (
+        <p className="text-xs text-muted-foreground">
+          by {entry.entered_by_name || '—'}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -26,13 +118,24 @@ function trimQty(value: number): string {
  * (legacy scans) does it fall back to the box-count estimate. The "Over" / "Not on
  * bill" rows are defensive and shouldn't normally appear. Shared by the BST scan,
  * review, gate-out, and detail screens.
+ *
+ * Packaging material (PM) isn't barcode-tracked, so those lines can't be evidenced by
+ * scans: a "Sent (manual)" column appears whenever the bill carries a PM line — the
+ * sender types the quantity there (`onSaveManualQty`, the scan page), and every other
+ * screen shows what was entered, read-only.
  */
 export function BSTBillTable({
   items,
   scans,
+  manualEntries = [],
+  onSaveManualQty,
 }: {
   items: BSTTransferItem[];
   scans: BSTBoxScan[];
+  /** Typed quantities for the scan-exempt lines (from the transfer detail). */
+  manualEntries?: BSTManualEntry[];
+  /** Pass to make those quantities editable; omit for a read-only view. */
+  onSaveManualQty?: SaveManualQty;
 }) {
   const scannedByItem = new Map<string, Tally>();
   for (const s of scans) {
@@ -61,15 +164,32 @@ export function BSTBillTable({
   const billCodes = new Set(billByItem.keys());
   const offBill = [...scannedByItem.entries()].filter(([code]) => !billCodes.has(code));
 
+  // The typed-quantity column only earns its place when the bill has a scan-exempt
+  // line — a pure finished-goods transfer keeps the table it always had. Entries are
+  // keyed by the code normalized upper-case, the way the backend stores them.
+  const manualByItem = new Map(
+    manualEntries.map((e) => [e.item_code.trim().toUpperCase(), e]),
+  );
+  const manualFor = (code: string) => manualByItem.get(code.trim().toUpperCase());
+  const hasManualColumn = billLines.some(([code]) => isPmItemCode(code));
+
   return (
     <div className="overflow-x-auto rounded-md border">
-      <table className="w-full min-w-[760px] text-sm">
+      <table className={cn('w-full text-sm', hasManualColumn ? 'min-w-[900px]' : 'min-w-[760px]')}>
         <thead className="border-b bg-muted/40">
           <tr>
             <th className="w-[150px] p-3 text-left font-medium">Item Code</th>
             <th className="p-3 text-left font-medium">Item</th>
             <th className="w-[140px] p-3 text-right font-medium">To scan</th>
             <th className="w-[190px] p-3 text-left font-medium">Scanned</th>
+            {hasManualColumn && (
+              <th className="w-[160px] p-3 text-left font-medium">
+                Sent (manual)
+                <div className="text-xs font-normal text-muted-foreground">
+                  Packaging material
+                </div>
+              </th>
+            )}
             <th className="w-[130px] p-3 text-left font-medium">Status</th>
           </tr>
         </thead>
@@ -141,6 +261,32 @@ export function BSTBillTable({
                     </div>
                   ) : null}
                 </td>
+                {hasManualColumn && (
+                  <td className="p-3 align-top">
+                    {requiresScan ? (
+                      // Barcode-tracked: the scan is the record, nothing to type.
+                      <span className="text-muted-foreground">—</span>
+                    ) : onSaveManualQty ? (
+                      <ManualQtyCell
+                        itemCode={code}
+                        entry={manualFor(code)}
+                        uom={bill.uom}
+                        onSave={onSaveManualQty}
+                      />
+                    ) : manualFor(code) ? (
+                      <div>
+                        <div className="font-medium tabular-nums">
+                          {trimQty(Number(manualFor(code)!.quantity))} {bill.uom}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          by {manualFor(code)!.entered_by_name || '—'}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Not entered</span>
+                    )}
+                  </td>
+                )}
                 <td className="p-3 align-top">
                   {!requiresScan ? (
                     <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
@@ -187,6 +333,9 @@ export function BSTBillTable({
                   {tally.boxes} box{tally.boxes === 1 ? '' : 'es'}
                 </div>
               </td>
+              {hasManualColumn && (
+                <td className="p-3 align-top text-muted-foreground">—</td>
+              )}
               <td className="p-3 align-top">
                 <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
                   <AlertTriangle className="mr-1 h-3.5 w-3.5" /> Not on bill

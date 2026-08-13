@@ -112,6 +112,27 @@ export interface BSTBoxScan {
   received_at: string | null;
 }
 
+// A hand-typed quantity for a scan-exempt (packaging-material) line. PM isn't
+// barcode-tracked, so it has no box scans — the sender types what actually moved.
+// One row per item code, aggregated across the entry's SAP documents.
+export interface BSTManualEntry {
+  id: number;
+  item_code: string;
+  item_name: string;
+  quantity: string;
+  uom: string;
+  notes: string;
+  entered_by_name: string;
+  entered_at: string;
+}
+
+export interface BSTManualEntryPayload {
+  item_code: string;
+  /** null clears the entry (distinct from 0, which means "nothing went"). */
+  quantity: string | number | null;
+  notes?: string;
+}
+
 export interface BSTTransferListItem {
   id: number;
   entry_no: string;
@@ -161,6 +182,8 @@ export interface BSTScanStatusItem {
   is_over: boolean;
   /** False for packaging-material (PM) lines, which never require box scanning. */
   requires_scan: boolean;
+  /** Hand-typed quantity for a scan-exempt line; null when nothing was entered. */
+  manual_qty: string | null;
 }
 
 // The sender's completeness gate: whether the scanned QUANTITY reaches the bill.
@@ -233,6 +256,8 @@ export interface BSTTransferDetail extends BSTTransferListItem {
   docs: BSTTransferDoc[];
   items: BSTTransferItem[];
   box_scans: BSTBoxScan[];
+  /** Hand-typed quantities for the scan-exempt (PM) lines. */
+  manual_entries: BSTManualEntry[];
   updated_at: string;
 }
 
