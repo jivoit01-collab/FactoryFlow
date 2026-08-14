@@ -40,7 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { cn, getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
 import {
@@ -59,6 +59,7 @@ import { useMpChannel } from '../hooks/useMpChannel';
 import type {
   DeliveryNoteLine,
   DeliveryNoteSummary,
+  LineVariant,
   MarketplaceChannel,
   StockShortfallLine,
 } from '../types/marketplace.types';
@@ -684,28 +685,41 @@ export default function MpDeliveryNotesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {readyList.map((d) => (
-                          <tr key={d.dispatch_id} className="border-b last:border-0">
-                            <td className="p-3 font-mono font-medium">{d.order_id}</td>
-                            <td className="p-3 whitespace-nowrap text-muted-foreground">{d.order_date || '—'}</td>
-                            <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
-                            <td className="p-3">
-                              {(d.variants ?? []).filter((v) => v.has_choice).length > 0 ? (
-                                <div className="flex flex-col gap-1">
-                                  {(d.variants ?? [])
-                                    .filter((v) => v.has_choice)
-                                    .map((v) => (
+                        {readyList.map((d) => {
+                          // Tint the rows that can ship as more than one SAP item: those
+                          // are the only ones where the operator's pick changes what
+                          // leaves the warehouse, and they are a handful among hundreds.
+                          const pickable = (d.variants ?? []).filter((v) => v.has_choice);
+                          return (
+                            <tr
+                              key={d.dispatch_id}
+                              className={cn(
+                                'border-b last:border-0',
+                                pickable.length > 0 && 'bg-amber-50/60 dark:bg-amber-950/20',
+                              )}
+                            >
+                              <td className="p-3 font-mono font-medium">{d.order_id}</td>
+                              <td className="p-3 whitespace-nowrap text-muted-foreground">{d.order_date || '—'}</td>
+                              <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
+                              <td className="p-3">
+                                {pickable.length > 0 ? (
+                                  <div className="flex flex-col gap-1.5">
+                                    <span className="w-fit rounded border border-amber-400/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                                      Choose item
+                                    </span>
+                                    {pickable.map((v) => (
                                       <MpVariantPicker key={v.line_id} variant={v} />
                                     ))}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
-                              )}
-                            </td>
-                            <td className="p-3 text-right">{d.fg_line_count}</td>
-                            <td className="p-3 text-right">{inr(d.amount)}</td>
-                          </tr>
-                        ))}
+                                  </div>
+                                ) : (
+                                  <ShipsAs variants={d.variants ?? []} />
+                                )}
+                              </td>
+                              <td className="p-3 text-right">{d.fg_line_count}</td>
+                              <td className="p-3 text-right">{inr(d.amount)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1014,6 +1028,26 @@ function SheetChip({
       <div className="max-w-[220px] truncate text-sm font-medium">{label}</div>
       <div className="text-xs text-muted-foreground">{sub}</div>
     </button>
+  );
+}
+
+/** What an order ships as, for the rows the operator cannot change.
+ *
+ *  A picker would be noise on these — the SKU maps to exactly one SAP item — but
+ *  the column still has to answer "what leaves the warehouse for this order?".
+ */
+function ShipsAs({ variants }: { variants: LineVariant[] }) {
+  const items = variants.flatMap((v) => v.ships_as ?? []);
+  if (items.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
+  return (
+    <div className="flex flex-col gap-0.5">
+      {items.map((it, i) => (
+        <span key={`${it.item_code}-${i}`} className="text-xs">
+          <span className="tabular-nums text-muted-foreground">{Number(it.quantity)}&times;</span>{' '}
+          <span className="font-medium">{it.item_name || it.item_code}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
