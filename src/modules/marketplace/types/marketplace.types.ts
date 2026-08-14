@@ -347,6 +347,9 @@ export interface LineVariant {
   chosen_option_id: number | null;
   // Per-combo-slot alternatives (only slots that have options).
   components: ComponentVariant[];
+  /** The SAP item(s) this line ships as right now — present on every line, including
+   *  the majority that map to a single item and so have no `options` to choose from. */
+  ships_as?: { item_code: string; item_name: string; quantity: string }[];
 }
 
 export interface OrderVariants {
