@@ -373,6 +373,22 @@ export interface SalesDispatchPendingBooking {
 
 export type SalesDispatchDashboardEntry = SalesDispatchGateOut | SalesDispatchPendingBooking;
 
+/** A vehicle with bills BOOKED but not yet arrived (no gate-in) — the tier
+ *  before pending-docking. Read-only on the loading board. */
+export interface SalesDispatchExpectedVehicle {
+  row_type: 'EXPECTED';
+  id: string;
+  vehicle_id: number | null;
+  vehicle_no: string;
+  company_code?: string;
+  company_name?: string;
+  document_count: number;
+  document_numbers: string[];
+  customer_name?: string;
+  dispatch_date?: string | null;
+  status: 'EXPECTED';
+}
+
 export interface SalesDispatchGatepassPrintLog {
   id: number;
   sales_dispatch: number;
@@ -539,6 +555,42 @@ export interface SalesDispatchBoxScanRequest {
   barcode_raw: string;
   /** The bill (document id) being scanned into. Omitted = backend auto-resolves the bill. */
   document?: number | null;
+}
+
+/** Scan a whole pallet onto a docking (warehouse Dispatch Loading). */
+export interface SalesDispatchPalletScanRequest {
+  /** A pallet barcode. */
+  barcode_raw: string;
+  /** Optional bill (document id) to attribute the pallet's boxes to. */
+  document?: number | null;
+}
+
+/** Per-box outcome of a pallet scan that couldn't be staged. */
+export interface SalesDispatchPalletScanRejection {
+  box_barcode: string;
+  detail: string;
+}
+
+/** Result of scanning a whole pallet onto a docking. */
+export interface SalesDispatchPalletScanResult {
+  pallet_id: string;
+  item_code: string;
+  item_name: string;
+  /** Loadable (active/partial) boxes on the pallet that were considered. */
+  total_boxes: number;
+  /** Newly staged into the vehicle. */
+  scanned: number;
+  /** Already scanned on this docking. */
+  duplicates: number;
+  /** Refused by a rule (over-invoice, wrong bill, unavailable box). */
+  rejected: number;
+  rejections: SalesDispatchPalletScanRejection[];
+  /** Bill number(s) the pallet's boxes were attributed to. */
+  documents_touched: string[];
+  /** true when the whole pallet staged and its Warehouse Ops bin was freed. */
+  bin_freed: boolean;
+  /** Barcode pallet status after the scan (INSIDE_VEHICLE / PARTIAL / …). */
+  pallet_status: string;
 }
 
 /** A box already scanned in the old barcode-module dispatch flow for this SAP bill. */
@@ -813,6 +865,28 @@ export const salesDispatchApi = {
 
   async removeBoxScan(id: number, scanId: number): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BOX_SCAN(id, scanId));
+  },
+
+  async scanPallet(
+    id: number,
+    data: SalesDispatchPalletScanRequest,
+  ): Promise<SalesDispatchPalletScanResult> {
+    const response = await apiClient.post<SalesDispatchPalletScanResult>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_PALLET_SCAN(id),
+      data,
+    );
+    return response.data;
+  },
+
+  async expectedVehicles(
+    params?: SalesDispatchPendingBookingParams,
+  ): Promise<SalesDispatchExpectedVehicle[]> {
+    const query = buildQuery(params);
+    const url = query
+      ? `${API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_EXPECTED_VEHICLES}?${query}`
+      : API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_EXPECTED_VEHICLES;
+    const response = await apiClient.get<SalesDispatchExpectedVehicle[]>(url);
+    return response.data;
   },
 
   async barcodeScans(id: number): Promise<BarcodeDispatchScansResult> {

@@ -15,6 +15,7 @@ import {
   type SalesDispatchListPageParams,
   type SalesDispatchListParams,
   type SalesDispatchLockUpdateRequest,
+  type SalesDispatchPalletScanRequest,
   type SalesDispatchPendingBookingParams,
   type SalesDispatchReasonRequest,
   type SalesDispatchReportParams,
@@ -33,6 +34,8 @@ export const SALES_DISPATCH_QUERY_KEYS = {
     [...SALES_DISPATCH_QUERY_KEYS.all, 'listPaged', params] as const,
   pendingBookings: (params?: SalesDispatchPendingBookingParams) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'pendingBookings', params] as const,
+  expectedVehicles: (params?: SalesDispatchPendingBookingParams) =>
+    [...SALES_DISPATCH_QUERY_KEYS.all, 'expectedVehicles', params] as const,
   reports: (params?: SalesDispatchReportParams) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'reports', params] as const,
   lock: () => [...SALES_DISPATCH_QUERY_KEYS.all, 'lock'] as const,
@@ -112,6 +115,18 @@ export function useSalesDispatchPendingBookings(
   return useQuery({
     queryKey: SALES_DISPATCH_QUERY_KEYS.pendingBookings(params),
     queryFn: () => salesDispatchApi.pendingBookings(params),
+    staleTime: 30 * 1000,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useSalesDispatchExpectedVehicles(
+  params?: SalesDispatchPendingBookingParams,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: SALES_DISPATCH_QUERY_KEYS.expectedVehicles(params),
+    queryFn: () => salesDispatchApi.expectedVehicles(params),
     staleTime: 30 * 1000,
     enabled: options?.enabled ?? true,
   });
@@ -285,6 +300,17 @@ export function useRemoveSalesDispatchBoxScan() {
   return useMutation({
     mutationFn: ({ id, scanId }: { id: number; scanId: number }) =>
       salesDispatchApi.removeBoxScan(id, scanId),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
+/** Warehouse Dispatch Loading: scan a whole pallet onto a docking's bills. */
+export function useScanSalesDispatchPallet() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SalesDispatchPalletScanRequest }) =>
+      salesDispatchApi.scanPallet(id, data),
     onSuccess: () => invalidateSalesDispatch(queryClient),
   });
 }

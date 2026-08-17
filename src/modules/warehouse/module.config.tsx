@@ -1,6 +1,6 @@
 import { Warehouse } from 'lucide-react';
 
-import { GRPO_PERMISSIONS,OMS_PERMISSIONS,WAREHOUSE_PERMISSIONS } from '@/config/permissions';
+import { GATE_PERMISSIONS,GRPO_PERMISSIONS,OMS_PERMISSIONS,WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
@@ -20,6 +20,13 @@ const BSTReviewPage = lazy(() => import('./pages/bst/BSTReviewPage'));
 const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
 const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
 const BSTPartialApprovalsPage = lazy(() => import('./pages/bst/BSTPartialApprovalsPage'));
+
+// Dispatch Loading — scan pallets against a docked truck's bills, freeing map bins
+const DispatchLoadingListPage = lazy(() => import('./pages/dispatch-loading/DispatchLoadingListPage'));
+const DispatchLoadingScanPage = lazy(() => import('./pages/dispatch-loading/DispatchLoadingScanPage'));
+const DispatchLoadingPrepScanPage = lazy(
+  () => import('./pages/dispatch-loading/DispatchLoadingPrepScanPage'),
+);
 
 export const warehouseModuleConfig: ModuleConfig = {
   name: 'warehouse',
@@ -48,6 +55,27 @@ export const warehouseModuleConfig: ModuleConfig = {
       element: <FGReceiptListPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
+    },
+    // Dispatch Loading Routes (static list before the :entryId route)
+    {
+      path: '/warehouse/dispatch-loading',
+      element: <DispatchLoadingListPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
+    },
+    {
+      // A sibling path (not nested under dispatch-loading/) so it can never be
+      // captured by the `:entryId` docking-scan route.
+      path: '/warehouse/dispatch-loading-prep',
+      element: <DispatchLoadingPrepScanPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
+    },
+    {
+      path: '/warehouse/dispatch-loading/:entryId',
+      element: <DispatchLoadingScanPage />,
+      layout: 'main',
+      permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
     },
     // BST Routes
     {
@@ -113,11 +141,17 @@ export const warehouseModuleConfig: ModuleConfig = {
         WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
         WAREHOUSE_PERMISSIONS.VIEW_BST,
         WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL,
+        GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
         GRPO_PERMISSIONS.VIEW_PENDING,
         OMS_PERMISSIONS.VIEW_INVOICE,
       ],
       hasSubmenu: true,
       children: [
+        {
+          path: '/warehouse/dispatch-loading',
+          title: 'Dispatch Loading',
+          permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
+        },
         {
           path: '/warehouse/bom-requests',
           title: 'BOM Requests',
