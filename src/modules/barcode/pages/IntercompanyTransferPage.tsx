@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowRightLeft,
   CheckCircle2,
   History,
@@ -10,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { COMPANY_CODES } from '@/config/constants';
 import { useAuth } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -59,7 +61,12 @@ export default function IntercompanyTransferPage() {
   const [search, setSearch] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [destinationWarehouse, setDestinationWarehouse] = useState('');
+  const [beveragesAcknowledged, setBeveragesAcknowledged] = useState(false);
   const [reverseTarget, setReverseTarget] = useState<number | null>(null);
+
+  // Beverages stock is never barcoded, so transferring barcoded box/pallet
+  // ownership into Beverages is almost always a mistaken destination pick.
+  const destinationIsBeverages = destinationCompany === COMPANY_CODES.JIVO_BEVERAGES;
 
   const dashboardQuery = useIntercompanyDashboard();
   const transfersQuery = useIntercompanyTransfers({ search: search || undefined, page_size: 10 });
@@ -125,11 +132,13 @@ export default function IntercompanyTransferPage() {
   const openConfirmDialog = () => {
     if (scanned.length === 0 || !canScan) return;
     setDestinationWarehouse('');
+    setBeveragesAcknowledged(false);
     setConfirmOpen(true);
   };
 
   const handleConfirm = async () => {
     if (scanned.length === 0 || !canScan || !destinationWarehouse) return;
+    if (destinationIsBeverages && !beveragesAcknowledged) return;
     try {
       const transfer = await createMutation.mutateAsync({
         source_company_code: sourceCompany,
@@ -232,6 +241,7 @@ export default function IntercompanyTransferPage() {
                 onChange={(event) => {
                   setDestinationCompany(event.target.value);
                   setScanned([]);
+                  setBeveragesAcknowledged(false);
                 }}
               >
                 <option value="">Select destination</option>
@@ -288,6 +298,17 @@ export default function IntercompanyTransferPage() {
 
           {sourceCompany === destinationCompany && (
             <p className="text-sm text-destructive">Source and destination must be different.</p>
+          )}
+
+          {destinationIsBeverages && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                Beverages stock is not barcoded. Transferring barcoded box/pallet ownership into{' '}
+                <span className="font-medium">Jivo Beverages</span> is usually not what you want —
+                double-check the destination company before continuing.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -550,6 +571,27 @@ export default function IntercompanyTransferPage() {
                   separate godown transfer needed.
                 </p>
               )}
+
+            {destinationIsBeverages && (
+              <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>
+                    You're transferring barcoded stock into{' '}
+                    <span className="font-medium">Jivo Beverages</span>, which does not use
+                    barcodes. Are you sure this is the intended destination?
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={beveragesAcknowledged}
+                    onChange={(event) => setBeveragesAcknowledged(event.target.checked)}
+                  />
+                  Yes, transfer to Jivo Beverages anyway
+                </label>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -562,7 +604,11 @@ export default function IntercompanyTransferPage() {
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={createMutation.isPending || !destinationWarehouse}
+              disabled={
+                createMutation.isPending ||
+                !destinationWarehouse ||
+                (destinationIsBeverages && !beveragesAcknowledged)
+              }
             >
               {createMutation.isPending ? 'Confirming...' : 'Confirm Transfer'}
             </Button>
