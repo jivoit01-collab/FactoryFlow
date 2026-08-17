@@ -1,11 +1,12 @@
 import { AlertCircle, ArrowLeft, Download, RefreshCw, Search, ShieldX } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
 import type { ApiError } from '@/core/api/types';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { DateRangePicker } from '@/modules/gate/components';
+import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Button, Input } from '@/shared/components/ui';
 
 import { useInspectionsByTab } from '../api/inspection/inspection.queries';
@@ -102,6 +103,8 @@ export default function PendingInspectionsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [materialFilter, setMaterialFilter] = useState<MaterialFilterKey>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   const dateParams = useMemo(
@@ -147,6 +150,20 @@ export default function PendingInspectionsPage() {
         getEffectiveStatusBadge(item).label.toLowerCase().includes(searchLower),
     );
   }, [items, search, materialFilter]);
+
+  // Reset to the first page whenever the active filter set changes
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, materialFilter, search, dateRange.from, dateRange.to, pageSize]);
+
+  // Client-side pagination over the already filtered items
+  const totalItems = filteredItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedItems = useMemo(
+    () => filteredItems.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredItems, safePage, pageSize],
+  );
 
   // Check if error is a permission error (403)
   const apiError = error as ApiError | null;
@@ -388,7 +405,7 @@ export default function PendingInspectionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.map((item) => {
+                  {pagedItems.map((item) => {
                     const chemistBadge = getDecisionBadge(item.chemist_decision);
                     const managerBadge = getDecisionBadge(item.manager_decision);
 
@@ -443,6 +460,15 @@ export default function PendingInspectionsPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={safePage}
+              pageSize={pageSize}
+              total={totalItems}
+              totalPages={totalPages}
+              isLoading={isLoading}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         </div>
       )}
