@@ -202,9 +202,7 @@ export default function SalesDispatchDetailPage() {
 
   // The truck's dockings (all companies) when multi-company, else just this one.
   const truckDockings =
-    isMultiCompanyArrival && arrivalDockings.dockings.length
-      ? arrivalDockings.dockings
-      : [entry];
+    isMultiCompanyArrival && arrivalDockings.dockings.length ? arrivalDockings.dockings : [entry];
   const detailDocuments = truckDockings.flatMap((docking) => getDetailDocuments(docking));
   // Merge scans + attachments across the truck so Scanned Boxes + Attachments show
   // the whole load, not just the opened docking. (Overview/Audit keep this docking.)
@@ -222,7 +220,8 @@ export default function SalesDispatchDetailPage() {
   const loadScannedBoxes = loadEntry.box_scans?.length ?? 0;
   const loadExpectedBoxes = getExpectedLoadBoxes(detailDocuments);
   // Only flag companies when the truck actually carries bills from more than one.
-  const showCompany = new Set(detailDocuments.map((doc) => doc.companyName).filter(Boolean)).size > 1;
+  const showCompany =
+    new Set(detailDocuments.map((doc) => doc.companyName).filter(Boolean)).size > 1;
 
   return (
     <div className="space-y-6 pb-6">
@@ -552,9 +551,9 @@ function ScannedBoxesSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-4 overflow-y-auto sm:max-w-2xl lg:max-w-3xl"
+        className="flex h-full w-full flex-col gap-4 overflow-hidden sm:max-w-2xl lg:max-w-3xl"
       >
-        <SheetHeader>
+        <SheetHeader className="shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <PackageCheck className="h-5 w-5" />
             Scanned Boxes
@@ -566,7 +565,7 @@ function ScannedBoxesSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-col gap-3 rounded-md border bg-muted/20 p-3">
+        <div className="flex shrink-0 flex-col gap-3 rounded-md border bg-muted/20 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Filter className="h-4 w-4" />
             Filters
@@ -619,56 +618,67 @@ function ScannedBoxesSheet({
           ) : null}
         </div>
 
-        <div className="grid gap-3 text-sm sm:grid-cols-2">
+        <div className="grid shrink-0 gap-3 text-sm sm:grid-cols-2">
           <InfoItem label="Scanned Boxes" value={scans.length} />
           <InfoItem label="Expected Boxes" value={formatCount(expected)} />
-          <InfoItem label="Total Scanned Quantity" value={formatScannedQuantity(scans, entry.uom)} />
+          <InfoItem
+            label="Total Scanned Quantity"
+            value={formatScannedQuantity(scans, entry.uom)}
+          />
           <InfoItem label="Last Scan" value={formatTimestamp(scans[0]?.scanned_at || null)} />
         </div>
 
         {scans.length > 0 ? (
-          <div className="overflow-hidden rounded-md border">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="p-3 text-left text-sm font-medium">Barcode</th>
-                    <th className="p-3 text-left text-sm font-medium">Item</th>
-                    <th className="p-3 text-right text-sm font-medium">Quantity</th>
-                    <th className="p-3 text-left text-sm font-medium">Pallet</th>
-                    <th className="p-3 text-left text-sm font-medium">Scanned At</th>
+          <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 z-10 bg-muted">
+                <tr>
+                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
+                    Barcode
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
+                    Item
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium">
+                    Quantity
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
+                    Pallet
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
+                    Scanned At
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {scans.map((scan) => (
+                  <tr key={scan.id} className="border-t">
+                    <td className="whitespace-nowrap px-3 py-1.5 text-sm font-semibold">
+                      {formatValue(scan.box_barcode || scan.barcode_raw)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-sm">
+                      <span className="font-medium">
+                        {formatValue(scan.item_name || scan.item_code)}
+                      </span>
+                      {scan.batch_number ? (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          Batch: {scan.batch_number}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right text-sm tabular-nums">
+                      {formatQuantityWithUom(scan.quantity, scan.uom)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-sm">
+                      {formatValue(scan.pallet_code)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-sm">
+                      {formatTimestamp(scan.scanned_at)}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {scans.map((scan) => (
-                    <tr key={scan.id} className="border-t align-top">
-                      <td className="whitespace-nowrap p-3 text-sm font-semibold">
-                        {formatValue(scan.box_barcode || scan.barcode_raw)}
-                      </td>
-                      <td className="p-3 text-sm">
-                        <div className="font-medium">
-                          {formatValue(scan.item_name || scan.item_code)}
-                        </div>
-                        {scan.batch_number ? (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            Batch: {scan.batch_number}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-right text-sm tabular-nums">
-                        {formatQuantityWithUom(scan.quantity, scan.uom)}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {formatValue(scan.pallet_code)}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {formatTimestamp(scan.scanned_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="flex min-h-20 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
@@ -963,9 +973,7 @@ function DocumentSection({
             <div>
               {formatValue(document.customer_name || document.to_warehouse)}
               {hasDisplayValue(document.customer_code) ? (
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {document.customer_code}
-                </span>
+                <span className="ml-2 text-xs text-muted-foreground">{document.customer_code}</span>
               ) : null}
             </div>
             <div className="text-xs text-muted-foreground">{destination}</div>
