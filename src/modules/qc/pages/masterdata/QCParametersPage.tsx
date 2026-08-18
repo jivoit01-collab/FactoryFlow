@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { VendorSelect } from '@/modules/gate/components/VendorSelect';
@@ -55,7 +55,13 @@ import type {
 
 export default function QCParametersPage() {
   const navigate = useNavigate();
-  const [selectedMaterialType, setSelectedMaterialType] = useState<number | null>(null);
+  // Deep-linkable: an inspection can send the user here with the material type
+  // already chosen (e.g. "Create vendor parameters" from the inspection page).
+  const [searchParams] = useSearchParams();
+  const initialMaterialType = Number(searchParams.get('materialType')) || null;
+  const [selectedMaterialType, setSelectedMaterialType] = useState<number | null>(
+    initialMaterialType,
+  );
 
   // A material type carries one parameter set per vendor, plus a default that
   // covers every vendor without one of their own.

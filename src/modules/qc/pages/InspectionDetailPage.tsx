@@ -9,6 +9,7 @@ import {
   Link2,
   Paperclip,
   Pencil,
+  Plus,
   Printer,
   Save,
   Send,
@@ -19,7 +20,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
-import { VendorSelect } from '@/modules/gate/components/VendorSelect';
 import { DocumentCodeBadge, RecordTimestamps, SearchableSelect } from '@/shared/components';
 import {
   Badge,
@@ -56,14 +56,22 @@ import {
   useMaterialTypeBySapItem,
   useMaterialTypes,
 } from '../api/materialType';
-import { useQCParametersByMaterialType } from '../api/qcParameter/qcParameter.queries';
+import { useParameterSets } from '../api/parameterSet/parameterSet.queries';
+import {
+  useQCParametersByMaterialType,
+  useQCParametersByParameterSet,
+} from '../api/qcParameter/qcParameter.queries';
 import { QCSuccessScreen, useInspectionReportPrint } from '../components';
 import {
   DECISION_STATUS_CONFIG,
   WORKFLOW_STATUS,
   WORKFLOW_STATUS_CONFIG,
 } from '../constants';
-import { useArrivalSlipPermissions, useInspectionPermissions } from '../hooks';
+import {
+  useArrivalSlipPermissions,
+  useInspectionPermissions,
+  useMasterDataPermissions,
+} from '../hooks';
 import type {
   CreateInspectionRequest,
   InspectionDecision,
@@ -149,6 +157,13 @@ export default function InspectionDetailPage() {
   // Approval remarks
   const [approvalRemarks, setApprovalRemarks] = useState('');
 
+  // A decision is confirmed through an extra dialog before it is recorded, so an
+  // approve/hold/reject can't be committed on a single accidental click.
+  const [pendingDecision, setPendingDecision] = useState<{
+    actor: 'chemist' | 'manager';
+    decision: InspectionDecision;
+  } | null>(null);
+
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
   const [successAction, setSuccessAction] = useState<{
     actor: 'chemist' | 'manager';
@@ -162,16 +177,6 @@ export default function InspectionDetailPage() {
   const [selectedMaterialTypeForLink, setSelectedMaterialTypeForLink] =
     useState<MaterialType | null>(null);
   const [linkMaterialTypeErrors, setLinkMaterialTypeErrors] = useState<Record<string, string>>({});
-
-  // Inspecting against a vendor other than the PO's supplier — rare, permission
-  // gated, and the reason is kept on the inspection.
-  const [isVendorOverrideDialogOpen, setIsVendorOverrideDialogOpen] = useState(false);
-  const [vendorOverrideDraft, setVendorOverrideDraft] = useState<{
-    code: string;
-    name: string;
-    reason: string;
-  }>({ code: '', name: '', reason: '' });
-  const [vendorOverrideErrors, setVendorOverrideErrors] = useState<Record<string, string>>({});
 
   // Scroll to first error when errors occur
   useScrollToError(apiErrors);
@@ -231,10 +236,20 @@ export default function InspectionDetailPage() {
     isLinkMaterialTypeDialogOpen,
   );
 
-  // Fetch parameters when material type changes
-  const { data: qcParameters = [] } = useQCParametersByMaterialType(
-    selectedMaterialTypeId || null,
+  // Every parameter set configured for this material type — the default first,
+  // then any vendor-specific ones. Drives the "Parameters applied" selector.
+  const { data: parameterSets = [] } = useParameterSets(selectedMaterialTypeId || null);
+
+  // Which set the editable form is judged against: the hand-picked one if the
+  // user chose it, otherwise the inspection's own applied set. Null means "let
+  // the backend auto-match from the PO supplier", so we fall back to the
+  // material type's default parameters for data entry.
+  const activeParameterSetId = formData.parameter_set_id ?? inspection?.parameter_set ?? null;
+  const { data: setParameters = [] } = useQCParametersByParameterSet(activeParameterSetId);
+  const { data: materialTypeParameters = [] } = useQCParametersByMaterialType(
+    activeParameterSetId ? null : selectedMaterialTypeId || null,
   );
+  const qcParameters = activeParameterSetId ? setParameters : materialTypeParameters;
   const parametersToShow = isEditing ? qcParameters : inspection?.parameter_results || qcParameters;
 
   // Mutations
@@ -285,6 +300,9 @@ export default function InspectionDetailPage() {
             vendor_override_reason: inspection.vendor_override_reason,
           }
         : {}),
+      // Preselect the applied set so the "Parameters applied" selector shows it
+      // and re-saving keeps it, rather than silently reverting to auto-match.
+      parameter_set_id: inspection.parameter_set ?? undefined,
       remarks: inspection.remarks,
     });
 
@@ -340,8 +358,14 @@ export default function InspectionDetailPage() {
     }
 
     setFormData((prev) => {
+      // Changing the material (via SAP code or the picker) invalidates any
+      // hand-picked set, which belongs to the old material type. Drop it so the
+      // backend auto-matches against the new one.
       if (field === 'sap_code') {
-        return { ...prev, [field]: value, material_type_id: 0 };
+        return { ...prev, [field]: value, material_type_id: 0, parameter_set_id: undefined };
+      }
+      if (field === 'material_type_id') {
+        return { ...prev, [field]: value, parameter_set_id: undefined };
       }
       return { ...prev, [field]: value };
     });
@@ -360,6 +384,21 @@ export default function InspectionDetailPage() {
         return newErrors;
       });
     }
+  };
+
+  // Pick which parameter set to inspect against. An empty value means "auto —
+  // match from the PO supplier" (parameter_set_id omitted on save). Switching
+  // sets swaps the parameter rows, so any entered results are cleared: the sets
+  // have different parameter definitions and the backend re-creates the rows.
+  const handleParameterSetChange = (value: string) => {
+    const parameterSetId = value ? Number(value) : undefined;
+    setFormData((prev) => ({ ...prev, parameter_set_id: parameterSetId }));
+    setParameterResults({});
+    setApiErrors((prev) => {
+      const next = { ...prev };
+      delete next.parameter_set_id;
+      return next;
+    });
   };
 
   const handleParameterChange = (
@@ -689,6 +728,22 @@ export default function InspectionDetailPage() {
     }
   };
 
+  // Clicking a decision button opens a confirmation dialog rather than recording
+  // it straight away. The rejection-reason check runs first, so the user isn't
+  // asked to confirm a rejection they still have to write a reason for.
+  const requestApprovalDecision = (
+    actor: 'chemist' | 'manager',
+    decision: InspectionDecision,
+  ) => {
+    if (!inspection) return;
+    if (decision === 'REJECTED' && !approvalRemarks.trim()) {
+      setApiErrors({ approval_remarks: 'Please provide a reason for rejection' });
+      return;
+    }
+    setApiErrors({});
+    setPendingDecision({ actor, decision });
+  };
+
   const handleApprovalDecision = async (
     actor: 'chemist' | 'manager',
     decision: InspectionDecision,
@@ -749,7 +804,6 @@ export default function InspectionDetailPage() {
   // Permission checks using the centralized permission hook
   const {
     canEditInspection,
-    canOverrideVendor,
     showSubmitButton,
     showChemistApproval,
     showQAMApproval,
@@ -758,6 +812,7 @@ export default function InspectionDetailPage() {
   } = useInspectionPermissions(inspection);
 
   const { canSendBack: hasSendBackPermission } = useArrivalSlipPermissions();
+  const { canManageQCParameters } = useMasterDataPermissions();
 
   // Show Send Back button when: arrival slip is SUBMITTED, no inspection or inspection still in DRAFT, user has permission
   const showSendBack =
@@ -883,93 +938,6 @@ export default function InspectionDetailPage() {
           </div>
         ) : null;
       })()}
-
-      <Dialog
-        open={isVendorOverrideDialogOpen}
-        onOpenChange={(open) => { if (!open) setIsVendorOverrideDialogOpen(false) }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Inspect against a different vendor</DialogTitle>
-            <DialogDescription>
-              QC parameters normally follow the supplier on the purchase order
-              {inspection?.po_vendor_code ? ` (${inspection.po_vendor_code})` : ''}. Change this
-              only when the material was actually made by someone else — for example when it
-              was bought through a trader.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>
-                Vendor <span className="text-destructive">*</span>
-              </Label>
-              <VendorSelect
-                value={vendorOverrideDraft.code || undefined}
-                onChange={(vendor) =>
-                  setVendorOverrideDraft((prev) => ({
-                    ...prev,
-                    code: vendor?.vendor_code ?? '',
-                    name: vendor?.vendor_name ?? '',
-                  }))
-                }
-                error={vendorOverrideErrors.vendor_code}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>
-                Reason <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                value={vendorOverrideDraft.reason}
-                onChange={(e) =>
-                  setVendorOverrideDraft((prev) => ({ ...prev, reason: e.target.value }))
-                }
-                placeholder="Why these parameters apply instead of the PO supplier's"
-                rows={3}
-              />
-              {vendorOverrideErrors.vendor_override_reason && (
-                <p className="text-sm text-destructive">
-                  {vendorOverrideErrors.vendor_override_reason}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Kept on the inspection and shown on the report.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsVendorOverrideDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                const errors: Record<string, string> = {};
-                if (!vendorOverrideDraft.code.trim()) {
-                  errors.vendor_code = 'Pick a vendor';
-                }
-                if (!vendorOverrideDraft.reason.trim()) {
-                  errors.vendor_override_reason = 'A reason is required';
-                }
-                if (Object.keys(errors).length > 0) {
-                  setVendorOverrideErrors(errors);
-                  return;
-                }
-                setFormData((prev) => ({
-                  ...prev,
-                  vendor_code: vendorOverrideDraft.code,
-                  vendor_override_reason: vendorOverrideDraft.reason,
-                }));
-                setIsVendorOverrideDialogOpen(false);
-              }}
-            >
-              Apply
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={isLinkMaterialTypeDialogOpen}
@@ -1118,6 +1086,64 @@ export default function InspectionDetailPage() {
               disabled={submitInspection.isPending}
             >
               {submitInspection.isPending ? 'Submitting...' : 'Submit with Remark'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm an approval/hold/reject decision before it is recorded */}
+      <Dialog
+        open={pendingDecision !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDecision(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm decision</DialogTitle>
+            <DialogDescription>
+              {pendingDecision && (
+                <>
+                  Record the{' '}
+                  {pendingDecision.actor === 'chemist' ? 'QA Chemist' : 'QA Manager'} decision
+                  as{' '}
+                  <span className="font-semibold text-foreground">
+                    {DECISION_STATUS_CONFIG[pendingDecision.decision]?.label ??
+                      pendingDecision.decision}
+                  </span>
+                  ? This will be saved to the inspection.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingDecision?.decision === 'REJECTED' && approvalRemarks.trim() && (
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              <span className="font-medium">Reason: </span>
+              {approvalRemarks.trim()}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPendingDecision(null)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={pendingDecision?.decision === 'REJECTED' ? 'destructive' : 'default'}
+              disabled={isSaving}
+              onClick={() => {
+                const pending = pendingDecision;
+                setPendingDecision(null);
+                if (pending) handleApprovalDecision(pending.actor, pending.decision);
+              }}
+            >
+              {pendingDecision
+                ? `Confirm ${DECISION_STATUS_CONFIG[pendingDecision.decision]?.label ?? pendingDecision.decision}`
+                : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1272,49 +1298,6 @@ export default function InspectionDetailPage() {
                 </p>
               ) : null}
             </div>
-
-            {/* Which vendor's limits these readings are judged against. Resolved
-                from the PO's supplier, so it is shown rather than chosen. */}
-            {(inspection?.parameter_set_label || formData.vendor_code) && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label>QC Parameters Applied</Label>
-                  {canOverrideVendor && canEdit && (
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                      onClick={() => {
-                        setVendorOverrideDraft({
-                          code: formData.vendor_code || inspection?.vendor_code || '',
-                          name: inspection?.vendor_name || '',
-                          reason: formData.vendor_override_reason || '',
-                        });
-                        setVendorOverrideErrors({});
-                        setIsVendorOverrideDialogOpen(true);
-                      }}
-                    >
-                      Change vendor
-                    </button>
-                  )}
-                </div>
-                <Input
-                  value={
-                    formData.vendor_code && formData.vendor_code !== inspection?.vendor_code
-                      ? `${formData.vendor_code} (pending save)`
-                      : inspection?.parameter_set_label || ''
-                  }
-                  readOnly
-                  disabled
-                />
-                <p className="text-xs text-muted-foreground">
-                  {inspection?.is_vendor_overridden
-                    ? `Overridden — the PO supplier is ${inspection.po_vendor_code}. ${inspection.vendor_override_reason}`
-                    : inspection?.vendor_code
-                      ? `Matched to the PO supplier ${inspection.vendor_name || inspection.vendor_code}.`
-                      : 'Default parameters — this vendor has no set of their own.'}
-                </p>
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label>
@@ -1600,6 +1583,56 @@ export default function InspectionDetailPage() {
             <CardTitle>QC Parameters</CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Which vendor's limits these readings are judged against. Auto-matched
+                from the PO supplier, but editable — pick any set configured for
+                this material. Not part of the printed certificate. */}
+            {parameterSets.length > 0 && (
+              <div className="mb-5 flex flex-col gap-2 rounded-md border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between print-hide">
+                <div className="space-y-0.5">
+                  <Label htmlFor="applied-parameter-set">Parameters applied</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-matched from the PO supplier. Change it to inspect against
+                    another vendor's limits for this material.
+                  </p>
+                </div>
+                <div className="space-y-1 sm:w-72">
+                  <select
+                    id="applied-parameter-set"
+                    value={activeParameterSetId != null ? String(activeParameterSetId) : ''}
+                    onChange={(e) => handleParameterSetChange(e.target.value)}
+                    disabled={!canEdit || isSaving}
+                    className={cn(
+                      'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+                      apiErrors.parameter_set_id && 'border-destructive',
+                    )}
+                  >
+                    <option value="">Auto — match PO supplier</option>
+                    {parameterSets.map((set) => (
+                      <option key={set.id} value={set.id}>
+                        {set.label}
+                        {set.is_default ? '' : ` · ${set.parameter_count} params`}
+                      </option>
+                    ))}
+                  </select>
+                  {apiErrors.parameter_set_id && (
+                    <p className="text-xs text-destructive">{apiErrors.parameter_set_id}</p>
+                  )}
+                  {canManageQCParameters && selectedMaterialTypeId ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/qc/master/parameters?materialType=${selectedMaterialTypeId}`)
+                      }
+                      className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2 hover:opacity-80"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Create vendor parameters
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
             {/* Mobile: stacked card layout */}
             <div className="md:hidden space-y-4">
               {(isEditing ? qcParameters : inspection?.parameter_results || qcParameters).map(
@@ -1621,6 +1654,7 @@ export default function InspectionDetailPage() {
                     is_within_spec: true,
                     remarks: '',
                   };
+                  const isOutOfSpec = currentValue.is_within_spec === false;
 
                   return (
                     <div
@@ -1628,12 +1662,23 @@ export default function InspectionDetailPage() {
                       className={cn(
                         'border rounded-lg p-3 space-y-3',
                         paramError && 'border-destructive',
+                        isOutOfSpec && 'border-destructive/60 bg-destructive/10',
                       )}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">
+                        <span
+                          className={cn(
+                            'font-medium text-sm',
+                            isOutOfSpec && 'text-destructive',
+                          )}
+                        >
                           {paramName}
                           {isMandatory && <span className="text-destructive"> *</span>}
+                          {isOutOfSpec && (
+                            <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                              Out of spec
+                            </span>
+                          )}
                         </span>
                         <label className="flex items-center gap-2 text-sm">
                           <input
@@ -1748,13 +1793,24 @@ export default function InspectionDetailPage() {
                       is_within_spec: true,
                       remarks: '',
                     };
+                    const isOutOfSpec = currentValue.is_within_spec === false;
 
                     return (
-                      <tr key={parameterId} className="border-b">
+                      <tr
+                        key={parameterId}
+                        className={cn('border-b', isOutOfSpec && 'bg-destructive/10')}
+                      >
                         <td className="p-3">
-                          <span className="font-medium">
+                          <span
+                            className={cn('font-medium', isOutOfSpec && 'text-destructive')}
+                          >
                             {paramName}
                             {isMandatory && <span className="text-destructive"> *</span>}
+                            {isOutOfSpec && (
+                              <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                                Out of spec
+                              </span>
+                            )}
                           </span>
                         </td>
                         <td className="p-3 text-muted-foreground">{standardValue}</td>
@@ -1864,7 +1920,7 @@ export default function InspectionDetailPage() {
                 <Label>Chemist Decision</Label>
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    onClick={() => handleApprovalDecision('chemist', 'APPROVED')}
+                    onClick={() => requestApprovalDecision('chemist', 'APPROVED')}
                     disabled={isSaving}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -1872,7 +1928,7 @@ export default function InspectionDetailPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handleApprovalDecision('chemist', 'HOLD')}
+                    onClick={() => requestApprovalDecision('chemist', 'HOLD')}
                     disabled={isSaving}
                   >
                     <AlertCircle className="h-4 w-4 mr-2" />
@@ -1880,7 +1936,7 @@ export default function InspectionDetailPage() {
                   </Button>
                   <Button
                     variant="destructive"
-                    onClick={() => handleApprovalDecision('chemist', 'REJECTED')}
+                    onClick={() => requestApprovalDecision('chemist', 'REJECTED')}
                     disabled={isSaving}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
@@ -1930,7 +1986,7 @@ export default function InspectionDetailPage() {
                 )}
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    onClick={() => handleApprovalDecision('manager', 'APPROVED')}
+                    onClick={() => requestApprovalDecision('manager', 'APPROVED')}
                     disabled={isSaving}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -1938,7 +1994,7 @@ export default function InspectionDetailPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handleApprovalDecision('manager', 'HOLD')}
+                    onClick={() => requestApprovalDecision('manager', 'HOLD')}
                     disabled={isSaving}
                   >
                     <AlertCircle className="h-4 w-4 mr-2" />
@@ -1946,7 +2002,7 @@ export default function InspectionDetailPage() {
                   </Button>
                   <Button
                     variant="destructive"
-                    onClick={() => handleApprovalDecision('manager', 'REJECTED')}
+                    onClick={() => requestApprovalDecision('manager', 'REJECTED')}
                     disabled={isSaving}
                   >
                     <XCircle className="h-4 w-4 mr-2" />

@@ -373,6 +373,10 @@ export interface CreateInspectionRequest {
    *  Needs can_override_qc_vendor, and the backend demands a reason with it. */
   vendor_code?: string;
   vendor_override_reason?: string;
+  /** Hand-picked parameter set to inspect against, chosen from the sets already
+   *  configured for this material type. Restricted to those, so no permission or
+   *  reason is needed. Omitted means "auto-match from the PO supplier". */
+  parameter_set_id?: number;
   remarks?: string;
 }
 
