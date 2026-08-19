@@ -50,6 +50,7 @@ export interface SalesDispatchDocument {
   total_quantity?: string | number | null;
   total_litres?: string | number | null;
   total_boxes?: string | number | null;
+  total_loose?: string | number | null;
   total_weight?: string | number | null;
   line_count?: number;
   items?: unknown[];
@@ -71,6 +72,8 @@ export interface SalesDispatchGatepassReadiness {
   scanned_boxes?: number;
   /** Pack-size-aware expected box count (matches the scan page). */
   expected_boxes?: number;
+  /** Loose pieces the box count excludes (SAP transacts these items per piece). */
+  expected_loose?: string | number | null;
   /**
    * True when box scanning is optional for this entry's company (e.g. Jivo Beverages).
    * Operators can continue past the scan step and print the gatepass without scanning
@@ -107,6 +110,10 @@ export interface SalesDispatchItem {
   tax_code?: string;
   total_litres?: string | null;
   total_boxes?: string | null;
+  /** Pieces not in a full box — the "Box + Loose" pair the SAP bill prints. */
+  total_loose?: string | null;
+  /** OITM.SalFactor2: pieces per box, or 1 when SAP does not box the item. */
+  sal_factor2?: string | null;
   total_weight?: string | null;
 }
 
@@ -137,6 +144,7 @@ export interface SalesDispatchGateOutDocument {
   total_quantity?: string | null;
   total_litres?: string | null;
   total_boxes?: string | null;
+  total_loose?: string | null;
   total_weight?: string | null;
   items?: SalesDispatchItem[];
   created_at?: string;
@@ -253,6 +261,7 @@ export interface SalesDispatchGateOut {
   total_quantity?: string | null;
   total_litres?: string | null;
   total_boxes?: string | null;
+  total_loose?: string | null;
   total_weight?: string | null;
   /** Operator-entered challan weight; comparison reference when SAP total_weight is missing/wrong. */
   challan_weight?: string | null;

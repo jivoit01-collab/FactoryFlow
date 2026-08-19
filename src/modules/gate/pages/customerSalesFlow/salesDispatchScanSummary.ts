@@ -1,6 +1,11 @@
 import type { SalesDispatchBoxScan, SalesDispatchItem } from '@/modules/gate/api';
 
-import { getExpectedItemBoxes, parsePositiveNumber } from './salesDispatchBoxCounts';
+import {
+  getExpectedItemBoxes,
+  getExpectedItemLoose,
+  isLooseItem,
+  parsePositiveNumber,
+} from './salesDispatchBoxCounts';
 
 export interface ItemScanRow {
   key: string;
@@ -11,8 +16,14 @@ export interface ItemScanRow {
   uom: string;
   totalWeight: number;
   expectedBoxes: number;
+  /** Invoiced pieces not in a full box — the whole line when the item ships loose. */
+  expectedLoose: number;
+  /** True when the item has no box count at all, so progress is measured in pieces. */
+  isLoose: boolean;
   scanCount: number;
   scannedQuantity: number;
+  /** Quantity carried by each scanned box, in scan order — e.g. [362, 138]. */
+  scannedBoxQuantities: number[];
   progressPercent: number | null;
   isComplete: boolean;
 }
@@ -54,11 +65,17 @@ export function groupItemsByItemCode(items: SalesDispatchItem[]): SalesDispatchI
     const mergedWeight =
       parsePositiveNumber(existing.total_weight) + parsePositiveNumber(item.total_weight);
     existing.total_weight = mergedWeight > 0 ? String(mergedWeight) : existing.total_weight;
-    // Only carry a stored box total when every merged line has one; otherwise fall back to
-    // the quantity/pack-size estimate (getExpectedItemBoxes) on the combined quantity.
+    // Carry the stored box/loose split only when EVERY merged line has one — both halves
+    // together, since a line can legitimately be all boxes or all loose. Otherwise clear
+    // both so the combined quantity is re-split from sal_factor2 (getItemPacking), which
+    // is the more accurate figure anyway: two part-boxes on separate lines make one box.
     const existingBoxes = parsePositiveNumber(existing.total_boxes);
+    const existingLoose = parsePositiveNumber(existing.total_loose);
     const itemBoxes = parsePositiveNumber(item.total_boxes);
-    existing.total_boxes = existingBoxes > 0 && itemBoxes > 0 ? String(existingBoxes + itemBoxes) : null;
+    const itemLoose = parsePositiveNumber(item.total_loose);
+    const bothSplit = existingBoxes + existingLoose > 0 && itemBoxes + itemLoose > 0;
+    existing.total_boxes = bothSplit ? String(existingBoxes + itemBoxes) : null;
+    existing.total_loose = bothSplit ? String(existingLoose + itemLoose) : null;
   });
   return order.map((key) => byKey.get(key) as SalesDispatchItem);
 }
@@ -77,7 +94,7 @@ export function summarizeItems(
     if (code && !indexByCode.has(code)) indexByCode.set(code, index);
   });
 
-  const stats = expectedItems.map(() => ({ count: 0, quantity: 0 }));
+  const stats = expectedItems.map(() => ({ count: 0, quantity: 0, boxQuantities: [] as number[] }));
   let unplannedScanCount = 0;
   for (const scan of scans) {
     const code = normalizeItemCode(scan.item_code);
@@ -86,8 +103,10 @@ export function summarizeItems(
       unplannedScanCount += 1;
       continue;
     }
+    const scanQuantity = parsePositiveNumber(scan.quantity);
     stats[index].count += 1;
-    stats[index].quantity += parsePositiveNumber(scan.quantity);
+    stats[index].quantity += scanQuantity;
+    stats[index].boxQuantities.push(scanQuantity);
   }
 
   const items = expectedItems.map((item, index) => {
@@ -108,12 +127,31 @@ export function summarizeItems(
       uom: item.uom || '',
       totalWeight: parsePositiveNumber(item.total_weight),
       expectedBoxes: getExpectedItemBoxes(item),
+      expectedLoose: getExpectedItemLoose(item),
+      isLoose: isLooseItem(item),
       scanCount: scanStats.count,
       scannedQuantity: scanStats.quantity,
+      scannedBoxQuantities: scanStats.boxQuantities,
       progressPercent,
       isComplete,
     };
   });
 
   return { items, unplannedScanCount };
+}
+
+
+/**
+ * "362 + 138" — what each scanned box carried, in scan order.
+ *
+ * Boxes of a loose item are whatever the packers made (a 500-piece line can arrive as one
+ * 362-piece carton and one 138-piece carton), so the box COUNT alone tells the operator
+ * nothing about whether the goods are covered. Long lists are truncated to keep the row
+ * readable: "132 + 132 + 132 + 2 more".
+ */
+export function formatScannedBoxQuantities(quantities: number[], maxShown = 4) {
+  if (!quantities.length) return '';
+  const shown = quantities.slice(0, maxShown).map((q) => q.toLocaleString('en-IN'));
+  const hidden = quantities.length - shown.length;
+  return hidden > 0 ? `${shown.join(' + ')} + ${hidden} more` : shown.join(' + ');
 }

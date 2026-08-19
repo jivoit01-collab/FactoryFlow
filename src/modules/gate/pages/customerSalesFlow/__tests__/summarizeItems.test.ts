@@ -2,8 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import type { SalesDispatchBoxScan, SalesDispatchItem } from '@/modules/gate/api';
 
-import { getExpectedItemsBoxes } from '../salesDispatchBoxCounts';
-import { groupItemsByItemCode, summarizeItems } from '../salesDispatchScanSummary';
+import {
+  getExpectedItemBoxes,
+  getExpectedItemLoose,
+  getExpectedItemsBoxes,
+  getExpectedItemsLoose,
+  isLooseItem,
+} from '../salesDispatchBoxCounts';
+import {
+  formatScannedBoxQuantities,
+  groupItemsByItemCode,
+  summarizeItems,
+} from '../salesDispatchScanSummary';
 
 function item(overrides: Partial<SalesDispatchItem>): SalesDispatchItem {
   return {
@@ -15,6 +25,9 @@ function item(overrides: Partial<SalesDispatchItem>): SalesDispatchItem {
     uom: 'PCS',
     line_num: 0,
     total_boxes: null,
+    total_loose: null,
+    // OITM.SalFactor2 — the only pack size the box count is allowed to use.
+    sal_factor2: '16',
     total_weight: null,
     ...overrides,
   } as unknown as SalesDispatchItem;
@@ -57,10 +70,12 @@ describe('groupItemsByItemCode — same product on two invoice lines', () => {
     expect(grouped[0].line_num).toBe(0);
   });
 
-  it('derives expected boxes from the combined quantity, not per-line ceilings', () => {
-    // Per-line ceilings would be ceil(1925/16) + ceil(385/16) = 121 + 25 = 146.
-    // Combined is the true figure: ceil(2310/16) = 145.
-    expect(getExpectedItemsBoxes(groupItemsByItemCode(rawLines))).toBe(145);
+  it('derives expected boxes from the combined quantity, not per-line splits', () => {
+    // Per-line splits would be floor(1925/16) + floor(385/16) = 120 + 24 = 144 boxes with
+    // 5 + 1 loose. Combined is the true figure: floor(2310/16) = 144 boxes + 6 loose.
+    const grouped = groupItemsByItemCode(rawLines);
+    expect(getExpectedItemsBoxes(grouped)).toBe(144);
+    expect(getExpectedItemsLoose(grouped)).toBe(6);
   });
 
   it('keeps distinct item codes as separate rows in original order', () => {
@@ -85,7 +100,9 @@ describe('summarizeItems on grouped lines', () => {
     const summary = summarizeItems(grouped, scans(145));
     expect(summary.items).toHaveLength(1);
     expect(summary.items[0].scanCount).toBe(145);
-    expect(summary.items[0].expectedBoxes).toBe(145);
+    // 144 full boxes + a 6-piece remainder; the 145th scan is that part box.
+    expect(summary.items[0].expectedBoxes).toBe(144);
+    expect(summary.items[0].expectedLoose).toBe(6);
     expect(summary.items[0].isComplete).toBe(true);
     expect(summary.items[0].progressPercent).toBe(100);
     expect(summary.unplannedScanCount).toBe(0);
@@ -101,5 +118,104 @@ describe('summarizeItems on grouped lines', () => {
     const summary = summarizeItems(grouped, scans(2, { item_code: 'FG9999999' }));
     expect(summary.items[0].scanCount).toBe(0);
     expect(summary.unplannedScanCount).toBe(2);
+  });
+});
+
+
+// The rule SAP's own bill prints: SalFactor2 = 1 means the item is not transacted in
+// boxes, so it ships loose — except CSD stock, where one box IS the billed piece.
+describe('SalFactor2 drives the box/loose split', () => {
+  it('counts a loose SKU in pieces, not one box per piece', () => {
+    // FG0000381: the invoice prints "0 Box  500.00 PCS".
+    const loose = item({
+      item_code: 'FG0000381',
+      item_name: 'EXTRA VIRGIN OLIVE OIL 10ML',
+      quantity: '500',
+      sal_factor2: '1',
+    });
+    expect(getExpectedItemBoxes(loose)).toBe(0);
+    expect(getExpectedItemLoose(loose)).toBe(500);
+    expect(isLooseItem(loose)).toBe(true);
+  });
+
+  it('keeps CSD stock box-counted at one piece per box', () => {
+    const csd = item({
+      item_code: 'FG0000400',
+      item_name: 'JIVO KACHI GHANI COLD PRESSED MUSTARD OIL 1 LTR 20 PCS(CSD)',
+      quantity: '99',
+      sal_factor2: '1',
+    });
+    expect(getExpectedItemBoxes(csd)).toBe(99);
+    expect(getExpectedItemLoose(csd)).toBe(0);
+    expect(isLooseItem(csd)).toBe(false);
+  });
+
+  it('ignores the "N PCS" token in the item name', () => {
+    // The name says 20 PCS; SalFactor2 says the box is the billed piece. Dividing by the
+    // name would under-count these boxes 20x.
+    const csd = item({
+      item_name: 'MUSTARD OIL 100 MLS 20 PCS(CSD)',
+      quantity: '40',
+      sal_factor2: '1',
+    });
+    expect(getExpectedItemBoxes(csd)).toBe(40);
+  });
+
+  it('prefers the split the backend stored over re-deriving it', () => {
+    const stored = item({ quantity: '2310', sal_factor2: '16', total_boxes: '144', total_loose: '6' });
+    expect(getExpectedItemBoxes(stored)).toBe(144);
+    expect(getExpectedItemLoose(stored)).toBe(6);
+  });
+
+  it('treats an unconfigured item as loose rather than inventing boxes', () => {
+    const unknown = item({ item_name: 'SOYABEAN OIL 12 KGS', quantity: '12', sal_factor2: null });
+    expect(getExpectedItemBoxes(unknown)).toBe(0);
+    expect(getExpectedItemLoose(unknown)).toBe(12);
+  });
+});
+
+
+// A loose line's cartons are whatever the packers packed, so the operator needs to see
+// what each scanned box carried — not just how many boxes.
+describe('per-box quantities on a loose line', () => {
+  const loose = item({
+    item_code: 'FG0000381',
+    item_name: 'EXTRA VIRGIN OLIVE OIL 10ML',
+    quantity: '500',
+    sal_factor2: '1',
+  });
+
+  it('records each scanned box quantity and completes on quantity, not box count', () => {
+    const summary = summarizeItems(
+      [loose],
+      [
+        scan({ item_code: 'FG0000381', quantity: '362' }),
+        scan({ item_code: 'FG0000381', quantity: '138' }),
+      ],
+    );
+    const row = summary.items[0];
+    expect(row.expectedBoxes).toBe(0);
+    expect(row.isLoose).toBe(true);
+    expect(row.scanCount).toBe(2);
+    expect(row.scannedBoxQuantities).toEqual([362, 138]);
+    expect(row.scannedQuantity).toBe(500);
+    expect(row.isComplete).toBe(true);
+  });
+
+  it('is still incomplete while the pieces are short, however many boxes were scanned', () => {
+    const summary = summarizeItems(
+      [loose],
+      [scan({ item_code: 'FG0000381', quantity: '362' })],
+    );
+    expect(summary.items[0].isComplete).toBe(false);
+    expect(summary.items[0].progressPercent).toBe(72);
+  });
+
+  it('formats the box quantities, truncating a long list', () => {
+    expect(formatScannedBoxQuantities([362, 138])).toBe('362 + 138');
+    expect(formatScannedBoxQuantities([132, 132, 132, 98, 6, 1])).toBe(
+      '132 + 132 + 132 + 98 + 2 more',
+    );
+    expect(formatScannedBoxQuantities([])).toBe('');
   });
 });

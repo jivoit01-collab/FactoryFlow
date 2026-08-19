@@ -89,6 +89,7 @@ import {
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 import {
   type BillScanSummary,
+  formatScannedBoxQuantities,
   groupItemsByItemCode,
   summarizeItems,
 } from './salesDispatchScanSummary';
@@ -1466,7 +1467,17 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
                 {formatQuantity(item.expectedQuantity, item.uom)}
               </td>
               <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                {item.expectedBoxes > 0 ? formatNumber(item.expectedBoxes) : '-'}
+                {item.expectedBoxes > 0 ? (
+                  formatNumber(item.expectedBoxes)
+                ) : item.isLoose ? (
+                  // SAP transacts this item per piece (SalFactor2 = 1, non-CSD) and its
+                  // bill prints "0 Box / N PCS": there is no box target to scan against,
+                  // so the row is judged on quantity. Saying "Loose" beats a bare dash,
+                  // which reads as missing data.
+                  <span className="text-xs font-medium text-muted-foreground">Loose</span>
+                ) : (
+                  '-'
+                )}
               </td>
               <td className="p-3 align-top">
                 <div className="font-medium">
@@ -1475,6 +1486,14 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
                 <div className="text-xs text-muted-foreground">
                   {item.scannedQuantity > 0 ? formatQuantity(item.scannedQuantity, item.uom) : '-'}
                 </div>
+                {item.scanCount > 1 ? (
+                  // What each box carried. Cartons of a loose item are whatever the packers
+                  // packed (362 + 138 against a 500-pc line), so the count alone doesn't
+                  // tell the operator whether the goods are covered.
+                  <div className="text-xs tabular-nums text-muted-foreground/80">
+                    {formatScannedBoxQuantities(item.scannedBoxQuantities)}
+                  </div>
+                ) : null}
                 {item.progressPercent !== null ? (
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                     <div

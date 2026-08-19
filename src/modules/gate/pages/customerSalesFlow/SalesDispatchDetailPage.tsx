@@ -57,8 +57,12 @@ import { cn, getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
 import {
   getExpectedDocumentBoxes,
+  getExpectedDocumentLoose,
   getExpectedItemBoxes,
+  getExpectedItemLoose,
   getExpectedItemsBoxes,
+  getExpectedItemsLoose,
+  parsePositiveNumber,
 } from './salesDispatchBoxCounts';
 import {
   formatDateTime,
@@ -69,6 +73,7 @@ import {
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 import {
+  formatScannedBoxQuantities,
   groupItemsByItemCode,
   type ItemScanRow,
   normalizeItemCode,
@@ -525,18 +530,28 @@ function ScannedBoxesSheet({
     return true;
   });
 
-  const expected =
+  const scopedItems =
     filter.item !== 'ALL'
-      ? getExpectedItemsBoxes(
-          scopeDocs.flatMap((doc) =>
-            doc.items.filter(
-              (item) => normalizeItemCode(item.item_code) === normalizeItemCode(filter.item),
-            ),
+      ? scopeDocs.flatMap((doc) =>
+          doc.items.filter(
+            (item) => normalizeItemCode(item.item_code) === normalizeItemCode(filter.item),
           ),
         )
-      : selectedDoc
-        ? getExpectedDocumentBoxes(selectedDoc)
-        : getExpectedLoadBoxes(documents);
+      : null;
+
+  const expected = scopedItems
+    ? getExpectedItemsBoxes(scopedItems)
+    : selectedDoc
+      ? getExpectedDocumentBoxes(selectedDoc)
+      : getExpectedLoadBoxes(documents);
+
+  // Loose goods have no box count; report the pieces so "Expected Boxes: 0" can't read
+  // as "nothing to scan" for a bill that ships 500 loose bottles.
+  const expectedLoose = scopedItems
+    ? getExpectedItemsLoose(scopedItems)
+    : selectedDoc
+      ? getExpectedDocumentLoose(selectedDoc)
+      : documents.reduce((sum, doc) => sum + getExpectedDocumentLoose(doc), 0);
 
   const billOptions = documents
     .filter((doc) => hasDisplayValue(doc.sap_doc_num))
@@ -620,7 +635,14 @@ function ScannedBoxesSheet({
 
         <div className="grid shrink-0 gap-3 text-sm sm:grid-cols-2">
           <InfoItem label="Scanned Boxes" value={scans.length} />
-          <InfoItem label="Expected Boxes" value={formatCount(expected)} />
+          <InfoItem
+            label={expectedLoose > 0 && expected === 0 ? 'Expected Pieces (loose)' : 'Expected Boxes'}
+            value={
+              expectedLoose > 0 && expected === 0
+                ? formatCount(expectedLoose)
+                : formatCount(expected)
+            }
+          />
           <InfoItem
             label="Total Scanned Quantity"
             value={formatScannedQuantity(scans, entry.uom)}
@@ -744,15 +766,28 @@ function getItemScanTone(row?: ItemScanRow): ScanTone {
 function ScanProgressBadge({
   scanned,
   expected,
+  scannedPieces = 0,
+  expectedPieces = 0,
   className,
 }: {
   scanned: number;
   expected: number;
+  /** Pieces scanned so far — used when the goods have no box count to progress against. */
+  scannedPieces?: number;
+  /** Invoiced loose pieces (SalFactor2 = 1, non-CSD: SAP transacts the item per piece). */
+  expectedPieces?: number;
   className?: string;
 }) {
-  const tone = getScanTone(scanned, expected);
-  const label =
-    expected > 0
+  // Loose goods carry no box count to be short of, so progress is measured in PIECES —
+  // the same invoiced-quantity check the backend gates on. Only fully boxed lines keep
+  // the box count; showing "0 / 500 boxes" for 500 loose bottles was the bug.
+  const countInPieces = expectedPieces > 0;
+  const tone = countInPieces
+    ? getScanTone(scannedPieces, expectedPieces)
+    : getScanTone(scanned, expected);
+  const label = countInPieces
+    ? `${formatCount(scannedPieces)} / ${formatCount(expectedPieces)} pcs`
+    : expected > 0
       ? `${scanned} / ${formatCount(expected)} boxes`
       : scanned > 0
         ? `${scanned} scanned`
@@ -868,6 +903,7 @@ function DocumentsCard({
             <ScanProgressBadge
               scanned={scans.length}
               expected={getExpectedLoadBoxes(documents)}
+              {...getPiecesProgress(documents, scans)}
               className="ml-2"
             />
           </Button>
@@ -983,7 +1019,11 @@ function DocumentSection({
           </div>
         </div>
         <div className="ml-6 flex flex-col items-start gap-1 text-xs text-muted-foreground sm:ml-0 sm:items-end">
-          <ScanProgressBadge scanned={scans.length} expected={expectedBoxes} />
+          <ScanProgressBadge
+            scanned={scans.length}
+            expected={expectedBoxes}
+            {...getPiecesProgress([document], scans)}
+          />
           {hasDisplayValue(document.sap_doc_total) ? (
             <div className="text-sm font-medium tabular-nums text-foreground">
               {formatValue(document.sap_doc_total)}
@@ -1051,7 +1091,29 @@ function DocumentSection({
                       <ScanProgressBadge
                         scanned={status?.scanCount ?? 0}
                         expected={status?.expectedBoxes ?? getExpectedItemBoxes(item)}
+                        scannedPieces={status?.scannedQuantity ?? 0}
+                        expectedPieces={
+                          getExpectedItemLoose(item) > 0
+                            ? (status?.expectedQuantity ?? parsePositiveNumber(item.quantity))
+                            : 0
+                        }
                       />
+                      {status?.scanCount ? (
+                        // How the pieces actually arrived: N boxes and what each carried.
+                        // For a loose item the cartons are whatever the packers packed
+                        // (362 + 138 against a 500-pc line), so the count alone is not a
+                        // useful progress figure on its own.
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {status.scanCount} box{status.scanCount === 1 ? '' : 'es'}
+                          {status.scannedBoxQuantities.length ? (
+                            <span className="tabular-nums">
+                              {' · '}
+                              {formatScannedBoxQuantities(status.scannedBoxQuantities)}
+                              {item.uom ? ` ${item.uom}` : ''}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -1138,11 +1200,13 @@ function formatDocumentLoad(document: DetailDocument) {
   const itemCount = document.items.length
     ? `${document.items.length} ${document.items.length === 1 ? 'item' : 'items'}`
     : '';
-  const expectedBoxes = getExpectedDocumentBoxes(document);
   const parts = [
     itemCount,
     document.total_quantity ? `${document.total_quantity} qty` : '',
-    expectedBoxes > 0 ? `${formatCount(expectedBoxes)} boxes` : '',
+    // Boxes AND loose pieces, the way the bill prints them: an item SAP transacts per
+    // piece (SalFactor2 = 1, non-CSD) has no box count, so it reads "500 pcs loose"
+    // rather than a bare "0 boxes" that looks like an empty load.
+    formatPacking(getExpectedDocumentBoxes(document), getExpectedDocumentLoose(document)),
     document.total_litres ? `${document.total_litres} litres` : '',
     document.total_weight ? formatWeightValue(document.total_weight) : '',
   ].filter(Boolean);
@@ -1160,6 +1224,23 @@ function formatScannedQuantity(scans: SalesDispatchBoxScan[], fallbackUom?: stri
 function formatQuantityWithUom(quantity?: string | number | null, uom?: string | null) {
   if (!hasDisplayValue(quantity)) return '-';
   return [quantity, uom].filter(Boolean).join(' ');
+}
+
+// Pieces progress for a bill (or a whole load) that carries loose goods.
+//
+// A document is measured in pieces as soon as ANY of its lines ships loose: mixing a box
+// count for one line with a piece count for another in a single pill would be unreadable,
+// and pieces are the unit both sides always have (the invoice quantity, and the box's own
+// piece count recorded on every scan). ``expectedPieces`` stays 0 for a fully boxed
+// document, which keeps the badge in box mode.
+function getPiecesProgress(documents: DetailDocument[], scans: SalesDispatchBoxScan[]) {
+  const items = documents.flatMap((document) => document.items || []);
+  const hasLoose = items.some((item) => getExpectedItemLoose(item) > 0);
+  if (!hasLoose) return { scannedPieces: 0, expectedPieces: 0 };
+  return {
+    scannedPieces: scans.reduce((sum, scan) => sum + parsePositiveNumber(scan.quantity), 0),
+    expectedPieces: items.reduce((sum, item) => sum + parsePositiveNumber(item.quantity), 0),
+  };
 }
 
 function sumScannedQuantity(scans?: SalesDispatchBoxScan[]) {
@@ -1344,14 +1425,23 @@ function formatItemWarehouse(item: SalesDispatchItem) {
 }
 
 function formatItemMetrics(item: SalesDispatchItem) {
-  const expectedBoxes = getExpectedItemBoxes(item);
   const metrics = [
-    expectedBoxes > 0 ? `${formatCount(expectedBoxes)} boxes` : '',
+    formatPacking(getExpectedItemBoxes(item), getExpectedItemLoose(item)),
     item.total_litres ? `${item.total_litres} litres` : '',
     item.total_weight ? formatWeightValue(item.total_weight) : '',
   ].filter(Boolean);
 
   return metrics.length ? metrics.join(' / ') : '-';
+}
+
+// "25 boxes", "25 boxes + 8 pcs loose", or "500 pcs loose" — the SAP bill's Box + Loose
+// pair. Empty when the line carries neither, so callers can filter it out.
+function formatPacking(boxes: number, loose: number) {
+  const parts = [
+    boxes > 0 ? `${formatCount(boxes)} ${boxes === 1 ? 'box' : 'boxes'}` : '',
+    loose > 0 ? `${formatCount(loose)} pcs loose` : '',
+  ].filter(Boolean);
+  return parts.join(' + ');
 }
 
 function InfoItem({ label, value }: { label: string; value?: string | number | null }) {
