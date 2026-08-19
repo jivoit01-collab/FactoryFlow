@@ -33,7 +33,7 @@ export interface ControlledDocumentMeta {
 
 export const CONTROLLED_DOCUMENTS = {
   QC_INSPECTION_REPORT: {
-    name: 'QC INSPECTION REPORT',
+    name: 'MATERIAL ARRIVAL INSPECTION REPORT',
     code: 'QA-FRM-08-06-00-01',
     revision: '00',
     issueDate: '23-07-2026',
