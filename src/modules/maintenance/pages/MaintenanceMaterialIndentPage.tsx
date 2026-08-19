@@ -2,6 +2,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardList,
+  Download,
   FileText,
   Paperclip,
   Plus,
@@ -16,6 +17,7 @@ import {
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
@@ -926,6 +928,55 @@ function IndentDetailDialog({
   );
 }
 
+// Purchaser export — one grouped sheet mirroring the paper "Indent" register:
+// each indent starts with a "Raised by …" header row, then the item columns.
+// "To Purchase" is the shortfall (Req. Qty − Issued) the purchaser must buy.
+// A Date column carries each indent's raise date onto every item row.
+function exportIndentsToExcel(indents: MaterialIndent[]) {
+  const rows: (string | number)[][] = [];
+  indents.forEach((indent) => {
+    const raisedBy = indent.requested_by_name?.trim() || indent.created_by_name?.trim() || '—';
+    const contact = indent.contact_no?.trim();
+    const submitter = indent.submitted_by_name?.trim() || indent.created_by_name?.trim();
+    let header = `Raised by: ${raisedBy}`;
+    if (contact) header += ` (${contact})`;
+    if (submitter) header += ` — submitted by ${submitter}`;
+    if (indent.indent_no) header += `  •  ${indent.indent_no}`;
+
+    rows.push([header]);
+    rows.push(['#', 'Date', 'Particulars', 'Spec / Make', 'Req. Qty', 'Unit', 'Issued', 'To Purchase']);
+    indent.items.forEach((item, index) => {
+      rows.push([
+        item.line_num || index + 1,
+        indent.indent_date || '',
+        item.particulars || '',
+        item.specification?.trim() || '-',
+        Number(item.quantity) || 0,
+        item.unit || '',
+        Number(item.issued_quantity) || 0,
+        Number(item.shortfall_quantity) || 0,
+      ]);
+    });
+    rows.push([]); // blank line between indents
+  });
+
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  sheet['!cols'] = [
+    { wch: 5 }, // #
+    { wch: 12 }, // Date
+    { wch: 42 }, // Particulars
+    { wch: 22 }, // Spec / Make
+    { wch: 10 }, // Req. Qty
+    { wch: 10 }, // Unit
+    { wch: 10 }, // Issued
+    { wch: 12 }, // To Purchase
+  ];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Indents');
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(workbook, `Material_Indent_${stamp}.xlsx`);
+}
+
 export default function MaintenanceMaterialIndentPage() {
   const { hasPermission } = usePermission();
   const canManage = hasPermission(MAINTENANCE_PERMISSIONS.MANAGE_MATERIAL_INDENT);
@@ -955,6 +1006,15 @@ export default function MaintenanceMaterialIndentPage() {
     toast.success('Indent deleted');
   };
 
+  const handleExport = () => {
+    if (indents.length === 0) {
+      toast.info('No indents to export in the current view.');
+      return;
+    }
+    exportIndentsToExcel(indents);
+    toast.success(`Exported ${indents.length} indent${indents.length === 1 ? '' : 's'} to Excel`);
+  };
+
   return (
     <div className="space-y-6 p-6">
       <DashboardHeader
@@ -970,6 +1030,17 @@ export default function MaintenanceMaterialIndentPage() {
           <RefreshCw className="h-4 w-4" />
           Refresh
         </Button>
+        {canPurchase && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={indents.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            Export Excel
+          </Button>
+        )}
         <Button size="sm" onClick={() => setCreateOpen(true)} disabled={!canManage}>
           <Plus className="h-4 w-4" />
           New Indent
