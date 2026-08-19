@@ -30,6 +30,7 @@ import type { QCPrintDocument, QCPrintDocumentKey, SaveQCPrintDocumentRequest } 
 
 const PRINT_DOCUMENT_OPTIONS: Array<{ value: QCPrintDocumentKey; label: string }> = [
   { value: 'RAW_MATERIAL_INSPECTION', label: 'Raw Material Inspection Print' },
+  { value: 'QC_PARAMETERS', label: 'QC Parameters Print' },
 ];
 
 const emptyForm: SaveQCPrintDocumentRequest = {

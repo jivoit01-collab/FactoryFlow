@@ -7,6 +7,7 @@ import type { PrintableInspectionReport, PrintSections } from './types';
 
 const ALL_SECTIONS: PrintSections = {
   report: true,
+  parameters: true,
   coa: true,
   coq: true,
   qcAttachments: true,

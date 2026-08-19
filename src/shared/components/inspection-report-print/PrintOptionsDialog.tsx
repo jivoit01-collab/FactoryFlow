@@ -53,6 +53,7 @@ export function PrintOptionsDialog({
 }: PrintOptionsDialogProps) {
   const defaultSections = (): PrintSections => ({
     report: true,
+    parameters: true,
     coa: hasCoa,
     coq: hasCoq,
     qcAttachments: hasQcAttachments,
@@ -73,7 +74,8 @@ export function PrintOptionsDialog({
   }
 
   const rows: SectionRow[] = [
-    { key: 'report', label: 'Inspection report', available: true, unavailableHint: '' },
+    { key: 'report', label: 'Inspection information', available: true, unavailableHint: '' },
+    { key: 'parameters', label: 'QC parameters', available: true, unavailableHint: '' },
     {
       key: 'coa',
       label: 'Certificate of Analysis (COA)',

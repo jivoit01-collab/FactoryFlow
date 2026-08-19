@@ -24,6 +24,8 @@ export interface PrintableInspectionReport {
   report_no: string | null;
   /** Selected controlled-document ID for this inspection; shown in the print footer. */
   print_document_id?: string | null;
+  /** Controlled-document ID for the QC parameters page (its own document). */
+  parameters_print_document_id?: string | null;
   workflow_status?: string | null;
   final_status?: string | null;
   effective_final_status?: string | null;
@@ -61,8 +63,10 @@ export interface PrintableInspectionReport {
 
 /** Which sections of the inspection printout to include. */
 export type PrintSections = {
-  /** Inspection info, QC parameters, and approval details. */
+  /** Inspection info and approval details. */
   report: boolean;
+  /** QC parameters table — printed as its own controlled document / page. */
+  parameters: boolean;
   /** Certificate of Analysis attachment(s). */
   coa: boolean;
   /** Certificate of Quantity attachment(s). */

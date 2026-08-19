@@ -59,6 +59,12 @@ export function InspectionReportPrintStyles() {
             break-after: auto;
           }
 
+          /* The QC parameters print as their own controlled document, forced
+             onto a fresh page after the main inspection report. */
+          .inspection-report-page--break {
+            break-before: page;
+          }
+
           .inspection-report-card {
             border: 1px solid #e5e7eb;
             border-radius: 4px;
@@ -135,150 +141,196 @@ export function InspectionReportPrintView({
   );
   const hasApprovalRemarks = Boolean(report.qa_chemist_remarks || report.qam_remarks);
 
+  const showCoa = sections.coa && certificateOfAnalysis.length > 0;
+  const showCoq = sections.coq && certificateOfQuantity.length > 0;
+  const showQcAttachments = sections.qcAttachments && qcAttachments.length > 0;
+  // The main inspection document (page 1) prints when its info card or any of
+  // its attachment sections are selected. The QC parameters print as their own
+  // controlled document on a second page, so selecting only "QC parameters"
+  // yields a single parameters page rather than a near-empty page 1.
+  const showMain = sections.report || showCoa || showCoq || showQcAttachments;
+
+  const reportMeta = (
+    <div style={{ display: 'flex', gap: 18, marginTop: 4, fontSize: 10 }}>
+      <span>Report No: {report.report_no || '-'}</span>
+      <span>{report.workflow_status || '-'}</span>
+      <span>{report.effective_final_status || report.final_status || '-'}</span>
+    </div>
+  );
+
+  const topBar = (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
+      <span>{formatPrintDateTime(new Date().toISOString())}</span>
+      <span>JI</span>
+    </div>
+  );
+
   return (
     <div className="inspection-report-print" aria-hidden="true">
-      <div className="inspection-report-page">
-        <ControlledDocumentFrame
-          doc={CONTROLLED_DOCUMENTS.QC_INSPECTION_REPORT}
-          hideHeaderCode
-          documentId={report.print_document_id}
-        >
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
-          <span>{formatPrintDateTime(new Date().toISOString())}</span>
-          <span>JI</span>
-        </div>
+      {showMain && (
+        <div className="inspection-report-page">
+          <ControlledDocumentFrame
+            doc={CONTROLLED_DOCUMENTS.QC_INSPECTION_REPORT}
+            hideHeaderCode
+            documentId={report.print_document_id}
+          >
+            {topBar}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
-          <Printer style={{ height: 22, width: 22 }} />
-          <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Inspection Details</h1>
-            <div style={{ display: 'flex', gap: 18, marginTop: 4, fontSize: 10 }}>
-              <span>Report No: {report.report_no || '-'}</span>
-              <span>{report.workflow_status || '-'}</span>
-              <span>{report.effective_final_status || report.final_status || '-'}</span>
-            </div>
-          </div>
-        </div>
-
-        {sections.report && (
-          <div className="inspection-report-card">
-            <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>Inspection Information</h2>
-            <div className="inspection-report-grid">
-              {infoFields.map(([label, value]) => (
-                <div key={label}>
-                  <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>{label}</div>
-                  <div>{formatPrintValue(value)}</div>
-                </div>
-              ))}
-              {hasApproval && (
-                <>
-                  <div>
-                    <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Chemist</div>
-                    <div>{formatPrintValue(report.qa_chemist_name)}</div>
-                    <div style={{ marginTop: 4, fontSize: 10 }}>
-                      {formatPrintDateTime(report.qa_chemist_approved_at)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>QA Manager</div>
-                    <div>{formatPrintValue(report.qam_name)}</div>
-                    <div style={{ marginTop: 4, fontSize: 10 }}>
-                      {formatPrintDateTime(report.qam_approved_at)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
-                      Final Status
-                    </div>
-                    <div>
-                      {formatPrintValue(report.effective_final_status || report.final_status)}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-            {report.remarks && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>Remarks</div>
-                <div>{report.remarks}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
+              <Printer style={{ height: 22, width: 22 }} />
+              <div>
+                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Inspection Details</h1>
+                {reportMeta}
               </div>
-            )}
-            {hasApprovalRemarks && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
-                  Approval Remarks
-                </div>
-                <div>
-                  {formatPrintValue(
-                    [report.qa_chemist_remarks, report.qam_remarks].filter(Boolean).join(' | '),
+            </div>
+
+            {sections.report && (
+              <div className="inspection-report-card">
+                <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>Inspection Information</h2>
+                <div className="inspection-report-grid">
+                  {infoFields.map(([label, value]) => (
+                    <div key={label}>
+                      <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>{label}</div>
+                      <div>{formatPrintValue(value)}</div>
+                    </div>
+                  ))}
+                  {hasApproval && (
+                    <>
+                      <div>
+                        <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
+                          QA Chemist
+                        </div>
+                        <div>{formatPrintValue(report.qa_chemist_name)}</div>
+                        <div style={{ marginTop: 4, fontSize: 10 }}>
+                          {formatPrintDateTime(report.qa_chemist_approved_at)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
+                          QA Manager
+                        </div>
+                        <div>{formatPrintValue(report.qam_name)}</div>
+                        <div style={{ marginTop: 4, fontSize: 10 }}>
+                          {formatPrintDateTime(report.qam_approved_at)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
+                          Final Status
+                        </div>
+                        <div>
+                          {formatPrintValue(report.effective_final_status || report.final_status)}
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
+                {report.remarks && (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>Remarks</div>
+                    <div>{report.remarks}</div>
+                  </div>
+                )}
+                {hasApprovalRemarks && (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 700 }}>
+                      Approval Remarks
+                    </div>
+                    <div>
+                      {formatPrintValue(
+                        [report.qa_chemist_remarks, report.qam_remarks].filter(Boolean).join(' | '),
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {sections.report && (
-          <div className="inspection-report-card">
-            <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>QC Parameters</h2>
-            <table className="inspection-report-table">
-              <thead>
-                <tr>
-                  <th>Parameter</th>
-                  <th>Standard Value</th>
-                  <th>Result</th>
-                  <th>Within Spec</th>
-                  <th>Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.parameter_results.length > 0 ? (
-                  report.parameter_results.map((parameter) => (
-                    <tr key={parameter.id}>
-                      <td>{parameter.parameter_name}</td>
-                      <td>{formatPrintValue(parameter.standard_value)}</td>
-                      <td>
-                        {formatPrintValue(parameter.result_value || parameter.result_numeric)}
-                      </td>
-                      <td>
-                        {parameter.is_within_spec == null
-                          ? '-'
-                          : parameter.is_within_spec
-                            ? 'Yes'
-                            : 'No'}
-                      </td>
-                      <td>{formatPrintValue(parameter.remarks)}</td>
-                    </tr>
-                  ))
-                ) : (
+            {showCoa && (
+              <InspectionReportAttachmentSection
+                title="Certificate of Analysis (COA)"
+                attachments={certificateOfAnalysis}
+              />
+            )}
+
+            {showCoq && (
+              <InspectionReportAttachmentSection
+                title="Certificate of Quantity (COQ)"
+                attachments={certificateOfQuantity}
+              />
+            )}
+
+            {showQcAttachments && (
+              <InspectionReportAttachmentSection
+                title="QC Attachments"
+                attachments={qcAttachments}
+              />
+            )}
+          </ControlledDocumentFrame>
+        </div>
+      )}
+
+      {sections.parameters && (
+        <div
+          className={`inspection-report-page${showMain ? ' inspection-report-page--break' : ''}`}
+        >
+          <ControlledDocumentFrame
+            doc={CONTROLLED_DOCUMENTS.QC_PARAMETERS_REPORT}
+            hideHeaderCode
+            documentId={report.parameters_print_document_id}
+          >
+            {topBar}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
+              <Printer style={{ height: 22, width: 22 }} />
+              <div>
+                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>QC Parameters</h1>
+                {reportMeta}
+              </div>
+            </div>
+
+            <div className="inspection-report-card">
+              <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>QC Parameters</h2>
+              <table className="inspection-report-table">
+                <thead>
                   <tr>
-                    <td colSpan={5}>No QC parameters recorded for this inspection.</td>
+                    <th>Parameter</th>
+                    <th>Standard Value</th>
+                    <th>Result</th>
+                    <th>Within Spec</th>
+                    <th>Remarks</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {sections.coa && certificateOfAnalysis.length > 0 && (
-          <InspectionReportAttachmentSection
-            title="Certificate of Analysis (COA)"
-            attachments={certificateOfAnalysis}
-          />
-        )}
-
-        {sections.coq && certificateOfQuantity.length > 0 && (
-          <InspectionReportAttachmentSection
-            title="Certificate of Quantity (COQ)"
-            attachments={certificateOfQuantity}
-          />
-        )}
-
-        {sections.qcAttachments && qcAttachments.length > 0 && (
-          <InspectionReportAttachmentSection title="QC Attachments" attachments={qcAttachments} />
-        )}
-        </ControlledDocumentFrame>
-      </div>
+                </thead>
+                <tbody>
+                  {report.parameter_results.length > 0 ? (
+                    report.parameter_results.map((parameter) => (
+                      <tr key={parameter.id}>
+                        <td>{parameter.parameter_name}</td>
+                        <td>{formatPrintValue(parameter.standard_value)}</td>
+                        <td>
+                          {formatPrintValue(parameter.result_value || parameter.result_numeric)}
+                        </td>
+                        <td>
+                          {parameter.is_within_spec == null
+                            ? '-'
+                            : parameter.is_within_spec
+                              ? 'Yes'
+                              : 'No'}
+                        </td>
+                        <td>{formatPrintValue(parameter.remarks)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5}>No QC parameters recorded for this inspection.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </ControlledDocumentFrame>
+        </div>
+      )}
     </div>
   );
 }

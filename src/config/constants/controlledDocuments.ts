@@ -38,6 +38,12 @@ export const CONTROLLED_DOCUMENTS = {
     revision: '00',
     issueDate: '23-07-2026',
   },
+  QC_PARAMETERS_REPORT: {
+    name: 'QC PARAMETERS REPORT',
+    code: 'QA-FRM-08-06-00-02',
+    revision: '00',
+    issueDate: '23-07-2026',
+  },
   SALES_DISPATCH_GATE_PASS: {
     name: 'SALES DISPATCH GATE PASS',
     code: 'WH-FRM-08-05-00-01',

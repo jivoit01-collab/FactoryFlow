@@ -82,7 +82,7 @@ export interface LinkMaterialTypeSAPItemRequest {
 }
 
 // QC Print Documents
-export type QCPrintDocumentKey = 'RAW_MATERIAL_INSPECTION';
+export type QCPrintDocumentKey = 'RAW_MATERIAL_INSPECTION' | 'QC_PARAMETERS';
 
 export interface QCPrintDocument {
   id: number;
@@ -350,6 +350,7 @@ export interface Inspection {
   attachments: ArrivalSlipAttachment[];
   qc_attachments: InspectionAttachment[];
   print_document_id: string;
+  parameters_print_document_id: string;
   created_at: string;
   updated_at: string;
 }
