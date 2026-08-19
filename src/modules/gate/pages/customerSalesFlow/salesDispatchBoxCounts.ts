@@ -54,6 +54,23 @@ export function getItemPacking(item?: SalesDispatchItem | null): LinePacking {
   return { boxes, loose: quantity - boxes * piecesPerBox, piecesPerBox };
 }
 
+/**
+ * How much of a bill's invoiced quantity ONE physical box covers.
+ *
+ * The invoice's unit is not always a piece. A CSD bill counts BOXES — a line reading 4
+ * means four cartons, even though each carton holds 20 bottles and its label declares
+ * qty = 20. So a CSD box is worth 1 here whatever it holds; every other box is worth its
+ * pieces. Mirrors box_packing.box_invoice_units on the backend.
+ */
+export function getBoxInvoiceUnits(item: SalesDispatchItem | null | undefined, boxQuantity: number) {
+  return getPiecesPerBox(item) === 1 ? 1 : boxQuantity;
+}
+
+/** True when the bill counts this item in boxes rather than pieces (CSD stock). */
+export function isBoxCountedItem(item?: SalesDispatchItem | null) {
+  return getPiecesPerBox(item) === 1;
+}
+
 export function getExpectedDispatchBoxes(entry?: SalesDispatchGateOut | null) {
   if (!entry) return 0;
 

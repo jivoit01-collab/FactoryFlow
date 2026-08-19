@@ -1464,7 +1464,20 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
                 <div className="mt-1 text-xs text-muted-foreground">Line {item.lineNum + 1}</div>
               </td>
               <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                {formatQuantity(item.expectedQuantity, item.uom)}
+                {item.isBoxCounted ? (
+                  // A CSD bill's quantity IS a box count: "4" means four cartons, not
+                  // four bottles, even though SAP stamps the line PCS. Saying so here
+                  // stops the operator reading it against the 20 on the carton label.
+                  <>
+                    {formatNumber(item.expectedQuantity)} box
+                    {item.expectedQuantity === 1 ? '' : 'es'}
+                    <div className="text-xs font-normal text-muted-foreground">
+                      bill counts boxes
+                    </div>
+                  </>
+                ) : (
+                  formatQuantity(item.expectedQuantity, item.uom)
+                )}
               </td>
               <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
                 {item.expectedBoxes > 0 ? (
@@ -1484,14 +1497,20 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
                   {item.scanCount} box{item.scanCount === 1 ? '' : 'es'}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {item.scannedQuantity > 0 ? formatQuantity(item.scannedQuantity, item.uom) : '-'}
+                  {item.scannedQuantity > 0
+                    ? item.isBoxCounted
+                      ? `${formatNumber(item.scannedQuantity)} of ${formatNumber(item.expectedQuantity)} boxes`
+                      : formatQuantity(item.scannedQuantity, item.uom)
+                    : '-'}
                 </div>
                 {item.scanCount > 1 ? (
                   // What each box carried. Cartons of a loose item are whatever the packers
                   // packed (362 + 138 against a 500-pc line), so the count alone doesn't
                   // tell the operator whether the goods are covered.
                   <div className="text-xs tabular-nums text-muted-foreground/80">
+                    {item.isBoxCounted ? 'holding ' : ''}
                     {formatScannedBoxQuantities(item.scannedBoxQuantities)}
+                    {item.isBoxCounted ? ' pcs' : ''}
                   </div>
                 ) : null}
                 {item.progressPercent !== null ? (

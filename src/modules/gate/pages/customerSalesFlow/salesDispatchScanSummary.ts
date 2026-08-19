@@ -1,8 +1,10 @@
 import type { SalesDispatchBoxScan, SalesDispatchItem } from '@/modules/gate/api';
 
 import {
+  getBoxInvoiceUnits,
   getExpectedItemBoxes,
   getExpectedItemLoose,
+  isBoxCountedItem,
   isLooseItem,
   parsePositiveNumber,
 } from './salesDispatchBoxCounts';
@@ -24,6 +26,8 @@ export interface ItemScanRow {
   scannedQuantity: number;
   /** Quantity carried by each scanned box, in scan order — e.g. [362, 138]. */
   scannedBoxQuantities: number[];
+  /** True when the bill counts this item in boxes, not pieces (CSD stock). */
+  isBoxCounted: boolean;
   progressPercent: number | null;
   isComplete: boolean;
 }
@@ -105,7 +109,10 @@ export function summarizeItems(
     }
     const scanQuantity = parsePositiveNumber(scan.quantity);
     stats[index].count += 1;
-    stats[index].quantity += scanQuantity;
+    // Progress is measured in the unit the BILL is written in: pieces for most items,
+    // but boxes for CSD stock, where a carton counts as 1 however many bottles its label
+    // declares. Without this a single 20-piece carton read as 20 of a 4-carton line.
+    stats[index].quantity += getBoxInvoiceUnits(expectedItems[index], scanQuantity);
     stats[index].boxQuantities.push(scanQuantity);
   }
 
@@ -132,6 +139,7 @@ export function summarizeItems(
       scanCount: scanStats.count,
       scannedQuantity: scanStats.quantity,
       scannedBoxQuantities: scanStats.boxQuantities,
+      isBoxCounted: isBoxCountedItem(item),
       progressPercent,
       isComplete,
     };

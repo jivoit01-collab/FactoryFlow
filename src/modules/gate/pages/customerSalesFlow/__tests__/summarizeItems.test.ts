@@ -219,3 +219,44 @@ describe('per-box quantities on a loose line', () => {
     expect(formatScannedBoxQuantities([])).toBe('');
   });
 });
+
+
+// A CSD bill counts BOXES: a line reading 4 means four cartons, even though each carton
+// holds 20 bottles and its label declares qty = 20.
+describe('CSD lines are measured in boxes, not the pieces each box declares', () => {
+  const csd = item({
+    item_code: 'FG0000154',
+    item_name: 'MUSTARD OIL 100 MLS 20 PCS(CSD)',
+    quantity: '4',
+    sal_factor2: '1',
+  });
+
+  it('counts one carton as 1 against the invoice, whatever its label says', () => {
+    const summary = summarizeItems([csd], [scan({ item_code: 'FG0000154', quantity: '20' })]);
+    const row = summary.items[0];
+    expect(row.isBoxCounted).toBe(true);
+    expect(row.scannedQuantity).toBe(1); // one carton, not 20 pieces
+    expect(row.expectedQuantity).toBe(4);
+    expect(row.isComplete).toBe(false); // 1 of 4 cartons
+    expect(row.progressPercent).toBe(25);
+  });
+
+  it('completes only once every carton is scanned', () => {
+    const summary = summarizeItems(
+      [csd],
+      scans(4, { item_code: 'FG0000154', quantity: '20' }),
+    );
+    expect(summary.items[0].scannedQuantity).toBe(4);
+    expect(summary.items[0].isComplete).toBe(true);
+    // The physical pieces are still reported per box, since they are what shipped.
+    expect(summary.items[0].scannedBoxQuantities).toEqual([20, 20, 20, 20]);
+  });
+
+  it('still counts a piece-billed item in pieces', () => {
+    const boxed = item({ item_name: 'OIL 1 LTR 20 PCS', quantity: '40', sal_factor2: '20' });
+    const summary = summarizeItems([boxed], scans(2, { quantity: '20' }));
+    expect(summary.items[0].isBoxCounted).toBe(false);
+    expect(summary.items[0].scannedQuantity).toBe(40);
+    expect(summary.items[0].isComplete).toBe(true);
+  });
+});
