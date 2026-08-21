@@ -2,10 +2,11 @@
  * Step 2–3 — Review a batch's consolidated stock list, resolve any unmapped SKUs
  * inline, then send the request to a warehouse.
  */
-import { AlertTriangle, ArrowLeft, PackageCheck, Send, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertTriangle, ArrowLeft, Download, PackageCheck, Send, Trash2 } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 import {
   Badge,
@@ -78,6 +79,37 @@ export default function MpBatchDetailPage() {
     () => (stock?.lines ?? []).filter((l) => l.component_type === 'PM'),
     [stock],
   );
+
+  const exportRows = useMemo(
+    () =>
+      [...fgLines, ...pmLines].map((l) => ({
+        'Item code': l.item_code,
+        Name: l.item_name || '',
+        Type: l.component_type,
+        Required: Number(l.required_quantity),
+        'From SKUs': l.source_skus.join(', '),
+      })),
+    [fgLines, pmLines],
+  );
+
+  const exportExcel = useCallback(() => {
+    if (exportRows.length === 0) {
+      toast.error('Nothing to export.');
+      return;
+    }
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    ws['!cols'] = Object.keys(exportRows[0]).map((key) => ({
+      wch:
+        Math.max(
+          key.length,
+          ...exportRows.map((r) => String(r[key as keyof typeof r] ?? '').length),
+        ) + 2,
+    }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Consolidated stock');
+    const base = (batch?.filename || `batch_${id}`).replace(/\.[^.]+$/, '');
+    XLSX.writeFile(wb, `Consolidated_Stock_${base}.xlsx`);
+  }, [exportRows, batch, id]);
 
   function send() {
     if (warehouses.length > 0 && !warehouse) {
@@ -183,8 +215,17 @@ export default function MpBatchDetailPage() {
       </Dialog>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base">Consolidated stock list</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportExcel}
+            disabled={isLoading || exportRows.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export Excel
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
