@@ -63,3 +63,49 @@ export interface DispatchVehicleLinkPayload {
   kanta_weight?: string | null;
   remarks: string;
 }
+
+/**
+ * Transport captured on a vehicle, used to seed the linking sheet when bills are
+ * added to a truck that is already linked (vehicle-based Vehicle Linking page).
+ */
+export interface DispatchLinkingVehicleSeed {
+  vehicle_id: number | null;
+  vehicle_no: string;
+  transporter_id: number | null;
+  transporter_name: string;
+  transporter_gstin: string;
+  contact_person: string;
+  mobile_no: string;
+}
+
+/**
+ * One linked truck on the Vehicle Linking page: a vehicle plus every dispatch
+ * bill currently booked onto it. Derived client-side by grouping the plans feed
+ * on `plan.vehicle_id` — there is no vehicle-shaped endpoint for booked (not yet
+ * gated-in) trucks, and the bills feed already carries the transport snapshot.
+ */
+export interface LinkedVehicleGroup {
+  vehicleId: number;
+  vehicleNo: string;
+  transporterName: string;
+  transporterGstin: string;
+  contactPerson: string;
+  mobileNo: string;
+  driverName: string;
+  driverMobile: string;
+  biltyNos: string[];
+  dispatchDates: string[];
+  /** Company codes whose bills ride on this truck — one truck, many companies. */
+  companyCodes: string[];
+  bills: DispatchBill[];
+  totals: {
+    litres: number;
+    weight: number;
+    amount: number;
+    boxes: number;
+  };
+  /** Any bill on this truck has a completed empty-vehicle gate-in — links frozen. */
+  isLocked: boolean;
+  /** Any bill is attached to a live gate entry (the truck is at/inside the gate). */
+  isGateLinked: boolean;
+}

@@ -12,14 +12,14 @@ const DispatchBillSelectionPage = lazy(
 const DispatchPlansDashboardPage = lazy(
   () => import('@/modules/dashboards/dispatch-plans/pages/DispatchPlansDashboardPage'),
 );
+const DispatchBillsLinkingPage = lazy(
+  () => import('@/modules/vehicle-management/pages/DispatchBillsLinkingPage'),
+);
 const DispatchVehicleLinkingPage = lazy(
   () => import('@/modules/vehicle-management/pages/DispatchVehicleLinkingPage'),
 );
 const PreviouslyRegisteredVehiclePage = lazy(
   () => import('@/modules/vehicle-management/pages/PreviouslyRegisteredVehiclePage'),
-);
-const InsideVehicleManagerPage = lazy(
-  () => import('@/modules/vehicle-management/pages/InsideVehicleManagerPage'),
 );
 const DispatchTrackingPage = lazy(() => import('@/modules/dispatch/pages/DispatchTrackingPage'));
 const ServiceGRPODashboardPage = lazy(
@@ -119,10 +119,22 @@ export const dispatchModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Dispatch Plans' },
     },
     {
+      path: '/dispatch/bills-linking',
+      element: <DispatchBillsLinkingPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
+      breadcrumb: { label: 'Bills Linking' },
+    },
+    {
+      // The truck board: booking through gate-in. Either permission opens it —
+      // the linking half and the inside-correction half are gated per button.
       path: '/dispatch/vehicle-linking',
       element: <DispatchVehicleLinkingPage />,
       layout: 'main',
-      permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
+      permissions: [
+        DISPATCH_PERMISSIONS.LINK_VEHICLE,
+        DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW,
+      ],
       breadcrumb: { label: 'Vehicle Linking' },
     },
     {
@@ -133,8 +145,9 @@ export const dispatchModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Previously Registered Vehicle' },
     },
     {
+      // Merged into Vehicle Linking — kept so old links and bookmarks land there.
       path: '/dispatch/inside-vehicles',
-      element: <InsideVehicleManagerPage />,
+      element: <Navigate to="/dispatch/vehicle-linking" replace />,
       layout: 'main',
       permissions: [DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW],
       breadcrumb: { label: 'Inside Vehicle Manager' },
@@ -326,14 +339,14 @@ export const dispatchModuleConfig: ModuleConfig = {
           permissions: [DISPATCH_PERMISSIONS.VIEW_PLANS],
         },
         {
-          path: '/dispatch/vehicle-linking',
-          title: 'Vehicle Linking',
+          path: '/dispatch/bills-linking',
+          title: 'Bills Linking',
           permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
         },
         {
-          path: '/dispatch/inside-vehicles',
-          title: 'Inside Vehicle Manager',
-          permissions: [DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW],
+          path: '/dispatch/vehicle-linking',
+          title: 'Vehicle Linking',
+          permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
         },
         {
           path: '/dispatch/docking',

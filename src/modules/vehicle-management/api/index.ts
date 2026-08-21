@@ -5,5 +5,6 @@ export {
   DISPATCH_LINKING_QUERY_KEYS,
   useDispatchLinkingPlans,
   useLinkDispatchVehicle,
+  useLookupDispatchBillAcrossCompanies,
   useUnlinkDispatchVehicle,
 } from './dispatch-linking.queries';

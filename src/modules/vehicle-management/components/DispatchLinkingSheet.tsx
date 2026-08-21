@@ -19,11 +19,24 @@ import {
 } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 
-import type { DispatchVehicleLinkPayload } from '../types';
+import type { DispatchLinkingVehicleSeed, DispatchVehicleLinkPayload } from '../types';
+import {
+  inferProductVariety,
+  invoiceWeightForPayload,
+  monthValue,
+  numberToString,
+} from '../utils/dispatchLinkPayload';
 
 interface DispatchLinkingSheetProps {
   bill: DispatchBill | null;
   selectedBills: DispatchBill[];
+  /**
+   * Transport to open the form with, overriding whatever the bill's own plan
+   * holds. The vehicle-based Vehicle Linking page passes the card's vehicle so
+   * bills added to an existing truck inherit its transporter instead of
+   * re-seeding from the (still unlinked) bill.
+   */
+  vehicleSeed?: DispatchLinkingVehicleSeed | null;
   open: boolean;
   isSaving: boolean;
   isUnlinking: boolean;
@@ -74,10 +87,26 @@ const EMPTY_FORM: FormState = {
   remarks: '',
 };
 
-function formFromBill(bill: DispatchBill | null): FormState {
+function formFromBill(
+  bill: DispatchBill | null,
+  vehicleSeed?: DispatchLinkingVehicleSeed | null,
+): FormState {
   if (!bill) return EMPTY_FORM;
   const sapVehicleNo = bill.sap_vehicle_no || bill.gst_vehicle_no || '';
   const placeOfSupply = bill.state || bill.city || '';
+
+  if (vehicleSeed) {
+    return {
+      ...formFromBill(bill),
+      vehicle_id: vehicleSeed.vehicle_id,
+      vehicle_no: vehicleSeed.vehicle_no,
+      transporter_id: vehicleSeed.transporter_id,
+      transporter_name: vehicleSeed.transporter_name,
+      transporter_gstin: vehicleSeed.transporter_gstin,
+      contact_person: vehicleSeed.contact_person,
+      mobile_no: vehicleSeed.mobile_no,
+    };
+  }
 
   return {
     invoice_number: bill.plan.invoice_number || bill.doc_num || '',
@@ -98,49 +127,6 @@ function formFromBill(bill: DispatchBill | null): FormState {
 function stringOrNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed || null;
-}
-
-function numberToString(value: number | null | undefined): string {
-  return value === null || value === undefined ? '' : String(value);
-}
-
-// Backend caps invoice_weight precision (DecimalField). Round to 3 decimals to
-// match the displayed Load and stay safely within the allowed decimal places.
-const INVOICE_WEIGHT_DECIMALS = 3;
-
-function roundWeight(value: number): number {
-  const factor = 10 ** INVOICE_WEIGHT_DECIMALS;
-  return Math.round(value * factor) / factor;
-}
-
-function invoiceWeightForPayload(bill: DispatchBill): string | null {
-  const raw =
-    bill.plan.invoice_weight !== null && bill.plan.invoice_weight !== undefined
-      ? Number(bill.plan.invoice_weight)
-      : bill.total_weight;
-  if (!Number.isFinite(raw) || raw <= 0) {
-    return null;
-  }
-  return numberToString(roundWeight(raw));
-}
-
-function inferProductVariety(itemSummary: string): string {
-  const normalized = itemSummary.toLowerCase();
-  if (
-    ['water', 'mineral', 'drink', 'beverage', 'juice'].some((token) => normalized.includes(token))
-  ) {
-    return 'Beverage';
-  }
-  return itemSummary.trim() ? 'Oil' : '';
-}
-
-function monthValue(dateValue: string | null | undefined): string | null {
-  if (!dateValue) return null;
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return null;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
 }
 
 function formatNumber(value: number, fractionDigits = 2): string {
@@ -175,6 +161,7 @@ function normalizeVehicleNumber(value: string | null | undefined) {
 export function DispatchLinkingSheet({
   bill,
   selectedBills,
+  vehicleSeed = null,
   open,
   isSaving,
   isUnlinking,
@@ -182,7 +169,7 @@ export function DispatchLinkingSheet({
   onSave,
   onUnlink,
 }: DispatchLinkingSheetProps) {
-  const [form, setForm] = useState<FormState>(() => formFromBill(bill));
+  const [form, setForm] = useState<FormState>(() => formFromBill(bill, vehicleSeed));
   const [formError, setFormError] = useState('');
   const [confirmingUnlink, setConfirmingUnlink] = useState(false);
   const formErrors = useMemo(
@@ -225,10 +212,10 @@ export function DispatchLinkingSheet({
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Sheet form must follow the selected bill.
-    setForm(formFromBill(bill));
+    setForm(formFromBill(bill, vehicleSeed));
     setFormError('');
     setConfirmingUnlink(false);
-  }, [bill, open]);
+  }, [bill, open, vehicleSeed]);
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));

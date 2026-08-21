@@ -69,12 +69,26 @@ export const dispatchPlansApi = {
     return response.data;
   },
 
-  async updatePlan(docEntry: number, payload: DispatchPlanUpdatePayload): Promise<DispatchPlan> {
+  /**
+   * Patch one bill's dispatch plan. `companyCode` writes into a company other
+   * than the selected one — the endpoint resolves the plan from the request's
+   * company context, so a cross-company caller (the Vehicle Linking page links
+   * one truck's bills across companies) must name the owning company per bill.
+   * The request interceptor leaves an explicit Company-Code header untouched.
+   */
+  async updatePlan(
+    docEntry: number,
+    payload: DispatchPlanUpdatePayload,
+    companyCode?: string,
+  ): Promise<DispatchPlan> {
     const requestBody = buildUpdateBody(payload);
+    const headers: Record<string, string> = {};
+    if (isFormData(requestBody)) headers['Content-Type'] = 'multipart/form-data';
+    if (companyCode) headers['Company-Code'] = companyCode;
     const response = await apiClient.patch<DispatchPlan>(
       EP.PLAN(docEntry),
       requestBody,
-      isFormData(requestBody) ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined,
+      Object.keys(headers).length > 0 ? { headers } : undefined,
     );
     return response.data;
   },

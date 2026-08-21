@@ -32,7 +32,7 @@ const fmtDate = (iso?: string | null) => {
 };
 
 /**
- * Previously Registered Vehicle — opened from the Vehicle Linking page (not
+ * Previously Registered Vehicle — opened from the linking pages (not
  * automatically). Enter a registration number to see everything already captured
  * about the vehicle: dimensions, driver, last visit, past records and photos. If
  * it isn't registered, offer to create it (view-first, then create).
@@ -57,9 +57,10 @@ export default function PreviouslyRegisteredVehiclePage() {
         title="Previously Registered Vehicle"
         description="Look up a vehicle by registration number to see its past details before linking."
       >
-        <Button variant="outline" size="sm" onClick={() => navigate('/dispatch/vehicle-linking')}>
+        {/* Reached from both linking pages — go back where the user came from. */}
+        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Vehicle Linking
+          Back
         </Button>
       </DashboardHeader>
 

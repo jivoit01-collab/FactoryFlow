@@ -27,10 +27,10 @@ export const vehicleManagementModuleConfig: ModuleConfig = {
     },
     {
       path: '/vehicle-management/dispatch-linking',
-      element: <Navigate to="/dispatch/vehicle-linking" replace />,
+      element: <Navigate to="/dispatch/bills-linking" replace />,
       layout: 'main',
       permissions: [VEHICLE_MANAGEMENT_PERMISSIONS.DISPATCH_VEHICLE_LINKING],
-      breadcrumb: { label: 'Dispatch Linking' },
+      breadcrumb: { label: 'Bills Linking' },
     },
     {
       path: '/vehicle-management/vehicles',
