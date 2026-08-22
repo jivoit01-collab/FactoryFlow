@@ -80,6 +80,16 @@ export const bstApi = {
     await apiClient.delete(EP.BST_BOX_SCAN_DETAIL(transferId, scanId));
   },
 
+  /** Drop several scans at once — a wrong pallet is dozens of rows, and the
+   *  backend removes them in one transaction (all or nothing). */
+  async removeScans(transferId: number, scanIds: number[]): Promise<{ removed: number }> {
+    const res = await apiClient.post<{ removed: number }>(
+      EP.BST_BOX_SCANS_BULK_DELETE(transferId),
+      { scan_ids: scanIds },
+    );
+    return res.data;
+  },
+
   // Scan-exempt (PM) lines carry no box scans — the sender types the quantity.
   // Returns the refreshed transfer so the bill table updates in one round trip.
   async saveManualEntry(

@@ -41,6 +41,7 @@ import {
   useDockingPartialScanRequestByDispatch,
   useDockingScanSkipRequestByDispatch,
 } from '@/modules/admin/api';
+import { ConfirmDialog } from '@/modules/barcode/components';
 import { useScanner } from '@/modules/barcode/hooks/useScanner';
 import {
   type BarcodeDispatchSession,
@@ -50,6 +51,7 @@ import {
   type SalesDispatchItem,
   useImportSalesDispatchBarcodeScans,
   useRemoveSalesDispatchBoxScan,
+  useRemoveSalesDispatchBoxScans,
   useSalesDispatchBarcodeScans,
   useSalesDispatchBoxScans,
   useSalesDispatchByVehicleEntry,
@@ -66,6 +68,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -201,6 +204,7 @@ export default function SalesDispatchBarcodeScanPage() {
   } = useSalesDispatchBarcodeScans(entry?.id, { enabled: isBarcodeDialogOpen });
   const scanBox = useScanSalesDispatchBox();
   const removeScan = useRemoveSalesDispatchBoxScan();
+  const removeScans = useRemoveSalesDispatchBoxScans();
   const createSkipRequest = useCreateDockingScanSkipRequest();
   const createPartialRequest = useCreateDockingPartialScanRequest();
 
@@ -223,7 +227,7 @@ export default function SalesDispatchBarcodeScanPage() {
   const partialStatus = partialRequest?.status ?? null;
   const isPartialApproved = partialStatus === 'APPROVED';
   const isPartialPending = partialStatus === 'PENDING';
-  const isSaving = scanBox.isPending || removeScan.isPending;
+  const isSaving = scanBox.isPending || removeScan.isPending || removeScans.isPending;
 
   // Keep the barcode field focused so a connected hardware scanner can fire one box
   // after another without the user clicking back into it. The field is never disabled
@@ -604,6 +608,27 @@ export default function SalesDispatchBarcodeScanPage() {
     }
   };
 
+  // The boxes ticked off in a bill's scan list. A wrongly-loaded pallet is dozens of
+  // rows, and they come off the truck in one transaction — a stale selection removes
+  // nothing rather than half of it. Reports whether it went, so the caller only clears
+  // a selection that actually left.
+  const handleRemoveScans = async (scans: SalesDispatchBoxScan[]) => {
+    if (!entry || isReadOnly || !canEditDocking || scans.length === 0) return false;
+    setError('');
+    try {
+      const { removed } = await removeScans.mutateAsync({
+        id: entry.id,
+        scanIds: scans.map((scan) => scan.id),
+      });
+      await refetchEntry();
+      toast.success(`${removed} box scan${removed === 1 ? '' : 's'} removed`);
+      return true;
+    } catch (removeError) {
+      setError(getErrorMessage(removeError, 'Unable to remove the selected box scans'));
+      return false;
+    }
+  };
+
   const handleNext = () => {
     if (!entry) {
       setError('Docking details not found.');
@@ -872,6 +897,8 @@ export default function SalesDispatchBarcodeScanPage() {
                   handleManualSubmit({ documentId: bill.documentId, dockingId: bill.dockingId })
                 }
                 onRemoveScan={handleRemoveScan}
+                onRemoveScans={handleRemoveScans}
+                isRemovingScans={removeScans.isPending}
                 onRetryFailed={handleRetryFailedScan}
                 onDismissFailed={handleDismissFailedScan}
               />
@@ -1278,6 +1305,8 @@ function BillScanCard({
   onManualChange,
   onManualSubmit,
   onRemoveScan,
+  onRemoveScans,
+  isRemovingScans,
   onRetryFailed,
   onDismissFailed,
 }: {
@@ -1297,6 +1326,8 @@ function BillScanCard({
   onManualChange: (value: string) => void;
   onManualSubmit: () => void;
   onRemoveScan: (scan: SalesDispatchBoxScan) => void;
+  onRemoveScans: (scans: SalesDispatchBoxScan[]) => Promise<boolean>;
+  isRemovingScans: boolean;
   onRetryFailed: (failed: FailedScan) => void;
   onDismissFailed: (failed: FailedScan) => void;
 }) {
@@ -1488,7 +1519,9 @@ function BillScanCard({
           <BillScannedBoxes
             scans={bill.scans}
             canRemove={canScan}
+            isRemovingScans={isRemovingScans}
             onRemoveScan={onRemoveScan}
+            onRemoveScans={onRemoveScans}
           />
         </div>
       ) : null}
@@ -1698,12 +1731,32 @@ function FailedScansQueue({
 function BillScannedBoxes({
   scans,
   canRemove,
+  isRemovingScans,
   onRemoveScan,
+  onRemoveScans,
 }: {
   scans: SalesDispatchBoxScan[];
   canRemove: boolean;
+  isRemovingScans: boolean;
   onRemoveScan: (scan: SalesDispatchBoxScan) => void;
+  onRemoveScans: (scans: SalesDispatchBoxScan[]) => Promise<boolean>;
 }) {
+  const [pickedIds, setPickedIds] = useState<number[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Only rows still on the bill count: one already removed (here or on someone else's
+  // screen) must not sit in the tally or be named in the next bulk delete, which the
+  // backend refuses whole if any id is stale.
+  const picked = useMemo(() => {
+    const live = new Set(scans.map((scan) => scan.id));
+    return pickedIds.filter((id) => live.has(id));
+  }, [pickedIds, scans]);
+  const allPicked = scans.length > 0 && picked.length === scans.length;
+  const togglePicked = (scanId: number) =>
+    setPickedIds((prev) =>
+      prev.includes(scanId) ? prev.filter((id) => id !== scanId) : [...prev, scanId],
+    );
+  const toggleAllPicked = () => setPickedIds(allPicked ? [] : scans.map((scan) => scan.id));
+
   if (scans.length === 0) {
     return (
       <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
@@ -1712,48 +1765,111 @@ function BillScannedBoxes({
     );
   }
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <table className="w-full text-sm">
-        <thead className="border-b bg-muted/50">
-          <tr>
-            <th className="p-3 text-left font-medium">Barcode</th>
-            <th className="p-3 text-left font-medium">Item</th>
-            <th className="p-3 text-left font-medium">Batch</th>
-            <th className="p-3 text-left font-medium">Qty</th>
-            <th className="p-3 text-left font-medium">Warehouse</th>
-            <th className="p-3 text-right font-medium">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {scans.map((scan) => (
-            <tr key={scan.id} className="border-b last:border-b-0">
-              <td className="p-3 font-mono text-xs font-medium">{scan.box_barcode}</td>
-              <td className="p-3">
-                <div className="font-medium">{scan.item_code || '-'}</div>
-                <div className="max-w-[280px] truncate text-xs text-muted-foreground">
-                  {scan.item_name || '-'}
-                </div>
-              </td>
-              <td className="p-3">{formatValue(scan.batch_number)}</td>
-              <td className="p-3">{[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}</td>
-              <td className="p-3">{formatValue(scan.warehouse_code)}</td>
-              <td className="p-3 text-right">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={!canRemove}
-                  onClick={() => void onRemoveScan(scan)}
-                  title="Remove scan"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </td>
+    <>
+      {canRemove ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {picked.length > 0 ? (
+            <span className="text-sm text-muted-foreground">{picked.length} selected</span>
+          ) : null}
+          <Button type="button" variant="outline" size="sm" onClick={toggleAllPicked}>
+            {allPicked ? 'Clear selection' : `Select all (${scans.length})`}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            disabled={picked.length === 0 || isRemovingScans}
+            onClick={() => setConfirmOpen(true)}
+          >
+            {isRemovingScans ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            Delete selected
+          </Button>
+        </div>
+      ) : null}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Remove ${picked.length} scanned box${picked.length === 1 ? '' : 'es'}?`}
+        description="The boxes come off the truck and can be scanned again."
+        confirmLabel="Remove"
+        destructive
+        pending={isRemovingScans}
+        onConfirm={async () => {
+          // Only a removal that went through clears the ticks — a refused selection
+          // takes no box off the truck, so the operator keeps what they picked.
+          const picks = scans.filter((scan) => picked.includes(scan.id));
+          if (await onRemoveScans(picks)) setPickedIds([]);
+          setConfirmOpen(false);
+        }}
+      />
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="border-b bg-muted/50">
+            <tr>
+              {canRemove ? (
+                <th className="w-8 p-3 text-left font-medium">
+                  <Checkbox
+                    checked={allPicked}
+                    onCheckedChange={toggleAllPicked}
+                    aria-label="Select every scanned box on this bill"
+                  />
+                </th>
+              ) : null}
+              <th className="p-3 text-left font-medium">Barcode</th>
+              <th className="p-3 text-left font-medium">Item</th>
+              <th className="p-3 text-left font-medium">Batch</th>
+              <th className="p-3 text-left font-medium">Qty</th>
+              <th className="p-3 text-left font-medium">Warehouse</th>
+              <th className="p-3 text-right font-medium">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {scans.map((scan) => (
+              <tr
+                key={scan.id}
+                className={cn('border-b last:border-b-0', picked.includes(scan.id) && 'bg-muted/50')}
+              >
+                {canRemove ? (
+                  <td className="p-3">
+                    <Checkbox
+                      checked={picked.includes(scan.id)}
+                      onCheckedChange={() => togglePicked(scan.id)}
+                      aria-label={`Select ${scan.box_barcode}`}
+                    />
+                  </td>
+                ) : null}
+                <td className="p-3 font-mono text-xs font-medium">{scan.box_barcode}</td>
+                <td className="p-3">
+                  <div className="font-medium">{scan.item_code || '-'}</div>
+                  <div className="max-w-[280px] truncate text-xs text-muted-foreground">
+                    {scan.item_name || '-'}
+                  </div>
+                </td>
+                <td className="p-3">{formatValue(scan.batch_number)}</td>
+                <td className="p-3">{[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}</td>
+                <td className="p-3">{formatValue(scan.warehouse_code)}</td>
+                <td className="p-3 text-right">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={!canRemove}
+                    onClick={() => void onRemoveScan(scan)}
+                    title="Remove scan"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

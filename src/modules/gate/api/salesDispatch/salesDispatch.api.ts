@@ -876,6 +876,16 @@ export const salesDispatchApi = {
     await apiClient.delete(API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BOX_SCAN(id, scanId));
   },
 
+  /** Drop several scans at once. The boxes come off the truck together, in one
+   *  transaction — a stale selection removes nothing rather than half of it. */
+  async removeBoxScans(id: number, scanIds: number[]): Promise<{ removed: number }> {
+    const response = await apiClient.post<{ removed: number }>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_BOX_SCANS_BULK_DELETE(id),
+      { scan_ids: scanIds },
+    );
+    return response.data;
+  },
+
   async scanPallet(
     id: number,
     data: SalesDispatchPalletScanRequest,

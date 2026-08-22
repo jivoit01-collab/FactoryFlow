@@ -129,6 +129,16 @@ export function useRemoveBSTScan() {
   });
 }
 
+export function useRemoveBSTScans() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transferId, scanIds }: { transferId: number; scanIds: number[] }) =>
+      bstApi.removeScans(transferId, scanIds),
+    onSuccess: (_res, { transferId }) =>
+      qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.detail(transferId) }),
+  });
+}
+
 /** Type a scan-exempt (PM) line's quantity — the response is the fresh transfer. */
 export function useSaveBSTManualEntry() {
   const qc = useQueryClient();

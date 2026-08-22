@@ -4,6 +4,7 @@ import { type FormEvent, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/modules/barcode/components';
 import { useScanner } from '@/modules/barcode/hooks/useScanner';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -11,6 +12,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Input,
   Label,
   Textarea,
@@ -24,6 +26,7 @@ import {
   bstApi,
   useBSTTransfer,
   useRemoveBSTScan,
+  useRemoveBSTScans,
   useRequestBSTPartialTransfer,
   useSaveBSTManualEntry,
 } from '../../api';
@@ -44,12 +47,17 @@ export default function BSTScanPage() {
     refetchInterval: BST_LIVE_POLL_MS,
   });
   const removeMut = useRemoveBSTScan();
+  const removeManyMut = useRemoveBSTScans();
   const requestMut = useRequestBSTPartialTransfer();
   const manualMut = useSaveBSTManualEntry();
   const queryClient = useQueryClient();
 
   const [manualBarcode, setManualBarcode] = useState('');
   const [partialReason, setPartialReason] = useState('');
+  // Boxes ticked for removal. One wrong pallet puts dozens of rows on a transfer, so
+  // they come off together instead of one confirm-and-wait at a time.
+  const [pickedScanIds, setPickedScanIds] = useState<number[]>([]);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
   // A live internal transfer stays sender-editable through IN_TRANSIT / RECEIVING
   // (the destination is already receiving) until it's sealed via approve
@@ -79,6 +87,29 @@ export default function BSTScanPage() {
     () => items.reduce((n, it) => n + expectedBstItemBoxes(it), 0),
     [items],
   );
+
+  // On a live transfer the destination may already have accepted or rejected a box,
+  // and the sender may not pull those back — so they are the rows that can't be ticked.
+  // Keeping them out of the selection matters: the removal is all-or-nothing, and one
+  // received box in the batch would refuse the whole lot.
+  const removableScans = useMemo(
+    () => scans.filter((s) => s.receive_status === 'PENDING'),
+    [scans],
+  );
+  // Only ids still removable count: a row this screen (or another one) already removed
+  // must not sit in the tally, nor be named in the next bulk delete — the backend
+  // refuses a stale selection whole rather than half-applying it.
+  const pickedIds = useMemo(() => {
+    const live = new Set(removableScans.map((s) => s.id));
+    return pickedScanIds.filter((id) => live.has(id));
+  }, [pickedScanIds, removableScans]);
+  const allPicked = removableScans.length > 0 && pickedIds.length === removableScans.length;
+  const togglePicked = (scanId: number) =>
+    setPickedScanIds((prev) =>
+      prev.includes(scanId) ? prev.filter((id) => id !== scanId) : [...prev, scanId],
+    );
+  const toggleAllPicked = () =>
+    setPickedScanIds(allPicked ? [] : removableScans.map((s) => s.id));
 
   const isAlreadyScanned = useCallback(
     (barcode: string) =>
@@ -132,6 +163,22 @@ export default function BSTScanPage() {
       refetch();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not remove scan'));
+    }
+  };
+
+  const handleRemovePicked = async () => {
+    try {
+      const { removed } = await removeManyMut.mutateAsync({ transferId, scanIds: pickedIds });
+      // Cleared only on success: a refused removal (a box the destination already
+      // received, a row someone else removed) takes none of them off, so the operator
+      // keeps the selection they can fix and retry.
+      setPickedScanIds([]);
+      toast.success(`${removed} box${removed === 1 ? '' : 'es'} removed`);
+      refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not remove the selected scans'));
+    } finally {
+      setConfirmRemoveOpen(false);
     }
   };
 
@@ -355,7 +402,35 @@ export default function BSTScanPage() {
       {/* Scanned boxes */}
       <Card>
         <CardContent className="pt-6">
-          <p className="font-medium mb-3">Scanned boxes ({scans.length})</p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium">Scanned boxes ({scans.length})</p>
+            {editable && removableScans.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {pickedIds.length > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    {pickedIds.length} selected
+                  </span>
+                )}
+                <Button size="sm" variant="outline" className="h-8" onClick={toggleAllPicked}>
+                  {allPicked ? 'Clear selection' : `Select all (${removableScans.length})`}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-8"
+                  disabled={pickedIds.length === 0 || removeManyMut.isPending}
+                  onClick={() => setConfirmRemoveOpen(true)}
+                >
+                  {removeManyMut.isPending ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1 h-4 w-4" />
+                  )}
+                  Delete selected
+                </Button>
+              </div>
+            )}
+          </div>
           {scans.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">No boxes scanned yet</p>
           ) : (
@@ -363,6 +438,15 @@ export default function BSTScanPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
+                    {editable && (
+                      <th className="py-2 px-3 w-8">
+                        <Checkbox
+                          checked={allPicked}
+                          onCheckedChange={toggleAllPicked}
+                          aria-label="Select every scanned box"
+                        />
+                      </th>
+                    )}
                     <th className="py-2 px-3">Box</th>
                     <th className="py-2 px-3">Item</th>
                     <th className="py-2 px-3">Batch</th>
@@ -373,7 +457,27 @@ export default function BSTScanPage() {
                 </thead>
                 <tbody>
                   {scans.map((s) => (
-                    <tr key={s.id} className="border-b">
+                    <tr
+                      key={s.id}
+                      className={cn('border-b', pickedIds.includes(s.id) && 'bg-muted/50')}
+                    >
+                      {editable && (
+                        <td className="py-2 px-3">
+                          {s.receive_status === 'PENDING' ? (
+                            <Checkbox
+                              checked={pickedIds.includes(s.id)}
+                              onCheckedChange={() => togglePicked(s.id)}
+                              aria-label={`Select ${s.box_barcode}`}
+                            />
+                          ) : (
+                            <Checkbox
+                              checked={false}
+                              disabled
+                              aria-label={`${s.box_barcode} was already received and can't be removed`}
+                            />
+                          )}
+                        </td>
+                      )}
                       <td className="py-2 px-3 font-medium">{s.box_barcode}</td>
                       <td className="py-2 px-3">
                         {s.item_code}
@@ -412,6 +516,17 @@ export default function BSTScanPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmRemoveOpen}
+        onOpenChange={setConfirmRemoveOpen}
+        title={`Remove ${pickedIds.length} scanned box${pickedIds.length === 1 ? '' : 'es'}?`}
+        description="The boxes come off this transfer and can be scanned again."
+        confirmLabel="Remove"
+        destructive
+        pending={removeManyMut.isPending}
+        onConfirm={handleRemovePicked}
+      />
 
       {editable && (
         <div className="flex justify-end gap-2">

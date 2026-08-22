@@ -157,6 +157,8 @@ export const API_ENDPOINTS = {
     SALES_DISPATCH_BOX_SCANS: (id: number) => `/gate-core/sales-dispatch/${id}/box-scans/`,
     SALES_DISPATCH_BOX_SCAN: (id: number, scanId: number) =>
       `/gate-core/sales-dispatch/${id}/box-scans/${scanId}/`,
+    SALES_DISPATCH_BOX_SCANS_BULK_DELETE: (id: number) =>
+      `/gate-core/sales-dispatch/${id}/box-scans/bulk-delete/`,
     SALES_DISPATCH_PALLET_SCAN: (id: number) => `/gate-core/sales-dispatch/${id}/pallet-scan/`,
     SALES_DISPATCH_EXPECTED_VEHICLES: '/gate-core/sales-dispatch/expected-vehicles/',
     SALES_DISPATCH_BARCODE_SCANS: (id: number) => `/gate-core/sales-dispatch/${id}/barcode-scans/`,
@@ -991,6 +993,8 @@ export const API_ENDPOINTS = {
     BST_DETAIL: (transferId: number) => `/warehouse/bst/${transferId}/`,
     BST_BOX_SCANS: (transferId: number) => `/warehouse/bst/${transferId}/box-scans/`,
     BST_BOX_SCANS_BATCH: (transferId: number) => `/warehouse/bst/${transferId}/box-scans/batch/`,
+    BST_BOX_SCANS_BULK_DELETE: (transferId: number) =>
+      `/warehouse/bst/${transferId}/box-scans/bulk-delete/`,
     BST_BOX_SCAN_DETAIL: (transferId: number, scanId: number) =>
       `/warehouse/bst/${transferId}/box-scans/${scanId}/`,
     // Hand-typed quantity for a scan-exempt (PM) line, which has no box scans

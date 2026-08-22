@@ -304,6 +304,16 @@ export function useRemoveSalesDispatchBoxScan() {
   });
 }
 
+export function useRemoveSalesDispatchBoxScans() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, scanIds }: { id: number; scanIds: number[] }) =>
+      salesDispatchApi.removeBoxScans(id, scanIds),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
 /** Warehouse Dispatch Loading: scan a whole pallet onto a docking's bills. */
 export function useScanSalesDispatchPallet() {
   const queryClient = useQueryClient();
