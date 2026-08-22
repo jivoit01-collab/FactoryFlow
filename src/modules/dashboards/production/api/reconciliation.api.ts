@@ -11,6 +11,9 @@ export interface ReconRow {
   difference: number;
   difference_pct: number;
   status: 'MATCHED' | 'MISMATCH' | 'PENDING_SYNC' | string;
+  /** Litres in one case of this SKU — SAP OITM.SalPackUn x the row's pack size.
+   *  Null when SAP states no volume for it (cartons, caps, powders). */
+  litres_per_case?: number | null;
 }
 
 export interface ReconItem {

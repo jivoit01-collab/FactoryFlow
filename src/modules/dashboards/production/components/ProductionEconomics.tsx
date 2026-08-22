@@ -13,7 +13,7 @@ import {
   prettyLabel,
   type ProductionVariant,
 } from '../constants/production-dashboard.constants';
-import { formatLitres, litresNote, litresOf } from '../utils/litres';
+import { formatLitres, litresNote } from '../utils/litres';
 
 /** A headline KPI tile. */
 function KpiTile({
@@ -95,13 +95,14 @@ export function ProductionEconomics({
   }, [data]);
 
   // Per-SKU cost — one row per run (a line usually runs one SKU per day).
-  // `litres` is null when the SKU name carries no volume, which also keeps that
-  // run out of the litre totals rather than dragging them down as a zero.
+  // `litres` comes from the run's SAP volume snapshot and is null when SAP
+  // states none, which keeps that run out of the litre totals rather than
+  // dragging them down as a zero.
   const skuRows = useMemo(
     () =>
       (data?.per_run ?? [])
         .map((r) => {
-          const litres = litresOf(r.produced_qty, r.product);
+          const litres = r.litres ?? null;
           const total = r.net_cost || r.total_cost;
           return {
             sku: r.product,

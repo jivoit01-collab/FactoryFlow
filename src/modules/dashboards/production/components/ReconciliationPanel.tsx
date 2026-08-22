@@ -6,7 +6,7 @@ import { cn } from '@/shared/utils';
 
 import type { ReconReport, ReconRow, ReconSummary } from '../api/reconciliation.api';
 import { count } from '../constants/production-dashboard.constants';
-import { formatLitres, formatLitresSigned, litresNote, litresPerCase } from '../utils/litres';
+import { formatLitres, formatLitresSigned, litresNote } from '../utils/litres';
 
 function statusChip(status: string | undefined): { label: string; cls: string } {
   const s = (status || '').toUpperCase();
@@ -126,12 +126,13 @@ export function ReconciliationPanel({
   const overall = statusChip(summary?.status);
 
   /**
-   * Litres per row plus the column totals. A SKU whose name carries no volume
-   * contributes `null` (rendered as —) and is counted in `unknown` rather than
-   * silently summing as zero.
+   * Litres per row plus the column totals. The per-case volume is SAP's own
+   * (SalPackUn x the row's pack size), sent with the row. A SKU SAP holds no
+   * volume for contributes `null` (rendered as —) and is counted in `unknown`
+   * rather than silently summing as zero.
    */
   const litres = useMemo(() => {
-    const perRow = rows.map((r) => litresPerCase(r.sku, r.item_code));
+    const perRow = rows.map((r) => r.litres_per_case ?? null);
     let app = 0;
     let sap = 0;
     let unknown = 0;
@@ -244,7 +245,7 @@ export function ReconciliationPanel({
                           {showLitres && (
                             <td
                               className="py-2 px-2 text-right font-medium tabular-nums text-primary"
-                              title={perCase == null ? 'No volume in the SKU name' : `${formatLitres(perCase)} per ${unitNoun}`}
+                              title={perCase == null ? 'SAP states no volume for this SKU' : `${formatLitres(perCase)} per ${unitNoun}`}
                             >
                               {formatLitres(perCase == null ? null : perCase * (row.app_qty || 0))}
                             </td>

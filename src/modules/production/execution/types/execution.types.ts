@@ -1209,7 +1209,11 @@ export interface CostRunDetail {
   date: string;
   line: string;
   product: string;
+  item_code: string;
   produced_qty: number;
+  /** Litres produced — cases x SAP SalFactor2 x SalPackUn. Null when the SKU
+   *  holds no liquid or its volume was never snapshotted from SAP. */
+  litres: number | null;
   raw_material_cost: number;
   labour_cost: number;
   machine_cost: number;

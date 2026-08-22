@@ -1,46 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatLitres, litresPerCase } from '@/modules/dashboards/production/utils/litres';
+import {
+  formatLitres,
+  formatLitresSigned,
+  litresNote,
+  litresOf,
+} from '@/modules/dashboards/production/utils/litres';
 
-describe('litresPerCase', () => {
-  it('multiplies unit volume by pack size', () => {
-    expect(litresPerCase('MUSTARD KACHI GHANI 1 LTR 20 PCS ROUND BOTTLE')).toBe(20);
-    expect(litresPerCase('COLD PRESS 5 LTR + EXTRA LIGHT OLIVE 1 LTR 4 PCS')).toBe(20);
-    expect(litresPerCase('COLD PRESS 5 LTR 4 PCS')).toBe(20);
+describe('litresOf', () => {
+  it('multiplies cases by the litres per case the API sent', () => {
+    expect(litresOf(120, 20)).toBe(2400);
+    expect(litresOf(0, 20)).toBe(0);
   });
 
-  it('treats a missing pack size as a single piece', () => {
-    expect(litresPerCase('COLD PRESS SUNFLOWER 5 LTR')).toBe(5);
-    expect(litresPerCase('FG0000053 - COLD PRESS SUNFLOWER 5 LTR')).toBe(5);
-    expect(litresPerCase('TIN 5 LTR')).toBe(5);
+  it('returns null — never 0 — when SAP states no volume for the SKU', () => {
+    expect(litresOf(120, null)).toBeNull();
+    expect(litresOf(120, undefined)).toBeNull();
   });
 
-  it('converts ML to litres', () => {
-    expect(litresPerCase('PET BOTTLE 1000 ML')).toBe(1);
-    expect(litresPerCase('COLA 250 ML 24 PCS')).toBe(6);
-  });
-
-  it('returns null when the name carries no volume', () => {
-    expect(litresPerCase('SOYABEAN OIL 12 KGS (B)')).toBeNull();
-    expect(litresPerCase('750 GMS 12 PCS POUCH')).toBeNull();
-    expect(litresPerCase('')).toBeNull();
-    expect(litresPerCase(undefined, null)).toBeNull();
-  });
-
-  it('does not read a bare L out of an unrelated word', () => {
-    expect(litresPerCase('2 LAYER CARTON')).toBeNull();
-    expect(litresPerCase('SOYABEAN OIL 13 KGS (B)')).toBeNull();
-  });
-
-  it('falls through to the next name when the first has no volume', () => {
-    expect(litresPerCase('FG0000379', 'MUSTARD KACHI GHANI 1 LTR 20 PCS')).toBe(20);
-  });
-
-  it('accepts litre spellings and a joined unit', () => {
-    expect(litresPerCase('OIL 1L 12 PC')).toBe(12);
-    expect(litresPerCase('OIL 2 LITRES 6 PCS')).toBe(12);
-    expect(litresPerCase('OIL 2 LITERS')).toBe(2);
-    expect(litresPerCase('OIL 0.5 LTR 24 PCS')).toBe(12);
+  it('treats a missing case count as none produced', () => {
+    expect(litresOf(null, 20)).toBe(0);
   });
 });
 
@@ -54,5 +33,24 @@ describe('formatLitres', () => {
     expect(formatLitres(2400)).toBe('2,400 L');
     expect(formatLitres(12.5)).toBe('12.5 L');
     expect(formatLitres(1234567)).toBe('12,34,567 L');
+  });
+
+  it('signs a surplus so it cannot be read as a shortfall', () => {
+    expect(formatLitresSigned(120)).toBe('+120 L');
+    expect(formatLitresSigned(-120)).toBe('-120 L');
+    expect(formatLitresSigned(null)).toBe('—');
+  });
+});
+
+describe('litresNote', () => {
+  it('names the SAP fields, not the SKU name', () => {
+    expect(litresNote(0)).toContain('SalPackUn');
+    expect(litresNote(0)).toContain('SalFactor2');
+    expect(litresNote(0)).not.toContain('excluded');
+  });
+
+  it('counts the SKUs left out when SAP holds no volume for them', () => {
+    expect(litresNote(1)).toContain('1 SKU has no volume');
+    expect(litresNote(3)).toContain('3 SKUs have no volume');
   });
 });
