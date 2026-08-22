@@ -1089,7 +1089,10 @@ function DocumentSection({
                     <td className="p-3 text-sm text-muted-foreground">{formatItemMetrics(item)}</td>
                     <td className="whitespace-nowrap p-3 text-sm">
                       <ScanProgressBadge
-                        scanned={status?.scanCount ?? 0}
+                        // FULL boxes only: a part box covers the line's printed loose
+                        // remainder, so counting it as a box read "116 / 116 boxes" on a
+                        // line invoicing 116 boxes + 4 loose with 16 pieces unshipped.
+                        scanned={status?.fullBoxCount ?? 0}
                         expected={status?.expectedBoxes ?? getExpectedItemBoxes(item)}
                         scannedPieces={status?.scannedQuantity ?? 0}
                         expectedPieces={
@@ -1104,7 +1107,10 @@ function DocumentSection({
                         // (362 + 138 against a 500-pc line), so the count alone is not a
                         // useful progress figure on its own.
                         <div className="mt-1 text-xs text-muted-foreground">
-                          {status.scanCount} box{status.scanCount === 1 ? '' : 'es'}
+                          {status.fullBoxCount} box{status.fullBoxCount === 1 ? '' : 'es'}
+                          {status.partBoxCount > 0
+                            ? ` + ${status.partBoxCount} part box${status.partBoxCount === 1 ? '' : 'es'}`
+                            : ''}
                           {status.scannedBoxQuantities.length ? (
                             <span className="tabular-nums">
                               {' · '}

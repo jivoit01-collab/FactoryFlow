@@ -66,6 +66,22 @@ export function getBoxInvoiceUnits(item: SalesDispatchItem | null | undefined, b
   return getPiecesPerBox(item) === 1 ? 1 : boxQuantity;
 }
 
+/**
+ * True when one physical box carries a whole pack of the item.
+ *
+ * A box packed short — or dismantled, keeping its barcode while pieces were pulled out as
+ * loose stock — declares fewer pieces than SalFactor2. It covers the bill's printed LOOSE
+ * remainder, not one of its BOXES: a 4-piece box on a line invoicing 116 boxes + 4 loose is
+ * the loose 4, so counting it as a box read "116 / 116 boxes" with 16 pieces still on the
+ * floor. Items with no pack size (loose) and CSD stock (one box IS the billed piece) have no
+ * part-box notion. Mirrors box_packing.is_full_box on the backend.
+ */
+export function isFullBox(item: SalesDispatchItem | null | undefined, boxQuantity: number) {
+  const piecesPerBox = getPiecesPerBox(item);
+  if (piecesPerBox === null || piecesPerBox <= 1) return true;
+  return boxQuantity >= piecesPerBox;
+}
+
 /** True when the bill counts this item in boxes rather than pieces (CSD stock). */
 export function isBoxCountedItem(item?: SalesDispatchItem | null) {
   return getPiecesPerBox(item) === 1;

@@ -5,6 +5,7 @@ import {
   getExpectedItemBoxes,
   getExpectedItemLoose,
   isBoxCountedItem,
+  isFullBox,
   isLooseItem,
   parsePositiveNumber,
 } from './salesDispatchBoxCounts';
@@ -22,7 +23,14 @@ export interface ItemScanRow {
   expectedLoose: number;
   /** True when the item has no box count at all, so progress is measured in pieces. */
   isLoose: boolean;
+  /** Physical boxes scanned, full and part alike. */
   scanCount: number;
+  /** Scans carrying a whole pack — the boxes that count against expectedBoxes. */
+  fullBoxCount: number;
+  /** Scans carrying less than a pack: they cover the line's loose remainder. */
+  partBoxCount: number;
+  /** Pieces those part boxes carried — compare against expectedLoose. */
+  partBoxPieces: number;
   scannedQuantity: number;
   /** Quantity carried by each scanned box, in scan order — e.g. [362, 138]. */
   scannedBoxQuantities: number[];
@@ -98,7 +106,14 @@ export function summarizeItems(
     if (code && !indexByCode.has(code)) indexByCode.set(code, index);
   });
 
-  const stats = expectedItems.map(() => ({ count: 0, quantity: 0, boxQuantities: [] as number[] }));
+  const stats = expectedItems.map(() => ({
+    count: 0,
+    fullBoxes: 0,
+    partBoxes: 0,
+    partPieces: 0,
+    quantity: 0,
+    boxQuantities: [] as number[],
+  }));
   let unplannedScanCount = 0;
   for (const scan of scans) {
     const code = normalizeItemCode(scan.item_code);
@@ -109,6 +124,15 @@ export function summarizeItems(
     }
     const scanQuantity = parsePositiveNumber(scan.quantity);
     stats[index].count += 1;
+    // A short box covers the line's printed LOOSE remainder, not one of its boxes, so it
+    // is tallied as pieces. Counting it as a box is what showed 115 full boxes plus one
+    // 4-piece box as "116 / 116 boxes" on a line invoicing 116 boxes + 4 loose.
+    if (isFullBox(expectedItems[index], scanQuantity)) {
+      stats[index].fullBoxes += 1;
+    } else {
+      stats[index].partBoxes += 1;
+      stats[index].partPieces += scanQuantity;
+    }
     // Progress is measured in the unit the BILL is written in: pieces for most items,
     // but boxes for CSD stock, where a carton counts as 1 however many bottles its label
     // declares. Without this a single 20-piece carton read as 20 of a 4-carton line.
@@ -137,6 +161,9 @@ export function summarizeItems(
       expectedLoose: getExpectedItemLoose(item),
       isLoose: isLooseItem(item),
       scanCount: scanStats.count,
+      fullBoxCount: scanStats.fullBoxes,
+      partBoxCount: scanStats.partBoxes,
+      partBoxPieces: scanStats.partPieces,
       scannedQuantity: scanStats.quantity,
       scannedBoxQuantities: scanStats.boxQuantities,
       isBoxCounted: isBoxCountedItem(item),

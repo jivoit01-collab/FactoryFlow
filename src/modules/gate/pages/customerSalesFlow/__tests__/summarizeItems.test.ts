@@ -7,6 +7,7 @@ import {
   getExpectedItemLoose,
   getExpectedItemsBoxes,
   getExpectedItemsLoose,
+  isFullBox,
   isLooseItem,
 } from '../salesDispatchBoxCounts';
 import {
@@ -258,5 +259,51 @@ describe('CSD lines are measured in boxes, not the pieces each box declares', ()
     expect(summary.items[0].isBoxCounted).toBe(false);
     expect(summary.items[0].scannedQuantity).toBe(40);
     expect(summary.items[0].isComplete).toBe(true);
+  });
+});
+
+
+// Bill 608260260 (1,860 PCS of a 16-PCS item) prints 116 boxes + 4 loose. The 4 arrive in
+// a part box; counting that box as a full one read "116 / 116 boxes" with 16 PCS unshipped.
+describe('a part box covers the printed loose remainder, not a box slot', () => {
+  const line = item({ item_code: 'FG0000142', quantity: '1860', sal_factor2: '16' });
+
+  it('splits the line into boxes plus a loose remainder', () => {
+    expect(getExpectedItemBoxes(line)).toBe(116);
+    expect(getExpectedItemLoose(line)).toBe(4);
+  });
+
+  it('knows a short box from a full one', () => {
+    expect(isFullBox(line, 16)).toBe(true);
+    expect(isFullBox(line, 4)).toBe(false);
+    // No pack size (loose) or CSD stock: every box of theirs is whole.
+    expect(isFullBox(item({ sal_factor2: '1', item_name: 'OLIVE OIL 10ML' }), 4)).toBe(true);
+    expect(isFullBox(item({ sal_factor2: '1', item_name: 'MUSTARD 20 PCS(CSD)' }), 1)).toBe(true);
+  });
+
+  it('counts 115 full boxes + one 4-piece box as 115 boxes and 4 loose pieces', () => {
+    const summary = summarizeItems([line], [
+      ...scans(115, { item_code: 'FG0000142', quantity: '16' }),
+      scan({ item_code: 'FG0000142', quantity: '4' }),
+    ]);
+    const row = summary.items[0];
+    expect(row.scanCount).toBe(116); // physical boxes on the truck
+    expect(row.fullBoxCount).toBe(115); // ...but only 115 full boxes
+    expect(row.partBoxCount).toBe(1);
+    expect(row.partBoxPieces).toBe(4);
+    expect(row.scannedQuantity).toBe(1844);
+    expect(row.isComplete).toBe(false); // 16 PCS still to load
+  });
+
+  it('completes once the missing full box is scanned too', () => {
+    const summary = summarizeItems([line], [
+      ...scans(116, { item_code: 'FG0000142', quantity: '16' }),
+      scan({ item_code: 'FG0000142', quantity: '4' }),
+    ]);
+    const row = summary.items[0];
+    expect(row.fullBoxCount).toBe(116);
+    expect(row.partBoxCount).toBe(1);
+    expect(row.scannedQuantity).toBe(1860);
+    expect(row.isComplete).toBe(true);
   });
 });
