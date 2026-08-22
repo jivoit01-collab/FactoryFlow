@@ -491,6 +491,19 @@ export const API_ENDPOINTS = {
     SYNC: '/order-processing/sync/',
   },
   // Goods Return (customer returns)
+  SAP_REPORTS: {
+    LIST: '/sap-reports/reports/',
+    BY_SLUG: (slug: string) => `/sap-reports/reports/${slug}/`,
+    SQL: (slug: string) => `/sap-reports/reports/${slug}/sql/`,
+    RUN: (slug: string) => `/sap-reports/reports/${slug}/run/`,
+    EXPORT: (slug: string) => `/sap-reports/reports/${slug}/export/`,
+    PARAMETER_OPTIONS: (slug: string, position: number) =>
+      `/sap-reports/reports/${slug}/parameters/${position}/options/`,
+    REPORT_RUNS: (slug: string) => `/sap-reports/reports/${slug}/runs/`,
+    RUNS: '/sap-reports/runs/',
+    CATEGORIES: '/sap-reports/categories/',
+    SYNC: '/sap-reports/sync/',
+  },
   GOODS_RETURN: {
     LIST: '/goods-return/',
     CREATE: '/goods-return/',

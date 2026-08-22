@@ -20,6 +20,7 @@ import { notificationsModuleConfig } from '@/modules/notifications/module.config
 import { orderProcessingModuleConfig } from '@/modules/order-processing/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
+import { sapReportsModuleConfig } from '@/modules/sap-reports/module.config';
 import { settingsModuleConfig } from '@/modules/settings/module.config';
 import { supplyChainModuleConfig } from '@/modules/supply-chain/module.config';
 import { vehicleManagementModuleConfig } from '@/modules/vehicle-management/module.config';
@@ -52,6 +53,7 @@ export const moduleRegistry: ModuleConfig[] = [
   marketplaceModuleConfig,
   supplyChainModuleConfig,
   orderProcessingModuleConfig,
+  sapReportsModuleConfig,
   notificationsModuleConfig,
   settingsModuleConfig,
 ];
