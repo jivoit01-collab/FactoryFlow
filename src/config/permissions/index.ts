@@ -43,6 +43,14 @@ export {
   type GoodsReturnPermission,
 } from './goods-return.permissions';
 
+// SAP Reports Module (SAP Query Manager reports, run from the app)
+export {
+  SAP_REPORTS_ACCESS,
+  SAP_REPORTS_MODULE_PREFIX,
+  SAP_REPORTS_PERMISSIONS,
+  type SapReportsPermission,
+} from './sap-reports.permissions';
+
 // Production Module
 export {
   BLOWING_MODULE_PREFIX,
@@ -111,6 +119,7 @@ export {
 
 // Maintenance Module
 export {
+  DAILY_ELECTRICITY_ACCESS_PERMISSIONS,
   MAINTENANCE_MODULE_PREFIX,
   MAINTENANCE_PERMISSIONS,
   type MaintenancePermission,

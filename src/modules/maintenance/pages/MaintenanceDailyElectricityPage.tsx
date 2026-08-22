@@ -58,7 +58,18 @@ const EMPTY_METER_FORM = {
 
 export default function MaintenanceDailyElectricityPage() {
   const { hasPermission } = usePermission();
-  const canManage = hasPermission(MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY);
+  // can_manage_daily_electricity stays the legacy superset; each granular right
+  // below can also be granted on its own (meter keeper, data-entry operator...).
+  const canManageAll = hasPermission(MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY);
+  const canManageMeters =
+    canManageAll || hasPermission(MAINTENANCE_PERMISSIONS.MANAGE_ELECTRICITY_METER);
+  const canAddReading =
+    canManageAll || hasPermission(MAINTENANCE_PERMISSIONS.ADD_DAILY_ELECTRICITY);
+  const canEditReading =
+    canManageAll || hasPermission(MAINTENANCE_PERMISSIONS.EDIT_DAILY_ELECTRICITY);
+  const canDeleteReading =
+    canManageAll || hasPermission(MAINTENANCE_PERMISSIONS.DELETE_DAILY_ELECTRICITY);
+  const canRowAction = canEditReading || canDeleteReading;
 
   const [dateFrom, setDateFrom] = useState(firstOfMonthISO());
   const [dateTo, setDateTo] = useState(todayISO());
@@ -235,14 +246,18 @@ export default function MaintenanceDailyElectricityPage() {
         title="Daily Electricity"
         description="Factory-wide daily meter readings — units and cost per meter"
       >
-        {canManage && (
+        {(canManageMeters || canAddReading) && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setEditingMeter(null); setMeterForm(EMPTY_METER_FORM); setDialog('meters'); }}>
-              <Gauge className="h-4 w-4 mr-1" /> Meters
-            </Button>
-            <Button onClick={openAddReading} disabled={activeMeters.length === 0 && !metersLoading}>
-              <Plus className="h-4 w-4 mr-1" /> Add Reading
-            </Button>
+            {canManageMeters && (
+              <Button variant="outline" onClick={() => { setEditingMeter(null); setMeterForm(EMPTY_METER_FORM); setDialog('meters'); }}>
+                <Gauge className="h-4 w-4 mr-1" /> Meters
+              </Button>
+            )}
+            {canAddReading && (
+              <Button onClick={openAddReading} disabled={activeMeters.length === 0 && !metersLoading}>
+                <Plus className="h-4 w-4 mr-1" /> Add Reading
+              </Button>
+            )}
           </div>
         )}
       </DashboardHeader>
@@ -307,7 +322,7 @@ export default function MaintenanceDailyElectricityPage() {
             <div className="flex flex-col items-center justify-center p-10 text-muted-foreground">
               <Zap className="mb-2 h-8 w-8" />
               <p>No readings in this period.</p>
-              {canManage && meters.length === 0 && (
+              {canManageMeters && meters.length === 0 && (
                 <p className="mt-1 text-sm">Add your meters first via the Meters button.</p>
               )}
             </div>
@@ -325,7 +340,7 @@ export default function MaintenanceDailyElectricityPage() {
                     <th className="px-3 py-2 font-medium text-right">Cost</th>
                     <th className="px-3 py-2 font-medium">Entered By</th>
                     <th className="px-3 py-2 font-medium">Remarks</th>
-                    {canManage && <th className="px-3 py-2" />}
+                    {canRowAction && <th className="px-3 py-2" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -342,19 +357,29 @@ export default function MaintenanceDailyElectricityPage() {
                       <td className="max-w-[240px] truncate px-3 py-2" title={reading.remarks}>
                         {reading.remarks}
                       </td>
-                      {canManage && (
+                      {canRowAction && (
                         <td className="whitespace-nowrap px-3 py-2 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => openEditReading(reading)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeReading(reading)}
-                            disabled={deleteReading.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
+                          {canEditReading && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Edit ${reading.date} reading for ${reading.meter_name}`}
+                              onClick={() => openEditReading(reading)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDeleteReading && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Delete ${reading.date} reading for ${reading.meter_name}`}
+                              onClick={() => removeReading(reading)}
+                              disabled={deleteReading.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -522,7 +547,12 @@ export default function MaintenanceDailyElectricityPage() {
                         <td className="px-3 py-2">{meter.location}</td>
                         <td className="px-3 py-2 text-right">{meter.rate_per_unit}</td>
                         <td className="whitespace-nowrap px-3 py-2 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => openEditMeter(meter)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Edit meter ${meter.name}`}
+                            onClick={() => openEditMeter(meter)}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => toggleMeterActive(meter)}>

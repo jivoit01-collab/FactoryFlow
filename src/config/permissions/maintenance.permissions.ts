@@ -70,10 +70,31 @@ export const MAINTENANCE_PERMISSIONS = {
   MANAGE_VENDOR: 'maintenance.can_manage_vendor',
   VIEW_REPORTS: 'maintenance.can_view_maintenance_reports',
   VIEW_DAILY_ELECTRICITY: 'maintenance.can_view_daily_electricity',
+  // Legacy superset — still grants every electricity right below.
   MANAGE_DAILY_ELECTRICITY: 'maintenance.can_manage_daily_electricity',
+  VIEW_ELECTRICITY_METER: 'maintenance.can_view_electricity_meter',
+  MANAGE_ELECTRICITY_METER: 'maintenance.can_manage_electricity_meter',
+  ADD_DAILY_ELECTRICITY: 'maintenance.can_add_daily_electricity',
+  EDIT_DAILY_ELECTRICITY: 'maintenance.can_edit_daily_electricity',
+  DELETE_DAILY_ELECTRICITY: 'maintenance.can_delete_daily_electricity',
   VIEW_DAILY_WASTAGE: 'maintenance.can_view_daily_wastage',
   MANAGE_DAILY_WASTAGE: 'maintenance.can_manage_daily_wastage',
 } as const;
 
 export type MaintenancePermission =
   (typeof MAINTENANCE_PERMISSIONS)[keyof typeof MAINTENANCE_PERMISSIONS];
+
+/**
+ * Any-of gate for the Daily Electricity page: holding any single electricity
+ * right (meter master, data entry, correction, delete, plain view) must open the
+ * page — the page itself then hides the actions that right does not cover.
+ */
+export const DAILY_ELECTRICITY_ACCESS_PERMISSIONS = [
+  MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
+  MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
+  MAINTENANCE_PERMISSIONS.VIEW_ELECTRICITY_METER,
+  MAINTENANCE_PERMISSIONS.MANAGE_ELECTRICITY_METER,
+  MAINTENANCE_PERMISSIONS.ADD_DAILY_ELECTRICITY,
+  MAINTENANCE_PERMISSIONS.EDIT_DAILY_ELECTRICITY,
+  MAINTENANCE_PERMISSIONS.DELETE_DAILY_ELECTRICITY,
+] as const;

@@ -18,6 +18,7 @@ import {
 import { Link } from 'react-router-dom';
 
 import {
+  DAILY_ELECTRICITY_ACCESS_PERMISSIONS,
   GATE_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
@@ -91,10 +92,7 @@ const SUB_MODULES: SubModule[] = [
     description: 'Daily meter readings — units consumed and cost per meter.',
     to: '/maintenance/daily-electricity',
     icon: Zap,
-    permissions: [
-      MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
-      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
-    ],
+    permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
   },
   {
     title: 'Daily Wastage',

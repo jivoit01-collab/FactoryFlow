@@ -18,6 +18,7 @@ import {
 
 import { COMPANY_CODES } from '@/config/constants';
 import {
+  DAILY_ELECTRICITY_ACCESS_PERMISSIONS,
   GATE_PERMISSIONS,
   MAINTENANCE_MODULE_PREFIX,
   MAINTENANCE_PERMISSIONS,
@@ -152,10 +153,7 @@ const maintenanceRoutes: ModuleRoute[] = [
     path: '/maintenance/daily-electricity',
     element: <MaintenanceDailyElectricityPage />,
     layout: 'main',
-    permissions: [
-      MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
-      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
-    ],
+    permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
     breadcrumb: { label: 'Daily Electricity' },
   },
   {
@@ -211,8 +209,7 @@ const maintenanceRoutes: ModuleRoute[] = [
       MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
       MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
       RETURNABLE_PERMISSIONS.VIEW_GATEPASS,
-      MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
-      MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
+      ...DAILY_ELECTRICITY_ACCESS_PERMISSIONS,
       MAINTENANCE_PERMISSIONS.VIEW_DAILY_WASTAGE,
       MAINTENANCE_PERMISSIONS.MANAGE_DAILY_WASTAGE,
     ],
@@ -290,10 +287,7 @@ export const maintenanceModuleConfig: ModuleConfig = {
           path: '/maintenance/daily-electricity',
           title: 'Daily Electricity',
           icon: Zap,
-          permissions: [
-            MAINTENANCE_PERMISSIONS.VIEW_DAILY_ELECTRICITY,
-            MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY,
-          ],
+          permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
         },
         {
           path: '/maintenance/daily-wastage',
