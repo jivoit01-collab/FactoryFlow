@@ -53,11 +53,14 @@ export function DashboardHeader({
         className,
       )}
     >
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
+      <div className="min-w-0">
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
         {description && <p className="text-muted-foreground">{description}</p>}
       </div>
-      <div className="flex items-center gap-2">
+      {/* Wraps rather than overflows: several actions plus a long title do not fit
+          side by side on a narrow window, and a non-wrapping row pushed the whole
+          page into a horizontal scroll. */}
+      <div className="flex flex-wrap items-center gap-2">
         {children}
         {primaryAction && (
           <Button onClick={primaryAction.onClick} className="w-full sm:w-auto">

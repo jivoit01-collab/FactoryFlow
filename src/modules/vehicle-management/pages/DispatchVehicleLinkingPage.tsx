@@ -328,6 +328,12 @@ export default function DispatchVehicleLinkingPage() {
   // One permission per action — each button is gated independently, as on the
   // Inside Vehicle Manager. The booked (pre-gate-in) half writes dispatch plans
   // instead of gate records, so it answers to the linking permission.
+  //
+  // The route opens on LINK_VEHICLE *or* INSIDE_VEHICLE_VIEW, so a linking-only
+  // user gets here without the second one. The inside-the-gate feed is gated on
+  // it too — asking for it regardless is a guaranteed 403 (twice, with the
+  // client's one retry) and an empty board with no explanation.
+  const canViewInside = hasPermission(DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW);
   const canAdd = hasPermission(DISPATCH_PERMISSIONS.INSIDE_VEHICLE_ADD_BILL);
   const canRemove = hasPermission(DISPATCH_PERMISSIONS.INSIDE_VEHICLE_REMOVE_BILL);
   const canMove = hasPermission(DISPATCH_PERMISSIONS.INSIDE_VEHICLE_MOVE_BILL);
@@ -357,7 +363,7 @@ export default function DispatchVehicleLinkingPage() {
   const [sheetBills, setSheetBills] = useState<DispatchBill[] | null>(null);
   const [sheetVehicle, setSheetVehicle] = useState<{ id: number; number: string } | null>(null);
 
-  const vehiclesQuery = useInsideDispatchVehicles();
+  const vehiclesQuery = useInsideDispatchVehicles({ enabled: canViewInside });
   // One cross-company SAP read serves every list on the page: the booked trucks,
   // the gate-in pickers, and the linking picker.
   const billFilters = useMemo(
@@ -683,13 +689,16 @@ export default function DispatchVehicleLinkingPage() {
   };
   const confirmCopy = getConfirmCopy(pendingConfirm);
 
-  const isLoading = vehiclesQuery.isLoading || billsQuery.isLoading;
+  const isLoading = (canViewInside && vehiclesQuery.isLoading) || billsQuery.isLoading;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <DashboardHeader
         title="Dispatch Vehicle Linking"
         description="One card per truck, from booking to the gate — link a vehicle, add or move bills, unlink, or mark a truck out (no database edits)"
+        // Three wide actions plus a long title only fit side by side on a big
+        // screen, so hold the stacked layout until lg instead of the default sm.
+        className="sm:flex-col sm:items-stretch lg:flex-row lg:items-center"
       >
         <Button
           type="button"
@@ -738,11 +747,27 @@ export default function DispatchVehicleLinkingPage() {
             className="pl-9"
           />
         </div>
-        <div className="text-sm text-muted-foreground">
-          {cards.length} truck(s) · {insideCount} at the gate
+        <div className="text-sm text-muted-foreground sm:shrink-0">
+          {cards.length} truck(s)
+          {canViewInside ? ` · ${insideCount} at the gate` : ''}
           {query ? ` · ${visibleCards.length} matching` : ''}
         </div>
       </div>
+
+      {!canViewInside ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+          Showing booked trucks only — you do not have the Inside Vehicle Manager view permission,
+          so trucks already inside the gate and the bills on their gate-ins are hidden. A truck that
+          is at the gate still shows here as “Booked”. Ask an administrator for
+          &ldquo;can_view_inside_vehicle_manager&rdquo; to see the full board.
+        </div>
+      ) : null}
+
+      {canViewInside && vehiclesQuery.isError ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          Failed to load the trucks inside the gate. Booked trucks below are still accurate.
+        </div>
+      ) : null}
 
       {billsQuery.isError ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
@@ -969,7 +994,7 @@ export default function DispatchVehicleLinkingPage() {
                           <span className="text-xs text-muted-foreground">
                             {entry.bills.length} bill(s)
                           </span>
-                          <div className="ml-auto flex gap-2">
+                          <div className="ml-auto flex flex-wrap gap-2">
                             {canAdd && (
                               <Button
                                 type="button"
@@ -1036,7 +1061,7 @@ export default function DispatchVehicleLinkingPage() {
                                       </span>
                                     ) : null}
 
-                                    <div className="ml-auto flex gap-2">
+                                    <div className="ml-auto flex flex-wrap gap-2">
                                       {canMove && (
                                         <Button
                                           type="button"
@@ -1220,7 +1245,7 @@ export default function DispatchVehicleLinkingPage() {
                               </span>
                             ) : null}
 
-                            <div className="ml-auto flex gap-2">
+                            <div className="ml-auto flex flex-wrap gap-2">
                               {card.isInside && canAdd && (
                                 <Button
                                   type="button"
