@@ -670,6 +670,9 @@ function ScannedBoxesSheet({
                   <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
                     Scanned At
                   </th>
+                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
+                    Scanned By
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -696,6 +699,9 @@ function ScannedBoxesSheet({
                     </td>
                     <td className="whitespace-nowrap px-3 py-1.5 text-sm">
                       {formatTimestamp(scan.scanned_at)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-sm">
+                      {formatValue(scan.scanned_by_name)}
                     </td>
                   </tr>
                 ))}
