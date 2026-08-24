@@ -224,7 +224,7 @@ export default function MaintenanceReturnablePage() {
       </Card>
 
       <div className="overflow-x-auto rounded-md border">
-        <table className="w-full min-w-[1120px] text-sm">
+        <table className="w-full min-w-[1260px] text-sm">
           <thead className="bg-muted/40">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Pass No</th>
@@ -232,6 +232,7 @@ export default function MaintenanceReturnablePage() {
               <th className="px-3 py-2 text-left font-medium">Status</th>
               <th className="px-3 py-2 text-left font-medium">Purpose</th>
               <th className="px-3 py-2 text-left font-medium">Going To</th>
+              <th className="px-3 py-2 text-left font-medium">Item Name</th>
               <th className="px-3 py-2 text-left font-medium">Items</th>
               <th className="px-3 py-2 text-left font-medium">Pending Qty</th>
               <th className="px-3 py-2 text-left font-medium">Expected Back</th>
@@ -241,13 +242,13 @@ export default function MaintenanceReturnablePage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">
                   Loading gate passes…
                 </td>
               </tr>
             ) : !passes?.length ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">
                   <PackageOpen className="mx-auto mb-2 h-8 w-8 opacity-40" />
                   No returnable gate passes match these filters.
                 </td>
@@ -272,6 +273,11 @@ export default function MaintenanceReturnablePage() {
                   </td>
                   <td className="px-3 py-2">{pass.purpose_display}</td>
                   <td className="px-3 py-2">{pass.destination}</td>
+                  <td className="max-w-[220px] px-3 py-2">
+                    <span className="block truncate" title={pass.item_names}>
+                      {pass.item_names || '—'}
+                    </span>
+                  </td>
                   <td className="px-3 py-2">{pass.item_count}</td>
                   <td className="px-3 py-2">{pass.is_returnable ? pass.pending_return_qty : '—'}</td>
                   <td className="px-3 py-2">
