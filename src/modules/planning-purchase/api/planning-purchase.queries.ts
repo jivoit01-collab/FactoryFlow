@@ -8,6 +8,7 @@ import { PLAN_STALE_TIME, REQUIREMENT_STALE_TIME } from '../constants';
 import type {
   BucketType,
   CreatePurchaseOrdersRequest,
+  ProducibleFilters,
   PurchaseOrderListFilters,
   RequirementFilters,
   SpreadPolicy,
@@ -45,6 +46,20 @@ export const PLANNING_PURCHASE_KEYS = {
       filters.material_type ?? null,
       (filters.warehouse ?? []).join(',') || null,
       filters.include_covered ?? true,
+    ] as const,
+  producible: (
+    companyId: number | string | undefined,
+    absId: number,
+    filters: ProducibleFilters,
+  ) =>
+    [
+      ...PLANNING_PURCHASE_KEYS.all,
+      'producible',
+      companyId,
+      absId,
+      filters.target_date ?? null,
+      filters.stock_basis ?? 'ON_HAND',
+      (filters.warehouse ?? []).join(',') || null,
     ] as const,
   vendors: (companyId: number | string | undefined, search: string) =>
     [...PLANNING_PURCHASE_KEYS.all, 'vendors', companyId, search] as const,
@@ -99,6 +114,25 @@ export function useRequirement(absId: number | undefined, filters: RequirementFi
       filters,
     ),
     queryFn: () => planApi.requirement(absId as number, filters),
+    enabled: Boolean(absId),
+    staleTime: REQUIREMENT_STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * What can be built from stock. Reads every BOM plus stock for every component,
+ * so it does not refetch on focus and holds for the same window as the plan.
+ */
+export function useProducible(absId: number | undefined, filters: ProducibleFilters) {
+  const { currentCompany } = useAuth();
+  return useQuery({
+    queryKey: PLANNING_PURCHASE_KEYS.producible(
+      currentCompany?.company_id,
+      absId ?? 0,
+      filters,
+    ),
+    queryFn: () => planApi.producible(absId as number, filters),
     enabled: Boolean(absId),
     staleTime: REQUIREMENT_STALE_TIME,
     refetchOnWindowFocus: false,

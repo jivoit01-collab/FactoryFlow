@@ -447,6 +447,7 @@ export const API_ENDPOINTS = {
     PLANS: '/planning-purchase/plans/',
     PLAN_DETAIL: (absId: number) => `/planning-purchase/plans/${absId}/`,
     PLAN_REQUIREMENT: (absId: number) => `/planning-purchase/plans/${absId}/requirement/`,
+    PLAN_PRODUCIBLE: (absId: number) => `/planning-purchase/plans/${absId}/producible/`,
     PLAN_REQUIREMENT_EXPORT: (absId: number) =>
       `/planning-purchase/plans/${absId}/requirement/export/`,
     VENDORS: '/planning-purchase/vendors/',

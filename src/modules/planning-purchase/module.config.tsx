@@ -6,6 +6,8 @@
  *
  *   Plans      the monthly production plan SAP holds, phased into days, weeks
  *              and months, against what was actually produced
+ *   What runs  how much of it stock on hand actually allows, and what blocks
+ *              the rest
  *   Purchase   that plan exploded through its bill of materials, netted against
  *              stock and open purchase orders, and turned into purchase orders
  *
@@ -29,6 +31,7 @@ import type { ModuleConfig } from '@/core/types';
 
 const PlanListPage = lazy(() => import('./pages/PlanListPage'));
 const PlanDetailPage = lazy(() => import('./pages/PlanDetailPage'));
+const ProduciblePage = lazy(() => import('./pages/ProduciblePage'));
 const PurchaseFromPlanPage = lazy(() => import('./pages/PurchaseFromPlanPage'));
 const PurchaseOrderListPage = lazy(() => import('./pages/PurchaseOrderListPage'));
 const PurchaseOrderDetailPage = lazy(() => import('./pages/PurchaseOrderDetailPage'));
@@ -49,6 +52,15 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [PLANNING_PURCHASE_PERMISSIONS.VIEW],
       breadcrumb: { label: 'Plan' },
+    },
+    {
+      // Reading what stock allows is a VIEW right: it changes nothing and is the
+      // question a shift supervisor asks, not a buyer.
+      path: '/planning-purchase/plans/:planId/producible',
+      element: <ProduciblePage />,
+      layout: 'main',
+      permissions: [PLANNING_PURCHASE_PERMISSIONS.VIEW],
+      breadcrumb: { label: 'What can run' },
     },
     {
       // Reading the requirement is a VIEW right; only the order bar needs

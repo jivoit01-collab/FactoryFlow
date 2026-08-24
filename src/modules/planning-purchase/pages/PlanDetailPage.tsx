@@ -7,7 +7,7 @@
  * spread daily target is a suggestion, and treating it as a commitment is how
  * somebody ends up defending a number no human ever set.
  */
-import { ArrowLeft, RefreshCw, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Boxes, RefreshCw, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -93,6 +93,12 @@ export default function PlanDetailPage() {
             <Link to="/planning-purchase">
               <ArrowLeft className="mr-1.5 h-4 w-4" />
               All plans
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/planning-purchase/plans/${plan.abs_id}/producible`}>
+              <Boxes className="mr-1.5 h-4 w-4" />
+              What can run
             </Link>
           </Button>
           {canBuy ? (

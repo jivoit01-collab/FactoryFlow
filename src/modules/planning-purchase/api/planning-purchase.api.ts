@@ -8,6 +8,8 @@ import type {
   PlanDetailResponse,
   PlanListResponse,
   PostToSapResponse,
+  ProducibleFilters,
+  ProducibleResponse,
   PurchaseOrder,
   PurchaseOrderListFilters,
   PurchaseOrderListResponse,
@@ -83,6 +85,28 @@ export const planApi = {
       params,
       responseType: 'blob',
     });
+    return response.data;
+  },
+
+  /**
+   * What can be built from the stock on hand on a given day.
+   *
+   * Reads every BOM on the plan plus stock for every component, so it is a few
+   * seconds on a full plan.
+   */
+  async producible(
+    absId: number,
+    filters: ProducibleFilters = {},
+  ): Promise<ProducibleResponse> {
+    const params: Record<string, string> = {};
+    if (filters.target_date) params.target_date = filters.target_date;
+    if (filters.stock_basis) params.stock_basis = filters.stock_basis;
+    if (filters.warehouse?.length) params.warehouse = filters.warehouse.join(',');
+
+    const response = await apiClient.get<ProducibleResponse>(
+      EP.PLAN_PRODUCIBLE(absId),
+      { params },
+    );
     return response.data;
   },
 

@@ -394,3 +394,122 @@ export interface PostToSapResponse {
   data: PurchaseOrder;
   meta: { simulated: boolean; note: string };
 }
+
+// ---------------------------------------------------------------------------
+// Producible from stock ("what can run tomorrow")
+// ---------------------------------------------------------------------------
+
+/**
+ * Which stock the buildable figure rests on.
+ *
+ * `ON_HAND` is the default and answers what the floor asks: the material is in
+ * the building, so it can be run. `FREE` nets off what SAP has reserved against
+ * other documents — on this company most components are over-committed, so FREE
+ * reads as "you can make nothing".
+ */
+export type StockBasis = 'ON_HAND' | 'FREE';
+
+export interface LimitingComponent {
+  component_code: string;
+  component_name: string;
+  material_type: MaterialType;
+  uom: string;
+  available_qty: string;
+  qty_per_unit: string;
+}
+
+export interface ProducibleSku {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  pieces_per_case: number;
+  litres_per_unit: string;
+  is_litre_item: boolean;
+  has_bom: boolean;
+  component_count: number;
+
+  planned_qty: string;
+  planned_litres: string;
+  planned_cases: string;
+
+  /**
+   * Null — not zero — when SAP has no recipe. "No answer" and "out of material"
+   * are different problems with different owners.
+   *
+   * These are STANDALONE maxima: each assumes the SKU gets the whole warehouse,
+   * so they are alternatives to one another and must never be summed.
+   */
+  buildable_qty: string | null;
+  buildable_litres: string | null;
+  buildable_cases: string | null;
+  limited_by: string | null;
+  limited_by_detail?: LimitingComponent | null;
+  covers_plan: boolean | null;
+  shortfall_qty: string | null;
+}
+
+export interface ProducibleDraw {
+  item_code: string;
+  item_name: string;
+  planned_qty: string;
+  planned_litres: string;
+  qty_per_unit: string;
+  needed_qty: string;
+}
+
+export interface ProducibleComponent {
+  component_code: string;
+  component_name: string;
+  material_type: MaterialType;
+  uom: string;
+  needed_qty: string;
+  on_hand_qty: string;
+  committed_qty: string;
+  free_qty: string;
+  over_committed: boolean;
+  available_qty: string;
+  shortage_qty: string;
+  is_blocking: boolean;
+  coverage_pct: string;
+  drawn_by: ProducibleDraw[];
+  warehouses: { warehouse: string; on_hand: string; committed: string }[];
+}
+
+export interface ProducibleMeta {
+  company_code: string;
+  target_date: string;
+  sku_count: number;
+  sku_without_bom_count: number;
+  planned_sku_count: number;
+  runnable_sku_count: number;
+  blocked_sku_count: number;
+  blocked_skus: { item_code: string; shortfall_qty: string; limited_by: string }[];
+  component_count: number;
+  blocking_component_count: number;
+  worst_component_coverage_pct: string;
+  over_committed_component_count: number;
+  plan_runs_in_full: boolean;
+  planned_litres: string;
+  at_risk_litres: string;
+  at_risk_pct: string;
+  stock_basis: StockBasis;
+  unusable_boms: { parent_code: string; component_code: string; reason: string }[];
+  warehouse_scope: string[] | 'ALL';
+  excluded_warehouses: string[];
+  fetched_at: string;
+  notes: string[];
+}
+
+export interface ProducibleResponse {
+  plan: PlanHeader;
+  target_date: string;
+  skus: ProducibleSku[];
+  components: ProducibleComponent[];
+  meta: ProducibleMeta;
+}
+
+export interface ProducibleFilters {
+  target_date?: string;
+  warehouse?: string[];
+  stock_basis?: StockBasis;
+}
