@@ -10,6 +10,7 @@ export const GRPO_QUERY_KEYS = {
   pending: (params?: GRPOListParams) => [...GRPO_QUERY_KEYS.all, 'pending', params] as const,
   allEntries: (params?: GRPOListParams) => [...GRPO_QUERY_KEYS.all, 'all-entries', params] as const,
   preview: (vehicleEntryId: number) => [...GRPO_QUERY_KEYS.all, 'preview', vehicleEntryId] as const,
+  expenseCodes: () => [...GRPO_QUERY_KEYS.all, 'expense-codes'] as const,
   history: (params?: GRPOListParams) => [...GRPO_QUERY_KEYS.all, 'history', params] as const,
   detail: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'detail', postingId] as const,
   draft: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'draft', postingId] as const,
@@ -177,6 +178,17 @@ export function useServiceGRPOPreview(dispatchPlanId: number | null) {
     queryKey: GRPO_QUERY_KEYS.servicePreview(dispatchPlanId!),
     queryFn: () => grpoApi.getServicePreview(dispatchPlanId!),
     enabled: !!dispatchPlanId,
+  });
+}
+
+// SAP additional-expense master, for charges the operator adds by hand. PO
+// freight needs no lookup — it is pre-filled from the preview payload.
+export function useGRPOExpenseCodes(enabled: boolean = true) {
+  return useQuery({
+    queryKey: GRPO_QUERY_KEYS.expenseCodes(),
+    queryFn: () => grpoApi.getExpenseCodes(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

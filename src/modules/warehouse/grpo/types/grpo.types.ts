@@ -161,6 +161,20 @@ export interface ExtraCharge {
   amount: number;
   remarks?: string;
   tax_code?: string;
+  // SAP distribution rule (e.g. aedm_Quantity), copied from the PO's expense
+  // line so the charge loads onto item cost the way purchase intended.
+  distribution_method?: string;
+  // PO linkage, set only for charges pre-filled from the PO. Sending these lets
+  // SAP draw the PO expense line down instead of leaving it open for a later
+  // GRPO to re-prefill and double-bill.
+  base_doc_entry?: number;
+  base_doc_line?: number;
+  base_doc_type?: number;
+  // Display-only, carried so the row can be labelled and locked. The API
+  // ignores unknown keys, so these are safe to keep on the posted object.
+  expense_name?: string;
+  source_po_number?: string;
+  po_line_amount?: number;
 }
 
 // Pending entry (GET /pending/)
@@ -199,6 +213,30 @@ export interface PreviewItem {
   sap_line_num: number | null;
 }
 
+// Freight/other charge already agreed on the PO (SAP POR3 + OEXD), offered to
+// the GRPO screen for pre-fill. The operator never types an expense code: it is
+// SAP master data and the numbers differ per company (freight-inward-direct is
+// 2 in Jivo Oil but 3 in Jivo Mart).
+export interface PreviewAdditionalExpense {
+  expense_code: number;
+  expense_name: string;
+  // Full charge on the PO line.
+  amount: string;
+  // Already carried by earlier GRPOs against this PO expense line.
+  posted_amount: string;
+  // amount - posted_amount. What this GRPO should carry.
+  remaining_amount: string;
+  tax_code: string;
+  distribution_method: string;
+  remarks: string;
+  status: string;
+  expense_account: string;
+  sac_code: string;
+  base_doc_entry: number | null;
+  base_doc_line: number;
+  base_doc_type: number;
+}
+
 // Preview PO receipt (GET /preview/{id}/)
 export interface PreviewPOReceipt {
   vehicle_entry_id: number;
@@ -215,6 +253,9 @@ export interface PreviewPOReceipt {
   invoice_date: string;
   challan_no: string;
   items: PreviewItem[];
+  // Empty when the PO carries no charges, or when SAP was unreachable — the
+  // operator can still add charges by hand in that case.
+  additional_expenses?: PreviewAdditionalExpense[];
   grpo_status: GRPOStatus | null;
   sap_doc_num: number | null;
   sap_doc_entry: number | null;
@@ -611,6 +652,10 @@ export interface ServiceGRPOExpenseCodeOption {
   revenue_account: string;
   sac_code: string;
 }
+
+// Same OEXD row, served standalone to the material GRPO screen (which needs no
+// other service-GRPO dimension). Codes are company-scoped — never hardcode one.
+export type ExpenseCodeOption = ServiceGRPOExpenseCodeOption;
 
 export interface ServiceGRPOOptions {
   branches: ServiceGRPOBranchOption[];

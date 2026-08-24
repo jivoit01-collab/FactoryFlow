@@ -378,6 +378,9 @@ export const API_ENDPOINTS = {
     ALL_ENTRIES: '/grpo/all-entries/',
     PENDING: '/grpo/pending/',
     PREVIEW: (vehicleEntryId: number) => `/grpo/preview/${vehicleEntryId}/`,
+    // SAP additional-expense master, for charges that are GRPO-only. Freight
+    // agreed on the PO arrives pre-filled on the preview payload.
+    EXPENSE_CODES: '/grpo/expense-codes/',
     INSPECTION_REPORT: (arrivalSlipId: number) => `/grpo/inspection-report/${arrivalSlipId}/`,
     POST: '/grpo/post/',
     DRAFT_CREATE: '/grpo/draft/',

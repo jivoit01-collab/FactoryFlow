@@ -35,6 +35,7 @@ import {
 import {
   useDeleteGRPOAttachment,
   useGRPODraft,
+  useGRPOExpenseCodes,
   useGRPOPreview,
   usePostSavedGRPO,
   useSaveGRPODraft,
@@ -87,6 +88,68 @@ interface PrintableQCReportItem {
   inspection_report_no: string | null;
 }
 
+// Identity of a charge that came off a PO expense line.
+const poChargeKey = (charge: ExtraCharge) =>
+  `${charge.base_doc_entry}:${charge.base_doc_line}`;
+
+/**
+ * Freight/other charges to show for the selected POs.
+ *
+ * Freight is agreed at purchase time, so it is read off the PO (SAP POR3) rather
+ * than typed: the GRPO operator cannot know the expense code, and the codes
+ * differ per company. Rules:
+ *  - charges the operator added by hand are always kept;
+ *  - each PO expense line contributes one row, defaulting to the amount not yet
+ *    carried by an earlier GRPO (re-prefilling the full amount would double-bill
+ *    a part-received PO);
+ *  - operator edits survive a re-render, and de-selecting a PO drops its rows.
+ */
+const buildChargesForSelection = (
+  selectedPOs: PreviewPOReceipt[],
+  previous: ExtraCharge[] = [],
+): ExtraCharge[] => {
+  const manual = previous.filter((charge) => charge.base_doc_entry === undefined);
+  const editedByKey = new Map(
+    previous.filter((charge) => charge.base_doc_entry !== undefined).map((c) => [poChargeKey(c), c]),
+  );
+
+  const fromPO: ExtraCharge[] = [];
+  const seen = new Set<string>();
+  selectedPOs.forEach((po) => {
+    (po.additional_expenses ?? []).forEach((expense) => {
+      if (expense.base_doc_entry === null) return;
+      const remaining = parseFloat(expense.remaining_amount);
+      const candidate: ExtraCharge = {
+        expense_code: expense.expense_code,
+        amount: Number.isFinite(remaining) ? remaining : 0,
+        remarks: expense.remarks || '',
+        tax_code: expense.tax_code || '',
+        distribution_method: expense.distribution_method || undefined,
+        base_doc_entry: expense.base_doc_entry,
+        base_doc_line: expense.base_doc_line,
+        base_doc_type: expense.base_doc_type,
+        expense_name: expense.expense_name,
+        source_po_number: po.po_number,
+        po_line_amount: parseFloat(expense.amount),
+      };
+      const key = poChargeKey(candidate);
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const edited = editedByKey.get(key);
+      if (edited) {
+        // Keep the operator's amount/remarks, refresh the PO-owned fields.
+        fromPO.push({ ...candidate, amount: edited.amount, remarks: edited.remarks });
+        return;
+      }
+      // Nothing left to charge — the balance already sits on an earlier GRPO.
+      if (candidate.amount > 0) fromPO.push(candidate);
+    });
+  });
+
+  return [...fromPO, ...manual];
+};
+
 // Format the PO creation date (date-only, no time component)
 const formatPODate = (dateStr?: string | null) => {
   if (!dateStr) return null;
@@ -113,6 +176,8 @@ export default function GRPOPreviewPage() {
   const initialDraftId = draftParam ? parseInt(draftParam, 10) : null;
 
   const { data: previewData = [], isLoading, error, refetch } = useGRPOPreview(entryId);
+  // Only for charges the operator adds by hand; PO freight is pre-filled.
+  const { data: expenseCodeOptions = [] } = useGRPOExpenseCodes();
   const { data: draftData } = useGRPODraft(initialDraftId);
   const saveDraft = useSaveGRPODraft();
   const postSaved = usePostSavedGRPO();
@@ -248,7 +313,8 @@ export default function GRPOPreviewPage() {
         warehouseCode: prev?.warehouseCode ?? firstPO.items[0]?.warehouse_code ?? '',
         comments: prev?.comments ?? '',
         vendorRef: prev?.vendorRef ?? firstPO.vendor_ref ?? '',
-        extraCharges: prev?.extraCharges ?? [],
+        // Seeded from the PO's own freight lines — see buildChargesForSelection.
+        extraCharges: buildChargesForSelection(selectedPOs, prev?.extraCharges),
         attachments: prev?.attachments ?? [],
         docDate: prev?.docDate ?? entryDate,
         docDueDate: prev?.docDueDate ?? entryDate,
@@ -1204,6 +1270,7 @@ export default function GRPOPreviewPage() {
             {/* Extra Charges */}
             <div className="border-t pt-4">
               <ExtraChargesSection
+                expenseCodeOptions={expenseCodeOptions}
                 charges={mergedForm.extraCharges}
                 onChange={(charges) => {
                   updateFormField('extraCharges', charges);

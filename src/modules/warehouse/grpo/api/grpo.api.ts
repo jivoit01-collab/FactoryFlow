@@ -5,6 +5,7 @@ import type {
   AllGRPOEntriesCounts,
   AllGRPOEntriesResponse,
   AllGRPOEntry,
+  ExpenseCodeOption,
   GRPOAttachment,
   GRPODashboardSummary,
   GRPOHistoryEntry,
@@ -97,6 +98,15 @@ export const grpoApi = {
   async getPreview(vehicleEntryId: number): Promise<PreviewPOReceipt[]> {
     const response = await apiClient.get<PreviewPOReceipt[]>(
       API_ENDPOINTS.GRPO.PREVIEW(vehicleEntryId),
+    );
+    return response.data;
+  },
+
+  // SAP additional-expense master for this company. Only needed for charges
+  // that are GRPO-only; PO freight arrives pre-filled on the preview payload.
+  async getExpenseCodes(): Promise<ExpenseCodeOption[]> {
+    const response = await apiClient.get<ExpenseCodeOption[]>(
+      API_ENDPOINTS.GRPO.EXPENSE_CODES,
     );
     return response.data;
   },

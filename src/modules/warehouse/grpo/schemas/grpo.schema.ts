@@ -9,16 +9,42 @@ export const grpoPostItemSchema = z.object({
   variety: z.string().optional(),
 });
 
-export const extraChargeSchema = z.object({
-  expense_code: z
-    .number({ required_error: 'Expense code is required' })
-    .min(1, 'Select a valid SAP expense code'),
-  amount: z
-    .number({ required_error: 'Amount is required' })
-    .min(0.01, 'Amount must be greater than zero'),
-  remarks: z.string().optional(),
-  tax_code: z.string().optional(),
-});
+// SAP's own distribution enums. 'aedm_Quantity' is what the POs use, so a
+// pre-filled freight charge lands on item cost the way purchase intended.
+export const DISTRIBUTION_METHODS = [
+  'aedm_None',
+  'aedm_Quantity',
+  'aedm_Volume',
+  'aedm_Weight',
+  'aedm_Equally',
+  'aedm_Row',
+] as const;
+
+export const extraChargeSchema = z
+  .object({
+    expense_code: z
+      .number({ required_error: 'Expense code is required' })
+      .min(1, 'Select a valid SAP expense code'),
+    amount: z
+      .number({ required_error: 'Amount is required' })
+      .min(0.01, 'Amount must be greater than zero'),
+    remarks: z.string().optional(),
+    tax_code: z.string().optional(),
+    distribution_method: z.enum(DISTRIBUTION_METHODS).optional(),
+    // Present only on charges copied from the PO's own freight lines.
+    base_doc_entry: z.number().optional(),
+    base_doc_line: z.number().min(0).optional(),
+    base_doc_type: z.number().optional(),
+  })
+  .refine(
+    (charge) =>
+      (charge.base_doc_entry === undefined) === (charge.base_doc_line === undefined),
+    {
+      // SAP rejects a half-specified linkage.
+      message: 'PO linkage needs both a document entry and a line number.',
+      path: ['base_doc_line'],
+    },
+  );
 
 export const grpoPostSchema = z
   .object({

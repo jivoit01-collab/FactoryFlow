@@ -8,6 +8,7 @@ export {
   useGRPODashboardSummary,
   useGRPODetail,
   useGRPODraft,
+  useGRPOExpenseCodes,
   useGRPOHistory,
   useGRPOPreview,
   usePendingGRPOEntries,
