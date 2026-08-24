@@ -171,6 +171,12 @@ function buildParams(filters: DispatchPlanFilters): Record<string, string> {
   if (filters.limit) params.limit = String(filters.limit);
   if (filters.exclude_jivo_mart_transfer) params.exclude_jivo_mart_transfer = 'true';
   if (filters.by_dispatch_date) params.by_dispatch_date = 'true';
+  if (filters.include_unscheduled) params.include_unscheduled = 'true';
+  if (filters.ordering && filters.ordering !== 'default') params.ordering = filters.ordering;
+  if (filters.page && filters.page_size) {
+    params.page = String(filters.page);
+    params.page_size = String(filters.page_size);
+  }
   if (filters.all_companies) params.all_companies = '1';
   if (filters.selected_only) params.selected_only = 'true';
   return params;

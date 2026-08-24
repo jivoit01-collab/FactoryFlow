@@ -9,31 +9,13 @@ import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, NativeSelect, SelectOption } from '@/shared/components/ui';
 
-type SortKey =
-  | 'default'
-  | 'customer_asc'
-  | 'customer_desc'
-  | 'city_asc'
-  | 'litres_desc'
-  | 'litres_asc'
-  | 'date_desc'
-  | 'date_asc'
-  | 'docnum_asc';
-
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'default', label: 'Default order' },
-  { key: 'customer_asc', label: 'Customer (A → Z)' },
-  { key: 'customer_desc', label: 'Customer (Z → A)' },
-  { key: 'city_asc', label: 'City (A → Z)' },
-  { key: 'litres_desc', label: 'Litres (high → low)' },
-  { key: 'litres_asc', label: 'Litres (low → high)' },
-  { key: 'date_desc', label: 'Invoice date (newest)' },
-  { key: 'date_asc', label: 'Invoice date (oldest)' },
-  { key: 'docnum_asc', label: 'Invoice no. (A → Z)' },
-];
-
 import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
-import { useDispatchBills, useRemoveFromPlan, useUpdateDispatchPlan } from '../api';
+import {
+  dispatchPlansApi,
+  useDispatchBills,
+  useRemoveFromPlan,
+  useUpdateDispatchPlan,
+} from '../api';
 import {
   DispatchPlanBulkDateBar,
   DispatchPlanEditSheet,
@@ -41,9 +23,14 @@ import {
   DispatchPlanMetaCards,
   DispatchPlanTable,
 } from '../components';
-import { createDefaultDispatchPlanFilters } from '../constants';
+import {
+  createDefaultDispatchDateFilters,
+  DISPATCH_PLAN_DEFAULT_PAGE_SIZE,
+  DISPATCH_PLAN_SORT_OPTIONS,
+} from '../constants';
 import type {
   DispatchBill,
+  DispatchBillOrdering,
   DispatchPlanFilters as DispatchPlanFiltersType,
   DispatchPlanUpdatePayload,
 } from '../types';
@@ -54,11 +41,11 @@ function isSAPError(error: unknown): error is ApiError {
 }
 
 export default function DispatchPlansDashboardPage() {
-  // Only bills chosen on the Bill Selection page enter planning here.
-  const [filters, setFilters] = useState<DispatchPlanFiltersType>(() => ({
-    ...createDefaultDispatchPlanFilters(),
-    selected_only: true,
-  }));
+  // Only bills chosen on the Bill Selection page enter planning here, windowed on
+  // the dispatch date the planner set (today by default) rather than on when SAP
+  // raised the bill — plus the bills still waiting for a dispatch date.
+  const [filters, setFilters] = useState<DispatchPlanFiltersType>(createDefaultDispatchDateFilters);
+  const [isExporting, setIsExporting] = useState(false);
   const [selectedBill, setSelectedBill] = useState<DispatchBill | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   // Doc entries ticked for the bulk dispatch-date action.
@@ -66,6 +53,26 @@ export default function DispatchPlansDashboardPage() {
 
   const { hasPermission } = usePermission();
   const canEdit = hasPermission(DASHBOARDS_PERMISSIONS.EDIT_DISPATCH_PLANS);
+
+  // Any filter change starts again at page one — the row that was on page 3 of
+  // the old window is rarely on page 3 of the new one.
+  const handleFiltersChange = useCallback((next: DispatchPlanFiltersType) => {
+    setFilters({ ...next, page: 1 });
+  }, []);
+
+  const handlePageChange = useCallback((page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+  }, []);
+
+  const handlePageSizeChange = useCallback((pageSize: number) => {
+    setFilters((prev) => ({ ...prev, page_size: pageSize, page: 1 }));
+  }, []);
+
+  // Ordering is applied by the server over the whole filtered set, so it has to
+  // send us back to page one as well.
+  const handleOrderingChange = useCallback((ordering: DispatchBillOrdering) => {
+    setFilters((prev) => ({ ...prev, ordering, page: 1 }));
+  }, []);
 
   const billsQuery = useDispatchBills(filters);
   const updatePlanMutation = useUpdateDispatchPlan();
@@ -110,8 +117,9 @@ export default function DispatchPlansDashboardPage() {
   // make the reset below setState on each pass → "too many re-renders".
   const bills = useMemo(() => billsQuery.data?.data ?? [], [billsQuery.data]);
 
-  // Drop the selection whenever a new data set arrives (filter change or refetch)
-  // so stale doc entries never carry over — mirrors the table's page reset.
+  // Drop the selection whenever a new data set arrives (filter change, page turn
+  // or refetch) so doc entries no longer on screen never carry over — the bulk
+  // date action then always matches the ticks the planner can see.
   // Key off the stable query `data` (not the derived `bills`) and return the
   // same Set when already empty so React can bail out instead of looping.
   const [prevData, setPrevData] = useState(billsQuery.data);
@@ -144,41 +152,6 @@ export default function DispatchPlansDashboardPage() {
     (bill) => selected.has(bill.doc_entry) && !!bill.plan.dispatch_date,
   ).length;
 
-  // Arrange the shown bills (client-side) by the chosen order.
-  const [sortKey, setSortKey] = useState<SortKey>('default');
-  const sortedBills = useMemo(() => {
-    if (sortKey === 'default') return bills;
-    const cmp = (a: string, b: string) => a.localeCompare(b);
-    const arr = [...bills];
-    switch (sortKey) {
-      case 'customer_asc':
-        arr.sort((a, b) => cmp(a.card_name ?? '', b.card_name ?? ''));
-        break;
-      case 'customer_desc':
-        arr.sort((a, b) => cmp(b.card_name ?? '', a.card_name ?? ''));
-        break;
-      case 'city_asc':
-        arr.sort((a, b) => cmp(a.city ?? '', b.city ?? ''));
-        break;
-      case 'litres_desc':
-        arr.sort((a, b) => (b.total_litres ?? 0) - (a.total_litres ?? 0));
-        break;
-      case 'litres_asc':
-        arr.sort((a, b) => (a.total_litres ?? 0) - (b.total_litres ?? 0));
-        break;
-      case 'date_desc':
-        arr.sort((a, b) => cmp(b.doc_date ?? '', a.doc_date ?? ''));
-        break;
-      case 'date_asc':
-        arr.sort((a, b) => cmp(a.doc_date ?? '', b.doc_date ?? ''));
-        break;
-      case 'docnum_asc':
-        arr.sort((a, b) => cmp(a.doc_num ?? '', b.doc_num ?? ''));
-        break;
-    }
-    return arr;
-  }, [bills, sortKey]);
-
   // Totals for the currently ticked bills — shown to the planner.
   const selectionSummary = useMemo(() => {
     const sel = bills.filter((b) => selected.has(b.doc_entry));
@@ -188,15 +161,32 @@ export default function DispatchPlansDashboardPage() {
     };
   }, [bills, selected]);
 
-  // Export the currently filtered bill set (every fetched row, not just the
-  // visible page) to an .xlsx workbook. Kept to the fields dispatch actually needs:
-  // dispatch date, invoice date, party, ship-to, state, invoice no., litres, weight.
-  const handleExportExcel = useCallback(() => {
-    if (bills.length === 0) {
+  // Export the whole filtered bill set — not just the shown page. Paging happens
+  // on the server, so this asks for the same window again without page params and
+  // exports what comes back. Kept to the fields dispatch actually needs: dispatch
+  // date, invoice date, party, ship-to, state, invoice no., litres, weight.
+  const handleExportExcel = useCallback(async () => {
+    setIsExporting(true);
+    let allBills: DispatchBill[];
+    try {
+      const response = await dispatchPlansApi.getBills({
+        ...filters,
+        page: undefined,
+        page_size: undefined,
+      });
+      allBills = response.data;
+    } catch {
+      toast.error('Could not load the bills to export');
+      return;
+    } finally {
+      setIsExporting(false);
+    }
+
+    if (allBills.length === 0) {
       toast.info('No dispatch bills to export');
       return;
     }
-    const rows = bills.map((bill) => ({
+    const rows = allBills.map((bill) => ({
       'Dispatch Date': bill.plan.dispatch_date ?? '',
       'Invoice Date': bill.doc_date ?? '',
       'Party Name': bill.card_name ?? '',
@@ -217,7 +207,7 @@ export default function DispatchPlansDashboardPage() {
     XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Plans');
     const stamp = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `dispatch_plans_${filters.date_from}_to_${filters.date_to}_${stamp}.xlsx`);
-  }, [bills, filters.date_from, filters.date_to]);
+  }, [filters]);
 
   const handleEdit = useCallback((bill: DispatchBill) => {
     setSelectedBill(bill);
@@ -251,12 +241,12 @@ export default function DispatchPlansDashboardPage() {
           <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
           <NativeSelect
             aria-label="Sort bills"
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            value={filters.ordering ?? 'default'}
+            onChange={(e) => handleOrderingChange(e.target.value as DispatchBillOrdering)}
             className="h-9 w-48"
           >
-            {SORT_OPTIONS.map((o) => (
-              <SelectOption key={o.key} value={o.key}>
+            {DISPATCH_PLAN_SORT_OPTIONS.map((o) => (
+              <SelectOption key={o.value} value={o.value}>
                 {o.label}
               </SelectOption>
             ))}
@@ -267,10 +257,10 @@ export default function DispatchPlansDashboardPage() {
           variant="outline"
           size="sm"
           onClick={handleExportExcel}
-          disabled={billsQuery.isFetching || bills.length === 0}
+          disabled={billsQuery.isFetching || isExporting || bills.length === 0}
         >
           <Download className="mr-2 h-4 w-4" />
-          Export Excel
+          {isExporting ? 'Exporting…' : 'Export Excel'}
         </Button>
         <Button
           type="button"
@@ -286,8 +276,10 @@ export default function DispatchPlansDashboardPage() {
 
       <DispatchPlanFilters
         filters={filters}
-        onFiltersChange={setFilters}
+        onFiltersChange={handleFiltersChange}
         isFetching={billsQuery.isFetching}
+        dateBasis="dispatch"
+        onReset={() => setFilters(createDefaultDispatchDateFilters())}
       />
 
       {sapApiError && <SAPUnavailableBanner error={sapApiError} onRetry={billsQuery.refetch} />}
@@ -323,7 +315,7 @@ export default function DispatchPlansDashboardPage() {
             />
           )}
           <DispatchPlanTable
-            bills={sortedBills}
+            bills={bills}
             isLoading={billsQuery.isLoading || billsQuery.isFetching}
             canEdit={canEdit}
             onEdit={handleEdit}
@@ -332,6 +324,13 @@ export default function DispatchPlansDashboardPage() {
             onToggleAll={canEdit ? toggleSelectAll : undefined}
             onRemove={canEdit ? handleRemove : undefined}
             removingDocEntry={removeFromPlan.isPending ? removeFromPlan.variables : null}
+            pagination={billsQuery.data?.pagination}
+            page={filters.page ?? 1}
+            pageSize={filters.page_size ?? DISPATCH_PLAN_DEFAULT_PAGE_SIZE}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            ordering={filters.ordering ?? 'default'}
+            onOrderingChange={handleOrderingChange}
           />
         </>
       )}

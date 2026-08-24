@@ -2,6 +2,29 @@ import type { PipelineStatus } from '@/modules/dashboards/dispatch-pipeline/type
 
 export type DispatchPlanStatus = 'PENDING' | 'BOOKED' | 'DISPATCHED' | 'CANCELLED';
 
+/** Orders the server can return the bill feed in (the feed is paged server-side,
+ *  so sorting happens there too — ordering one page here would only shuffle it). */
+export type DispatchBillOrdering =
+  | 'default'
+  | 'created_desc'
+  | 'created_asc'
+  | 'customer_asc'
+  | 'customer_desc'
+  | 'city_asc'
+  | 'city_desc'
+  | 'value_desc'
+  | 'value_asc'
+  | 'litres_desc'
+  | 'litres_asc'
+  | 'date_desc'
+  | 'date_asc'
+  | 'docnum_asc'
+  | 'docnum_desc'
+  | 'status_asc'
+  | 'status_desc'
+  | 'dispatch_date_asc'
+  | 'dispatch_date_desc';
+
 export interface DispatchPlanFilters {
   date_from: string;
   date_to: string;
@@ -12,6 +35,14 @@ export interface DispatchPlanFilters {
   exclude_jivo_mart_transfer?: boolean;
   /** Window on the plan's scheduled dispatch_date instead of the SAP invoice date. */
   by_dispatch_date?: boolean;
+  /** With `by_dispatch_date`, also return selected bills that have no dispatch
+   *  date yet — the Plan page is where those dates get assigned, so they must
+   *  stay visible whatever window is chosen. */
+  include_unscheduled?: boolean;
+  ordering?: DispatchBillOrdering;
+  /** Server-side paging. Both must be set to page; omit for the whole window. */
+  page?: number;
+  page_size?: number;
   /** 1 = aggregate SAP bills across every company the user belongs to (cross-company). */
   all_companies?: boolean;
   /** 1 = only bills selected on the Bill Selection page (the Plan page uses this). */
@@ -152,9 +183,19 @@ export interface DispatchPlansMeta {
   fetched_at: string;
 }
 
+/** Where the returned page sits in the full filtered set. */
+export interface DispatchBillPagination {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
 export interface DispatchPlansResponse {
   data: DispatchBill[];
+  /** Totals over the WHOLE filtered set, not just the returned page. */
   meta: DispatchPlansMeta;
+  pagination: DispatchBillPagination;
 }
 
 export interface DispatchPlanUpdatePayload {

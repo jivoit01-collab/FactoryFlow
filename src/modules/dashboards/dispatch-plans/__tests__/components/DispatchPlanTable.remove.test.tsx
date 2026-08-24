@@ -53,6 +53,12 @@ function renderTable(props: Partial<Parameters<typeof DispatchPlanTable>[0]> = {
       canEdit
       onEdit={onEdit}
       onRemove={onRemove}
+      page={1}
+      pageSize={50}
+      onPageChange={vi.fn()}
+      onPageSizeChange={vi.fn()}
+      ordering="default"
+      onOrderingChange={vi.fn()}
       {...props}
     />,
   );

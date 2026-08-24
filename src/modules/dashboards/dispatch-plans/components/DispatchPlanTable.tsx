@@ -7,7 +7,7 @@ import {
   SquarePen,
   Trash2,
 } from 'lucide-react';
-import { type KeyboardEvent, useMemo, useState } from 'react';
+import { type KeyboardEvent } from 'react';
 
 import {
   Button,
@@ -19,10 +19,8 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
-const DEFAULT_PAGE_SIZE = 50;
-
-import type { DispatchBill } from '../types';
+import { DISPATCH_PLAN_PAGE_SIZE_OPTIONS } from '../constants';
+import type { DispatchBill, DispatchBillOrdering, DispatchBillPagination } from '../types';
 import { StatusBadge } from './StatusBadge';
 
 interface DispatchPlanTableProps {
@@ -33,13 +31,24 @@ interface DispatchPlanTableProps {
   /** Doc entries currently ticked for the bulk dispatch-date action. */
   selected?: Set<number>;
   onToggle?: (docEntry: number) => void;
-  /** Select/clear every selectable bill in the current filtered set. */
+  /** Select/clear every selectable bill on the shown page. */
   onToggleAll?: (selectableDocEntries: number[]) => void;
   /** Take a bill back off the Plan page. Omitted when the user cannot curate
    *  the selection, in which case no Remove button is rendered. */
   onRemove?: (bill: DispatchBill) => void;
   /** Doc entry currently being removed, so its button can show progress. */
   removingDocEntry?: number | null;
+  /** Where `bills` sits in the whole filtered set. The server filters, orders
+   *  and slices the feed, so the table renders the page it was handed and asks
+   *  for another instead of sorting or slicing locally. */
+  pagination?: DispatchBillPagination;
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+  /** Current server ordering, shared with the page's sort dropdown. */
+  ordering: DispatchBillOrdering;
+  onOrderingChange: (ordering: DispatchBillOrdering) => void;
 }
 
 /**
@@ -67,16 +76,33 @@ type SortCol =
   | 'total_litres'
   | 'booking_status';
 
-interface SortState {
-  col: SortCol;
-  dir: 'asc' | 'desc';
+/** The server ordering each sortable column asks for. Header clicks and the
+ *  page's sort dropdown drive the same `ordering`, so a sort spans every page
+ *  rather than shuffling the rows this one happens to hold. */
+type OrderingPair = { asc: DispatchBillOrdering; desc: DispatchBillOrdering };
+
+const COLUMN_ORDERING: Record<SortCol, OrderingPair> = {
+  create_date: { asc: 'created_asc', desc: 'created_desc' },
+  doc_num: { asc: 'docnum_asc', desc: 'docnum_desc' },
+  card_name: { asc: 'customer_asc', desc: 'customer_desc' },
+  doc_total: { asc: 'value_asc', desc: 'value_desc' },
+  total_litres: { asc: 'litres_asc', desc: 'litres_desc' },
+  booking_status: { asc: 'status_asc', desc: 'status_desc' },
+};
+
+function columnDirection(col: SortCol, ordering: DispatchBillOrdering): 'asc' | 'desc' | null {
+  const pair = COLUMN_ORDERING[col];
+  if (ordering === pair.asc) return 'asc';
+  if (ordering === pair.desc) return 'desc';
+  return null;
 }
 
-function SortIcon({ col, sort }: { col: SortCol; sort: SortState }) {
-  if (sort.col !== col) {
+function SortIcon({ col, ordering }: { col: SortCol; ordering: DispatchBillOrdering }) {
+  const dir = columnDirection(col, ordering);
+  if (!dir) {
     return <ChevronsUpDown className="ml-1 inline h-3 w-3 text-muted-foreground/50" />;
   }
-  return sort.dir === 'asc' ? (
+  return dir === 'asc' ? (
     <ChevronUp className="ml-1 inline h-3 w-3" />
   ) : (
     <ChevronDown className="ml-1 inline h-3 w-3" />
@@ -112,42 +138,29 @@ export function DispatchPlanTable({
   onToggleAll,
   onRemove,
   removingDocEntry,
+  pagination,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  ordering,
+  onOrderingChange,
 }: DispatchPlanTableProps) {
   // Bulk selection is available only with edit rights and wired handlers.
   const bulkEnabled = canEdit && !!selected && !!onToggle && !!onToggleAll;
-  const [sort, setSort] = useState<SortState>({
-    col: 'create_date',
-    dir: 'desc',
-  });
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [page, setPage] = useState(1);
 
-  const sorted = useMemo(() => {
-    return [...bills].sort((a, b) => {
-      const aVal = sort.col === 'booking_status' ? a.plan.booking_status : a[sort.col];
-      const bVal = sort.col === 'booking_status' ? b.plan.booking_status : b[sort.col];
-      const cmp = (aVal ?? '') < (bVal ?? '') ? -1 : (aVal ?? '') > (bVal ?? '') ? 1 : 0;
-      return sort.dir === 'asc' ? cmp : -cmp;
-    });
-  }, [bills, sort]);
+  // `bills` IS the page: the server filtered, ordered and sliced it, and the
+  // summary cards read its `meta`, which covers the whole filtered set.
+  const totalRows = pagination?.total ?? bills.length;
+  const totalPages = pagination?.total_pages ?? 1;
+  const currentPage = pagination?.page ?? page;
+  const rowsPerPage = pagination?.page_size ?? pageSize;
+  const startIndex = (currentPage - 1) * rowsPerPage;
 
-  // Client-side pagination over the fetched rows. The backend returns the whole
-  // fetched set (up to the "Max rows" cap) in one call and computes the summary
-  // cards over it, so we page locally. When a new data set arrives (filter or
-  // refetch) return to the first page — adjusting state during render is React's
-  // recommended alternative to a setState-in-effect. Sort and page-size changes
-  // reset the page in their own handlers below.
-  const [prevBills, setPrevBills] = useState(bills);
-  if (prevBills !== bills) {
-    setPrevBills(bills);
-    setPage(1);
-  }
-
+  // First click on a column sorts ascending; clicking the same column flips it.
   function toggleSort(col: SortCol) {
-    setPage(1);
-    setSort((prev) =>
-      prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' },
-    );
+    const pair = COLUMN_ORDERING[col];
+    onOrderingChange(columnDirection(col, ordering) === 'asc' ? pair.desc : pair.asc);
   }
 
   function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, bill: DispatchBill) {
@@ -177,7 +190,7 @@ export function DispatchPlanTable({
     );
   }
 
-  if (sorted.length === 0) {
+  if (bills.length === 0) {
     return (
       <Card>
         <CardContent className="p-12 text-center">
@@ -187,16 +200,11 @@ export function DispatchPlanTable({
     );
   }
 
-  const totalRows = sorted.length;
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const startIndex = (currentPage - 1) * pageSize;
-  const pageRows = sorted.slice(startIndex, startIndex + pageSize);
-
-  // Select-all spans the whole filtered set (across client-side pages), not just
-  // the visible page — so a header tick selects every selectable bill.
+  // Select-all covers the shown page — with the feed paged on the server that is
+  // every row the browser holds, so the bulk date action lands on exactly the
+  // bills the planner can see ticked.
   const selectableDocEntries = bulkEnabled
-    ? sorted.filter(isBulkSelectable).map((bill) => bill.doc_entry)
+    ? bills.filter(isBulkSelectable).map((bill) => bill.doc_entry)
     : [];
   const allSelected =
     selectableDocEntries.length > 0 && selectableDocEntries.every((de) => selected!.has(de));
@@ -224,25 +232,25 @@ export function DispatchPlanTable({
                   </th>
                 )}
                 <th className={thClass} onClick={() => toggleSort('create_date')}>
-                  Created <SortIcon col="create_date" sort={sort} />
+                  Created <SortIcon col="create_date" ordering={ordering} />
                 </th>
                 <th className={thClass} onClick={() => toggleSort('doc_num')}>
-                  Bill <SortIcon col="doc_num" sort={sort} />
+                  Bill <SortIcon col="doc_num" ordering={ordering} />
                 </th>
                 <th className={thClass} onClick={() => toggleSort('card_name')}>
-                  Party <SortIcon col="card_name" sort={sort} />
+                  Party <SortIcon col="card_name" ordering={ordering} />
                 </th>
                 <th className={thClass}>Location</th>
                 <th className={thRightClass} onClick={() => toggleSort('doc_total')}>
-                  Value <SortIcon col="doc_total" sort={sort} />
+                  Value <SortIcon col="doc_total" ordering={ordering} />
                 </th>
                 <th className={thRightClass} onClick={() => toggleSort('total_litres')}>
-                  Total Litres <SortIcon col="total_litres" sort={sort} />
+                  Total Litres <SortIcon col="total_litres" ordering={ordering} />
                 </th>
                 <th className={thRightClass}>Load</th>
                 <th className={thClass}>SAP Transport</th>
                 <th className={thClass} onClick={() => toggleSort('booking_status')}>
-                  Status <SortIcon col="booking_status" sort={sort} />
+                  Status <SortIcon col="booking_status" ordering={ordering} />
                 </th>
                 <th className={thClass}>Transport Link</th>
                 <th className={thClass}>Planning</th>
@@ -253,7 +261,7 @@ export function DispatchPlanTable({
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((bill) => (
+              {bills.map((bill) => (
                 <tr
                   key={bill.doc_entry}
                   className={cn(
@@ -436,7 +444,7 @@ export function DispatchPlanTable({
           <p className="text-muted-foreground">
             Showing <span className="font-medium text-foreground">{startIndex + 1}</span>–
             <span className="font-medium text-foreground">
-              {Math.min(startIndex + pageSize, totalRows)}
+              {Math.min(startIndex + bills.length, totalRows)}
             </span>{' '}
             of <span className="font-medium text-foreground">{totalRows}</span>
           </p>
@@ -449,14 +457,11 @@ export function DispatchPlanTable({
             </label>
             <Select
               id="dispatch-plan-page-size"
-              value={String(pageSize)}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
-              }}
+              value={String(rowsPerPage)}
+              onChange={(event) => onPageSizeChange(Number(event.target.value))}
               className="w-20"
             >
-              {PAGE_SIZE_OPTIONS.map((size) => (
+              {DISPATCH_PLAN_PAGE_SIZE_OPTIONS.map((size) => (
                 <SelectOption key={size} value={String(size)}>
                   {size}
                 </SelectOption>
@@ -466,8 +471,8 @@ export function DispatchPlanTable({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage <= 1}
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage <= 1 || isLoading}
               aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -479,8 +484,8 @@ export function DispatchPlanTable({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage >= totalPages}
+              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage >= totalPages || isLoading}
               aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
