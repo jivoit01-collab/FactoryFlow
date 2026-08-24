@@ -64,6 +64,14 @@ export {
   type ProductionPermission,
 } from './production.permissions';
 
+// Planning & Purchase Module
+export {
+  PLANNING_PURCHASE_ACCESS,
+  PLANNING_PURCHASE_MODULE_PREFIX,
+  PLANNING_PURCHASE_PERMISSIONS,
+  type PlanningPurchasePermission,
+} from './planning-purchase.permissions';
+
 // Dashboards Module
 export { DASHBOARDS_PERMISSIONS, type DashboardsPermission } from './dashboards.permissions';
 export {

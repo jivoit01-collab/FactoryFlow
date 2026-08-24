@@ -18,6 +18,7 @@ import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
 import { orderProcessingModuleConfig } from '@/modules/order-processing/module.config';
+import { planningPurchaseModuleConfig } from '@/modules/planning-purchase/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
 import { sapReportsModuleConfig } from '@/modules/sap-reports/module.config';
@@ -45,6 +46,9 @@ export const moduleRegistry: ModuleConfig[] = [
   vehicleManagementModuleConfig,
   qcModuleConfig,
   productionModuleConfig,
+  // Sits next to Production: it reads the plan SAP holds and turns its bill of
+  // materials into purchase orders.
+  planningPurchaseModuleConfig,
   maintenanceModuleConfig,
   fireModuleConfig,
   warehouseModuleConfig,

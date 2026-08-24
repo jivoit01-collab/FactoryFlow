@@ -430,6 +430,34 @@ export const API_ENDPOINTS = {
     DROPDOWN_WAREHOUSES: '/production-planning/dropdown/warehouses/',
     DROPDOWN_BOM: '/production-planning/dropdown/bom/',
   },
+  /**
+   * Planning & Purchase.
+   *
+   * The plan is READ from SAP (`OFCT`/`FCT1`, which this factory uses as its
+   * monthly production plan) — there is no create/update endpoint for it, on
+   * purpose. Purchase orders are ours, and posting one to SAP is a separate
+   * permission from raising or approving it.
+   *
+   * Note the prefix: `planning-purchase`, NOT `production-planning`. The latter
+   * belongs to the deleted predecessor whose constants are still in
+   * `PRODUCTION_PLANNING` above and whose backend no longer exists — keeping the
+   * two apart means those dead calls cannot start hitting these live endpoints.
+   */
+  PLANNING_PURCHASE: {
+    PLANS: '/planning-purchase/plans/',
+    PLAN_DETAIL: (absId: number) => `/planning-purchase/plans/${absId}/`,
+    PLAN_REQUIREMENT: (absId: number) => `/planning-purchase/plans/${absId}/requirement/`,
+    PLAN_REQUIREMENT_EXPORT: (absId: number) =>
+      `/planning-purchase/plans/${absId}/requirement/export/`,
+    VENDORS: '/planning-purchase/vendors/',
+    WAREHOUSES: '/planning-purchase/warehouses/',
+    PURCHASE_ORDERS: '/planning-purchase/purchase-orders/',
+    PURCHASE_ORDER_DETAIL: (id: number) => `/planning-purchase/purchase-orders/${id}/`,
+    PURCHASE_ORDER_APPROVE: (id: number) =>
+      `/planning-purchase/purchase-orders/${id}/approve/`,
+    PURCHASE_ORDER_POST: (id: number) =>
+      `/planning-purchase/purchase-orders/${id}/post-to-sap/`,
+  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
