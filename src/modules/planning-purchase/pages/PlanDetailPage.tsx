@@ -28,7 +28,8 @@ import {
   UnitToggle,
 } from '../components';
 import { BUCKET_TYPE_OPTIONS, SPREAD_POLICY_OPTIONS } from '../constants';
-import type { BucketType, PlanUnit, SpreadPolicy } from '../types';
+import { usePlanUnit } from '../hooks/usePlanUnit';
+import type { BucketType, SpreadPolicy } from '../types';
 
 export default function PlanDetailPage() {
   const { planId } = useParams<{ planId: string }>();
@@ -39,9 +40,8 @@ export default function PlanDetailPage() {
 
   const [bucketType, setBucketType] = useState<BucketType>('WEEK');
   const [spreadPolicy, setSpreadPolicy] = useState<SpreadPolicy>('EVEN_WORKING_DAYS');
-  // Litres by default: this is an oil business, and a plan read in pieces invites
-  // comparing a 5 L tin with a 200 ML bottle as though they were the same thing.
-  const [unit, setUnit] = useState<PlanUnit>('LITRES');
+  // Module-wide and sticky, so the choice survives navigating between plans.
+  const [unit, setUnit] = usePlanUnit();
 
   const query = usePlanDetail(absId || undefined, bucketType, spreadPolicy);
 
@@ -86,6 +86,9 @@ export default function PlanDetailPage() {
         description={plan.name}
       >
         <div className="flex flex-wrap items-center gap-2">
+          {/* A global display control belongs at the top with the page actions,
+              not buried in the filter row with the per-view settings. */}
+          <UnitToggle unit={unit} onChange={setUnit} compact />
           <Button asChild variant="ghost" size="sm">
             <Link to="/planning-purchase">
               <ArrowLeft className="mr-1.5 h-4 w-4" />
@@ -214,8 +217,6 @@ export default function PlanDetailPage() {
             ))}
           </div>
         </div>
-
-        <UnitToggle unit={unit} onChange={setUnit} className="min-w-[260px]" />
 
         {policyHint ? (
           <p className="max-w-md text-[11px] leading-relaxed text-muted-foreground">

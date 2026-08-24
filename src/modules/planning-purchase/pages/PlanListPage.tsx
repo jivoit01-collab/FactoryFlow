@@ -17,12 +17,16 @@ import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { usePlans } from '../api';
-import { monthLabel, qty } from '../components';
+import { monthLabel, pickUnit, qtyWithUnit, UNIT_LABEL, UnitToggle } from '../components';
+import { usePlanUnit } from '../hooks/usePlanUnit';
 
 export default function PlanListPage() {
   const { hasPermission } = usePermission();
   const canBuy = hasPermission(PLANNING_PURCHASE_PERMISSIONS.CREATE_PO);
   const plans = usePlans();
+  // The same sticky unit the plan detail page uses, so the list does not
+  // contradict the screen you opened it from.
+  const [unit, setUnit] = usePlanUnit();
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -30,6 +34,7 @@ export default function PlanListPage() {
         title="Production Plans"
         description="The monthly plan as SAP holds it — read only, because SAP is where planners author it."
       >
+        <UnitToggle unit={unit} onChange={setUnit} compact className="mr-1" />
         <Button
           variant="outline"
           size="sm"
@@ -88,7 +93,9 @@ export default function PlanListPage() {
                 <th className="px-3 py-2 text-left font-medium">Period</th>
                 <th className="px-3 py-2 text-left font-medium">Grain</th>
                 <th className="px-3 py-2 text-right font-medium">SKUs</th>
-                <th className="px-3 py-2 text-right font-medium">Planned qty</th>
+                <th className="px-3 py-2 text-right font-medium">
+                  Planned ({UNIT_LABEL[unit]})
+                </th>
                 <th className="px-3 py-2 text-right font-medium" />
               </tr>
             </thead>
@@ -129,7 +136,17 @@ export default function PlanListPage() {
                     {plan.item_count ?? plan.line_count}
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums">
-                    {qty(plan.planned_qty)}
+                    {qtyWithUnit(
+                      pickUnit(
+                        {
+                          pieces: plan.planned_qty,
+                          litres: plan.planned_litres,
+                          cases: plan.planned_cases,
+                        },
+                        unit,
+                      ),
+                      unit,
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -158,8 +175,10 @@ export default function PlanListPage() {
 
       {plans.data ? (
         <p className="text-xs text-muted-foreground">
-          Source: {plans.data.meta.source}. Quantities are in each item&apos;s SAP
-          inventory unit — PCS means single bottles or tins, not cases.
+          Source: {plans.data.meta.source}. SAP stores the plan in pieces — PCS means
+          single bottles or tins, not cases. Litres come from the item master
+          (SalPackUn) and cases from pieces per case; the toggle above switches all
+          three, and the choice is remembered.
         </p>
       ) : null}
     </div>
