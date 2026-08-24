@@ -1,8 +1,8 @@
 import { Card, CardContent } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import type { PlanBucket, PlanHeader } from '../types';
-import { qty, shortDate } from './format';
+import type { PlanBucket, PlanHeader, PlanUnit } from '../types';
+import { pickUnit, qty, qtyWithUnit, shortDate, toNumber } from './format';
 import { DerivedMark } from './UrgencyPill';
 
 /**
@@ -15,10 +15,12 @@ export function PlanBucketStrip({
   buckets,
   plan,
   bucketLabel,
+  unit,
 }: {
   buckets: PlanBucket[];
   plan: PlanHeader;
   bucketLabel: string;
+  unit: PlanUnit;
 }) {
   if (!buckets.length) {
     return (
@@ -30,12 +32,27 @@ export function PlanBucketStrip({
     );
   }
 
-  const peak = Math.max(...buckets.map((bucket) => Number(bucket.planned_qty) || 0), 1);
-  const total = buckets.reduce((sum, bucket) => sum + (Number(bucket.planned_qty) || 0), 0);
-  const planned = Number(plan.planned_qty) || 0;
+  const valueOf = (bucket: PlanBucket) =>
+    toNumber(
+      pickUnit(
+        { pieces: bucket.planned_qty, litres: bucket.planned_litres, cases: bucket.planned_cases },
+        unit,
+      ),
+    );
 
-  // The three grains must always agree. If they ever do not, the arithmetic is
-  // wrong and saying so beats quietly showing a different total per tab.
+  const peak = Math.max(...buckets.map(valueOf), 1);
+  const total = buckets.reduce((sum, bucket) => sum + valueOf(bucket), 0);
+  const planned = toNumber(
+    pickUnit(
+      { pieces: plan.planned_qty, litres: plan.planned_litres, cases: plan.planned_cases },
+      unit,
+    ),
+  );
+
+  // The three grains must always agree, in every unit. If they ever do not, the
+  // arithmetic is wrong and saying so beats quietly showing a different total
+  // per tab. The backend allocates the line total across buckets rather than
+  // converting each one, so this holds exactly rather than approximately.
   const reconciles = Math.abs(total - planned) < 1;
 
   return (
@@ -51,7 +68,7 @@ export function PlanBucketStrip({
 
         <div className="space-y-1.5">
           {buckets.map((bucket) => {
-            const value = Number(bucket.planned_qty) || 0;
+            const value = valueOf(bucket);
             return (
               <div key={bucket.bucket_start} className="flex items-center gap-3 text-xs">
                 <span className="w-40 shrink-0 truncate text-muted-foreground">
@@ -66,8 +83,8 @@ export function PlanBucketStrip({
                     style={{ width: `${Math.max((value / peak) * 100, 1)}%` }}
                   />
                 </div>
-                <span className="w-32 shrink-0 text-right font-mono tabular-nums">
-                  {qty(value)}
+                <span className="w-40 shrink-0 text-right font-mono tabular-nums">
+                  {qtyWithUnit(value, unit)}
                   {bucket.derived ? <DerivedMark /> : null}
                 </span>
               </div>
@@ -83,7 +100,7 @@ export function PlanBucketStrip({
               reconciles ? 'font-semibold' : 'font-semibold text-destructive',
             )}
           >
-            {qty(total)}
+            {qtyWithUnit(total, unit)}
             {!reconciles ? ` (plan says ${qty(planned)})` : ''}
           </span>
         </div>

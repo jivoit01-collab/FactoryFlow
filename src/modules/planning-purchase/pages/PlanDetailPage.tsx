@@ -21,12 +21,14 @@ import { usePlanDetail } from '../api';
 import {
   monthLabel,
   percent,
+  pickUnit,
   PlanBucketStrip,
   PlanLinesTable,
-  qty,
+  qtyWithUnit,
+  UnitToggle,
 } from '../components';
 import { BUCKET_TYPE_OPTIONS, SPREAD_POLICY_OPTIONS } from '../constants';
-import type { BucketType, SpreadPolicy } from '../types';
+import type { BucketType, PlanUnit, SpreadPolicy } from '../types';
 
 export default function PlanDetailPage() {
   const { planId } = useParams<{ planId: string }>();
@@ -37,6 +39,9 @@ export default function PlanDetailPage() {
 
   const [bucketType, setBucketType] = useState<BucketType>('WEEK');
   const [spreadPolicy, setSpreadPolicy] = useState<SpreadPolicy>('EVEN_WORKING_DAYS');
+  // Litres by default: this is an oil business, and a plan read in pieces invites
+  // comparing a 5 L tin with a 200 ML bottle as though they were the same thing.
+  const [unit, setUnit] = useState<PlanUnit>('LITRES');
 
   const query = usePlanDetail(absId || undefined, bucketType, spreadPolicy);
 
@@ -110,8 +115,32 @@ export default function PlanDetailPage() {
       {/* Four numbers: the period, the target, what was made, how that reads. */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryTile label="Period" value={monthLabel(plan.start_date, plan.end_date)} />
-        <SummaryTile label="Planned" value={qty(plan.planned_qty)} hint={`${plan.line_count} SKUs`} />
-        <SummaryTile label="Produced" value={qty(plan.produced_qty)} hint="SAP goods receipts" />
+        <SummaryTile
+          label="Planned"
+          value={qtyWithUnit(
+            pickUnit(
+              { pieces: plan.planned_qty, litres: plan.planned_litres, cases: plan.planned_cases },
+              unit,
+            ),
+            unit,
+          )}
+          hint={`${plan.line_count} SKUs`}
+        />
+        <SummaryTile
+          label="Produced"
+          value={qtyWithUnit(
+            pickUnit(
+              {
+                pieces: plan.produced_qty,
+                litres: plan.produced_litres,
+                cases: plan.produced_cases,
+              },
+              unit,
+            ),
+            unit,
+          )}
+          hint="SAP goods receipts"
+        />
         <SummaryTile
           label="Attainment"
           value={percent(plan.attainment_pct)}
@@ -125,6 +154,16 @@ export default function PlanDetailPage() {
           {plan.items_without_bom.length === 1 ? '' : 's'} have no production BOM in SAP
           ({plan.items_without_bom.map((item) => item.item_code).join(', ')}). Their
           materials cannot be exploded, so nothing is being bought for them.
+        </p>
+      ) : null}
+
+      {unit === 'LITRES' && plan.non_litre_item_count ? (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          {plan.non_litre_item_count} planned SKU
+          {plan.non_litre_item_count === 1 ? ' is' : 's are'} not flagged as litre
+          items in SAP ({plan.non_litre_items?.map((item) => item.item_code).join(', ')}),
+          so {plan.non_litre_item_count === 1 ? 'it contributes' : 'they contribute'} nothing
+          to the litre total. Switch to Pieces to see {plan.non_litre_item_count === 1 ? 'it' : 'them'}.
         </p>
       ) : null}
 
@@ -176,6 +215,8 @@ export default function PlanDetailPage() {
           </div>
         </div>
 
+        <UnitToggle unit={unit} onChange={setUnit} className="min-w-[260px]" />
+
         {policyHint ? (
           <p className="max-w-md text-[11px] leading-relaxed text-muted-foreground">
             {policyHint}
@@ -183,9 +224,9 @@ export default function PlanDetailPage() {
         ) : null}
       </div>
 
-      <PlanBucketStrip buckets={buckets} plan={plan} bucketLabel={bucketLabel} />
+      <PlanBucketStrip buckets={buckets} plan={plan} bucketLabel={bucketLabel} unit={unit} />
 
-      <PlanLinesTable lines={lines} />
+      <PlanLinesTable lines={lines} unit={unit} />
 
       <div className="space-y-1 text-xs text-muted-foreground">
         <p>{meta.derivation_note}</p>

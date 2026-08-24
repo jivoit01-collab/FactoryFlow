@@ -1,3 +1,5 @@
+import type { PlanUnit } from '../types';
+
 /**
  * Display helpers.
  *
@@ -15,6 +17,41 @@ export function toNumber(value: string | number | null | undefined): number {
 /** Whole units. Quantities here run to hundreds of thousands of bottles. */
 export function qty(value: string | number | null | undefined): string {
   return toNumber(value).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+/**
+ * The unit label that goes after a number.
+ *
+ * Every quantity on these screens carries one. Three units are in play at once —
+ * SAP stores pieces, the business plans in litres, the floor counts cases — and a
+ * bare "3,126,479" is genuinely ambiguous between them by a factor of 20.
+ */
+export const UNIT_LABEL: Record<PlanUnit, string> = {
+  LITRES: 'Ltr',
+  PIECES: 'Pcs',
+  CASES: 'Cases',
+};
+
+/** `4,485,985 Ltr` — the number and what it is, always together. */
+export function qtyWithUnit(
+  value: string | number | null | undefined,
+  unit: PlanUnit,
+): string {
+  return `${qty(value)} ${UNIT_LABEL[unit]}`;
+}
+
+/** Picks the right field off a row for the selected unit. */
+export function pickUnit(
+  source: {
+    pieces?: string | number | null;
+    litres?: string | number | null;
+    cases?: string | number | null;
+  },
+  unit: PlanUnit,
+): string | number | null | undefined {
+  if (unit === 'LITRES') return source.litres;
+  if (unit === 'CASES') return source.cases;
+  return source.pieces;
 }
 
 /** Keeps a couple of decimals — a BOM can call for 0.024 kg of shrink film. */

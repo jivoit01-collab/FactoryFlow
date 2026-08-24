@@ -22,6 +22,15 @@ export type SpreadPolicy = 'PERIOD_START' | 'EVEN_WORKING_DAYS';
 export type MaterialType = 'PACKAGING' | 'RAW' | 'OTHER';
 
 /**
+ * Which unit the plan screens display.
+ *
+ * SAP stores the plan in pieces. Litres is what an oil business actually reads a
+ * plan in, and cases is what the floor counts, so all three are carried on every
+ * row and bucket and the page just picks one. Attainment % is unit-independent.
+ */
+export type PlanUnit = 'LITRES' | 'PIECES' | 'CASES';
+
+/**
  * `NO_LEAD_TIME` outranks `SCHEDULED` on purpose: a shortage nobody can date is
  * the reference-data gap that needs chasing, not a low-priority item.
  */
@@ -43,6 +52,8 @@ export interface PlanBucket {
   bucket_start: string;
   label?: string;
   planned_qty: string;
+  planned_litres?: string;
+  planned_cases?: string;
   /** True when this figure was spread by the app rather than stated by SAP. */
   derived: boolean;
   spread_policy?: SpreadPolicy;
@@ -64,7 +75,14 @@ export interface PlanHeader {
   line_count: number;
   item_count?: number;
   planned_qty: string;
+  planned_litres?: string;
+  planned_cases?: string;
   produced_qty?: string;
+  produced_litres?: string;
+  produced_cases?: string;
+  /** SKUs SAP does not flag as litre items; they contribute 0 to a litre total. */
+  non_litre_item_count?: number;
+  non_litre_items?: PlanItemWithoutBom[];
   attainment_pct?: string;
   first_bucket_date?: string | null;
   last_bucket_date?: string | null;
@@ -83,13 +101,21 @@ export interface PlanLine {
   planned_qty: string;
   /** The same figure in cases, derived from `pieces_per_case`. */
   planned_cases: string;
+  /** The same figure in litres, from `OITM.SalPackUn`. Zero if not a litre item. */
+  planned_litres: string;
   uom: string;
   pieces_per_case: number;
+  /** Litres in one piece. 1 for a 1 L bottle, 0.2 for 200 ML, 0.9549 for 869 GMS. */
+  litres_per_unit: string;
+  /** False means SAP does not flag it as a litre item, not that it holds nothing. */
+  is_litre_item: boolean;
   has_bom: boolean;
   /** From SAP movements (OINM TransType 59), in the same unit as `planned_qty`. */
   produced_qty: string;
   produced_cases: string;
+  produced_litres: string;
   variance_qty: string;
+  variance_litres: string;
   attainment_pct: string;
   buckets: PlanBucket[];
 }

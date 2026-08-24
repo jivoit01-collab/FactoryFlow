@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react';
 import { Badge, Input } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import type { PlanLine } from '../types';
-import { percent, qty } from './format';
+import type { PlanLine, PlanUnit } from '../types';
+import { percent, pickUnit, qtyWithUnit, toNumber,UNIT_LABEL } from './format';
 
 type SortKey = 'planned' | 'attainment' | 'code';
 
@@ -16,7 +16,7 @@ type SortKey = 'planned' | 'attainment' | 'code';
  * SKU — single bottles, not cases), so the comparison needs no conversion. Cases
  * are shown alongside because that is what the floor counts in.
  */
-export function PlanLinesTable({ lines }: { lines: PlanLine[] }) {
+export function PlanLinesTable({ lines, unit }: { lines: PlanLine[]; unit: PlanUnit }) {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('planned');
 
@@ -30,16 +30,24 @@ export function PlanLinesTable({ lines }: { lines: PlanLine[] }) {
         )
       : lines;
 
+    const plannedIn = (line: PlanLine) =>
+      toNumber(
+        pickUnit(
+          { pieces: line.planned_qty, litres: line.planned_litres, cases: line.planned_cases },
+          unit,
+        ),
+      );
+
     const sorted = [...filtered];
     if (sortKey === 'planned') {
-      sorted.sort((a, b) => Number(b.planned_qty) - Number(a.planned_qty));
+      sorted.sort((a, b) => plannedIn(b) - plannedIn(a));
     } else if (sortKey === 'attainment') {
       sorted.sort((a, b) => Number(a.attainment_pct) - Number(b.attainment_pct));
     } else {
       sorted.sort((a, b) => a.item_code.localeCompare(b.item_code));
     }
     return sorted;
-  }, [lines, search, sortKey]);
+  }, [lines, search, sortKey, unit]);
 
   return (
     <div className="space-y-3">
@@ -83,9 +91,13 @@ export function PlanLinesTable({ lines }: { lines: PlanLine[] }) {
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">SKU</th>
-              <th className="px-3 py-2 text-right font-medium">Planned</th>
-              <th className="px-3 py-2 text-right font-medium">Cases</th>
-              <th className="px-3 py-2 text-right font-medium">Produced</th>
+              <th className="px-3 py-2 text-right font-medium">
+                Planned ({UNIT_LABEL[unit]})
+              </th>
+              <th className="px-3 py-2 text-right font-medium">Per piece</th>
+              <th className="px-3 py-2 text-right font-medium">
+                Produced ({UNIT_LABEL[unit]})
+              </th>
               <th className="px-3 py-2 text-right font-medium">Variance</th>
               <th className="px-3 py-2 text-right font-medium">Attainment</th>
             </tr>
@@ -93,7 +105,27 @@ export function PlanLinesTable({ lines }: { lines: PlanLine[] }) {
           <tbody>
             {rows.map((line) => {
               const attainment = Number(line.attainment_pct);
-              const variance = Number(line.variance_qty);
+              const planned = toNumber(
+                pickUnit(
+                  {
+                    pieces: line.planned_qty,
+                    litres: line.planned_litres,
+                    cases: line.planned_cases,
+                  },
+                  unit,
+                ),
+              );
+              const produced = toNumber(
+                pickUnit(
+                  {
+                    pieces: line.produced_qty,
+                    litres: line.produced_litres,
+                    cases: line.produced_cases,
+                  },
+                  unit,
+                ),
+              );
+              const variance = produced - planned;
               return (
                 <tr key={`${line.item_code}-${line.line_id}`} className="border-t">
                   <td className="px-3 py-2">
@@ -115,15 +147,30 @@ export function PlanLinesTable({ lines }: { lines: PlanLine[] }) {
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">
-                    {qty(line.planned_qty)}
-                    <span className="ml-1 text-[10px] text-muted-foreground">{line.uom}</span>
+                    {qtyWithUnit(planned, unit)}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                    {qty(line.planned_cases)}
-                    <span className="ml-1 text-[10px]">@{line.pieces_per_case}</span>
+                    {/* The conversion factor behind the number in this row, so a
+                        litre figure can be checked against the SKU it came from. */}
+                    {unit === 'LITRES' ? (
+                      line.is_litre_item ? (
+                        `${line.litres_per_unit} Ltr`
+                      ) : (
+                        <span
+                          className="text-amber-600 dark:text-amber-400"
+                          title="SAP does not flag this item as a litre item (U_IsLitre), so it contributes nothing to a litre total."
+                        >
+                          not litre
+                        </span>
+                      )
+                    ) : unit === 'CASES' ? (
+                      `${line.pieces_per_case} Pcs`
+                    ) : (
+                      '1 Pcs'
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">
-                    {qty(line.produced_qty)}
+                    {qtyWithUnit(produced, unit)}
                   </td>
                   <td
                     className={cn(
@@ -132,7 +179,7 @@ export function PlanLinesTable({ lines }: { lines: PlanLine[] }) {
                     )}
                   >
                     {variance > 0 ? '+' : ''}
-                    {qty(variance)}
+                    {qtyWithUnit(variance, unit)}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <span
