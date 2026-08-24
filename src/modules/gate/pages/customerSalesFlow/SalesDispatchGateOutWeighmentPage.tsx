@@ -51,7 +51,11 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { getExpectedDispatchBoxes, parsePositiveNumber } from './salesDispatchBoxCounts';
+import {
+  getExpectedDispatchBoxes,
+  getExpectedDispatchLoose,
+  parsePositiveNumber,
+} from './salesDispatchBoxCounts';
 import {
   formatTimestamp,
   formatValue,
@@ -59,6 +63,11 @@ import {
   toTimeInputValue,
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes } from './salesDispatchRoutes';
+import {
+  formatPartBoxNote,
+  mergeScanProgress,
+  summarizeScanProgress,
+} from './salesDispatchScanSummary';
 
 const GATE_OUT_WEIGHMENT_TOTAL_STEPS = 2;
 
@@ -313,7 +322,16 @@ export default function SalesDispatchGateOutWeighmentPage() {
   const isCombinedLoad = truckDockings.length > 1;
 
   const scans = truckDockings.flatMap((docking) => docking.box_scans ?? []);
-  const scannedBoxes = scans.length;
+  // Split the labels the way the bill prints its goods: only FULL boxes are comparable to
+  // the expected box count. A bill invoicing 180 pcs of a 16-PCS item prints 11 boxes + 4
+  // loose, and those 4 ride out in a 12th carton with its own barcode — counting it as a
+  // box is what showed a complete truck as "376 / 375" on the weighbridge screen.
+  const scanProgress = mergeScanProgress(
+    truckDockings.map((docking) =>
+      summarizeScanProgress(getInvoiceItems(docking), docking.box_scans ?? []),
+    ),
+  );
+  const scannedBoxes = scanProgress.fullBoxes;
   const scannedQty = scans.reduce((sum, scan) => sum + parsePositiveNumber(scan.quantity), 0);
   const scannedNetWeight = scans.reduce(
     (sum, scan) => sum + parsePositiveNumber(scan.net_weight),
@@ -323,6 +341,12 @@ export default function SalesDispatchGateOutWeighmentPage() {
     (sum, docking) => sum + getExpectedDispatchBoxes(docking),
     0,
   );
+  // The printed loose remainder those part boxes carry, so the tile can show both halves.
+  const expectedLoose = truckDockings.reduce(
+    (sum, docking) => sum + getExpectedDispatchLoose(docking),
+    0,
+  );
+  const scanNote = formatPartBoxNote(scanProgress, expectedLoose);
   const invoiceItems = truckDockings.flatMap((docking) => getInvoiceItems(docking));
   const sapInvoiceWeight = truckDockings.reduce(
     (sum, docking) => sum + parsePositiveNumber(docking.total_weight),
@@ -455,9 +479,11 @@ export default function SalesDispatchGateOutWeighmentPage() {
       <DockingLoadCard
         scans={scans}
         scannedBoxes={scannedBoxes}
+        scanNote={scanNote}
         scannedQty={scannedQty}
         scannedNetWeight={scannedNetWeight}
         expectedBoxes={expectedBoxes}
+        expectedLoose={expectedLoose}
         invoiceItems={invoiceItems}
         invoiceWeight={sapInvoiceWeight}
         invoiceBoxes={invoiceBoxes}
@@ -749,19 +775,26 @@ function WeightCheckCard({
 function DockingLoadCard({
   scans,
   scannedBoxes,
+  scanNote,
   scannedQty,
   scannedNetWeight,
   expectedBoxes,
+  expectedLoose,
   invoiceItems,
   invoiceWeight,
   invoiceBoxes,
   scanSkipApproved,
 }: {
   scans: SalesDispatchBoxScan[];
+  /** FULL boxes scanned — the only figure comparable to the expected box count. */
   scannedBoxes: number;
+  /** "+ 1 part box (4 / 4 pcs loose)" — the part boxes the box count leaves out. */
+  scanNote: string;
   scannedQty: number;
   scannedNetWeight: number;
   expectedBoxes: number;
+  /** Invoiced pieces that ride out loose, in part boxes. */
+  expectedLoose: number;
   invoiceItems: SalesDispatchItem[];
   invoiceWeight: number;
   invoiceBoxes: number;
@@ -781,10 +814,10 @@ function DockingLoadCard({
             label="Scanned Boxes"
             value={
               expectedBoxes > 0
-                ? `${scannedBoxes} / ${formatNumber(expectedBoxes)}`
-                : String(scannedBoxes)
+                ? `${formatNumber(scannedBoxes)} / ${formatNumber(expectedBoxes)}`
+                : formatNumber(scannedBoxes)
             }
-            hint="Boxes scanned at docking"
+            hint={scanNote || 'Boxes scanned at docking'}
           />
           <MetricTile label="Scanned Qty" value={scannedQty > 0 ? formatNumber(scannedQty) : '—'} />
           <MetricTile
@@ -792,7 +825,13 @@ function DockingLoadCard({
             value={scannedNetWeight > 0 ? formatKg(scannedNetWeight) : '—'}
             hint="Sum of scanned box weights"
           />
-          <MetricTile label="Invoice Boxes" value={invoiceBoxes > 0 ? formatNumber(invoiceBoxes) : '—'} />
+          <MetricTile
+            label="Invoice Boxes"
+            value={invoiceBoxes > 0 ? formatNumber(invoiceBoxes) : '—'}
+            // The bill prints boxes AND a loose remainder; naming it here stops "375
+            // boxes" reading as the whole shipment when 4 pcs ship loose in a part box.
+            hint={expectedLoose > 0 ? `+ ${formatNumber(expectedLoose)} pcs loose` : ''}
+          />
           <MetricTile label="Invoice Weight" value={invoiceWeight > 0 ? formatKg(invoiceWeight) : '—'} />
         </div>
 
