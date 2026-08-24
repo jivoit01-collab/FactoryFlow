@@ -75,6 +75,53 @@ export function isMultiDockingTruck(entry?: SalesDispatchGateOut | null) {
   return dockingCount > 1 && Boolean(entry?.arrival);
 }
 
+type DockingRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | null | undefined;
+
+export interface ScanGateInput {
+  /** Box scanning is turned off for this company (e.g. Jivo Beverages). */
+  boxScanOptional: boolean;
+  /** Boxes scanned across every scan-required docking on the truck. */
+  scannedCount: number;
+  /** The load still carries invoiced goods nobody scanned (judged load-wide). */
+  isPartialScan: boolean;
+  /** Status of this docking's own scan-skip / partial-dispatch request. */
+  ownSkipStatus?: DockingRequestStatus;
+  ownPartialStatus?: DockingRequestStatus;
+  /** The other dockings on this truck, empty for a single-docking load. */
+  loadDockings?: SalesDispatchGateOut[];
+}
+
+/**
+ * Whether the operator may leave the scanning step, and which approval let them.
+ *
+ * The shortfall is judged LOAD-WIDE (one truck, every docking's bills), but an admin
+ * approval is filed against the single docking it was raised from. So an approval sitting
+ * on any docking of the truck releases all of them — otherwise the operator standing on
+ * the fully scanned half of a split load is held for an approval that docking can't even
+ * raise (a bill of PM cartons carries no box barcode to scan).
+ */
+export function resolveScanGate({
+  boxScanOptional,
+  scannedCount,
+  isPartialScan,
+  ownSkipStatus,
+  ownPartialStatus,
+  loadDockings = [],
+}: ScanGateInput) {
+  const skipApproved =
+    ownSkipStatus === 'APPROVED' ||
+    loadDockings.some((docking) => Boolean(docking.gatepass_readiness?.scan_skip_approved));
+  const partialApproved =
+    ownPartialStatus === 'APPROVED' ||
+    loadDockings.some((docking) => Boolean(docking.gatepass_readiness?.partial_scan_approved));
+  const satisfied =
+    boxScanOptional ||
+    (scannedCount > 0 && !isPartialScan) ||
+    (scannedCount === 0 && skipApproved) ||
+    (isPartialScan && partialApproved);
+  return { skipApproved, partialApproved, satisfied };
+}
+
 export function formatDateTime(date?: string | null, time?: string | null) {
   const value = [date, time].filter(Boolean).join(' ');
   return value || '-';

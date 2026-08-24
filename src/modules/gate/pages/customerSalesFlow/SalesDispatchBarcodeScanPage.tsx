@@ -93,6 +93,7 @@ import {
   formatTimestamp,
   formatValue,
   isMultiDockingTruck,
+  resolveScanGate,
 } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 import {
@@ -222,10 +223,8 @@ export default function SalesDispatchBarcodeScanPage() {
   // the admin scan-skip approval flow. Driven by the backend per the entry's company.
   const isBoxScanOptional = entry?.gatepass_readiness?.box_scan_optional ?? false;
   const skipStatus = skipRequest?.status ?? null;
-  const isSkipApproved = skipStatus === 'APPROVED';
   const isSkipPending = skipStatus === 'PENDING';
   const partialStatus = partialRequest?.status ?? null;
-  const isPartialApproved = partialStatus === 'APPROVED';
   const isPartialPending = partialStatus === 'PENDING';
   const isSaving = scanBox.isPending || removeScan.isPending || removeScans.isPending;
 
@@ -349,11 +348,22 @@ export default function SalesDispatchBarcodeScanPage() {
   // scan entirely (zero-scan "full approval"), or an admin approved the partial scan.
   // Companies with scanning turned off (box_scan_optional) are never gated. This is the
   // visible half of the gate; the backend re-checks the same rule at gatepass print.
-  const scanGateSatisfied =
-    isBoxScanOptional ||
-    (gatingScanCount > 0 && !isPartialScan) ||
-    (gatingScanCount === 0 && isSkipApproved) ||
-    (isPartialScan && isPartialApproved);
+  // The shortfall is judged load-wide, so an approval raised from ANY docking on this
+  // truck counts — sibling state rides along on dockings already fetched, no extra
+  // request. Without that, the operator on a fully scanned docking is locked by a
+  // sibling's unscannable bill and cannot raise the approval that would free it.
+  const {
+    skipApproved: isSkipApproved,
+    partialApproved: isPartialApproved,
+    satisfied: scanGateSatisfied,
+  } = resolveScanGate({
+    boxScanOptional: isBoxScanOptional,
+    scannedCount: gatingScanCount,
+    isPartialScan,
+    ownSkipStatus: skipStatus,
+    ownPartialStatus: partialStatus,
+    loadDockings: isArrivalMode ? arrivalDockings.dockings : [],
+  });
   const isScanLocked = !isReview && !isReadOnly && !scanGateSatisfied;
   const scanLockMessage = !isScanLocked
     ? ''
@@ -739,6 +749,7 @@ export default function SalesDispatchBarcodeScanPage() {
       ) : gatingScanCount === 0 ? (
         <ScanSkipPanel
           skipRequest={skipRequest}
+          approvedOnLoad={isSkipApproved}
           canRequest={canRequestScanSkip && !isReadOnly && canEditDocking}
           hasScans={false}
           isSubmitting={createSkipRequest.isPending}
@@ -751,6 +762,7 @@ export default function SalesDispatchBarcodeScanPage() {
       ) : isPartialScan ? (
         <PartialScanPanel
           partialRequest={partialRequest}
+          approvedOnLoad={isPartialApproved}
           canRequest={canRequestPartial && !isReadOnly && canEditDocking}
           scanned={gatingFullBoxCount}
           expected={expectedBoxes}
@@ -991,9 +1003,11 @@ export default function SalesDispatchBarcodeScanPage() {
           <DialogHeader>
             <DialogTitle>Request Partial Dispatch Approval</DialogTitle>
             <DialogDescription>
-              Only {gatingScanCount} of {expectedBoxes} boxes are scanned. Send this Docking entry to
-              Admin for approval to dispatch with a partial scan. You cannot continue until an admin
-              approves the request.
+              {gatingFullBoxCount < expectedBoxes
+                ? `Only ${gatingFullBoxCount} of ${expectedBoxes} boxes are scanned.`
+                : 'Some bills on this load still have unscanned items.'}{' '}
+              Send this load to Admin for approval to dispatch with a partial scan. You cannot
+              continue until an admin approves the request.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -1900,12 +1914,15 @@ function ScanOptionalPanel() {
 
 function ScanSkipPanel({
   skipRequest,
+  approvedOnLoad,
   canRequest,
   hasScans,
   isSubmitting,
   onRequest,
 }: {
   skipRequest?: DockingScanSkipRequest | null;
+  /** An approval raised from another docking on this same truck already cleared the load. */
+  approvedOnLoad?: boolean;
   canRequest: boolean;
   hasScans: boolean;
   isSubmitting: boolean;
@@ -1913,7 +1930,7 @@ function ScanSkipPanel({
 }) {
   const status = skipRequest?.status ?? null;
 
-  if (status === 'APPROVED') {
+  if (status === 'APPROVED' || approvedOnLoad) {
     return (
       <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
@@ -1923,7 +1940,9 @@ function ScanSkipPanel({
             {skipRequest?.reviewed_by_name
               ? `Approved by ${skipRequest.reviewed_by_name}. `
               : ''}
-            You can continue to attachments without scanning boxes.
+            {status === 'APPROVED'
+              ? 'You can continue to attachments without scanning boxes.'
+              : "Approved for this truck's load on another company's docking. You can continue to attachments without scanning boxes."}
           </p>
           {skipRequest?.review_notes ? (
             <p className="text-sm text-emerald-800">Note: {skipRequest.review_notes}</p>
@@ -1993,6 +2012,7 @@ function ScanSkipPanel({
 
 function PartialScanPanel({
   partialRequest,
+  approvedOnLoad,
   canRequest,
   scanned,
   expected,
@@ -2000,6 +2020,8 @@ function PartialScanPanel({
   onRequest,
 }: {
   partialRequest?: DockingPartialScanRequest | null;
+  /** An approval raised from another docking on this same truck already cleared the load. */
+  approvedOnLoad?: boolean;
   canRequest: boolean;
   scanned: number;
   expected: number;
@@ -2008,7 +2030,7 @@ function PartialScanPanel({
 }) {
   const status = partialRequest?.status ?? null;
 
-  if (status === 'APPROVED') {
+  if (status === 'APPROVED' || approvedOnLoad) {
     return (
       <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
@@ -2016,7 +2038,9 @@ function PartialScanPanel({
           <p className="font-medium">Partial dispatch approved</p>
           <p className="text-sm">
             {partialRequest?.reviewed_by_name ? `Approved by ${partialRequest.reviewed_by_name}. ` : ''}
-            You can continue to attachments with the boxes scanned so far.
+            {status === 'APPROVED'
+              ? 'You can continue to attachments with the boxes scanned so far.'
+              : "Approved for this truck's load on another company's docking. You can continue to attachments with the boxes scanned so far."}
           </p>
           {partialRequest?.review_notes ? (
             <p className="text-sm text-emerald-800">Note: {partialRequest.review_notes}</p>
@@ -2061,7 +2085,11 @@ function PartialScanPanel({
           <p className="text-sm text-muted-foreground">
             {wasRejected
               ? 'Please scan the remaining boxes to continue, or raise a new request.'
-              : `Only ${scanned} of ${expected} boxes are scanned. Request admin approval to dispatch this Docking entry with a partial scan.`}
+              : `${
+                  scanned < expected
+                    ? `Only ${scanned} of ${expected} boxes are scanned.`
+                    : 'Some bills on this load still have unscanned items.'
+                } Request admin approval to dispatch this load with a partial scan.`}
           </p>
           {wasRejected && partialRequest?.review_notes ? (
             <p className="text-sm text-red-700">Reason: {partialRequest.review_notes}</p>
