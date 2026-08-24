@@ -1,11 +1,18 @@
 // Daily registers — factory-wide (not company-scoped) maintenance records:
 // per-meter daily electricity readings and a simple daily wastage log.
 
+import type { CompanyCode } from '@/config/constants';
+
 export interface ElectricityMeter {
   id: number;
   name: string;
   meter_number: string;
   location: string;
+  // Companies the meter feeds. Several codes = a shared meter (Oil + Beverages
+  // run off the same campus supply); Mart meters stand alone. Empty = not
+  // attributed to any company yet.
+  company_codes: CompanyCode[];
+  companies_display: string;
   rate_per_unit: string;
   // Latest reading, used to prefill the next opening reading.
   last_reading_date: string | null;
@@ -20,6 +27,7 @@ export interface ElectricityMeterPayload {
   name: string;
   meter_number?: string;
   location?: string;
+  company_codes?: CompanyCode[];
   rate_per_unit?: string;
   is_active?: boolean;
 }
@@ -27,12 +35,16 @@ export interface ElectricityMeterPayload {
 export interface ElectricityMeterFilters {
   search?: string;
   is_active?: boolean;
+  // Keeps only meters tagged with this company (shared meters match each of
+  // theirs); untagged meters drop out.
+  company?: CompanyCode | 'ALL';
 }
 
 export interface DailyElectricityReading {
   id: number;
   meter: number;
   meter_name: string;
+  meter_companies_display: string;
   date: string;
   opening_reading: string;
   closing_reading: string;
@@ -62,6 +74,7 @@ export interface DailyElectricityReadingFilters {
   date_from?: string;
   date_to?: string;
   meter?: number | 'ALL';
+  company?: CompanyCode | 'ALL';
 }
 
 export interface DailyWastageLog {

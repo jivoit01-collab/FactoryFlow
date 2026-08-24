@@ -2,6 +2,7 @@ import { Gauge, Loader2, Pencil, Plus, Trash2, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { COMPANY_CODE_LIST, COMPANY_LABELS, type CompanyCode } from '@/config/constants';
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -9,6 +10,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -54,6 +56,9 @@ const EMPTY_METER_FORM = {
   meter_number: '',
   location: '',
   rate_per_unit: '',
+  // Companies the meter feeds — several for a shared meter, one for a meter on
+  // its own supply (Jivo Mart), none if it is not attributed yet.
+  company_codes: [] as CompanyCode[],
 };
 
 export default function MaintenanceDailyElectricityPage() {
@@ -74,12 +79,16 @@ export default function MaintenanceDailyElectricityPage() {
   const [dateFrom, setDateFrom] = useState(firstOfMonthISO());
   const [dateTo, setDateTo] = useState(todayISO());
   const [meterFilter, setMeterFilter] = useState('');
+  const [companyFilter, setCompanyFilter] = useState<CompanyCode | ''>('');
 
+  // The meter master stays unfiltered so editing a reading always finds its
+  // meter; only the readings list narrows by company.
   const { data: meters = [], isLoading: metersLoading } = useElectricityMeters();
   const { data: readings = [], isLoading } = useDailyElectricityReadings({
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
     meter: meterFilter ? Number(meterFilter) : undefined,
+    company: companyFilter || undefined,
   });
 
   const createReading = useCreateDailyElectricityReading();
@@ -199,6 +208,7 @@ export default function MaintenanceDailyElectricityPage() {
       meter_number: meter.meter_number,
       location: meter.location,
       rate_per_unit: meter.rate_per_unit,
+      company_codes: meter.company_codes ?? [],
     });
   };
 
@@ -212,6 +222,7 @@ export default function MaintenanceDailyElectricityPage() {
       meter_number: meterForm.meter_number,
       location: meterForm.location,
       rate_per_unit: meterForm.rate_per_unit === '' ? undefined : meterForm.rate_per_unit,
+      company_codes: meterForm.company_codes,
     };
     try {
       if (editingMeter) {
@@ -226,6 +237,15 @@ export default function MaintenanceDailyElectricityPage() {
     } catch {
       /* interceptor handles (e.g. duplicate name) */
     }
+  };
+
+  const toggleMeterCompany = (code: CompanyCode) => {
+    setMeterForm((prev) => ({
+      ...prev,
+      company_codes: prev.company_codes.includes(code)
+        ? prev.company_codes.filter((c) => c !== code)
+        : [...prev.company_codes, code],
+    }));
   };
 
   const toggleMeterActive = async (meter: ElectricityMeter) => {
@@ -298,6 +318,21 @@ export default function MaintenanceDailyElectricityPage() {
               ))}
             </NativeSelect>
           </div>
+          <div className="min-w-[180px]">
+            <Label htmlFor="elec-company-filter">Company</Label>
+            <NativeSelect
+              id="elec-company-filter"
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value as CompanyCode | '')}
+            >
+              <SelectOption value="">All companies</SelectOption>
+              {COMPANY_CODE_LIST.map((code) => (
+                <SelectOption key={code} value={code}>
+                  {COMPANY_LABELS[code]}
+                </SelectOption>
+              ))}
+            </NativeSelect>
+          </div>
           <div className="ml-auto flex items-center gap-6 text-sm">
             <div>
               <span className="text-muted-foreground">Total Units: </span>
@@ -333,6 +368,7 @@ export default function MaintenanceDailyElectricityPage() {
                   <tr className="border-b bg-muted/50 text-left">
                     <th className="px-3 py-2 font-medium">Date</th>
                     <th className="px-3 py-2 font-medium">Meter</th>
+                    <th className="px-3 py-2 font-medium">Company</th>
                     <th className="px-3 py-2 font-medium text-right">Opening</th>
                     <th className="px-3 py-2 font-medium text-right">Closing</th>
                     <th className="px-3 py-2 font-medium text-right">Units</th>
@@ -348,6 +384,11 @@ export default function MaintenanceDailyElectricityPage() {
                     <tr key={reading.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="whitespace-nowrap px-3 py-2">{reading.date}</td>
                       <td className="px-3 py-2">{reading.meter_name}</td>
+                      <td className="px-3 py-2">
+                        {reading.meter_companies_display || (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right">{reading.opening_reading}</td>
                       <td className="px-3 py-2 text-right">{reading.closing_reading}</td>
                       <td className="px-3 py-2 text-right font-medium">{reading.units_consumed}</td>
@@ -528,6 +569,7 @@ export default function MaintenanceDailyElectricityPage() {
                       <th className="px-3 py-2 font-medium">Name</th>
                       <th className="px-3 py-2 font-medium">Meter No.</th>
                       <th className="px-3 py-2 font-medium">Location</th>
+                      <th className="px-3 py-2 font-medium">Company</th>
                       <th className="px-3 py-2 font-medium text-right">Rate</th>
                       <th className="px-3 py-2" />
                     </tr>
@@ -545,6 +587,11 @@ export default function MaintenanceDailyElectricityPage() {
                         </td>
                         <td className="px-3 py-2">{meter.meter_number}</td>
                         <td className="px-3 py-2">{meter.location}</td>
+                        <td className="px-3 py-2">
+                          {meter.companies_display || (
+                            <span className="text-muted-foreground">Not set</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-right">{meter.rate_per_unit}</td>
                         <td className="whitespace-nowrap px-3 py-2 text-right">
                           <Button
@@ -607,6 +654,28 @@ export default function MaintenanceDailyElectricityPage() {
                   />
                 </div>
               </div>
+              <fieldset className="mt-3">
+                {/* A legend, not a Label: the heading names the group, each
+                    checkbox carries its own label. */}
+                <legend className="text-sm font-medium leading-none">Companies served</legend>
+                <div className="mt-1 flex flex-wrap items-center gap-4">
+                  {COMPANY_CODE_LIST.map((code) => (
+                    <label key={code} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        id={`meter-company-${code}`}
+                        checked={meterForm.company_codes.includes(code)}
+                        onCheckedChange={() => toggleMeterCompany(code)}
+                      />
+                      {COMPANY_LABELS[code]}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tick every company this meter feeds — a shared meter can serve both Jivo Oil
+                  and Jivo Beverages. Jivo Mart runs on its own supply, so its meters are tagged
+                  Mart alone.
+                </p>
+              </fieldset>
               <div className="mt-3 flex justify-end gap-2">
                 {editingMeter && (
                   <Button
