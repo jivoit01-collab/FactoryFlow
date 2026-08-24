@@ -14,6 +14,9 @@ export interface ElectricityMeter {
   company_codes: CompanyCode[];
   companies_display: string;
   rate_per_unit: string;
+  // Grid multiplying factor: the dial difference is multiplied by it to get the
+  // billed units. "1.0000" means the dial reads true.
+  multiplying_factor: string;
   // Latest reading, used to prefill the next opening reading.
   last_reading_date: string | null;
   last_closing_reading: string | null;
@@ -29,6 +32,7 @@ export interface ElectricityMeterPayload {
   location?: string;
   company_codes?: CompanyCode[];
   rate_per_unit?: string;
+  multiplying_factor?: string;
   is_active?: boolean;
 }
 
@@ -48,6 +52,10 @@ export interface DailyElectricityReading {
   date: string;
   opening_reading: string;
   closing_reading: string;
+  // What the dial moved, before the factor; units_consumed is the billed
+  // figure (dial_difference × multiplying_factor).
+  dial_difference: string;
+  multiplying_factor: string;
   units_consumed: string;
   rate_per_unit: string;
   total_cost: string;
@@ -66,6 +74,8 @@ export interface DailyElectricityReadingPayload {
   closing_reading: string;
   // Omit to snapshot the meter's current rate.
   rate_per_unit?: string;
+  // Omit to snapshot the meter's current multiplying factor.
+  multiplying_factor?: string;
   remarks?: string;
 }
 

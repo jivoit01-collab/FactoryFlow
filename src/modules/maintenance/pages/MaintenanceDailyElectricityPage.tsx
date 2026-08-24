@@ -37,6 +37,12 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** "40.0000" reads as ×40; only show decimals when the MF actually has them. */
+function trimFactor(factor: string) {
+  const value = parseFloat(factor);
+  return Number.isFinite(value) ? String(value) : factor;
+}
+
 function firstOfMonthISO() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -48,6 +54,7 @@ const EMPTY_READING_FORM = {
   opening_reading: '',
   closing_reading: '',
   rate_per_unit: '',
+  multiplying_factor: '',
   remarks: '',
 };
 
@@ -56,6 +63,8 @@ const EMPTY_METER_FORM = {
   meter_number: '',
   location: '',
   rate_per_unit: '',
+  // Grid MF — left blank the backend keeps it at 1 (dial read as-is).
+  multiplying_factor: '',
   // Companies the meter feeds — several for a shared meter, one for a meter on
   // its own supply (Jivo Mart), none if it is not attributed yet.
   company_codes: [] as CompanyCode[],
@@ -118,9 +127,20 @@ export default function MaintenanceDailyElectricityPage() {
   const selectedMeter = readingForm.meter
     ? meters.find((m) => m.id === Number(readingForm.meter))
     : undefined;
-  const previewUnits =
+  // What the dial moved, before the multiplying factor.
+  const previewDialDiff =
     readingForm.opening_reading !== '' && readingForm.closing_reading !== ''
       ? parseFloat(readingForm.closing_reading) - parseFloat(readingForm.opening_reading)
+      : null;
+  const previewFactor = readingForm.multiplying_factor !== ''
+    ? parseFloat(readingForm.multiplying_factor)
+    : selectedMeter
+      ? parseFloat(selectedMeter.multiplying_factor)
+      : 1;
+  // Billed units — what the grid charges for, dial difference × MF.
+  const previewUnits =
+    previewDialDiff != null && Number.isFinite(previewFactor)
+      ? previewDialDiff * previewFactor
       : null;
   const previewRate = readingForm.rate_per_unit !== ''
     ? parseFloat(readingForm.rate_per_unit)
@@ -144,6 +164,7 @@ export default function MaintenanceDailyElectricityPage() {
       opening_reading: reading.opening_reading,
       closing_reading: reading.closing_reading,
       rate_per_unit: reading.rate_per_unit,
+      multiplying_factor: reading.multiplying_factor,
       remarks: reading.remarks || '',
     });
     setDialog('reading');
@@ -157,6 +178,7 @@ export default function MaintenanceDailyElectricityPage() {
       // Prefill for convenience; both stay editable.
       opening_reading: meter?.last_closing_reading ?? prev.opening_reading,
       rate_per_unit: meter?.rate_per_unit ?? prev.rate_per_unit,
+      multiplying_factor: meter?.multiplying_factor ?? prev.multiplying_factor,
     }));
   };
 
@@ -175,6 +197,8 @@ export default function MaintenanceDailyElectricityPage() {
       opening_reading: readingForm.opening_reading === '' ? undefined : readingForm.opening_reading,
       closing_reading: readingForm.closing_reading,
       rate_per_unit: readingForm.rate_per_unit === '' ? undefined : readingForm.rate_per_unit,
+      multiplying_factor:
+        readingForm.multiplying_factor === '' ? undefined : readingForm.multiplying_factor,
       remarks: readingForm.remarks,
     };
     try {
@@ -208,6 +232,7 @@ export default function MaintenanceDailyElectricityPage() {
       meter_number: meter.meter_number,
       location: meter.location,
       rate_per_unit: meter.rate_per_unit,
+      multiplying_factor: meter.multiplying_factor,
       company_codes: meter.company_codes ?? [],
     });
   };
@@ -222,6 +247,8 @@ export default function MaintenanceDailyElectricityPage() {
       meter_number: meterForm.meter_number,
       location: meterForm.location,
       rate_per_unit: meterForm.rate_per_unit === '' ? undefined : meterForm.rate_per_unit,
+      multiplying_factor:
+        meterForm.multiplying_factor === '' ? undefined : meterForm.multiplying_factor,
       company_codes: meterForm.company_codes,
     };
     try {
@@ -371,6 +398,7 @@ export default function MaintenanceDailyElectricityPage() {
                     <th className="px-3 py-2 font-medium">Company</th>
                     <th className="px-3 py-2 font-medium text-right">Opening</th>
                     <th className="px-3 py-2 font-medium text-right">Closing</th>
+                    <th className="px-3 py-2 font-medium text-right">MF</th>
                     <th className="px-3 py-2 font-medium text-right">Units</th>
                     <th className="px-3 py-2 font-medium text-right">Rate</th>
                     <th className="px-3 py-2 font-medium text-right">Cost</th>
@@ -391,7 +419,17 @@ export default function MaintenanceDailyElectricityPage() {
                       </td>
                       <td className="px-3 py-2 text-right">{reading.opening_reading}</td>
                       <td className="px-3 py-2 text-right">{reading.closing_reading}</td>
-                      <td className="px-3 py-2 text-right font-medium">{reading.units_consumed}</td>
+                      <td className="px-3 py-2 text-right">
+                        ×{trimFactor(reading.multiplying_factor)}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-right font-medium"
+                        title={`Dial ${reading.dial_difference} × MF ${trimFactor(
+                          reading.multiplying_factor,
+                        )}`}
+                      >
+                        {reading.units_consumed}
+                      </td>
                       <td className="px-3 py-2 text-right">{reading.rate_per_unit}</td>
                       <td className="px-3 py-2 text-right">{reading.total_cost}</td>
                       <td className="px-3 py-2">{reading.created_by_name}</td>
@@ -483,6 +521,20 @@ export default function MaintenanceDailyElectricityPage() {
                 />
               </div>
               <div>
+                <Label htmlFor="reading-factor">Multiplying Factor (MF)</Label>
+                <Input
+                  id="reading-factor"
+                  type="number"
+                  step="0.0001"
+                  min="0.0001"
+                  value={readingForm.multiplying_factor}
+                  onChange={(e) =>
+                    setReadingForm((p) => ({ ...p, multiplying_factor: e.target.value }))
+                  }
+                  placeholder="Carried from the meter"
+                />
+              </div>
+              <div>
                 <Label htmlFor="reading-opening">Opening Reading</Label>
                 <Input
                   id="reading-opening"
@@ -508,13 +560,17 @@ export default function MaintenanceDailyElectricityPage() {
                 />
               </div>
             </div>
-            {previewUnits != null && (
+            {previewDialDiff != null && (
               <p
-                className={`text-sm ${previewUnits < 0 ? 'text-red-600' : 'text-muted-foreground'}`}
+                className={`text-sm ${
+                  previewDialDiff < 0 ? 'text-red-600' : 'text-muted-foreground'
+                }`}
               >
-                {previewUnits < 0
+                {previewDialDiff < 0
                   ? 'Closing reading is less than opening reading.'
-                  : `Units: ${previewUnits.toLocaleString()}${
+                  : `Dial: ${previewDialDiff.toLocaleString()} × MF ${previewFactor.toLocaleString()} = ${
+                      previewUnits?.toLocaleString() ?? '—'
+                    } units${
                       previewCost != null
                         ? ` · Cost: ₹${previewCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                         : ''
@@ -570,6 +626,7 @@ export default function MaintenanceDailyElectricityPage() {
                       <th className="px-3 py-2 font-medium">Meter No.</th>
                       <th className="px-3 py-2 font-medium">Location</th>
                       <th className="px-3 py-2 font-medium">Company</th>
+                      <th className="px-3 py-2 font-medium text-right">MF</th>
                       <th className="px-3 py-2 font-medium text-right">Rate</th>
                       <th className="px-3 py-2" />
                     </tr>
@@ -591,6 +648,9 @@ export default function MaintenanceDailyElectricityPage() {
                           {meter.companies_display || (
                             <span className="text-muted-foreground">Not set</span>
                           )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          ×{trimFactor(meter.multiplying_factor)}
                         </td>
                         <td className="px-3 py-2 text-right">{meter.rate_per_unit}</td>
                         <td className="whitespace-nowrap px-3 py-2 text-right">
@@ -652,6 +712,25 @@ export default function MaintenanceDailyElectricityPage() {
                     value={meterForm.rate_per_unit}
                     onChange={(e) => setMeterForm((p) => ({ ...p, rate_per_unit: e.target.value }))}
                   />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="meter-factor">Multiplying Factor (MF)</Label>
+                  <Input
+                    id="meter-factor"
+                    type="number"
+                    step="0.0001"
+                    min="0.0001"
+                    value={meterForm.multiplying_factor}
+                    onChange={(e) =>
+                      setMeterForm((p) => ({ ...p, multiplying_factor: e.target.value }))
+                    }
+                    placeholder="1"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    The factor the grid gave the factory for this meter — each day&apos;s dial
+                    difference is multiplied by it to get the billed units. Leave blank (or 1) if
+                    the dial reads true.
+                  </p>
                 </div>
               </div>
               <fieldset className="mt-3">
