@@ -11,9 +11,12 @@ import {
   isLooseItem,
 } from '../salesDispatchBoxCounts';
 import {
+  formatPartBoxNote,
   formatScannedBoxQuantities,
   groupItemsByItemCode,
+  mergeScanProgress,
   summarizeItems,
+  summarizeScanProgress,
 } from '../salesDispatchScanSummary';
 
 function item(overrides: Partial<SalesDispatchItem>): SalesDispatchItem {
@@ -305,5 +308,118 @@ describe('a part box covers the printed loose remainder, not a box slot', () => 
     expect(row.partBoxCount).toBe(1);
     expect(row.scannedQuantity).toBe(1860);
     expect(row.isComplete).toBe(true);
+  });
+});
+
+// Docking 1244 (HR67C4904, gatepass DCK/JIVO_OIL/2026-27/000290) read "376 / 375 boxes"
+// on the detail screen while every bill showed its quantity fully scanned. Bill 626080466
+// invoices FG0000005 on two lines, 100 + 80 pcs of a 16-PCS item = 11 boxes + 4 loose, and
+// those 4 pieces rode out in a 12th carton with its own barcode.
+describe('summarizeScanProgress — the extra label is the printed loose remainder', () => {
+  const lines = [
+    item({ id: 1, line_num: 0, quantity: '100', total_boxes: '6', total_loose: '4' }),
+    item({ id: 2, line_num: 1, quantity: '80', total_boxes: '5', total_loose: '0' }),
+  ];
+  const loadScans = [...scans(11, { quantity: '16' }), scan({ quantity: '4' })];
+
+  it('counts 12 labels as 11 full boxes + 1 part box', () => {
+    const progress = summarizeScanProgress(lines, loadScans);
+    expect(progress.scanCount).toBe(12); // labels physically scanned
+    expect(progress.fullBoxes).toBe(11); // ...against 11 printed boxes
+    expect(progress.partBoxes).toBe(1);
+    expect(progress.partBoxPieces).toBe(4);
+    expect(progress.unplannedScanCount).toBe(0);
+  });
+
+  it('names both halves of the printed load so the box count reads as complete', () => {
+    const progress = summarizeScanProgress(lines, loadScans);
+    expect(formatPartBoxNote(progress, 4)).toBe('+ 1 part box (4 / 4 pcs loose)');
+  });
+
+  it('flags the loose pieces as still on the floor when no part box is scanned', () => {
+    const progress = summarizeScanProgress(lines, scans(11, { quantity: '16' }));
+    expect(progress.fullBoxes).toBe(11);
+    expect(progress.partBoxes).toBe(0);
+    expect(formatPartBoxNote(progress, 4)).toBe('+ 0 / 4 pcs loose');
+  });
+
+  it('says nothing about loose goods for a bill that prints none', () => {
+    const boxedOnly = [item({ id: 3, quantity: '1200', sal_factor2: '12' })];
+    const progress = summarizeScanProgress(boxedOnly, scans(100, { quantity: '12' }));
+    expect(progress.fullBoxes).toBe(100);
+    expect(formatPartBoxNote(progress, 0)).toBe('');
+  });
+
+  it('keeps a box matched to no line visible as a box', () => {
+    const progress = summarizeScanProgress(lines, [
+      ...scans(11, { quantity: '16' }),
+      scan({ item_code: 'FG9999999', quantity: '16' }),
+    ]);
+    expect(progress.fullBoxes).toBe(12);
+    expect(progress.unplannedScanCount).toBe(1);
+  });
+
+  // The whole truck, exactly as production held it: 376 labels scanned, 5,060 of 5,060
+  // pieces loaded, and three bills printing 375 boxes + 4 loose between them.
+  it('reads the whole load as complete instead of one box over', () => {
+    const bills = [
+      {
+        // 626080466 — 146 boxes + 4 loose
+        lines: [
+          item({ id: 11, item_code: 'FG0000004', quantity: '100', sal_factor2: '4' }),
+          item({ id: 12, item_code: 'FG0000005', quantity: '100', sal_factor2: '16' }),
+          item({ id: 13, item_code: 'FG0000005', quantity: '80', sal_factor2: '16' }),
+          item({ id: 14, item_code: 'FG0000009', quantity: '20', sal_factor2: '4' }),
+          item({ id: 15, item_code: 'FG0000032', quantity: '100', sal_factor2: '20' }),
+          item({ id: 16, item_code: 'FG0000142', quantity: '1280', sal_factor2: '16' }),
+          item({ id: 17, item_code: 'FG0000143', quantity: '80', sal_factor2: '4' }),
+        ],
+        scans: [
+          ...scans(25, { item_code: 'FG0000004', quantity: '4' }),
+          ...scans(11, { item_code: 'FG0000005', quantity: '16' }),
+          scan({ item_code: 'FG0000005', quantity: '4' }), // the 4 printed loose pieces
+          ...scans(5, { item_code: 'FG0000009', quantity: '4' }),
+          ...scans(5, { item_code: 'FG0000032', quantity: '20' }),
+          ...scans(80, { item_code: 'FG0000142', quantity: '16' }),
+          ...scans(20, { item_code: 'FG0000143', quantity: '4' }),
+        ],
+      },
+      {
+        // 626080468 — 100 boxes
+        lines: [item({ id: 18, item_code: 'FG0000299', quantity: '1200', sal_factor2: '12' })],
+        scans: scans(100, { item_code: 'FG0000299', quantity: '12' }),
+      },
+      {
+        // 626080476 — 129 boxes
+        lines: [
+          item({ id: 19, item_code: 'FG0000053', quantity: '120', sal_factor2: '4' }),
+          item({ id: 20, item_code: 'FG0000081', quantity: '1980', sal_factor2: '20' }),
+        ],
+        scans: [
+          ...scans(30, { item_code: 'FG0000053', quantity: '4' }),
+          ...scans(99, { item_code: 'FG0000081', quantity: '20' }),
+        ],
+      },
+    ];
+
+    const expectedBoxes = bills.reduce(
+      (total, bill) => total + getExpectedItemsBoxes(groupItemsByItemCode(bill.lines)),
+      0,
+    );
+    const expectedLoose = bills.reduce(
+      (total, bill) => total + getExpectedItemsLoose(groupItemsByItemCode(bill.lines)),
+      0,
+    );
+    const load = mergeScanProgress(
+      bills.map((bill) => summarizeScanProgress(bill.lines, bill.scans)),
+    );
+
+    expect(expectedBoxes).toBe(375);
+    expect(expectedLoose).toBe(4);
+    expect(load.scanCount).toBe(376); // labels the loader actually scanned
+    expect(load.fullBoxes).toBe(375); // ...against 375 printed boxes: complete
+    expect(load.partBoxes).toBe(1);
+    expect(load.unplannedScanCount).toBe(0);
+    expect(formatPartBoxNote(load, expectedLoose)).toBe('+ 1 part box (4 / 4 pcs loose)');
   });
 });

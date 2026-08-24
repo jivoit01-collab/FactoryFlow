@@ -931,7 +931,7 @@ function IndentDetailDialog({
 // Purchaser export — one grouped sheet mirroring the paper "Indent" register:
 // each indent starts with a "Raised by …" header row, then the item columns.
 // "To Purchase" is the shortfall (Req. Qty − Issued) the purchaser must buy.
-// A Date column carries each indent's raise date onto every item row.
+// Date and Purpose columns carry each indent's raise date and purpose onto every item row.
 function exportIndentsToExcel(indents: MaterialIndent[]) {
   const rows: (string | number)[][] = [];
   indents.forEach((indent) => {
@@ -944,11 +944,12 @@ function exportIndentsToExcel(indents: MaterialIndent[]) {
     if (indent.indent_no) header += `  •  ${indent.indent_no}`;
 
     rows.push([header]);
-    rows.push(['#', 'Date', 'Particulars', 'Spec / Make', 'Req. Qty', 'Unit', 'Issued', 'To Purchase']);
+    rows.push(['#', 'Date', 'Purpose', 'Particulars', 'Spec / Make', 'Req. Qty', 'Unit', 'Issued', 'To Purchase']);
     indent.items.forEach((item, index) => {
       rows.push([
         item.line_num || index + 1,
         indent.indent_date || '',
+        indent.purpose?.trim() || '-',
         item.particulars || '',
         item.specification?.trim() || '-',
         Number(item.quantity) || 0,
@@ -964,6 +965,7 @@ function exportIndentsToExcel(indents: MaterialIndent[]) {
   sheet['!cols'] = [
     { wch: 5 }, // #
     { wch: 12 }, // Date
+    { wch: 32 }, // Purpose
     { wch: 42 }, // Particulars
     { wch: 22 }, // Spec / Make
     { wch: 10 }, // Req. Qty

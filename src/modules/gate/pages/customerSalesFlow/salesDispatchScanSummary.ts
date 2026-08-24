@@ -176,6 +176,104 @@ export function summarizeItems(
 }
 
 
+export interface ScanProgressTotals {
+  /** Physical labels scanned — part boxes and unplanned boxes included. */
+  scanCount: number;
+  /** Scans carrying a whole pack: the only figure comparable to the printed box count. */
+  fullBoxes: number;
+  /** Scans carrying less than a pack — they cover the bills' printed loose remainder. */
+  partBoxes: number;
+  /** Pieces those part boxes carried; compare against the printed loose remainder. */
+  partBoxPieces: number;
+  /** Scans whose item code is on no line of the bills in scope. */
+  unplannedScanCount: number;
+}
+
+export const EMPTY_SCAN_PROGRESS: ScanProgressTotals = {
+  scanCount: 0,
+  fullBoxes: 0,
+  partBoxes: 0,
+  partBoxPieces: 0,
+  unplannedScanCount: 0,
+};
+
+/**
+ * Split a set of scans the way the bill prints its goods: full boxes against the printed
+ * box count, part boxes against the printed loose remainder.
+ *
+ * The raw scan count is NOT the box count. A bill invoicing 180 pcs of a 16-PCS item
+ * prints "11 boxes + 4 loose", and those 4 pieces ride out in a 12th carton carrying its
+ * own barcode — so 12 labels get scanned against 11 printed boxes. Load-wide that is what
+ * made a complete truck read "376 / 375 boxes" on the docking screen while every bill
+ * showed its quantity fully scanned. Mirrors is_full_box / scanned_full_boxes on the
+ * backend (gate_core/services/box_packing.py, sales_dispatch_gatepass.py).
+ */
+export function summarizeScanProgress(
+  items: SalesDispatchItem[],
+  scans: SalesDispatchBoxScan[],
+): ScanProgressTotals {
+  const summary = summarizeItems(groupItemsByItemCode(items), scans);
+  const partBoxes = summary.items.reduce((total, item) => total + item.partBoxCount, 0);
+  return {
+    scanCount: scans.length,
+    // Derived from the physical scan count, so a box matched to no line still counts as a
+    // box: it has no pack size to be short of, and dropping it would hide a stray label.
+    fullBoxes: Math.max(0, scans.length - partBoxes),
+    partBoxes,
+    partBoxPieces: summary.items.reduce((total, item) => total + item.partBoxPieces, 0),
+    unplannedScanCount: summary.unplannedScanCount,
+  };
+}
+
+/** The same split for a single already-tallied line, so a row can reuse the box pill. */
+export function scanProgressFromItemRow(row?: ItemScanRow | null): ScanProgressTotals {
+  if (!row) return EMPTY_SCAN_PROGRESS;
+  return {
+    scanCount: row.scanCount,
+    fullBoxes: row.fullBoxCount,
+    partBoxes: row.partBoxCount,
+    partBoxPieces: row.partBoxPieces,
+    unplannedScanCount: 0,
+  };
+}
+
+/** Add up per-bill splits into one load-wide figure. */
+export function mergeScanProgress(parts: ScanProgressTotals[]): ScanProgressTotals {
+  return parts.reduce(
+    (total, part) => ({
+      scanCount: total.scanCount + part.scanCount,
+      fullBoxes: total.fullBoxes + part.fullBoxes,
+      partBoxes: total.partBoxes + part.partBoxes,
+      partBoxPieces: total.partBoxPieces + part.partBoxPieces,
+      unplannedScanCount: total.unplannedScanCount + part.unplannedScanCount,
+    }),
+    EMPTY_SCAN_PROGRESS,
+  );
+}
+
+/**
+ * "+ 1 part box (4 / 4 pcs loose)" — the half of the load the box count leaves out.
+ *
+ * Spelling this out next to the box count is what stops a fully loaded truck reading as
+ * one box over (or the loose pieces reading as missing goods): the extra label IS the
+ * printed loose remainder, and the gate can see both halves agree.
+ */
+export function formatPartBoxNote(progress: ScanProgressTotals, expectedLoose: number) {
+  const { partBoxes, partBoxPieces } = progress;
+  if (partBoxes <= 0 && expectedLoose <= 0) return '';
+
+  const pieces =
+    expectedLoose > 0
+      ? `${formatPieces(partBoxPieces)} / ${formatPieces(expectedLoose)} pcs loose`
+      : `${formatPieces(partBoxPieces)} pcs`;
+  if (partBoxes <= 0) return `+ ${pieces}`;
+  return `+ ${partBoxes} part box${partBoxes === 1 ? '' : 'es'} (${pieces})`;
+}
+
+function formatPieces(value: number) {
+  return value.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+
 /**
  * "362 + 138" — what each scanned box carried, in scan order.
  *

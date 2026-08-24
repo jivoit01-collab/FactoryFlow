@@ -73,11 +73,17 @@ import {
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 import {
+  EMPTY_SCAN_PROGRESS,
+  formatPartBoxNote,
   formatScannedBoxQuantities,
   groupItemsByItemCode,
   type ItemScanRow,
+  mergeScanProgress,
   normalizeItemCode,
+  scanProgressFromItemRow,
+  type ScanProgressTotals,
   summarizeItems,
+  summarizeScanProgress,
 } from './salesDispatchScanSummary';
 
 interface DetailDocument extends SalesDispatchGateOutDocument {
@@ -222,8 +228,11 @@ export default function SalesDispatchDetailPage() {
   // Box-scan progress is a whole-load figure: expected = every bill on the truck (all
   // dockings), scanned = the merged scans. Using the opened docking alone would ignore a
   // cross-company sibling bill's boxes (e.g. show 0/3 for a load that's really 0/38).
-  const loadScannedBoxes = loadEntry.box_scans?.length ?? 0;
+  // Scanned is SPLIT into full boxes and part boxes, because only full boxes are
+  // comparable to the printed box count — see getLoadScanProgress.
+  const loadScanProgress = getLoadScanProgress(detailDocuments, loadEntry.box_scans ?? []);
   const loadExpectedBoxes = getExpectedLoadBoxes(detailDocuments);
+  const loadExpectedLoose = getExpectedLoadLoose(detailDocuments);
   // Only flag companies when the truck actually carries bills from more than one.
   const showCompany =
     new Set(detailDocuments.map((doc) => doc.companyName).filter(Boolean)).size > 1;
@@ -291,8 +300,9 @@ export default function SalesDispatchDetailPage() {
 
       <DockingOverviewCard
         entry={entry}
-        scanScanned={loadScannedBoxes}
+        scanProgress={loadScanProgress}
         scanExpected={loadExpectedBoxes}
+        scanExpectedLoose={loadExpectedLoose}
       />
 
       <DocumentsCard
@@ -418,12 +428,14 @@ export default function SalesDispatchDetailPage() {
 
 function DockingOverviewCard({
   entry,
-  scanScanned,
+  scanProgress,
   scanExpected,
+  scanExpectedLoose,
 }: {
   entry: SalesDispatchGateOut;
-  scanScanned: number;
+  scanProgress: ScanProgressTotals;
   scanExpected: number;
+  scanExpectedLoose: number;
 }) {
   const showGatepass = hasDisplayValue(entry.gatepass_no);
   const showActualGateOut = entry.status === 'DISPATCHED';
@@ -452,8 +464,9 @@ function DockingOverviewCard({
           <InfoItem label="Docked At" value={formatTimestamp(entry.docked_at)} />
           <ScanProgressField
             label="Box Scan Progress"
-            scanned={scanScanned}
+            progress={scanProgress}
             expected={scanExpected}
+            expectedLoose={scanExpectedLoose}
           />
           <InfoItem label="Invoice Weight" value={formatInvoiceWeightValue(entry.total_weight)} />
           {hasPositiveWeight(entry.challan_weight) ? (
@@ -553,6 +566,14 @@ function ScannedBoxesSheet({
       ? getExpectedDocumentLoose(selectedDoc)
       : documents.reduce((sum, doc) => sum + getExpectedDocumentLoose(doc), 0);
 
+  // The scans in scope split into full boxes and part boxes, so the sheet's own header
+  // agrees with the docking screen instead of counting a part box as a box.
+  const progress = scopedItems
+    ? summarizeScanProgress(scopedItems, scans)
+    : selectedDoc
+      ? summarizeScanProgress(selectedDoc.items, scans)
+      : getLoadScanProgress(documents, scans);
+
   const billOptions = documents
     .filter((doc) => hasDisplayValue(doc.sap_doc_num))
     .map((doc) => ({
@@ -575,7 +596,11 @@ function ScannedBoxesSheet({
           </SheetTitle>
           <SheetDescription asChild>
             <div>
-              <ScanProgressBadge scanned={scans.length} expected={expected} />
+              <ScanProgressBadge
+                progress={progress}
+                expected={expected}
+                expectedLoose={expectedLoose}
+              />
             </div>
           </SheetDescription>
         </SheetHeader>
@@ -634,13 +659,26 @@ function ScannedBoxesSheet({
         </div>
 
         <div className="grid shrink-0 gap-3 text-sm sm:grid-cols-2">
-          <InfoItem label="Scanned Boxes" value={scans.length} />
+          <InfoItem
+            label="Scanned Boxes"
+            // Full boxes, with the part boxes named separately: a part box carries the
+            // bill's printed loose pieces, so lumping it in read as one box too many.
+            value={
+              progress.partBoxes > 0
+                ? `${formatCount(progress.fullBoxes)} + ${progress.partBoxes} part box${
+                    progress.partBoxes === 1 ? '' : 'es'
+                  } (${formatCount(progress.partBoxPieces)} pcs)`
+                : formatCount(progress.fullBoxes)
+            }
+          />
           <InfoItem
             label={expectedLoose > 0 && expected === 0 ? 'Expected Pieces (loose)' : 'Expected Boxes'}
             value={
               expectedLoose > 0 && expected === 0
                 ? formatCount(expectedLoose)
-                : formatCount(expected)
+                : expectedLoose > 0
+                  ? `${formatCount(expected)} + ${formatCount(expectedLoose)} pcs loose`
+                  : formatCount(expected)
             }
           />
           <InfoItem
@@ -770,14 +808,21 @@ function getItemScanTone(row?: ItemScanRow): ScanTone {
 // Colour-coded scan progress pill used everywhere box scanning is surfaced:
 // green = fully scanned, amber = partially scanned, red = nothing scanned yet.
 function ScanProgressBadge({
-  scanned,
+  progress,
   expected,
+  expectedLoose = 0,
   scannedPieces = 0,
   expectedPieces = 0,
   className,
 }: {
-  scanned: number;
+  /** The scans split into full boxes and part boxes (summarizeScanProgress). */
+  progress: ScanProgressTotals;
   expected: number;
+  /**
+   * Invoiced pieces that ride out in part boxes — the printed loose remainder. Reported
+   * alongside the box count so the part box carrying them is never read as an extra box.
+   */
+  expectedLoose?: number;
   /** Pieces scanned so far — used when the goods have no box count to progress against. */
   scannedPieces?: number;
   /** Invoiced loose pieces (SalFactor2 = 1, non-CSD: SAP transacts the item per piece). */
@@ -788,16 +833,31 @@ function ScanProgressBadge({
   // the same invoiced-quantity check the backend gates on. Only fully boxed lines keep
   // the box count; showing "0 / 500 boxes" for 500 loose bottles was the bug.
   const countInPieces = expectedPieces > 0;
+  // Only FULL boxes are comparable to the printed box count. Counting every label is what
+  // showed a complete load as "376 / 375 boxes": the 376th was the part box carrying the
+  // bill's printed 4 loose pieces.
+  const boxTone = getScanTone(progress.fullBoxes, expected);
+  const looseShort = expectedLoose > 0 && progress.partBoxPieces < expectedLoose;
   const tone = countInPieces
     ? getScanTone(scannedPieces, expectedPieces)
-    : getScanTone(scanned, expected);
+    : boxTone === 'complete' && looseShort
+      ? 'partial'
+      : boxTone;
+  // An all-loose scope (no printed boxes at all) has no part-box notion: every box of a
+  // loose item is "full", so a "0 / 500 pcs loose" tail there would read as missing goods
+  // when the pieces are in fact the whole shipment, counted in pieces elsewhere.
+  const showLooseNote = expected > 0 || progress.partBoxes > 0;
+  const partBoxNote =
+    countInPieces || !showLooseNote ? '' : formatPartBoxNote(progress, expectedLoose);
   const label = countInPieces
     ? `${formatCount(scannedPieces)} / ${formatCount(expectedPieces)} pcs`
     : expected > 0
-      ? `${scanned} / ${formatCount(expected)} boxes`
-      : scanned > 0
-        ? `${scanned} scanned`
-        : 'No boxes scanned';
+      ? `${formatCount(progress.fullBoxes)} / ${formatCount(expected)} boxes`
+      : progress.fullBoxes > 0
+        ? `${formatCount(progress.fullBoxes)} scanned`
+        : partBoxNote
+          ? 'No full boxes scanned'
+          : 'No boxes scanned';
 
   return (
     <span
@@ -809,25 +869,38 @@ function ScanProgressBadge({
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {label}
+      {partBoxNote ? <span className="font-normal opacity-80">{partBoxNote}</span> : null}
     </span>
   );
 }
 
 function ScanProgressField({
   label,
-  scanned,
+  progress,
   expected,
+  expectedLoose,
 }: {
   label: string;
-  scanned: number;
+  progress: ScanProgressTotals;
   expected: number;
+  expectedLoose: number;
 }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <div className="mt-1">
-        <ScanProgressBadge scanned={scanned} expected={expected} />
+        <ScanProgressBadge
+          progress={progress}
+          expected={expected}
+          expectedLoose={expectedLoose}
+        />
       </div>
+      {progress.unplannedScanCount > 0 ? (
+        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+          {progress.unplannedScanCount} scanned box
+          {progress.unplannedScanCount === 1 ? '' : 'es'} not on any bill
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -907,8 +980,9 @@ function DocumentsCard({
             <PackageCheck className="mr-2 h-4 w-4" />
             Scanned Boxes
             <ScanProgressBadge
-              scanned={scans.length}
+              progress={getLoadScanProgress(documents, scans)}
               expected={getExpectedLoadBoxes(documents)}
+              expectedLoose={getExpectedLoadLoose(documents)}
               {...getPiecesProgress(documents, scans)}
               className="ml-2"
             />
@@ -954,6 +1028,39 @@ function DocumentsCard({
 // companies on a cross-company truck.
 function getExpectedLoadBoxes(documents: DetailDocument[]) {
   return documents.reduce((total, document) => total + getExpectedDocumentBoxes(document), 0);
+}
+
+// The load's printed loose remainder — the pieces the box count deliberately leaves out.
+function getExpectedLoadLoose(documents: DetailDocument[]) {
+  return documents.reduce((total, document) => total + getExpectedDocumentLoose(document), 0);
+}
+
+/**
+ * The load's scans split into full boxes and part boxes, attributed bill by bill.
+ *
+ * Per bill, because whether a box is full is judged against ITS line's pack size
+ * (SalFactor2). A scan matched to no bill at all still counts as a box — it has no pack
+ * size to be short of, and dropping it would hide a stray label from the gate.
+ */
+function getLoadScanProgress(
+  documents: DetailDocument[],
+  scans: SalesDispatchBoxScan[],
+): ScanProgressTotals {
+  const perBill = documents.map((document) =>
+    summarizeScanProgress(document.items, getDocumentScans(scans, document)),
+  );
+  const attributed = mergeScanProgress(perBill);
+  const unattributed = Math.max(0, scans.length - attributed.scanCount);
+  if (unattributed === 0) return attributed;
+  return mergeScanProgress([
+    attributed,
+    {
+      ...EMPTY_SCAN_PROGRESS,
+      scanCount: unattributed,
+      fullBoxes: unattributed,
+      unplannedScanCount: unattributed,
+    },
+  ]);
 }
 
 // Attribute a box scan to a bill by its document id, falling back to the SAP doc number
@@ -1026,8 +1133,9 @@ function DocumentSection({
         </div>
         <div className="ml-6 flex flex-col items-start gap-1 text-xs text-muted-foreground sm:ml-0 sm:items-end">
           <ScanProgressBadge
-            scanned={scans.length}
+            progress={summarizeScanProgress(document.items, scans)}
             expected={expectedBoxes}
+            expectedLoose={getExpectedDocumentLoose(document)}
             {...getPiecesProgress([document], scans)}
           />
           {hasDisplayValue(document.sap_doc_total) ? (
@@ -1098,8 +1206,9 @@ function DocumentSection({
                         // FULL boxes only: a part box covers the line's printed loose
                         // remainder, so counting it as a box read "116 / 116 boxes" on a
                         // line invoicing 116 boxes + 4 loose with 16 pieces unshipped.
-                        scanned={status?.fullBoxCount ?? 0}
+                        progress={scanProgressFromItemRow(status)}
                         expected={status?.expectedBoxes ?? getExpectedItemBoxes(item)}
+                        expectedLoose={status?.expectedLoose ?? getExpectedItemLoose(item)}
                         scannedPieces={status?.scannedQuantity ?? 0}
                         expectedPieces={
                           getExpectedItemLoose(item) > 0

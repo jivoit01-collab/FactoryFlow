@@ -560,7 +560,7 @@ export default function SalesDispatchGatepassPage() {
                     ? 'Not required'
                     : readiness?.scan_skip_approved && !entry.box_scans?.length
                       ? 'Skipped (approved)'
-                      : `${entry.box_scans?.length || 0} boxes`
+                      : formatScannedBoxDetail(readiness, entry)
                 }
               />
               <ReadinessItem label="SAP Items" ready={Boolean(readiness?.has_items)} />
@@ -687,6 +687,32 @@ export default function SalesDispatchGatepassPage() {
       </div>
     </>
   );
+}
+
+/**
+ * "375 boxes + 1 part box (4 pcs)" — what was actually scanned, split the way the bill
+ * prints it.
+ *
+ * The raw scan count is not the box count: a bill invoicing 180 pcs of a 16-PCS item
+ * prints 11 boxes + 4 loose, and those 4 pieces ride out in a 12th carton with its own
+ * barcode. Reported straight, that read as one box more than the bill has. The backend
+ * already publishes the split on the readiness payload (scanned_full_boxes /
+ * scanned_loose); fall back to the physical count only when it doesn't.
+ */
+function formatScannedBoxDetail(
+  readiness: SalesDispatchGateOut['gatepass_readiness'] | undefined,
+  entry: SalesDispatchGateOut,
+) {
+  const scanCount = entry.box_scans?.length || 0;
+  const fullBoxes = readiness?.scanned_full_boxes;
+  if (fullBoxes == null) return `${scanCount} boxes`;
+
+  const partBoxes = Math.max(0, scanCount - fullBoxes);
+  const loosePieces = toFiniteNumber(readiness?.scanned_loose) ?? 0;
+  if (partBoxes <= 0) return `${fullBoxes} boxes`;
+  return `${fullBoxes} boxes + ${partBoxes} part box${
+    partBoxes === 1 ? '' : 'es'
+  } (${loosePieces} pcs)`;
 }
 
 function buildFrontendGatepassDocumentTitle(entry?: SalesDispatchGateOut | null) {

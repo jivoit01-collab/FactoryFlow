@@ -68,8 +68,16 @@ export interface SalesDispatchGatepassReadiness {
   partial_scan_approved?: boolean;
   /** True when some (but fewer than expected) boxes are scanned — needs a partial approval. */
   is_partial_scan?: boolean;
-  /** Boxes scanned so far on this load. */
+  /** Physical boxes scanned so far on this load — part boxes included. */
   scanned_boxes?: number;
+  /**
+   * Scans carrying a whole pack: the only figure comparable to `expected_boxes`. A part
+   * box covers the bill's printed loose remainder, so counting it as a box is what showed
+   * a complete load as one box over ("376 / 375").
+   */
+  scanned_full_boxes?: number;
+  /** Pieces those part boxes carried — compare against `expected_loose`. */
+  scanned_loose?: string | number | null;
   /** Pack-size-aware expected box count (matches the scan page). */
   expected_boxes?: number;
   /** Loose pieces the box count excludes (SAP transacts these items per piece). */
