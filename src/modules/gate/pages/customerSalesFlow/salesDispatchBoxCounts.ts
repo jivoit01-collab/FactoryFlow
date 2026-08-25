@@ -45,7 +45,24 @@ export function getItemPacking(item?: SalesDispatchItem | null): LinePacking {
     return { boxes: storedBoxes, loose: storedLoose, piecesPerBox };
   }
 
-  const quantity = parsePositiveNumber(item.quantity);
+  return getQuantityPacking(parsePositiveNumber(item.quantity), item);
+}
+
+/**
+ * Split a quantity by the item's pack size, ignoring any stored per-line split.
+ *
+ * Needed when several invoice lines of the same item are merged: the bill splits EACH
+ * line, so lines of 13 and 67 pcs of a 16-PCS item print "0 boxes + 13 loose" and
+ * "4 boxes + 3 loose", but the 13 + 3 pieces make one more whole box on the floor. Adding
+ * the printed splits gives 104 boxes + 16 loose for goods that ship as 105 full boxes —
+ * which is what left docking 1250 reading "452 / 435 boxes". Re-splitting the merged
+ * quantity is what the warehouse actually packs.
+ */
+export function getQuantityPacking(
+  quantity: number,
+  item?: SalesDispatchItem | null,
+): LinePacking {
+  const piecesPerBox = getPiecesPerBox(item);
   if (quantity <= 0) return { boxes: 0, loose: 0, piecesPerBox };
   if (piecesPerBox === null) return { boxes: 0, loose: quantity, piecesPerBox };
   if (piecesPerBox === 1) return { boxes: Math.ceil(quantity), loose: 0, piecesPerBox };

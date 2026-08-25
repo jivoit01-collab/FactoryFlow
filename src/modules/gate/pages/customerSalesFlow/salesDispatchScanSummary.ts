@@ -4,6 +4,7 @@ import {
   getBoxInvoiceUnits,
   getExpectedItemBoxes,
   getExpectedItemLoose,
+  getQuantityPacking,
   isBoxCountedItem,
   isFullBox,
   isLooseItem,
@@ -23,14 +24,19 @@ export interface ItemScanRow {
   expectedLoose: number;
   /** True when the item has no box count at all, so progress is measured in pieces. */
   isLoose: boolean;
-  /** Physical boxes scanned, full and part alike. */
+  /** Physical labels scanned, whatever each box carried. */
   scanCount: number;
   /** Scans carrying a whole pack — the boxes that count against expectedBoxes. */
   fullBoxCount: number;
-  /** Scans carrying less than a pack: they cover the line's loose remainder. */
-  partBoxCount: number;
-  /** Pieces those part boxes carried — compare against expectedLoose. */
-  partBoxPieces: number;
+  /**
+   * Boxes covering the line's printed LOOSE remainder rather than one of its boxes:
+   * a box packed short of the pack size, or ANY box of an item SAP does not transact in
+   * boxes (SalFactor2 = 1, non-CSD — its bill prints "0 Box / N PCS", so each tin it
+   * ships is loose goods however full it is).
+   */
+  looseBoxCount: number;
+  /** Pieces those boxes carried — compare against expectedLoose. */
+  loosePieces: number;
   scannedQuantity: number;
   /** Quantity carried by each scanned box, in scan order — e.g. [362, 138]. */
   scannedBoxQuantities: number[];
@@ -77,17 +83,14 @@ export function groupItemsByItemCode(items: SalesDispatchItem[]): SalesDispatchI
     const mergedWeight =
       parsePositiveNumber(existing.total_weight) + parsePositiveNumber(item.total_weight);
     existing.total_weight = mergedWeight > 0 ? String(mergedWeight) : existing.total_weight;
-    // Carry the stored box/loose split only when EVERY merged line has one — both halves
-    // together, since a line can legitimately be all boxes or all loose. Otherwise clear
-    // both so the combined quantity is re-split from sal_factor2 (getItemPacking), which
-    // is the more accurate figure anyway: two part-boxes on separate lines make one box.
-    const existingBoxes = parsePositiveNumber(existing.total_boxes);
-    const existingLoose = parsePositiveNumber(existing.total_loose);
-    const itemBoxes = parsePositiveNumber(item.total_boxes);
-    const itemLoose = parsePositiveNumber(item.total_loose);
-    const bothSplit = existingBoxes + existingLoose > 0 && itemBoxes + itemLoose > 0;
-    existing.total_boxes = bothSplit ? String(existingBoxes + itemBoxes) : null;
-    existing.total_loose = bothSplit ? String(existingLoose + itemLoose) : null;
+    // Drop the stored per-line splits so the merged quantity is re-split from sal_factor2
+    // (getQuantityPacking). Adding the printed splits would carry the bill's per-line
+    // rounding into a figure the floor doesn't share: lines of 13 and 67 pcs of a 16-PCS
+    // item print "0 boxes + 13 loose" and "4 boxes + 3 loose", but their 16 leftover
+    // pieces make one more WHOLE box — 105 boxes are scanned where the sum says 104 + 16
+    // loose. That gap is what showed docking 1250 as "452 / 435 boxes".
+    existing.total_boxes = null;
+    existing.total_loose = null;
   });
   return order.map((key) => byKey.get(key) as SalesDispatchItem);
 }
@@ -109,8 +112,8 @@ export function summarizeItems(
   const stats = expectedItems.map(() => ({
     count: 0,
     fullBoxes: 0,
-    partBoxes: 0,
-    partPieces: 0,
+    looseBoxes: 0,
+    loosePieces: 0,
     quantity: 0,
     boxQuantities: [] as number[],
   }));
@@ -124,14 +127,16 @@ export function summarizeItems(
     }
     const scanQuantity = parsePositiveNumber(scan.quantity);
     stats[index].count += 1;
-    // A short box covers the line's printed LOOSE remainder, not one of its boxes, so it
-    // is tallied as pieces. Counting it as a box is what showed 115 full boxes plus one
-    // 4-piece box as "116 / 116 boxes" on a line invoicing 116 boxes + 4 loose.
-    if (isFullBox(expectedItems[index], scanQuantity)) {
-      stats[index].fullBoxes += 1;
+    // Boxes covering the line's printed LOOSE remainder are tallied as pieces, not boxes.
+    // Two ways that happens: a box packed short (115 full boxes plus one 4-piece box read
+    // as "116 / 116 boxes" on a line invoicing 116 boxes + 4 loose), and every box of an
+    // item SAP does not box at all — 16 tins of MUSTARD KACHI GHANI 15 KGS are 16 labels
+    // against a bill printing "0 Box / 16 PCS", which is 16 boxes the count can't place.
+    if (isLooseItem(expectedItems[index]) || !isFullBox(expectedItems[index], scanQuantity)) {
+      stats[index].looseBoxes += 1;
+      stats[index].loosePieces += scanQuantity;
     } else {
-      stats[index].partBoxes += 1;
-      stats[index].partPieces += scanQuantity;
+      stats[index].fullBoxes += 1;
     }
     // Progress is measured in the unit the BILL is written in: pieces for most items,
     // but boxes for CSD stock, where a carton counts as 1 however many bottles its label
@@ -162,8 +167,8 @@ export function summarizeItems(
       isLoose: isLooseItem(item),
       scanCount: scanStats.count,
       fullBoxCount: scanStats.fullBoxes,
-      partBoxCount: scanStats.partBoxes,
-      partBoxPieces: scanStats.partPieces,
+      looseBoxCount: scanStats.looseBoxes,
+      loosePieces: scanStats.loosePieces,
       scannedQuantity: scanStats.quantity,
       scannedBoxQuantities: scanStats.boxQuantities,
       isBoxCounted: isBoxCountedItem(item),
@@ -177,14 +182,14 @@ export function summarizeItems(
 
 
 export interface ScanProgressTotals {
-  /** Physical labels scanned — part boxes and unplanned boxes included. */
+  /** Physical labels scanned — loose-covering and unplanned boxes included. */
   scanCount: number;
   /** Scans carrying a whole pack: the only figure comparable to the printed box count. */
   fullBoxes: number;
-  /** Scans carrying less than a pack — they cover the bills' printed loose remainder. */
-  partBoxes: number;
-  /** Pieces those part boxes carried; compare against the printed loose remainder. */
-  partBoxPieces: number;
+  /** Boxes covering the printed loose remainder (short boxes, or any box of an unboxed item). */
+  looseBoxes: number;
+  /** Pieces those boxes carried; compare against the printed loose remainder. */
+  loosePieces: number;
   /** Scans whose item code is on no line of the bills in scope. */
   unplannedScanCount: number;
 }
@@ -192,35 +197,36 @@ export interface ScanProgressTotals {
 export const EMPTY_SCAN_PROGRESS: ScanProgressTotals = {
   scanCount: 0,
   fullBoxes: 0,
-  partBoxes: 0,
-  partBoxPieces: 0,
+  looseBoxes: 0,
+  loosePieces: 0,
   unplannedScanCount: 0,
 };
 
 /**
  * Split a set of scans the way the bill prints its goods: full boxes against the printed
- * box count, part boxes against the printed loose remainder.
+ * box count, everything else against the printed loose remainder.
  *
- * The raw scan count is NOT the box count. A bill invoicing 180 pcs of a 16-PCS item
- * prints "11 boxes + 4 loose", and those 4 pieces ride out in a 12th carton carrying its
- * own barcode — so 12 labels get scanned against 11 printed boxes. Load-wide that is what
- * made a complete truck read "376 / 375 boxes" on the docking screen while every bill
- * showed its quantity fully scanned. Mirrors is_full_box / scanned_full_boxes on the
- * backend (gate_core/services/box_packing.py, sales_dispatch_gatepass.py).
+ * The raw label count is NOT the box count, for two reasons the gate kept meeting:
+ *  - a bill invoicing 180 pcs of a 16-PCS item prints "11 boxes + 4 loose", and those 4
+ *    pieces ride out in a 12th carton with its own barcode (docking 1244: "376 / 375");
+ *  - an item SAP does not box (SalFactor2 = 1, non-CSD) prints "0 Box / 16 PCS" while
+ *    physically shipping as 16 labelled tins (docking 1250: 16 of its 17 extra boxes).
+ *
+ * Mirrors scanned_box_split on the backend (gate_core/services/sales_dispatch_gatepass.py).
  */
 export function summarizeScanProgress(
   items: SalesDispatchItem[],
   scans: SalesDispatchBoxScan[],
 ): ScanProgressTotals {
   const summary = summarizeItems(groupItemsByItemCode(items), scans);
-  const partBoxes = summary.items.reduce((total, item) => total + item.partBoxCount, 0);
+  const looseBoxes = summary.items.reduce((total, item) => total + item.looseBoxCount, 0);
   return {
     scanCount: scans.length,
-    // Derived from the physical scan count, so a box matched to no line still counts as a
+    // Derived from the physical label count, so a box matched to no line still counts as a
     // box: it has no pack size to be short of, and dropping it would hide a stray label.
-    fullBoxes: Math.max(0, scans.length - partBoxes),
-    partBoxes,
-    partBoxPieces: summary.items.reduce((total, item) => total + item.partBoxPieces, 0),
+    fullBoxes: Math.max(0, scans.length - looseBoxes),
+    looseBoxes,
+    loosePieces: summary.items.reduce((total, item) => total + item.loosePieces, 0),
     unplannedScanCount: summary.unplannedScanCount,
   };
 }
@@ -231,8 +237,8 @@ export function scanProgressFromItemRow(row?: ItemScanRow | null): ScanProgressT
   return {
     scanCount: row.scanCount,
     fullBoxes: row.fullBoxCount,
-    partBoxes: row.partBoxCount,
-    partBoxPieces: row.partBoxPieces,
+    looseBoxes: row.looseBoxCount,
+    loosePieces: row.loosePieces,
     unplannedScanCount: 0,
   };
 }
@@ -243,8 +249,8 @@ export function mergeScanProgress(parts: ScanProgressTotals[]): ScanProgressTota
     (total, part) => ({
       scanCount: total.scanCount + part.scanCount,
       fullBoxes: total.fullBoxes + part.fullBoxes,
-      partBoxes: total.partBoxes + part.partBoxes,
-      partBoxPieces: total.partBoxPieces + part.partBoxPieces,
+      looseBoxes: total.looseBoxes + part.looseBoxes,
+      loosePieces: total.loosePieces + part.loosePieces,
       unplannedScanCount: total.unplannedScanCount + part.unplannedScanCount,
     }),
     EMPTY_SCAN_PROGRESS,
@@ -252,22 +258,58 @@ export function mergeScanProgress(parts: ScanProgressTotals[]): ScanProgressTota
 }
 
 /**
- * "+ 1 part box (4 / 4 pcs loose)" — the half of the load the box count leaves out.
+ * The boxes a load can physically be scanned as, and the pieces that ride out loose.
+ *
+ * NOT the sum of the bill's printed per-line splits: the bill splits every LINE, so lines
+ * of 13 and 67 pcs of a 16-PCS item print "0 boxes + 13 loose" and "4 boxes + 3 loose"
+ * while their 16 leftover pieces make one more whole box on the floor. Grouping each
+ * (bill, item) first and splitting the merged quantity is what the warehouse packs — and
+ * what the scanner therefore counts. Use it for scan progress; the stored per-line totals
+ * stay the figures the customer's bill prints.
+ */
+export function getScanTargetPacking(items: SalesDispatchItem[]) {
+  // Keyed on (bill, item), never item alone: each bill is packed on its own, so two bills
+  // carrying half a box each of the same product ship two part boxes — merging them across
+  // bills would invent a whole box that no one packed.
+  const groups = new Map<string, { quantity: number; head: SalesDispatchItem }>();
+  items.forEach((item, index) => {
+    const code = normalizeItemCode(item.item_code) || `__uncoded_${index}`;
+    const key = `${item.document ?? ''}|${code}`;
+    const quantity = parsePositiveNumber(item.quantity);
+    const existing = groups.get(key);
+    if (existing) existing.quantity += quantity;
+    else groups.set(key, { quantity, head: item });
+  });
+
+  let boxes = 0;
+  let loose = 0;
+  groups.forEach(({ quantity, head }) => {
+    const packing = getQuantityPacking(quantity, head);
+    boxes += packing.boxes;
+    loose += packing.loose;
+  });
+  return { boxes, loose };
+}
+
+/**
+ * "+ 20 / 40 pcs loose (in 17 boxes)" — the half of the load the box count leaves out.
  *
  * Spelling this out next to the box count is what stops a fully loaded truck reading as
- * one box over (or the loose pieces reading as missing goods): the extra label IS the
- * printed loose remainder, and the gate can see both halves agree.
+ * boxes over (or the loose pieces reading as missing goods): those extra labels ARE the
+ * printed loose remainder, and the gate can see both halves agree. Pieces lead because
+ * pieces are what the bill invoices; the box count follows in brackets because that is
+ * what the operator physically counted.
  */
-export function formatPartBoxNote(progress: ScanProgressTotals, expectedLoose: number) {
-  const { partBoxes, partBoxPieces } = progress;
-  if (partBoxes <= 0 && expectedLoose <= 0) return '';
+export function formatLooseScanNote(progress: ScanProgressTotals, expectedLoose: number) {
+  const { looseBoxes, loosePieces } = progress;
+  if (looseBoxes <= 0 && expectedLoose <= 0) return '';
 
   const pieces =
     expectedLoose > 0
-      ? `${formatPieces(partBoxPieces)} / ${formatPieces(expectedLoose)} pcs loose`
-      : `${formatPieces(partBoxPieces)} pcs`;
-  if (partBoxes <= 0) return `+ ${pieces}`;
-  return `+ ${partBoxes} part box${partBoxes === 1 ? '' : 'es'} (${pieces})`;
+      ? `+ ${formatPieces(loosePieces)} / ${formatPieces(expectedLoose)} pcs loose`
+      : `+ ${formatPieces(loosePieces)} pcs loose`;
+  if (looseBoxes <= 0) return pieces;
+  return `${pieces} (in ${looseBoxes} box${looseBoxes === 1 ? '' : 'es'})`;
 }
 
 function formatPieces(value: number) {

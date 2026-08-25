@@ -292,28 +292,33 @@ export default function SalesDispatchBarcodeScanPage() {
   );
   // The load's expected boxes for the scan step = the boxes that actually get scanned, i.e.
   // the sum over scan-required bills only. Beverage-type bills (box_scan_optional) are never
-  // scanned here, so they don't inflate the target or the progress bar. An entry-level stored
-  // total (SAP gave one) still wins on a single docking. Bills honour their own stored totals.
+  // scanned here, so they don't inflate the target or the progress bar. Each bill derives its
+  // own target from its lines, grouped per item (see buildBillGroups).
   const billBoxTotal = gatingBillGroups.reduce((total, bill) => total + bill.expectedBoxes, 0);
   const entryStoredBoxes = parsePositiveNumber(entry?.total_boxes);
-  const expectedBoxes = !isArrivalMode && entryStoredBoxes > 0 ? entryStoredBoxes : billBoxTotal;
+  // The bills' own targets win: an entry-level stored total is the printed per-line split
+  // (435 on docking 1250) and undercounts the boxes actually packed (436). It only stands in
+  // when the load has no bill rows to derive from.
+  const expectedBoxes = gatingBillGroups.length ? billBoxTotal : entryStoredBoxes;
   // The pieces the box count deliberately excludes: a line invoicing 1,860 PCS of a 16-PCS
-  // item prints 116 boxes + 4 loose, and those 4 arrive in a part box. Shown so the target
-  // is the whole shipment, not just its full boxes.
+  // item prints 116 boxes + 4 loose, and those 4 arrive in a short box of their own; an item
+  // SAP does not box at all prints its whole line loose. Shown so the target is the whole
+  // shipment, not just its full boxes.
   const billLooseTotal = gatingBillGroups.reduce((total, bill) => total + bill.expectedLoose, 0);
   const entryStoredLoose = parsePositiveNumber(entry?.total_loose);
-  const expectedLoose = !isArrivalMode && entryStoredLoose > 0 ? entryStoredLoose : billLooseTotal;
-  // Scanned boxes split the same way: only full boxes count against expectedBoxes, part
-  // boxes report the pieces they carried. Derived from the physical scan count so an
-  // unattributed scan is still counted (as a box — it has no pack size to be short of).
-  const scannedPartBoxes = billGroups.reduce((total, bill) => total + bill.scannedPartBoxes, 0);
+  const expectedLoose = gatingBillGroups.length ? billLooseTotal : entryStoredLoose;
+  // Scanned boxes split the same way: only full boxes count against expectedBoxes, and the
+  // boxes covering printed loose pieces report those pieces instead. Derived from the physical
+  // scan count so an unattributed scan is still counted (as a box — no pack size to be short
+  // of).
+  const scannedLooseBoxes = billGroups.reduce((total, bill) => total + bill.scannedLooseBoxes, 0);
   const scannedLoose = billGroups.reduce((total, bill) => total + bill.scannedLoose, 0);
-  const scannedFullBoxes = Math.max(0, scans.length - scannedPartBoxes);
-  const gatingPartBoxes = gatingBillGroups.reduce(
-    (total, bill) => total + bill.scannedPartBoxes,
+  const scannedFullBoxes = Math.max(0, scans.length - scannedLooseBoxes);
+  const gatingLooseBoxes = gatingBillGroups.reduce(
+    (total, bill) => total + bill.scannedLooseBoxes,
     0,
   );
-  const gatingFullBoxCount = Math.max(0, gatingScanCount - gatingPartBoxes);
+  const gatingFullBoxCount = Math.max(0, gatingScanCount - gatingLooseBoxes);
   // Partial = at least one box scanned, but the load still carries unscanned invoiced
   // goods. Judged PER BILL/LINE on exact scanned-vs-invoiced QUANTITY (the same signal as
   // the bill badges and the backend gate) whenever the scans carry a quantity — every
@@ -823,8 +828,8 @@ export default function SalesDispatchBarcodeScanPage() {
                 label="Scanned Boxes"
                 value={formatNumber(scannedFullBoxes)}
                 hint={
-                  scannedPartBoxes > 0
-                    ? `+ ${formatNumber(scannedPartBoxes)} part box${scannedPartBoxes === 1 ? '' : 'es'} (${formatNumber(scannedLoose)} PCS)`
+                  scannedLooseBoxes > 0
+                    ? `+ ${formatNumber(scannedLoose)} PCS loose (in ${formatNumber(scannedLooseBoxes)} box${scannedLooseBoxes === 1 ? '' : 'es'})`
                     : ''
                 }
               />
@@ -1627,10 +1632,10 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
                 </div>
                 {/* A short box covers the line's loose remainder, not a box slot: called
                     out so "boxes scanned" can never quietly stand in for missing pieces. */}
-                {item.partBoxCount > 0 ? (
+                {item.looseBoxCount > 0 ? (
                   <div className="text-xs font-medium text-amber-700">
-                    + {item.partBoxCount} part box{item.partBoxCount === 1 ? '' : 'es'} (
-                    {formatNumber(item.partBoxPieces)} PCS)
+                    + {formatNumber(item.loosePieces)} PCS loose (in {item.looseBoxCount} box
+                    {item.looseBoxCount === 1 ? '' : 'es'})
                   </div>
                 ) : null}
                 <div className="text-xs text-muted-foreground">
@@ -2142,12 +2147,12 @@ interface BillGroup {
   items: SalesDispatchItem[];
   scans: SalesDispatchBoxScan[];
   expectedBoxes: number;
-  /** Invoiced pieces the box count excludes — they arrive in a part box. */
+  /** Invoiced pieces the box count excludes — they arrive outside a full box. */
   expectedLoose: number;
-  /** FULL boxes scanned. A part box counts under scannedLoose, not here. */
+  /** FULL boxes scanned. A loose-covering box counts under scannedLoose, not here. */
   scannedBoxes: number;
-  /** Part boxes scanned, and the pieces they carried. */
-  scannedPartBoxes: number;
+  /** Boxes covering printed loose pieces (short, or of an unboxed item), and their pieces. */
+  scannedLooseBoxes: number;
   scannedLoose: number;
   summary: BillScanSummary;
   status: 'Open' | 'Partial' | 'Complete';
@@ -2166,7 +2171,10 @@ function buildBillGroups(
     return documents.map((document) => {
       // Collapse invoice lines that repeat an item code into one row per product, then
       // derive the bill's expected box count from those same rows so the header total and
-      // the per-line rows always agree. A stored document total (SAP gave one) still wins.
+      // the per-line rows always agree. Those rows -- not the bill's stored total -- are the
+      // scan target: the stored figure is split line by line, so a product invoiced as 13 +
+      // 67 pcs of a 16-PCS item prints 4 boxes + 16 loose while the floor packs 5 whole
+      // boxes. The stored total only stands in for a bill carrying no item rows.
       const items = groupItemsByItemCode(getDocumentItems(entry, document));
       const storedBoxes = parsePositiveNumber(document.total_boxes);
       const storedLoose = parsePositiveNumber(document.total_loose);
@@ -2179,8 +2187,8 @@ function buildBillGroups(
         customerName: document.customer_name || '',
         items,
         scans: scans.filter((scan) => scan.document === document.id),
-        expectedBoxes: storedBoxes > 0 ? storedBoxes : getExpectedItemsBoxes(items),
-        expectedLoose: storedLoose > 0 ? storedLoose : getExpectedItemsLoose(items),
+        expectedBoxes: items.length ? getExpectedItemsBoxes(items) : storedBoxes,
+        expectedLoose: items.length ? getExpectedItemsLoose(items) : storedLoose,
       });
     });
   }
@@ -2199,8 +2207,8 @@ function buildBillGroups(
       customerName: entry.customer_name || entry.to_warehouse || '',
       items,
       scans,
-      expectedBoxes: storedBoxes > 0 ? storedBoxes : getExpectedItemsBoxes(items),
-      expectedLoose: storedLoose > 0 ? storedLoose : getExpectedItemsLoose(items),
+      expectedBoxes: items.length ? getExpectedItemsBoxes(items) : storedBoxes,
+      expectedLoose: items.length ? getExpectedItemsLoose(items) : storedLoose,
     }),
   ];
 }
@@ -2219,20 +2227,23 @@ function makeBillGroup(args: {
 }): BillGroup {
   const summary = summarizeItems(args.items, args.scans);
   // Split the scans the way the bill prints its goods: full boxes against the box count,
-  // part boxes against the loose remainder. A 4-piece box on a 16-PCS line is the loose
-  // 4 — counting it as a box is what showed "116 / 116 boxes" with 16 pieces unshipped.
-  const scannedPartBoxes = summary.items.reduce((total, item) => total + item.partBoxCount, 0);
-  const scannedLoose = summary.items.reduce((total, item) => total + item.partBoxPieces, 0);
+  // everything else against the loose remainder. A 4-piece box on a 16-PCS line is the loose
+  // 4 — counting it as a box is what showed "116 / 116 boxes" with 16 pieces unshipped — and
+  // so is every tin of an item whose bill prints no boxes at all.
+  const scannedLooseBoxes = summary.items.reduce((total, item) => total + item.looseBoxCount, 0);
+  const scannedLoose = summary.items.reduce((total, item) => total + item.loosePieces, 0);
   // Anything not matched to a line (a box outside this bill's item list) has no pack size
   // to be short of, so it stays a box — the table flags it separately.
-  const scannedBoxes = Math.max(0, args.scans.length - scannedPartBoxes);
+  const scannedBoxes = Math.max(0, args.scans.length - scannedLooseBoxes);
   const allComplete = summary.items.length > 0 && summary.items.every((item) => item.isComplete);
+  // Any label scanned makes the bill Partial — including a bill of unboxed goods, whose
+  // every scan lands under scannedLoose and would otherwise leave it reading "Open".
   const status: BillGroup['status'] = allComplete
     ? 'Complete'
-    : scannedBoxes > 0
+    : args.scans.length > 0
       ? 'Partial'
       : 'Open';
-  return { ...args, scannedBoxes, scannedPartBoxes, scannedLoose, summary, status };
+  return { ...args, scannedBoxes, scannedLooseBoxes, scannedLoose, summary, status };
 }
 
 function getDocumentItems(

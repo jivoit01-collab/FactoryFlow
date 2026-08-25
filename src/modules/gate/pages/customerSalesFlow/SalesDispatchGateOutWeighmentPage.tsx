@@ -64,7 +64,8 @@ import {
 } from './salesDispatchFlow.helpers';
 import { getSalesDispatchRoutes } from './salesDispatchRoutes';
 import {
-  formatPartBoxNote,
+  formatLooseScanNote,
+  getScanTargetPacking,
   mergeScanProgress,
   summarizeScanProgress,
 } from './salesDispatchScanSummary';
@@ -337,16 +338,20 @@ export default function SalesDispatchGateOutWeighmentPage() {
     (sum, scan) => sum + parsePositiveNumber(scan.net_weight),
     0,
   );
-  const expectedBoxes = truckDockings.reduce(
-    (sum, docking) => sum + getExpectedDispatchBoxes(docking),
-    0,
-  );
-  // The printed loose remainder those part boxes carry, so the tile can show both halves.
-  const expectedLoose = truckDockings.reduce(
-    (sum, docking) => sum + getExpectedDispatchLoose(docking),
-    0,
-  );
-  const scanNote = formatPartBoxNote(scanProgress, expectedLoose);
+  // Boxes/loose the load can physically be scanned as: grouped per (bill, item) and split
+  // once, not the sum of the bill's per-line splits -- lines of 13 and 67 pcs of a 16-PCS
+  // item print "4 boxes + 16 loose" where the floor packs 5 whole boxes.
+  const scanTargets = truckDockings.map((docking) => {
+    const items = getInvoiceItems(docking);
+    if (items.length) return getScanTargetPacking(items);
+    return {
+      boxes: getExpectedDispatchBoxes(docking),
+      loose: getExpectedDispatchLoose(docking),
+    };
+  });
+  const expectedBoxes = scanTargets.reduce((sum, target) => sum + target.boxes, 0);
+  const expectedLoose = scanTargets.reduce((sum, target) => sum + target.loose, 0);
+  const scanNote = formatLooseScanNote(scanProgress, expectedLoose);
   const invoiceItems = truckDockings.flatMap((docking) => getInvoiceItems(docking));
   const sapInvoiceWeight = truckDockings.reduce(
     (sum, docking) => sum + parsePositiveNumber(docking.total_weight),
@@ -788,12 +793,12 @@ function DockingLoadCard({
   scans: SalesDispatchBoxScan[];
   /** FULL boxes scanned — the only figure comparable to the expected box count. */
   scannedBoxes: number;
-  /** "+ 1 part box (4 / 4 pcs loose)" — the part boxes the box count leaves out. */
+  /** "+ 20 / 40 pcs loose (in 17 boxes)" — the goods the box count leaves out. */
   scanNote: string;
   scannedQty: number;
   scannedNetWeight: number;
   expectedBoxes: number;
-  /** Invoiced pieces that ride out loose, in part boxes. */
+  /** Invoiced pieces that ride out loose rather than in a full box. */
   expectedLoose: number;
   invoiceItems: SalesDispatchItem[];
   invoiceWeight: number;

@@ -60,8 +60,6 @@ import {
   getExpectedDocumentLoose,
   getExpectedItemBoxes,
   getExpectedItemLoose,
-  getExpectedItemsBoxes,
-  getExpectedItemsLoose,
   parsePositiveNumber,
 } from './salesDispatchBoxCounts';
 import {
@@ -74,8 +72,9 @@ import {
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 import {
   EMPTY_SCAN_PROGRESS,
-  formatPartBoxNote,
+  formatLooseScanNote,
   formatScannedBoxQuantities,
+  getScanTargetPacking,
   groupItemsByItemCode,
   type ItemScanRow,
   mergeScanProgress,
@@ -552,19 +551,20 @@ function ScannedBoxesSheet({
         )
       : null;
 
-  const expected = scopedItems
-    ? getExpectedItemsBoxes(scopedItems)
+  // Boxes/loose the scope can physically be scanned as (grouped per bill+item, see
+  // getDocumentScanTarget) — the same target the docking screen shows.
+  const scopeTarget = scopedItems
+    ? getScanTargetPacking(scopedItems)
     : selectedDoc
-      ? getExpectedDocumentBoxes(selectedDoc)
-      : getExpectedLoadBoxes(documents);
-
+      ? getDocumentScanTarget(selectedDoc)
+      : {
+          boxes: getExpectedLoadBoxes(documents),
+          loose: getExpectedLoadLoose(documents),
+        };
+  const expected = scopeTarget.boxes;
   // Loose goods have no box count; report the pieces so "Expected Boxes: 0" can't read
   // as "nothing to scan" for a bill that ships 500 loose bottles.
-  const expectedLoose = scopedItems
-    ? getExpectedItemsLoose(scopedItems)
-    : selectedDoc
-      ? getExpectedDocumentLoose(selectedDoc)
-      : documents.reduce((sum, doc) => sum + getExpectedDocumentLoose(doc), 0);
+  const expectedLoose = scopeTarget.loose;
 
   // The scans in scope split into full boxes and part boxes, so the sheet's own header
   // agrees with the docking screen instead of counting a part box as a box.
@@ -664,10 +664,10 @@ function ScannedBoxesSheet({
             // Full boxes, with the part boxes named separately: a part box carries the
             // bill's printed loose pieces, so lumping it in read as one box too many.
             value={
-              progress.partBoxes > 0
-                ? `${formatCount(progress.fullBoxes)} + ${progress.partBoxes} part box${
-                    progress.partBoxes === 1 ? '' : 'es'
-                  } (${formatCount(progress.partBoxPieces)} pcs)`
+              progress.looseBoxes > 0
+                ? `${formatCount(progress.fullBoxes)} + ${progress.looseBoxes} loose box${
+                    progress.looseBoxes === 1 ? '' : 'es'
+                  } (${formatCount(progress.loosePieces)} pcs)`
                 : formatCount(progress.fullBoxes)
             }
           />
@@ -837,7 +837,7 @@ function ScanProgressBadge({
   // showed a complete load as "376 / 375 boxes": the 376th was the part box carrying the
   // bill's printed 4 loose pieces.
   const boxTone = getScanTone(progress.fullBoxes, expected);
-  const looseShort = expectedLoose > 0 && progress.partBoxPieces < expectedLoose;
+  const looseShort = expectedLoose > 0 && progress.loosePieces < expectedLoose;
   const tone = countInPieces
     ? getScanTone(scannedPieces, expectedPieces)
     : boxTone === 'complete' && looseShort
@@ -846,16 +846,16 @@ function ScanProgressBadge({
   // An all-loose scope (no printed boxes at all) has no part-box notion: every box of a
   // loose item is "full", so a "0 / 500 pcs loose" tail there would read as missing goods
   // when the pieces are in fact the whole shipment, counted in pieces elsewhere.
-  const showLooseNote = expected > 0 || progress.partBoxes > 0;
-  const partBoxNote =
-    countInPieces || !showLooseNote ? '' : formatPartBoxNote(progress, expectedLoose);
+  const showLooseNote = expected > 0 || progress.looseBoxes > 0;
+  const looseNote =
+    countInPieces || !showLooseNote ? '' : formatLooseScanNote(progress, expectedLoose);
   const label = countInPieces
     ? `${formatCount(scannedPieces)} / ${formatCount(expectedPieces)} pcs`
     : expected > 0
       ? `${formatCount(progress.fullBoxes)} / ${formatCount(expected)} boxes`
       : progress.fullBoxes > 0
         ? `${formatCount(progress.fullBoxes)} scanned`
-        : partBoxNote
+        : looseNote
           ? 'No full boxes scanned'
           : 'No boxes scanned';
 
@@ -869,7 +869,7 @@ function ScanProgressBadge({
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {label}
-      {partBoxNote ? <span className="font-normal opacity-80">{partBoxNote}</span> : null}
+      {looseNote ? <span className="font-normal opacity-80">{looseNote}</span> : null}
     </span>
   );
 }
@@ -1023,16 +1023,36 @@ function DocumentsCard({
   );
 }
 
+/**
+ * What one bill can physically be SCANNED as: boxes + loose pieces, grouped per
+ * (bill, item) so several lines of one product are split once, together.
+ *
+ * Deliberately not the bill's stored total_boxes/total_loose. Those are the printed
+ * figures, split line by line: lines of 13 and 67 pcs of a 16-PCS item print
+ * "0 boxes + 13 loose" and "4 boxes + 3 loose", but their leftover 16 pieces make one more
+ * whole box, so 105 boxes are scanned where the printed total says 104. The stored totals
+ * stay in the bill's own load line (formatDocumentLoad) — that is what the customer's copy
+ * shows; this is what the scanner counts. Falls back to the stored totals for a legacy
+ * bill that carries no item rows.
+ */
+function getDocumentScanTarget(document: DetailDocument) {
+  if (document.items?.length) return getScanTargetPacking(document.items);
+  return {
+    boxes: getExpectedDocumentBoxes(document),
+    loose: getExpectedDocumentLoose(document),
+  };
+}
+
 // Whole-load expected boxes = every bill on the truck (across all dockings). Summing per
 // bill (not reading a single docking's stored total) is what makes the count span
 // companies on a cross-company truck.
 function getExpectedLoadBoxes(documents: DetailDocument[]) {
-  return documents.reduce((total, document) => total + getExpectedDocumentBoxes(document), 0);
+  return documents.reduce((total, document) => total + getDocumentScanTarget(document).boxes, 0);
 }
 
 // The load's printed loose remainder — the pieces the box count deliberately leaves out.
 function getExpectedLoadLoose(documents: DetailDocument[]) {
-  return documents.reduce((total, document) => total + getExpectedDocumentLoose(document), 0);
+  return documents.reduce((total, document) => total + getDocumentScanTarget(document).loose, 0);
 }
 
 /**
@@ -1090,7 +1110,7 @@ function DocumentSection({
 }) {
   const load = formatDocumentLoad(document);
   const destination = formatValue(formatDocumentDestination(document));
-  const expectedBoxes = getExpectedDocumentBoxes(document);
+  const scanTarget = getDocumentScanTarget(document);
   // Per-item scan status, keyed by item code, computed the same way the barcode scan
   // page does (lines grouped by code, scanned qty vs invoiced qty) so the colours and
   // completion here match the scanning screen exactly.
@@ -1134,8 +1154,8 @@ function DocumentSection({
         <div className="ml-6 flex flex-col items-start gap-1 text-xs text-muted-foreground sm:ml-0 sm:items-end">
           <ScanProgressBadge
             progress={summarizeScanProgress(document.items, scans)}
-            expected={expectedBoxes}
-            expectedLoose={getExpectedDocumentLoose(document)}
+            expected={scanTarget.boxes}
+            expectedLoose={scanTarget.loose}
             {...getPiecesProgress([document], scans)}
           />
           {hasDisplayValue(document.sap_doc_total) ? (
@@ -1223,8 +1243,8 @@ function DocumentSection({
                         // useful progress figure on its own.
                         <div className="mt-1 text-xs text-muted-foreground">
                           {status.fullBoxCount} box{status.fullBoxCount === 1 ? '' : 'es'}
-                          {status.partBoxCount > 0
-                            ? ` + ${status.partBoxCount} part box${status.partBoxCount === 1 ? '' : 'es'}`
+                          {status.looseBoxCount > 0
+                            ? ` + ${status.looseBoxCount} loose box${status.looseBoxCount === 1 ? '' : 'es'}`
                             : ''}
                           {status.scannedBoxQuantities.length ? (
                             <span className="tabular-nums">
@@ -1328,6 +1348,11 @@ function formatDocumentLoad(document: DetailDocument) {
     // piece (SalFactor2 = 1, non-CSD) has no box count, so it reads "500 pcs loose"
     // rather than a bare "0 boxes" that looks like an empty load.
     formatPacking(getExpectedDocumentBoxes(document), getExpectedDocumentLoose(document)),
+    // The bill prints its split line by line, so what the floor packs can differ — 13 + 3
+    // leftover pieces of a 16-PCS item are a whole box, not loose goods. Name the packed
+    // figure when it differs, so the paper in the operator's hand ("174 boxes + 16 pcs
+    // loose") and the labels on the truck (175) never look like a discrepancy.
+    formatPackedDifference(document),
     document.total_litres ? `${document.total_litres} litres` : '',
     document.total_weight ? formatWeightValue(document.total_weight) : '',
   ].filter(Boolean);
@@ -1356,7 +1381,10 @@ function formatQuantityWithUom(quantity?: string | number | null, uom?: string |
 // document, which keeps the badge in box mode.
 function getPiecesProgress(documents: DetailDocument[], scans: SalesDispatchBoxScan[]) {
   const items = documents.flatMap((document) => document.items || []);
-  const hasLoose = items.some((item) => getExpectedItemLoose(item) > 0);
+  // Judged on the SCAN target, not the per-line printed split: a bill whose line
+  // remainders add up to whole boxes (13 + 3 pcs of a 16-PCS item) ships no loose pieces
+  // at all, so it stays in box mode instead of switching to a piece count.
+  const hasLoose = documents.some((document) => getDocumentScanTarget(document).loose > 0);
   if (!hasLoose) return { scannedPieces: 0, expectedPieces: 0 };
   return {
     scannedPieces: scans.reduce((sum, scan) => sum + parsePositiveNumber(scan.quantity), 0),
@@ -1557,6 +1585,21 @@ function formatItemMetrics(item: SalesDispatchItem) {
 
 // "25 boxes", "25 boxes + 8 pcs loose", or "500 pcs loose" — the SAP bill's Box + Loose
 // pair. Empty when the line carries neither, so callers can filter it out.
+/**
+ * "packs as 175 boxes" — only when the bill's printed split and the floor's packing differ.
+ *
+ * They differ when one product is invoiced on several lines: the bill splits each line, so
+ * 13 + 3 leftover pieces of a 16-PCS item print as loose while the warehouse packs them as
+ * one more whole box. Silent, that reads as a box too many at the gate.
+ */
+function formatPackedDifference(document: DetailDocument) {
+  const printedBoxes = getExpectedDocumentBoxes(document);
+  const printedLoose = getExpectedDocumentLoose(document);
+  const packed = getDocumentScanTarget(document);
+  if (packed.boxes === printedBoxes && packed.loose === printedLoose) return '';
+  return `packs as ${formatPacking(packed.boxes, packed.loose) || '0 boxes'}`;
+}
+
 function formatPacking(boxes: number, loose: number) {
   const parts = [
     boxes > 0 ? `${formatCount(boxes)} ${boxes === 1 ? 'box' : 'boxes'}` : '',
