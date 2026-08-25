@@ -74,6 +74,56 @@ export const CONTROLLED_DOCUMENTS = {
     revision: '00',
     issueDate: '23-07-2026',
   },
+
+  // --- ETP / STP plant registers -------------------------------------------
+  // Codes read off the plants' own forms. The sludge (…-08-06), STP chemical
+  // (…-08-04), back-washing (QA-FRM-14-09-00-03) and calibration
+  // (CAL-FRM-08-03-00-01) codes are the printed ones; the daily-record,
+  // monitoring and ETP-chemical serials were illegible on the scanned forms and
+  // are assigned within the same QA-FRM-14-00-08 group — confirm them against
+  // the controlled originals before the first audit.
+  ETP_DAILY_RECORD: {
+    name: 'EFFLUENT TREATMENT PLANT RECORD',
+    code: 'QA-FRM-14-00-08-01',
+    revision: '00',
+    issueDate: '23-07-2026',
+  },
+  ETP_MONITORING_RECORD: {
+    name: 'ETP ON LINE MONITORING RECORD',
+    code: 'QA-FRM-14-00-08-02',
+    revision: '00',
+    issueDate: '23-07-2026',
+  },
+  ETP_CHEMICAL_CONSUMPTION: {
+    name: 'CHEMICAL CONSUMPTION RECORD FOR ETP PLANT',
+    code: 'QA-FRM-14-00-08-05',
+    revision: '00',
+    issueDate: '23-07-2026',
+  },
+  STP_CHEMICAL_CONSUMPTION: {
+    name: 'CHEMICAL CONSUMPTION RECORD FOR STP PLANT',
+    code: 'QA-FRM-14-00-08-04',
+    revision: '00',
+    issueDate: '23-07-2026',
+  },
+  ETP_SLUDGE_GENERATION: {
+    name: 'SLUDGE GENERATION RECORD',
+    code: 'QA-FRM-14-00-08-06',
+    revision: '00',
+    issueDate: '23-07-2026',
+  },
+  ETP_BACKWASH_RECORD: {
+    name: 'DAILY BACK WASHING RECORD',
+    code: 'QA-FRM-14-09-00-03',
+    revision: '00',
+    issueDate: '23-07-2026',
+  },
+  ETP_CALIBRATION_RECORD: {
+    name: 'CALIBRATION RECORD',
+    code: 'CAL-FRM-08-03-00-01',
+    revision: '00',
+    issueDate: '23-07-2026',
+  },
 } as const satisfies Record<string, ControlledDocumentMeta>;
 
 export type ControlledDocumentKey = keyof typeof CONTROLLED_DOCUMENTS;

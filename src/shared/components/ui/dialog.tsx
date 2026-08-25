@@ -56,6 +56,23 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 );
 DialogHeader.displayName = 'DialogHeader';
 
+/**
+ * Scrollable middle section of a tall dialog.
+ *
+ * Pair it with a max-height on `DialogContent` (plus
+ * `grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden`): the title and the
+ * buttons stay put and only this scrolls, instead of the dialog growing past the
+ * screen and cutting them off.
+ *
+ * The horizontal padding — with the matching negative margin so the fields still
+ * line up with the header — is deliberate: a scroll box with no padding clips the
+ * left/right border and the focus ring of any input sitting against its edge.
+ */
+const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn('-mx-1 min-h-0 overflow-y-auto px-1 py-1', className)} {...props} />
+);
+DialogBody.displayName = 'DialogBody';
+
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)}
@@ -90,6 +107,7 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

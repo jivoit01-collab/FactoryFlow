@@ -1241,6 +1241,63 @@ export const API_ENDPOINTS = {
     PACKING_COMPLETE: (id: number) => `/marketplace/packing/${id}/complete/`,
     PACK_BARCODE_PRINT: (id: number) => `/marketplace/packing/barcodes/${id}/print/`,
   },
+  // ETP / STP — the treatment plants' QA registers. Masters first (the Settings
+  // screen), then one endpoint set per register; every register list accepts
+  // ?plant=&date=&date_from=&date_to=&company=.
+  ETP: {
+    DASHBOARD: '/etp/dashboard/',
+    SUMMARY: '/etp/summary/',
+
+    PLANTS: '/etp/plants/',
+    PLANT_DETAIL: (plantId: number) => `/etp/plants/${plantId}/`,
+    STAFF: '/etp/staff/',
+    STAFF_DETAIL: (staffId: number) => `/etp/staff/${staffId}/`,
+    OPTIONS: '/etp/options/',
+    OPTION_DETAIL: (optionId: number) => `/etp/options/${optionId}/`,
+    OPTION_CATEGORIES: '/etp/options/categories/',
+    CHEMICALS: '/etp/chemicals/',
+    CHEMICAL_DETAIL: (chemicalId: number) => `/etp/chemicals/${chemicalId}/`,
+    BACKWASH_EQUIPMENT: '/etp/backwash-equipment/',
+    BACKWASH_EQUIPMENT_DETAIL: (equipmentId: number) =>
+      `/etp/backwash-equipment/${equipmentId}/`,
+    MONITORING_PARAMETERS: '/etp/monitoring-parameters/',
+    MONITORING_PARAMETER_DETAIL: (parameterId: number) =>
+      `/etp/monitoring-parameters/${parameterId}/`,
+    INSTRUMENTS: '/etp/instruments/',
+    INSTRUMENT_DETAIL: (instrumentId: number) => `/etp/instruments/${instrumentId}/`,
+    // Document numbers the registers print — held in the DB, edited in Settings.
+    PRINT_DOCUMENTS: '/etp/print-documents/',
+    PRINT_DOCUMENT_DETAIL: (documentId: number) => `/etp/print-documents/${documentId}/`,
+    PRINT_DOCUMENT_KEYS: '/etp/print-documents/keys/',
+
+    DAILY_LOGS: '/etp/daily-logs/',
+    DAILY_LOG_DETAIL: (logId: number) => `/etp/daily-logs/${logId}/`,
+    // Yesterday's closing figures, to prefill today's openings.
+    DAILY_LOG_LAST_READINGS: '/etp/daily-logs/last-readings/',
+
+    MONITORING_RECORDS: '/etp/monitoring-records/',
+    MONITORING_RECORD_DETAIL: (recordId: number) => `/etp/monitoring-records/${recordId}/`,
+    // The blank sheet for a plant: its parameter columns + its time slots.
+    MONITORING_SHEET_TEMPLATE: '/etp/monitoring-records/sheet-template/',
+    MONITORING_VERIFY: (recordId: number) => `/etp/monitoring-records/${recordId}/verify/`,
+
+    CHEMICAL_LOGS: '/etp/chemical-logs/',
+    CHEMICAL_LOG_DETAIL: (logId: number) => `/etp/chemical-logs/${logId}/`,
+    CHEMICAL_LOG_TOTALS: '/etp/chemical-logs/totals/',
+
+    SLUDGE_ENTRIES: '/etp/sludge-entries/',
+    SLUDGE_ENTRY_DETAIL: (entryId: number) => `/etp/sludge-entries/${entryId}/`,
+
+    BACKWASH_ENTRIES: '/etp/backwash-entries/',
+    BACKWASH_ENTRY_DETAIL: (entryId: number) => `/etp/backwash-entries/${entryId}/`,
+
+    CALIBRATION_RECORDS: '/etp/calibration-records/',
+    CALIBRATION_RECORD_DETAIL: (recordId: number) => `/etp/calibration-records/${recordId}/`,
+
+    // The registers' edit trail: who changed which entry, when, and from what
+    // to what. Read-only; ?register=&plant=&object_id=&date_from=&date_to=.
+    CHANGE_LOG: '/etp/change-log/',
+  },
 } as const;
 
 export const HTTP_STATUS = {

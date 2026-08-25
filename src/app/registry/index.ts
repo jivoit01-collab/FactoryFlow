@@ -10,6 +10,7 @@ import { dailyTasksModuleConfig } from '@/modules/daily-tasks/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
 import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
+import { etpModuleConfig } from '@/modules/etp/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
 import { goodsReturnModuleConfig } from '@/modules/goods-return/module.config';
@@ -51,6 +52,8 @@ export const moduleRegistry: ModuleConfig[] = [
   planningPurchaseModuleConfig,
   maintenanceModuleConfig,
   fireModuleConfig,
+  // Sits by Maintenance: the treatment plants' own registers.
+  etpModuleConfig,
   warehouseModuleConfig,
   wmsModuleConfig,
   barcodeModuleConfig,

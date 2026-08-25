@@ -133,6 +133,20 @@ export {
   type MaintenancePermission,
 } from './maintenance.permissions';
 
+// ETP / STP Module (effluent + sewage treatment plant registers)
+export {
+  ETP_ACCESS,
+  ETP_BACKWASH_ACCESS,
+  ETP_CALIBRATION_ACCESS,
+  ETP_CHEMICAL_ACCESS,
+  ETP_DAILY_LOG_ACCESS,
+  ETP_MODULE_PREFIX,
+  ETP_MONITORING_ACCESS,
+  ETP_PERMISSIONS,
+  ETP_SLUDGE_ACCESS,
+  type EtpPermission,
+} from './etp.permissions';
+
 // Returnable Items Module (department + gate stages of the returnable gate pass)
 export {
   RETURNABLE_MODULE_PREFIX,

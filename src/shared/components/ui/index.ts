@@ -7,6 +7,7 @@ export { Checkbox, type CheckboxProps } from './checkbox';
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './collapsible';
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
