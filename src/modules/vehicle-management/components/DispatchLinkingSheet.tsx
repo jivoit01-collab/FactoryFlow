@@ -25,6 +25,7 @@ import {
   invoiceWeightForPayload,
   monthValue,
   numberToString,
+  totalLitresForPayload,
 } from '../utils/dispatchLinkPayload';
 
 interface DispatchLinkingSheetProps {
@@ -264,7 +265,7 @@ export function DispatchLinkingSheet({
       invoice_amount: stringOrNull(form.invoice_amount),
       place_of_supply: form.place_of_supply.trim(),
       product_variety: bill.plan.product_variety || inferProductVariety(bill.item_summary),
-      total_litres: bill.plan.total_litres ?? numberToString(bill.total_litres),
+      total_litres: totalLitresForPayload(bill),
       effective_month: bill.plan.effective_month || monthValue(bill.doc_date),
       budget_delivery_point: form.budget_delivery_point.trim(),
       service_location_code: bill.plan.service_location_code ?? null,

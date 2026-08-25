@@ -26,6 +26,21 @@ export function isApiError(error: unknown): error is ApiError {
  * @param fallbackMessage - Default message if no specific error message is found
  * @returns A user-friendly error message string
  */
+/** Render a DRF field-error map ({field: [msg]}) as "field: msg | field: msg". */
+function formatFieldErrors(fieldErrors: unknown): string {
+  if (!fieldErrors || typeof fieldErrors !== 'object') return '';
+  return Object.entries(fieldErrors as Record<string, unknown>)
+    .filter(([field]) => !['detail', 'message', 'error', 'errors', 'success'].includes(field))
+    .map(([field, value]) => {
+      const formattedField = field.replaceAll('_', ' ');
+      if (Array.isArray(value)) return `${formattedField}: ${value.join(', ')}`;
+      if (typeof value === 'string') return `${formattedField}: ${value}`;
+      return '';
+    })
+    .filter(Boolean)
+    .join(' | ');
+}
+
 export function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (!error) return fallbackMessage;
   if (typeof error !== 'object') return fallbackMessage;
@@ -33,9 +48,13 @@ export function getErrorMessage(error: unknown, fallbackMessage: string): string
   const apiError = error as ApiError;
   const responseData = apiError.response?.data;
 
-  // Try to get detail from response.data first (most specific)
+  // Try to get detail from response.data first (most specific). DRF views often
+  // pair a generic `detail` with a per-field `errors` object -- returning only the
+  // detail turns "Invalid dispatch plan details." into a dead end, so append the
+  // field errors when both are present.
   if (typeof responseData?.detail === 'string') {
-    return responseData.detail;
+    const fields = formatFieldErrors(responseData.errors);
+    return fields ? `${responseData.detail} (${fields})` : responseData.detail;
   }
 
   if (typeof responseData?.message === 'string') {
@@ -53,21 +72,8 @@ export function getErrorMessage(error: unknown, fallbackMessage: string): string
     return apiError.detail;
   }
 
-  const fieldErrors = apiError.errors || responseData?.errors || responseData;
-  if (fieldErrors && typeof fieldErrors === 'object') {
-    const message = Object.entries(fieldErrors)
-      .filter(([field]) => !['detail', 'message', 'error', 'errors', 'success'].includes(field))
-      .map(([field, value]) => {
-        const formattedField = field.replaceAll('_', ' ');
-        if (Array.isArray(value)) return `${formattedField}: ${value.join(', ')}`;
-        if (typeof value === 'string') return `${formattedField}: ${value}`;
-        return '';
-      })
-      .filter(Boolean)
-      .join(' | ');
-
-    if (message) return message;
-  }
+  const message = formatFieldErrors(apiError.errors || responseData?.errors || responseData);
+  if (message) return message;
 
   // Try message property
   if (apiError.message) {
