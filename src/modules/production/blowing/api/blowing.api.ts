@@ -95,10 +95,19 @@ export const blowingApi = {
   },
 
   // ---- Cost Master (catalog rates) ----
-  async getCostRates(params?: { machineId?: number; scope?: 'global' }): Promise<BlowingCostRate[]> {
+  async getCostRates(params?: {
+    machineId?: number;
+    scope?: 'global';
+    /** Rates in force on this date (default: today). */
+    asOf?: string;
+    /** Every dated row, newest first — the trail of what past runs were costed at. */
+    history?: boolean;
+  }): Promise<BlowingCostRate[]> {
     const query: Record<string, string | number> = {};
     if (params?.machineId != null) query.machine_id = params.machineId;
     if (params?.scope) query.scope = params.scope;
+    if (params?.asOf) query.as_of = params.asOf;
+    if (params?.history) query.history = '1';
     const res = await apiClient.get<BlowingCostRate[]>(EP.COST_RATES, {
       params: Object.keys(query).length ? query : undefined,
     });

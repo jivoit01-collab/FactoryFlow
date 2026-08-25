@@ -101,6 +101,12 @@ function CostMasterPage() {
   const navigate = useNavigate();
   const { data: machines = [] } = useMachines(true);
   const [scope, setScope] = useState<string>(GLOBAL);
+  // Rates are effective-dated: saving does not overwrite the old rate, it adds a
+  // row from this date. That is what lets a past run keep costing at the rate
+  // that applied on its own date instead of being repriced at today's.
+  const [effectiveFrom, setEffectiveFrom] = useState<string>(
+    () => new Date().toISOString().slice(0, 10),
+  );
   const isGlobal = scope === GLOBAL;
   const machineId = isGlobal ? undefined : Number(scope);
 
@@ -170,8 +176,9 @@ function CostMasterPage() {
         basis: draft.basis,
         rate: draft.rate,
         is_credit: !!item.credit,
+        effective_from: effectiveFrom,
       });
-      toast.success('Rate saved');
+      toast.success(`Rate saved, effective ${effectiveFrom}`);
     } catch {
       toast.error('Failed to save rate');
     }
@@ -217,6 +224,23 @@ function CostMasterPage() {
               </p>
             )}
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
+            <Label htmlFor="effective-from" className="min-w-fit font-medium">
+              New rates effective from:
+            </Label>
+            <Input
+              id="effective-from"
+              type="date"
+              className="w-[180px]"
+              value={effectiveFrom}
+              onChange={(e) => setEffectiveFrom(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Runs dated before this keep their existing rate — saving adds a new
+              dated rate rather than replacing the old one.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -238,6 +262,7 @@ function CostMasterPage() {
                     <th className="p-3 text-left font-medium">Cost Item</th>
                     <th className="w-[200px] p-3 text-left font-medium">Basis</th>
                     <th className="w-[160px] p-3 text-right font-medium">Rate (₹)</th>
+                    <th className="w-[130px] p-3 text-left font-medium">In force since</th>
                     <th className="w-[130px] p-3 text-center font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -294,6 +319,9 @@ function CostMasterPage() {
                             placeholder={inherited && !isGlobal ? inherited.rate : '—'}
                             onChange={(e) => setDraft(item.category, { rate: e.target.value })}
                           />
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">
+                          {existing?.effective_from ?? '—'}
                         </td>
                         <td className="p-3 text-center">
                           <div className="flex justify-center gap-1">

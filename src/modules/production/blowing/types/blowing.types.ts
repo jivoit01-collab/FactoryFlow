@@ -233,6 +233,9 @@ export interface BlowingCostRate {
   rate: string;
   is_credit: boolean;
   label: string;
+  // Applies to runs dated on/after this. A rate change is a NEW dated row, so a
+  // past run always reprices at the rate that applied on its own date.
+  effective_from: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -245,6 +248,9 @@ export interface UpsertBlowingCostRateRequest {
   rate: string | number;
   is_credit?: boolean;
   label?: string;
+  // Omitted = effective today. A later date schedules the change; re-posting an
+  // existing date corrects that day's row instead of adding one.
+  effective_from?: string;
 }
 
 export interface BlowingRunCostLine {
