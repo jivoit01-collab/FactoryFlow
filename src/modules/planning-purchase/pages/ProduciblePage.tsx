@@ -33,6 +33,7 @@ import {
   toNumber,
   UNIT_LABEL,
   UnitToggle,
+  WarehouseScopeNote,
 } from '../components';
 import { MATERIAL_TYPE_LABEL } from '../constants';
 import { usePlanUnit } from '../hooks/usePlanUnit';
@@ -280,14 +281,11 @@ export default function ProduciblePage() {
         {meta.notes.map((note) => (
           <p key={note}>{note}</p>
         ))}
-        <p>
-          Warehouse scope:{' '}
-          {meta.warehouse_scope === 'ALL' ? 'every warehouse' : meta.warehouse_scope.join(', ')}
-          {meta.excluded_warehouses.length
-            ? `, excluding ${meta.excluded_warehouses.join(', ')}`
-            : ''}
-          .
-        </p>
+        <WarehouseScopeNote
+          scope={meta.warehouse_scope}
+          filtered={meta.warehouse_filtered}
+          excluded={meta.excluded_warehouses}
+        />
       </div>
     </div>
   );

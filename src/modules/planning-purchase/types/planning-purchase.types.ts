@@ -21,6 +21,9 @@ export type SpreadPolicy = 'PERIOD_START' | 'EVEN_WORKING_DAYS';
 
 export type MaterialType = 'PACKAGING' | 'RAW' | 'OTHER';
 
+/** Keyed by material type, or a single `ALL` when a filter was supplied. */
+export type WarehouseScope = Partial<Record<MaterialType | 'ALL', string[]>>;
+
 /**
  * Which unit the plan screens display.
  *
@@ -242,7 +245,14 @@ export interface RequirementMeta {
   resource_line_count: number;
   items_without_bom: PlanItemWithoutBom[];
   unusable_boms: { parent_code: string; component_code: string; reason: string }[];
-  warehouse_scope: string[] | 'ALL';
+  /**
+   * Which warehouses each material type is counted in — packaging from the
+   * packaging stores, oil from the oil stores. Collapses to a single `ALL` key
+   * when the caller passes its own warehouse filter, since one list then applies
+   * to every component regardless of type.
+   */
+  warehouse_scope: WarehouseScope;
+  warehouse_filtered: boolean;
   fetched_at: string;
   notes: string[];
 }
@@ -494,7 +504,8 @@ export interface ProducibleMeta {
   at_risk_pct: string;
   stock_basis: StockBasis;
   unusable_boms: { parent_code: string; component_code: string; reason: string }[];
-  warehouse_scope: string[] | 'ALL';
+  warehouse_scope: WarehouseScope;
+  warehouse_filtered: boolean;
   excluded_warehouses: string[];
   fetched_at: string;
   notes: string[];
