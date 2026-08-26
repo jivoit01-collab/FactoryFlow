@@ -1187,6 +1187,7 @@ export const API_ENDPOINTS = {
     DISPATCH_ORDERS_RANGE: '/marketplace/dispatches/orders-in-range/',
     REPORT_EXPORT: (type: string) => `/marketplace/reports/${type}/export.csv`,
     REPORT_TRACKING: (batchId: number) => `/marketplace/reports/tracking/${batchId}/`,
+    REPORT_PREVIEW: (type: string) => `/marketplace/reports/${type}/preview/`,
     GATE_QUEUE: '/marketplace/gate/queue/',
     GATE_DETAIL: (batchId: number) => `/marketplace/gate/${batchId}/`,
     GATE_APPROVE: (batchId: number) => `/marketplace/gate/${batchId}/approve/`,

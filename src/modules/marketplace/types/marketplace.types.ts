@@ -1081,6 +1081,15 @@ export interface MpGatePassDispatchPayload {
 
 /** Per-sheet Tracking ID report. Totals always describe the WHOLE sheet, so the
  *  operator sees "352 of 1,672 scanned" even while looking at one half of it. */
+/** An insight report rendered on screen — the same rows its CSV carries.
+ *  `totals` describes the report BEFORE its narrowing filter, so the operator sees
+ *  the whole picture and then downloads only the slice they need. */
+export interface ReportPreview {
+  columns: string[];
+  rows: (string | number)[][];
+  totals: Record<string, string | number>;
+}
+
 export interface TrackingReport {
   sheet: { id: number; filename: string };
   totals: { total: number; scanned: number; not_scanned: number; rows: number };
