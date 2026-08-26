@@ -1078,3 +1078,12 @@ export interface MpGatePassDispatchPayload {
   out_date?: string | null;
   out_time?: string | null;
 }
+
+/** Per-sheet Tracking ID report. Totals always describe the WHOLE sheet, so the
+ *  operator sees "352 of 1,672 scanned" even while looking at one half of it. */
+export interface TrackingReport {
+  sheet: { id: number; filename: string };
+  totals: { total: number; scanned: number; not_scanned: number; rows: number };
+  columns: string[];
+  rows: (string | number)[][];
+}

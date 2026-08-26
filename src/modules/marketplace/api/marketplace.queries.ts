@@ -43,6 +43,8 @@ export const MARKETPLACE_QUERY_KEYS = {
   dispatch: (id?: number | null) => [...MARKETPLACE_QUERY_KEYS.all, 'dispatch', id] as const,
   dispatchSheets: (channel?: MarketplaceChannel) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'dispatchSheets', channel] as const,
+  trackingReport: (channel: MarketplaceChannel, batchId?: number | null, scanned?: string) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'trackingReport', channel, batchId, scanned] as const,
   dispatchBoard: (channel: MarketplaceChannel, batchId?: number | null) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'dispatchBoard', channel, batchId] as const,
   returns: (params?: ReturnListParams) =>
@@ -195,6 +197,19 @@ export function useDispatchSheets(channel: MarketplaceChannel) {
   return useQuery({
     queryKey: MARKETPLACE_QUERY_KEYS.dispatchSheets(channel),
     queryFn: () => marketplaceApi.dispatchSheets(channel),
+    staleTime: 20 * 1000,
+  });
+}
+
+export function useTrackingReport(
+  channel: MarketplaceChannel,
+  batchId?: number | null,
+  scanned?: 'scanned' | 'not-scanned',
+) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.trackingReport(channel, batchId, scanned),
+    queryFn: () => marketplaceApi.trackingReport(batchId!, { channel, scanned }),
+    enabled: !!batchId,
     staleTime: 20 * 1000,
   });
 }

@@ -63,6 +63,7 @@ import type {
   SkuMappingUpsert,
   StockList,
   WarehouseInsights,
+  TrackingReport,
 } from '../types/marketplace.types';
 
 const EP = API_ENDPOINTS.MARKETPLACE;
@@ -367,6 +368,17 @@ export const marketplaceApi = {
     return data;
   },
   /** Download a marketplace report as a CSV blob (Reports section). */
+  /** Every Tracking ID on one sheet with its scan state, plus the sheet's totals. */
+  async trackingReport(
+    batchId: number,
+    params: { channel: MarketplaceChannel; scanned?: 'scanned' | 'not-scanned' },
+  ): Promise<TrackingReport> {
+    const { data } = await apiClient.get<TrackingReport>(
+      `${EP.REPORT_TRACKING(batchId)}${buildQuery({ ...params })}`,
+    );
+    return data;
+  },
+
   async exportReport(
     reportType: string,
     params: {
@@ -375,6 +387,9 @@ export const marketplaceApi = {
       to?: string;
       date_field?: string;
       status?: string;
+      /** tracking report: which sheet, and which half of it. */
+      batch_id?: number;
+      scanned?: 'scanned' | 'not-scanned';
     },
   ): Promise<{ blob: Blob; filename: string }> {
     const resp = await apiClient.get<Blob>(

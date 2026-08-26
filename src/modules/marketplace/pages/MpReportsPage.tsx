@@ -17,10 +17,10 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
+import { useDispatchSheets, useTrackingReport } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { EMPTY_RANGE, MpDateRange, type MpRange } from '../components/MpDateRange';
 import { useMpChannel } from '../hooks/useMpChannel';
-import type { MarketplaceChannel } from '../types/marketplace.types';
 
 type ReportDef = {
   slug: string;
@@ -29,6 +29,7 @@ type ReportDef = {
   dateLabel: string; // which date the range filters on
   hasDateField?: boolean; // orders: order date vs upload date
   hasStatus?: boolean; // orders: filter by status
+  hasSheet?: boolean; // tracking: one sheet at a time, no date range
 };
 
 const REPORTS: ReportDef[] = [
@@ -59,6 +60,13 @@ const REPORTS: ReportDef[] = [
     dateLabel: 'Return date',
   },
   {
+    slug: 'tracking',
+    title: 'Tracking IDs by sheet',
+    desc: 'Every Tracking ID on one sheet — scanned or not, whatever state its order is in.',
+    dateLabel: 'Sheet',
+    hasSheet: true,
+  },
+  {
     slug: 'reconciliation',
     title: 'Reconciliation',
     desc: 'Per-order-item deviation — portal vs outward vs inward quantities.',
@@ -67,6 +75,8 @@ const REPORTS: ReportDef[] = [
 ];
 
 const ORDER_STATUSES = ['ALL', 'PENDING', 'PARTIAL', 'SCANNED', 'CONFIRMED', 'CANCELLED'];
+
+type ScanFilter = 'all' | 'scanned' | 'not-scanned';
 
 function triggerBlobDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -83,8 +93,14 @@ export default function MpReportsPage() {
   const [range, setRange] = useState<MpRange>(EMPTY_RANGE);
   const [dateField, setDateField] = useState<'order' | 'upload'>('order');
   const [status, setStatus] = useState('ALL');
+  const [sheetId, setSheetId] = useState<number | null>(null);
+  const [scanFilter, setScanFilter] = useState<ScanFilter>('scanned');
 
   const report = useMemo(() => REPORTS.find((r) => r.slug === slug)!, [slug]);
+  const sheets = useDispatchSheets(channel);
+  const scannedParam = scanFilter === 'all' ? undefined : scanFilter;
+  const tracking = useTrackingReport(channel, report.hasSheet ? sheetId : null, scannedParam);
+  const totals = tracking.data?.totals;
 
   const download = useMutation({
     mutationFn: () =>
@@ -94,6 +110,8 @@ export default function MpReportsPage() {
         to: range.to || undefined,
         date_field: report.hasDateField ? dateField : undefined,
         status: report.hasStatus && status !== 'ALL' ? status : undefined,
+        batch_id: report.hasSheet && sheetId ? sheetId : undefined,
+        scanned: report.hasSheet ? scannedParam : undefined,
       }),
     onSuccess: ({ blob, filename }) => {
       triggerBlobDownload(blob, filename);
@@ -143,7 +161,39 @@ export default function MpReportsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-4">
-            <MpDateRange value={range} onChange={setRange} label={report.dateLabel} />
+            {report.hasSheet ? (
+              <>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-xs text-muted-foreground">Sheet</span>
+                  <NativeSelect
+                    value={sheetId ?? ''}
+                    onChange={(e) => setSheetId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-72"
+                  >
+                    <SelectOption value="">Choose a sheet…</SelectOption>
+                    {(sheets.data?.sheets ?? []).map((sh) => (
+                      <SelectOption key={sh.id} value={sh.id}>
+                        {sh.filename}
+                      </SelectOption>
+                    ))}
+                  </NativeSelect>
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-xs text-muted-foreground">Tracking IDs</span>
+                  <NativeSelect
+                    value={scanFilter}
+                    onChange={(e) => setScanFilter(e.target.value as ScanFilter)}
+                    className="w-44"
+                  >
+                    <SelectOption value="scanned">Scanned only</SelectOption>
+                    <SelectOption value="not-scanned">Not scanned only</SelectOption>
+                    <SelectOption value="all">All on the sheet</SelectOption>
+                  </NativeSelect>
+                </label>
+              </>
+            ) : (
+              <MpDateRange value={range} onChange={setRange} label={report.dateLabel} />
+            )}
 
             {report.hasDateField && (
               <label className="flex flex-col gap-1 text-sm">
@@ -173,17 +223,77 @@ export default function MpReportsPage() {
             )}
           </div>
 
+          {report.hasSheet && totals ? (
+            <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
+              {[
+                { label: 'Scanned', value: totals.scanned, tone: 'text-emerald-600 dark:text-emerald-400' },
+                { label: 'Not scanned', value: totals.not_scanned, tone: 'text-amber-600 dark:text-amber-400' },
+                { label: 'Tracking IDs on sheet', value: totals.total, tone: '' },
+              ].map((t) => (
+                <div key={t.label} className="bg-background p-3">
+                  <div className={`text-2xl font-semibold tabular-nums ${t.tone}`}>{t.value}</div>
+                  <div className="text-xs text-muted-foreground">{t.label}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           <div className="flex items-center gap-3">
-            <Button onClick={() => download.mutate()} disabled={download.isPending}>
+            <Button
+              onClick={() => download.mutate()}
+              disabled={download.isPending || (report.hasSheet && !sheetId)}
+            >
               <Download className="mr-2 h-4 w-4" />
-              {download.isPending ? 'Preparing…' : 'Download CSV'}
+              {download.isPending
+                ? 'Preparing…'
+                : report.hasSheet && totals
+                  ? `Download CSV (${totals.rows})`
+                  : 'Download CSV'}
             </Button>
             <span className="text-xs text-muted-foreground">
-              {range.from || range.to
-                ? `Range: ${range.from || 'start'} → ${range.to || 'end'}`
-                : 'No date range — exports everything for this report.'}
+              {report.hasSheet
+                ? !sheetId
+                  ? 'Pick a sheet to report on.'
+                  : tracking.isPending
+                    ? 'Counting…'
+                    : `${scanFilter === 'all' ? 'Every' : scanFilter === 'scanned' ? 'Scanned' : 'Not-scanned'} Tracking ID on this sheet, whatever state its order is in.`
+                : range.from || range.to
+                  ? `Range: ${range.from || 'start'} → ${range.to || 'end'}`
+                  : 'No date range — exports everything for this report.'}
             </span>
           </div>
+
+          {report.hasSheet && tracking.data?.rows?.length ? (
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left">
+                  <tr>
+                    {tracking.data.columns.slice(0, 8).map((c) => (
+                      <th key={c} className="whitespace-nowrap px-3 py-2 text-xs font-medium text-muted-foreground">
+                        {c}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tracking.data.rows.slice(0, 25).map((r, i) => (
+                    <tr key={i} className="border-t">
+                      {r.slice(0, 8).map((cell, j) => (
+                        <td key={j} className={`px-3 py-1.5 ${j === 0 ? 'font-mono' : ''}`}>
+                          {String(cell ?? '')}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {tracking.data.rows.length > 25 ? (
+                <div className="border-t bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  Showing 25 of {tracking.data.rows.length} — the CSV has them all.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
