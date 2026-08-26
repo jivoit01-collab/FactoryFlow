@@ -2,90 +2,117 @@ import { cn } from '@/shared/utils';
 
 import type { RequirementMeta } from '../types';
 import { moneyShort } from './format';
-
-interface Tile {
-  label: string;
-  value: string;
-  hint?: string;
-  /** Coloured only when it needs action, so a healthy plan reads quiet. */
-  tone: 'critical' | 'warning' | 'neutral';
-}
-
-const TONE_CLASS: Record<Tile['tone'], string> = {
-  critical: 'border-destructive/30 bg-destructive/5',
-  warning: 'border-amber-500/30 bg-amber-500/5',
-  neutral: 'border-border bg-card',
-};
-
-const VALUE_CLASS: Record<Tile['tone'], string> = {
-  critical: 'text-destructive',
-  warning: 'text-amber-600 dark:text-amber-400',
-  neutral: '',
-};
+import { KpiCard, KpiRow } from './KpiCard';
+import { NO_DRILL, type RequirementDrill,sameDrill } from './requirementDrill';
 
 /**
- * Five numbers a planner needs before reading the table.
+ * Five numbers a planner needs before reading the table, each a way into it.
  *
- * Each tile is coloured only when it needs action. A plan with nothing short
- * should read as quiet, or the colour stops meaning anything.
+ * Coloured only when it needs action, so a plan with nothing short reads quiet
+ * and the colour keeps meaning something.
  */
-export function RequirementHeadline({ meta }: { meta: RequirementMeta }) {
-  const tiles: Tile[] = [
+export function RequirementHeadline({
+  meta,
+  drill,
+  onDrill,
+}: {
+  meta: RequirementMeta;
+  drill?: RequirementDrill;
+  onDrill?: (next: RequirementDrill) => void;
+}) {
+  const current = drill ?? NO_DRILL;
+
+  const cards: {
+    label: string;
+    value: string;
+    hint?: string;
+    tone: 'critical' | 'warning' | 'neutral';
+    drill: RequirementDrill;
+    drillLabel: string;
+    /** Nothing to open when the count is zero. */
+    enabled: boolean;
+  }[] = [
     {
       label: 'Components short',
       value: String(meta.shortage_count),
       hint: `of ${meta.component_count} exploded`,
       tone: meta.shortage_count > 0 ? 'critical' : 'neutral',
+      drill: { materialType: '', shortagesOnly: true, extra: 'NONE' },
+      drillLabel: 'Show only components that are short',
+      enabled: meta.shortage_count > 0,
     },
     {
       label: 'Packaging',
       value: String(meta.packaging_shortage_count),
       hint: 'shortages',
       tone: meta.packaging_shortage_count > 0 ? 'warning' : 'neutral',
+      drill: { materialType: 'PACKAGING', shortagesOnly: true, extra: 'NONE' },
+      drillLabel: 'Show only packaging shortages',
+      enabled: meta.packaging_shortage_count > 0,
     },
     {
       label: 'Raw material',
       value: String(meta.raw_shortage_count),
       hint: 'shortages',
       tone: meta.raw_shortage_count > 0 ? 'warning' : 'neutral',
+      drill: { materialType: 'RAW', shortagesOnly: true, extra: 'NONE' },
+      drillLabel: 'Show only raw-material shortages',
+      enabled: meta.raw_shortage_count > 0,
     },
     {
       label: 'No lead time',
       value: String(meta.no_lead_time_count),
       hint: 'cannot be dated',
       tone: meta.no_lead_time_count > 0 ? 'warning' : 'neutral',
+      drill: { materialType: '', shortagesOnly: true, extra: 'NO_LEAD_TIME' },
+      drillLabel: 'Show the shortages with no lead time on file',
+      enabled: meta.no_lead_time_count > 0,
     },
     {
       label: 'Estimated spend',
       value: moneyShort(meta.estimated_purchase_value),
-      hint: meta.no_price_count > 0 ? `${meta.no_price_count} unpriced` : 'at last purchase price',
+      hint:
+        meta.no_price_count > 0
+          ? `${meta.no_price_count} unpriced`
+          : 'at last purchase price',
       tone: 'neutral',
+      drill: { materialType: '', shortagesOnly: true, extra: 'BY_VALUE' },
+      drillLabel: 'Show the shortages that make up this spend, dearest first',
+      enabled: meta.shortage_count > 0,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {tiles.map((tile) => (
-        <div key={tile.label} className={cn('rounded-lg border p-3', TONE_CLASS[tile.tone])}>
-          <p className="text-xs text-muted-foreground">{tile.label}</p>
-          <p className={cn('mt-1 text-2xl font-semibold tabular-nums', VALUE_CLASS[tile.tone])}>
-            {tile.value}
-          </p>
-          {tile.hint ? (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{tile.hint}</p>
-          ) : null}
-        </div>
-      ))}
-    </div>
+    <KpiRow columns={5}>
+      {cards.map((card) => {
+        const active = sameDrill(current, card.drill);
+        return (
+          <KpiCard
+            key={card.label}
+            label={card.label}
+            value={card.value}
+            hint={card.hint}
+            tone={card.tone}
+            active={active}
+            drillLabel={card.drillLabel}
+            onClick={
+              onDrill && card.enabled
+                ? () => onDrill(active ? NO_DRILL : card.drill)
+                : undefined
+            }
+          />
+        );
+      })}
+    </KpiRow>
   );
 }
 
 /**
  * The things the numbers above cannot be trusted about.
  *
- * Rendered as plain notices rather than hidden behind an icon: a plan with four
- * SKUs that have no BOM has four SKUs whose materials nobody is buying, and that
- * has to be visible on the screen where the buying happens.
+ * Plain notices rather than an icon to hover: a plan with four SKUs that have no
+ * BOM has four SKUs nobody is buying for, and that has to be visible on the
+ * screen where the buying happens.
  */
 export function RequirementCaveats({ meta }: { meta: RequirementMeta }) {
   const notices: { tone: 'warning' | 'muted'; text: string }[] = [];
@@ -114,7 +141,7 @@ export function RequirementCaveats({ meta }: { meta: RequirementMeta }) {
       tone: 'warning',
       text: `${meta.over_committed_count} component${
         meta.over_committed_count === 1 ? ' has' : 's have'
-      } more stock committed than is on hand — already over-promised before this plan is counted.`,
+      } more stock committed than is on hand — already over-promised before this plan is counted. Click a Committed figure to see which documents hold it.`,
     });
   }
 

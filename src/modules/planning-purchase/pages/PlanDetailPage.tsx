@@ -18,7 +18,10 @@ import { Button, Card, CardContent } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { usePlanDetail } from '../api';
+import type { PlanLineSortKey } from '../components';
 import {
+  KpiCard,
+  KpiRow,
   monthLabel,
   percent,
   pickUnit,
@@ -42,6 +45,9 @@ export default function PlanDetailPage() {
   const [spreadPolicy, setSpreadPolicy] = useState<SpreadPolicy>('EVEN_WORKING_DAYS');
   // Module-wide and sticky, so the choice survives navigating between plans.
   const [unit, setUnit] = usePlanUnit();
+  // The headline cards drive the SKU table's ordering, so a card click puts the
+  // rows behind that number at the top instead of leaving them to be hunted.
+  const [sortKey, setSortKey] = useState<PlanLineSortKey>('planned');
 
   const query = usePlanDetail(absId || undefined, bucketType, spreadPolicy);
 
@@ -121,10 +127,18 @@ export default function PlanDetailPage() {
         </div>
       </DashboardHeader>
 
-      {/* Four numbers: the period, the target, what was made, how that reads. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SummaryTile label="Period" value={monthLabel(plan.start_date, plan.end_date)} />
-        <SummaryTile
+      {/* Four numbers: the period, the target, what was made, how that reads.
+          Each one orders the SKU table by what it is about. */}
+      <KpiRow>
+        <KpiCard
+          label="Period"
+          value={monthLabel(plan.start_date, plan.end_date)}
+          hint={bucketType === 'MONTH' ? 'showing the whole period' : 'click for the whole period'}
+          active={bucketType === 'MONTH'}
+          drillLabel="Show the plan as one period total"
+          onClick={() => setBucketType('MONTH')}
+        />
+        <KpiCard
           label="Planned"
           value={qtyWithUnit(
             pickUnit(
@@ -134,8 +148,11 @@ export default function PlanDetailPage() {
             unit,
           )}
           hint={`${plan.line_count} SKUs`}
+          active={sortKey === 'planned'}
+          drillLabel="Order the SKUs by largest plan"
+          onClick={() => setSortKey('planned')}
         />
-        <SummaryTile
+        <KpiCard
           label="Produced"
           value={qtyWithUnit(
             pickUnit(
@@ -149,13 +166,20 @@ export default function PlanDetailPage() {
             unit,
           )}
           hint="SAP goods receipts"
+          active={sortKey === 'produced'}
+          drillLabel="Order the SKUs by most produced"
+          onClick={() => setSortKey('produced')}
         />
-        <SummaryTile
+        <KpiCard
           label="Attainment"
           value={percent(plan.attainment_pct)}
           tone={attainment >= 95 ? 'ok' : attainment >= 70 ? 'warning' : 'critical'}
+          hint={sortKey === 'attainment' ? 'worst first' : 'click for worst first'}
+          active={sortKey === 'attainment'}
+          drillLabel="Order the SKUs by furthest behind plan"
+          onClick={() => setSortKey('attainment')}
         />
-      </div>
+      </KpiRow>
 
       {plan.items_without_bom?.length ? (
         <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
@@ -233,7 +257,12 @@ export default function PlanDetailPage() {
 
       <PlanBucketStrip buckets={buckets} plan={plan} bucketLabel={bucketLabel} unit={unit} />
 
-      <PlanLinesTable lines={lines} unit={unit} />
+      <PlanLinesTable
+        lines={lines}
+        unit={unit}
+        sortKey={sortKey}
+        onSortKeyChange={setSortKey}
+      />
 
       <div className="space-y-1 text-xs text-muted-foreground">
         <p>{meta.derivation_note}</p>
@@ -243,43 +272,6 @@ export default function PlanDetailPage() {
           rather than one SAP stated.
         </p>
       </div>
-    </div>
-  );
-}
-
-function SummaryTile({
-  label,
-  value,
-  hint,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: 'neutral' | 'ok' | 'warning' | 'critical';
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-lg border p-3',
-        tone === 'critical' && 'border-destructive/30 bg-destructive/5',
-        tone === 'warning' && 'border-amber-500/30 bg-amber-500/5',
-        tone === 'ok' && 'border-emerald-500/30 bg-emerald-500/5',
-        tone === 'neutral' && 'bg-card',
-      )}
-    >
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          'mt-1 text-xl font-semibold tabular-nums',
-          tone === 'critical' && 'text-destructive',
-          tone === 'warning' && 'text-amber-600 dark:text-amber-400',
-          tone === 'ok' && 'text-emerald-600 dark:text-emerald-400',
-        )}
-      >
-        {value}
-      </p>
-      {hint ? <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

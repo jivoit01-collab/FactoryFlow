@@ -25,6 +25,8 @@ import { cn, getErrorMessage } from '@/shared/utils';
 
 import { useProducible } from '../api';
 import {
+  KpiCard,
+  KpiRow,
   pickUnit,
   qty,
   qtyPrecise,
@@ -41,6 +43,15 @@ import type { ProducibleComponent, ProducibleSku, StockBasis } from '../types';
 
 type Tab = 'skus' | 'components';
 
+type Focus = 'NONE' | 'PLANNED' | 'RUNNABLE' | 'AT_RISK' | 'BLOCKING';
+
+const FOCUS_LABELS: Record<Exclude<Focus, 'NONE'>, string> = {
+  PLANNED: 'Planned this day',
+  RUNNABLE: 'Runs in full',
+  AT_RISK: 'At risk',
+  BLOCKING: 'Blocking materials',
+};
+
 export default function ProduciblePage() {
   const { planId } = useParams<{ planId: string }>();
   const absId = Number(planId);
@@ -50,6 +61,9 @@ export default function ProduciblePage() {
   const [targetDate, setTargetDate] = useState('');
   const [tab, setTab] = useState<Tab>('skus');
   const [search, setSearch] = useState('');
+  // Which headline card is driving the table. One at a time, and clicking the
+  // active one clears -- a filter you cannot undo is worse than none.
+  const [focus, setFocus] = useState<Focus>('NONE');
 
   const filters = useMemo(
     () => ({ stock_basis: basis, target_date: targetDate || undefined }),
@@ -89,21 +103,36 @@ export default function ProduciblePage() {
   const { plan, meta, skus, components } = query.data;
   const token = search.trim().toLowerCase();
 
+  const applyFocus = (next: Focus, targetTab: Tab) => {
+    setFocus(next);
+    if (next !== 'NONE') setTab(targetTab);
+  };
+
+  const focusedSkus = skus.filter((row) => {
+    if (focus === 'PLANNED') return toNumber(row.planned_qty) > 0;
+    if (focus === 'RUNNABLE') return row.covers_plan === true;
+    if (focus === 'AT_RISK') return row.covers_plan === false;
+    return true;
+  });
+
   const skuRows = token
-    ? skus.filter(
+    ? focusedSkus.filter(
         (row) =>
           row.item_code.toLowerCase().includes(token) ||
           row.item_name.toLowerCase().includes(token),
       )
-    : skus;
+    : focusedSkus;
+
+  const focusedComponents =
+    focus === 'BLOCKING' ? components.filter((row) => row.is_blocking) : components;
 
   const componentRows = token
-    ? components.filter(
+    ? focusedComponents.filter(
         (row) =>
           row.component_code.toLowerCase().includes(token) ||
           row.component_name.toLowerCase().includes(token),
       )
-    : components;
+    : focusedComponents;
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -157,26 +186,60 @@ export default function ProduciblePage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile
+      <KpiRow>
+        <KpiCard
           label={`Planned for ${shortDate(meta.target_date)}`}
           value={qtyWithUnit(meta.planned_litres, 'LITRES')}
           hint={`${meta.planned_sku_count} SKUs`}
+          active={focus === 'PLANNED'}
+          drillLabel="Show every product planned for this day"
+          onClick={
+            meta.planned_sku_count
+              ? () => applyFocus(focus === 'PLANNED' ? 'NONE' : 'PLANNED', 'skus')
+              : undefined
+          }
         />
-        <Tile label="Runs in full" value={String(meta.runnable_sku_count)} hint="SKUs" />
-        <Tile
+        <KpiCard
+          label="Runs in full"
+          value={String(meta.runnable_sku_count)}
+          hint="SKUs"
+          tone={meta.runnable_sku_count > 0 ? 'ok' : 'neutral'}
+          active={focus === 'RUNNABLE'}
+          drillLabel="Show the products stock can cover in full"
+          onClick={
+            meta.runnable_sku_count
+              ? () => applyFocus(focus === 'RUNNABLE' ? 'NONE' : 'RUNNABLE', 'skus')
+              : undefined
+          }
+        />
+        <KpiCard
           label="At risk"
           value={qtyWithUnit(meta.at_risk_litres, 'LITRES')}
           hint={`${meta.at_risk_pct}% of the day`}
           tone={toNumber(meta.at_risk_litres) > 0 ? 'critical' : 'neutral'}
+          active={focus === 'AT_RISK'}
+          drillLabel="Show the products that cannot be made in full"
+          onClick={
+            meta.blocked_sku_count
+              ? () => applyFocus(focus === 'AT_RISK' ? 'NONE' : 'AT_RISK', 'skus')
+              : undefined
+          }
         />
-        <Tile
+        <KpiCard
           label="Components short"
           value={String(meta.blocking_component_count)}
           hint={`of ${meta.component_count}`}
           tone={meta.blocking_component_count > 0 ? 'warning' : 'neutral'}
+          active={focus === 'BLOCKING'}
+          drillLabel="Show the materials blocking the day, on the material tab"
+          onClick={
+            meta.blocking_component_count
+              ? () =>
+                  applyFocus(focus === 'BLOCKING' ? 'NONE' : 'BLOCKING', 'components')
+              : undefined
+          }
         />
-      </div>
+      </KpiRow>
 
       {meta.over_committed_component_count > 0 && basis === 'ON_HAND' ? (
         <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
@@ -270,6 +333,22 @@ export default function ProduciblePage() {
           </button>
         ))}
       </div>
+
+      {focus !== 'NONE' ? (
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setFocus('NONE')}
+            className="rounded border border-primary bg-primary/10 px-2 py-1 text-primary"
+          >
+            {FOCUS_LABELS[focus as Exclude<Focus, 'NONE'>]} ×
+          </button>
+          <span className="text-muted-foreground">
+            showing {tab === 'skus' ? skuRows.length : componentRows.length} of{' '}
+            {tab === 'skus' ? skus.length : components.length}
+          </span>
+        </div>
+      ) : null}
 
       {tab === 'skus' ? (
         <SkuTable rows={skuRows} unit={unit} targetDate={meta.target_date} />
@@ -578,41 +657,6 @@ function ComponentTable({ rows }: { rows: ProducibleComponent[] }) {
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function Tile({
-  label,
-  value,
-  hint,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: 'neutral' | 'warning' | 'critical';
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-lg border p-3',
-        tone === 'critical' && 'border-destructive/30 bg-destructive/5',
-        tone === 'warning' && 'border-amber-500/30 bg-amber-500/5',
-        tone === 'neutral' && 'bg-card',
-      )}
-    >
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          'mt-1 text-xl font-semibold tabular-nums',
-          tone === 'critical' && 'text-destructive',
-          tone === 'warning' && 'text-amber-600 dark:text-amber-400',
-        )}
-      >
-        {value}
-      </p>
-      {hint ? <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

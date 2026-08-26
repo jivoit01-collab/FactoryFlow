@@ -36,6 +36,7 @@ import {
   useRequirement,
   useWarehouses,
 } from '../api';
+import type { RequirementDrill } from '../components';
 import {
   CommitmentDialog,
   moneyShort,
@@ -55,6 +56,10 @@ export default function PurchaseFromPlanPage() {
 
   const [materialType, setMaterialType] = useState<MaterialType | ''>('');
   const [shortagesOnly, setShortagesOnly] = useState(true);
+  // Set by a headline card. Kept beside the two manual filters rather than
+  // duplicating them, so a card and the filter row can never disagree about what
+  // the table is showing.
+  const [extra, setExtra] = useState<RequirementDrill['extra']>('NONE');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [vendorOverrides, setVendorOverrides] = useState<Record<string, string>>({});
@@ -83,7 +88,21 @@ export default function PurchaseFromPlanPage() {
   // Memoised off `requirement.data` rather than a `?? []` fallback: the fallback
   // is a fresh array every render, which would rebuild the lookup map — and
   // re-derive every selection below it — on each keystroke in the table.
-  const rows = useMemo(() => requirement.data?.data ?? [], [requirement.data]);
+  const allRows = useMemo(() => requirement.data?.data ?? [], [requirement.data]);
+
+  // The two narrowings the server filters cannot express, applied here so a card
+  // click needs no extra request.
+  const rows = useMemo(() => {
+    if (extra === 'NO_LEAD_TIME') {
+      return allRows.filter((row) => row.lead_time_days === null);
+    }
+    if (extra === 'BY_VALUE') {
+      return [...allRows].sort(
+        (a, b) => toNumber(b.estimated_value) - toNumber(a.estimated_value),
+      );
+    }
+    return allRows;
+  }, [allRows, extra]);
   const rowsByCode = useMemo(
     () => new Map(rows.map((row) => [row.component_code, row])),
     [rows],
@@ -251,7 +270,17 @@ export default function PurchaseFromPlanPage() {
         </div>
       </DashboardHeader>
 
-      <RequirementHeadline meta={meta} />
+      <RequirementHeadline
+        meta={meta}
+        drill={{ materialType, shortagesOnly, extra }}
+        onDrill={(next) => {
+          setMaterialType(next.materialType);
+          setShortagesOnly(next.shortagesOnly);
+          setExtra(next.extra);
+          // A narrower table invalidates a selection made against a wider one.
+          setSelected(new Set());
+        }}
+      />
       <RequirementCaveats meta={meta} />
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
@@ -265,7 +294,10 @@ export default function PurchaseFromPlanPage() {
             <button
               key={option.value || 'all'}
               type="button"
-              onClick={() => setMaterialType(option.value)}
+              onClick={() => {
+                setMaterialType(option.value);
+                setExtra('NONE');
+              }}
               className={cn(
                 'rounded border px-3 py-1.5 text-xs transition-colors',
                 materialType === option.value
@@ -282,14 +314,28 @@ export default function PurchaseFromPlanPage() {
           <input
             type="checkbox"
             checked={shortagesOnly}
-            onChange={(event) => setShortagesOnly(event.target.checked)}
+            onChange={(event) => {
+              setShortagesOnly(event.target.checked);
+              setExtra('NONE');
+            }}
             className="h-3.5 w-3.5"
           />
           Shortages only
         </label>
 
+        {extra !== 'NONE' ? (
+          <button
+            type="button"
+            onClick={() => setExtra('NONE')}
+            className="rounded border border-primary bg-primary/10 px-2 py-1 text-xs text-primary"
+          >
+            {extra === 'NO_LEAD_TIME' ? 'No lead time on file' : 'Dearest first'} ×
+          </button>
+        ) : null}
+
         <span className="ml-auto text-xs text-muted-foreground">
           {rows.length} component{rows.length === 1 ? '' : 's'}
+          {rows.length !== allRows.length ? ` of ${allRows.length}` : ''}
         </span>
       </div>
 

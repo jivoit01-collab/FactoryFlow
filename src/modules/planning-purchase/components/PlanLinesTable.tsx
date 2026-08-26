@@ -7,7 +7,7 @@ import { cn } from '@/shared/utils';
 import type { PlanLine, PlanUnit } from '../types';
 import { percent, pickUnit, qtyWithUnit, toNumber,UNIT_LABEL } from './format';
 
-type SortKey = 'planned' | 'attainment' | 'code';
+export type PlanLineSortKey = 'planned' | 'produced' | 'attainment' | 'code';
 
 /**
  * The plan line by line, with what SAP says was actually produced against it.
@@ -16,9 +16,22 @@ type SortKey = 'planned' | 'attainment' | 'code';
  * SKU — single bottles, not cases), so the comparison needs no conversion. Cases
  * are shown alongside because that is what the floor counts in.
  */
-export function PlanLinesTable({ lines, unit }: { lines: PlanLine[]; unit: PlanUnit }) {
+export function PlanLinesTable({
+  lines,
+  unit,
+  sortKey: controlledSort,
+  onSortKeyChange,
+}: {
+  lines: PlanLine[];
+  unit: PlanUnit;
+  /** Supply both to let the headline cards drive the sort. */
+  sortKey?: PlanLineSortKey;
+  onSortKeyChange?: (key: PlanLineSortKey) => void;
+}) {
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('planned');
+  const [ownSort, setOwnSort] = useState<PlanLineSortKey>('planned');
+  const sortKey = controlledSort ?? ownSort;
+  const setSortKey = onSortKeyChange ?? setOwnSort;
 
   const rows = useMemo(() => {
     const token = search.trim().toLowerCase();
@@ -38,9 +51,23 @@ export function PlanLinesTable({ lines, unit }: { lines: PlanLine[]; unit: PlanU
         ),
       );
 
+    const producedIn = (line: PlanLine) =>
+      toNumber(
+        pickUnit(
+          {
+            pieces: line.produced_qty,
+            litres: line.produced_litres,
+            cases: line.produced_cases,
+          },
+          unit,
+        ),
+      );
+
     const sorted = [...filtered];
     if (sortKey === 'planned') {
       sorted.sort((a, b) => plannedIn(b) - plannedIn(a));
+    } else if (sortKey === 'produced') {
+      sorted.sort((a, b) => producedIn(b) - producedIn(a));
     } else if (sortKey === 'attainment') {
       sorted.sort((a, b) => Number(a.attainment_pct) - Number(b.attainment_pct));
     } else {
@@ -62,6 +89,7 @@ export function PlanLinesTable({ lines, unit }: { lines: PlanLine[]; unit: PlanU
           {(
             [
               { key: 'planned', label: 'Largest plan' },
+              { key: 'produced', label: 'Most produced' },
               { key: 'attainment', label: 'Furthest behind' },
               { key: 'code', label: 'Code' },
             ] as const
