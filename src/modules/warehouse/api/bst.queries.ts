@@ -104,8 +104,9 @@ export function useUpdateBST() {
   return useMutation({
     mutationFn: ({ transferId, data }: { transferId: number; data: BSTUpdatePayload }) =>
       bstApi.update(transferId, data),
-    onSuccess: (_res, { transferId }) =>
-      qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.detail(transferId) }),
+    // Swapping the vehicle changes what the sender list AND the gate-out board
+    // show, so refresh every BST view, not just the detail being edited.
+    onSuccess: () => qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.all }),
   });
 }
 

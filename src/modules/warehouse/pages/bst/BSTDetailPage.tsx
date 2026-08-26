@@ -19,6 +19,7 @@ import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
 import { formatBstDateTime, isLiveBst } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
+import { BSTVehicleDriverCard } from './BSTVehicleDriverCard';
 
 function ReceiveBadge({ status }: { status: BSTReceiveStatus }) {
   const cfg: Record<BSTReceiveStatus, string> = {
@@ -92,8 +93,8 @@ export default function BSTDetailPage() {
         >)),
     ['SAP Documents', t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—'],
     ['Invoice / Ref', t.invoice_no || '—'],
-    ['Vehicle', t.vehicle_number || '—'],
-    ['Driver', t.driver_name || '—'],
+    // Vehicle + driver live in their own card below — they stay editable until
+    // the gate marks the transfer out.
     ['Requires gate', t.requires_gate ? 'Yes' : 'No'],
     ['Created by', `${t.created_by_name} · ${formatBstDateTime(t.created_at)}`],
     ['Dispatched', t.dispatched_at ? `${t.dispatched_by_name} · ${formatBstDateTime(t.dispatched_at)}` : '—'],
@@ -135,6 +136,8 @@ export default function BSTDetailPage() {
           ))}
         </CardContent>
       </Card>
+
+      <BSTVehicleDriverCard transfer={t} />
 
       {/* SAP documents (only when the entry combines more than one) */}
       {t.docs.length > 1 && (

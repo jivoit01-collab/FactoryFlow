@@ -154,7 +154,11 @@ export interface BSTTransferListItem {
   sap_to_warehouse: string;
   sap_reference: string;
   invoice_no: string;
+  /** Vehicle/driver FK ids — the edit form needs the current selection, not just
+   *  its label. Null until a vehicle is booked (an internal move never has one). */
+  vehicle: number | null;
   vehicle_number: string | null;
+  driver: number | null;
   driver_name: string | null;
   requires_gate: boolean;
   scanned_box_count: number;
@@ -251,6 +255,10 @@ export interface BSTTransferDetail extends BSTTransferListItem {
   accepted_count: number;
   rejected_count: number;
   scan_status: BSTScanStatus;
+  /** Whether the vehicle + driver can still be corrected — open from creation
+   *  until the gate marks the vehicle out. Mirrors the backend's own gate on
+   *  the update endpoint, so the screen can't offer an edit that gets refused. */
+  can_edit_vehicle: boolean;
   /** Latest admin partial-transfer approval request, or null if none raised. */
   partial_transfer: BSTPartialTransferState | null;
   docs: BSTTransferDoc[];

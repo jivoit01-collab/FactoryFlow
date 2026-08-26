@@ -17,6 +17,7 @@ import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
 import { isLiveBst } from './bstFormat';
 import { BSTStatusBadge } from './bstStatus';
+import { BSTVehicleDriverCard } from './BSTVehicleDriverCard';
 
 export default function BSTReviewPage() {
   const { transferId: idParam } = useParams<{ transferId: string }>();
@@ -104,9 +105,9 @@ export default function BSTReviewPage() {
               ['SAP Documents', t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—'],
               ['Invoice / Ref', t.invoice_no || '—'],
               ['Scanned boxes', String(totalBoxes)],
+              // Vehicle + driver get their own card below — the truck can still
+              // be swapped here, right up to gate-out.
               ['Leaves on a vehicle', t.requires_gate ? 'Yes' : 'No'],
-              ['Vehicle', t.vehicle_number || '—'],
-              ['Driver', t.driver_name || '—'],
             ] as Array<[string, string]>
           ).map(([label, value]) => (
             <div key={label} className="flex justify-between gap-4 border-b py-1.5">
@@ -116,6 +117,8 @@ export default function BSTReviewPage() {
           ))}
         </CardContent>
       </Card>
+
+      <BSTVehicleDriverCard transfer={t} />
 
       {/* SAP documents (only when the entry combines more than one) */}
       {t.docs.length > 1 && (

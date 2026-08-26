@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useBSTTransfer, useMarkBSTGateOut } from '@/modules/warehouse/api';
 import { BSTBillTable } from '@/modules/warehouse/pages/bst/BSTBillTable';
 import { formatBstDateTime } from '@/modules/warehouse/pages/bst/bstFormat';
+import { BSTVehicleDriverCard } from '@/modules/warehouse/pages/bst/BSTVehicleDriverCard';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
@@ -37,8 +38,8 @@ export default function BSTGateOutReviewPage() {
     ['SAP Doc', t.sap_doc_num || '—'],
     ['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`],
     ['Invoice / Ref', t.invoice_no || '—'],
-    ['Vehicle', t.vehicle_number || '—'],
-    ['Driver', t.driver_name || '—'],
+    // Vehicle + driver sit in their own card below: the gate is usually the one
+    // that spots a swapped truck, and it can still be corrected until mark-out.
     ['Scanned boxes', String(t.box_scans.length)],
   ];
 
@@ -79,6 +80,8 @@ export default function BSTGateOutReviewPage() {
           ))}
         </CardContent>
       </Card>
+
+      <BSTVehicleDriverCard transfer={t} />
 
       {/* Bill vs scanned */}
       <Card>
