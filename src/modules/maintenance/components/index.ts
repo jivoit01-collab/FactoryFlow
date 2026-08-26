@@ -1,4 +1,5 @@
 export * from './AssetAttachmentDialogs';
+export * from './AssetAttachmentsField';
 export * from './AssetFormDialog';
 export * from './AssetStatusBadge';
 export * from './MasterDataDialog';

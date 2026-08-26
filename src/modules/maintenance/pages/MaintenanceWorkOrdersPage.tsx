@@ -324,8 +324,10 @@ export default function MaintenanceWorkOrdersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div>{workOrder.asset_code}</div>
-                    <div className="text-xs text-muted-foreground">{workOrder.asset_name}</div>
+                    <div>{workOrder.asset_code || workOrder.asset_text || '-'}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {workOrder.asset_code ? workOrder.asset_name : ''}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     {choiceLabel(optionsQuery.data?.work_types, workOrder.work_type)}

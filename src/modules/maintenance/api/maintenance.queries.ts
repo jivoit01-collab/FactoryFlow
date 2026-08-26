@@ -41,6 +41,7 @@ import type {
   SpareRequestFilters,
   SpareRequestPayload,
   SpareStockAdjustPayload,
+  StagedAssetDocument,
   WorkOrderSpareRequestPayload,
 } from '../types';
 import { maintenanceApi } from './maintenance.api';
@@ -313,9 +314,11 @@ export function useCreateWorkOrderFromScan() {
       maintenanceApi.createWorkOrderFromScan(payload),
     onSuccess: (workOrder) => {
       invalidateMaintenance(queryClient);
-      queryClient.invalidateQueries({
-        queryKey: MAINTENANCE_QUERY_KEYS.asset(workOrder.asset),
-      });
+      if (workOrder.asset) {
+        queryClient.invalidateQueries({
+          queryKey: MAINTENANCE_QUERY_KEYS.asset(workOrder.asset),
+        });
+      }
     },
   });
 }
@@ -355,6 +358,22 @@ export function useUploadAssetDocument() {
         queryKey: MAINTENANCE_QUERY_KEYS.assetDocuments(payload.asset),
       });
       queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.asset(payload.asset) });
+    },
+  });
+}
+
+/** Pushes the files staged in the asset form once the asset has been saved. */
+export function useUploadAssetDocuments() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ assetId, staged }: { assetId: number; staged: StagedAssetDocument[] }) =>
+      maintenanceApi.uploadAssetDocuments(assetId, staged),
+    onSuccess: (_documents, { assetId }) => {
+      invalidateMaintenance(queryClient);
+      queryClient.invalidateQueries({
+        queryKey: MAINTENANCE_QUERY_KEYS.assetDocuments(assetId),
+      });
+      queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.asset(assetId) });
     },
   });
 }

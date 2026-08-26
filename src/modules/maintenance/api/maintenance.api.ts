@@ -69,6 +69,7 @@ import type {
   SpareRequestFilters,
   SpareRequestPayload,
   SpareStockAdjustPayload,
+  StagedAssetDocument,
   WorkOrderSpareRequestPayload,
 } from '../types';
 
@@ -246,6 +247,28 @@ export const maintenanceApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
+  },
+
+  /**
+   * Files staged in the asset form need the asset id, so they upload one by one
+   * once the asset has been saved.
+   */
+  async uploadAssetDocuments(
+    assetId: number,
+    staged: StagedAssetDocument[],
+  ): Promise<AssetDocument[]> {
+    const uploaded: AssetDocument[] = [];
+    for (const item of staged) {
+      uploaded.push(
+        await maintenanceApi.uploadAssetDocument({
+          asset: assetId,
+          file: item.file,
+          document_type: item.document_type,
+          title: item.title.trim() || item.file.name,
+        }),
+      );
+    }
+    return uploaded;
   },
 
   async getWorkOrders(filters?: MaintenanceWorkOrderFilters): Promise<MaintenanceWorkOrder[]> {

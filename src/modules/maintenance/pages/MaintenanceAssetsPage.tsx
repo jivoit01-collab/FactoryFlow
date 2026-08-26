@@ -14,9 +14,16 @@ import {
   useMaintenanceAssets,
   useMaintenanceOptions,
   useUpdateMaintenanceAsset,
+  useUploadAssetDocuments,
 } from '../api';
 import { AssetFormDialog, AssetStatusBadge } from '../components';
-import type { AssetStatus, MaintenanceAsset, MaintenanceAssetFilters } from '../types';
+import type {
+  AssetStatus,
+  MaintenanceAsset,
+  MaintenanceAssetFilters,
+  MaintenanceAssetPayload,
+  StagedAssetDocument,
+} from '../types';
 
 function useInitialStatus(): AssetStatus | 'ALL' {
   const searchParams = new URLSearchParams(useLocation().search);
@@ -41,6 +48,7 @@ export default function MaintenanceAssetsPage() {
   const canCreate = hasPermission(MAINTENANCE_PERMISSIONS.CREATE_ASSET);
   const canEdit = hasPermission(MAINTENANCE_PERMISSIONS.EDIT_ASSET);
   const canDeactivate = hasPermission(MAINTENANCE_PERMISSIONS.DEACTIVATE_ASSET);
+  const canUploadDocument = hasPermission(MAINTENANCE_PERMISSIONS.CREATE_ASSET_DOCUMENT);
 
   const [filters, setFilters] = useState<MaintenanceAssetFilters>({
     search: '',
@@ -59,6 +67,7 @@ export default function MaintenanceAssetsPage() {
   const createAsset = useCreateMaintenanceAsset();
   const updateAsset = useUpdateMaintenanceAsset();
   const deactivateAsset = useDeactivateMaintenanceAsset();
+  const uploadDocuments = useUploadAssetDocuments();
 
   const assets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
   const lineOptions = useMemo(
@@ -79,13 +88,30 @@ export default function MaintenanceAssetsPage() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = async (payload: Parameters<typeof createAsset.mutateAsync>[0]) => {
-    if (editingAsset) {
-      await updateAsset.mutateAsync({ assetId: editingAsset.id, payload });
-      toast.success('Asset updated');
-    } else {
-      await createAsset.mutateAsync(payload);
-      toast.success('Asset created');
+  const handleSubmit = async (
+    payload: MaintenanceAssetPayload,
+    attachments: StagedAssetDocument[],
+  ) => {
+    const saved = editingAsset
+      ? await updateAsset.mutateAsync({ assetId: editingAsset.id, payload })
+      : await createAsset.mutateAsync(payload);
+    toast.success(editingAsset ? 'Asset updated' : 'Asset created');
+
+    // Files need the asset id, so they upload after the save. The asset is
+    // already stored — a failed upload is a warning, not a rollback.
+    if (attachments.length) {
+      try {
+        await uploadDocuments.mutateAsync({ assetId: saved.id, staged: attachments });
+        toast.success(
+          attachments.length === 1
+            ? 'Attachment uploaded'
+            : `${attachments.length} attachments uploaded`,
+        );
+      } catch {
+        toast.warning(
+          `${saved.asset_code} was saved, but some attachments failed to upload. Add them again from the asset.`,
+        );
+      }
     }
     setDialogOpen(false);
   };
@@ -307,8 +333,8 @@ export default function MaintenanceAssetsPage() {
           onOpenChange={setDialogOpen}
           asset={editingAsset}
           options={optionsQuery.data}
-          assets={assets}
-          isSubmitting={createAsset.isPending || updateAsset.isPending}
+          isSubmitting={createAsset.isPending || updateAsset.isPending || uploadDocuments.isPending}
+          canAttachDocuments={canUploadDocument}
           onSubmit={handleSubmit}
         />
       )}

@@ -266,6 +266,32 @@ describe('maintenanceApi', () => {
     expect(formData.get('title')).toBe('Pump Manual');
   });
 
+  it('uploads the files staged in the asset form one by one, titling untitled files', async () => {
+    const manual = new File(['manual'], 'manual.pdf', { type: 'application/pdf' });
+    const invoice = new File(['invoice'], 'invoice.pdf', { type: 'application/pdf' });
+
+    await maintenanceApi.uploadAssetDocuments(9, [
+      { file: manual, document_type: 'MANUAL', title: 'Pump Manual' },
+      { file: invoice, document_type: 'OTHER', title: '   ' },
+    ]);
+
+    const uploads = mockedApiClient.post.mock.calls.filter(
+      ([url]) => url === '/maintenance/asset-documents/',
+    );
+    expect(uploads).toHaveLength(2);
+
+    const first = uploads[0][1] as FormData;
+    expect(first.get('asset')).toBe('9');
+    expect(first.get('document')).toBe(manual);
+    expect(first.get('document_type')).toBe('MANUAL');
+    expect(first.get('title')).toBe('Pump Manual');
+
+    const second = uploads[1][1] as FormData;
+    expect(second.get('document')).toBe(invoice);
+    // A blank title falls back to the file name so the backend never rejects it.
+    expect(second.get('title')).toBe('invoice.pdf');
+  });
+
   it('handles work order list, create, update, and lifecycle endpoints', async () => {
     const payload = {
       work_type: 'BREAKDOWN' as const,

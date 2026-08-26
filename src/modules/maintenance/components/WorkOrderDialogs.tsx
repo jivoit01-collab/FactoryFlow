@@ -87,9 +87,9 @@ interface WorkOrderPhotoUploadDialogProps {
 interface WorkOrderFormState {
   work_type: WorkType;
   priority: MaintenancePriority;
-  asset: string;
+  /** Asset code/name — picked from the master list or typed in by hand. */
+  asset_input: string;
   department: string;
-  assigned_to: string;
   target_date: string;
   title: string;
   problem_statement: string;
@@ -101,9 +101,8 @@ interface WorkOrderFormState {
 const EMPTY_WORK_ORDER_FORM: WorkOrderFormState = {
   work_type: 'COMPLAINT',
   priority: 'NORMAL',
-  asset: '',
+  asset_input: '',
   department: '',
-  assigned_to: '',
   target_date: '',
   title: '',
   problem_statement: '',
@@ -112,6 +111,29 @@ const EMPTY_WORK_ORDER_FORM: WorkOrderFormState = {
   downtime_reason: '',
 };
 
+const ASSET_OPTIONS_ID = 'work_order_asset_options';
+
+function assetLabel(asset: MaintenanceAsset) {
+  return `${asset.asset_code} - ${asset.name}`;
+}
+
+function findAsset(assets: MaintenanceAsset[], value: string) {
+  const needle = value.trim().toLowerCase();
+  if (!needle) return undefined;
+  return assets.find(
+    (asset) =>
+      assetLabel(asset).toLowerCase() === needle ||
+      asset.asset_code.toLowerCase() === needle ||
+      asset.name.toLowerCase() === needle,
+  );
+}
+
+function assetInputFromWorkOrder(workOrder?: MaintenanceWorkOrder | null) {
+  if (!workOrder) return '';
+  if (workOrder.asset) return `${workOrder.asset_code} - ${workOrder.asset_name}`;
+  return workOrder.asset_text;
+}
+
 const WAITING_STATUSES: WorkOrderStatus[] = ['WAITING_SPARE', 'WAITING_VENDOR', 'ON_HOLD', 'IN_PROGRESS'];
 
 function formFromWorkOrder(workOrder?: MaintenanceWorkOrder | null): WorkOrderFormState {
@@ -119,9 +141,8 @@ function formFromWorkOrder(workOrder?: MaintenanceWorkOrder | null): WorkOrderFo
   return {
     work_type: workOrder.work_type,
     priority: workOrder.priority,
-    asset: workOrder.asset ? String(workOrder.asset) : '',
+    asset_input: assetInputFromWorkOrder(workOrder),
     department: String(workOrder.department),
-    assigned_to: workOrder.assigned_to ? String(workOrder.assigned_to) : '',
     target_date: workOrder.target_date ?? '',
     title: workOrder.title,
     problem_statement: workOrder.problem_statement,
@@ -157,9 +178,10 @@ export function WorkOrderFormDialog({
   const [form, setForm] = useState<WorkOrderFormState>(() => formFromWorkOrder(workOrder));
 
   const selectedAsset = useMemo(
-    () => assets.find((asset) => String(asset.id) === form.asset),
-    [assets, form.asset],
+    () => findAsset(assets, form.asset_input),
+    [assets, form.asset_input],
   );
+  const typedAsset = !selectedAsset && form.asset_input.trim().length > 0;
 
   const setField = <TKey extends keyof WorkOrderFormState>(
     key: TKey,
@@ -168,11 +190,11 @@ export function WorkOrderFormDialog({
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const handleAssetChange = (assetId: string) => {
-    const asset = assets.find((item) => String(item.id) === assetId);
+  const handleAssetChange = (value: string) => {
+    const asset = findAsset(assets, value);
     setForm((current) => ({
       ...current,
-      asset: assetId,
+      asset_input: value,
       department: asset ? String(asset.department) : current.department,
     }));
   };
@@ -182,9 +204,9 @@ export function WorkOrderFormDialog({
     await onSubmit({
       work_type: form.work_type,
       priority: form.priority,
-      asset: form.asset ? Number(form.asset) : null,
+      asset: selectedAsset ? selectedAsset.id : null,
+      asset_text: selectedAsset ? '' : form.asset_input.trim(),
       department: form.department ? Number(form.department) : undefined,
-      assigned_to: form.assigned_to ? Number(form.assigned_to) : null,
       target_date: nullableDate(form.target_date),
       title: form.title.trim(),
       problem_statement: form.problem_statement.trim(),
@@ -246,23 +268,29 @@ export function WorkOrderFormDialog({
                 ))}
               </NativeSelect>
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="work_order_asset">Asset</Label>
-              <NativeSelect
+              <Input
                 id="work_order_asset"
-                value={form.asset}
+                value={form.asset_input}
+                list={ASSET_OPTIONS_ID}
+                placeholder="Pick from list or type"
+                autoComplete="off"
                 onChange={(event) => handleAssetChange(event.target.value)}
-              >
-                <SelectOption value="">Select asset (optional)</SelectOption>
+              />
+              <datalist id={ASSET_OPTIONS_ID}>
                 {assets.map((asset) => (
-                  <SelectOption key={asset.id} value={String(asset.id)}>
-                    {asset.asset_code} - {asset.name}
-                  </SelectOption>
+                  <option key={asset.id} value={assetLabel(asset)} />
                 ))}
-              </NativeSelect>
+              </datalist>
               {selectedAsset && (
                 <div className="text-xs text-muted-foreground">
                   {selectedAsset.department_name} / {selectedAsset.line || selectedAsset.area || '-'}
+                </div>
+              )}
+              {typedAsset && (
+                <div className="text-xs text-muted-foreground">
+                  Not in the asset master — saved as typed, so pick a department.
                 </div>
               )}
             </div>
@@ -277,21 +305,6 @@ export function WorkOrderFormDialog({
                 {options?.org_departments.map((department) => (
                   <SelectOption key={department.id} value={String(department.id)}>
                     {department.name}
-                  </SelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="work_order_assignee">Assignee</Label>
-              <NativeSelect
-                id="work_order_assignee"
-                value={form.assigned_to}
-                onChange={(event) => setField('assigned_to', event.target.value)}
-              >
-                <SelectOption value="">Unassigned</SelectOption>
-                {options?.users.map((user) => (
-                  <SelectOption key={user.id} value={String(user.id)}>
-                    {user.label}
                   </SelectOption>
                 ))}
               </NativeSelect>
@@ -346,7 +359,7 @@ export function WorkOrderFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !form.title.trim() || (!form.asset && !form.department)}
+              disabled={isSubmitting || !form.title.trim() || (!selectedAsset && !form.department)}
             >
               <Save className="h-4 w-4" />
               Save

@@ -134,7 +134,15 @@
       "Bash(cd /c/Users/dev02/factory_app && ls person_gatein/migrations/*.py | grep -v __init__ | sort | tail -1)",
       "Bash(npx tsc *)",
       "Bash(ls manage.py)",
-      "Bash(ls .venv/Scripts/python.exe)"
+      "Bash(ls .venv/Scripts/python.exe)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(ls -a c:/Users/dev02/FactoryFlow/.claude/ 2>/dev/null; echo \"--- user settings ---\"; ls -a c:/Users/dev02/.claude/settings.json 2>/dev/null)",
+      "Read(//c/Users/dev02/.claude/**)",
+      "Bash(c:/Users/dev02/factory_app/.venv/Scripts/python.exe c:/Users/dev02/factory_app/add_bev_bill_to_4204.py:*)",
+      "Bash(c:/Users/dev02/factory_app/.venv/Scripts/python.exe c:/Users/dev02/factory_app/add_bev_bill_to_4204.py COMMIT)",
+      "Bash(ls c:/Users/dev02/factory_app 2>/dev/null | head -50)",
+      "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")"
     ],
     "additionalDirectories": [
       "/tmp"

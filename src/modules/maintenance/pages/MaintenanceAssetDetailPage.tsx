@@ -21,11 +21,11 @@ import {
   useAssetPhotos,
   useDeactivateMaintenanceAsset,
   useMaintenanceAsset,
-  useMaintenanceAssets,
   useMaintenanceOptions,
   useMaintenanceWorkOrders,
   useUpdateMaintenanceAsset,
   useUploadAssetDocument,
+  useUploadAssetDocuments,
   useUploadAssetPhoto,
 } from '../api';
 import {
@@ -44,6 +44,7 @@ import type {
   MaintenanceAssetPayload,
   MaintenanceOptions,
   MaintenanceWorkOrder,
+  StagedAssetDocument,
 } from '../types';
 
 function valueOrDash(value: string | number | null | undefined) {
@@ -229,20 +230,38 @@ export default function MaintenanceAssetDetailPage() {
     validAssetId !== null,
   );
   const optionsQuery = useMaintenanceOptions();
-  const assetsQuery = useMaintenanceAssets({ is_active: true });
   const updateAsset = useUpdateMaintenanceAsset();
   const deactivateAsset = useDeactivateMaintenanceAsset();
   const uploadPhoto = useUploadAssetPhoto();
   const uploadDocument = useUploadAssetDocument();
+  const uploadDocuments = useUploadAssetDocuments();
   const asset = assetQuery.data;
   const photos = photosQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
   const workOrders = workOrdersQuery.data ?? [];
 
-  const handleSubmit = async (payload: MaintenanceAssetPayload) => {
+  const handleSubmit = async (
+    payload: MaintenanceAssetPayload,
+    attachments: StagedAssetDocument[],
+  ) => {
     if (!asset) return;
     await updateAsset.mutateAsync({ assetId: asset.id, payload });
     toast.success('Asset updated');
+
+    if (attachments.length) {
+      try {
+        await uploadDocuments.mutateAsync({ assetId: asset.id, staged: attachments });
+        toast.success(
+          attachments.length === 1
+            ? 'Attachment uploaded'
+            : `${attachments.length} attachments uploaded`,
+        );
+      } catch {
+        toast.warning(
+          'Some attachments failed to upload. Add them again from the documents section.',
+        );
+      }
+    }
     setDialogOpen(false);
   };
 
@@ -509,8 +528,8 @@ export default function MaintenanceAssetDetailPage() {
           onOpenChange={setDialogOpen}
           asset={asset}
           options={optionsQuery.data}
-          assets={assetsQuery.data ?? []}
-          isSubmitting={updateAsset.isPending}
+          isSubmitting={updateAsset.isPending || uploadDocuments.isPending}
+          canAttachDocuments={canUploadDocument}
           onSubmit={handleSubmit}
         />
       )}

@@ -182,7 +182,11 @@ export interface MaintenanceAsset {
 export interface MaintenanceAssetPayload {
   asset_code: string;
   name: string;
-  category: number;
+  /**
+   * The asset form no longer asks for a category; assets saved without one are
+   * filed under the company's "General" category by the backend.
+   */
+  category?: number;
   location: number;
   department: number;
   parent_asset?: number | null;
@@ -339,6 +343,13 @@ export interface AssetDocumentUploadPayload {
   notes?: string;
 }
 
+/** A file picked in the asset form, uploaded once the asset has an id. */
+export interface StagedAssetDocument {
+  file: File;
+  document_type: AssetDocumentType;
+  title: string;
+}
+
 export interface MaintenanceWorkOrder {
   id: number;
   company: number;
@@ -346,9 +357,11 @@ export interface MaintenanceWorkOrder {
   work_type: WorkType;
   status: WorkOrderStatus;
   priority: MaintenancePriority;
-  asset: number;
+  asset: number | null;
   asset_code: string;
   asset_name: string;
+  /** Typed-in asset, used when the machine is not in the asset master. */
+  asset_text: string;
   department: number;
   department_name: string;
   area: string;
@@ -401,6 +414,7 @@ export interface MaintenanceWorkOrderPayload {
   work_type: WorkType;
   priority: MaintenancePriority;
   asset?: number | null;
+  asset_text?: string;
   department?: number;
   assigned_to?: number | null;
   production_run?: number | null;

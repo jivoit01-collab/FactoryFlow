@@ -183,8 +183,10 @@ function WorkOrderTable({ title, workOrders, emptyText, onOpen }: WorkOrderTable
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div>{workOrder.asset_code}</div>
-                      <div className="text-xs text-muted-foreground">{workOrder.asset_name}</div>
+                      <div>{workOrder.asset_code || workOrder.asset_text || '-'}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {workOrder.asset_code ? workOrder.asset_name : ''}
+                      </div>
                     </td>
                     <td className="px-4 py-3">{workTypeLabel(workOrder.work_type)}</td>
                     <td className="px-4 py-3">
@@ -636,8 +638,10 @@ export default function MaintenanceDashboardPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div>{workOrder.asset_code}</div>
-                            <div className="text-xs text-muted-foreground">{workOrder.asset_name}</div>
+                            <div>{workOrder.asset_code || workOrder.asset_text || '-'}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {workOrder.asset_code ? workOrder.asset_name : ''}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <PriorityBadge priority={workOrder.priority} />

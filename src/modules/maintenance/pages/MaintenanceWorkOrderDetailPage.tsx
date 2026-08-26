@@ -416,7 +416,7 @@ function VendorVisitDialog({
     event.preventDefault();
     await onSubmit({
       work_order: workOrder.id,
-      asset: workOrder.asset,
+      asset: workOrder.asset ?? undefined,
       vendor_name: vendorName,
       vendor_code: vendorCode,
       contact_person: contactPerson,
@@ -691,7 +691,7 @@ export default function MaintenanceWorkOrderDetailPage() {
   const optionsQuery = useMaintenanceOptions();
   const assetsQuery = useMaintenanceAssets({ is_active: true });
   const sparesQuery = useMaintenanceSpares(
-    workOrder ? { compatible_asset: workOrder.asset, is_active: true } : { is_active: true },
+    workOrder?.asset ? { compatible_asset: workOrder.asset, is_active: true } : { is_active: true },
     !!workOrder,
   );
   const spareRequestsQuery = useSpareRequests(
@@ -911,7 +911,14 @@ export default function MaintenanceWorkOrderDetailPage() {
                   label="Impact"
                   value={choiceLabel<WorkImpact>(optionsQuery.data?.work_impacts, workOrder.impact)}
                 />
-                <DetailItem label="Asset" value={`${workOrder.asset_code} - ${workOrder.asset_name}`} />
+                <DetailItem
+                  label="Asset"
+                  value={
+                    workOrder.asset
+                      ? `${workOrder.asset_code} - ${workOrder.asset_name}`
+                      : workOrder.asset_text
+                  }
+                />
                 <DetailItem label="Department" value={workOrder.department_name} />
                 <DetailItem label="Area" value={workOrder.area} />
                 <DetailItem label="Line" value={workOrder.line} />
