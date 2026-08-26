@@ -6,6 +6,7 @@ import { cn } from '@/shared/utils';
 
 import { MATERIAL_TYPE_LABEL } from '../constants';
 import type { RequirementRow } from '../types';
+import { CommittedCell } from './CommitmentDialog';
 import { money, qty, qtyPrecise, shortDate } from './format';
 import { UrgencyPill } from './UrgencyPill';
 
@@ -18,6 +19,8 @@ interface Props {
   /** Per-row order quantity override, keyed by component code. */
   overrides?: Record<string, string>;
   onOverride?: (code: string, value: string) => void;
+  /** Opens the commitment breakdown for one item in one warehouse. */
+  onShowCommitments?: (itemCode: string, warehouse: string) => void;
 }
 
 /**
@@ -35,6 +38,7 @@ export function RequirementTable({
   onToggleAll,
   overrides,
   onOverride,
+  onShowCommitments,
 }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const selectable = Boolean(selected && onToggle);
@@ -247,7 +251,10 @@ export function RequirementTable({
                 {isOpen ? (
                   <tr key={`${code}-detail`} className="border-t bg-muted/30">
                     <td colSpan={selectable ? 12 : 11} className="px-6 py-4">
-                      <RequirementDetail row={row} />
+                      <RequirementDetail
+                        row={row}
+                        onShowCommitments={onShowCommitments}
+                      />
                     </td>
                   </tr>
                 ) : null}
@@ -273,7 +280,13 @@ export function RequirementTable({
 }
 
 /** Why the number is what it is: which SKUs drive it, and where the stock sits. */
-function RequirementDetail({ row }: { row: RequirementRow }) {
+function RequirementDetail({
+  row,
+  onShowCommitments,
+}: {
+  row: RequirementRow;
+  onShowCommitments?: (itemCode: string, warehouse: string) => void;
+}) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div>
@@ -338,8 +351,19 @@ function RequirementDetail({ row }: { row: RequirementRow }) {
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums">
                         {qty(warehouse.on_hand)}
                       </td>
-                      <td className="px-2 py-1.5 text-right font-mono tabular-nums">
-                        {qty(warehouse.committed)}
+                      <td className="px-2 py-1.5 text-right">
+                        {onShowCommitments ? (
+                          <CommittedCell
+                            value={warehouse.committed}
+                            onClick={() =>
+                              onShowCommitments(row.component_code, warehouse.warehouse)
+                            }
+                          />
+                        ) : (
+                          <span className="font-mono tabular-nums">
+                            {qty(warehouse.committed)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-2 py-1.5 text-right font-mono tabular-nums">
                         {Number(warehouse.min_stock) > 0 ? qty(warehouse.min_stock) : '—'}

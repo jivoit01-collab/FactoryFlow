@@ -450,6 +450,7 @@ export const API_ENDPOINTS = {
     PLAN_PRODUCIBLE: (absId: number) => `/planning-purchase/plans/${absId}/producible/`,
     PLAN_REQUIREMENT_EXPORT: (absId: number) =>
       `/planning-purchase/plans/${absId}/requirement/export/`,
+    COMMITMENTS: '/planning-purchase/commitments/',
     VENDORS: '/planning-purchase/vendors/',
     WAREHOUSES: '/planning-purchase/warehouses/',
     PURCHASE_ORDERS: '/planning-purchase/purchase-orders/',
@@ -641,6 +642,9 @@ export const API_ENDPOINTS = {
       `/maintenance/work-orders/${workOrderId}/complete/`,
     WORK_ORDER_APPROVE: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/approve/`,
     WORK_ORDER_CLOSE: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/close/`,
+    WORK_ORDER_SEND_BACK: (workOrderId: number) =>
+      `/maintenance/work-orders/${workOrderId}/send-back/`,
+    WORK_ORDER_LOGS: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/logs/`,
     WORK_ORDER_SET_STATUS: (workOrderId: number) =>
       `/maintenance/work-orders/${workOrderId}/set-status/`,
     WORK_ORDER_REQUEST_SPARE: (workOrderId: number) =>

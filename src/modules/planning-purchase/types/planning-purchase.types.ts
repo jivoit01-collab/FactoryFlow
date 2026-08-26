@@ -524,3 +524,66 @@ export interface ProducibleFilters {
   warehouse?: string[];
   stock_basis?: StockBasis;
 }
+
+// ---------------------------------------------------------------------------
+// Committed-stock breakdown
+// ---------------------------------------------------------------------------
+
+export type CommitmentSource =
+  | 'PRODUCTION_ORDER'
+  | 'TRANSFER_REQUEST'
+  | 'SALES_ORDER';
+
+export interface CommitmentDocument {
+  source: CommitmentSource;
+  source_label: string;
+  doc_entry: number | null;
+  doc_num: number | null;
+  doc_status: string;
+  /** What the reservation is for: the FG being made, the receiving warehouse, or the customer. */
+  reference_code: string;
+  reference_name: string;
+  to_warehouse: string;
+  planned_qty: string;
+  issued_qty: string;
+  committed_qty: string;
+  doc_date: string | null;
+  due_date: string | null;
+  days_overdue: number;
+  /** Overdue by more than the configured window — almost certainly abandoned. */
+  is_stale: boolean;
+}
+
+export interface CommitmentSourceTotal {
+  source: CommitmentSource;
+  source_label: string;
+  document_count: number;
+  committed_qty: string;
+  stale_qty: string;
+}
+
+export interface CommitmentResponse {
+  item_code: string;
+  item_name: string;
+  warehouse: string;
+  uom: string;
+  on_hand_qty: string;
+  committed_qty: string;
+  on_order_qty: string;
+  free_qty: string;
+  documents: CommitmentDocument[];
+  by_source: CommitmentSourceTotal[];
+  meta: {
+    company_code: string;
+    document_count: number;
+    explained_qty: string;
+    /** Non-zero means the documents do not add up to SAP's own figure. */
+    unexplained_qty: string;
+    reconciles: boolean;
+    stale_document_count: number;
+    stale_qty: string;
+    stale_after_days: number;
+    fetched_at: string;
+    notes: string[];
+  };
+}

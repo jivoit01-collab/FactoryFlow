@@ -37,6 +37,7 @@ import {
   useWarehouses,
 } from '../api';
 import {
+  CommitmentDialog,
   moneyShort,
   RequirementCaveats,
   RequirementHeadline,
@@ -60,6 +61,11 @@ export default function PurchaseFromPlanPage() {
   const [dueDate, setDueDate] = useState('');
   const [warehouse, setWarehouse] = useState('');
   const [remarks, setRemarks] = useState('');
+  // Which committed figure the reader asked about. Undefined keeps the dialog
+  // shut and its query disabled, so opening the table fires no extra requests.
+  const [commitment, setCommitment] = useState<
+    { itemCode: string; warehouse: string } | undefined
+  >();
 
   const filters = useMemo(
     () => ({
@@ -296,6 +302,15 @@ export default function PurchaseFromPlanPage() {
         onOverride={(code, value) =>
           setOverrides((previous) => ({ ...previous, [code]: value }))
         }
+        onShowCommitments={(itemCode, warehouse) =>
+          setCommitment({ itemCode, warehouse })
+        }
+      />
+
+      <CommitmentDialog
+        itemCode={commitment?.itemCode}
+        warehouse={commitment?.warehouse}
+        onClose={() => setCommitment(undefined)}
       />
 
       {/* Suppliers can be missing — the item master carries none for any purchase

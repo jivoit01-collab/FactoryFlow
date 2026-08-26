@@ -3,6 +3,7 @@ import { apiClient } from '@/core/api';
 
 import type {
   BucketType,
+  CommitmentResponse,
   CreatePurchaseOrdersRequest,
   CreatePurchaseOrdersResponse,
   PlanDetailResponse,
@@ -107,6 +108,14 @@ export const planApi = {
       EP.PLAN_PRODUCIBLE(absId),
       { params },
     );
+    return response.data;
+  },
+
+  /** The documents behind one committed-stock figure. */
+  async commitments(itemCode: string, warehouse: string): Promise<CommitmentResponse> {
+    const response = await apiClient.get<CommitmentResponse>(EP.COMMITMENTS, {
+      params: { item_code: itemCode, warehouse },
+    });
     return response.data;
   },
 

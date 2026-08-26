@@ -1,3 +1,4 @@
+export { CommitmentDialog, CommittedCell } from './CommitmentDialog';
 export * from './format';
 export { PlanBucketStrip } from './PlanBucketStrip';
 export { PlanLinesTable } from './PlanLinesTable';

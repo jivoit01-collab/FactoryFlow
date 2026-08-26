@@ -61,6 +61,12 @@ export const PLANNING_PURCHASE_KEYS = {
       filters.stock_basis ?? 'ON_HAND',
       (filters.warehouse ?? []).join(',') || null,
     ] as const,
+  commitments: (
+    companyId: number | string | undefined,
+    itemCode: string,
+    warehouse: string,
+  ) =>
+    [...PLANNING_PURCHASE_KEYS.all, 'commitments', companyId, itemCode, warehouse] as const,
   vendors: (companyId: number | string | undefined, search: string) =>
     [...PLANNING_PURCHASE_KEYS.all, 'vendors', companyId, search] as const,
   warehouses: (companyId?: number | string) =>
@@ -136,6 +142,24 @@ export function useProducible(absId: number | undefined, filters: ProducibleFilt
     enabled: Boolean(absId),
     staleTime: REQUIREMENT_STALE_TIME,
     refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Why a committed figure is what it is. Enabled only once a cell is clicked, so
+ * opening the requirement table does not fire one of these per warehouse row.
+ */
+export function useCommitments(itemCode?: string, warehouse?: string) {
+  const { currentCompany } = useAuth();
+  return useQuery({
+    queryKey: PLANNING_PURCHASE_KEYS.commitments(
+      currentCompany?.company_id,
+      itemCode ?? '',
+      warehouse ?? '',
+    ),
+    queryFn: () => planApi.commitments(itemCode as string, warehouse as string),
+    enabled: Boolean(itemCode && warehouse),
+    staleTime: 60 * 1000,
   });
 }
 
