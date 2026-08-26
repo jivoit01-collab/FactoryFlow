@@ -21,7 +21,7 @@ import type {
   SendIssueRequest,
   SkuMappingUpsert,
 } from '../types/marketplace.types';
-import { marketplaceApi } from './marketplace.api';
+import { marketplaceApi, type ReportParams } from './marketplace.api';
 
 export const MARKETPLACE_QUERY_KEYS = {
   all: ['marketplace'] as const,
@@ -45,6 +45,8 @@ export const MARKETPLACE_QUERY_KEYS = {
     [...MARKETPLACE_QUERY_KEYS.all, 'dispatchSheets', channel] as const,
   trackingReport: (channel: MarketplaceChannel, batchId?: number | null, scanned?: string) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'trackingReport', channel, batchId, scanned] as const,
+  reportPreview: (slug: string, params: Record<string, unknown>) =>
+    [...MARKETPLACE_QUERY_KEYS.all, 'reportPreview', slug, params] as const,
   dispatchBoard: (channel: MarketplaceChannel, batchId?: number | null) =>
     [...MARKETPLACE_QUERY_KEYS.all, 'dispatchBoard', channel, batchId] as const,
   returns: (params?: ReturnListParams) =>
@@ -210,6 +212,17 @@ export function useTrackingReport(
     queryKey: MARKETPLACE_QUERY_KEYS.trackingReport(channel, batchId, scanned),
     queryFn: () => marketplaceApi.trackingReport(batchId!, { channel, scanned }),
     enabled: !!batchId,
+    staleTime: 20 * 1000,
+  });
+}
+
+/** Live preview of an insight report. Only the insight reports preview — the flat
+ *  dump reports carry no totals and are far too wide to render. */
+export function useReportPreview(slug: string, params: ReportParams, enabled = true) {
+  return useQuery({
+    queryKey: MARKETPLACE_QUERY_KEYS.reportPreview(slug, params),
+    queryFn: () => marketplaceApi.reportPreview(slug, params),
+    enabled,
     staleTime: 20 * 1000,
   });
 }

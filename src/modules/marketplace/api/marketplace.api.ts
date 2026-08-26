@@ -49,6 +49,7 @@ import type {
   ReceiveRequest,
   ReconciliationParams,
   ReconciliationReport,
+  ReportPreview,
   ResolvedOrder,
   ReturnCreateRequest,
   ReturnListParams,
@@ -76,6 +77,26 @@ function buildQuery<T extends object>(params?: T) {
   const s = qp.toString();
   return s ? `?${s}` : '';
 }
+
+/** Report filters — shared by the on-screen preview and the CSV download. */
+export type ReportParams = {
+  channel: MarketplaceChannel;
+  from?: string;
+  to?: string;
+  date_field?: string;
+  status?: string;
+  /** tracking report: which sheet, and which half of it. */
+  batch_id?: number;
+  scanned?: 'scanned' | 'not-scanned';
+  /** SAP posting gap: drop anything younger than this many days. */
+  min_age_days?: number;
+  /** Ageing: one dispatch-by bucket. */
+  bucket?: string;
+  /** SKU coverage: 'yes' | 'no'. */
+  mapped?: string;
+  /** GST: only notes whose posted ship-to disagrees with the rule. */
+  mismatch_only?: boolean;
+};
 
 export const marketplaceApi = {
   // ── Settings ───────────────────────────────────────────────────────────────
@@ -379,18 +400,17 @@ export const marketplaceApi = {
     return data;
   },
 
+  /** On-screen preview of an insight report — columns, rows and the totals behind them. */
+  async reportPreview(reportType: string, params: ReportParams): Promise<ReportPreview> {
+    const { data } = await apiClient.get<ReportPreview>(
+      `${EP.REPORT_PREVIEW(reportType)}${buildQuery({ ...params })}`,
+    );
+    return data;
+  },
+
   async exportReport(
     reportType: string,
-    params: {
-      channel: MarketplaceChannel;
-      from?: string;
-      to?: string;
-      date_field?: string;
-      status?: string;
-      /** tracking report: which sheet, and which half of it. */
-      batch_id?: number;
-      scanned?: 'scanned' | 'not-scanned';
-    },
+    params: ReportParams,
   ): Promise<{ blob: Blob; filename: string }> {
     const resp = await apiClient.get<Blob>(
       `${EP.REPORT_EXPORT(reportType)}${buildQuery({ ...params })}`,
