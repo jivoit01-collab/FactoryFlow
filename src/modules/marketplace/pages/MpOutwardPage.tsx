@@ -169,7 +169,9 @@ export default function MpOutwardPage() {
     ALL: orders.length,
     TODO: orders.filter((o) => o.status === 'PENDING' || o.status === 'PARTIAL').length,
     SCANNED: orders.filter((o) => o.status === 'SCANNED').length,
-    CONFIRMED: orders.filter((o) => o.status === 'CONFIRMED').length,
+    // A part-shipped order belongs in BOTH lists: the boxes that have already gone
+    // count as confirmed here, while the ones it still owes stay under To scan.
+    CONFIRMED: orders.filter((o) => o.status === 'CONFIRMED' || (o.tracking_confirmed ?? 0) > 0).length,
     CANCELLED: orders.filter((o) => o.status === 'CANCELLED').length,
   }), [orders]);
 
@@ -178,7 +180,8 @@ export default function MpOutwardPage() {
     return orders.filter((o) => {
       if (statusFilter === 'TODO' && o.status !== 'PENDING' && o.status !== 'PARTIAL') return false;
       if (statusFilter === 'SCANNED' && o.status !== 'SCANNED') return false;
-      if (statusFilter === 'CONFIRMED' && o.status !== 'CONFIRMED') return false;
+      if (statusFilter === 'CONFIRMED' && o.status !== 'CONFIRMED'
+          && (o.tracking_confirmed ?? 0) === 0) return false;
       if (statusFilter === 'CANCELLED' && o.status !== 'CANCELLED') return false;
       // Cancelled-after-scan orders are out of the active flow — hide them unless
       // the operator is specifically looking at Cancelled (or All).
@@ -665,15 +668,28 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
           <span
             key={idx}
             className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs ${
-              it.scanned
-                ? 'border-emerald-300 bg-emerald-50/60 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                : 'text-muted-foreground'
+              it.confirmed
+                ? 'border-sky-300 bg-sky-50/60 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300'
+                : it.scanned
+                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                  : 'text-muted-foreground'
             }`}
-            title={it.sku_name}
+            title={
+              it.confirmed
+                ? `${it.sku_name} · already shipped`
+                : it.scanned
+                  ? `${it.sku_name} · scanned, not yet confirmed`
+                  : `${it.sku_name} · still to scan`
+            }
           >
-            {it.scanned ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3 opacity-50" />}
+            {/* A part-shipped order keeps every parcel visible: the ones that have gone
+                read Confirmed, the ones still owed stay open to scan. */}
+            {it.scanned || it.confirmed
+              ? <CheckCircle2 className="h-3 w-3" />
+              : <Circle className="h-3 w-3 opacity-50" />}
             <span className="font-mono">{it.tracking_id || 'no tracking'}</span>
             <span className="opacity-70">· {it.sku_name} ×{Number(it.quantity)}</span>
+            {it.confirmed ? <span className="ml-0.5 font-medium">· Confirmed</span> : null}
           </span>
         ))}
       </div>

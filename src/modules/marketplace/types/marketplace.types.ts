@@ -669,6 +669,8 @@ export interface DispatchBoardItem {
   quantity: string;
   tracking_id: string;
   scanned: boolean;
+  /** This parcel has already shipped on a confirmed delivery note. */
+  confirmed?: boolean;
   order_item_id?: string;
   fsn?: string;
   hsn?: string;
@@ -707,6 +709,9 @@ export interface DispatchBoardOrder {
   confirmed_by?: string;
   tracking_total: number;
   tracking_scanned: number;
+  /** Parcels of this order that have already shipped. A multi-parcel order can be
+   *  part-shipped: some boxes confirmed, others still to scan. */
+  tracking_confirmed?: number;
   items: DispatchBoardItem[];
   variants?: LineVariant[];
 }
