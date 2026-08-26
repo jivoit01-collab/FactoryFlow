@@ -1,6 +1,6 @@
 import { ArrowRight, Check, Loader2, Plus, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useAppSelector } from '@/core/store';
@@ -17,7 +17,7 @@ import {
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
-import { useBSTSapTransfers, useCreateBST } from '../../api';
+import { useBSTSapTransfer, useBSTSapTransfers, useCreateBST } from '../../api';
 import type { BSTCreatePayload, BSTSourceType, SAPStockTransfer } from '../../types';
 
 const norm = (value?: string | null) => (value ?? '').trim().toLowerCase();
@@ -36,7 +36,29 @@ export default function BSTNewPage() {
   // from different (virtual) source warehouses, but must share the destination
   // warehouse for a transfer, or the customer for an invoice. The user searches
   // and adds documents to this list.
-  const [selectedDocs, setSelectedDocs] = useState<SAPStockTransfer[]>([]);
+  // Arriving from a transfer request pre-selects its posted SAP document, so the
+  // user lands here with the right document already on the entry. Derived rather
+  // than copied into state via an effect: `docEdits` stays null until the user
+  // touches the selection, and the pre-selected document shows through until then.
+  const [searchParams] = useSearchParams();
+  const preselectEntry = Number(searchParams.get('docEntry')) || null;
+  const fromRequest = searchParams.get('fromRequest') ?? '';
+  const { data: preselectedDoc } = useBSTSapTransfer(preselectEntry);
+
+  const [docEdits, setDocEdits] = useState<SAPStockTransfer[] | null>(null);
+  const seededDocs = useMemo<SAPStockTransfer[]>(
+    () => (preselectedDoc ? [preselectedDoc] : []),
+    [preselectedDoc],
+  );
+  const selectedDocs = docEdits ?? seededDocs;
+  const setSelectedDocs = (
+    next: SAPStockTransfer[] | ((prev: SAPStockTransfer[]) => SAPStockTransfer[]),
+  ) =>
+    setDocEdits((prev) =>
+      typeof next === 'function'
+        ? (next as (p: SAPStockTransfer[]) => SAPStockTransfer[])(prev ?? seededDocs)
+        : next,
+    );
   const [destinationCompanyId, setDestinationCompanyId] = useState<number | null>(null);
   const [invoiceNo, setInvoiceNo] = useState('');
   // When the stock leaves on a vehicle it needs a gate-out, so we capture the
@@ -257,7 +279,14 @@ export default function BSTNewPage() {
             </div>
           ) : null}
 
-          {selectedDocs.length > 0 && (
+          {fromRequest && (
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+          Starting from transfer request <strong>{fromRequest}</strong> — its posted SAP
+          document is already selected below. Add a vehicle if the stock leaves the factory.
+        </div>
+      )}
+
+      {selectedDocs.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">

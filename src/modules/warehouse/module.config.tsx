@@ -21,6 +21,11 @@ const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
 const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
 const BSTPartialApprovalsPage = lazy(() => import('./pages/bst/BSTPartialApprovalsPage'));
 
+// Warehouse Transfer Requests — raise → approve → post to SAP → BST
+const TransferRequestListPage = lazy(() => import('./pages/transfer/TransferRequestListPage'));
+const TransferRequestNewPage = lazy(() => import('./pages/transfer/TransferRequestNewPage'));
+const TransferRequestDetailPage = lazy(() => import('./pages/transfer/TransferRequestDetailPage'));
+
 // Dispatch Loading — scan pallets against a docked truck's bills, freeing map bins
 const DispatchLoadingListPage = lazy(() => import('./pages/dispatch-loading/DispatchLoadingListPage'));
 const DispatchLoadingScanPage = lazy(() => import('./pages/dispatch-loading/DispatchLoadingScanPage'));
@@ -76,6 +81,25 @@ export const warehouseModuleConfig: ModuleConfig = {
       element: <DispatchLoadingScanPage />,
       layout: 'main',
       permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
+    },
+    // Transfer Request Routes ('new' registered before `:requestId`)
+    {
+      path: '/warehouse/transfer-requests',
+      element: <TransferRequestListPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
+    },
+    {
+      path: '/warehouse/transfer-requests/new',
+      element: <TransferRequestNewPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST],
+    },
+    {
+      path: '/warehouse/transfer-requests/:requestId',
+      element: <TransferRequestDetailPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
     },
     // BST Routes
     {
@@ -141,6 +165,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
         WAREHOUSE_PERMISSIONS.VIEW_BST,
         WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL,
+        WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST,
         GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
         GRPO_PERMISSIONS.VIEW_PENDING,
         OMS_PERMISSIONS.VIEW_INVOICE,
@@ -161,6 +186,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/fg-receipts',
           title: 'FG Receipts',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
+        },
+        {
+          path: '/warehouse/transfer-requests',
+          title: 'Transfer Requests',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
         },
         {
           path: '/warehouse/bst',

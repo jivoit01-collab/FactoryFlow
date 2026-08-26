@@ -1066,6 +1066,31 @@ export const API_ENDPOINTS = {
     BST_GATE_INWARDS: '/warehouse/bst/gate/expected-inwards/',
     BST_GATE_MARK_OUT: (transferId: number) => `/warehouse/bst/${transferId}/gate/mark-out/`,
     BST_GATE_MARK_IN: (transferId: number) => `/warehouse/bst/${transferId}/gate/mark-in/`,
+
+    // Warehouse Transfer Requests — raise → approve → post to SAP → BST.
+    // `POST_SECOND_LEG` is only ever needed for a cross-branch move, where SAP
+    // forces the stock through an in-transit warehouse and the receipt is what
+    // writes the second document.
+    TRANSFER_REQUESTS: '/warehouse/transfer-requests/',
+    TRANSFER_REQUESTS_PENDING: '/warehouse/transfer-requests/pending/',
+    TRANSFER_REQUESTS_IN_TRANSIT: '/warehouse/transfer-requests/in-transit/',
+    TRANSFER_REQUESTS_RECONCILE: '/warehouse/transfer-requests/reconcile/',
+    TRANSFER_REQUESTS_STOCK: '/warehouse/transfer-requests/stock/',
+    TRANSFER_REQUEST_DETAIL: (requestId: number) => `/warehouse/transfer-requests/${requestId}/`,
+    TRANSFER_REQUEST_APPROVE: (requestId: number) =>
+      `/warehouse/transfer-requests/${requestId}/approve/`,
+    TRANSFER_REQUEST_REJECT: (requestId: number) =>
+      `/warehouse/transfer-requests/${requestId}/reject/`,
+    TRANSFER_REQUEST_POST: (requestId: number) =>
+      `/warehouse/transfer-requests/${requestId}/post/`,
+    TRANSFER_REQUEST_ALLOCATION_PREVIEW: (requestId: number) =>
+      `/warehouse/transfer-requests/${requestId}/allocation-preview/`,
+    TRANSFER_REQUEST_CREATE_BST: (requestId: number) =>
+      `/warehouse/transfer-requests/${requestId}/create-bst/`,
+    TRANSFER_REQUEST_SECOND_LEG: (requestId: number) =>
+      `/warehouse/transfer-requests/${requestId}/post-second-leg/`,
+    TRANSFER_REQUEST_VERIFY_BATCHES: (requestId: number) =>
+      `/warehouse/transfer-requests/${requestId}/verify-batches/`,
   },
 
   BARCODE: {

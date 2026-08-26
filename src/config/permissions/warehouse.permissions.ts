@@ -35,6 +35,19 @@ export const WAREHOUSE_PERMISSIONS = {
   REQUEST_BST_PARTIAL: 'warehouse.can_request_bst_partial_transfer',
   /** Review (approve/reject) BST partial-transfer requests */
   APPROVE_BST_PARTIAL: 'warehouse.can_approve_bst_partial_transfer',
+
+  // Warehouse Transfer Requests — the two-party ask that becomes a SAP transfer.
+  // Raising and approving are separate permissions on purpose: the point of the
+  // flow is that the *receiving* warehouse decides, so one warehouse must never
+  // hold both for its own requests.
+  /** View transfer requests */
+  VIEW_TRANSFER_REQUEST: 'warehouse.can_view_transfer_request',
+  /** Raise a transfer request (source warehouse) */
+  CREATE_TRANSFER_REQUEST: 'warehouse.can_create_transfer_request',
+  /** Approve or reject a transfer request (receiving warehouse) */
+  APPROVE_TRANSFER_REQUEST: 'warehouse.can_approve_transfer_request',
+  /** Post an approved transfer to SAP, and post the second leg on receipt */
+  POST_TRANSFER_TO_SAP: 'warehouse.can_post_transfer_to_sap',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';
