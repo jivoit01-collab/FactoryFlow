@@ -11,6 +11,7 @@ import {
   useGoodsReturn,
   useSaveGoodsReturnItems,
 } from '../api';
+import { ReturnItemPicker } from '../components/ReturnItemPicker';
 import { CONDITION_OPTIONS } from '../utils';
 
 interface EditableLine {
@@ -133,7 +134,7 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
 
     try {
       await saveItems.mutateAsync({ lines: payloadLines });
-      navigate(`/goods-return/edit/${id}/vehicle`);
+      navigate(`/returns/customer/edit/${id}/vehicle`);
     } catch (err) {
       setError(readError(err));
     }
@@ -168,116 +169,132 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
               {isInvoiceBasis ? 'No invoice lines found.' : 'Add the items being returned.'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                    <th className="px-2 py-2">Item</th>
-                    <th className="px-2 py-2 w-28">Invoice Qty</th>
-                    <th className="px-2 py-2 w-28">Return Qty</th>
-                    <th className="px-2 py-2 w-40">Reason</th>
-                    <th className="px-2 py-2 w-32">Condition</th>
-                    {!isInvoiceBasis && <th className="px-2 py-2 w-10" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((line) => (
-                    <tr key={line.key} className="border-b align-top">
-                      <td className="px-2 py-2">
-                        {line.manual ? (
-                          <div className="space-y-1">
-                            <Input
-                              value={line.item_code}
-                              onChange={(event) => updateLine(line.key, { item_code: event.target.value })}
-                              placeholder="Item code"
-                              className="h-8"
-                            />
-                            <Input
-                              value={line.item_name}
-                              onChange={(event) => updateLine(line.key, { item_name: event.target.value })}
-                              placeholder="Item name"
-                              className="h-8"
-                            />
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="font-medium">{line.item_name || line.item_code}</p>
-                            <p className="text-xs text-muted-foreground">{line.item_code}</p>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-2 py-2 text-muted-foreground">
-                        {line.manual ? (
-                          <Input
-                            value={line.uom}
-                            onChange={(event) => updateLine(line.key, { uom: event.target.value })}
-                            placeholder="UOM"
-                            className="h-8"
-                          />
-                        ) : (
-                          <span>
-                            {line.invoice_quantity} {line.uom}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-2 py-2">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.001"
-                          max={line.invoice_quantity || undefined}
-                          value={line.return_quantity}
-                          onChange={(event) => updateLine(line.key, { return_quantity: event.target.value })}
-                          className="h-8"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <Input
-                          value={line.reason}
-                          onChange={(event) => updateLine(line.key, { reason: event.target.value })}
-                          placeholder="Damaged, shortage…"
-                          className="h-8"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <select
-                          value={line.condition}
-                          onChange={(event) =>
-                            updateLine(line.key, {
-                              condition: event.target.value as GoodsReturnItemCondition,
-                            })
-                          }
-                          className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-                        >
-                          {CONDITION_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      {!isInvoiceBasis && (
-                        <td className="px-2 py-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => setLines((prev) => prev.filter((item) => item.key !== line.key))}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </td>
+            /* No overflow container here on purpose: the item picker's dropdown is
+               absolutely positioned rather than portalled, so an `overflow-x-auto`
+               ancestor clips it. Rows are a wrapping grid instead, which also means
+               the page never scrolls sideways on a phone. */
+            <div className="space-y-3">
+              {lines.map((line) => (
+                <div key={line.key} className="space-y-2 rounded-lg border p-3">
+                  {line.manual ? (
+                    <>
+                      <ReturnItemPicker
+                        returnId={id}
+                        inputId={`return-item-${line.key}`}
+                        value={line.item_code}
+                        onSelect={(item) =>
+                          // The unit and the tax code come from the item's own
+                          // sales history — the posted return has to reverse the
+                          // code the original sale used.
+                          updateLine(line.key, {
+                            item_code: item?.item_code ?? '',
+                            item_name: item?.item_name ?? '',
+                            uom: item?.uom ?? '',
+                          })
+                        }
+                      />
+                      {line.item_name && (
+                        <p className="text-xs text-muted-foreground">{line.item_name}</p>
                       )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    </>
+                  ) : (
+                    <div>
+                      <p className="text-sm font-medium">{line.item_name || line.item_code}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {line.item_code} · invoiced {line.invoice_quantity} {line.uom}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid gap-2 sm:grid-cols-[100px_130px_minmax(0,1fr)_150px_auto]">
+                    {line.manual ? (
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Unit</span>
+                        <Input
+                          value={line.uom}
+                          onChange={(event) => updateLine(line.key, { uom: event.target.value })}
+                          placeholder="UOM"
+                          className="h-9"
+                        />
+                      </label>
+                    ) : (
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Unit</span>
+                        <p className="h-9 leading-9 text-sm">{line.uom || '—'}</p>
+                      </div>
+                    )}
+
+                    <label className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Returning</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.001"
+                        max={line.invoice_quantity || undefined}
+                        value={line.return_quantity}
+                        onChange={(event) =>
+                          updateLine(line.key, { return_quantity: event.target.value })
+                        }
+                        className="h-9"
+                        // A number input edits itself when scrolled past; blurring
+                        // hands the scroll back to the page.
+                        onWheel={(event) => event.currentTarget.blur()}
+                      />
+                    </label>
+
+                    <label className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Reason</span>
+                      <Input
+                        value={line.reason}
+                        onChange={(event) => updateLine(line.key, { reason: event.target.value })}
+                        placeholder="Damaged, shortage…"
+                        className="h-9"
+                      />
+                    </label>
+
+                    <label className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Condition</span>
+                      <select
+                        value={line.condition}
+                        onChange={(event) =>
+                          updateLine(line.key, {
+                            condition: event.target.value as GoodsReturnItemCondition,
+                          })
+                        }
+                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      >
+                        {CONDITION_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    {!isInvoiceBasis && (
+                      <div className="flex items-end">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Remove ${line.item_code || 'this line'}`}
+                          onClick={() =>
+                            setLines((prev) => prev.filter((item) => item.key !== line.key))
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate(`/goods-return/edit/${id}/details`)}>
+        <Button variant="ghost" onClick={() => navigate(`/returns/customer/edit/${id}/details`)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleContinue} disabled={saveItems.isPending}>

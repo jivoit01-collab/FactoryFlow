@@ -13,7 +13,6 @@ import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
 import { etpModuleConfig } from '@/modules/etp/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
-import { goodsReturnModuleConfig } from '@/modules/goods-return/module.config';
 import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
@@ -22,6 +21,7 @@ import { orderProcessingModuleConfig } from '@/modules/order-processing/module.c
 import { planningPurchaseModuleConfig } from '@/modules/planning-purchase/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
+import { returnsModuleConfig } from '@/modules/returns/module.config';
 import { sapReportsModuleConfig } from '@/modules/sap-reports/module.config';
 import { settingsModuleConfig } from '@/modules/settings/module.config';
 import { supplyChainModuleConfig } from '@/modules/supply-chain/module.config';
@@ -42,7 +42,7 @@ export const moduleRegistry: ModuleConfig[] = [
   dashboardsModuleConfig,
   dispatchModuleConfig,
   gateModuleConfig,
-  goodsReturnModuleConfig,
+  returnsModuleConfig,
   labourModuleConfig,
   vehicleManagementModuleConfig,
   qcModuleConfig,

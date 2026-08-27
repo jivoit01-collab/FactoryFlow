@@ -7,8 +7,8 @@ import {
   type GoodsReturnListItem,
   useExpectedGoodsReturns,
   useMarkGoodsReturnIn,
-} from '@/modules/goods-return/api';
-import { formatDate } from '@/modules/goods-return/utils';
+} from '@/modules/returns/customer/api';
+import { formatDate } from '@/modules/returns/customer/utils';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
@@ -67,7 +67,7 @@ export default function GoodsReturnInListPage() {
                     <button
                       type="button"
                       className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                      onClick={() => navigate(`/goods-return/${entry.id}`)}
+                      onClick={() => navigate(`/returns/customer/${entry.id}`)}
                     >
                       {entry.entry_no}
                     </button>

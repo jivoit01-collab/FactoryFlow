@@ -53,7 +53,7 @@ export default function GoodsReturnDetailPage() {
           </div>
           <p className="text-muted-foreground">{BASIS_LABELS[detail.basis]}</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/goods-return')}>
+        <Button variant="outline" onClick={() => navigate('/returns/customer')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
       </div>
@@ -157,7 +157,6 @@ export default function GoodsReturnDetailPage() {
 }
 
 function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
-  const isInvoiceBasis = detail.basis === 'INVOICE';
   const awaitingApproval =
     detail.requires_approval && detail.approval_status === 'PENDING';
   const approvalRejected =
@@ -165,9 +164,10 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
   const blocked = awaitingApproval || approvalRejected;
 
   const receive = useReceiveGoodsReturn(id);
-  const { data: warehouses = [], isLoading: warehousesLoading } = useReturnWarehouses(
-    isInvoiceBasis && !blocked,
-  );
+  // Every basis posts the same standalone A/R Return, so every basis needs a
+  // warehouse to post it into.
+  const { data: warehouses = [], isLoading: warehousesLoading } =
+    useReturnWarehouses(!blocked);
   const [warehouseCode, setWarehouseCode] = useState('');
 
   if (blocked) {
@@ -188,12 +188,12 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
   }
 
   async function handleReceive() {
-    if (isInvoiceBasis && !warehouseCode) {
+    if (!warehouseCode) {
       toast.error('Select the goods-return warehouse.');
       return;
     }
     try {
-      const updated = await receive.mutateAsync(isInvoiceBasis ? warehouseCode : undefined);
+      const updated = await receive.mutateAsync(warehouseCode);
       toast.success(
         updated.sap_gr_doc_num
           ? `Received — SAP Return ${updated.sap_gr_doc_num} posted`
@@ -212,30 +212,32 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
           <PackageCheck className="h-4 w-4 text-primary" /> Confirm Receipt
         </div>
         <p className="text-sm text-muted-foreground">
-          The vehicle is marked in at the gate. Confirm the goods physically arrived
-          {isInvoiceBasis
-            ? ' — this posts an A/R Returns document to SAP for the returned stock.'
-            : '. No SAP posting is done for non-invoice returns.'}
+          The vehicle is marked in at the gate. Confirm the goods physically arrived — this
+          posts an A/R Returns document to SAP and brings the stock into the warehouse below.
         </p>
 
-        {isInvoiceBasis && (
-          <div className="space-y-2 sm:max-w-sm">
-            <Label>Goods-Return Warehouse *</Label>
-            <select
-              value={warehouseCode}
-              onChange={(event) => setWarehouseCode(event.target.value)}
-              disabled={warehousesLoading}
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="">{warehousesLoading ? 'Loading…' : 'Select warehouse'}</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.warehouse_code} value={warehouse.warehouse_code}>
-                  {warehouse.warehouse_code} — {warehouse.warehouse_name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="space-y-2 sm:max-w-sm">
+          <Label>Goods-Return Warehouse *</Label>
+          <select
+            value={warehouseCode}
+            onChange={(event) => setWarehouseCode(event.target.value)}
+            disabled={warehousesLoading}
+            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+          >
+            <option value="">{warehousesLoading ? 'Loading…' : 'Select warehouse'}</option>
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.warehouse_code} value={warehouse.warehouse_code}>
+                {warehouse.warehouse_code} — {warehouse.warehouse_name}
+              </option>
+            ))}
+          </select>
+          {!warehousesLoading && warehouses.length === 0 && (
+            <p className="text-xs text-destructive">
+              No goods-return warehouse is configured for this company. SAP cannot take the
+              return without one.
+            </p>
+          )}
+        </div>
 
         <Button onClick={handleReceive} disabled={receive.isPending}>
           {receive.isPending ? (
@@ -243,7 +245,7 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
           ) : (
             <PackageCheck className="mr-2 h-4 w-4" />
           )}
-          {isInvoiceBasis ? 'Confirm Receipt & Post to SAP' : 'Confirm Receipt'}
+          Confirm Receipt &amp; Post to SAP
         </Button>
       </CardContent>
     </Card>

@@ -2,7 +2,7 @@ import { GOODS_RETURN_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 // Direct-ish import via the goods-return api barrel (api + queries only, no
 // components), so this sidebar badge doesn't drag page chunks in with it.
-import { usePendingApprovalGoodsReturns } from '@/modules/goods-return/api';
+import { usePendingApprovalGoodsReturns } from '@/modules/returns/customer/api';
 import { cn } from '@/shared/utils';
 
 /**

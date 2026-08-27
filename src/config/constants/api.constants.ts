@@ -544,6 +544,7 @@ export const API_ENDPOINTS = {
     INVOICE_REFS: (id: number) => `/goods-return/${id}/invoice-refs/`,
     INVOICE_REF_BY_ID: (id: number, refId: number) => `/goods-return/${id}/invoice-refs/${refId}/`,
     ITEMS: (id: number) => `/goods-return/${id}/items/`,
+    RETURNABLE_ITEMS: (id: number) => `/goods-return/${id}/returnable-items/`,
     VEHICLE: (id: number) => `/goods-return/${id}/vehicle/`,
     ATTACHMENTS: (id: number) => `/goods-return/${id}/attachments/`,
     ATTACHMENT_BY_ID: (id: number, attachmentId: number) =>

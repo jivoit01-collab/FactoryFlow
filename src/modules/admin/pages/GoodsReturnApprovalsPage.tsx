@@ -10,14 +10,14 @@ import {
   useApproveGoodsReturn,
   useGoodsReturns,
   useRejectGoodsReturn,
-} from '@/modules/goods-return/api';
+} from '@/modules/returns/customer/api';
 import {
   APPROVAL_BADGE_CLASS,
   APPROVAL_LABELS,
   BASIS_LABELS,
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
-} from '@/modules/goods-return/utils';
+} from '@/modules/returns/customer/utils';
 import {
   Badge,
   Button,
@@ -92,7 +92,14 @@ export default function GoodsReturnApprovalsPage() {
       );
       setReviewTarget(null);
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      toast.error(
+        getErrorMessage(
+          err,
+          reviewMode === 'approve'
+            ? 'Could not approve the return.'
+            : 'Could not reject the return.',
+        ),
+      );
     }
   }
 
@@ -147,7 +154,7 @@ export default function GoodsReturnApprovalsPage() {
                           <button
                             type="button"
                             className="flex items-center gap-1 font-medium hover:underline"
-                            onClick={() => navigate(`/goods-return/${entry.id}`)}
+                            onClick={() => navigate(`/returns/customer/${entry.id}`)}
                           >
                             {entry.entry_no}
                             <ExternalLink className="h-3 w-3 text-muted-foreground" />

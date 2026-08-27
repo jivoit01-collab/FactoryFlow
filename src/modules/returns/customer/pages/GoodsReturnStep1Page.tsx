@@ -125,7 +125,7 @@ export default function GoodsReturnStep1Page() {
         await goodsReturnApi.uploadAttachment(created.id, file, ATTACHMENT_TYPE_BY_BASIS[basis]);
       }
 
-      navigate(`/goods-return/edit/${created.id}/items`);
+      navigate(`/returns/customer/edit/${created.id}/items`);
     } catch (err) {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
@@ -331,7 +331,7 @@ export default function GoodsReturnStep1Page() {
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate('/goods-return')}>
+        <Button variant="ghost" onClick={() => navigate('/returns/customer')}>
           Cancel
         </Button>
         <Button onClick={handleContinue} disabled={createReturn.isPending}>

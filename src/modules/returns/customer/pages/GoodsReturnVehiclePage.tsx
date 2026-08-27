@@ -57,7 +57,7 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
         driver_id: driverId,
         expected_arrival_at: expectedArrival,
       });
-      navigate(`/goods-return/edit/${id}/review`);
+      navigate(`/returns/customer/edit/${id}/review`);
     } catch (err) {
       const detailMsg = (err as { response?: { data?: { detail?: string } } })?.response?.data
         ?.detail;
@@ -116,7 +116,7 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate(`/goods-return/edit/${id}/items`)}>
+        <Button variant="ghost" onClick={() => navigate(`/returns/customer/edit/${id}/items`)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleContinue} disabled={setVehicle.isPending}>

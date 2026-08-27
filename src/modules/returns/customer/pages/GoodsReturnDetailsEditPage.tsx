@@ -110,7 +110,7 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
           customer_code: customerCode.trim(),
         });
       }
-      navigate(`/goods-return/edit/${id}/items`);
+      navigate(`/returns/customer/edit/${id}/items`);
     } catch (err) {
       setError(readError(err, 'Could not save the details.'));
     }
@@ -270,7 +270,7 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate('/goods-return')}>
+        <Button variant="ghost" onClick={() => navigate('/returns/customer')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to list
         </Button>
         <Button onClick={handleContinue} disabled={updateHeader.isPending}>

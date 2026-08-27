@@ -13,6 +13,7 @@ const STATUS_FILTERS: { value: '' | GoodsReturnStatus; label: string }[] = [
   { value: 'DRAFT', label: 'Draft' },
   { value: 'AWAITING_ARRIVAL', label: 'Awaiting Arrival' },
   { value: 'ARRIVED', label: 'Arrived' },
+  { value: 'RECEIVED', label: 'Received (not in SAP)' },
   { value: 'POSTED', label: 'Posted' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
@@ -62,7 +63,7 @@ export default function GoodsReturnListPage() {
             <RefreshCw className={cn('mr-2 h-4 w-4', isFetching && 'animate-spin')} />
             Refresh
           </Button>
-          <Button onClick={() => navigate('/goods-return/new')}>
+          <Button onClick={() => navigate('/returns/customer/new')}>
             <Plus className="mr-2 h-4 w-4" />
             New Entry
           </Button>
@@ -129,8 +130,8 @@ export default function GoodsReturnListPage() {
                         onClick={() =>
                           navigate(
                             entry.status === 'DRAFT'
-                              ? `/goods-return/edit/${entry.id}/items`
-                              : `/goods-return/${entry.id}`,
+                              ? `/returns/customer/edit/${entry.id}/items`
+                              : `/returns/customer/${entry.id}`,
                           )
                         }
                       >

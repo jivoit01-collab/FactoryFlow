@@ -15,7 +15,23 @@ export const goodsReturnKeys = {
   detail: (id: number) => ['goods-return', 'detail', id] as const,
   expected: () => ['goods-return', 'gate', 'expected'] as const,
   warehouses: () => ['goods-return', 'warehouses'] as const,
+  returnableItems: (id: number, search: string) =>
+    ['goods-return', 'returnable-items', id, search] as const,
 };
+
+/**
+ * Items this return's customer has been invoiced. Only the customer's own
+ * history is offered — anything else has no tax code and SAP would refuse the
+ * return line at posting.
+ */
+export function useReturnableItems(id: number | null, search = '') {
+  return useQuery({
+    queryKey: goodsReturnKeys.returnableItems(id ?? 0, search),
+    queryFn: () => goodsReturnApi.returnableItems(id as number, { search, limit: 200 }),
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+}
 
 export function useGoodsReturns(params?: {
   status?: string;

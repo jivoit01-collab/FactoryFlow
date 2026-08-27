@@ -23,7 +23,7 @@ export default function GoodsReturnReviewPage() {
     try {
       await submit.mutateAsync();
       toast.success('Goods return submitted — awaiting gate arrival');
-      navigate(`/goods-return/${id}`);
+      navigate(`/returns/customer/${id}`);
     } catch (err) {
       const detailMsg = (err as { response?: { data?: { detail?: string } } })?.response?.data
         ?.detail;
@@ -95,7 +95,7 @@ export default function GoodsReturnReviewPage() {
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate(`/goods-return/edit/${id}/vehicle`)}>
+        <Button variant="ghost" onClick={() => navigate(`/returns/customer/edit/${id}/vehicle`)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleSubmit} disabled={submit.isPending}>
@@ -110,7 +110,8 @@ export default function GoodsReturnReviewPage() {
 
       <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        On submit the SAP goods-return posting is stubbed; the vehicle moves to the gate queue.
+        On submit the vehicle joins the gate's return queue. SAP is posted later, when the
+        goods are confirmed received.
       </p>
     </div>
   );

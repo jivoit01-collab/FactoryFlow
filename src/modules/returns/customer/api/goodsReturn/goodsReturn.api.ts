@@ -1,11 +1,31 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
+/**
+ * An item this customer has actually been invoiced.
+ *
+ * The picker offers their purchase history rather than the item master: an item
+ * they were never billed for has no tax code, and SAP refuses a return line
+ * without one, so anything outside this list would fail at posting.
+ */
+export interface ReturnableItem {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  tax_code: string;
+  last_price: number;
+  last_invoice_num: string;
+  last_billed: string | null;
+}
+
 export type GoodsReturnBasis = 'INVOICE' | 'DEBIT_NOTE' | 'LETTER_PAD';
 export type GoodsReturnStatus =
   | 'DRAFT'
   | 'AWAITING_ARRIVAL'
   | 'ARRIVED'
+  // Goods in and the return closed, but no SAP document — only invoice-basis
+  // returns post today.
+  | 'RECEIVED'
   | 'POSTED'
   | 'CANCELLED';
 export type GoodsReturnItemCondition = 'GOOD' | 'DAMAGED' | 'EXPIRED' | 'OTHER';
@@ -216,6 +236,23 @@ export const goodsReturnApi = {
       API_ENDPOINTS.GOODS_RETURN.INVOICE_REF_BY_ID(id, refId),
     );
     return response.data;
+  },
+
+  /** Items this return's customer has been invoiced, for the item picker. */
+  async returnableItems(
+    id: number,
+    params?: { search?: string; limit?: number },
+  ): Promise<ReturnableItem[]> {
+    const res = await apiClient.get<ReturnableItem[]>(
+      API_ENDPOINTS.GOODS_RETURN.RETURNABLE_ITEMS(id),
+      {
+        params: {
+          ...(params?.search ? { search: params.search } : {}),
+          ...(params?.limit ? { limit: params.limit } : {}),
+        },
+      },
+    );
+    return res.data;
   },
 
   async saveItems(id: number, payload: SaveItemsPayload): Promise<GoodsReturnDetail> {
