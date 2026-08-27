@@ -5,7 +5,6 @@
  * Defaults to today's sheets; filter by date, gate status or search.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
   ChevronDown,
@@ -13,12 +12,14 @@ import {
   Loader2,
   Package,
   PackageCheck,
+  Plus,
   Search,
   ShieldAlert,
   Truck,
   X,
 } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -38,6 +39,7 @@ import { getErrorMessage } from '@/shared/utils';
 import { marketplaceApi } from '../api/marketplace.api';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
+import { MpManualGateOutDialog } from '../components/MpManualGateOutDialog';
 import { useMpChannel } from '../hooks/useMpChannel';
 import type { GateQueueSheet, MarketplaceChannel } from '../types/marketplace.types';
 
@@ -54,6 +56,10 @@ export default function MpGatePage() {
   const [channel, setChannel] = useMpChannel();
   const [expanded, setExpanded] = useState<number | null>(null);
   const [holdSheet, setHoldSheet] = useState<GateQueueSheet | null>(null);
+  // A truck can turn up carrying a load that never came off a sheet — a bulk
+  // delivery note cut by hand. It has no queue row to approve, so it needs its
+  // own way in rather than a sheet it does not belong to.
+  const [manualOpen, setManualOpen] = useState(false);
   const [holdRemark, setHoldRemark] = useState('');
   // Filters — default to TODAY's sheets.
   const [range, setRange] = useState<MpRange>({ from: TODAY, to: '' });
@@ -76,10 +82,19 @@ export default function MpGatePage() {
   const sentByBatch = useMemo(() => {
     const map = new Map<number, number>();
     for (const p of passes.data ?? []) {
+      // A manual gate out has no sheet, so it belongs to no row here.
+      if (p.import_batch === null) continue;
       map.set(p.import_batch, (map.get(p.import_batch) ?? 0) + 1);
     }
     return map;
   }, [passes.data]);
+
+  // ...and is instead shown on its own, because otherwise the record the gate
+  // person just made would be invisible the moment the toast faded.
+  const manualTrips = useMemo(
+    () => (passes.data ?? []).filter((p) => p.is_manual).slice(0, 8),
+    [passes.data],
+  );
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['mp-gate-queue', channel] });
@@ -151,8 +166,20 @@ export default function MpGatePage() {
             </p>
           </div>
         </div>
-        <MpChannelSelect value={channel} onChange={setChannel} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setManualOpen(true)}>
+            <Plus className="mr-1.5 h-4 w-4" /> New gate out
+          </Button>
+          <MpChannelSelect value={channel} onChange={setChannel} />
+        </div>
       </header>
+
+      <MpManualGateOutDialog
+        channel={channel}
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+        onDone={invalidate}
+      />
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
@@ -169,6 +196,44 @@ export default function MpGatePage() {
           tone={totals.pending ? 'amber' : undefined}
         />
       </div>
+
+      {/* Gate outs raised here rather than off a sheet. */}
+      {manualTrips.length > 0 && (
+        <Card>
+          <CardContent className="space-y-2 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Truck className="h-4 w-4 text-muted-foreground" /> Sent out without a sheet
+            </div>
+            {manualTrips.map((t) => (
+              <div
+                key={t.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-muted/20 px-3 py-2 text-sm"
+              >
+                <span className="font-medium">{t.vehicle_no || '—'}</span>
+                {t.delivery_note_no && (
+                  <span className="text-muted-foreground">DN {t.delivery_note_no}</span>
+                )}
+                {t.box_count > 0 && (
+                  <span className="text-muted-foreground">{t.box_count} box(es)</span>
+                )}
+                <span className="ml-auto font-mono text-xs text-muted-foreground">
+                  {t.gatepass_no}
+                </span>
+                {t.attachments.length > 0 && (
+                  <a
+                    href={t.attachments[0].file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Note
+                  </a>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-3">

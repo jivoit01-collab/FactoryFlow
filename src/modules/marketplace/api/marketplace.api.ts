@@ -36,6 +36,7 @@ import type {
   MpGatePassCreatePayload,
   MpGatePassDispatchPayload,
   MpGatePassWeighmentPayload,
+  MpManualGateOutPayload,
   MpPaginated,
   MpReturnCondition,
   MpReturnScan,
@@ -64,8 +65,8 @@ import type {
   SkuMapping,
   SkuMappingUpsert,
   StockList,
-  WarehouseInsights,
   TrackingReport,
+  WarehouseInsights,
 } from '../types/marketplace.types';
 
 const EP = API_ENDPOINTS.MARKETPLACE;
@@ -370,6 +371,28 @@ export const marketplaceApi = {
     const { data } = await apiClient.post<MpGatePass>(
       `${EP.GATE_PASSES}${buildQuery({ channel })}`,
       payload,
+    );
+    return data;
+  },
+  /**
+   * Raise a gate out at the gate itself — no sheet, no scanning.
+   *
+   * Sent as multipart because the delivery-note PDF rides along with it, and as
+   * ONE request because the server does the whole thing in one transaction: an
+   * abandoned form must not leave a half-made trip behind.
+   */
+  async gatePassManual(
+    channel: MarketplaceChannel,
+    payload: MpManualGateOutPayload,
+  ): Promise<MpGatePass> {
+    const form = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      form.append(key, value instanceof File ? value : String(value));
+    });
+    const { data } = await apiClient.post<MpGatePass>(
+      `${EP.GATE_PASS_MANUAL}${buildQuery({ channel })}`,
+      form,
     );
     return data;
   },

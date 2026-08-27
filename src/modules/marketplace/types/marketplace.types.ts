@@ -1029,8 +1029,16 @@ export interface MpGatePass {
   channel: MarketplaceChannel;
   status: MpGatePassStatus;
   status_display: string;
-  import_batch: number;
+  /** Null on a manual gate out — a truck can leave on a delivery note alone. */
+  import_batch: number | null;
   sheet: string;
+  is_manual: boolean;
+
+  /** What a MANUAL trip carries, stated by the gate person: a sheet-based one
+   *  derives its load from the parcels stamped onto it instead. */
+  delivery_note_no: string;
+  delivery_note_date: string | null;
+  box_count: number;
 
   vehicle: number | null;
   vehicle_no: string;
@@ -1074,8 +1082,23 @@ export interface MpGatePass {
   remarks: string;
   cancel_reason: string;
   cancelled_at: string | null;
+  attachments: MpGatePassAttachment[];
   created_at: string;
   updated_at: string;
+}
+
+/** A document travelling with the trip — the delivery note, bilty, e-way bill. */
+export interface MpGatePassAttachment {
+  id: number;
+  document_type: 'DELIVERY_NOTE' | 'GATEPASS' | 'BILTY' | 'EWAY_BILL' | 'TRUCK_PHOTO' | 'OTHER';
+  document_type_display: string;
+  file_url: string;
+  original_filename: string;
+  document_no: string;
+  document_date: string | null;
+  notes: string;
+  uploaded_by_name: string;
+  uploaded_at: string;
 }
 
 export interface MpGatePassCreatePayload {
@@ -1084,6 +1107,42 @@ export interface MpGatePassCreatePayload {
   transporter_id?: number | null;
   driver_id?: number | null;
   remarks?: string;
+}
+
+/**
+ * A gate out raised at the gate, with no sheet behind it.
+ *
+ * Vehicle and driver may come from the masters (``*_id``) or be typed — a truck
+ * nobody has registered must not stop a load leaving.
+ */
+export interface MpManualGateOutPayload {
+  vehicle_id?: number | null;
+  transporter_id?: number | null;
+  driver_id?: number | null;
+  vehicle_no?: string;
+  driver_name?: string;
+  driver_mobile_no?: string;
+
+  delivery_note_no?: string;
+  delivery_note_date?: string | null;
+  box_count?: number;
+  remarks?: string;
+
+  /** Optional here, unlike a sheet-based trip: a tempo of parcels often never
+   *  sees the weighbridge, and holding the truck for it is the friction this
+   *  entry point exists to remove. */
+  tare_weight?: string;
+  gross_weight?: string;
+  weighbridge_slip_no?: string;
+
+  /** The delivery note itself, filed against the trip. */
+  file?: File | null;
+
+  /** Defaults true — one action opens the trip and sends it out. */
+  mark_out?: boolean;
+  security_name?: string;
+  out_date?: string | null;
+  out_time?: string | null;
 }
 
 export interface MpGatePassWeighmentPayload {

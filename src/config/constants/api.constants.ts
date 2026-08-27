@@ -1225,6 +1225,7 @@ export const API_ENDPOINTS = {
     GATE_HOLD: (batchId: number) => `/marketplace/gate/${batchId}/hold/`,
     // Gate pass — the outward trip (vehicle, weighment, gatepass, out).
     GATE_PASSES: '/marketplace/gate-passes/',
+    GATE_PASS_MANUAL: '/marketplace/gate-passes/manual/',
     GATE_PASS_DETAIL: (id: number) => `/marketplace/gate-passes/${id}/`,
     GATE_PASS_WEIGHMENT: (id: number) => `/marketplace/gate-passes/${id}/weighment/`,
     GATE_PASS_PRINT: (id: number) => `/marketplace/gate-passes/${id}/print/`,
