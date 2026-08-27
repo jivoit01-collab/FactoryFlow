@@ -24,6 +24,8 @@ const NOT_AN_ID = /^(tracking|total|grand total|count)\b/i;
 
 interface Props {
   pending: boolean;
+  /** How far the slice-by-slice scan has got, so a 400-ID sheet is not a blind wait. */
+  progress: { done: number; total: number } | null;
   onScan: (barcodes: string[]) => void;
   result: BulkScanResponse | null;
   onClearResult: () => void;
@@ -54,7 +56,7 @@ function extractTrackingIds(rows: unknown[][]): string[] {
   return ids;
 }
 
-export function MpBulkScanUpload({ pending, onScan, result, onClearResult }: Props) {
+export function MpBulkScanUpload({ pending, progress, onScan, result, onClearResult }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [filename, setFilename] = useState('');
   const [ids, setIds] = useState<string[]>([]);
@@ -136,7 +138,10 @@ export function MpBulkScanUpload({ pending, onScan, result, onClearResult }: Pro
             <Badge variant="outline" className="tabular-nums">{ids.length} tracking IDs</Badge>
             <Button size="sm" disabled={pending || ids.length === 0} onClick={() => onScan(ids)}>
               {pending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning {ids.length}…</>
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Scanning {progress ? `${progress.done} of ${progress.total}` : ids.length}…
+                </>
               ) : (
                 <>Scan {ids.length} tracking IDs</>
               )}
@@ -147,6 +152,21 @@ export function MpBulkScanUpload({ pending, onScan, result, onClearResult }: Pro
           </>
         )}
       </div>
+
+      {pending && progress && progress.total > 0 && (
+        <div className="mt-3 space-y-1">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Scanning in batches — {progress.done} of {progress.total} tracking IDs done. Leave this
+            page open until it finishes.
+          </p>
+        </div>
+      )}
 
       {result && (
         <div className="mt-3 space-y-2 rounded-md bg-muted/50 p-3 text-sm">

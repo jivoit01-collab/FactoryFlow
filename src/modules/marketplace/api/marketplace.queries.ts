@@ -591,17 +591,24 @@ export function useScanDispatchByTracking(channel: MarketplaceChannel) {
   });
 }
 
-/** How many tracking IDs go in one bulk-scan request. A sheet can carry 1,600+
- *  IDs and each one is a real scan server-side, so send them in slices to stay
- *  well inside the gateway timeout. */
-const BULK_SCAN_CHUNK = 200;
+/** How many tracking IDs go in one bulk-scan request. Each ID is a real scan
+ *  server-side (~1s against the live DB), so keep a slice small enough that the
+ *  operator sees the count move every few seconds and no single request sits
+ *  anywhere near the gateway timeout. */
+const BULK_SCAN_CHUNK = 25;
 
-/** Bulk scan from an uploaded sheet — same rules as the gun, chunked and summed. */
-export function useScanDispatchBulk(channel: MarketplaceChannel) {
+/** Bulk scan from an uploaded sheet — same rules as the gun, sliced so progress
+ *  is visible, with the per-slice counts summed into one result. `onProgress`
+ *  fires after every slice with how many IDs are done. */
+export function useScanDispatchBulk(
+  channel: MarketplaceChannel,
+  onProgress?: (done: number, total: number) => void,
+) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (barcodes: string[]) => {
       const merged: BulkScanResponse = { total: 0, scanned: 0, duplicate: 0, failed: 0, results: [] };
+      onProgress?.(0, barcodes.length);
       for (let i = 0; i < barcodes.length; i += BULK_SCAN_CHUNK) {
         const res = await marketplaceApi.scanDispatchBulk(
           channel, barcodes.slice(i, i + BULK_SCAN_CHUNK),
@@ -611,6 +618,7 @@ export function useScanDispatchBulk(channel: MarketplaceChannel) {
         merged.duplicate += res.duplicate;
         merged.failed += res.failed;
         merged.results.push(...res.results);
+        onProgress?.(Math.min(i + BULK_SCAN_CHUNK, barcodes.length), barcodes.length);
       }
       return merged;
     },

@@ -162,7 +162,8 @@ export default function MpOutwardPage() {
   const insights = board?.insights;
 
   const scanMut = useScanDispatchByTracking(channel);
-  const bulkScanMut = useScanDispatchBulk(channel);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const bulkScanMut = useScanDispatchBulk(channel, (done, total) => setBulkProgress({ done, total }));
   const [bulkResult, setBulkResult] = useState<BulkScanResponse | null>(null);
 
   const scannedOrders = useMemo(
@@ -269,11 +270,13 @@ export default function MpOutwardPage() {
     setFeedback(null);
     bulkScanMut.mutate(barcodes, {
       onSuccess: (res) => {
+        setBulkProgress(null);
         setBulkResult(res);
         if (res.failed === 0) toast.success(`Scanned ${res.scanned} of ${res.total} tracking IDs.`);
         else toast.warning(`${res.scanned} scanned, ${res.failed} could not be scanned.`);
       },
       onError: (e) => {
+        setBulkProgress(null);
         setBulkResult(null);
         toast.error(getErrorMessage(e, 'Bulk scan failed'));
       },
@@ -380,6 +383,7 @@ export default function MpOutwardPage() {
               <MpScanFeedback feedback={feedback} />
               <MpBulkScanUpload
                 pending={bulkScanMut.isPending}
+                progress={bulkProgress}
                 onScan={handleBulkScan}
                 result={bulkResult}
                 onClearResult={() => setBulkResult(null)}
