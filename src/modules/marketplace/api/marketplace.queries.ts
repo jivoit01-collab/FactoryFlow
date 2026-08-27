@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
+  BulkScanResponse,
   CancelRequest,
   ComboDefinitionUpsert,
   ConfirmRequest,
@@ -586,6 +587,33 @@ export function useScanDispatchByTracking(channel: MarketplaceChannel) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (barcode: string) => marketplaceApi.scanDispatchByTracking(channel, barcode),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
+/** How many tracking IDs go in one bulk-scan request. A sheet can carry 1,600+
+ *  IDs and each one is a real scan server-side, so send them in slices to stay
+ *  well inside the gateway timeout. */
+const BULK_SCAN_CHUNK = 200;
+
+/** Bulk scan from an uploaded sheet — same rules as the gun, chunked and summed. */
+export function useScanDispatchBulk(channel: MarketplaceChannel) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (barcodes: string[]) => {
+      const merged: BulkScanResponse = { total: 0, scanned: 0, duplicate: 0, failed: 0, results: [] };
+      for (let i = 0; i < barcodes.length; i += BULK_SCAN_CHUNK) {
+        const res = await marketplaceApi.scanDispatchBulk(
+          channel, barcodes.slice(i, i + BULK_SCAN_CHUNK),
+        );
+        merged.total += res.total;
+        merged.scanned += res.scanned;
+        merged.duplicate += res.duplicate;
+        merged.failed += res.failed;
+        merged.results.push(...res.results);
+      }
+      return merged;
+    },
     onSuccess: () => invalidateMarketplace(qc),
   });
 }

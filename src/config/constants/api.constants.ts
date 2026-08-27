@@ -1213,6 +1213,7 @@ export const API_ENDPOINTS = {
     ORDER_RESOLVE: '/marketplace/orders/resolve/',
     DISPATCHES: '/marketplace/dispatches/',
     DISPATCH_SCAN_TRACKING: '/marketplace/dispatches/scan/',
+    DISPATCH_SCAN_BULK: '/marketplace/dispatches/scan/bulk/',
     DISPATCH_SHEETS: '/marketplace/dispatches/sheets/',
     DISPATCH_ORDERS_RANGE: '/marketplace/dispatches/orders-in-range/',
     REPORT_EXPORT: (type: string) => `/marketplace/reports/${type}/export.csv`,

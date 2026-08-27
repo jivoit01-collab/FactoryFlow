@@ -3,6 +3,7 @@ import { apiClient } from '@/core/api';
 
 import type {
   AwaitingApprovalCount,
+  BulkScanResponse,
   CancelRequest,
   ComboDefinition,
   ComboDefinitionUpsert,
@@ -427,6 +428,17 @@ export const marketplaceApi = {
     const { data } = await apiClient.post<MarketplaceDispatch & { created: boolean; duplicate: boolean }>(
       EP.DISPATCH_SCAN_TRACKING,
       { channel, barcode },
+    );
+    return data;
+  },
+  /** Bulk-scan tracking IDs read off an uploaded Excel/CSV sheet. */
+  async scanDispatchBulk(
+    channel: MarketplaceChannel,
+    barcodes: string[],
+  ): Promise<BulkScanResponse> {
+    const { data } = await apiClient.post<BulkScanResponse>(
+      EP.DISPATCH_SCAN_BULK,
+      { channel, barcodes },
     );
     return data;
   },

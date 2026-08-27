@@ -790,6 +790,25 @@ export interface ImportOrdersRequest {
   skip_duplicates?: boolean;
 }
 
+/** One tracking ID's outcome in a bulk (file) scan. */
+export interface BulkScanResult {
+  barcode: string;
+  outcome: 'SCANNED' | 'DUPLICATE' | 'FAILED';
+  code: string;
+  message: string;
+  order_id: string;
+  dispatch_status?: string;
+}
+
+/** Summary of a bulk scan — counts plus a per-ID outcome list. */
+export interface BulkScanResponse {
+  total: number;
+  scanned: number;
+  duplicate: number;
+  failed: number;
+  results: BulkScanResult[];
+}
+
 /** Multipart sheet upload (CSV or .xlsx) for a specific channel. */
 export interface ImportSheetRequest {
   file: File;

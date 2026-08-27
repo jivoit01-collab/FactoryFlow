@@ -43,8 +43,10 @@ import {
   useConfirmDispatch,
   useDispatchBoard,
   useDispatchSheets,
+  useScanDispatchBulk,
   useScanDispatchByTracking,
 } from '../api/marketplace.queries';
+import { MpBulkScanUpload } from '../components/MpBulkScanUpload';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { EMPTY_RANGE, inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
 import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
@@ -53,6 +55,7 @@ import { MpScanPanel } from '../components/MpScanPanel';
 import { MpVariantPicker } from '../components/MpVariantPicker';
 import { useMpChannel } from '../hooks/useMpChannel';
 import type {
+  BulkScanResponse,
   CarriedOverOrder,
   DispatchBoardOrder,
   DispatchSheetSummary,
@@ -159,6 +162,8 @@ export default function MpOutwardPage() {
   const insights = board?.insights;
 
   const scanMut = useScanDispatchByTracking(channel);
+  const bulkScanMut = useScanDispatchBulk(channel);
+  const [bulkResult, setBulkResult] = useState<BulkScanResponse | null>(null);
 
   const scannedOrders = useMemo(
     () => orders.filter((o) => o.status === 'SCANNED' && o.dispatch_id),
@@ -255,6 +260,22 @@ export default function MpOutwardPage() {
       onError: (e) => {
         const warn = WARN_CODES.includes(errorCode(e) ?? '');
         setFeedback({ kind: warn ? 'warning' : 'error', message: getErrorMessage(e, 'Scan failed') });
+      },
+    });
+  }
+
+  // Upload path: the same per-ID scan rules, run over a whole file server-side.
+  function handleBulkScan(barcodes: string[]) {
+    setFeedback(null);
+    bulkScanMut.mutate(barcodes, {
+      onSuccess: (res) => {
+        setBulkResult(res);
+        if (res.failed === 0) toast.success(`Scanned ${res.scanned} of ${res.total} tracking IDs.`);
+        else toast.warning(`${res.scanned} scanned, ${res.failed} could not be scanned.`);
+      },
+      onError: (e) => {
+        setBulkResult(null);
+        toast.error(getErrorMessage(e, 'Bulk scan failed'));
       },
     });
   }
@@ -357,6 +378,12 @@ export default function MpOutwardPage() {
             <CardContent className="space-y-3">
               <MpScanPanel onScan={handleScan} pending={scanMut.isPending} placeholder="Scan Tracking ID (e.g. FMPP…)" />
               <MpScanFeedback feedback={feedback} />
+              <MpBulkScanUpload
+                pending={bulkScanMut.isPending}
+                onScan={handleBulkScan}
+                result={bulkResult}
+                onClearResult={() => setBulkResult(null)}
+              />
             </CardContent>
           </Card>
 
