@@ -112,6 +112,19 @@
   }
 }
 
+/*
+ * Dispatch wall board — a list that scrolls itself needs no scrollbar, and a
+ * 3 px gutter of chrome on a 55" screen reads as a rendering fault.
+ */
+.wall-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.wall-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Dashboard pipeline-flow animations */
 @keyframes df-flow-x {
   from {

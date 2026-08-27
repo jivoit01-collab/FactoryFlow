@@ -5,6 +5,7 @@ import {
   BLOWING_PERMISSIONS,
   DASHBOARDS_PERMISSIONS,
   DISPATCH_PERMISSIONS,
+  GATE_PERMISSIONS,
   SAP_REPORTS_ACCESS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -28,6 +29,9 @@ const SalesPlanningRequirementDashboardPage = lazy(
 );
 const ProductionMovementDashboardPage = lazy(
   () => import('./production-movement/pages/ProductionMovementDashboardPage'),
+);
+const DispatchDayDashboardPage = lazy(
+  () => import('./dispatch/pages/DispatchDayDashboardPage'),
 );
 const DispatchPipelineDashboardPage = lazy(
   () => import('./dispatch-pipeline/pages/DispatchPipelineDashboardPage'),
@@ -117,6 +121,21 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
       breadcrumb: { label: 'Production Movement' },
+    },
+    {
+      // The wall board. Route sits first among the dispatch entries because it
+      // is the one an admin opens and leaves running.
+      path: '/dashboards/dispatch',
+      element: <DispatchDayDashboardPage />,
+      layout: 'main',
+      permissions: [
+        DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+        DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
+        // The vendor / company / vehicle panels read the docking register, so
+        // gate staff who only hold that permission can open the board too.
+        GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
+      ],
+      breadcrumb: { label: 'Dispatch' },
     },
     {
       path: '/dashboards/dispatch-plans',
@@ -220,6 +239,15 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/production-movement',
           title: 'Production Movement',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+        },
+        {
+          path: '/dashboards/dispatch',
+          title: 'Dispatch',
+          permissions: [
+            DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+            DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
+            GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
+          ],
         },
         {
           path: '/dashboards/dispatch-pipeline',

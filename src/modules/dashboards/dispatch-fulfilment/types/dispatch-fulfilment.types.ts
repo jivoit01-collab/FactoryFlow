@@ -49,6 +49,9 @@ export interface TrendRow {
   dispatched_litres: number;
   dispatched_boxes: number;
   trucks: number;
+  /** Distinct invoices shipped that day. Optional: older backends do not send
+   *  it, and a consumer must treat "absent" as unknown rather than as zero. */
+  bills?: number;
 }
 
 export interface CustomerRow {

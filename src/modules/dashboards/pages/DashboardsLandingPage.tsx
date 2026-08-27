@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   DoorOpen,
   Factory,
+  MonitorPlay,
   Navigation,
   Package,
   PackageX,
@@ -16,6 +17,7 @@ import {
   BLOWING_PERMISSIONS,
   DASHBOARDS_PERMISSIONS,
   DISPATCH_PERMISSIONS,
+  GATE_PERMISSIONS,
 } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
@@ -63,6 +65,19 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/production-movement',
     color: 'text-sky-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+  },
+  {
+    title: 'Dispatch',
+    description:
+      "Today's dispatch on one wall screen - trucks out, value shipped, vendors, company split & vehicles in/out",
+    icon: <MonitorPlay className="h-5 w-5" />,
+    route: '/dashboards/dispatch',
+    color: 'text-emerald-600',
+    permissions: [
+      DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+      DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
+      GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
+    ],
   },
   {
     title: 'Dispatch Pipeline',
