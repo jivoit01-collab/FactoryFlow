@@ -118,7 +118,7 @@ export default function SapReportPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <Button asChild variant="ghost" size="sm" className="-ml-2 h-7 px-2">
-            <Link to="/sap-reports">
+            <Link to="/dashboards/sap-reports">
               <ArrowLeft className="mr-1 h-4 w-4" />
               All reports
             </Link>

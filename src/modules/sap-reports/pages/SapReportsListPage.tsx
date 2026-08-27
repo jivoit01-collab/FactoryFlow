@@ -197,7 +197,7 @@ function ReportCard({ report }: { report: SapReportListItem }) {
         </div>
 
         <Button asChild size="sm" variant={unavailable ? 'outline' : 'default'} className="w-fit">
-          <Link to={`/sap-reports/${report.slug}`}>
+          <Link to={`/dashboards/sap-reports/${report.slug}`}>
             <Database className="mr-1.5 h-4 w-4" />
             {unavailable ? 'Open' : 'Run report'}
           </Link>

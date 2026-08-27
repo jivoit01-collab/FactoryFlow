@@ -5,6 +5,7 @@ import {
   BLOWING_PERMISSIONS,
   DASHBOARDS_PERMISSIONS,
   DISPATCH_PERMISSIONS,
+  SAP_REPORTS_ACCESS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
@@ -166,6 +167,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
         ...GATE_DASHBOARD_VIEW_PERMISSIONS,
         // Blowing dashboard lives here too — let blowing staff reach the menu.
         BLOWING_PERMISSIONS.VIEW_REPORTS,
+        // SAP Reports lives here too — a user with only report access still
+        // needs the group to appear.
+        ...SAP_REPORTS_ACCESS,
       ],
       hasSubmenu: true,
       // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
@@ -231,6 +235,14 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/dispatch-tracking',
           title: 'Dispatch Tracking',
           permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
+        },
+        {
+          // Routes for this one are owned by the sap-reports module; only the
+          // sidebar entry lives here. Same split the gate module uses for
+          // Marketplace Gate.
+          path: '/dashboards/sap-reports',
+          title: 'SAP Reports',
+          permissions: SAP_REPORTS_ACCESS,
         },
       ],
     },
