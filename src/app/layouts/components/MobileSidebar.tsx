@@ -57,7 +57,18 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
       // Routes without modulePrefix or permissions are shown (like Gate)
       return true;
-    });
+    })
+      // Children need the same filter the desktop sidebar applies. Without it a
+      // permission-gated submenu item was hidden on desktop but listed on a
+      // phone, where tapping it only reached /unauthorized. This affected every
+      // module with gated children, not just one.
+      .map((item) => ({
+        ...item,
+        children: item.children?.filter((child) => {
+          if (!child.permissions || child.permissions.length === 0) return true;
+          return hasAnyPermission([...child.permissions]);
+        }),
+      }));
   }, [allNavItems, permissionsLoaded, hasModulePermission, hasAnyPermission, currentCompany]);
 
   const toggleSubmenu = (routePath: string) => {
