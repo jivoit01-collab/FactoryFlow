@@ -17,7 +17,12 @@ import {
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
-import { useBSTSapTransfer, useBSTSapTransfers, useCreateBST } from '../../api';
+import {
+  useBSTSapTransfer,
+  useBSTSapTransfers,
+  useCreateBST,
+  useWarehouseScope,
+} from '../../api';
 import type { BSTCreatePayload, BSTSourceType, SAPStockTransfer } from '../../types';
 
 const norm = (value?: string | null) => (value ?? '').trim().toLowerCase();
@@ -51,6 +56,7 @@ export default function BSTNewPage() {
     [preselectedDoc],
   );
   const selectedDocs = docEdits ?? seededDocs;
+  const scope = useWarehouseScope();
   const setSelectedDocs = (
     next: SAPStockTransfer[] | ((prev: SAPStockTransfer[]) => SAPStockTransfer[]),
   ) =>
@@ -153,7 +159,28 @@ export default function BSTNewPage() {
 
   const vehicleReady = !onVehicle || (vehicleId !== null && driverId !== null);
   const destinationReady = !isInvoice || destinationCompanyId !== null;
-  const canCreate = selectedDocs.length > 0 && vehicleReady && destinationReady;
+
+  // Only a warehouse's own manager may ship its stock, and a BST may combine
+  // documents from several source warehouses — so every selected document's
+  // source has to be one of theirs, not just the first one's. The server
+  // enforces the same rule; this is so the refusal is visible before they
+  // gather a truck's worth of paperwork.
+  const unmanagedSources = useMemo(() => {
+    // Unknown scope counts as unrestricted: the server refuses what it must, and
+    // a client that cannot read the scope must not block the work itself.
+    if (scope.unrestricted) return [];
+    const sources = new Set(
+      selectedDocs.map((d) => (d.from_warehouse || '').toUpperCase()).filter(Boolean),
+    );
+    return [...sources].filter((code) => !scope.codes.has(code)).sort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope.unrestricted, scope.codes, selectedDocs]);
+
+  const canCreate =
+    selectedDocs.length > 0 &&
+    vehicleReady &&
+    destinationReady &&
+    unmanagedSources.length === 0;
 
   const handleCreate = async () => {
     if (!canCreate) return;
@@ -387,6 +414,16 @@ export default function BSTNewPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* A disabled Create with no reason reads as a broken page. */}
+      {unmanagedSources.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+          You do not manage {unmanagedSources.join(', ')}, so this BST cannot be created.
+          Remove the documents shipping out of{' '}
+          {unmanagedSources.length === 1 ? 'that warehouse' : 'those warehouses'}, or ask an
+          administrator to assign it to you on Admin → Warehouse Managers.
+        </div>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={() => navigate('/warehouse/bst')}>

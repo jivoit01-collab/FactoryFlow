@@ -18,6 +18,7 @@ import { Button, Card, CardContent, Textarea } from '@/shared/components/ui';
 
 import {
   useApproveTransferRequest,
+  useWarehouseScope,
   usePostTransferSecondLeg,
   usePostTransferToSAP,
   useRejectTransferRequest,
@@ -66,7 +67,10 @@ export default function TransferRequestDetailPage() {
 
   const verification = useTransferBatchVerification(id, verifyOn);
 
-  const canApprove = hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST);
+  // Two things have to be true to approve: the permission, and being the manager
+  // of the warehouse the stock is coming INTO. The permission alone used to be
+  // enough, which let any approver accept another site's inbound stock.
+  const scope = useWarehouseScope();
   const canPost = hasPermission(WAREHOUSE_PERMISSIONS.POST_TRANSFER_TO_SAP);
 
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading request…</p>;
@@ -75,6 +79,9 @@ export default function TransferRequestDetailPage() {
   }
 
   const r: TransferRequestDetail = request;
+  const managesDestination = scope.manages(r.to_warehouse);
+  const canApprove =
+    hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST) && managesDestination;
   const isPending = r.status === 'PENDING';
   const isApproved = r.status === 'APPROVED' || r.status === 'PARTIALLY_APPROVED';
   const notPosted = r.posting_status === 'NOT_POSTED' || r.posting_status === 'FAILED';
@@ -283,6 +290,18 @@ export default function TransferRequestDetailPage() {
           {error}
         </div>
       )}
+
+      {/* A user with the approve permission but the wrong warehouse would
+          otherwise just find the buttons missing, which reads as a bug. */}
+      {isPending &&
+        hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST) &&
+        !managesDestination && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+            This request is coming into <strong>{r.to_warehouse}</strong>, which you do not
+            manage — its own manager decides on it. You can follow it here but not approve or
+            reject it.
+          </div>
+        )}
 
       {/* --- actions ----------------------------------------------------- */}
       <div className="flex flex-wrap justify-end gap-2">

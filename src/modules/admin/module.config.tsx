@@ -25,6 +25,7 @@ const DockingPartialScanApprovalsPage = lazy(
 const MaterialIndentApprovalsPage = lazy(() => import('./pages/MaterialIndentApprovalsPage'));
 const ReturnableApprovalsPage = lazy(() => import('./pages/ReturnableApprovalsPage'));
 const GoodsReturnApprovalsPage = lazy(() => import('./pages/GoodsReturnApprovalsPage'));
+const WarehouseManagersPage = lazy(() => import('./pages/WarehouseManagersPage'));
 // Same queue the Warehouse module exposes at /warehouse/bst/partial-approvals —
 // mirrored here so approvers find every queue in one place. One page, two routes.
 const BSTPartialApprovalsPage = lazy(
@@ -57,7 +58,14 @@ const bstApprovalPermissions = [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL] as co
 
 const goodsReturnApprovalPermissions = [GOODS_RETURN_PERMISSIONS.APPROVE] as const;
 
+// Not an approval queue -- it decides who runs which warehouse, which is why it
+// is gated on its own admin permission rather than on any movement permission.
+const warehouseManagerPermissions = [
+  WAREHOUSE_PERMISSIONS.MANAGE_USER_WAREHOUSES,
+] as const;
+
 const adminPermissions = [
+  ...warehouseManagerPermissions,
   ...dockingApprovalPermissions,
   ...partialApprovalPermissions,
   ...materialIndentApprovalPermissions,
@@ -118,6 +126,13 @@ export const adminModuleConfig: ModuleConfig = {
       permissions: goodsReturnApprovalPermissions,
       breadcrumb: { label: 'Goods Return Approvals' },
     },
+    {
+      path: '/admin/warehouse-managers',
+      element: <WarehouseManagersPage />,
+      layout: 'main',
+      permissions: warehouseManagerPermissions,
+      breadcrumb: { label: 'Warehouse Managers' },
+    },
   ],
   navigation: [
     {
@@ -164,6 +179,11 @@ export const adminModuleConfig: ModuleConfig = {
           title: 'Goods Return Approvals',
           permissions: goodsReturnApprovalPermissions,
           badge: GoodsReturnApprovalsBadge,
+        },
+        {
+          path: '/admin/warehouse-managers',
+          title: 'Warehouse Managers',
+          permissions: warehouseManagerPermissions,
         },
       ],
     },

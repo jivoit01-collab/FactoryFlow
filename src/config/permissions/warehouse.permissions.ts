@@ -48,6 +48,12 @@ export const WAREHOUSE_PERMISSIONS = {
   APPROVE_TRANSFER_REQUEST: 'warehouse.can_approve_transfer_request',
   /** Post an approved transfer to SAP, and post the second leg on receipt */
   POST_TRANSFER_TO_SAP: 'warehouse.can_post_transfer_to_sap',
+
+  // Deciding WHO runs a warehouse is an administrator's job, kept apart from
+  // the movement permissions so a warehouse manager cannot widen their own
+  // scope.
+  /** Assign users as managers of warehouses */
+  MANAGE_USER_WAREHOUSES: 'warehouse.can_manage_user_warehouses',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';

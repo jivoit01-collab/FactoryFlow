@@ -1072,6 +1072,13 @@ export const API_ENDPOINTS = {
     // `POST_SECOND_LEG` is only ever needed for a cross-branch move, where SAP
     // forces the stock through an in-transit warehouse and the receipt is what
     // writes the second document.
+    // Warehouse managers (per-user warehouse scoping). MY_WAREHOUSES is not
+    // admin-gated -- any screen may ask which warehouses the current user runs.
+    MY_WAREHOUSES: '/warehouse/my-warehouses/',
+    USER_WAREHOUSES: '/warehouse/user-warehouses/',
+    USER_WAREHOUSE_GAPS: '/warehouse/user-warehouses/gaps/',
+    USER_WAREHOUSE_DETAIL: (id: number) => `/warehouse/user-warehouses/${id}/`,
+
     TRANSFER_REQUESTS: '/warehouse/transfer-requests/',
     TRANSFER_REQUESTS_PENDING: '/warehouse/transfer-requests/pending/',
     TRANSFER_REQUESTS_IN_TRANSIT: '/warehouse/transfer-requests/in-transit/',

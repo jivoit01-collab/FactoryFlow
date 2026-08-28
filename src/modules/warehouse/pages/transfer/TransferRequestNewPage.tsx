@@ -13,7 +13,7 @@ import {
   Textarea,
 } from '@/shared/components/ui';
 
-import { useCreateTransferRequest, useWMSWarehouses } from '../../api';
+import { useCreateTransferRequest, useWarehouseScope, useWMSWarehouses } from '../../api';
 import type { TransferRequestLineInput, WarehouseStockItem } from '../../types';
 import { ItemPicker } from './ItemPicker';
 import { QuantityInput } from './QuantityInput';
@@ -36,7 +36,21 @@ const newLine = (): DraftLine => ({
 export default function TransferRequestNewPage() {
   const navigate = useNavigate();
   const { data: warehouseData, isLoading: warehousesLoading } = useWMSWarehouses();
-  const warehouses = warehouseData?.warehouses ?? [];
+  const warehouses = useMemo(() => warehouseData?.warehouses ?? [], [warehouseData]);
+
+  // Only a warehouse's own manager may send its stock out, so the source list is
+  // narrowed to theirs rather than letting them pick one the server will refuse.
+  // The destination stays open: they are asking another warehouse to accept, and
+  // that warehouse's manager is the one who decides.
+  const scope = useWarehouseScope();
+  const sourceWarehouses = useMemo(
+    () => (scope.unrestricted ? warehouses : warehouses.filter((w) => scope.manages(w.code))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scope.unrestricted, scope.codes, warehouses],
+  );
+  // Only when the scope is KNOWN and genuinely empty. An unreachable endpoint
+  // must not tell people to go and see an administrator.
+  const noSourceWarehouse = scope.managesNothing;
   const createRequest = useCreateTransferRequest();
 
   const [fromWarehouse, setFromWarehouse] = useState('');
@@ -127,15 +141,24 @@ export default function TransferRequestNewPage() {
                 id="from-warehouse"
                 value={fromWarehouse}
                 onChange={(e) => changeSource(e.target.value)}
-                disabled={warehousesLoading}
+                disabled={warehousesLoading || noSourceWarehouse}
               >
-                <option value="">Select a warehouse…</option>
-                {warehouses.map((w) => (
+                <option value="">
+                  {noSourceWarehouse ? 'No warehouse assigned to you' : 'Select a warehouse…'}
+                </option>
+                {sourceWarehouses.map((w) => (
                   <option key={w.code} value={w.code}>
                     {w.code} — {w.name}
                   </option>
                 ))}
               </NativeSelect>
+              {noSourceWarehouse && (
+                <p className="text-sm text-red-600">
+                  You are not set as the manager of any warehouse in this company, so you
+                  cannot raise a transfer. An administrator assigns this on Admin →
+                  Warehouse Managers.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="to-warehouse">Send to</Label>

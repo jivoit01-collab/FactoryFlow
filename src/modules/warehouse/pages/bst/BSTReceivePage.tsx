@@ -23,6 +23,7 @@ import {
   bstApi,
   useBSTIncomingDetail,
   useCompleteBSTReceive,
+  useWarehouseScope,
 } from '../../api';
 import type { BSTReceiveStatus } from '../../types';
 import { BoxScanCamera } from './BoxScanCamera';
@@ -57,6 +58,7 @@ export default function BSTReceivePage() {
   const { data: transfer, isLoading } = useBSTIncomingDetail(transferId, {
     refetchInterval: BST_LIVE_POLL_MS,
   });
+  const scope = useWarehouseScope();
   const completeMut = useCompleteBSTReceive();
   const queryClient = useQueryClient();
 
@@ -246,6 +248,18 @@ export default function BSTReceivePage() {
       >
         <BSTStatusBadge status={transfer.status} />
       </DashboardHeader>
+
+      {/* The server refuses a receive into a warehouse this user does not manage
+          (see `_ensure_receivable`). Say so before they start scanning rather
+          than failing on the first box. An INVOICE BST has no destination
+          warehouse at all — it settles to a company — so there is nothing to
+          check and nothing to warn about. */}
+      {transfer.sap_to_warehouse && !scope.manages(transfer.sap_to_warehouse) && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+            This shipment is coming into <strong>{transfer.sap_to_warehouse}</strong>, which you
+            do not manage — its manager receives it. Scanning here will be refused.
+          </div>
+        )}
 
       {senderStillScanning && (
         <div className="flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-800">
