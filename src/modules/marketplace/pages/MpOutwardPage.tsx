@@ -161,9 +161,13 @@ export default function MpOutwardPage() {
   const orders = board?.orders ?? [];
   const insights = board?.insights;
 
-  const scanMut = useScanDispatchByTracking(channel);
+  // Scans land on the sheet being viewed: a re-listed parcel carries the same Tracking
+  // ID on every sheet it appears on, and each sheet is scanned independently.
+  const scanMut = useScanDispatchByTracking(channel, sheetId);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
-  const bulkScanMut = useScanDispatchBulk(channel, (done, total) => setBulkProgress({ done, total }));
+  const bulkScanMut = useScanDispatchBulk(
+    channel, (done, total) => setBulkProgress({ done, total }), sheetId,
+  );
   const [bulkResult, setBulkResult] = useState<BulkScanResponse | null>(null);
 
   const scannedOrders = useMemo(
@@ -682,6 +686,17 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
         </div>
       ) : null}
 
+      {/* A repeat of an order that shipped on an earlier sheet: it is scanned and
+          confirmed here like any other, but its stock already left SAP, so no second
+          delivery note is cut. Say so — an unexplained blank DN reads as a failure. */}
+      {order.sap_post_status === 'NOT_REQUIRED' ? (
+        <div className="mt-1.5 text-xs text-muted-foreground">
+          Already shipped on an earlier sheet
+          {order.dn_covered_by_note ? ` on delivery note ${order.dn_covered_by_note}` : ''} — its
+          stock is already issued, so no second delivery note is cut.
+        </div>
+      ) : null}
+
       {/* SAP-item variant choice (only when the FSN maps to >1 item) */}
       {order.variants && order.variants.some((v) => v.has_choice) && order.status !== 'CONFIRMED' ? (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-dashed border-amber-300/70 bg-amber-50/40 p-2 dark:bg-amber-950/10">
@@ -768,6 +783,12 @@ function ConfirmButton({ dispatchId, orderId }: { dispatchId: number; orderId: s
             onSuccess: (r) => {
               if (r.sap_post_status === 'FAILED') {
                 toast.warning(`${orderId} dispatched — delivery note failed; retry available.`);
+              } else if (r.sap_post_status === 'NOT_REQUIRED') {
+                toast.success(
+                  `Dispatched · ${orderId} — already shipped on an earlier sheet${
+                    r.dn_covered_by_note ? ` (DN ${r.dn_covered_by_note})` : ''
+                  }, so no second delivery note.`,
+                );
               } else if (r.sap_post_status === 'PENDING' || !r.sap_delivery_note_num) {
                 toast.success(`Dispatched · ${orderId} — cut its delivery note in SAP Delivery Notes.`);
               } else {

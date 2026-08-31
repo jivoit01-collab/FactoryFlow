@@ -438,7 +438,15 @@ export interface MarketplaceDispatch {
   scanned_count?: number;
   sap_delivery_note_num?: string;
   internal_billing_num?: string;
-  sap_post_status?: 'PENDING' | 'POSTED' | 'FAILED';
+  /**
+   * NOT_REQUIRED — a repeat of an order already shipped on an earlier sheet. Sheets
+   * are independent scanning sessions, so it is scanned and confirmed here, but its
+   * stock left SAP on the first sheet's note and no second note is cut.
+   */
+  sap_post_status?: 'PENDING' | 'POSTED' | 'FAILED' | 'AWAITING_APPROVAL' | 'NOT_REQUIRED';
+  /** Dispatch id whose delivery note already covered these goods (NOT_REQUIRED only). */
+  dn_covered_by?: number | null;
+  dn_covered_by_note?: string;
   sap_error?: string;
   confirmed_at?: string | null;
   created_at?: string;
@@ -604,6 +612,9 @@ export interface OrderImportBatch {
     created?: number;
     updated?: number;
     skipped?: number;
+    /** Orders on this sheet that also exist on an earlier one — informational. */
+    repeat_orders?: number;
+    /** Always 0 now (kept: batches imported under the old carry-over behaviour). */
     duplicates_skipped?: number;
     dispatched_skipped?: number;
     blank_sku_skipped?: number;
@@ -704,6 +715,13 @@ export interface DispatchBoardOrder {
   invoice_number?: string;
   invoice_date?: string | null;
   dn_number?: string;
+  /**
+   * Set when this order shipped on an EARLIER sheet: the delivery note that already
+   * issued its stock. Sheets are independent scanning sessions, so the order is
+   * scanned and confirmed here too — but no second note is cut for the same goods,
+   * and `dn_number` is empty. Show this instead of a blank DN.
+   */
+  dn_covered_by_note?: string;
   gi_number?: string;
   confirmed_at?: string | null;
   confirmed_by?: string;

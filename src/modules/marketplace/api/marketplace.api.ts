@@ -444,13 +444,19 @@ export const marketplaceApi = {
     const match = disposition.match(/filename="?([^"]+)"?/);
     return { blob: resp.data, filename: match?.[1] ?? `${reportType}.csv` };
   },
+  /**
+   * `batchId` is the sheet being worked. A re-listed parcel carries the same Tracking
+   * ID on every sheet it appears on, so without it the scan lands on the newest sheet
+   * rather than the one the operator is looking at.
+   */
   async scanDispatchByTracking(
     channel: MarketplaceChannel,
     barcode: string,
+    batchId?: number | null,
   ): Promise<MarketplaceDispatch & { created: boolean; duplicate: boolean }> {
     const { data } = await apiClient.post<MarketplaceDispatch & { created: boolean; duplicate: boolean }>(
       EP.DISPATCH_SCAN_TRACKING,
-      { channel, barcode },
+      { channel, barcode, ...(batchId ? { batch_id: batchId } : {}) },
     );
     return data;
   },
@@ -458,10 +464,11 @@ export const marketplaceApi = {
   async scanDispatchBulk(
     channel: MarketplaceChannel,
     barcodes: string[],
+    batchId?: number | null,
   ): Promise<BulkScanResponse> {
     const { data } = await apiClient.post<BulkScanResponse>(
       EP.DISPATCH_SCAN_BULK,
-      { channel, barcodes },
+      { channel, barcodes, ...(batchId ? { batch_id: batchId } : {}) },
     );
     return data;
   },
