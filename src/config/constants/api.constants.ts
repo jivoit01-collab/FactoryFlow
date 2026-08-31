@@ -1,5 +1,19 @@
 export const API_CONFIG = {
-  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  // The fallback differs by build, and both halves matter.
+  //
+  // A PRODUCTION build with no VITE_API_BASE_URL used to fall back to localhost,
+  // which fails silently: the bundle looks perfectly fine and simply cannot
+  // reach the API. That is easy to ship by accident, because the variable lives
+  // only in GitHub secrets — anyone building the bundle by hand (as we had to
+  // while the CI deploy was blocked) gets a broken app with no warning.
+  //
+  // A DEV server keeps localhost, and must: defaulting `npm run dev` to
+  // production would let a developer write to live SAP and production data from
+  // their laptop without realising it. The .env here sets VITE_API_URL, not
+  // VITE_API_BASE_URL, so local runs really do land on this fallback.
+  baseUrl:
+    import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : 'https://factory.jivo.in/api/v1'),
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
