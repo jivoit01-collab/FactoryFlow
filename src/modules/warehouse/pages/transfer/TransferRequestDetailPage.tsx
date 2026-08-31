@@ -3,13 +3,15 @@ import {
   ArrowLeft,
   Boxes,
   CheckCircle2,
+  Printer,
   ShieldCheck,
   Truck,
   Upload,
   XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useReactToPrint } from 'react-to-print';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
@@ -18,14 +20,23 @@ import { Button, Card, CardContent, Textarea } from '@/shared/components/ui';
 
 import {
   useApproveTransferRequest,
-  useWarehouseScope,
   usePostTransferSecondLeg,
   usePostTransferToSAP,
   useRejectTransferRequest,
   useTransferBatchVerification,
   useTransferRequest,
+  useWarehousePrintInfo,
+  useWarehouseScope,
 } from '../../api';
-import type { TransferPostAllocation, TransferRequestDetail } from '../../types';
+import {
+  BranchStockTransferPrint,
+  BST_DOC_PRINT_PAGE_STYLE,
+} from '../../components/BranchStockTransferPrint';
+import type {
+  TransferPostAllocation,
+  TransferRequestDetail,
+  TransferRequestLine,
+} from '../../types';
 import { BatchAllocationDialog } from './BatchAllocationDialog';
 import { QuantityInput } from './QuantityInput';
 import { ApprovalBadge, PostingBadge, Route, RouteBadge } from './TransferBadges';
@@ -35,6 +46,15 @@ function apiError(err: unknown, fallback: string): string {
   return (
     (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
   );
+}
+
+/** The most-settled quantity for the print: moved, else approved, else asked-for. */
+function printQty(line: TransferRequestLine): number {
+  const transferred = Number(line.transferred_qty);
+  if (transferred > 0) return transferred;
+  const approved = Number(line.approved_qty);
+  if (approved > 0) return approved;
+  return Number(line.requested_qty) || 0;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -66,6 +86,16 @@ export default function TransferRequestDetailPage() {
   const [error, setError] = useState('');
 
   const verification = useTransferBatchVerification(id, verifyOn);
+
+  // SAP-style Branch Stock Transfer print. Letterhead data (addresses, GST)
+  // loads in the background; the print works with blanks if SAP is down.
+  const printRef = useRef<HTMLDivElement>(null);
+  const printInfo = useWarehousePrintInfo([request?.from_warehouse, request?.to_warehouse]);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: request?.entry_no || 'branch-stock-transfer',
+    pageStyle: BST_DOC_PRINT_PAGE_STYLE,
+  });
 
   // Two things have to be true to approve: the permission, and being the manager
   // of the warehouse the stock is coming INTO. The permission alone used to be
@@ -99,6 +129,10 @@ export default function TransferRequestDetailPage() {
   return (
     <div className="space-y-6">
       <DashboardHeader title={r.entry_no} description={`${r.from_warehouse} → ${r.to_warehouse}`}>
+        <Button variant="outline" onClick={() => handlePrint()}>
+          <Printer className="mr-2 h-4 w-4" />
+          Print
+        </Button>
         <Button variant="outline" onClick={() => navigate('/warehouse/transfer-requests')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
@@ -456,6 +490,29 @@ export default function TransferRequestDetailPage() {
           }, 'Could not post the transfer to SAP.')
         }
       />
+
+      <div className="bst-doc-print-host" aria-hidden>
+        <BranchStockTransferPrint
+          ref={printRef}
+          printInfo={printInfo.data ?? null}
+          data={{
+            docNum: r.sap_transfer_doc_num || r.sap_request_doc_num || r.entry_no,
+            docEntry: r.sap_transfer_doc_entry ?? r.sap_request_doc_entry,
+            docDate: r.posted_at || r.created_at,
+            reference: r.entry_no,
+            fromWarehouse: r.from_warehouse,
+            toWarehouse: r.to_warehouse,
+            dispatchDate: r.posted_at,
+            lines: r.lines
+              .filter((line) => line.status !== 'REJECTED')
+              .map((line) => ({
+                description: line.item_name || line.item_code,
+                quantity: printQty(line),
+                uom: line.uom,
+              })),
+          }}
+        />
+      </div>
 
       {verifyOn && verification.data && (
         <div

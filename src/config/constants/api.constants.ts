@@ -1093,6 +1093,10 @@ export const API_ENDPOINTS = {
     USER_WAREHOUSE_GAPS: '/warehouse/user-warehouses/gaps/',
     USER_WAREHOUSE_DETAIL: (id: number) => `/warehouse/user-warehouses/${id}/`,
 
+    // Letterhead/address/GST data for the Branch Stock Transfer print — used
+    // by both the transfer-request and BST detail pages.
+    PRINT_INFO: '/warehouse/print-info/',
+
     TRANSFER_REQUESTS: '/warehouse/transfer-requests/',
     TRANSFER_REQUESTS_PENDING: '/warehouse/transfer-requests/pending/',
     TRANSFER_REQUESTS_IN_TRANSIT: '/warehouse/transfer-requests/in-transit/',

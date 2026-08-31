@@ -1,6 +1,7 @@
-import { Loader2, ScanLine, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { Loader2, Printer, ScanLine, XCircle } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -13,7 +14,11 @@ import {
 } from '@/shared/components/ui/dialog';
 import { getErrorMessage } from '@/shared/utils';
 
-import { BST_LIVE_POLL_MS, useBSTTransfer, useCancelBST } from '../../api';
+import { BST_LIVE_POLL_MS, useBSTTransfer, useCancelBST, useWarehousePrintInfo } from '../../api';
+import {
+  BranchStockTransferPrint,
+  BST_DOC_PRINT_PAGE_STYLE,
+} from '../../components/BranchStockTransferPrint';
 import type { BSTReceiveStatus } from '../../types';
 import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
@@ -45,6 +50,16 @@ export default function BSTDetailPage() {
   const cancelMut = useCancelBST();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+
+  // SAP-style Branch Stock Transfer print. Letterhead data (addresses, GST)
+  // loads in the background; the print works with blanks if SAP is down.
+  const printRef = useRef<HTMLDivElement>(null);
+  const printInfo = useWarehousePrintInfo([t?.sap_from_warehouse, t?.sap_to_warehouse]);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: t?.entry_no || 'branch-stock-transfer',
+    pageStyle: BST_DOC_PRINT_PAGE_STYLE,
+  });
 
   if (isLoading || !t) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
@@ -113,6 +128,9 @@ export default function BSTDetailPage() {
             </Badge>
           )}
           <BSTStatusBadge status={t.status} />
+          <Button variant="outline" onClick={() => handlePrint()}>
+            <Printer className="h-4 w-4 mr-1" /> Print
+          </Button>
           {canResume && (
             <Button onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}>
               <ScanLine className="h-4 w-4 mr-1" /> Resume scanning
@@ -209,6 +227,36 @@ export default function BSTDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="bst-doc-print-host" aria-hidden>
+        <BranchStockTransferPrint
+          ref={printRef}
+          printInfo={printInfo.data ?? null}
+          companyName={t.company_name}
+          data={{
+            docNum:
+              t.docs.length > 1
+                ? t.docs.map((d) => d.sap_doc_num).filter(Boolean).join(', ')
+                : t.sap_doc_num || t.entry_no,
+            docEntry: t.sap_doc_entry,
+            docDate: t.sap_doc_date,
+            reference: t.entry_no,
+            fromWarehouse: t.sap_from_warehouse,
+            toWarehouse: t.sap_to_warehouse,
+            vehicleNo: t.vehicle_number,
+            dispatchDate: t.dispatched_at,
+            destination: isInvoice
+              ? t.destination_company_name || t.customer_name
+              : t.sap_to_warehouse,
+            lines: t.items.map((item) => ({
+              description: item.item_name || item.item_code,
+              quantity: Number(item.quantity) || 0,
+              uom: item.uom,
+              boxes: item.expected_boxes,
+            })),
+          }}
+        />
+      </div>
 
       {/* Cancel confirmation */}
       <Dialog open={cancelOpen} onOpenChange={(open) => !open && setCancelOpen(false)}>

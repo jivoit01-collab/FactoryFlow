@@ -1,5 +1,7 @@
 export { bstApi } from './bst.api';
 export * from './bst.queries';
+export { printInfoApi } from './printInfo.api';
+export * from './printInfo.queries';
 export { transferRequestApi } from './transferRequest.api';
 export * from './transferRequest.queries';
 export type {
