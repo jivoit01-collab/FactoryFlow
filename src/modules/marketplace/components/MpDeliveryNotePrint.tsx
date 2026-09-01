@@ -1,285 +1,359 @@
-/** Printable delivery note in the SAP layout — the challan that travels with the goods.
+/** Printable delivery note in the SAP challan layout — the document that travels
+ *  with the goods.
  *
- *  Mirrors the posted SAP document field for field (ODLN header, both address blocks,
- *  the GST identity, the e-way bill block and every DLN1 line), because a printed
- *  challan must say what SAP says.
+ *  Mirrors the posted SAP note field for field (ODLN header, both address blocks, the
+ *  GST identity, the e-way bill block and every DLN1 line), because a challan must say
+ *  what SAP says rather than what we hoped we posted.
  *
  *  The money is the one place the two disagree. This module posts delivery notes with
  *  quantities only, so every amount on the SAP document is genuinely 0.00. The value
- *  block therefore comes from JI's own internal bills and says so on its face — the
- *  SAP half and the JI half are kept visibly separate rather than blended.
+ *  figure therefore comes from JI's own internal bills and says so on its face — the
+ *  SAP half and the JI half stay visibly separate rather than blended into a number
+ *  nobody can source.
+ *
+ *  The orders behind the note are summarised as a count, never listed: one bulk note
+ *  can cover 300-plus orders and the table ran for pages, burying the goods being
+ *  delivered. The CSV export is where that list belongs.
+ *
+ *  Designed for ink and photocopiers: one dark ink, hairline rules, no fill heavier
+ *  than a 4% grey. The item table's header repeats on every page and no row splits
+ *  across a page break.
  */
 import { forwardRef } from 'react';
 
 import type { DeliveryNotePrint } from '../types/marketplace.types';
 
 export const DN_PRINT_PAGE_STYLE = `
-  @page { size: A4 portrait; margin: 8mm; }
+  @page { size: A4 portrait; margin: 12mm 10mm; }
   @media print {
     body { margin: 0; background: #fff !important; }
-    .mp-dn-print { color: #000 !important; }
+    .mp-dn { color: #000 !important; }
   }
 `;
 
 const dash = (v?: string | number | null) =>
   v === undefined || v === null || v === '' ? '—' : String(v);
 
+const money = (v: string) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : v;
+};
+
+/** SAP's enum-ish codes read badly on paper: ewb_st_Outward → Outward. */
+const humanise = (v: string) =>
+  (v || '').replace(/^ewb_(st|tt)_/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+
+function Field({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="mp-dn-field">
+      <span className="mp-dn-k">{label}</span>
+      <span className="mp-dn-v">{dash(value)}</span>
+    </div>
+  );
+}
+
 interface Props {
   dn: DeliveryNotePrint;
 }
 
 export const MpDeliveryNotePrint = forwardRef<HTMLDivElement, Props>(({ dn }, ref) => {
-  const gstLine = [dn.place_of_supply && `Place of supply: ${dn.place_of_supply}`]
+  const sellerPlace = [dn.seller.place, dn.seller.zip].filter(Boolean).join(' – ');
+  const billRegion = [dn.bill_to.city, dn.bill_to.state, dn.bill_to.zip, dn.bill_to.country]
     .filter(Boolean)
-    .join('   ');
+    .join(', ');
+  const shipRegion = [dn.ship_to.city, dn.ship_to.state, dn.ship_to.zip, dn.ship_to.country]
+    .filter(Boolean)
+    .join(', ');
 
   return (
-    <div ref={ref} className="mp-dn-print">
+    <div ref={ref} className="mp-dn">
       <style>{`
-        .mp-dn-print { font-family: Arial, Helvetica, sans-serif; font-size: 9.5pt; color: #000; background: #fff; }
-        .mp-dn-print table { width: 100%; border-collapse: collapse; }
-        .mp-dn-print th, .mp-dn-print td { border: 1px solid #000; padding: 3px 5px; vertical-align: top; }
-        .mp-dn-title { text-align: center; font-size: 13pt; font-weight: bold; letter-spacing: 1px;
-                       border: 1px solid #000; border-bottom: none; padding: 5px; }
-        .mp-dn-seller { border: 1px solid #000; padding: 6px 8px; }
-        .mp-dn-seller-name { font-size: 12pt; font-weight: bold; }
-        .mp-dn-seller-addr { white-space: pre-line; font-size: 8.5pt; }
-        .mp-dn-meta { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #000;
-                      border-top: none; font-size: 8.5pt; }
-        .mp-dn-meta > div { padding: 3px 8px; border-right: 1px solid #ddd; }
-        .mp-dn-parties { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #000; border-top: none; }
-        .mp-dn-party { padding: 6px 8px; }
-        .mp-dn-party + .mp-dn-party { border-left: 1px solid #000; }
-        .mp-dn-party h4 { margin: 0 0 3px; font-size: 8pt; text-transform: uppercase; letter-spacing: .5px; }
-        .mp-dn-label { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .4px; color: #444; }
-        .mp-dn-items { margin-top: 6px; font-size: 8.5pt; }
-        .mp-dn-items th { background: #eee; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .3px; }
-        .mp-dn-num { text-align: right; font-variant-numeric: tabular-nums; }
-        .mp-dn-c { text-align: center; }
-        .mp-dn-batch { font-size: 7.5pt; color: #333; }
-        .mp-dn-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
-        .mp-dn-box { border: 1px solid #000; padding: 6px 8px; font-size: 8.5pt; }
-        .mp-dn-box h4 { margin: 0 0 4px; font-size: 8pt; text-transform: uppercase; letter-spacing: .5px; }
-        .mp-dn-note { font-size: 7.5pt; color: #444; font-style: italic; }
-        .mp-dn-orders { margin-top: 6px; font-size: 7.5pt; }
-        .mp-dn-orders td { padding: 2px 5px; }
-        .mp-dn-sign { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 14px; gap: 6px; }
-        .mp-dn-sign div { border-top: 1px solid #000; padding-top: 3px; font-size: 8pt; text-align: center; }
-        .mp-dn-cancel { color: #b00; font-weight: bold; }
-        .mp-dn-mono { font-family: 'Courier New', monospace; }
+        .mp-dn {
+          --ink: #111; --mid: #565656; --rule: #b9b9b9; --hair: #e5e5e5;
+          font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+          font-size: 9pt; line-height: 1.35; color: var(--ink); background: #fff;
+          -webkit-font-smoothing: antialiased;
+        }
+        .mp-dn * { box-sizing: border-box; }
+
+        /* masthead */
+        .mp-dn-band { display: flex; align-items: baseline; justify-content: space-between;
+                      gap: 12px; background: var(--ink); color: #fff; padding: 7px 10px; }
+        .mp-dn-band h1 { margin: 0; font-size: 14pt; font-weight: 700;
+                         letter-spacing: 3.5px; text-transform: uppercase; }
+        .mp-dn-docno { font-size: 12pt; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .mp-dn-void { border: 1px solid #fff; padding: 1px 6px; font-size: 7.5pt;
+                      letter-spacing: 1px; text-transform: uppercase; }
+
+        .mp-dn-seller { display: flex; justify-content: space-between; gap: 16px;
+                        padding: 9px 10px; border: 1px solid var(--rule); border-top: none; }
+        .mp-dn-seller-name { font-size: 13pt; font-weight: 700; }
+        .mp-dn-addr { color: var(--mid); font-size: 8.5pt; }
+        .mp-dn-gst { text-align: right; white-space: nowrap; }
+
+        /* label / value */
+        .mp-dn-k { display: block; font-size: 6.6pt; letter-spacing: 1px;
+                   text-transform: uppercase; color: var(--mid); }
+        .mp-dn-v { display: block; font-size: 9pt; }
+        .mp-dn-field + .mp-dn-field { margin-top: 5px; }
+        .mp-dn-code { font-variant-numeric: tabular-nums; letter-spacing: .2px; }
+
+        .mp-dn-meta { display: grid; grid-template-columns: repeat(4, 1fr);
+                      border: 1px solid var(--rule); border-top: none; }
+        .mp-dn-meta > div { padding: 6px 10px; }
+        .mp-dn-meta > div + div { border-left: 1px solid var(--rule); }
+        .mp-dn-meta .mp-dn-v { font-variant-numeric: tabular-nums; }
+
+        /* parties */
+        .mp-dn-parties { display: grid; grid-template-columns: 1fr 1fr;
+                         border: 1px solid var(--rule); border-top: none; }
+        .mp-dn-party { padding: 8px 10px; }
+        .mp-dn-party + .mp-dn-party { border-left: 1px solid var(--rule); }
+        .mp-dn-cap { font-size: 6.6pt; letter-spacing: 1.3px; text-transform: uppercase;
+                     color: var(--mid); margin-bottom: 3px; }
+        .mp-dn-party-name { font-size: 10pt; font-weight: 700; }
+
+        /* items */
+        table.mp-dn-items { width: 100%; border-collapse: collapse; margin-top: 11px; font-size: 8.5pt; }
+        .mp-dn-items thead { display: table-header-group; }
+        .mp-dn-items tr { break-inside: avoid; page-break-inside: avoid; }
+        .mp-dn-items th { background: var(--ink); color: #fff; font-size: 6.6pt; font-weight: 600;
+                          letter-spacing: .9px; text-transform: uppercase; padding: 6px;
+                          text-align: left; }
+        .mp-dn-items td { padding: 5px 6px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+        .mp-dn-items tbody tr:nth-child(even) td { background: #fafafa; }
+        .mp-dn-items .n { text-align: right; font-variant-numeric: tabular-nums; }
+        .mp-dn-items .c { text-align: center; }
+        .mp-dn-desc { font-weight: 500; }
+        .mp-dn-sub { color: var(--mid); font-size: 7.2pt; margin-top: 1px; }
+        .mp-dn-items tfoot td { border-top: 1.5px solid var(--ink); border-bottom: none;
+                                font-weight: 700; padding: 7px 6px; background: #fff; }
+
+        /* summary cards */
+        .mp-dn-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+                       margin-top: 11px; break-inside: avoid; page-break-inside: avoid; }
+        .mp-dn-card { border: 1px solid var(--rule); padding: 8px 10px; }
+        .mp-dn-card h4 { margin: 0 0 6px; font-size: 6.6pt; letter-spacing: 1.3px;
+                         text-transform: uppercase; color: var(--mid); font-weight: 600;
+                         border-bottom: 1px solid var(--hair); padding-bottom: 4px; }
+        .mp-dn-row { display: flex; justify-content: space-between; gap: 8px; font-size: 8.5pt; }
+        .mp-dn-row + .mp-dn-row { margin-top: 3px; }
+        .mp-dn-row span:last-child { font-variant-numeric: tabular-nums; text-align: right; }
+        .mp-dn-figure { font-size: 14pt; font-weight: 700; font-variant-numeric: tabular-nums;
+                        letter-spacing: -.3px; margin-bottom: 3px; }
+        .mp-dn-fine { color: var(--mid); font-size: 7pt; line-height: 1.35; margin-top: 5px; }
+
+        .mp-dn-remarks { border: 1px solid var(--rule); padding: 8px 10px; margin-top: 8px;
+                         break-inside: avoid; }
+
+        /* signatures + footer */
+        .mp-dn-sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px;
+                      margin-top: 28px; break-inside: avoid; page-break-inside: avoid; }
+        .mp-dn-sign div { border-top: 1px solid var(--ink); padding-top: 5px;
+                          font-size: 7.2pt; letter-spacing: .6px; text-transform: uppercase;
+                          color: var(--mid); text-align: center; }
+        .mp-dn-foot { margin-top: 11px; padding-top: 5px; border-top: 1px solid var(--hair);
+                      display: flex; justify-content: space-between;
+                      color: var(--mid); font-size: 7pt; letter-spacing: .3px; }
       `}</style>
 
-      <div className="mp-dn-title">
-        DELIVERY NOTE {dn.cancelled ? <span className="mp-dn-cancel">— CANCELLED IN SAP</span> : null}
-      </div>
+      <header className="mp-dn-band">
+        <h1>Delivery Note</h1>
+        {dn.cancelled ? <span className="mp-dn-void">Cancelled in SAP</span> : null}
+        <span className="mp-dn-docno">{dash(dn.doc_num)}</span>
+      </header>
 
-      {/* Seller / dispatch-from — SAP's e-way bill "Bill From" block */}
-      <div className="mp-dn-seller">
-        <div className="mp-dn-seller-name">{dash(dn.seller.name)}</div>
-        <div className="mp-dn-seller-addr">{dn.seller.address.join('\n')}</div>
-        <div className="mp-dn-seller-addr">
-          {[dn.seller.place, dn.seller.zip].filter(Boolean).join(' - ')}
-        </div>
+      <section className="mp-dn-seller">
         <div>
-          <strong>GSTIN:</strong> <span className="mp-dn-mono">{dash(dn.seller.gstin)}</span>
-          {dn.seller.state_code ? `   State code: ${dn.seller.state_code}` : ''}
+          <div className="mp-dn-seller-name">{dash(dn.seller.name)}</div>
+          <div className="mp-dn-addr">
+            {dn.seller.address.join(', ')}
+            {sellerPlace ? `, ${sellerPlace}` : ''}
+          </div>
         </div>
-      </div>
+        <div className="mp-dn-gst">
+          <span className="mp-dn-k">GSTIN</span>
+          <span className="mp-dn-v mp-dn-code">
+            <strong>{dash(dn.seller.gstin)}</strong>
+          </span>
+          {dn.seller.state_code ? (
+            <div className="mp-dn-addr">State code {dn.seller.state_code}</div>
+          ) : null}
+        </div>
+      </section>
 
-      <div className="mp-dn-meta">
+      <section className="mp-dn-meta">
         <div>
-          <span className="mp-dn-label">Doc no.</span>
-          <div className="mp-dn-mono">
-            <strong>{dash(dn.doc_num)}</strong>
-          </div>
+          <Field label="Date" value={dn.doc_date} />
+          <Field label="Time" value={dn.doc_time ? dn.doc_time.slice(0, 5) : ''} />
         </div>
         <div>
-          <span className="mp-dn-label">Date / time</span>
-          <div>
-            {dash(dn.doc_date)} {dn.doc_time ? dn.doc_time.slice(0, 5) : ''}
-          </div>
+          <Field label="Reference" value={dn.reference} />
+          <Field label="Currency" value={dn.currency} />
         </div>
         <div>
-          <span className="mp-dn-label">Branch</span>
-          <div>
-            {dash(dn.branch.name)}
-            {dn.branch.id != null ? ` (${dn.branch.id})` : ''}
-          </div>
+          <Field
+            label="Branch"
+            value={
+              dn.branch.name
+                ? `${dn.branch.name}${dn.branch.id != null ? ` (${dn.branch.id})` : ''}`
+                : dn.branch.id
+            }
+          />
+          <Field label="Place of supply" value={dn.place_of_supply} />
         </div>
         <div>
-          <span className="mp-dn-label">Reference</span>
-          <div className="mp-dn-mono">{dash(dn.reference)}</div>
+          <Field label="SAP doc entry" value={dn.doc_entry} />
+          <Field label="Series" value={dn.series} />
         </div>
-        <div>
-          <span className="mp-dn-label">SAP DocEntry / series</span>
-          <div className="mp-dn-mono">
-            {dash(dn.doc_entry)} / {dash(dn.series)}
-          </div>
-        </div>
-        <div>
-          <span className="mp-dn-label">Currency</span>
-          <div>{dash(dn.currency)}</div>
-        </div>
-      </div>
+      </section>
 
-      <div className="mp-dn-parties">
+      <section className="mp-dn-parties">
         <div className="mp-dn-party">
-          <h4>Bill to</h4>
-          <div>
-            <strong>{dash(dn.bill_to.name)}</strong>
+          <div className="mp-dn-cap">Bill to</div>
+          <div className="mp-dn-party-name">{dash(dn.bill_to.name)}</div>
+          <div className="mp-dn-addr">
+            <div className="mp-dn-code">{dn.bill_to.code}</div>
+            {dn.bill_to.address.join(', ')}
+            {billRegion ? <div>{billRegion}</div> : null}
           </div>
-          <div className="mp-dn-mono">{dash(dn.bill_to.code)}</div>
-          <div className="mp-dn-seller-addr">{dn.bill_to.address.join('\n')}</div>
-          <div>
-            {[dn.bill_to.city, dn.bill_to.state, dn.bill_to.zip, dn.bill_to.country]
-              .filter(Boolean)
-              .join(', ')}
-          </div>
-          <div>
-            <strong>GSTIN:</strong> <span className="mp-dn-mono">{dash(dn.bill_to.gstin)}</span>
+          <div style={{ marginTop: 4 }}>
+            <span className="mp-dn-k">GSTIN</span>
+            <span className="mp-dn-v mp-dn-code">{dash(dn.bill_to.gstin)}</span>
           </div>
         </div>
         <div className="mp-dn-party">
-          <h4>Ship to</h4>
-          <div>
-            <strong>{dash(dn.ship_to.code)}</strong>
+          <div className="mp-dn-cap">Ship to</div>
+          <div className="mp-dn-party-name">{dash(dn.ship_to.code)}</div>
+          <div className="mp-dn-addr">
+            {dn.ship_to.address.join(', ')}
+            {shipRegion ? <div>{shipRegion}</div> : null}
           </div>
-          <div className="mp-dn-seller-addr">{dn.ship_to.address.join('\n')}</div>
-          <div>
-            {[dn.ship_to.city, dn.ship_to.state, dn.ship_to.zip, dn.ship_to.country]
-              .filter(Boolean)
-              .join(', ')}
-          </div>
-          {gstLine ? <div>{gstLine}</div> : null}
         </div>
-      </div>
+      </section>
 
       <table className="mp-dn-items">
         <thead>
           <tr>
-            <th className="mp-dn-c">#</th>
-            <th>Item code</th>
+            <th className="c" style={{ width: '4%' }}>#</th>
+            <th style={{ width: '13%' }}>Item code</th>
             <th>Description of goods</th>
-            <th className="mp-dn-c">HSN</th>
-            <th className="mp-dn-num">Qty</th>
-            <th className="mp-dn-c">UoM</th>
-            <th className="mp-dn-c">Warehouse</th>
-            <th className="mp-dn-c">Cost centre</th>
-            <th className="mp-dn-c">Tax code</th>
-            <th className="mp-dn-num">Tax %</th>
+            <th className="c" style={{ width: '10%' }}>HSN</th>
+            <th className="n" style={{ width: '8%' }}>Qty</th>
+            <th className="c" style={{ width: '6%' }}>UoM</th>
+            <th className="c" style={{ width: '10%' }}>Warehouse</th>
+            <th className="c" style={{ width: '10%' }}>Cost centre</th>
+            <th className="c" style={{ width: '11%' }}>Tax</th>
           </tr>
         </thead>
         <tbody>
           {dn.lines.map((l) => (
             <tr key={`${l.no}-${l.item_code}`}>
-              <td className="mp-dn-c">{l.no}</td>
-              <td className="mp-dn-mono">{l.item_code}</td>
+              <td className="c">{l.no}</td>
+              <td className="mp-dn-code">{l.item_code}</td>
               <td>
-                {l.item_name}
+                <div className="mp-dn-desc">{l.item_name}</div>
                 {l.batches.length ? (
-                  <div className="mp-dn-batch">Batch: {l.batches.join(', ')}</div>
+                  <div className="mp-dn-sub">Batch {l.batches.join(', ')}</div>
                 ) : null}
               </td>
-              <td className="mp-dn-c mp-dn-mono">{l.hsn || ''}</td>
-              <td className="mp-dn-num">{l.quantity}</td>
-              <td className="mp-dn-c">{l.uom}</td>
-              <td className="mp-dn-c mp-dn-mono">{l.warehouse}</td>
-              <td className="mp-dn-c">{l.cost_centre}</td>
-              <td className="mp-dn-c">{l.tax_code}</td>
-              <td className="mp-dn-num">{l.tax_rate}</td>
+              <td className="c mp-dn-code">{l.hsn}</td>
+              <td className="n">{l.quantity}</td>
+              <td className="c">{l.uom}</td>
+              <td className="c mp-dn-code">{l.warehouse}</td>
+              <td className="c">{l.cost_centre}</td>
+              <td className="c">
+                {l.tax_code}
+                {l.tax_rate ? <div className="mp-dn-sub">{l.tax_rate}%</div> : null}
+              </td>
             </tr>
           ))}
-          <tr>
-            <td colSpan={4} style={{ textAlign: 'right', fontWeight: 'bold' }}>
-              Total ({dn.totals.lines} item{dn.totals.lines === 1 ? '' : 's'})
-            </td>
-            <td className="mp-dn-num" style={{ fontWeight: 'bold' }}>
-              {dn.totals.quantity}
-            </td>
-            <td colSpan={5} />
-          </tr>
         </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={4} style={{ textAlign: 'right' }}>
+              Total — {dn.totals.lines} item{dn.totals.lines === 1 ? '' : 's'}
+            </td>
+            <td className="n">{dn.totals.quantity}</td>
+            <td colSpan={4} />
+          </tr>
+        </tfoot>
       </table>
 
-      <div className="mp-dn-strip">
-        <div className="mp-dn-box">
+      <section className="mp-dn-strip">
+        <div className="mp-dn-card">
           <h4>Tax</h4>
           {dn.tax_summary.length ? (
             dn.tax_summary.map((t) => (
-              <div key={t.code}>
-                {t.code} — {t.rate}%
+              <div className="mp-dn-row" key={t.code}>
+                <span>{t.code.replace('@', ' ')}</span>
+                <span>{t.rate}%</span>
               </div>
             ))
           ) : (
-            <div>—</div>
+            <div className="mp-dn-row">
+              <span>—</span>
+            </div>
           )}
-          <div className="mp-dn-note">
-            Rates as posted on the SAP document. This note carries no line values: it is
-            posted quantity-only.
+          <div className="mp-dn-fine">
+            Rates as posted in SAP. This note carries no line values — it is posted
+            quantity-only.
           </div>
         </div>
-        <div className="mp-dn-box">
-          <h4>Value (JI internal bills)</h4>
-          <div>
-            Orders on this note: <strong>{dn.totals.orders}</strong>
-          </div>
-          <div>
-            Billed: <strong>₹{Number(dn.totals.billed_by_ji).toLocaleString('en-IN')}</strong>
-          </div>
-          <div className="mp-dn-note">
-            From JI&apos;s own invoices for these orders. SAP&apos;s DocTotal on this
-            delivery note is 0.00.
-          </div>
-        </div>
-      </div>
 
-      <div className="mp-dn-strip">
-        <div className="mp-dn-box">
+        <div className="mp-dn-card">
+          <h4>Value — JI internal bills</h4>
+          <div className="mp-dn-figure">{money(dn.totals.billed_by_ji)}</div>
+          <div className="mp-dn-row">
+            <span>Orders covered</span>
+            <span>{dn.totals.orders}</span>
+          </div>
+          <div className="mp-dn-fine">
+            Billed on JI&apos;s own invoices for these orders; the order-by-order list is
+            in the CSV export. SAP&apos;s DocTotal on this note is 0.00.
+          </div>
+        </div>
+
+        <div className="mp-dn-card">
           <h4>E-way bill</h4>
-          <div>Document type: {dash(dn.eway.document_type)}</div>
-          <div>Supply type: {dash(dn.eway.supply_type)}</div>
-          <div>Transaction: {dash(dn.eway.transaction_type)}</div>
-          <div>Vehicle no.: {dash(dn.eway.vehicle_no)}</div>
-        </div>
-        <div className="mp-dn-box">
-          <h4>Remarks</h4>
-          <div>{dn.comments || '—'}</div>
-        </div>
-      </div>
-
-      {dn.orders.length ? (
-        <>
-          <div className="mp-dn-label" style={{ marginTop: 8 }}>
-            Orders covered by this delivery note ({dn.orders.length})
+          <div className="mp-dn-row">
+            <span>Document</span>
+            <span>{dash(dn.eway.document_type)}</span>
           </div>
-          <table className="mp-dn-orders">
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Buyer</th>
-                <th>JI invoice</th>
-                <th className="mp-dn-num">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dn.orders.map((o) => (
-                <tr key={o.order_id}>
-                  <td className="mp-dn-mono">{o.order_id}</td>
-                  <td>{o.buyer_name}</td>
-                  <td className="mp-dn-mono">{o.invoice_number}</td>
-                  <td className="mp-dn-num">{o.amount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
+          <div className="mp-dn-row">
+            <span>Supply</span>
+            <span>{dash(humanise(dn.eway.supply_type))}</span>
+          </div>
+          <div className="mp-dn-row">
+            <span>Transaction</span>
+            <span>{dash(humanise(dn.eway.transaction_type))}</span>
+          </div>
+          <div className="mp-dn-row">
+            <span>Vehicle</span>
+            <span>{dash(dn.eway.vehicle_no)}</span>
+          </div>
+        </div>
+      </section>
+
+      {dn.comments ? (
+        <section className="mp-dn-remarks">
+          <div className="mp-dn-cap">Remarks</div>
+          <div>{dn.comments}</div>
+        </section>
       ) : null}
 
-      <div className="mp-dn-sign">
+      <section className="mp-dn-sign">
         <div>Prepared by</div>
         <div>Authorised signatory</div>
         <div>Received in good condition</div>
-      </div>
+      </section>
+
+      <footer className="mp-dn-foot">
+        <span>
+          Delivery note {dash(dn.doc_num)} · {dash(dn.doc_date)}
+        </span>
+        <span>Computer generated · JIVO</span>
+      </footer>
     </div>
   );
 });
