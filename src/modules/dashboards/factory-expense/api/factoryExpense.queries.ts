@@ -3,12 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/core/auth';
 
 import { BOARD_STALE_TIME, CONFIG_STALE_TIME, DEFAULT_REFRESH_MS } from '../constants';
-import type {
-  DepartmentSalaryPayload,
-  FactoryExpenseSettings,
-  LabourRatePayload,
-  MonthlyBudgetPayload,
-} from '../types';
+import type { FactoryExpenseSettings, MonthlyBudgetPayload } from '../types';
 import { factoryExpenseApi } from './factoryExpense.api';
 
 export const FACTORY_EXPENSE_KEYS = {
@@ -17,12 +12,8 @@ export const FACTORY_EXPENSE_KEYS = {
     [...FACTORY_EXPENSE_KEYS.all, 'board', companyId, date ?? 'today'] as const,
   settings: (companyId?: number | string) =>
     [...FACTORY_EXPENSE_KEYS.all, 'settings', companyId] as const,
-  departments: (companyId?: number | string) =>
-    [...FACTORY_EXPENSE_KEYS.all, 'departments', companyId] as const,
-  labourRates: (companyId?: number | string) =>
-    [...FACTORY_EXPENSE_KEYS.all, 'labour-rates', companyId] as const,
-  salaries: (month: string | undefined, companyId?: number | string) =>
-    [...FACTORY_EXPENSE_KEYS.all, 'salaries', companyId, month ?? 'all'] as const,
+  rates: (date: string | undefined, companyId?: number | string) =>
+    [...FACTORY_EXPENSE_KEYS.all, 'rates', companyId, date ?? 'today'] as const,
   budgets: (month: string | undefined, companyId?: number | string) =>
     [...FACTORY_EXPENSE_KEYS.all, 'budgets', companyId, month ?? 'all'] as const,
 };
@@ -60,32 +51,18 @@ export function useExpenseSettings() {
   });
 }
 
-export function useExpenseDepartments() {
+/**
+ * The Cost Master rows behind the board's labour and salary numbers.
+ *
+ * Read-only — there is no matching mutation. Somebody who wants to change a
+ * rate is sent to Admin > Cost Master, which is the only place one is set.
+ */
+export function useResolvedRates(date?: string) {
   const { currentCompany } = useAuth();
 
   return useQuery({
-    queryKey: FACTORY_EXPENSE_KEYS.departments(currentCompany?.company_id),
-    queryFn: () => factoryExpenseApi.getDepartments(),
-    staleTime: 5 * 60_000,
-  });
-}
-
-export function useLabourRates() {
-  const { currentCompany } = useAuth();
-
-  return useQuery({
-    queryKey: FACTORY_EXPENSE_KEYS.labourRates(currentCompany?.company_id),
-    queryFn: () => factoryExpenseApi.getLabourRates(),
-    staleTime: CONFIG_STALE_TIME,
-  });
-}
-
-export function useDepartmentSalaries(month?: string) {
-  const { currentCompany } = useAuth();
-
-  return useQuery({
-    queryKey: FACTORY_EXPENSE_KEYS.salaries(month, currentCompany?.company_id),
-    queryFn: () => factoryExpenseApi.getDepartmentSalaries(month),
+    queryKey: FACTORY_EXPENSE_KEYS.rates(date, currentCompany?.company_id),
+    queryFn: () => factoryExpenseApi.getResolvedRates(date),
     staleTime: CONFIG_STALE_TIME,
   });
 }
@@ -125,38 +102,10 @@ export function useSaveSettings() {
   );
 }
 
-export function useSaveLabourRate() {
-  return useConfigMutation(
-    ({ id, payload }: { id?: number; payload: Partial<LabourRatePayload> }) =>
-      id
-        ? factoryExpenseApi.updateLabourRate(id, payload)
-        : factoryExpenseApi.createLabourRate(payload),
-  );
-}
-
-export function useRetireLabourRate() {
-  return useConfigMutation((id: number) => factoryExpenseApi.retireLabourRate(id));
-}
-
-export function useSaveDepartmentSalary() {
-  return useConfigMutation(
-    ({ id, payload }: { id?: number; payload: Partial<DepartmentSalaryPayload> }) =>
-      id
-        ? factoryExpenseApi.updateDepartmentSalary(id, payload)
-        : factoryExpenseApi.createDepartmentSalary(payload),
-  );
-}
-
-export function useRetireDepartmentSalary() {
-  return useConfigMutation((id: number) => factoryExpenseApi.retireDepartmentSalary(id));
-}
-
 export function useSaveBudget() {
   return useConfigMutation(
     ({ id, payload }: { id?: number; payload: Partial<MonthlyBudgetPayload> }) =>
-      id
-        ? factoryExpenseApi.updateBudget(id, payload)
-        : factoryExpenseApi.createBudget(payload),
+      id ? factoryExpenseApi.updateBudget(id, payload) : factoryExpenseApi.createBudget(payload),
   );
 }
 

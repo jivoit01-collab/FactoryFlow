@@ -8,8 +8,6 @@
 
 export type ExpenseBucketKey = 'LABOUR' | 'SALARY' | 'ELECTRICITY' | 'MAINTENANCE';
 
-export type RateShift = 'ANY' | 'DAY' | 'NIGHT';
-
 export interface ExpenseBucketFigures {
   today: string;
   mtd: string;
@@ -49,11 +47,10 @@ export interface LabourContractorRow {
 
 export interface SalaryDepartmentRow {
   department: string;
-  department_id: number;
-  employees: number;
+  /** Null for the company-wide blanket row, which has no department. */
+  department_id: number | null;
   monthly: string;
   daily: string;
-  per_employee: string | null;
 }
 
 export interface MeterRow {
@@ -103,46 +100,36 @@ export interface ExpenseBoard {
 // Configuration
 // ---------------------------------------------------------------------------
 
-export interface DepartmentOption {
+/**
+ * One Cost Master row the board could price with, as read back for display.
+ *
+ * Mirrors `cost_master.CostRate`. Read-only here on purpose: rates are created
+ * and edited in Admin > Cost Master, so the board can never become a second
+ * place where a rate is set.
+ */
+export interface ResolvedRate {
   id: number;
-  name: string;
-}
-
-export interface LabourRate {
-  id: number;
-  department: number | null;
-  department_name: string | null;
-  shift: RateShift;
-  shift_display: string;
-  rate_per_person_per_day: string;
+  scope: 'FACTORY' | 'COMPANY' | 'DEPARTMENT' | 'VALUE';
+  scope_display: string;
+  company_code: string | null;
+  department: string | null;
+  basis: string;
+  basis_display: string;
+  rate: string;
   effective_from: string;
   notes: string;
-  is_active: boolean;
-  updated_at: string;
 }
 
-export type LabourRatePayload = Omit<
-  LabourRate,
-  'id' | 'department_name' | 'shift_display' | 'updated_at'
->;
-
-export interface DepartmentSalary {
-  id: number;
-  department: number;
-  department_name: string;
-  month: string;
-  employee_count: number;
-  monthly_amount: string;
-  per_employee: number | null;
-  notes: string;
-  is_active: boolean;
-  updated_at: string;
+export interface ResolvedRateGroup {
+  cost_type_code: string;
+  rates: ResolvedRate[];
 }
 
-export type DepartmentSalaryPayload = Omit<
-  DepartmentSalary,
-  'id' | 'department_name' | 'per_employee' | 'updated_at'
->;
+export interface ResolvedRates {
+  date: string;
+  labour: ResolvedRateGroup;
+  salary: ResolvedRateGroup;
+}
 
 export interface MonthlyBudgetRow {
   id: number;
@@ -155,10 +142,7 @@ export interface MonthlyBudgetRow {
   updated_at: string;
 }
 
-export type MonthlyBudgetPayload = Omit<
-  MonthlyBudgetRow,
-  'id' | 'bucket_display' | 'updated_at'
->;
+export type MonthlyBudgetPayload = Omit<MonthlyBudgetRow, 'id' | 'bucket_display' | 'updated_at'>;
 
 export interface FactoryExpenseSettings extends ExpenseBoardSettings {
   maintenance_include_spares: boolean;

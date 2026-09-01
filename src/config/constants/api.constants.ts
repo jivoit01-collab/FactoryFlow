@@ -487,10 +487,8 @@ export const API_ENDPOINTS = {
     WAREHOUSES: '/planning-purchase/warehouses/',
     PURCHASE_ORDERS: '/planning-purchase/purchase-orders/',
     PURCHASE_ORDER_DETAIL: (id: number) => `/planning-purchase/purchase-orders/${id}/`,
-    PURCHASE_ORDER_APPROVE: (id: number) =>
-      `/planning-purchase/purchase-orders/${id}/approve/`,
-    PURCHASE_ORDER_POST: (id: number) =>
-      `/planning-purchase/purchase-orders/${id}/post-to-sap/`,
+    PURCHASE_ORDER_APPROVE: (id: number) => `/planning-purchase/purchase-orders/${id}/approve/`,
+    PURCHASE_ORDER_POST: (id: number) => `/planning-purchase/purchase-orders/${id}/post-to-sap/`,
   },
   // Stock Dashboard
   STOCK_DASHBOARD: {
@@ -509,12 +507,9 @@ export const API_ENDPOINTS = {
   FACTORY_EXPENSE: {
     BOARD: '/dashboards/factory-expense/board/',
     SETTINGS: '/dashboards/factory-expense/settings/',
-    DEPARTMENTS: '/dashboards/factory-expense/departments/',
-    LABOUR_RATES: '/dashboards/factory-expense/labour-rates/',
-    LABOUR_RATE_DETAIL: (id: number) => `/dashboards/factory-expense/labour-rates/${id}/`,
-    DEPARTMENT_SALARIES: '/dashboards/factory-expense/department-salaries/',
-    DEPARTMENT_SALARY_DETAIL: (id: number) =>
-      `/dashboards/factory-expense/department-salaries/${id}/`,
+    // Read-back only. Rates are owned by cost_master and edited in
+    // Admin > Cost Master; the board never writes one.
+    RATES: '/dashboards/factory-expense/rates/',
     BUDGETS: '/dashboards/factory-expense/budgets/',
     BUDGET_DETAIL: (id: number) => `/dashboards/factory-expense/budgets/${id}/`,
   },
@@ -1147,8 +1142,7 @@ export const API_ENDPOINTS = {
       `/warehouse/transfer-requests/${requestId}/approve/`,
     TRANSFER_REQUEST_REJECT: (requestId: number) =>
       `/warehouse/transfer-requests/${requestId}/reject/`,
-    TRANSFER_REQUEST_POST: (requestId: number) =>
-      `/warehouse/transfer-requests/${requestId}/post/`,
+    TRANSFER_REQUEST_POST: (requestId: number) => `/warehouse/transfer-requests/${requestId}/post/`,
     TRANSFER_REQUEST_ALLOCATION_PREVIEW: (requestId: number) =>
       `/warehouse/transfer-requests/${requestId}/allocation-preview/`,
     TRANSFER_REQUEST_CREATE_BST: (requestId: number) =>
@@ -1357,8 +1351,7 @@ export const API_ENDPOINTS = {
     CHEMICALS: '/etp/chemicals/',
     CHEMICAL_DETAIL: (chemicalId: number) => `/etp/chemicals/${chemicalId}/`,
     BACKWASH_EQUIPMENT: '/etp/backwash-equipment/',
-    BACKWASH_EQUIPMENT_DETAIL: (equipmentId: number) =>
-      `/etp/backwash-equipment/${equipmentId}/`,
+    BACKWASH_EQUIPMENT_DETAIL: (equipmentId: number) => `/etp/backwash-equipment/${equipmentId}/`,
     MONITORING_PARAMETERS: '/etp/monitoring-parameters/',
     MONITORING_PARAMETER_DETAIL: (parameterId: number) =>
       `/etp/monitoring-parameters/${parameterId}/`,

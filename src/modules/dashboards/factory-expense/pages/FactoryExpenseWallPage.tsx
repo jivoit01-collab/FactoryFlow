@@ -7,12 +7,7 @@ import { cn, getErrorMessage } from '@/shared/utils';
 
 import { useFullscreen } from '../../dispatch/hooks';
 import { useExpenseBoard } from '../api';
-import {
-  ExpenseListPanel,
-  ExpenseStat,
-  ExpenseTrendChart,
-  ExpenseWallHeader,
-} from '../components';
+import { ExpenseListPanel, ExpenseStat, ExpenseTrendChart, ExpenseWallHeader } from '../components';
 import { BUCKET_META, BUCKET_ORDER, DEFAULT_REFRESH_MS } from '../constants';
 import type { ExpenseBucketKey } from '../types';
 
@@ -54,8 +49,9 @@ export default function FactoryExpenseWallPage() {
   const boardRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggle } = useFullscreen(boardRef);
 
-  const { data, isLoading, isFetching, isError, error, refetch, dataUpdatedAt } =
-    useExpenseBoard(isToday ? undefined : date);
+  const { data, isLoading, isFetching, isError, error, refetch, dataUpdatedAt } = useExpenseBoard(
+    isToday ? undefined : date,
+  );
 
   const visible = useMemo<ExpenseBucketKey[]>(() => {
     if (!data) return BUCKET_ORDER;
@@ -167,11 +163,9 @@ export default function FactoryExpenseWallPage() {
                 badge={`${data.salary_departments.length} depts`}
                 emptyText="No department salary set for this month — open Configuration."
                 rows={data.salary_departments.map((row) => ({
-                  id: String(row.department_id),
+                  id: String(row.department_id ?? 'all'),
                   label: row.department,
-                  meta: row.employees
-                    ? `${row.employees} employees · ₹${Number(row.per_employee ?? 0).toLocaleString('en-IN')} each`
-                    : 'headcount not set',
+                  meta: `₹${Number(row.monthly).toLocaleString('en-IN')} / month`,
                   amount: Number(row.daily),
                 }))}
               />

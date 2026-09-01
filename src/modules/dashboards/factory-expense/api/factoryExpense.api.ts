@@ -2,15 +2,11 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
-  DepartmentOption,
-  DepartmentSalary,
-  DepartmentSalaryPayload,
   ExpenseBoard,
   FactoryExpenseSettings,
-  LabourRate,
-  LabourRatePayload,
   MonthlyBudgetPayload,
   MonthlyBudgetRow,
+  ResolvedRates,
 } from '../types';
 
 const EP = API_ENDPOINTS.FACTORY_EXPENSE;
@@ -29,74 +25,22 @@ export const factoryExpenseApi = {
     return response.data;
   },
 
-  async updateSettings(
-    payload: Partial<FactoryExpenseSettings>,
-  ): Promise<FactoryExpenseSettings> {
+  async updateSettings(payload: Partial<FactoryExpenseSettings>): Promise<FactoryExpenseSettings> {
     const response = await apiClient.patch<FactoryExpenseSettings>(EP.SETTINGS, payload);
     return response.data;
   },
 
-  async getDepartments(): Promise<DepartmentOption[]> {
-    const response = await apiClient.get<DepartmentOption[]>(EP.DEPARTMENTS);
-    return response.data;
-  },
-
-  // ---- labour rates ----
-
-  async getLabourRates(): Promise<LabourRate[]> {
-    const response = await apiClient.get<LabourRate[]>(EP.LABOUR_RATES);
-    return response.data;
-  },
-
-  async createLabourRate(payload: Partial<LabourRatePayload>): Promise<LabourRate> {
-    const response = await apiClient.post<LabourRate>(EP.LABOUR_RATES, payload);
-    return response.data;
-  },
-
-  async updateLabourRate(
-    id: number,
-    payload: Partial<LabourRatePayload>,
-  ): Promise<LabourRate> {
-    const response = await apiClient.patch<LabourRate>(EP.LABOUR_RATE_DETAIL(id), payload);
-    return response.data;
-  },
-
-  async retireLabourRate(id: number): Promise<void> {
-    await apiClient.delete(EP.LABOUR_RATE_DETAIL(id));
-  },
-
-  // ---- department salaries ----
-
-  async getDepartmentSalaries(month?: string): Promise<DepartmentSalary[]> {
-    const response = await apiClient.get<DepartmentSalary[]>(EP.DEPARTMENT_SALARIES, {
-      params: month ? { month } : undefined,
+  /**
+   * The Cost Master rows the board would price with on `date`.
+   *
+   * Read-only: there is no create/update counterpart here by design. A rate is
+   * changed in Admin > Cost Master so there is exactly one place it can be set.
+   */
+  async getResolvedRates(date?: string): Promise<ResolvedRates> {
+    const response = await apiClient.get<ResolvedRates>(EP.RATES, {
+      params: date ? { date } : undefined,
     });
     return response.data;
-  },
-
-  async createDepartmentSalary(
-    payload: Partial<DepartmentSalaryPayload>,
-  ): Promise<DepartmentSalary> {
-    const response = await apiClient.post<DepartmentSalary>(
-      EP.DEPARTMENT_SALARIES,
-      payload,
-    );
-    return response.data;
-  },
-
-  async updateDepartmentSalary(
-    id: number,
-    payload: Partial<DepartmentSalaryPayload>,
-  ): Promise<DepartmentSalary> {
-    const response = await apiClient.patch<DepartmentSalary>(
-      EP.DEPARTMENT_SALARY_DETAIL(id),
-      payload,
-    );
-    return response.data;
-  },
-
-  async retireDepartmentSalary(id: number): Promise<void> {
-    await apiClient.delete(EP.DEPARTMENT_SALARY_DETAIL(id));
   },
 
   // ---- budgets ----
