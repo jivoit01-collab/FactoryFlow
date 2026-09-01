@@ -28,3 +28,17 @@ export const ADMIN_MODULE_PREFIX = 'docking_admin';
 /** Type for admin permission values (Django backend permissions). */
 export type AdminPermission =
   (typeof ADMIN_PERMISSIONS.DOCKING)[keyof typeof ADMIN_PERMISSIONS.DOCKING];
+
+/**
+ * Cost Master permissions (backend `cost_master` app) — the central registry
+ * of cost types and their factory/company/department/value-scoped rates.
+ */
+export const COST_MASTER_PERMISSIONS = {
+  /** Read the cost catalog and rates (costing/report consumers). */
+  VIEW: 'cost_master.can_view_cost_master',
+  /** Define cost types and set rates. */
+  MANAGE: 'cost_master.can_manage_cost_master',
+} as const;
+
+export type CostMasterPermission =
+  (typeof COST_MASTER_PERMISSIONS)[keyof typeof COST_MASTER_PERMISSIONS];
