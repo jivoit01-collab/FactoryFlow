@@ -29,6 +29,8 @@ export type WorkOrderStatus =
   | 'WAITING_VENDOR'
   | 'ON_HOLD'
   | 'COMPLETED'
+  /** The raiser was not satisfied and sent the job back to the technician. */
+  | 'REOPENED'
   | 'APPROVED'
   | 'CLOSED';
 
@@ -382,6 +384,10 @@ export interface MaintenanceWorkOrder {
   reported_by_name: string;
   assigned_to: number | null;
   assigned_to_name: string;
+  /** Assignee as typed on the assign form, whether or not it matched a user. */
+  assigned_to_text: string;
+  /** The matched user's name, else the typed text — what the UI should show. */
+  assigned_to_display: string;
   target_date: string | null;
   start_time: string | null;
   end_time: string | null;
@@ -398,6 +404,10 @@ export interface MaintenanceWorkOrder {
   closed_at: string | null;
   closed_by: number | null;
   closed_by_name: string;
+  /** How many times the raiser sent the job back for rework. */
+  rework_count: number;
+  /** True when the signed-in user may verify: the raiser, or a maintenance head. */
+  can_verify: boolean;
   photos_count: number;
   spare_requests_count: number;
   spare_consumed_qty: MaintenanceDecimal;
@@ -442,8 +452,37 @@ export interface MaintenanceWorkOrderFilters {
 }
 
 export interface MaintenanceWorkOrderAssignPayload {
-  assigned_to: number;
+  /** Typed on the assign form; the backend links a user when the name matches. */
+  assigned_to_text: string;
   target_date?: string | null;
+}
+
+/** The raiser rejects the work: it goes back to the technician with a reason. */
+export interface MaintenanceWorkOrderSendBackPayload {
+  remarks: string;
+}
+
+export type WorkOrderLogAction =
+  | 'ASSIGNED'
+  | 'STARTED'
+  | 'STATUS'
+  | 'COMPLETED'
+  | 'SENT_BACK'
+  | 'VERIFIED'
+  | 'CLOSED';
+
+/** One hand-off in a work order's trail, newest last. */
+export interface MaintenanceWorkOrderLog {
+  id: number;
+  work_order: number;
+  action: WorkOrderLogAction;
+  action_label: string;
+  status: WorkOrderStatus | '';
+  status_label: string;
+  remarks: string;
+  created_by: number | null;
+  created_by_name: string;
+  created_at: string;
 }
 
 export interface MaintenanceWorkOrderCompletePayload {
@@ -1085,6 +1124,8 @@ export interface MaintenanceDashboardSummary {
     assigned: number;
     in_progress: number;
     completed: number;
+    /** Sent back by the raiser and waiting on rework. */
+    reopened: number;
     waiting_spare: number;
     waiting_vendor: number;
     critical: number;

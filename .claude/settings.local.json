@@ -142,7 +142,8 @@
       "Bash(c:/Users/dev02/factory_app/.venv/Scripts/python.exe c:/Users/dev02/factory_app/add_bev_bill_to_4204.py:*)",
       "Bash(c:/Users/dev02/factory_app/.venv/Scripts/python.exe c:/Users/dev02/factory_app/add_bev_bill_to_4204.py COMMIT)",
       "Bash(ls c:/Users/dev02/factory_app 2>/dev/null | head -50)",
-      "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")"
+      "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")",
+      "PowerShell(git -C c:/Users/dev02/factory_app push origin main)"
     ],
     "additionalDirectories": [
       "/tmp"

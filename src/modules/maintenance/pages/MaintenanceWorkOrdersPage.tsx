@@ -338,7 +338,7 @@ export default function MaintenanceWorkOrdersPage() {
                   <td className="px-4 py-3">
                     <WorkOrderStatusBadge status={workOrder.status} />
                   </td>
-                  <td className="px-4 py-3">{workOrder.assigned_to_name || '-'}</td>
+                  <td className="px-4 py-3">{workOrder.assigned_to_display || '-'}</td>
                   <td className="px-4 py-3">
                     {workOrder.production_run ? (
                       <button

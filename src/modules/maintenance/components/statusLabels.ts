@@ -33,6 +33,7 @@ const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
   WAITING_VENDOR: 'Waiting Vendor',
   ON_HOLD: 'On Hold',
   COMPLETED: 'Completed',
+  REOPENED: 'Reopened',
   APPROVED: 'Approved',
   CLOSED: 'Closed',
 };
@@ -46,6 +47,7 @@ const WORK_ORDER_STATUS_CLASSES: Record<WorkOrderStatus, string> = {
   WAITING_VENDOR: 'border-purple-200 bg-purple-50 text-purple-700',
   ON_HOLD: 'border-zinc-200 bg-zinc-50 text-zinc-700',
   COMPLETED: 'border-teal-200 bg-teal-50 text-teal-700',
+  REOPENED: 'border-rose-200 bg-rose-50 text-rose-700',
   APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   CLOSED: 'border-neutral-200 bg-neutral-50 text-neutral-700',
 };
