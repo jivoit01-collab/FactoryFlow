@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, Save, Trash2, Warehouse } from 'lucide-react';
+import { Loader2, Plus, Save, Trash2, Warehouse } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -7,7 +7,6 @@ import {
   useAssignWarehouses,
   useRemoveUserWarehouse,
   useUserWarehouses,
-  useWarehouseScopeGaps,
   useWMSWarehouses,
 } from '@/modules/warehouse/api';
 import { DashboardHeader } from '@/shared/components';
@@ -17,6 +16,12 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Label,
   MultiSelect,
 } from '@/shared/components/ui';
@@ -34,10 +39,6 @@ interface PickableUser {
  * This is what decides who may raise a transfer out of a warehouse and who may
  * accept one coming into it, so it is deliberately an admin-only screen —
  * letting a warehouse manager widen their own scope would defeat the point.
- *
- * A user with no row here is blocked from moving stock at all, which is why the
- * unassigned warning is at the top rather than buried: a missing assignment is
- * not a cosmetic gap, it is somebody who cannot work.
  */
 export default function WarehouseManagersPage() {
   const { data: users = [], isLoading: usersLoading } = useCompanyUsers();
@@ -47,6 +48,7 @@ export default function WarehouseManagersPage() {
   const assign = useAssignWarehouses();
   const remove = useRemoveUserWarehouse();
 
+  const [assignOpen, setAssignOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<PickableUser | null>(null);
   const [selectedWarehouses, setSelectedWarehouses] = useState<string[]>([]);
 
@@ -109,9 +111,17 @@ export default function WarehouseManagersPage() {
           ? `${selectedUser.full_name} now manages ${added.join(', ')}`
           : `${selectedUser.full_name} already managed those warehouses`,
       );
-      setSelectedWarehouses([]);
+      handleAssignOpenChange(false);
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not save the assignment.'));
+    }
+  }
+
+  function handleAssignOpenChange(open: boolean) {
+    setAssignOpen(open);
+    if (!open) {
+      setSelectedUser(null);
+      setSelectedWarehouses([]);
     }
   }
 
@@ -129,17 +139,27 @@ export default function WarehouseManagersPage() {
       <DashboardHeader
         title="Warehouse Managers"
         description="Who may send stock out of, and accept it into, each warehouse"
+        primaryAction={{
+          label: 'Assign a manager',
+          icon: <Plus className="mr-2 h-4 w-4" />,
+          onClick: () => setAssignOpen(true),
+        }}
       />
 
-      <UnassignedWarning />
+      <Dialog open={assignOpen} onOpenChange={handleAssignOpenChange}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Warehouse className="h-5 w-5" /> Assign a manager
+            </DialogTitle>
+            <DialogDescription>
+              A manager can raise a transfer only out of a warehouse listed here, and can
+              approve or reject only requests coming into one. Assignments apply to the
+              company you are currently in.
+            </DialogDescription>
+          </DialogHeader>
 
-      <Card>
-        <CardContent className="space-y-4 p-6">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Warehouse className="h-4 w-4" /> Assign a manager
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          <div className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="wm-user">User</Label>
               <SearchableSelect<PickableUser>
@@ -196,7 +216,16 @@ export default function WarehouseManagersPage() {
                 </p>
               )}
             </div>
+          </div>
 
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleAssignOpenChange(false)}
+              disabled={assign.isPending}
+            >
+              Cancel
+            </Button>
             <Button onClick={handleAssign} disabled={assign.isPending}>
               {assign.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -205,15 +234,9 @@ export default function WarehouseManagersPage() {
               )}
               Assign
             </Button>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            A manager can raise a transfer only out of a warehouse listed here, and can approve
-            or reject only requests coming into one. Assignments apply to the company you are
-            currently in.
-          </p>
-        </CardContent>
-      </Card>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardContent className="space-y-4 p-6">
@@ -277,38 +300,5 @@ export default function WarehouseManagersPage() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-/**
- * Users who hold a stock-movement permission but manage no warehouse.
- *
- * They are refused every transfer and BST action, and the refusal only shows up
- * when they try, so this states it up front instead.
- */
-function UnassignedWarning() {
-  const { data: gaps = [], isLoading } = useWarehouseScopeGaps();
-
-  if (isLoading || gaps.length === 0) return null;
-
-  return (
-    <Card className="border-amber-300 bg-amber-50/60 dark:bg-amber-950/20">
-      <CardContent className="space-y-2 p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
-          <AlertTriangle className="h-4 w-4" />
-          {gaps.length} user{gaps.length === 1 ? '' : 's'} can move stock but manage no warehouse
-        </div>
-        <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
-          Until they are assigned below, every transfer and BST action will be refused for them.
-        </p>
-        <div className="flex flex-wrap gap-2 pt-1">
-          {gaps.map((u) => (
-            <Badge key={u.id} variant="outline" className="bg-background">
-              {u.full_name || u.email}
-            </Badge>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
