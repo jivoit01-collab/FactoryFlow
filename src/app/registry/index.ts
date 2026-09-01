@@ -17,14 +17,12 @@ import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
-import { orderProcessingModuleConfig } from '@/modules/order-processing/module.config';
 import { planningPurchaseModuleConfig } from '@/modules/planning-purchase/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
 import { returnsModuleConfig } from '@/modules/returns/module.config';
 import { sapReportsModuleConfig } from '@/modules/sap-reports/module.config';
 import { settingsModuleConfig } from '@/modules/settings/module.config';
-import { supplyChainModuleConfig } from '@/modules/supply-chain/module.config';
 import { vehicleManagementModuleConfig } from '@/modules/vehicle-management/module.config';
 import { warehouseModuleConfig } from '@/modules/warehouse/module.config';
 import { wmsModuleConfig } from '@/modules/wms/module.config';
@@ -58,8 +56,6 @@ export const moduleRegistry: ModuleConfig[] = [
   wmsModuleConfig,
   barcodeModuleConfig,
   marketplaceModuleConfig,
-  supplyChainModuleConfig,
-  orderProcessingModuleConfig,
   sapReportsModuleConfig,
   notificationsModuleConfig,
   settingsModuleConfig,
