@@ -1236,6 +1236,7 @@ export const API_ENDPOINTS = {
     REPORT_EXPORT: (type: string) => `/marketplace/reports/${type}/export.csv`,
     REPORT_TRACKING: (batchId: number) => `/marketplace/reports/tracking/${batchId}/`,
     REPORT_PREVIEW: (type: string) => `/marketplace/reports/${type}/preview/`,
+    DN_PRINT: (docEntry: number) => `/marketplace/delivery-notes/${docEntry}/print/`,
     GATE_QUEUE: '/marketplace/gate/queue/',
     GATE_DETAIL: (batchId: number) => `/marketplace/gate/${batchId}/`,
     GATE_APPROVE: (batchId: number) => `/marketplace/gate/${batchId}/approve/`,
