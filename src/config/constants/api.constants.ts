@@ -1365,6 +1365,14 @@ export const API_ENDPOINTS = {
     // to what. Read-only; ?register=&plant=&object_id=&date_from=&date_to=.
     CHANGE_LOG: '/etp/change-log/',
   },
+
+  // Cost Master — the central registry of cost types + scoped, effective-dated rates
+  COST_MASTER: {
+    COST_TYPES: '/cost-master/cost-types/',
+    COST_TYPE_DETAIL: (costTypeId: number) => `/cost-master/cost-types/${costTypeId}/`,
+    RATES: '/cost-master/rates/',
+    RATE_DETAIL: (rateId: number) => `/cost-master/rates/${rateId}/`,
+  },
 } as const;
 
 export const HTTP_STATUS = {

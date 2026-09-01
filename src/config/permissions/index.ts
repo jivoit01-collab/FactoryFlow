@@ -10,7 +10,13 @@
  */
 
 // Admin Module
-export { ADMIN_MODULE_PREFIX, ADMIN_PERMISSIONS, type AdminPermission } from './admin.permissions';
+export {
+  ADMIN_MODULE_PREFIX,
+  ADMIN_PERMISSIONS,
+  COST_MASTER_PERMISSIONS,
+  type AdminPermission,
+  type CostMasterPermission,
+} from './admin.permissions';
 
 // Daily Tasks Module (per-user daily job sheet, derived from every other module)
 export {
