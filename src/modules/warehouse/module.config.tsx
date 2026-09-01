@@ -1,13 +1,35 @@
 import { Warehouse } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 
-import { GATE_PERMISSIONS,GRPO_PERMISSIONS,OMS_PERMISSIONS,WAREHOUSE_PERMISSIONS } from '@/config/permissions';
+import {
+  DISPATCH_PERMISSIONS,
+  GATE_PERMISSIONS,
+  GRPO_PERMISSIONS,
+  OMS_PERMISSIONS,
+  WAREHOUSE_PERMISSIONS,
+} from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { grpoNavChildren, grpoRoutes } from './grpo/module.config';
 import { invoiceApprovalNavChildren, invoiceApprovalRoutes } from './invoice-approval/module.config';
+import { LegacyBillSummaryRedirect } from './pages/billSummary/LegacyBillSummaryRedirect';
 
 const WarehouseDashboardPage = lazy(() => import('./pages/WarehouseDashboardPage'));
+const BillSummaryListPage = lazy(() => import('./pages/billSummary/BillSummaryListPage'));
+const BillSummaryNewPage = lazy(() => import('./pages/billSummary/BillSummaryNewPage'));
+const BillSummaryDetailPage = lazy(
+  () => import('./pages/billSummary/BillSummaryDetailPage'),
+);
+
+// The bill summary is warehouse work — the floor picks against it — but its
+// permissions still name the Django app the backend lives in (`dispatch_plans`),
+// which is where the dispatch plan it reads from lives too.
+const billSummaryViewPermissions = [
+  DISPATCH_PERMISSIONS.VIEW_BILL_SUMMARY,
+  DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY,
+  DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY,
+] as const;
 const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
 const BOMRequestDetailPage = lazy(() => import('./pages/BOMRequestDetailPage'));
 const FGReceiptListPage = lazy(() => import('./pages/FGReceiptListPage'));
@@ -36,6 +58,40 @@ const DispatchLoadingPrepScanPage = lazy(
 export const warehouseModuleConfig: ModuleConfig = {
   name: 'warehouse',
   routes: [
+    {
+      path: '/warehouse/bill-summaries',
+      element: <BillSummaryListPage />,
+      layout: 'main',
+      permissions: billSummaryViewPermissions,
+      breadcrumb: { label: 'Bill Summaries' },
+    },
+    {
+      path: '/warehouse/bill-summaries/new',
+      element: <BillSummaryNewPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY],
+      breadcrumb: { label: 'New' },
+    },
+    {
+      path: '/warehouse/bill-summaries/:summaryId',
+      element: <BillSummaryDetailPage />,
+      layout: 'main',
+      permissions: billSummaryViewPermissions,
+      breadcrumb: { label: 'Bill Summary' },
+    },
+    // Pre-move paths, so a bookmarked sheet still opens.
+    {
+      path: '/dispatch/bill-summaries',
+      element: <Navigate to="/warehouse/bill-summaries" replace />,
+      layout: 'main',
+      permissions: billSummaryViewPermissions,
+    },
+    {
+      path: '/dispatch/bill-summaries/*',
+      element: <LegacyBillSummaryRedirect />,
+      layout: 'main',
+      permissions: billSummaryViewPermissions,
+    },
     {
       // Warehouse landing dashboard — reachable by every authenticated user. The cards
       // inside filter by permission, so a user only sees the sections they can access.
@@ -169,9 +225,17 @@ export const warehouseModuleConfig: ModuleConfig = {
         GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
         GRPO_PERMISSIONS.VIEW_PENDING,
         OMS_PERMISSIONS.VIEW_INVOICE,
+        // A floor picker may hold only the bill-summary permissions; without
+        // these the Warehouse menu would not appear for them at all.
+        ...billSummaryViewPermissions,
       ],
       hasSubmenu: true,
       children: [
+        {
+          path: '/warehouse/bill-summaries',
+          title: 'Bill Summaries',
+          permissions: billSummaryViewPermissions,
+        },
         {
           path: '/warehouse/dispatch-loading',
           title: 'Dispatch Loading',

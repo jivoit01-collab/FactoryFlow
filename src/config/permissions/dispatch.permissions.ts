@@ -16,6 +16,12 @@ export const DISPATCH_PERMISSIONS = {
   INSIDE_VEHICLE_MOVE_BILL: 'dispatch_plans.can_move_bill_inside_vehicle',
   INSIDE_VEHICLE_UNLINK_ALL: 'dispatch_plans.can_unlink_bills_inside_vehicle',
   INSIDE_VEHICLE_MARK_OUT: 'dispatch_plans.can_mark_out_inside_vehicle',
+  // Bill summary (the picking sheet). Issuing and picking are separate on
+  // purpose: one person doing both can record a pick nobody performed.
+  VIEW_BILL_SUMMARY: 'dispatch_plans.can_view_bill_summary',
+  CREATE_BILL_SUMMARY: 'dispatch_plans.can_create_bill_summary',
+  PICK_BILL_SUMMARY: 'dispatch_plans.can_pick_bill_summary',
+  CANCEL_BILL_SUMMARY: 'dispatch_plans.can_cancel_bill_summary',
   // Dispatch Tracking (post-dispatch truck status log).
   DISPATCH_TRACKING_VIEW: 'gate_core.can_view_dispatch_tracking',
   DISPATCH_TRACKING_UPDATE: 'gate_core.can_update_dispatch_tracking',

@@ -592,6 +592,14 @@ export const API_ENDPOINTS = {
   },
   // Dispatch
   DISPATCH: {
+    // Bill summary — the picking sheet the warehouse floor works from.
+    BILL_SUMMARY_LOOKUP: '/dispatch/bill-summaries/lookup/',
+    BILL_SUMMARIES: '/dispatch/bill-summaries/',
+    BILL_SUMMARY_DETAIL: (id: number) => `/dispatch/bill-summaries/${id}/`,
+    BILL_SUMMARY_PICK: (id: number) => `/dispatch/bill-summaries/${id}/pick/`,
+    BILL_SUMMARY_STAMP_SAP: (id: number) => `/dispatch/bill-summaries/${id}/stamp-sap/`,
+    BILL_SUMMARY_CANCEL: (id: number) => `/dispatch/bill-summaries/${id}/cancel/`,
+
     OPEN_BILTIES: '/dispatch/open-bilties/',
     BILTY_GRPO_PENDING: '/dispatch/bilty-grpo/pending/',
     BILTY_GRPO_OPTIONS: '/dispatch/bilty-grpo/options/',
@@ -1244,7 +1252,6 @@ export const API_ENDPOINTS = {
     REPORT_EXPORT: (type: string) => `/marketplace/reports/${type}/export.csv`,
     REPORT_TRACKING: (batchId: number) => `/marketplace/reports/tracking/${batchId}/`,
     REPORT_PREVIEW: (type: string) => `/marketplace/reports/${type}/preview/`,
-    DN_PRINT: (docEntry: number) => `/marketplace/delivery-notes/${docEntry}/print/`,
     GATE_QUEUE: '/marketplace/gate/queue/',
     GATE_DETAIL: (batchId: number) => `/marketplace/gate/${batchId}/`,
     GATE_APPROVE: (batchId: number) => `/marketplace/gate/${batchId}/approve/`,
