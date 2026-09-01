@@ -2,7 +2,6 @@ import {
   AlertCircle,
   Ban,
   Camera,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ClipboardList,
@@ -60,6 +59,13 @@ import {
 import { useArrivalDockings } from '@/modules/gate/api/arrivals/arrivals.queries';
 import { StepFooter, StepHeader, StepLoadingSpinner } from '@/modules/gate/components';
 import { useEntryId } from '@/modules/gate/hooks';
+import {
+  ScanGroupCard,
+  ScanItemsTable,
+  type ScanItemsTableRow,
+  ScanMetricTile,
+  ScanStatusBadge,
+} from '@/shared/components/scanReview';
 import {
   Badge,
   Button,
@@ -163,9 +169,9 @@ export default function SalesDispatchBarcodeScanPage() {
   const [failedScans, setFailedScans] = useState<FailedScan[]>([]);
   // dockingId: which docking a queued scan posts to. On a single-company docking it
   // is always this entry; on a multi-company truck it is the bill's own docking.
-  const scanQueueRef = useRef<
-    { barcode: string; documentId: number | null; dockingId: number }[]
-  >([]);
+  const scanQueueRef = useRef<{ barcode: string; documentId: number | null; dockingId: number }[]>(
+    [],
+  );
   const inFlightRef = useRef<Set<string>>(new Set());
   const processingRef = useRef(false);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -342,9 +348,9 @@ export default function SalesDispatchBarcodeScanPage() {
     gatingScanCount > 0 &&
     (hasTrustworthyScanQuantities
       ? hasUnscannedBillLine
-      // Compared in FULL boxes (mirrors load_scan_status): a part box covers a printed
-      // loose remainder, so letting it stand in for a box would hide a missing one.
-      : expectedBoxes > 0 && gatingFullBoxCount < expectedBoxes);
+      : // Compared in FULL boxes (mirrors load_scan_status): a part box covers a printed
+        // loose remainder, so letting it stand in for a box would hide a missing one.
+        expectedBoxes > 0 && gatingFullBoxCount < expectedBoxes);
   const progressPercent =
     expectedBoxes > 0 ? Math.min(100, Math.round((scannedFullBoxes / expectedBoxes) * 100)) : 0;
 
@@ -443,9 +449,12 @@ export default function SalesDispatchBarcodeScanPage() {
     flashTimerRef.current = setTimeout(() => setFlashing(false), 350);
   }, []);
 
-  useEffect(() => () => {
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    },
+    [],
+  );
 
   // Drain the queue one scan at a time. Reentrancy-guarded so only one worker runs;
   // new scans pushed while it runs are picked up before it exits.
@@ -552,7 +561,9 @@ export default function SalesDispatchBarcodeScanPage() {
         : undefined;
       if (targetBill && targetBill.status === 'Complete') {
         setError('');
-        toast.warning(`Bill ${formatValue(targetBill.sapDocNum)} already has all its boxes scanned.`);
+        toast.warning(
+          `Bill ${formatValue(targetBill.sapDocNum)} already has all its boxes scanned.`,
+        );
         setManualBarcode('');
         return;
       }
@@ -702,7 +713,9 @@ export default function SalesDispatchBarcodeScanPage() {
       setPartialReason('');
       toast.success('Partial dispatch request sent for admin approval');
     } catch (submitError) {
-      setPartialError(getErrorMessage(submitError, 'Unable to submit the partial dispatch request'));
+      setPartialError(
+        getErrorMessage(submitError, 'Unable to submit the partial dispatch request'),
+      );
     }
   };
 
@@ -817,14 +830,14 @@ export default function SalesDispatchBarcodeScanPage() {
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             <div className="grid gap-3 sm:grid-cols-3">
-              <ScanMetric
+              <ScanMetricTile
                 label="Expected Boxes"
                 value={expectedBoxes > 0 ? formatNumber(expectedBoxes) : '-'}
                 // The bill prints boxes AND a loose remainder; naming the remainder here
                 // stops "116 boxes" reading as the whole shipment when 4 PCS ship loose.
                 hint={expectedLoose > 0 ? `+ ${formatNumber(expectedLoose)} PCS loose` : ''}
               />
-              <ScanMetric
+              <ScanMetricTile
                 label="Scanned Boxes"
                 value={formatNumber(scannedFullBoxes)}
                 hint={
@@ -833,7 +846,7 @@ export default function SalesDispatchBarcodeScanPage() {
                     : ''
                 }
               />
-              <ScanMetric
+              <ScanMetricTile
                 label="Scanned Qty"
                 value={scannedQuantity > 0 ? formatNumber(scannedQuantity) : '-'}
               />
@@ -1239,7 +1252,9 @@ function BarcodeScansDialog({
                             <tbody>
                               {session.boxes.map((box) => (
                                 <tr key={box.id} className="border-b last:border-b-0">
-                                  <td className="p-3 font-mono text-xs font-medium">{box.barcode}</td>
+                                  <td className="p-3 font-mono text-xs font-medium">
+                                    {box.barcode}
+                                  </td>
                                   <td className="p-3">
                                     <div className="font-medium">{box.item_code || '-'}</div>
                                     <div className="max-w-[220px] truncate text-xs text-muted-foreground">
@@ -1357,39 +1372,21 @@ function BillScanCard({
   const inputId = `box-barcode-${bill.key}`;
 
   return (
-    <div className="overflow-hidden rounded-md border">
-      <button
-        type="button"
-        onClick={() => onToggle(bill.key)}
-        className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 bg-muted/40 p-3 text-left transition-colors hover:bg-muted/60"
-      >
-        {isOpen ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {showCompany && bill.companyName ? (
-              <span className="inline-flex shrink-0 rounded-full border bg-background px-2 py-0.5 text-xs font-medium">
-                {bill.companyName}
-              </span>
-            ) : null}
-            <span className="truncate text-sm font-semibold">
-              Bill {formatValue(bill.sapDocNum)}
-              {bill.customerName ? (
-                <span className="font-normal text-muted-foreground"> · {bill.customerName}</span>
-              ) : null}
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {bill.items.length} item{bill.items.length === 1 ? '' : 's'}
-          </div>
-        </div>
-        {/* On phones the badges drop to their own full-width line (indented under the
-            title past the chevron) so the bill number isn't squeezed into a stub.
-            From sm up they sit inline to the right of the title. */}
-        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 pl-7 sm:w-auto sm:pl-0">
+    <ScanGroupCard
+      isOpen={isOpen}
+      onToggle={() => onToggle(bill.key)}
+      tag={showCompany && bill.companyName ? bill.companyName : undefined}
+      title={
+        <>
+          Bill {formatValue(bill.sapDocNum)}
+          {bill.customerName ? (
+            <span className="font-normal text-muted-foreground"> · {bill.customerName}</span>
+          ) : null}
+        </>
+      }
+      subtitle={`${bill.items.length} item${bill.items.length === 1 ? '' : 's'}`}
+      badges={
+        <>
           <Badge variant="outline">
             {bill.scannedBoxes}
             {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
@@ -1404,289 +1401,236 @@ function BillScanCard({
               {bill.expectedLoose > 0 ? `/${formatNumber(bill.expectedLoose)}` : ''} PCS loose
             </Badge>
           ) : null}
-          <Badge
-            variant={bill.status === 'Complete' ? 'success' : 'outline'}
-            className={cn(
-              bill.status === 'Partial' && 'border-amber-200 bg-amber-50 text-amber-700',
-            )}
-          >
-            {bill.status === 'Complete' ? (
-              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-            ) : null}
-            {bill.status}
-          </Badge>
-        </div>
-      </button>
-
-      {isOpen ? (
-        <div className="space-y-4 border-t p-4">
-          <BillItemsTable summary={bill.summary} />
-
-          {canScan && isComplete ? (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-              <Lock className="h-4 w-4 shrink-0" />
-              <span>
-                All {bill.expectedBoxes > 0 ? bill.expectedBoxes : bill.scannedBoxes} box
-                {(bill.expectedBoxes > 0 ? bill.expectedBoxes : bill.scannedBoxes) === 1 ? '' : 'es'} for
-                this bill are scanned. Remove a box below to change a scan.
-              </span>
-            </div>
-          ) : null}
-
-          {canScan && !isComplete ? (
-            <div className="grid gap-4 rounded-md border bg-muted/10 p-3 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
-              <div className="space-y-3">
-                {/* The camera viewport only takes space while the camera is running;
-                    when off we just show the Start button. */}
-                {scanner.isScanning ? (
-                  <>
-                    <div className="relative overflow-hidden rounded-md border bg-slate-950">
-                      <div
-                        id={scanner.elementId}
-                        className="aspect-square min-h-[220px] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-                      />
-                      <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
-                      {/* Green blink confirming a box was accepted via the camera. */}
-                      <div
-                        className={cn(
-                          'pointer-events-none absolute inset-0 bg-emerald-400/60 transition-opacity duration-200',
-                          flashing ? 'opacity-100' : 'opacity-0',
-                        )}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={scanner.stopScanning}
-                        className="flex-1"
-                      >
-                        <Camera className="h-4 w-4" />
-                        Stop
-                      </Button>
-                      {scanner.torchSupported ? (
-                        <Button
-                          type="button"
-                          variant={scanner.torchOn ? 'default' : 'outline'}
-                          onClick={() => void scanner.toggleTorch()}
-                          title="Toggle flashlight"
-                        >
-                          <Flashlight className="h-4 w-4" />
-                          {scanner.torchOn ? 'Light on' : 'Light'}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={scanner.startScanning}
-                    className="w-full"
-                  >
-                    <Camera className="h-4 w-4" />
-                    Start Camera
-                  </Button>
-                )}
-              </div>
-
-              <form
-                className="space-y-3"
-                onSubmit={(event: FormEvent<HTMLFormElement>) => {
-                  event.preventDefault();
-                  onManualSubmit();
-                }}
-              >
-                <Label htmlFor={inputId}>Scan boxes for Bill {formatValue(bill.sapDocNum)}</Label>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Input
-                    ref={manualInputRef}
-                    id={inputId}
-                    autoFocus={autoFocusBarcode}
-                    value={manualBarcode}
-                    onChange={(event) => onManualChange(event.target.value)}
-                    placeholder="Scan or type barcode"
-                    className={cn(
-                      'font-mono transition-shadow',
-                      flashing && 'ring-2 ring-emerald-400 ring-offset-1',
-                    )}
-                  />
-                  <Button type="submit" disabled={!manualBarcode.trim()}>
-                    <PackageCheck className="h-4 w-4" />
-                    Add
-                  </Button>
-                </div>
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {pendingCount > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-amber-600">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Syncing {pendingCount}…
-                    </span>
-                  ) : null}
-                  <span>Boxes are recorded against this bill only, capped at its invoiced quantity.</span>
-                </p>
-              </form>
-            </div>
-          ) : null}
-
-          <FailedScansQueue
-            failedScans={failedScans}
-            canEdit={canScan}
-            onRetry={onRetryFailed}
-            onDismiss={onDismissFailed}
+          <ScanStatusBadge
+            status={
+              bill.status === 'Complete'
+                ? 'complete'
+                : bill.status === 'Partial'
+                  ? 'partial'
+                  : 'open'
+            }
+            label={bill.status}
           />
+        </>
+      }
+    >
+      <BillItemsTable summary={bill.summary} />
 
-          <BillScannedBoxes
-            scans={bill.scans}
-            canRemove={canScan}
-            isRemovingScans={isRemovingScans}
-            onRemoveScan={onRemoveScan}
-            onRemoveScans={onRemoveScans}
-          />
+      {canScan && isComplete ? (
+        <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+          <Lock className="h-4 w-4 shrink-0" />
+          <span>
+            All {bill.expectedBoxes > 0 ? bill.expectedBoxes : bill.scannedBoxes} box
+            {(bill.expectedBoxes > 0 ? bill.expectedBoxes : bill.scannedBoxes) === 1
+              ? ''
+              : 'es'}{' '}
+            for this bill are scanned. Remove a box below to change a scan.
+          </span>
         </div>
       ) : null}
-    </div>
+
+      {canScan && !isComplete ? (
+        <div className="grid gap-4 rounded-md border bg-muted/10 p-3 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
+          <div className="space-y-3">
+            {/* The camera viewport only takes space while the camera is running;
+                    when off we just show the Start button. */}
+            {scanner.isScanning ? (
+              <>
+                <div className="relative overflow-hidden rounded-md border bg-slate-950">
+                  <div
+                    id={scanner.elementId}
+                    className="aspect-square min-h-[220px] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+                  />
+                  <div className="pointer-events-none absolute inset-6 rounded-md border-2 border-white/80" />
+                  {/* Green blink confirming a box was accepted via the camera. */}
+                  <div
+                    className={cn(
+                      'pointer-events-none absolute inset-0 bg-emerald-400/60 transition-opacity duration-200',
+                      flashing ? 'opacity-100' : 'opacity-0',
+                    )}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={scanner.stopScanning}
+                    className="flex-1"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Stop
+                  </Button>
+                  {scanner.torchSupported ? (
+                    <Button
+                      type="button"
+                      variant={scanner.torchOn ? 'default' : 'outline'}
+                      onClick={() => void scanner.toggleTorch()}
+                      title="Toggle flashlight"
+                    >
+                      <Flashlight className="h-4 w-4" />
+                      {scanner.torchOn ? 'Light on' : 'Light'}
+                    </Button>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <Button type="button" onClick={scanner.startScanning} className="w-full">
+                <Camera className="h-4 w-4" />
+                Start Camera
+              </Button>
+            )}
+          </div>
+
+          <form
+            className="space-y-3"
+            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              onManualSubmit();
+            }}
+          >
+            <Label htmlFor={inputId}>Scan boxes for Bill {formatValue(bill.sapDocNum)}</Label>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                ref={manualInputRef}
+                id={inputId}
+                autoFocus={autoFocusBarcode}
+                value={manualBarcode}
+                onChange={(event) => onManualChange(event.target.value)}
+                placeholder="Scan or type barcode"
+                className={cn(
+                  'font-mono transition-shadow',
+                  flashing && 'ring-2 ring-emerald-400 ring-offset-1',
+                )}
+              />
+              <Button type="submit" disabled={!manualBarcode.trim()}>
+                <PackageCheck className="h-4 w-4" />
+                Add
+              </Button>
+            </div>
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              {pendingCount > 0 ? (
+                <span className="inline-flex items-center gap-1 text-amber-600">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Syncing {pendingCount}…
+                </span>
+              ) : null}
+              <span>
+                Boxes are recorded against this bill only, capped at its invoiced quantity.
+              </span>
+            </p>
+          </form>
+        </div>
+      ) : null}
+
+      <FailedScansQueue
+        failedScans={failedScans}
+        canEdit={canScan}
+        onRetry={onRetryFailed}
+        onDismiss={onDismissFailed}
+      />
+
+      <BillScannedBoxes
+        scans={bill.scans}
+        canRemove={canScan}
+        isRemovingScans={isRemovingScans}
+        onRemoveScan={onRemoveScan}
+        onRemoveScans={onRemoveScans}
+      />
+    </ScanGroupCard>
   );
 }
 
 function BillItemsTable({ summary }: { summary: BillScanSummary }) {
   const { items, unplannedScanCount } = summary;
-  if (items.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-        No item lines on this bill.
-      </div>
-    );
-  }
+  const rows: ScanItemsTableRow[] = items.map((item) => ({
+    key: item.key,
+    itemCode: formatValue(item.itemCode),
+    itemName: formatValue(item.itemName),
+    itemNote: `Line ${item.lineNum + 1}`,
+    status: item.isComplete ? 'complete' : item.scanCount > 0 ? 'partial' : 'open',
+    cells: [
+      {
+        align: 'right',
+        primary: item.isBoxCounted ? (
+          <>
+            {formatNumber(item.expectedQuantity)} box{item.expectedQuantity === 1 ? '' : 'es'}
+          </>
+        ) : (
+          formatQuantity(item.expectedQuantity, item.uom)
+        ),
+        // A CSD bill's quantity IS a box count: "4" means four cartons, not four
+        // bottles, even though SAP stamps the line PCS. Saying so here stops the
+        // operator reading it against the 20 on the carton label.
+        lines: item.isBoxCounted ? ['bill counts boxes'] : undefined,
+      },
+      {
+        align: 'right',
+        primary:
+          item.expectedBoxes > 0 ? (
+            formatNumber(item.expectedBoxes)
+          ) : item.isLoose ? (
+            // SAP transacts this item per piece (SalFactor2 = 1, non-CSD) and its
+            // bill prints "0 Box / N PCS": there is no box target to scan against,
+            // so the row is judged on quantity. Saying "Loose" beats a bare dash,
+            // which reads as missing data.
+            <span className="text-xs font-medium text-muted-foreground">Loose</span>
+          ) : (
+            '-'
+          ),
+        // SAP prints this line as boxes PLUS a remainder (1,860 PCS of a 16-PCS
+        // item = 116 boxes + 4 loose). The remainder arrives in a part box, so the
+        // operator must know it is expected.
+        lines:
+          item.expectedBoxes > 0 && item.expectedLoose > 0
+            ? [`+ ${formatNumber(item.expectedLoose)} PCS loose`]
+            : undefined,
+      },
+      {
+        primary: `${item.fullBoxCount} box${item.fullBoxCount === 1 ? '' : 'es'}`,
+        lines: [
+          // A short box covers the line's loose remainder, not a box slot: called
+          // out so "boxes scanned" can never quietly stand in for missing pieces.
+          item.looseBoxCount > 0 ? (
+            <span className="font-medium text-amber-700">
+              + {formatNumber(item.loosePieces)} PCS loose (in {item.looseBoxCount} box
+              {item.looseBoxCount === 1 ? '' : 'es'})
+            </span>
+          ) : null,
+          item.scannedQuantity > 0
+            ? item.isBoxCounted
+              ? `${formatNumber(item.scannedQuantity)} of ${formatNumber(item.expectedQuantity)} boxes`
+              : formatQuantity(item.scannedQuantity, item.uom)
+            : '-',
+          // What each box carried. Cartons of a loose item are whatever the packers
+          // packed (362 + 138 against a 500-pc line), so the count alone doesn't
+          // tell the operator whether the goods are covered.
+          item.scanCount > 1 ? (
+            <span className="tabular-nums text-muted-foreground/80">
+              {item.isBoxCounted ? 'holding ' : ''}
+              {formatScannedBoxQuantities(item.scannedBoxQuantities)}
+              {item.isBoxCounted ? ' pcs' : ''}
+            </span>
+          ) : null,
+        ],
+        progress: item.progressPercent !== null ? { percent: item.progressPercent } : null,
+      },
+    ],
+  }));
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <table className="w-full min-w-[860px] text-sm">
-        <thead className="border-b bg-muted/40">
-          <tr>
-            <th className="w-[150px] p-3 text-left font-medium">Item Code</th>
-            <th className="p-3 text-left font-medium">Item</th>
-            <th className="w-[140px] p-3 text-right font-medium">Invoice Qty</th>
-            <th className="w-[110px] p-3 text-right font-medium">Boxes</th>
-            <th className="w-[170px] p-3 text-left font-medium">Scanned</th>
-            <th className="w-[120px] p-3 text-left font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr
-              key={item.key}
-              className={cn(
-                'border-b last:border-b-0',
-                item.scanCount > 0 && !item.isComplete && 'bg-amber-50/60',
-                item.isComplete && 'bg-emerald-50/60',
-              )}
-            >
-              <td className="whitespace-nowrap p-3 align-top font-mono text-xs font-semibold">
-                {formatValue(item.itemCode)}
-              </td>
-              <td className="p-3 align-top">
-                <div className="font-medium">{formatValue(item.itemName)}</div>
-                <div className="mt-1 text-xs text-muted-foreground">Line {item.lineNum + 1}</div>
-              </td>
-              <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                {item.isBoxCounted ? (
-                  // A CSD bill's quantity IS a box count: "4" means four cartons, not
-                  // four bottles, even though SAP stamps the line PCS. Saying so here
-                  // stops the operator reading it against the 20 on the carton label.
-                  <>
-                    {formatNumber(item.expectedQuantity)} box
-                    {item.expectedQuantity === 1 ? '' : 'es'}
-                    <div className="text-xs font-normal text-muted-foreground">
-                      bill counts boxes
-                    </div>
-                  </>
-                ) : (
-                  formatQuantity(item.expectedQuantity, item.uom)
-                )}
-              </td>
-              <td className="whitespace-nowrap p-3 text-right align-top tabular-nums">
-                {item.expectedBoxes > 0 ? (
-                  <>
-                    {formatNumber(item.expectedBoxes)}
-                    {item.expectedLoose > 0 ? (
-                      // SAP prints this line as boxes PLUS a remainder (1,860 PCS of a
-                      // 16-PCS item = 116 boxes + 4 loose). The remainder arrives in a
-                      // part box, so the operator must know it is expected.
-                      <div className="text-xs font-normal text-muted-foreground">
-                        + {formatNumber(item.expectedLoose)} PCS loose
-                      </div>
-                    ) : null}
-                  </>
-                ) : item.isLoose ? (
-                  // SAP transacts this item per piece (SalFactor2 = 1, non-CSD) and its
-                  // bill prints "0 Box / N PCS": there is no box target to scan against,
-                  // so the row is judged on quantity. Saying "Loose" beats a bare dash,
-                  // which reads as missing data.
-                  <span className="text-xs font-medium text-muted-foreground">Loose</span>
-                ) : (
-                  '-'
-                )}
-              </td>
-              <td className="p-3 align-top">
-                <div className="font-medium">
-                  {item.fullBoxCount} box{item.fullBoxCount === 1 ? '' : 'es'}
-                </div>
-                {/* A short box covers the line's loose remainder, not a box slot: called
-                    out so "boxes scanned" can never quietly stand in for missing pieces. */}
-                {item.looseBoxCount > 0 ? (
-                  <div className="text-xs font-medium text-amber-700">
-                    + {formatNumber(item.loosePieces)} PCS loose (in {item.looseBoxCount} box
-                    {item.looseBoxCount === 1 ? '' : 'es'})
-                  </div>
-                ) : null}
-                <div className="text-xs text-muted-foreground">
-                  {item.scannedQuantity > 0
-                    ? item.isBoxCounted
-                      ? `${formatNumber(item.scannedQuantity)} of ${formatNumber(item.expectedQuantity)} boxes`
-                      : formatQuantity(item.scannedQuantity, item.uom)
-                    : '-'}
-                </div>
-                {item.scanCount > 1 ? (
-                  // What each box carried. Cartons of a loose item are whatever the packers
-                  // packed (362 + 138 against a 500-pc line), so the count alone doesn't
-                  // tell the operator whether the goods are covered.
-                  <div className="text-xs tabular-nums text-muted-foreground/80">
-                    {item.isBoxCounted ? 'holding ' : ''}
-                    {formatScannedBoxQuantities(item.scannedBoxQuantities)}
-                    {item.isBoxCounted ? ' pcs' : ''}
-                  </div>
-                ) : null}
-                {item.progressPercent !== null ? (
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-emerald-500"
-                      style={{ width: `${item.progressPercent}%` }}
-                    />
-                  </div>
-                ) : null}
-              </td>
-              <td className="p-3 align-top">
-                <Badge
-                  variant={item.isComplete ? 'success' : 'outline'}
-                  className={cn(
-                    !item.isComplete &&
-                      item.scanCount > 0 &&
-                      'border-amber-200 bg-amber-50 text-amber-700',
-                  )}
-                >
-                  {item.isComplete ? 'Complete' : item.scanCount > 0 ? 'Partial' : 'Open'}
-                </Badge>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {unplannedScanCount > 0 ? (
-        <div className="border-t bg-red-50 p-2 text-xs text-red-700">
-          {unplannedScanCount} scanned box{unplannedScanCount === 1 ? '' : 'es'} outside this bill's
-          item list.
-        </div>
-      ) : null}
-    </div>
+    <ScanItemsTable
+      columns={[
+        { header: 'Invoice Qty', align: 'right', className: 'w-[140px]' },
+        { header: 'Boxes', align: 'right', className: 'w-[110px]' },
+        { header: 'Scanned', className: 'w-[170px]' },
+      ]}
+      minWidthClassName="min-w-[860px]"
+      rows={rows}
+      footnote={
+        unplannedScanCount > 0
+          ? `${unplannedScanCount} scanned box${unplannedScanCount === 1 ? '' : 'es'} outside this bill's item list.`
+          : undefined
+      }
+    />
   );
 }
 
@@ -1850,7 +1794,10 @@ function BillScannedBoxes({
             {scans.map((scan) => (
               <tr
                 key={scan.id}
-                className={cn('border-b last:border-b-0', picked.includes(scan.id) && 'bg-muted/50')}
+                className={cn(
+                  'border-b last:border-b-0',
+                  picked.includes(scan.id) && 'bg-muted/50',
+                )}
               >
                 {canRemove ? (
                   <td className="p-3">
@@ -1869,7 +1816,9 @@ function BillScannedBoxes({
                   </div>
                 </td>
                 <td className="p-3">{formatValue(scan.batch_number)}</td>
-                <td className="p-3">{[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}</td>
+                <td className="p-3">
+                  {[scan.quantity, scan.uom].filter(Boolean).join(' ') || '-'}
+                </td>
                 <td className="p-3">{formatValue(scan.warehouse_code)}</td>
                 <td className="p-3 text-right">
                   <Button
@@ -1889,16 +1838,6 @@ function BillScannedBoxes({
         </table>
       </div>
     </>
-  );
-}
-
-function ScanMetric({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-md border bg-muted/20 p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-semibold">{value}</p>
-      {hint ? <p className="text-xs font-medium text-muted-foreground">{hint}</p> : null}
-    </div>
   );
 }
 
@@ -1942,9 +1881,7 @@ function ScanSkipPanel({
         <div className="space-y-1">
           <p className="font-medium">Scanning skip approved</p>
           <p className="text-sm">
-            {skipRequest?.reviewed_by_name
-              ? `Approved by ${skipRequest.reviewed_by_name}. `
-              : ''}
+            {skipRequest?.reviewed_by_name ? `Approved by ${skipRequest.reviewed_by_name}. ` : ''}
             {status === 'APPROVED'
               ? 'You can continue to attachments without scanning boxes.'
               : "Approved for this truck's load on another company's docking. You can continue to attachments without scanning boxes."}
@@ -2042,7 +1979,9 @@ function PartialScanPanel({
         <div className="space-y-1">
           <p className="font-medium">Partial dispatch approved</p>
           <p className="text-sm">
-            {partialRequest?.reviewed_by_name ? `Approved by ${partialRequest.reviewed_by_name}. ` : ''}
+            {partialRequest?.reviewed_by_name
+              ? `Approved by ${partialRequest.reviewed_by_name}. `
+              : ''}
             {status === 'APPROVED'
               ? 'You can continue to attachments with the boxes scanned so far.'
               : "Approved for this truck's load on another company's docking. You can continue to attachments with the boxes scanned so far."}
