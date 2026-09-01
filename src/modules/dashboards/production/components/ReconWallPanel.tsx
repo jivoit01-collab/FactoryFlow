@@ -92,8 +92,8 @@ export function ReconWallPanel({
     >
       {slice.isError ? (
         <PanelEmpty>
-          SAP could not be reached, so there is nothing to reconcile against. The app side is on
-          the tiles above.
+          SAP could not be reached, so there is nothing to reconcile against. The app side is on the
+          tiles above.
         </PanelEmpty>
       ) : rows.length === 0 ? (
         <PanelEmpty>{slice.isLoading ? 'Reconciling against SAP…' : emptyText}</PanelEmpty>
@@ -131,7 +131,10 @@ export function ReconWallPanel({
                 >
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-semibold text-foreground" title={row.sku}>
+                      <span
+                        className="truncate text-sm font-semibold text-foreground"
+                        title={row.sku}
+                      >
                         {row.sku}
                       </span>
                       <span className="shrink-0 text-sm font-bold tabular-nums text-foreground">

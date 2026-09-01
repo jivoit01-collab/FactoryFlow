@@ -118,7 +118,8 @@ const dashboardsModules: DashboardsModuleCard[] = [
   },
   {
     title: 'Production',
-    description: 'Company-aware production — cost/unit, OEE, output, waste & plan adherence',
+    description:
+      "Today's production on one wall screen - what came off the lines, App-vs-SAP, material, wastage & cost",
     icon: <Factory className="h-5 w-5" />,
     route: '/dashboards/production',
     color: 'text-emerald-600',

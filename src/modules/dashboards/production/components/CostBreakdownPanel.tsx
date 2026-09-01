@@ -69,8 +69,7 @@ export function CostBreakdownPanel({
         <>
           {cost.wasteRecovery > 0 && (
             <div className="shrink-0 border-y border-black/[0.06] bg-black/[0.03] px-4 py-1.5 text-[11px] tabular-nums text-muted-foreground dark:border-white/5 dark:bg-white/[0.035]">
-              net{' '}
-              <span className="font-bold text-foreground">{money(cost.net)}</span> after{' '}
+              net <span className="font-bold text-foreground">{money(cost.net)}</span> after{' '}
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                 −{money(cost.wasteRecovery)}
               </span>{' '}
@@ -101,17 +100,13 @@ export function CostBreakdownPanel({
                       <span
                         className={cn(
                           'font-bold',
-                          row.credit
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-foreground',
+                          row.credit ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground',
                         )}
                       >
                         {row.credit ? '−' : ''}
                         {money(row.amount)}
                       </span>
-                      <span className="ml-1.5 text-muted-foreground/70">
-                        {row.pct.toFixed(0)}%
-                      </span>
+                      <span className="ml-1.5 text-muted-foreground/70">{row.pct.toFixed(0)}%</span>
                     </span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.07] dark:bg-white/10">

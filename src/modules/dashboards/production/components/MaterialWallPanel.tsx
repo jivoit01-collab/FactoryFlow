@@ -84,10 +84,7 @@ export function MaterialWallPanel({
               // whether the floor used what the recipe called for.
               const overUse = row.should_use > 0 ? row.app_issued - row.should_use : null;
               return (
-                <li
-                  key={`${row.item_code}-${index}`}
-                  className="flex items-center gap-3 px-4 py-2"
-                >
+                <li key={`${row.item_code}-${index}`} className="flex items-center gap-3 px-4 py-2">
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
                       <span
@@ -144,15 +141,7 @@ export function MaterialWallPanel({
   );
 }
 
-function Total({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: 'good' | 'bad';
-}) {
+function Total({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'bad' }) {
   return (
     <div className="px-2 py-1.5">
       <div

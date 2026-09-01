@@ -95,7 +95,10 @@ export function ProductionRunsPanel({
                     </span>
                   </span>
                   <span className="mt-0.5 flex items-center justify-between gap-2">
-                    <span className="truncate text-[11px] text-muted-foreground/80" title={row.product}>
+                    <span
+                      className="truncate text-[11px] text-muted-foreground/80"
+                      title={row.product}
+                    >
                       {row.product}
                     </span>
                     <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground/60">

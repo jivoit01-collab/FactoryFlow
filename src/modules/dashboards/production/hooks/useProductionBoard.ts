@@ -353,7 +353,10 @@ export function useProductionBoard(day: ProductionDay, line: number | undefined)
   // ₹0 there would read as a free day of production.
   const casesByDate = new Map<string, number>();
   for (const run of allRuns) {
-    casesByDate.set(run.date, (casesByDate.get(run.date) ?? 0) + norm(Number(run.total_production)));
+    casesByDate.set(
+      run.date,
+      (casesByDate.get(run.date) ?? 0) + norm(Number(run.total_production)),
+    );
   }
   const costByDate = new Map(costWindow.data?.trend.map((point) => [point.date, point]) ?? []);
 

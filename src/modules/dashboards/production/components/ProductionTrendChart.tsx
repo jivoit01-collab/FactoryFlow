@@ -187,14 +187,7 @@ export function ProductionTrendChart({
             </span>
             <span className="flex items-center gap-1.5">
               <svg width="18" height="6" viewBox="0 0 18 6" aria-hidden className="shrink-0">
-                <line
-                  x1="1"
-                  y1="3"
-                  x2="17"
-                  y2="3"
-                  stroke={palette.hue('cost')}
-                  strokeWidth="2.5"
-                />
+                <line x1="1" y1="3" x2="17" y2="3" stroke={palette.hue('cost')} strokeWidth="2.5" />
               </svg>
               cost / {unitNoun}
               <span className="font-bold tabular-nums text-foreground">
