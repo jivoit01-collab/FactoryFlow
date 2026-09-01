@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   DoorOpen,
   Factory,
+  IndianRupee,
   MonitorPlay,
   Navigation,
   Package,
@@ -65,6 +66,18 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/production-movement',
     color: 'text-sky-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+  },
+  {
+    title: 'Factory Expense',
+    description:
+      "Today's factory cost on one wall screen - labour at the gate, salary, electricity and maintenance",
+    icon: <IndianRupee className="h-5 w-5" />,
+    route: '/dashboards/factory-expense',
+    color: 'text-teal-600',
+    permissions: [
+      DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
+      DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
+    ],
   },
   {
     title: 'Dispatch',

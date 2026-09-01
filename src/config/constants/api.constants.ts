@@ -472,6 +472,20 @@ export const API_ENDPOINTS = {
     REPORT: '/non-moving-rm/report/',
     ITEM_GROUPS: '/non-moving-rm/item-groups/',
   },
+  // Factory Expense wall board — labour, salary, electricity and maintenance,
+  // all from FactoryFlow's own registers rather than SAP.
+  FACTORY_EXPENSE: {
+    BOARD: '/dashboards/factory-expense/board/',
+    SETTINGS: '/dashboards/factory-expense/settings/',
+    DEPARTMENTS: '/dashboards/factory-expense/departments/',
+    LABOUR_RATES: '/dashboards/factory-expense/labour-rates/',
+    LABOUR_RATE_DETAIL: (id: number) => `/dashboards/factory-expense/labour-rates/${id}/`,
+    DEPARTMENT_SALARIES: '/dashboards/factory-expense/department-salaries/',
+    DEPARTMENT_SALARY_DETAIL: (id: number) =>
+      `/dashboards/factory-expense/department-salaries/${id}/`,
+    BUDGETS: '/dashboards/factory-expense/budgets/',
+    BUDGET_DETAIL: (id: number) => `/dashboards/factory-expense/budgets/${id}/`,
+  },
   // Sales Planning vs Requirement Dashboard
   SALES_PLANNING_REQUIREMENT: {
     REPORT: '/dashboards/sales-planning-requirement/report/',
