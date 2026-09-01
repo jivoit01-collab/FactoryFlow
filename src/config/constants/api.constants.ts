@@ -294,6 +294,24 @@ export const API_ENDPOINTS = {
     PRINT_DOCUMENTS: '/quality-control/print-documents/',
     PRINT_DOCUMENT_BY_ID: (id: number) => `/quality-control/print-documents/${id}/`,
 
+    // QC PDF Document Library
+    QC_DOCUMENT_FILES: '/quality-control/document-files/',
+    QC_DOCUMENT_FILE_BY_ID: (id: number) => `/quality-control/document-files/${id}/`,
+
+    // QC Record Forms (Documents) — blank forms and filled sheets
+    RECORD_TEMPLATES: '/quality-control/record-templates/',
+    RECORD_TEMPLATE_BY_ID: (id: number) => `/quality-control/record-templates/${id}/`,
+    QC_RECORDS: '/quality-control/qc-records/',
+    QC_RECORD_BY_ID: (id: number) => `/quality-control/qc-records/${id}/`,
+    QC_RECORD_VALUES: (id: number) => `/quality-control/qc-records/${id}/values/`,
+    QC_RECORD_SUBMIT: (id: number) => `/quality-control/qc-records/${id}/submit/`,
+    QC_RECORD_APPROVE: (id: number) => `/quality-control/qc-records/${id}/approve/`,
+
+    // Testing Procedures (QC Procedures)
+    TESTING_PROCEDURES: '/quality-control/testing-procedures/',
+    TESTING_PROCEDURE_COUNTS: '/quality-control/testing-procedures/counts/',
+    TESTING_PROCEDURE_BY_ID: (id: number) => `/quality-control/testing-procedures/${id}/`,
+
     // QC Parameters
     QC_PARAMETER_BY_ID: (id: number) => `/quality-control/parameters/${id}/`,
 
