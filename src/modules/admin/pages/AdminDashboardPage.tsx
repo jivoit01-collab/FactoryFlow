@@ -1,9 +1,18 @@
-import { ClipboardCheck, ClipboardList, PackageCheck, ShieldCheck, Truck, Undo2 } from 'lucide-react';
+import {
+  ClipboardCheck,
+  ClipboardList,
+  Coins,
+  PackageCheck,
+  ShieldCheck,
+  Truck,
+  Undo2,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
   ADMIN_PERMISSIONS,
+  COST_MASTER_PERMISSIONS,
   GOODS_RETURN_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
@@ -81,6 +90,15 @@ const adminModuleCards: AdminModuleCard[] = [
     icon: <Undo2 className="h-5 w-5" />,
     color: 'text-rose-700',
     permissions: [GOODS_RETURN_PERMISSIONS.APPROVE],
+  },
+  {
+    title: 'Cost Master',
+    description:
+      'Define every cost type the factory incurs and set its rates — factory-wide, per company, per department, or for a specific value.',
+    route: '/admin/cost-master',
+    icon: <Coins className="h-5 w-5" />,
+    color: 'text-indigo-700',
+    permissions: [COST_MASTER_PERMISSIONS.MANAGE],
   },
 ];
 

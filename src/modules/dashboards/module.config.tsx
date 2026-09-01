@@ -42,6 +42,12 @@ const DispatchFulfilmentDashboardPage = lazy(
 const DispatchTrackingDashboardPage = lazy(
   () => import('./dispatch-tracking/pages/DispatchTrackingDashboardPage'),
 );
+const FactoryExpenseWallPage = lazy(
+  () => import('./factory-expense/pages/FactoryExpenseWallPage'),
+);
+const FactoryExpenseConfigPage = lazy(
+  () => import('./factory-expense/pages/FactoryExpenseConfigPage'),
+);
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
   routes: [
@@ -159,6 +165,25 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Dispatch Fulfilment' },
     },
     {
+      // The expense wall. Sits with the dispatch board because they are the two
+      // screens that live on a wall rather than a desk.
+      path: '/dashboards/factory-expense',
+      element: <FactoryExpenseWallPage />,
+      layout: 'main',
+      permissions: [
+        DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
+        DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
+      ],
+      breadcrumb: { label: 'Factory Expense' },
+    },
+    {
+      path: '/dashboards/factory-expense/config',
+      element: <FactoryExpenseConfigPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE],
+      breadcrumb: { label: 'Configuration' },
+    },
+    {
       path: '/dashboards/dispatch-tracking',
       element: <DispatchTrackingDashboardPage />,
       layout: 'main',
@@ -189,6 +214,10 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // SAP Reports lives here too — a user with only report access still
         // needs the group to appear.
         ...SAP_REPORTS_ACCESS,
+        // Factory Expense wall — an admin who only holds this must still be
+        // able to reach the Dashboards menu.
+        DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
+        DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
       ],
       hasSubmenu: true,
       // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
@@ -247,6 +276,14 @@ export const dashboardsModuleConfig: ModuleConfig = {
             DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
             DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
             GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
+          ],
+        },
+        {
+          path: '/dashboards/factory-expense',
+          title: 'Factory Expense',
+          permissions: [
+            DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
+            DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
           ],
         },
         {

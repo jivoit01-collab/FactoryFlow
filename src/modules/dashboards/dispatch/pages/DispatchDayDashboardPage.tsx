@@ -17,7 +17,12 @@ import {
   DispatchVehiclesPanel,
   DispatchVendorsPanel,
 } from '../components';
-import { useDispatchDayTotals, useDispatchDayVehicles, useFullscreen } from '../hooks';
+import {
+  BoardDayProvider,
+  useDispatchDayTotals,
+  useDispatchDayVehicles,
+  useFullscreen,
+} from '../hooks';
 
 /**
  * Dispatch, today, on a wall.
@@ -35,6 +40,11 @@ import { useDispatchDayTotals, useDispatchDayVehicles, useFullscreen } from '../
  *     register, the only record carrying company, transporter and the truck's
  *     real state on one row.
  *
+ * The whole board hangs off one shared day, so a back-date moves every panel at
+ * once. Two figures cannot be back-dated and say so on their face: the open
+ * backlog is a live snapshot the backend does not bind to a window, and
+ * late-on-road is a fact about this minute.
+ *
  * The dispatch-plan pipeline board used to drive a stage-flow strip here and was
  * dropped: a 16-day cross-company scan blew the client's 30 s timeout on every
  * refresh, so the strip showed a row of zeros and an error banner rather than
@@ -42,6 +52,14 @@ import { useDispatchDayTotals, useDispatchDayVehicles, useFullscreen } from '../
  * where one screen is worth waiting for.
  */
 export default function DispatchDayDashboardPage() {
+  return (
+    <BoardDayProvider>
+      <DispatchDayBoard />
+    </BoardDayProvider>
+  );
+}
+
+function DispatchDayBoard() {
   const { hasPermission } = usePermission();
   const canSeeValues = hasPermission(DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS);
   const canSeeDockings = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.VIEW);
@@ -67,10 +85,10 @@ export default function DispatchDayDashboardPage() {
     <div
       ref={boardRef}
       className={cn(
-        'relative flex flex-col gap-3 overflow-hidden bg-[#070b14] text-slate-200',
+        'relative flex flex-col gap-3 overflow-hidden bg-background text-foreground',
         isFullscreen
           ? 'h-screen w-screen p-4'
-          : 'h-[calc(100vh-11rem)] min-h-[880px] rounded-3xl border border-white/10 p-3',
+          : 'h-[calc(100vh-11rem)] min-h-[880px] rounded-3xl border border-black/[0.09] dark:border-white/10 p-3',
       )}
     >
       {/* ambient wash — keeps a mostly-black board from looking switched off */}
@@ -90,7 +108,7 @@ export default function DispatchDayDashboardPage() {
       />
 
       {canSeeValues && totals.isError && (
-        <p className="shrink-0 rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-2 text-sm text-rose-200">
+        <p className="shrink-0 rounded-xl border border-rose-600/30 dark:border-rose-400/30 bg-rose-500/10 dark:bg-rose-400/10 px-4 py-2 text-sm text-rose-700 dark:text-rose-200">
           {getErrorMessage(totals.error, "Today's dispatched totals could not be read.")}
         </p>
       )}
@@ -101,7 +119,7 @@ export default function DispatchDayDashboardPage() {
           <DispatchTrendChart totals={totals} />
         </>
       ) : (
-        <p className="shrink-0 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-slate-400">
+        <p className="shrink-0 rounded-xl border border-black/[0.09] dark:border-white/10 bg-black/[0.018] dark:bg-white/[0.03] px-4 py-2 text-xs text-muted-foreground">
           Headline figures and the 14-day trend need the Dispatch Plans permission &mdash; showing
           the floor only.
         </p>
@@ -114,13 +132,13 @@ export default function DispatchDayDashboardPage() {
           <DispatchVehiclesPanel vehicles={vehicles} canSeeTracking={canSeeTracking} />
         </div>
       ) : (
-        <p className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-center text-sm text-slate-400">
+        <p className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-black/[0.09] dark:border-white/10 bg-black/[0.018] dark:bg-white/[0.03] px-4 text-center text-sm text-muted-foreground">
           Vendors, company split and the vehicle list need the Sales Dispatch Out view permission.
         </p>
       )}
 
       {!isFullscreen && (
-        <p className="flex shrink-0 items-center justify-center gap-1.5 text-[11px] text-slate-600">
+        <p className="flex shrink-0 items-center justify-center gap-1.5 text-[11px] text-muted-foreground/60">
           <Maximize2 className="h-3 w-3" />
           Built for a wall screen &mdash; open wall mode for the full-height board.
         </p>

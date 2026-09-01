@@ -45,6 +45,9 @@ vi.mock('@/config/constants', () => ({
         `/maintenance/work-orders/${workOrderId}/approve/`,
       WORK_ORDER_CLOSE: (workOrderId: number) =>
         `/maintenance/work-orders/${workOrderId}/close/`,
+      WORK_ORDER_SEND_BACK: (workOrderId: number) =>
+        `/maintenance/work-orders/${workOrderId}/send-back/`,
+      WORK_ORDER_LOGS: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/logs/`,
       WORK_ORDER_SET_STATUS: (workOrderId: number) =>
         `/maintenance/work-orders/${workOrderId}/set-status/`,
       WORK_ORDER_PHOTOS: '/maintenance/work-order-photos/',
@@ -306,7 +309,10 @@ describe('maintenanceApi', () => {
     await maintenanceApi.getWorkOrders({ status: 'OPEN', priority: 'CRITICAL' });
     await maintenanceApi.createWorkOrder(payload);
     await maintenanceApi.updateWorkOrder(11, payload);
-    await maintenanceApi.assignWorkOrder(11, { assigned_to: 5, target_date: '2026-06-04' });
+    await maintenanceApi.assignWorkOrder(11, {
+      assigned_to_text: 'Sanjay Sharma (Sanjay123)',
+      target_date: '2026-06-04',
+    });
     await maintenanceApi.startWorkOrder(11);
     await maintenanceApi.completeWorkOrder(11, { completion_remarks: 'Completed' });
     await maintenanceApi.approveWorkOrder(11, { closure_remarks: 'Verified' });
@@ -319,7 +325,7 @@ describe('maintenanceApi', () => {
     expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/work-orders/', payload);
     expect(mockedApiClient.put).toHaveBeenCalledWith('/maintenance/work-orders/11/', payload);
     expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/work-orders/11/assign/', {
-      assigned_to: 5,
+      assigned_to_text: 'Sanjay Sharma (Sanjay123)',
       target_date: '2026-06-04',
     });
     expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/work-orders/11/start/');
@@ -334,6 +340,16 @@ describe('maintenanceApi', () => {
       status: 'WAITING_SPARE',
       remarks: 'Need belt',
     });
+  });
+
+  it('sends a work order back for rework and reads its hand-off trail', async () => {
+    await maintenanceApi.sendBackWorkOrder(11, { remarks: 'Still leaking after an hour.' });
+    await maintenanceApi.getWorkOrderLogs(11);
+
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/work-orders/11/send-back/', {
+      remarks: 'Still leaking after an hour.',
+    });
+    expect(mockedApiClient.get).toHaveBeenCalledWith('/maintenance/work-orders/11/logs/');
   });
 
   it('lists work order photos and uploads a photo as multipart form data', async () => {

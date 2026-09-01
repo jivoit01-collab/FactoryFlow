@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   DoorOpen,
   Factory,
+  IndianRupee,
   MonitorPlay,
   Navigation,
   Package,
@@ -67,6 +68,18 @@ const dashboardsModules: DashboardsModuleCard[] = [
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
   },
   {
+    title: 'Factory Expense',
+    description:
+      "Today's factory cost on one wall screen - labour at the gate, salary, electricity and maintenance",
+    icon: <IndianRupee className="h-5 w-5" />,
+    route: '/dashboards/factory-expense',
+    color: 'text-teal-600',
+    permissions: [
+      DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
+      DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
+    ],
+  },
+  {
     title: 'Dispatch',
     description:
       "Today's dispatch on one wall screen - trucks out, value shipped, vendors, company split & vehicles in/out",
@@ -105,7 +118,8 @@ const dashboardsModules: DashboardsModuleCard[] = [
   },
   {
     title: 'Production',
-    description: 'Company-aware production — cost/unit, OEE, output, waste & plan adherence',
+    description:
+      "Today's production on one wall screen - what came off the lines, App-vs-SAP, material, wastage & cost",
     icon: <Factory className="h-5 w-5" />,
     route: '/dashboards/production',
     color: 'text-emerald-600',

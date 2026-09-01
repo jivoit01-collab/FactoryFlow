@@ -7,6 +7,7 @@ import {
   PackagePlus,
   Play,
   RefreshCw,
+  Undo2,
   Upload,
   UserCheck,
 } from 'lucide-react';
@@ -51,6 +52,7 @@ import {
   useMaintenanceSpares,
   useMaintenanceWorkOrder,
   useRequestWorkOrderSpare,
+  useSendBackMaintenanceWorkOrder,
   useSetMaintenanceWorkOrderStatus,
   useSpareRequests,
   useStartMaintenanceWorkOrder,
@@ -58,6 +60,7 @@ import {
   useUpdateMaintenanceWorkOrder,
   useUploadWorkOrderPhoto,
   useVendorVisits,
+  useWorkOrderLogs,
   useWorkOrderPhotos,
 } from '../api';
 import {
@@ -66,6 +69,7 @@ import {
   WorkOrderCompleteDialog,
   WorkOrderFormDialog,
   WorkOrderPhotoUploadDialog,
+  WorkOrderSendBackDialog,
   WorkOrderStatusBadge,
   WorkOrderStatusDialog,
 } from '../components';
@@ -79,9 +83,11 @@ import type {
   MaintenanceWorkOrderApprovalPayload,
   MaintenanceWorkOrderAssignPayload,
   MaintenanceWorkOrderCompletePayload,
+  MaintenanceWorkOrderLog,
   MaintenanceWorkOrderPayload,
   MaintenanceWorkOrderPhoto,
   MaintenanceWorkOrderPhotoUploadPayload,
+  MaintenanceWorkOrderSendBackPayload,
   MaintenanceWorkOrderStatusPayload,
   SpareRequest,
   WorkImpact,
@@ -147,7 +153,45 @@ function isClosed(workOrder?: MaintenanceWorkOrder | null) {
 }
 
 function canStartStatus(workOrder?: MaintenanceWorkOrder | null) {
-  return !!workOrder && ['OPEN', 'ASSIGNED', 'WAITING_SPARE', 'WAITING_VENDOR', 'ON_HOLD'].includes(workOrder.status);
+  return (
+    !!workOrder &&
+    ['OPEN', 'ASSIGNED', 'REOPENED', 'WAITING_SPARE', 'WAITING_VENDOR', 'ON_HOLD'].includes(
+      workOrder.status,
+    )
+  );
+}
+
+/** The hand-off trail, newest last, so the whole conversation reads in order. */
+function WorkOrderLogList({
+  logs,
+  isLoading,
+}: {
+  logs: MaintenanceWorkOrderLog[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground">Loading history...</div>;
+  }
+  if (logs.length === 0) {
+    return <div className="text-sm text-muted-foreground">Nothing has happened yet.</div>;
+  }
+  return (
+    <ol className="space-y-3">
+      {logs.map((log) => (
+        <li key={log.id} className="rounded-md border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-semibold">{log.action_label}</span>
+            <span className="text-xs text-muted-foreground">{log.created_at}</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {log.created_by_name || 'System'}
+            {log.status_label ? ` - ${log.status_label}` : ''}
+          </div>
+          {log.remarks && <p className="mt-2 whitespace-pre-line text-sm">{log.remarks}</p>}
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 function canCompleteStatus(workOrder?: MaintenanceWorkOrder | null) {
@@ -664,6 +708,7 @@ export default function MaintenanceWorkOrderDetailPage() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [sendBackDialogOpen, setSendBackDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [spareDialogOpen, setSpareDialogOpen] = useState(false);
@@ -675,7 +720,6 @@ export default function MaintenanceWorkOrderDetailPage() {
   const canAssign = canManage || hasPermission(MAINTENANCE_PERMISSIONS.ASSIGN_WORK_ORDER);
   const canStart = canManage || hasPermission(MAINTENANCE_PERMISSIONS.START_WORK_ORDER);
   const canComplete = canManage || hasPermission(MAINTENANCE_PERMISSIONS.COMPLETE_WORK_ORDER);
-  const canApprove = canManage || hasPermission(MAINTENANCE_PERMISSIONS.APPROVE_WORK_ORDER);
   const canClose = canManage || hasPermission(MAINTENANCE_PERMISSIONS.CLOSE_WORK_ORDER);
   const canUploadPhoto =
     canManage || hasPermission(MAINTENANCE_PERMISSIONS.CREATE_WORK_ORDER_PHOTO);
@@ -688,6 +732,7 @@ export default function MaintenanceWorkOrderDetailPage() {
   const workOrderQuery = useMaintenanceWorkOrder(validWorkOrderId);
   const workOrder = workOrderQuery.data;
   const photosQuery = useWorkOrderPhotos(validWorkOrderId);
+  const logsQuery = useWorkOrderLogs(validWorkOrderId);
   const optionsQuery = useMaintenanceOptions();
   const assetsQuery = useMaintenanceAssets({ is_active: true });
   const sparesQuery = useMaintenanceSpares(
@@ -708,6 +753,7 @@ export default function MaintenanceWorkOrderDetailPage() {
   const completeWorkOrder = useCompleteMaintenanceWorkOrder();
   const approveWorkOrder = useApproveMaintenanceWorkOrder();
   const closeWorkOrder = useCloseMaintenanceWorkOrder();
+  const sendBackWorkOrder = useSendBackMaintenanceWorkOrder();
   const setWorkOrderStatus = useSetMaintenanceWorkOrderStatus();
   const uploadPhoto = useUploadWorkOrderPhoto();
   const requestSpare = useRequestWorkOrderSpare();
@@ -716,12 +762,17 @@ export default function MaintenanceWorkOrderDetailPage() {
   const completeVendorVisit = useCompleteVendorVisit();
 
   const photos = photosQuery.data ?? [];
+  const logs = logsQuery.data ?? [];
+  // Verification belongs to whoever raised the job; a maintenance head can
+  // stand in. The backend decides and says so on the work order.
+  const canVerify = !!workOrder?.can_verify;
   const spareRequests = spareRequestsQuery.data ?? [];
   const vendorVisits = vendorVisitsQuery.data ?? [];
 
   const handleRefresh = () => {
     void workOrderQuery.refetch();
     void photosQuery.refetch();
+    void logsQuery.refetch();
     void sparesQuery.refetch();
     void spareRequestsQuery.refetch();
     void vendorVisitsQuery.refetch();
@@ -759,6 +810,13 @@ export default function MaintenanceWorkOrderDetailPage() {
     await approveWorkOrder.mutateAsync({ workOrderId: workOrder.id, payload });
     toast.success('Closure approved');
     setApprovalDialogOpen(false);
+  };
+
+  const handleSendBack = async (payload: MaintenanceWorkOrderSendBackPayload) => {
+    if (!workOrder) return;
+    await sendBackWorkOrder.mutateAsync({ workOrderId: workOrder.id, payload });
+    toast.success('Sent back for rework');
+    setSendBackDialogOpen(false);
   };
 
   const handleClose = async () => {
@@ -931,8 +989,11 @@ export default function MaintenanceWorkOrderDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <DetailItem label="Reported By" value={workOrder.reported_by_name} />
-                <DetailItem label="Assigned To" value={workOrder.assigned_to_name} />
+                <DetailItem label="Assigned To" value={workOrder.assigned_to_display} />
                 <DetailItem label="Target Date" value={workOrder.target_date} />
+                {workOrder.rework_count > 0 && (
+                  <DetailItem label="Sent Back" value={`${workOrder.rework_count} time(s)`} />
+                )}
               </CardContent>
             </Card>
 
@@ -958,6 +1019,18 @@ export default function MaintenanceWorkOrderDetailPage() {
               <DetailItem label="Completed" value={workOrder.completed_at} />
               <DetailItem label="Approved" value={workOrder.approved_at} />
               <DetailItem label="Closed" value={workOrder.closed_at} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Hand-off Trail</CardTitle>
+              <CardDescription>
+                Every assignment, completion and send-back, with its remarks.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WorkOrderLogList logs={logs} isLoading={logsQuery.isLoading} />
             </CardContent>
           </Card>
 
@@ -1084,7 +1157,16 @@ export default function MaintenanceWorkOrderDetailPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Closure Actions</CardTitle>
+                <CardTitle className="text-lg">Verification</CardTitle>
+                <CardDescription>
+                  {workOrder.status === 'COMPLETED'
+                    ? canVerify
+                      ? 'Check the work, then approve it or send it back.'
+                      : `Waiting for ${workOrder.reported_by_name || 'the raiser'} to check the work.`
+                    : workOrder.status === 'REOPENED'
+                      ? `Back with ${workOrder.assigned_to_display || 'the assignee'} for rework.`
+                      : `${workOrder.reported_by_name || 'The raiser'} checks the work once it is completed.`}
+                </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3 sm:grid-cols-2">
                 <Button
@@ -1097,15 +1179,30 @@ export default function MaintenanceWorkOrderDetailPage() {
                 </Button>
                 <Button
                   onClick={() => setApprovalDialogOpen(true)}
-                  disabled={workOrder.status !== 'COMPLETED' || !canApprove}
+                  disabled={workOrder.status !== 'COMPLETED' || !canVerify}
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   Approve
                 </Button>
                 <Button
-                  className="sm:col-span-2"
+                  variant="destructive"
+                  onClick={() => setSendBackDialogOpen(true)}
+                  disabled={
+                    !['COMPLETED', 'APPROVED'].includes(workOrder.status) ||
+                    !canVerify ||
+                    sendBackWorkOrder.isPending
+                  }
+                >
+                  <Undo2 className="h-4 w-4" />
+                  Send Back
+                </Button>
+                <Button
                   onClick={() => void handleClose()}
-                  disabled={workOrder.status !== 'APPROVED' || !canClose || closeWorkOrder.isPending}
+                  disabled={
+                    workOrder.status !== 'APPROVED' ||
+                    !(canClose || canVerify) ||
+                    closeWorkOrder.isPending
+                  }
                 >
                   Close Work Order
                 </Button>
@@ -1133,10 +1230,19 @@ export default function MaintenanceWorkOrderDetailPage() {
               open={assignDialogOpen}
               onOpenChange={setAssignDialogOpen}
               options={optionsQuery.data}
-              currentAssignee={workOrder.assigned_to}
+              currentAssignee={workOrder.assigned_to_display}
               currentTargetDate={workOrder.target_date}
               isSubmitting={assignWorkOrder.isPending}
               onSubmit={handleAssign}
+            />
+          )}
+          {sendBackDialogOpen && (
+            <WorkOrderSendBackDialog
+              open={sendBackDialogOpen}
+              onOpenChange={setSendBackDialogOpen}
+              workOrderNo={workOrder.work_order_no}
+              isSubmitting={sendBackWorkOrder.isPending}
+              onSubmit={handleSendBack}
             />
           )}
           {completeDialogOpen && (

@@ -646,7 +646,7 @@ export default function MaintenanceDashboardPage() {
                           <td className="px-4 py-3">
                             <PriorityBadge priority={workOrder.priority} />
                           </td>
-                          <td className="px-4 py-3">{workOrder.assigned_to_name || '-'}</td>
+                          <td className="px-4 py-3">{workOrder.assigned_to_display || '-'}</td>
                           <td className="px-4 py-3">
                             <WorkOrderStatusBadge status={workOrder.status} />
                           </td>

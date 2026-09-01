@@ -2,9 +2,11 @@ import { ShieldCheck } from 'lucide-react';
 
 import {
   ADMIN_PERMISSIONS,
+  COST_MASTER_PERMISSIONS,
   GOODS_RETURN_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
+  SAP_REPORTS_PERMISSIONS,
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -26,6 +28,8 @@ const MaterialIndentApprovalsPage = lazy(() => import('./pages/MaterialIndentApp
 const ReturnableApprovalsPage = lazy(() => import('./pages/ReturnableApprovalsPage'));
 const GoodsReturnApprovalsPage = lazy(() => import('./pages/GoodsReturnApprovalsPage'));
 const WarehouseManagersPage = lazy(() => import('./pages/WarehouseManagersPage'));
+const SapReportAccessPage = lazy(() => import('./pages/SapReportAccessPage'));
+const CostMasterPage = lazy(() => import('./pages/CostMasterPage'));
 // Same queue the Warehouse module exposes at /warehouse/bst/partial-approvals —
 // mirrored here so approvers find every queue in one place. One page, two routes.
 const BSTPartialApprovalsPage = lazy(
@@ -64,8 +68,17 @@ const warehouseManagerPermissions = [
   WAREHOUSE_PERMISSIONS.MANAGE_USER_WAREHOUSES,
 ] as const;
 
+// Manage-only, mirroring warehouse managers: VIEW is for costing/report
+// consumers and must not pull the Admin module into their sidebar.
+const costMasterPermissions = [COST_MASTER_PERMISSIONS.MANAGE] as const;
+
+// Manage-only for the same reason: VIEW is held by everyone who runs reports.
+const sapReportAccessPermissions = [SAP_REPORTS_PERMISSIONS.MANAGE] as const;
+
 const adminPermissions = [
   ...warehouseManagerPermissions,
+  ...sapReportAccessPermissions,
+  ...costMasterPermissions,
   ...dockingApprovalPermissions,
   ...partialApprovalPermissions,
   ...materialIndentApprovalPermissions,
@@ -133,6 +146,20 @@ export const adminModuleConfig: ModuleConfig = {
       permissions: warehouseManagerPermissions,
       breadcrumb: { label: 'Warehouse Managers' },
     },
+    {
+      path: '/admin/sap-report-access',
+      element: <SapReportAccessPage />,
+      layout: 'main',
+      permissions: sapReportAccessPermissions,
+      breadcrumb: { label: 'SAP Report Access' },
+    },
+    {
+      path: '/admin/cost-master',
+      element: <CostMasterPage />,
+      layout: 'main',
+      permissions: costMasterPermissions,
+      breadcrumb: { label: 'Cost Master' },
+    },
   ],
   navigation: [
     {
@@ -184,6 +211,16 @@ export const adminModuleConfig: ModuleConfig = {
           path: '/admin/warehouse-managers',
           title: 'Warehouse Managers',
           permissions: warehouseManagerPermissions,
+        },
+        {
+          path: '/admin/sap-report-access',
+          title: 'SAP Report Access',
+          permissions: sapReportAccessPermissions,
+        },
+        {
+          path: '/admin/cost-master',
+          title: 'Cost Master',
+          permissions: costMasterPermissions,
         },
       ],
     },

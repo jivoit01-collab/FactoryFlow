@@ -1,8 +1,11 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { ThemeProvider } from '@/shared/contexts';
 
 import { DispatchTrendChart } from '../components/DispatchTrendChart';
 import type { DispatchDayTotals, TrendPoint } from '../hooks';
+import { BoardDayProvider } from '../hooks/BoardDayProvider';
 
 // Recharts measures its container, which jsdom reports as 0×0 — the chart body
 // then renders nothing. The header (legend chips, which carry the real numbers
@@ -59,9 +62,37 @@ function totalsWith(trend: TrendPoint[]): DispatchDayTotals {
   };
 }
 
+/** The chart reads the board's day for its labels and the app theme for its
+ *  colours, so it needs both providers. */
+function renderChart(ui: React.ReactElement) {
+  return render(
+    <ThemeProvider>
+      <BoardDayProvider>{ui}</BoardDayProvider>
+    </ThemeProvider>,
+  );
+}
+
+// jsdom ships no matchMedia, and ThemeProvider reads it to resolve the "system"
+// setting. Stubbed the same way the ThemeProvider suite does it.
+beforeAll(() => {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+});
+
 describe('DispatchTrendChart', () => {
   it("shows each series' real value for today on its legend chip", () => {
-    render(
+    renderChart(
       <DispatchTrendChart
         totals={totalsWith([
           point({ date: '2026-08-25', trucks: 20, amount: 2_000_000, bills: 20 }),
@@ -77,7 +108,7 @@ describe('DispatchTrendChart', () => {
   });
 
   it('marks a measure with no history rather than drawing it as zero', () => {
-    render(
+    renderChart(
       <DispatchTrendChart
         totals={totalsWith([
           // A backend that never reports daily invoice counts sends null.
@@ -94,7 +125,7 @@ describe('DispatchTrendChart', () => {
   });
 
   it('drops a measure that is flat at zero across the whole fortnight', () => {
-    render(
+    renderChart(
       <DispatchTrendChart
         totals={totalsWith([
           point({ date: '2026-08-26', trucks: 10, amount: 100, litres: 0 }),
@@ -111,7 +142,7 @@ describe('DispatchTrendChart', () => {
     // Two finished days at 20 trucks, today at 5. The baseline is the finished
     // days only (20), so today plots at 25% — not at 40% (5/12.5) it would be
     // if the running day were averaged in with them.
-    const { container } = render(
+    const { container } = renderChart(
       <DispatchTrendChart
         totals={totalsWith([
           point({ date: '2026-08-25', trucks: 20, amount: 100 }),

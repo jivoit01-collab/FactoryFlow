@@ -42,29 +42,35 @@ export function todayISO(): string {
   return toLocalISODate(new Date());
 }
 
-/** N days either side of today, local, as YYYY-MM-DD. */
-export function shiftISO(days: number): string {
-  const d = new Date();
+/** N days either side of a given local date. Parsed as local midnight, never
+ *  through Date.parse of the bare string — that reads YYYY-MM-DD as UTC and
+ *  slides the whole window a day west of here. */
+export function shiftFromISO(anchor: string, days: number): string {
+  const d = new Date(`${anchor}T00:00:00`);
   d.setDate(d.getDate() + days);
   return toLocalISODate(d);
 }
 
+/** The last instant of a local date, as epoch ms. Dwell figures are measured to
+ *  here rather than to `now`, so a past day's numbers stop ageing. */
+export function endOfDayMs(anchor: string): number {
+  const d = new Date(`${anchor}T00:00:00`);
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
+}
+
+/**
+ * How long the board sits on a back-date before returning to today.
+ *
+ * This is a wall screen. Somebody checks Tuesday, walks away, and the display
+ * silently shows a stale day to the whole room until the next person notices.
+ * Snapping back is the difference between a filter and a trap.
+ */
+export const HISTORY_AUTO_RETURN_MS = 10 * 60_000;
+
 // -------------------------------------------------------------------------- //
 // Stage vocabulary for the wall
 // -------------------------------------------------------------------------- //
-
-/**
- * Docking statuses that mean the truck is physically inside the plant: docked,
- * being photographed, waiting on a gatepass, or printed but not yet waved out.
- * Anything else is either gone (DISPATCHED) or dead (REJECTED / CANCELLED).
- */
-export const INSIDE_DOCKING_STATUSES = [
-  'DOCKED',
-  'PHOTO_ATTACHED',
-  'READY_FOR_GATEPASS',
-  'GATEPASS_PRINTED',
-  'PRINT_COMMITTED',
-] as const;
 
 /** How far along each docking status is — picks the truck's headline status
  *  when it carries several dockings sitting at different steps. */

@@ -26,6 +26,7 @@ import type {
   MaintenanceWorkOrderCompletePayload,
   MaintenanceWorkOrderPayload,
   MaintenanceWorkOrderPhotoUploadPayload,
+  MaintenanceWorkOrderSendBackPayload,
   MaintenanceWorkOrderStatusPayload,
   WorkImpact,
   WorkOrderPhotoType,
@@ -46,11 +47,20 @@ interface WorkOrderFormDialogProps {
 interface WorkOrderAssignDialogProps {
   open: boolean;
   options?: MaintenanceOptions;
-  currentAssignee?: number | null;
+  /** Assignee as it stands, typed or resolved. */
+  currentAssignee?: string;
   currentTargetDate?: string | null;
   isSubmitting?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: MaintenanceWorkOrderAssignPayload) => Promise<void> | void;
+}
+
+interface WorkOrderSendBackDialogProps {
+  open: boolean;
+  workOrderNo?: string;
+  isSubmitting?: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (payload: MaintenanceWorkOrderSendBackPayload) => Promise<void> | void;
 }
 
 interface WorkOrderCompleteDialogProps {
@@ -112,6 +122,7 @@ const EMPTY_WORK_ORDER_FORM: WorkOrderFormState = {
 };
 
 const ASSET_OPTIONS_ID = 'work_order_asset_options';
+const USER_OPTIONS_ID = 'work_order_user_options';
 
 function assetLabel(asset: MaintenanceAsset) {
   return `${asset.asset_code} - ${asset.name}`;
@@ -380,14 +391,20 @@ export function WorkOrderAssignDialog({
   onOpenChange,
   onSubmit,
 }: WorkOrderAssignDialogProps) {
-  const [assignedTo, setAssignedTo] = useState(currentAssignee ? String(currentAssignee) : '');
+  const [assignedTo, setAssignedTo] = useState(currentAssignee ?? '');
   const [targetDate, setTargetDate] = useState(currentTargetDate ?? '');
+
+  const assignee = assignedTo.trim();
+  const knownUser = useMemo(
+    () => options?.users.find((user) => user.label.toLowerCase() === assignee.toLowerCase()),
+    [assignee, options?.users],
+  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!assignedTo) return;
+    if (!assignee) return;
     await onSubmit({
-      assigned_to: Number(assignedTo),
+      assigned_to_text: assignee,
       target_date: nullableDate(targetDate),
     });
   };
@@ -401,19 +418,25 @@ export function WorkOrderAssignDialog({
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="assign_user">Assignee</Label>
-            <NativeSelect
+            <Input
               id="assign_user"
               value={assignedTo}
+              list={USER_OPTIONS_ID}
+              placeholder="Type a name, or pick from the list"
+              autoComplete="off"
               onChange={(event) => setAssignedTo(event.target.value)}
               required
-            >
-              <SelectOption value="">Select assignee</SelectOption>
+            />
+            <datalist id={USER_OPTIONS_ID}>
               {options?.users.map((user) => (
-                <SelectOption key={user.id} value={String(user.id)}>
-                  {user.label}
-                </SelectOption>
+                <option key={user.id} value={user.label} />
               ))}
-            </NativeSelect>
+            </datalist>
+            <div className="text-xs text-muted-foreground">
+              {knownUser
+                ? `${knownUser.label} will be notified.`
+                : 'Anyone can be named — a contractor or a helper without a login is fine.'}
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="assign_target_date">Target Date</Label>
@@ -428,8 +451,62 @@ export function WorkOrderAssignDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !assignedTo}>
+            <Button type="submit" disabled={isSubmitting || !assignee}>
               Assign
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * The raiser checked the job and it is not right yet. Remarks are what the
+ * technician works from on the next round, so nothing goes back unexplained.
+ */
+export function WorkOrderSendBackDialog({
+  open,
+  workOrderNo,
+  isSubmitting,
+  onOpenChange,
+  onSubmit,
+}: WorkOrderSendBackDialogProps) {
+  const [remarks, setRemarks] = useState('');
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!remarks.trim()) return;
+    await onSubmit({ remarks: remarks.trim() });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Send Back for Rework</DialogTitle>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <p className="text-sm text-muted-foreground">
+            {workOrderNo ? `${workOrderNo} goes back to the assignee. ` : ''}
+            Say what is still wrong.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="send_back_remarks">Remarks</Label>
+            <Textarea
+              id="send_back_remarks"
+              value={remarks}
+              placeholder="Still leaking after an hour of running."
+              onChange={(event) => setRemarks(event.target.value)}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="destructive" disabled={isSubmitting || !remarks.trim()}>
+              Send Back
             </Button>
           </DialogFooter>
         </form>

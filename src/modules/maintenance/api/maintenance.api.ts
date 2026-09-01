@@ -44,9 +44,11 @@ import type {
   MaintenanceWorkOrderAssignPayload,
   MaintenanceWorkOrderCompletePayload,
   MaintenanceWorkOrderFilters,
+  MaintenanceWorkOrderLog,
   MaintenanceWorkOrderPayload,
   MaintenanceWorkOrderPhoto,
   MaintenanceWorkOrderPhotoUploadPayload,
+  MaintenanceWorkOrderSendBackPayload,
   MaintenanceWorkOrderStatusPayload,
   OrgDepartmentOption,
   OrgDepartmentPayload,
@@ -339,6 +341,24 @@ export const maintenanceApi = {
 
   async closeWorkOrder(workOrderId: number): Promise<MaintenanceWorkOrder> {
     const response = await apiClient.post<MaintenanceWorkOrder>(EP.WORK_ORDER_CLOSE(workOrderId));
+    return response.data;
+  },
+
+  async sendBackWorkOrder(
+    workOrderId: number,
+    payload: MaintenanceWorkOrderSendBackPayload,
+  ): Promise<MaintenanceWorkOrder> {
+    const response = await apiClient.post<MaintenanceWorkOrder>(
+      EP.WORK_ORDER_SEND_BACK(workOrderId),
+      payload,
+    );
+    return response.data;
+  },
+
+  async getWorkOrderLogs(workOrderId: number): Promise<MaintenanceWorkOrderLog[]> {
+    const response = await apiClient.get<MaintenanceWorkOrderLog[]>(
+      EP.WORK_ORDER_LOGS(workOrderId),
+    );
     return response.data;
   },
 

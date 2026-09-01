@@ -15,6 +15,16 @@ const DecisionChangedInspectionsPage = lazy(
   () => import('./pages/DecisionChangedInspectionsPage'),
 );
 
+// Procedures submodule — controlled testing procedures
+const QCProceduresPage = lazy(() => import('./pages/procedures/QCProceduresPage'));
+
+// PDF library — controlled documents kept as the original file
+const QCPdfLibraryPage = lazy(() => import('./pages/pdfLibrary/QCPdfLibraryPage'));
+
+// Documents submodule — fillable QC record sheets
+const QCDocumentsPage = lazy(() => import('./pages/documents/QCDocumentsPage'));
+const QCRecordDetailPage = lazy(() => import('./pages/documents/QCRecordDetailPage'));
+
 // Master Data (shared)
 const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'));
 const QCParametersPage = lazy(() => import('./pages/masterdata/QCParametersPage'));
@@ -182,6 +192,54 @@ export const qcModuleConfig: ModuleConfig = {
       permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
       breadcrumb: { label: 'Return QC' },
     },
+    // ==================== Procedures Submodule ====================
+    {
+      path: '/qc/procedures',
+      element: <QCProceduresPage />,
+      layout: 'main',
+      permissions: [
+        QC_PERMISSIONS.TESTING_PROCEDURE.VIEW,
+        QC_PERMISSIONS.TESTING_PROCEDURE.MANAGE,
+      ],
+      breadcrumb: { label: 'Procedures' },
+    },
+
+    // ==================== Documents Submodule ====================
+    {
+      path: '/qc/documents',
+      element: <QCDocumentsPage />,
+      layout: 'main',
+      permissions: [
+        QC_PERMISSIONS.QC_RECORD.VIEW,
+        QC_PERMISSIONS.QC_RECORD.FILL,
+        QC_PERMISSIONS.QC_RECORD.APPROVE,
+      ],
+      breadcrumb: { label: 'Documents' },
+    },
+    {
+      path: '/qc/documents/records/:recordId',
+      element: <QCRecordDetailPage />,
+      layout: 'main',
+      permissions: [
+        QC_PERMISSIONS.QC_RECORD.VIEW,
+        QC_PERMISSIONS.QC_RECORD.FILL,
+        QC_PERMISSIONS.QC_RECORD.APPROVE,
+      ],
+      breadcrumb: { label: 'Record' },
+    },
+
+    // ==================== PDF Document Library ====================
+    {
+      path: '/qc/pdf-documents',
+      element: <QCPdfLibraryPage />,
+      layout: 'main',
+      permissions: [
+        QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
+        QC_PERMISSIONS.DOCUMENT_FILE.MANAGE,
+      ],
+      breadcrumb: { label: 'PDF Documents' },
+    },
+
     // ==================== Shared Master Data ====================
     {
       path: '/qc/master/material-types',
@@ -253,6 +311,14 @@ export const qcModuleConfig: ModuleConfig = {
         QC_PERMISSIONS.INSPECTION.VIEW,
         QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
         ...lineClearanceQCPermissions,
+        // Procedures is reachable on its own perm so a QA documentation user
+        // who holds nothing else still gets the module in the sidebar. Safe to
+        // add to the gate above: no existing group holds this permission.
+        QC_PERMISSIONS.TESTING_PROCEDURE.VIEW,
+        // Same reasoning for the record sheets: a QA operator who only fills
+        // daily records still needs the module to appear.
+        QC_PERMISSIONS.QC_RECORD.VIEW,
+        QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
       ],
       hasSubmenu: true,
       children: [
@@ -313,6 +379,31 @@ export const qcModuleConfig: ModuleConfig = {
           path: '/qc/customer-returns',
           title: 'Customer Return QC',
           permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
+        },
+        {
+          path: '/qc/procedures',
+          title: 'Procedures',
+          permissions: [
+            QC_PERMISSIONS.TESTING_PROCEDURE.VIEW,
+            QC_PERMISSIONS.TESTING_PROCEDURE.MANAGE,
+          ],
+        },
+        {
+          path: '/qc/documents',
+          title: 'Documents',
+          permissions: [
+            QC_PERMISSIONS.QC_RECORD.VIEW,
+            QC_PERMISSIONS.QC_RECORD.FILL,
+            QC_PERMISSIONS.QC_RECORD.APPROVE,
+          ],
+        },
+        {
+          path: '/qc/pdf-documents',
+          title: 'PDF Documents',
+          permissions: [
+            QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
+            QC_PERMISSIONS.DOCUMENT_FILE.MANAGE,
+          ],
         },
         {
           path: '/qc/master/material-types',

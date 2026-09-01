@@ -10,13 +10,10 @@ import { SALES_DISPATCH_QUERY_KEYS } from '@/modules/gate/api/salesDispatch/sale
 
 import {
   DISPATCH_DAY_REFRESH_MS,
-  DOCKING_DAYS_BACK,
   DOCKING_STATUS_PROGRESS,
-  INSIDE_DOCKING_STATUSES,
-  shiftISO,
 } from '../constants/dispatch-day.constants';
 import { localDateOf, localHourOf } from '../utils/format';
-import { useBoardDay } from './useBoardDay';
+import { useBoardDay } from './boardDay.context';
 
 /** Is the truck still standing inside the plant, or has it gone? */
 export type TruckPresence = 'IN' | 'OUT';
@@ -89,8 +86,6 @@ export interface DispatchDayVehicles {
   refetch: () => void;
 }
 
-const INSIDE = new Set<string>(INSIDE_DOCKING_STATUSES);
-
 /** A decimal string off the API, as a number. Blank/null/garbage all read zero. */
 function num(value: string | null | undefined): number {
   if (!value) return 0;
@@ -101,6 +96,30 @@ function num(value: string | null | undefined): number {
 /** The date a docking actually cleared the gate, local. */
 function outDateOf(docking: SalesDispatchGateOut): string | null {
   return docking.gate_out_date ?? localDateOf(docking.dispatched_at);
+}
+
+/** The date a docking opened — when the truck came to the dock. */
+function inDateOf(docking: SalesDispatchGateOut): string | null {
+  return localDateOf(docking.docked_at ?? docking.created_at);
+}
+
+/**
+ * Was this docking still inside the plant when `date` ended?
+ *
+ * Derived from its own timestamps rather than from `status`, because status is
+ * always the CURRENT state: asking it about Tuesday returns where the truck
+ * stands today. Docked on or before the day, and either never gone or gone
+ * afterwards, is the only reading that survives back-dating.
+ */
+function wasInsideAtEndOf(docking: SalesDispatchGateOut, date: string): boolean {
+  const dockedOn = inDateOf(docking);
+  if (!dockedOn || dockedOn > date) return false;
+  const leftOn = outDateOf(docking);
+  // Dispatched but carrying no gate-out date at all: it has clearly gone, and
+  // with no date to place it on, claiming it is still inside would strand a
+  // phantom truck in the yard forever.
+  if (!leftOn) return docking.status !== 'DISPATCHED';
+  return leftOn > date;
 }
 
 function push(list: string[], value: string | null | undefined) {
@@ -116,29 +135,31 @@ function push(list: string[], value: string | null | undefined) {
  * transporter, and the truck's real state), which is why the vendor, company and
  * vehicle panels all hang off this one query instead of three.
  *
- * Two different questions get two different windows, deliberately:
- *   - IN  = standing inside *right now*, whenever it docked. A truck that came in
- *           last Tuesday and still has not left is the most important row on the
- *           board, so it is never aged out.
- *   - OUT = cleared the gate *today*. Yesterday's departures are done business.
+ * Both questions are asked *of the shown day*, not of the wall clock:
+ *   - IN  = still inside at the END of that day. On today that is "inside right
+ *           now"; on a back-date it is what was standing in the yard when the
+ *           day closed. Reading a live status flag instead would report where
+ *           those trucks are *now*, which is not a fact about Tuesday at all.
+ *   - OUT = cleared the gate on that day.
  * The list endpoint filters on when the docking was created, so the window
- * reaches back a week to catch the first of those; the second is filtered here.
+ * reaches a week back of the shown day; the rest is decided here.
  */
 export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
   const day = useBoardDay();
 
   const params = {
-    from_date: shiftISO(-DOCKING_DAYS_BACK),
-    to_date: day.today,
+    from_date: day.dockingFrom,
+    to_date: day.date,
     all_companies: 1,
   };
 
   const query = useQuery({
     queryKey: SALES_DISPATCH_QUERY_KEYS.list(params),
     queryFn: () => salesDispatchApi.list(params),
-    refetchInterval: DISPATCH_DAY_REFRESH_MS,
-    refetchIntervalInBackground: true,
-    staleTime: DISPATCH_DAY_REFRESH_MS,
+    // A finished day cannot change, so history is fetched once and left alone.
+    refetchInterval: day.isToday ? DISPATCH_DAY_REFRESH_MS : false,
+    refetchIntervalInBackground: day.isToday,
+    staleTime: day.isToday ? DISPATCH_DAY_REFRESH_MS : Infinity,
     retry: (failureCount, error) => {
       const status = (error as { status?: number })?.status;
       if (status === 401 || status === 403 || status === 404) return false;
@@ -163,11 +184,12 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
 
       const key =
         docking.arrival_no || docking.vehicle_no || `entry-${docking.entry_no || docking.id}`;
-      const isInside = INSIDE.has(docking.status);
+      const isInside = wasInsideAtEndOf(docking, day.date);
       const leftOn = outDateOf(docking);
 
-      // Dropped: dispatched before today and no longer inside -- done business.
-      if (!isInside && leftOn !== day.today) continue;
+      // Neither inside at the close of the day nor gone during it: the day
+      // never touched this load.
+      if (!isInside && leftOn !== day.date) continue;
 
       let truck = truckMap.get(key);
       if (!truck) {
@@ -249,13 +271,13 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
 
     for (const docking of rows) {
       if (docking.status === 'REJECTED' || docking.status === 'CANCELLED') continue;
-      const isInside = INSIDE.has(docking.status);
+      const isInside = wasInsideAtEndOf(docking, day.date);
       const leftOn = outDateOf(docking);
-      if (!isInside && leftOn !== day.today) continue;
+      if (!isInside && leftOn !== day.date) continue;
 
       const truckKey =
         docking.arrival_no || docking.vehicle_no || `entry-${docking.entry_no || docking.id}`;
-      const wentOutToday = !isInside && leftOn === day.today;
+      const wentOutToday = !isInside && leftOn === day.date;
 
       const code = (docking.company_code || '').trim() || 'UNKNOWN';
       const company = companyMap.get(code) ?? {
@@ -339,7 +361,7 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
       byVendor,
       outByHour,
     };
-  }, [dockings, day.today]);
+  }, [dockings, day.date]);
 
   return {
     ...derived,

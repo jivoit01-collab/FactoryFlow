@@ -9,6 +9,10 @@ export const DASHBOARDS_PERMISSIONS = {
   VIEW_DISPATCH_PLANS: 'dispatch_plans.can_view_dispatch_plans',
   EDIT_DISPATCH_PLANS: 'dispatch_plans.can_edit_dispatch_plans',
   VIEW_DISPATCH_PIPELINE: 'dispatch_plans.can_view_dispatch_pipeline',
+  // Factory Expense wall board. Reading the wall and deciding what it counts
+  // are deliberately separate rights.
+  VIEW_FACTORY_EXPENSE: 'factory_expense.can_view_factory_expense',
+  CONFIGURE_FACTORY_EXPENSE: 'factory_expense.can_configure_factory_expense',
 } as const;
 
 export type DashboardsPermission =

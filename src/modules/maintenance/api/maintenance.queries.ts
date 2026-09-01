@@ -26,6 +26,7 @@ import type {
   MaintenanceWorkOrderFilters,
   MaintenanceWorkOrderPayload,
   MaintenanceWorkOrderPhotoUploadPayload,
+  MaintenanceWorkOrderSendBackPayload,
   MaintenanceWorkOrderStatusPayload,
   OrgDepartmentPayload,
   PMExecutionCompletePayload,
@@ -71,6 +72,8 @@ export const MAINTENANCE_QUERY_KEYS = {
     [...MAINTENANCE_QUERY_KEYS.all, 'work-order', workOrderId] as const,
   workOrderPhotos: (workOrderId: number) =>
     [...MAINTENANCE_QUERY_KEYS.all, 'work-order-photos', workOrderId] as const,
+  workOrderLogs: (workOrderId: number) =>
+    [...MAINTENANCE_QUERY_KEYS.all, 'work-order-logs', workOrderId] as const,
   pmPlans: (filters?: PreventiveMaintenancePlanFilters) =>
     [...MAINTENANCE_QUERY_KEYS.all, 'pm-plans', filters ?? {}] as const,
   pmChecklistItems: (filters?: MaintenanceChecklistTemplateItemFilters) =>
@@ -187,6 +190,15 @@ export function useWorkOrderPhotos(workOrderId: number | null) {
   return useQuery({
     queryKey: MAINTENANCE_QUERY_KEYS.workOrderPhotos(workOrderId!),
     queryFn: () => maintenanceApi.getWorkOrderPhotos(workOrderId!),
+    enabled: workOrderId !== null,
+  });
+}
+
+/** The hand-off trail: assigned, started, completed, sent back, verified. */
+export function useWorkOrderLogs(workOrderId: number | null) {
+  return useQuery({
+    queryKey: MAINTENANCE_QUERY_KEYS.workOrderLogs(workOrderId!),
+    queryFn: () => maintenanceApi.getWorkOrderLogs(workOrderId!),
     enabled: workOrderId !== null,
   });
 }
@@ -480,6 +492,27 @@ export function useCloseMaintenanceWorkOrder() {
     onSuccess: (_workOrder, workOrderId) => {
       invalidateMaintenance(queryClient);
       queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.workOrder(workOrderId) });
+    },
+  });
+}
+
+/** The raiser rejects the work; it goes back to the technician with a reason. */
+export function useSendBackMaintenanceWorkOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      workOrderId,
+      payload,
+    }: {
+      workOrderId: number;
+      payload: MaintenanceWorkOrderSendBackPayload;
+    }) => maintenanceApi.sendBackWorkOrder(workOrderId, payload),
+    onSuccess: (_workOrder, { workOrderId }) => {
+      invalidateMaintenance(queryClient);
+      queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.workOrder(workOrderId) });
+      queryClient.invalidateQueries({
+        queryKey: MAINTENANCE_QUERY_KEYS.workOrderLogs(workOrderId),
+      });
     },
   });
 }

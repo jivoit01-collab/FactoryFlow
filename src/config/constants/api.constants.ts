@@ -308,6 +308,24 @@ export const API_ENDPOINTS = {
     PRINT_DOCUMENTS: '/quality-control/print-documents/',
     PRINT_DOCUMENT_BY_ID: (id: number) => `/quality-control/print-documents/${id}/`,
 
+    // QC PDF Document Library
+    QC_DOCUMENT_FILES: '/quality-control/document-files/',
+    QC_DOCUMENT_FILE_BY_ID: (id: number) => `/quality-control/document-files/${id}/`,
+
+    // QC Record Forms (Documents) — blank forms and filled sheets
+    RECORD_TEMPLATES: '/quality-control/record-templates/',
+    RECORD_TEMPLATE_BY_ID: (id: number) => `/quality-control/record-templates/${id}/`,
+    QC_RECORDS: '/quality-control/qc-records/',
+    QC_RECORD_BY_ID: (id: number) => `/quality-control/qc-records/${id}/`,
+    QC_RECORD_VALUES: (id: number) => `/quality-control/qc-records/${id}/values/`,
+    QC_RECORD_SUBMIT: (id: number) => `/quality-control/qc-records/${id}/submit/`,
+    QC_RECORD_APPROVE: (id: number) => `/quality-control/qc-records/${id}/approve/`,
+
+    // Testing Procedures (QC Procedures)
+    TESTING_PROCEDURES: '/quality-control/testing-procedures/',
+    TESTING_PROCEDURE_COUNTS: '/quality-control/testing-procedures/counts/',
+    TESTING_PROCEDURE_BY_ID: (id: number) => `/quality-control/testing-procedures/${id}/`,
+
     // QC Parameters
     QC_PARAMETER_BY_ID: (id: number) => `/quality-control/parameters/${id}/`,
 
@@ -469,10 +487,8 @@ export const API_ENDPOINTS = {
     WAREHOUSES: '/planning-purchase/warehouses/',
     PURCHASE_ORDERS: '/planning-purchase/purchase-orders/',
     PURCHASE_ORDER_DETAIL: (id: number) => `/planning-purchase/purchase-orders/${id}/`,
-    PURCHASE_ORDER_APPROVE: (id: number) =>
-      `/planning-purchase/purchase-orders/${id}/approve/`,
-    PURCHASE_ORDER_POST: (id: number) =>
-      `/planning-purchase/purchase-orders/${id}/post-to-sap/`,
+    PURCHASE_ORDER_APPROVE: (id: number) => `/planning-purchase/purchase-orders/${id}/approve/`,
+    PURCHASE_ORDER_POST: (id: number) => `/planning-purchase/purchase-orders/${id}/post-to-sap/`,
   },
   // Stock Dashboard
   STOCK_DASHBOARD: {
@@ -486,56 +502,23 @@ export const API_ENDPOINTS = {
     REPORT: '/non-moving-rm/report/',
     ITEM_GROUPS: '/non-moving-rm/item-groups/',
   },
+  // Factory Expense wall board — labour, salary, electricity and maintenance,
+  // all from FactoryFlow's own registers rather than SAP.
+  FACTORY_EXPENSE: {
+    BOARD: '/dashboards/factory-expense/board/',
+    SETTINGS: '/dashboards/factory-expense/settings/',
+    // Read-back only. Rates are owned by cost_master and edited in
+    // Admin > Cost Master; the board never writes one.
+    RATES: '/dashboards/factory-expense/rates/',
+    BUDGETS: '/dashboards/factory-expense/budgets/',
+    BUDGET_DETAIL: (id: number) => `/dashboards/factory-expense/budgets/${id}/`,
+  },
   // Sales Planning vs Requirement Dashboard
   SALES_PLANNING_REQUIREMENT: {
     REPORT: '/dashboards/sales-planning-requirement/report/',
     STATUS: '/dashboards/sales-planning-requirement/status/',
     ANALYSIS: '/dashboards/sales-planning-requirement/analysis/',
     REFRESH: '/dashboards/sales-planning-requirement/refresh/',
-  },
-  // Smart Supply Chain (lead-time alarms + line capacity)
-  SUPPLY_CHAIN: {
-    DASHBOARD: '/supply-chain/dashboard/',
-    LIVE_TRAIL: '/supply-chain/live-trail/',
-    PROCUREMENT: '/supply-chain/procurement/',
-    CAPACITY: '/supply-chain/capacity/',
-    POLICY: '/supply-chain/policy/',
-    FLOORS: '/supply-chain/floors/',
-    FLOOR_CONVENTION: '/supply-chain/floor-convention/',
-    ALARM_PREVIEW: '/supply-chain/alarms/preview/',
-    ALARM_SEND: '/supply-chain/alarms/send/',
-    LEAD_TIMES: '/supply-chain/reference/lead-times/',
-    MACHINES: '/supply-chain/reference/machines/',
-    SKU_MACHINES: '/supply-chain/reference/sku-machines/',
-    REFERENCE_UPLOAD: '/supply-chain/reference/upload/',
-    REFERENCE_IMPORTS: '/supply-chain/reference/imports/',
-    // The daily operating loop
-    RUNS: '/supply-chain/runs/',
-    RUN_GENERATE: '/supply-chain/runs/generate/',
-    RUN_LATEST: '/supply-chain/runs/latest/',
-    RUN_DETAIL: (id: number) => `/supply-chain/runs/${id}/`,
-    RUN_REVIEW: (id: number) => `/supply-chain/runs/${id}/review/`,
-    RUN_PUBLISH: (id: number) => `/supply-chain/runs/${id}/publish/`,
-    ROW_OWNER: (id: number) => `/supply-chain/rows/${id}/owner/`,
-    ROW_VERDICT: (id: number) => `/supply-chain/rows/${id}/verdict/`,
-    WEEKLY: '/supply-chain/weekly/',
-    MONITORED_SKUS: '/supply-chain/monitored-skus/',
-    PARAMETERS: '/supply-chain/parameters/',
-  },
-  // Order Processing (OMS order -> stock -> production -> procurement)
-  ORDER_PROCESSING: {
-    DASHBOARD: '/order-processing/dashboard/',
-    ORDERS: '/order-processing/orders/',
-    ORDER_DETAIL: (id: number) => `/order-processing/orders/${id}/`,
-    ORDER_TIMELINE: (id: number) => `/order-processing/orders/${id}/timeline/`,
-    ORDER_CHECK_STOCK: (id: number) => `/order-processing/orders/${id}/check-stock/`,
-    PRODUCTION: '/order-processing/production/',
-    PRODUCTION_DETAIL: (id: number) => `/order-processing/production/${id}/`,
-    MATERIALS: '/order-processing/materials/',
-    MATERIALS_PLAN: '/order-processing/materials/plan/',
-    PROCUREMENT: '/order-processing/procurement/',
-    LINE_ISSUES: '/order-processing/line-issues/',
-    SYNC: '/order-processing/sync/',
   },
   // Goods Return (customer returns)
   SAP_REPORTS: {
@@ -550,6 +533,8 @@ export const API_ENDPOINTS = {
     RUNS: '/sap-reports/runs/',
     CATEGORIES: '/sap-reports/categories/',
     SYNC: '/sap-reports/sync/',
+    ACCESS: '/sap-reports/access/',
+    ACCESS_DETAIL: (id: number) => `/sap-reports/access/${id}/`,
   },
   GOODS_RETURN: {
     LIST: '/goods-return/',
@@ -592,6 +577,14 @@ export const API_ENDPOINTS = {
   },
   // Dispatch
   DISPATCH: {
+    // Bill summary — the picking sheet the warehouse floor works from.
+    BILL_SUMMARY_LOOKUP: '/dispatch/bill-summaries/lookup/',
+    BILL_SUMMARIES: '/dispatch/bill-summaries/',
+    BILL_SUMMARY_DETAIL: (id: number) => `/dispatch/bill-summaries/${id}/`,
+    BILL_SUMMARY_PICK: (id: number) => `/dispatch/bill-summaries/${id}/pick/`,
+    BILL_SUMMARY_STAMP_SAP: (id: number) => `/dispatch/bill-summaries/${id}/stamp-sap/`,
+    BILL_SUMMARY_CANCEL: (id: number) => `/dispatch/bill-summaries/${id}/cancel/`,
+
     OPEN_BILTIES: '/dispatch/open-bilties/',
     BILTY_GRPO_PENDING: '/dispatch/bilty-grpo/pending/',
     BILTY_GRPO_OPTIONS: '/dispatch/bilty-grpo/options/',
@@ -1107,8 +1100,7 @@ export const API_ENDPOINTS = {
       `/warehouse/transfer-requests/${requestId}/approve/`,
     TRANSFER_REQUEST_REJECT: (requestId: number) =>
       `/warehouse/transfer-requests/${requestId}/reject/`,
-    TRANSFER_REQUEST_POST: (requestId: number) =>
-      `/warehouse/transfer-requests/${requestId}/post/`,
+    TRANSFER_REQUEST_POST: (requestId: number) => `/warehouse/transfer-requests/${requestId}/post/`,
     TRANSFER_REQUEST_ALLOCATION_PREVIEW: (requestId: number) =>
       `/warehouse/transfer-requests/${requestId}/allocation-preview/`,
     TRANSFER_REQUEST_CREATE_BST: (requestId: number) =>
@@ -1244,7 +1236,6 @@ export const API_ENDPOINTS = {
     REPORT_EXPORT: (type: string) => `/marketplace/reports/${type}/export.csv`,
     REPORT_TRACKING: (batchId: number) => `/marketplace/reports/tracking/${batchId}/`,
     REPORT_PREVIEW: (type: string) => `/marketplace/reports/${type}/preview/`,
-    DN_PRINT: (docEntry: number) => `/marketplace/delivery-notes/${docEntry}/print/`,
     GATE_QUEUE: '/marketplace/gate/queue/',
     GATE_DETAIL: (batchId: number) => `/marketplace/gate/${batchId}/`,
     GATE_APPROVE: (batchId: number) => `/marketplace/gate/${batchId}/approve/`,
@@ -1318,8 +1309,7 @@ export const API_ENDPOINTS = {
     CHEMICALS: '/etp/chemicals/',
     CHEMICAL_DETAIL: (chemicalId: number) => `/etp/chemicals/${chemicalId}/`,
     BACKWASH_EQUIPMENT: '/etp/backwash-equipment/',
-    BACKWASH_EQUIPMENT_DETAIL: (equipmentId: number) =>
-      `/etp/backwash-equipment/${equipmentId}/`,
+    BACKWASH_EQUIPMENT_DETAIL: (equipmentId: number) => `/etp/backwash-equipment/${equipmentId}/`,
     MONITORING_PARAMETERS: '/etp/monitoring-parameters/',
     MONITORING_PARAMETER_DETAIL: (parameterId: number) =>
       `/etp/monitoring-parameters/${parameterId}/`,
@@ -1357,6 +1347,14 @@ export const API_ENDPOINTS = {
     // The registers' edit trail: who changed which entry, when, and from what
     // to what. Read-only; ?register=&plant=&object_id=&date_from=&date_to=.
     CHANGE_LOG: '/etp/change-log/',
+  },
+
+  // Cost Master — the central registry of cost types + scoped, effective-dated rates
+  COST_MASTER: {
+    COST_TYPES: '/cost-master/cost-types/',
+    COST_TYPE_DETAIL: (costTypeId: number) => `/cost-master/cost-types/${costTypeId}/`,
+    RATES: '/cost-master/rates/',
+    RATE_DETAIL: (rateId: number) => `/cost-master/rates/${rateId}/`,
   },
 } as const;
 

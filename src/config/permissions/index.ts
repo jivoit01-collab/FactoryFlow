@@ -10,7 +10,13 @@
  */
 
 // Admin Module
-export { ADMIN_MODULE_PREFIX, ADMIN_PERMISSIONS, type AdminPermission } from './admin.permissions';
+export {
+  ADMIN_MODULE_PREFIX,
+  ADMIN_PERMISSIONS,
+  COST_MASTER_PERMISSIONS,
+  type AdminPermission,
+  type CostMasterPermission,
+} from './admin.permissions';
 
 // Daily Tasks Module (per-user daily job sheet, derived from every other module)
 export {
@@ -74,18 +80,6 @@ export {
 
 // Dashboards Module
 export { DASHBOARDS_PERMISSIONS, type DashboardsPermission } from './dashboards.permissions';
-export {
-  ORDER_PROCESSING_ACCESS,
-  ORDER_PROCESSING_MODULE_PREFIX,
-  ORDER_PROCESSING_PERMISSIONS,
-  type OrderProcessingPermission,
-} from './order-processing.permissions';
-export {
-  SUPPLY_CHAIN_ACCESS,
-  SUPPLY_CHAIN_MODULE_PREFIX,
-  SUPPLY_CHAIN_PERMISSIONS,
-  type SupplyChainPermission,
-} from './supply-chain.permissions';
 
 // Dispatch Module
 export {
