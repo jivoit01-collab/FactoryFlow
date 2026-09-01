@@ -22,6 +22,11 @@ import type { CostSlice } from '../hooks';
  * Waste recovery is a credit and is drawn in green with a minus, because a
  * board that added the scrap sale to the cost column would overstate every
  * shift that sold a drum of skimmings.
+ *
+ * With the trend chart's RM/PM switch off, the bought-in material line is gone
+ * from this list and the shares are re-based on what is left. The badge says so
+ * — a breakdown that silently dropped its biggest line would read as a plant
+ * that suddenly stopped buying oil.
  */
 export function CostBreakdownPanel({
   cost,
@@ -49,6 +54,9 @@ export function CostBreakdownPanel({
       aside={
         cost.total > 0 ? (
           <>
+            {!cost.includesMaterial && (
+              <PanelBadge tone="warn">excl. RM/PM {money(cost.material)}</PanelBadge>
+            )}
             <PanelBadge>{money(cost.total)}</PanelBadge>
             <PanelBadge tone="good">
               {money(cost.perCase)}/{unitNoun}
@@ -63,7 +71,9 @@ export function CostBreakdownPanel({
         <PanelEmpty>
           {cost.isLoading
             ? 'Costing the day…'
-            : 'No cost behind this day yet — set rates in Cost Master and the runs cost themselves.'}
+            : !cost.includesMaterial && cost.material > 0
+              ? `The whole of this day's cost was bought-in material (${money(cost.material)}) — nothing is left once RM/PM is switched out.`
+              : 'No cost behind this day yet — set rates in Cost Master and the runs cost themselves.'}
         </PanelEmpty>
       ) : (
         <>

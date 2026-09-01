@@ -46,6 +46,8 @@ function cost(overrides: Partial<CostSlice> = {}): CostSlice {
     perCase: 0,
     runCount: 0,
     categories: [],
+    material: 0,
+    includesMaterial: true,
     isLoading: false,
     isError: false,
     ...overrides,
@@ -122,6 +124,24 @@ describe('ProductionWallKpis', () => {
     renderKpis(board({ cost: cost({ total: 0 }) }));
 
     expect(screen.getByText('No cost yet — set rates in Cost Master')).toBeInTheDocument();
+  });
+
+  it('says so on the tile when the cost on show leaves RM/PM out', () => {
+    renderKpis(
+      board({
+        cost: cost({
+          total: 40_000,
+          net: 40_000,
+          perCase: 21,
+          runCount: 3,
+          material: 260_000,
+          includesMaterial: false,
+        }),
+      }),
+    );
+
+    expect(screen.getByText('₹21')).toBeInTheDocument();
+    expect(screen.getByText('₹40K conversion only · excl. RM/PM ₹2.6 L')).toBeInTheDocument();
   });
 
   it('refuses to state a volume or a SAP gap when SAP could not be read', () => {

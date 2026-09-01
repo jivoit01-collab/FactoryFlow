@@ -122,8 +122,12 @@ export function ProductionWallKpis({
         value={board.cost.total > 0 ? money(board.cost.perCase) : '—'}
         sub={
           board.cost.total > 0
-            ? `${money(board.cost.net)} for ${count(board.cost.runCount)} costed runs`
-            : 'No cost yet — set rates in Cost Master'
+            ? board.cost.includesMaterial
+              ? `${money(board.cost.net)} for ${count(board.cost.runCount)} costed runs`
+              : `${money(board.cost.net)} conversion only · excl. RM/PM ${money(board.cost.material)}`
+            : board.cost.material > 0
+              ? `All of it was RM/PM — ${money(board.cost.material)} switched out`
+              : 'No cost yet — set rates in Cost Master'
         }
         hex={palette.hue('cost')}
         delta={costDelta}

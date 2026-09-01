@@ -35,6 +35,12 @@ import { useProductionBoard, useProductionDay } from '../hooks';
  *     so on their faces rather than quietly showing the app side alone under a
  *     heading that promises a comparison.
  *
+ * Cost can be read two ways. The RM/PM switch on the trend chart takes
+ * bought-in material out of every cost figure at once, leaving the conversion
+ * cost — what the plant added to material it was handed. Management compares
+ * months on that basis, because the oil price moves on its own and drowns out
+ * anything the floor did.
+ *
  * The FG panel deliberately shows every SKU the plant produced that day, not
  * only the ones still running. The old desk version scoped it to in-progress
  * SKUs, which meant a wall reading zero all morning — a line that finished at
@@ -47,6 +53,15 @@ export default function ProductionDashboardPage() {
 
   const day = useProductionDay();
   const [selectedLine, setSelectedLine] = useState<number | undefined>(undefined);
+  /**
+   * Whether bought-in material counts towards every cost figure on the board.
+   *
+   * Held here rather than inside the chart because the switch governs the cost
+   * tile and the breakdown panel as well — the three must never be read on
+   * different bases. Defaults to the full cost: that is what "cost" means to
+   * anyone who has not touched the switch.
+   */
+  const [includeMaterial, setIncludeMaterial] = useState(true);
 
   const linesQuery = useLines(true);
   const lines = useMemo(
@@ -54,7 +69,7 @@ export default function ProductionDashboardPage() {
     [linesQuery.data],
   );
 
-  const board = useProductionBoard(day, selectedLine);
+  const board = useProductionBoard(day, selectedLine, includeMaterial);
 
   const boardRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggle } = useFullscreen(boardRef);
@@ -96,7 +111,12 @@ export default function ProductionDashboardPage() {
           <ProductionWallKpis board={board} day={day} unitNoun={unitNoun} />
 
           <div className="grid h-[27%] min-h-[190px] shrink-0 grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr]">
-            <ProductionTrendChart trend={board.trend} unitNoun={unitNoun} />
+            <ProductionTrendChart
+              trend={board.trend}
+              unitNoun={unitNoun}
+              includeMaterial={includeMaterial}
+              onToggleMaterial={() => setIncludeMaterial((on) => !on)}
+            />
             <CostBreakdownPanel cost={board.cost} unitNoun={unitNoun} />
           </div>
 

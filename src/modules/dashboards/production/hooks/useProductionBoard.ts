@@ -16,6 +16,7 @@ import {
   useWastageReconciliation,
 } from '../api/reconciliation.queries';
 import {
+  MATERIAL_COST_CATEGORY,
   PRODUCTION_TREND_DAYS,
   PRODUCTION_WALL_REFRESH_MS,
   type RunTone,
@@ -79,6 +80,8 @@ export interface MaterialSlice {
 }
 
 export interface CostCategoryRow {
+  /** The backend's category code — what the RM/PM switch is matched on. */
+  key: string;
   label: string;
   amount: number;
   credit: boolean;
@@ -87,12 +90,18 @@ export interface CostCategoryRow {
 }
 
 export interface CostSlice {
+  /** Gross cost on the basis the board is showing — RM/PM in or out. */
   total: number;
+  /** The same, after the waste-recovery credit. */
   net: number;
   wasteRecovery: number;
   perCase: number;
   runCount: number;
   categories: CostCategoryRow[];
+  /** Bought-in material for the day, whether or not it is being counted. */
+  material: number;
+  /** False while the figures above are conversion cost only. */
+  includesMaterial: boolean;
   isLoading: boolean;
   isError: boolean;
 }
@@ -101,9 +110,12 @@ export interface ProductionTrendPoint {
   date: string;
   /** Cases produced that day, from the runs themselves — never from SAP. */
   cases: number;
-  /** Cost of the runs that have been costed that day; 0 where none were. */
+  /** Net cost of the runs costed that day, on the shown basis; 0 where none
+   *  were costed. */
   cost: number;
   perCase: number;
+  /** Bought-in material that day, whether or not `cost` counts it. */
+  material: number;
   /** True on the day the board is showing. */
   isToday: boolean;
   /** The day has runs but no cost row — the cost series has a hole, not a zero. */
@@ -260,8 +272,17 @@ function windowDays(from: string, to: string): string[] {
  *   - the cost report is app-side again, but only covers runs that have been
  *     costed, which is why the trend draws cases and cost from different
  *     sources and says so.
+ *
+ * `includeMaterial` switches every cost figure between the full cost and the
+ * conversion cost — the same day, read two ways. It is one flag rather than a
+ * second set of fields because a board showing both at once would invite
+ * somebody to read a conversion cost as a full one.
  */
-export function useProductionBoard(day: ProductionDay, line: number | undefined): ProductionBoard {
+export function useProductionBoard(
+  day: ProductionDay,
+  line: number | undefined,
+  includeMaterial: boolean,
+): ProductionBoard {
   const reconParams = { date_from: day.date, date_to: day.date, line };
 
   // One list for the whole fortnight: the shown day's rows are a filter on it,
@@ -326,24 +347,46 @@ export function useProductionBoard(day: ProductionDay, line: number | undefined)
   const material = materialSlice(materialQuery.data, materialQuery);
 
   const costSummary = costDay.data?.summary;
-  const gross = norm(costSummary?.total_cost);
+  // Bought-in material for the day. Summed off the runs rather than read from
+  // the category breakdown, because the breakdown is a newer field and a
+  // frontend deployed ahead of the backend would otherwise silently subtract
+  // nothing and call the result a conversion cost.
+  const materialCost = (costDay.data?.per_run ?? []).reduce(
+    (sum, run) => sum + norm(run.raw_material_cost),
+    0,
+  );
+  const grossAll = norm(costSummary?.total_cost);
+  const netAll = norm(costSummary?.total_net_cost ?? costSummary?.total_cost);
+  const costedCases = norm(costSummary?.total_production);
+
+  const gross = includeMaterial ? grossAll : grossAll - materialCost;
+  const net = includeMaterial ? netAll : netAll - materialCost;
+
   const categories: CostCategoryRow[] = (costDay.data?.category_breakdown ?? [])
     .filter((row) => row.amount > 0)
+    .filter((row) => includeMaterial || row.category !== MATERIAL_COST_CATEGORY)
     .map((row) => ({
+      key: row.category,
       label: row.label,
       amount: row.amount,
       credit: row.is_credit,
+      // Against the total actually on show, so the shares still add to 100 once
+      // the material line is taken out.
       pct: gross ? (row.amount / gross) * 100 : 0,
     }))
     .sort((a, b) => b.amount - a.amount);
 
   const cost: CostSlice = {
     total: gross,
-    net: norm(costSummary?.total_net_cost ?? costSummary?.total_cost),
+    net,
     wasteRecovery: norm(costSummary?.total_waste_recovery),
-    perCase: norm(costSummary?.avg_per_unit),
+    // Derived rather than taken from the summary's `avg_per_unit`, so both
+    // bases are divided by the same denominator and can be compared.
+    perCase: costedCases > 0 ? net / costedCases : 0,
     runCount: norm(costSummary?.run_count),
     categories,
+    material: materialCost,
+    includesMaterial: includeMaterial,
     isLoading: costDay.isLoading,
     isError: costDay.isError,
   };
@@ -358,21 +401,35 @@ export function useProductionBoard(day: ProductionDay, line: number | undefined)
       (casesByDate.get(run.date) ?? 0) + norm(Number(run.total_production)),
     );
   }
-  const costByDate = new Map(costWindow.data?.trend.map((point) => [point.date, point]) ?? []);
+  // Built off the costed runs rather than the report's own daily trend: the
+  // trend carries no material split, and the RM/PM switch needs one. Cost per
+  // case is divided by the COSTED cases, not the day's cases — on a day where
+  // half the runs have no cost row, dividing by everything produced would
+  // quietly halve the rate.
+  const costByDate = new Map<string, { net: number; material: number; cases: number }>();
+  for (const run of costWindow.data?.per_run ?? []) {
+    const bucket = costByDate.get(run.date) ?? { net: 0, material: 0, cases: 0 };
+    bucket.net += norm(run.net_cost || run.total_cost);
+    bucket.material += norm(run.raw_material_cost);
+    bucket.cases += norm(run.produced_qty);
+    costByDate.set(run.date, bucket);
+  }
 
   const trend: ProductionTrendPoint[] = windowDays(day.trendFrom, day.date).map((date) => {
     const isToday = date === day.date;
     // The shown day is the only one whose runs may still be open, so it is the
     // only one where the closing figures are not yet the truth.
     const dayCases = isToday ? cases : (casesByDate.get(date) ?? 0);
-    const costPoint = costByDate.get(date);
+    const bucket = costByDate.get(date);
+    const dayCost = bucket ? (includeMaterial ? bucket.net : bucket.net - bucket.material) : 0;
     return {
       date,
       cases: dayCases,
-      cost: norm(costPoint?.total_cost),
-      perCase: norm(costPoint?.per_unit_cost),
+      cost: dayCost,
+      perCase: bucket && bucket.cases > 0 ? dayCost / bucket.cases : 0,
+      material: bucket?.material ?? 0,
       isToday,
-      costMissing: !costPoint && dayCases > 0,
+      costMissing: !bucket && dayCases > 0,
     };
   });
 

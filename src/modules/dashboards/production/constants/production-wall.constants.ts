@@ -28,6 +28,19 @@ export const PRODUCTION_TREND_DAYS = 14;
  *  for its own sake. */
 export const AUTO_SCROLL_FROM = 6;
 
+/**
+ * The backend cost category that holds bought-in material — the oil, the
+ * bottles, the caps, the labels, the tape. `CostCategory.MATERIAL` on the
+ * Django side, and the same figure the run cost rolls up as
+ * `raw_material_cost`.
+ *
+ * The board can be read with this line in or out. Out, what is left is the
+ * conversion cost — what the plant itself adds to material it was handed — and
+ * that is the number management compares between months, because RM/PM swings
+ * with the mustard price and says nothing about how the floor ran.
+ */
+export const MATERIAL_COST_CATEGORY = 'MATERIAL';
+
 /** The tone a run's live state is drawn in. */
 export interface RunTone {
   label: string;
