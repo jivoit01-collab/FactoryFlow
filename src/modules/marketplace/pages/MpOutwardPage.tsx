@@ -6,6 +6,12 @@
  * tracking IDs and which are scanned, plus a live sheet summary (orders completed /
  * pending, tracking IDs scanned / remaining, overall progress). Confirm posts the
  * SAP delivery note + internal bill (per order or all-scanned in bulk).
+ *
+ * Confirm ships EXACTLY the parcels scanned into the dispatch, so a multi-item order
+ * goes out a box at a time: confirm what is scanned, cut its delivery note, and the
+ * parcels still owed stay in "To scan" to be scanned and confirmed later on a fresh
+ * dispatch. Bulk "Confirm all scanned" stays all-or-nothing — a part confirm is
+ * always a deliberate per-order action.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -161,9 +167,13 @@ export default function MpOutwardPage() {
   const orders = board?.orders ?? [];
   const insights = board?.insights;
 
-  const scanMut = useScanDispatchByTracking(channel);
+  // Scans land on the sheet being viewed: a re-listed parcel carries the same Tracking
+  // ID on every sheet it appears on, and each sheet is scanned independently.
+  const scanMut = useScanDispatchByTracking(channel, sheetId);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
-  const bulkScanMut = useScanDispatchBulk(channel, (done, total) => setBulkProgress({ done, total }));
+  const bulkScanMut = useScanDispatchBulk(
+    channel, (done, total) => setBulkProgress({ done, total }), sheetId,
+  );
   const [bulkResult, setBulkResult] = useState<BulkScanResponse | null>(null);
 
   const scannedOrders = useMemo(
@@ -375,7 +385,8 @@ export default function MpOutwardPage() {
               </CardTitle>
               <CardDescription>
                 Scan each shipment's Flipkart <strong>Tracking ID</strong>. An order with several items
-                has a tracking ID per item — scan each; the order completes once all are scanned.
+                has a tracking ID per item. Confirm what you have scanned to ship it now — it gets its
+                own delivery note; the parcels still owed stay here to scan and confirm later.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -631,6 +642,14 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
   const s = order.status;
   const badge = STATUS_BADGE[s];
   const done = s === 'SCANNED' || s === 'CONFIRMED';
+  // Parcels scanned into the live dispatch that have not gone out yet. An order ships
+  // a box at a time, so whatever is scanned can be confirmed now and cut its own
+  // delivery note; the boxes still owed stay in "To scan" and confirm later on their
+  // own dispatch. Orders with no per-line tracking IDs have nothing to count, so they
+  // keep the quantity-based SCANNED rule.
+  const awaitingConfirm = (order.tracking_scanned ?? 0) - (order.tracking_confirmed ?? 0);
+  const canConfirm = !!order.dispatch_id
+    && (s === 'SCANNED' || (s === 'PARTIAL' && awaitingConfirm > 0));
   return (
     <div
       className={`rounded-lg border p-3 transition-colors ${
@@ -664,12 +683,25 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
             <Badge variant="outline" className="border-amber-400 text-amber-600">Not ready</Badge>
           ) : null}
           <Badge className={badge.cls} variant={badge.cls ? 'default' : 'outline'}>
-            {s === 'PARTIAL' ? `${order.tracking_scanned}/${order.tracking_total} scanned` : badge.label}
+            {s === 'PARTIAL'
+              ? `${order.tracking_scanned}/${order.tracking_total} scanned`
+                + ((order.tracking_confirmed ?? 0) > 0 ? ` · ${order.tracking_confirmed} shipped` : '')
+              : badge.label}
           </Badge>
-          {s === 'SCANNED' && order.dispatch_id ? (
+          {canConfirm && order.dispatch_id ? (
             <>
               <CancelButton dispatchId={order.dispatch_id} orderId={order.order_id} />
-              <ConfirmButton dispatchId={order.dispatch_id} orderId={order.order_id} />
+              <ConfirmButton
+                dispatchId={order.dispatch_id}
+                orderId={order.order_id}
+                partialOf={s === 'PARTIAL' ? {
+                  scanned: awaitingConfirm,
+                  total: order.tracking_total,
+                  // Not total − scanned: a parcel that shipped on an EARLIER partial
+                  // confirm is neither scanned-now nor still owed.
+                  remaining: order.tracking_total - (order.tracking_scanned ?? 0),
+                } : null}
+              />
             </>
           ) : null}
         </div>
@@ -679,6 +711,17 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
         <div className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
           Cancelled after scan — no delivery note; data kept
           {order.cancel_reason ? ` · ${order.cancel_reason}` : ''}
+        </div>
+      ) : null}
+
+      {/* A repeat of an order that shipped on an earlier sheet: it is scanned and
+          confirmed here like any other, but its stock already left SAP, so no second
+          delivery note is cut. Say so — an unexplained blank DN reads as a failure. */}
+      {order.sap_post_status === 'NOT_REQUIRED' ? (
+        <div className="mt-1.5 text-xs text-muted-foreground">
+          Already shipped on an earlier sheet
+          {order.dn_covered_by_note ? ` on delivery note ${order.dn_covered_by_note}` : ''} — its
+          stock is already issued, so no second delivery note is cut.
         </div>
       ) : null}
 
@@ -755,31 +798,66 @@ function CancelButton({ dispatchId, orderId }: { dispatchId: number; orderId: st
   );
 }
 
-function ConfirmButton({ dispatchId, orderId }: { dispatchId: number; orderId: string }) {
+/**
+ * Confirm the parcels scanned into this dispatch.
+ *
+ * ``partialOf`` is set when the order still owes boxes: only what was scanned ships
+ * now (its own delivery note), and the rest stays in "To scan" to be scanned and
+ * confirmed later on a fresh dispatch. That path is deliberately a secondary button
+ * behind a prompt — habit-clicking Confirm at 1/2 would cut a delivery note for half
+ * the order, which is recoverable but leaves two notes where one was intended.
+ */
+function ConfirmButton({ dispatchId, orderId, partialOf = null }: {
+  dispatchId: number;
+  orderId: string;
+  partialOf?: { scanned: number; total: number; remaining: number } | null;
+}) {
   const confirm = useConfirmDispatch(dispatchId);
   return (
     <Button
       size="sm"
+      variant={partialOf ? 'outline' : 'default'}
+      className={partialOf ? 'border-amber-400 text-amber-700 dark:text-amber-400' : undefined}
       disabled={confirm.isPending}
-      onClick={() =>
+      onClick={() => {
+        if (partialOf && !window.confirm(
+          `${orderId} — ship the ${partialOf.scanned} scanned parcel(s) of ${partialOf.total} now?\n\n`
+          + `They get their own delivery note. The ${partialOf.remaining} still to scan stay `
+          + `in "To scan" — scan them later and confirm again.`,
+        )) return;
         confirm.mutate(
           {},
           {
             onSuccess: (r) => {
               if (r.sap_post_status === 'FAILED') {
                 toast.warning(`${orderId} dispatched — delivery note failed; retry available.`);
+              } else if (r.sap_post_status === 'NOT_REQUIRED') {
+                toast.success(
+                  `Dispatched · ${orderId} — already shipped on an earlier sheet${
+                    r.dn_covered_by_note ? ` (DN ${r.dn_covered_by_note})` : ''
+                  }, so no second delivery note.`,
+                );
               } else if (r.sap_post_status === 'PENDING' || !r.sap_delivery_note_num) {
                 toast.success(`Dispatched · ${orderId} — cut its delivery note in SAP Delivery Notes.`);
               } else {
                 toast.success(`Dispatched · ${orderId} · DN ${r.sap_delivery_note_num || '—'}`);
               }
+              if (partialOf) {
+                toast.info(
+                  `${orderId}: ${partialOf.remaining} parcel(s) still to scan — `
+                  + 'the order stays in "To scan" until they go out.',
+                );
+              }
             },
             onError: (e) => toast.error(getErrorMessage(e, 'Confirm failed')),
           },
-        )
-      }
+        );
+      }}
     >
-      <PackageCheck className="mr-1.5 h-4 w-4" /> {confirm.isPending ? 'Confirming…' : 'Confirm'}
+      <PackageCheck className="mr-1.5 h-4 w-4" />
+      {confirm.isPending
+        ? 'Confirming…'
+        : partialOf ? `Confirm ${partialOf.scanned} scanned` : 'Confirm'}
     </Button>
   );
 }

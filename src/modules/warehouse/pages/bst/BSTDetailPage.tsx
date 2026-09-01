@@ -1,38 +1,31 @@
-import { Loader2, ScanLine, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { Loader2, PackageCheck, Printer, ScanLine, XCircle } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { ScanGroupCard, ScanMetricTile, ScanStatusBadge } from '@/shared/components/scanReview';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { getErrorMessage } from '@/shared/utils';
 
-import { BST_LIVE_POLL_MS, useBSTTransfer, useCancelBST } from '../../api';
-import type { BSTReceiveStatus } from '../../types';
+import { BST_LIVE_POLL_MS, useBSTTransfer, useCancelBST, useWarehousePrintInfo } from '../../api';
+import {
+  BranchStockTransferPrint,
+  BST_DOC_PRINT_PAGE_STYLE,
+} from '../../components/BranchStockTransferPrint';
 import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
 import { formatBstDateTime, isLiveBst } from './bstFormat';
+import {
+  BSTScannedBoxesSheet,
+  BSTScanProgressPill,
+  type BstScanSheetFilter,
+} from './BSTScannedBoxesSheet';
+import { formatBstNumber, summarizeBstBill } from './bstScanSummary';
 import { BSTStatusBadge } from './bstStatus';
 import { BSTVehicleDriverCard } from './BSTVehicleDriverCard';
-
-function ReceiveBadge({ status }: { status: BSTReceiveStatus }) {
-  const cfg: Record<BSTReceiveStatus, string> = {
-    PENDING: 'bg-slate-100 text-slate-700',
-    ACCEPTED: 'bg-green-100 text-green-800',
-    REJECTED: 'bg-red-100 text-red-800',
-  };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${cfg[status]}`}>
-      {status}
-    </span>
-  );
-}
 
 export default function BSTDetailPage() {
   const { transferId: idParam } = useParams<{ transferId: string }>();
@@ -45,6 +38,29 @@ export default function BSTDetailPage() {
   const cancelMut = useCancelBST();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [billOpen, setBillOpen] = useState(true);
+  const [boxesOpen, setBoxesOpen] = useState(false);
+  const [scanFilter, setScanFilter] = useState<BstScanSheetFilter>({
+    document: 'ALL',
+    item: 'ALL',
+    query: '',
+  });
+
+  // Opened from the header button (unfiltered) or an item row (pre-filtered to it).
+  const openScanSheet = (filter: BstScanSheetFilter) => {
+    setScanFilter(filter);
+    setBoxesOpen(true);
+  };
+
+  // SAP-style Branch Stock Transfer print. Letterhead data (addresses, GST)
+  // loads in the background; the print works with blanks if SAP is down.
+  const printRef = useRef<HTMLDivElement>(null);
+  const printInfo = useWarehousePrintInfo([t?.sap_from_warehouse, t?.sap_to_warehouse]);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: t?.entry_no || 'branch-stock-transfer',
+    pageStyle: BST_DOC_PRINT_PAGE_STYLE,
+  });
 
   if (isLoading || !t) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
@@ -53,9 +69,7 @@ export default function BSTDetailPage() {
   // A live internal transfer stays sender-scannable through IN_TRANSIT / RECEIVING
   // until it's sealed via approve (scan_approved_at), so keep "Resume scanning".
   const liveActive =
-    isLiveBst(t) &&
-    !t.scan_approved_at &&
-    (t.status === 'IN_TRANSIT' || t.status === 'RECEIVING');
+    isLiveBst(t) && !t.scan_approved_at && (t.status === 'IN_TRANSIT' || t.status === 'RECEIVING');
   const canResume = t.status === 'SCANNING' || t.status === 'DRAFT' || liveActive;
   const canCancel = !['RECEIVED', 'PARTIALLY_RECEIVED', 'CLOSED', 'CANCELLED'].includes(t.status);
 
@@ -74,6 +88,8 @@ export default function BSTDetailPage() {
   };
 
   const isInvoice = t.source_type === 'INVOICE';
+  // Same tallies the bill table renders — reused for the header tiles and badges.
+  const bill = summarizeBstBill(t.items, t.box_scans);
   const infoRows: Array<[string, string]> = [
     ['Type', isInvoice ? 'Invoice — cross-company sale' : 'Stock transfer'],
     ['Company', `${t.company_name} (${t.company_code})`],
@@ -97,10 +113,16 @@ export default function BSTDetailPage() {
     // the gate marks the transfer out.
     ['Requires gate', t.requires_gate ? 'Yes' : 'No'],
     ['Created by', `${t.created_by_name} · ${formatBstDateTime(t.created_at)}`],
-    ['Dispatched', t.dispatched_at ? `${t.dispatched_by_name} · ${formatBstDateTime(t.dispatched_at)}` : '—'],
+    [
+      'Dispatched',
+      t.dispatched_at ? `${t.dispatched_by_name} · ${formatBstDateTime(t.dispatched_at)}` : '—',
+    ],
     ['Gated out', formatBstDateTime(t.gated_out_at)],
     ['Gated in', formatBstDateTime(t.gated_in_at)],
-    ['Received', t.received_at ? `${t.received_by_name} · ${formatBstDateTime(t.received_at)}` : '—'],
+    [
+      'Received',
+      t.received_at ? `${t.received_by_name} · ${formatBstDateTime(t.received_at)}` : '—',
+    ],
   ];
 
   return (
@@ -113,6 +135,9 @@ export default function BSTDetailPage() {
             </Badge>
           )}
           <BSTStatusBadge status={t.status} />
+          <Button variant="outline" onClick={() => handlePrint()}>
+            <Printer className="h-4 w-4 mr-1" /> Print
+          </Button>
           {canResume && (
             <Button onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}>
               <ScanLine className="h-4 w-4 mr-1" /> Resume scanning
@@ -149,66 +174,154 @@ export default function BSTDetailPage() {
         </Card>
       )}
 
-      {/* Items + scan progress */}
+      {/* Items + scan progress — the same review layout as the dispatch scan page */}
       <Card>
-        <CardContent className="pt-6">
-          <p className="font-medium mb-3">Stock to transfer ({t.items.length} items)</p>
-          <BSTBillTable items={t.items} scans={t.box_scans} manualEntries={t.manual_entries} />
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium">Stock to transfer</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => openScanSheet({ document: 'ALL', item: 'ALL', query: '' })}
+            >
+              <PackageCheck className="mr-2 h-4 w-4" />
+              Scanned Boxes
+              <BSTScanProgressPill
+                scanned={bill.scannedBoxes}
+                expected={bill.expectedBoxes}
+                className="ml-2"
+              />
+            </Button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <ScanMetricTile
+              label="Expected Boxes"
+              value={bill.expectedBoxes > 0 ? formatBstNumber(bill.expectedBoxes) : '-'}
+            />
+            <ScanMetricTile
+              label="Scanned Boxes"
+              value={formatBstNumber(bill.scannedBoxes)}
+              hint={bill.offBillBoxes > 0 ? `${formatBstNumber(bill.offBillBoxes)} off-bill` : ''}
+            />
+            <ScanMetricTile
+              label="Scanned Qty"
+              value={bill.scannedQty > 0 ? formatBstNumber(bill.scannedQty) : '-'}
+              hint={bill.expectedQty > 0 ? `of ${formatBstNumber(bill.expectedQty)}` : ''}
+            />
+            {/* The destination's side of the ledger: boxes we sent vs boxes they have
+                accepted so far — the figure the old Boxes card carried. */}
+            <ScanMetricTile
+              label="Received by destination"
+              value={`${formatBstNumber(t.accepted_count)} of ${formatBstNumber(t.box_scans.length)}`}
+              hint={t.rejected_count > 0 ? `${formatBstNumber(t.rejected_count)} rejected` : ''}
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Scan progress</span>
+              <span>
+                {bill.expectedQty > 0 || bill.expectedBoxes > 0
+                  ? `${bill.progressPercent}%`
+                  : 'Open count'}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${bill.progressPercent}%` }}
+              />
+            </div>
+          </div>
+          <ScanGroupCard
+            isOpen={billOpen}
+            onToggle={() => setBillOpen((open) => !open)}
+            title={
+              <>
+                {t.doc_count > 1
+                  ? `${t.doc_count} SAP documents`
+                  : `Bill ${t.sap_doc_num || t.entry_no}`}
+                {t.customer_name ? (
+                  <span className="font-normal text-muted-foreground"> · {t.customer_name}</span>
+                ) : null}
+              </>
+            }
+            subtitle={`${t.items.length} item${t.items.length === 1 ? '' : 's'}`}
+            badges={
+              <>
+                <Badge variant="outline">
+                  {bill.scannedBoxes}
+                  {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
+                  {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
+                </Badge>
+                <ScanStatusBadge
+                  status={
+                    bill.status === 'Complete'
+                      ? 'complete'
+                      : bill.status === 'Partial'
+                        ? 'partial'
+                        : 'open'
+                  }
+                  label={bill.status}
+                />
+              </>
+            }
+          >
+            <BSTBillTable
+              items={t.items}
+              scans={t.box_scans}
+              manualEntries={t.manual_entries}
+              onOpenItem={(itemCode) =>
+                openScanSheet({ document: 'ALL', item: itemCode, query: '' })
+              }
+            />
+          </ScanGroupCard>
         </CardContent>
       </Card>
 
-      {/* Box scans */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="font-medium">Boxes ({t.box_scans.length})</p>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="text-green-700">
-                {t.accepted_count} accepted
-              </Badge>
-              <Badge variant="outline" className="text-red-700">
-                {t.rejected_count} rejected
-              </Badge>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 px-3">Box</th>
-                  <th className="py-2 px-3">Item</th>
-                  <th className="py-2 px-3">Pallet</th>
-                  <th className="py-2 px-3">Receive</th>
-                </tr>
-              </thead>
-              <tbody>
-                {t.box_scans.map((s) => (
-                  <tr key={s.id} className="border-b">
-                    <td className="py-2 px-3 font-medium">
-                      {s.box_barcode}
-                      {s.is_unexpected && (
-                        <Badge variant="outline" className="ml-1 text-amber-700">
-                          unexpected
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="py-2 px-3">{s.item_code}</td>
-                    <td className="py-2 px-3">{s.pallet_code || '—'}</td>
-                    <td className="py-2 px-3">
-                      <ReceiveBadge status={s.receive_status} />
-                      {s.reject_reason && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                          ({s.reject_reason})
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* All scanned boxes live in a side panel, same as the docking detail page. */}
+      <BSTScannedBoxesSheet
+        items={t.items}
+        scans={t.box_scans}
+        docs={t.docs}
+        open={boxesOpen}
+        onOpenChange={setBoxesOpen}
+        filter={scanFilter}
+        onFilterChange={setScanFilter}
+      />
+
+      <div className="bst-doc-print-host" aria-hidden>
+        <BranchStockTransferPrint
+          ref={printRef}
+          printInfo={printInfo.data ?? null}
+          companyName={t.company_name}
+          data={{
+            docNum:
+              t.docs.length > 1
+                ? t.docs
+                    .map((d) => d.sap_doc_num)
+                    .filter(Boolean)
+                    .join(', ')
+                : t.sap_doc_num || t.entry_no,
+            docEntry: t.sap_doc_entry,
+            docDate: t.sap_doc_date,
+            reference: t.entry_no,
+            fromWarehouse: t.sap_from_warehouse,
+            toWarehouse: t.sap_to_warehouse,
+            vehicleNo: t.vehicle_number,
+            dispatchDate: t.dispatched_at,
+            destination: isInvoice
+              ? t.destination_company_name || t.customer_name
+              : t.sap_to_warehouse,
+            lines: t.items.map((item) => ({
+              description: item.item_name || item.item_code,
+              quantity: Number(item.quantity) || 0,
+              uom: item.uom,
+              boxes: item.expected_boxes,
+            })),
+          }}
+        />
+      </div>
 
       {/* Cancel confirmation */}
       <Dialog open={cancelOpen} onOpenChange={(open) => !open && setCancelOpen(false)}>

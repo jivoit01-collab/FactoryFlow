@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/modules/barcode/components';
 import { useScanner } from '@/modules/barcode/hooks/useScanner';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { ScanMetricTile } from '@/shared/components/scanReview';
 import {
   Badge,
   Button,
@@ -32,8 +33,8 @@ import {
 } from '../../api';
 import { BoxScanCamera } from './BoxScanCamera';
 import { BSTBillTable } from './BSTBillTable';
-import { expectedBstItemBoxes } from './bstBoxCounts';
 import { isLiveBst } from './bstFormat';
+import { formatBstNumber, summarizeBstBill } from './bstScanSummary';
 import { BSTStatusBadge } from './bstStatus';
 
 export default function BSTScanPage() {
@@ -43,7 +44,11 @@ export default function BSTScanPage() {
 
   // Poll so a live transfer reflects the destination's receive progress (and any
   // concurrent edits) while the sender is still scanning.
-  const { data: transfer, isLoading, refetch } = useBSTTransfer(transferId, {
+  const {
+    data: transfer,
+    isLoading,
+    refetch,
+  } = useBSTTransfer(transferId, {
     refetchInterval: BST_LIVE_POLL_MS,
   });
   const removeMut = useRemoveBSTScan();
@@ -82,11 +87,10 @@ export default function BSTScanPage() {
   const items = useMemo(() => transfer?.items ?? [], [transfer]);
   const billItemCodes = new Set(items.map((it) => it.item_code));
   // Boxes to scan = the bill's total box count (line qty ÷ pieces-per-carton),
-  // with a pack-size-from-name fallback for lines whose stored count is 0.
-  const totalBoxes = useMemo(
-    () => items.reduce((n, it) => n + expectedBstItemBoxes(it), 0),
-    [items],
-  );
+  // with a pack-size-from-name fallback for lines whose stored count is 0. The
+  // same tallies feed the header tiles and the bill table.
+  const bill = useMemo(() => summarizeBstBill(items, scans), [items, scans]);
+  const totalBoxes = bill.expectedBoxes;
 
   // On a live transfer the destination may already have accepted or rejected a box,
   // and the sender may not pull those back — so they are the rows that can't be ticked.
@@ -108,8 +112,7 @@ export default function BSTScanPage() {
     setPickedScanIds((prev) =>
       prev.includes(scanId) ? prev.filter((id) => id !== scanId) : [...prev, scanId],
     );
-  const toggleAllPicked = () =>
-    setPickedScanIds(allPicked ? [] : removableScans.map((s) => s.id));
+  const toggleAllPicked = () => setPickedScanIds(allPicked ? [] : removableScans.map((s) => s.id));
 
   const isAlreadyScanned = useCallback(
     (barcode: string) =>
@@ -214,7 +217,9 @@ export default function BSTScanPage() {
       <DashboardHeader
         title={`Scan Boxes — ${transfer.entry_no}`}
         description={`${transfer.sap_from_warehouse || '—'} → ${transfer.sap_to_warehouse || '—'} · ${
-          transfer.doc_count > 1 ? `${transfer.doc_count} SAP documents` : `SAP #${transfer.sap_doc_num}`
+          transfer.doc_count > 1
+            ? `${transfer.doc_count} SAP documents`
+            : `SAP #${transfer.sap_doc_num}`
         }`}
       >
         <BSTStatusBadge status={transfer.status} />
@@ -292,9 +297,7 @@ export default function BSTScanPage() {
                   onClick={handleRequestPartial}
                   disabled={!partialReason.trim() || requestMut.isPending}
                 >
-                  {requestMut.isPending ? (
-                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                  ) : null}
+                  {requestMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                   Request partial-transfer approval
                 </Button>
               </div>
@@ -311,6 +314,36 @@ export default function BSTScanPage() {
             <Badge variant="outline">
               {scans.length} of {totalBoxes} box{totalBoxes === 1 ? '' : 'es'} scanned
             </Badge>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <ScanMetricTile
+              label="Expected Boxes"
+              value={totalBoxes > 0 ? formatBstNumber(totalBoxes) : '-'}
+            />
+            <ScanMetricTile
+              label="Scanned Boxes"
+              value={formatBstNumber(bill.scannedBoxes)}
+              hint={bill.offBillBoxes > 0 ? `${formatBstNumber(bill.offBillBoxes)} off-bill` : ''}
+            />
+            <ScanMetricTile
+              label="Scanned Qty"
+              value={bill.scannedQty > 0 ? formatBstNumber(bill.scannedQty) : '-'}
+              hint={bill.expectedQty > 0 ? `of ${formatBstNumber(bill.expectedQty)}` : ''}
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Scan progress</span>
+              <span>
+                {bill.expectedQty > 0 || totalBoxes > 0 ? `${bill.progressPercent}%` : 'Open count'}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${bill.progressPercent}%` }}
+              />
+            </div>
           </div>
           <BSTBillTable
             items={items}
@@ -349,7 +382,10 @@ export default function BSTScanPage() {
                       value={manualBarcode}
                       onChange={(e) => setManualBarcode(e.target.value)}
                       placeholder="Scan or type a box / pallet barcode"
-                      className={cn('font-mono', flashing && 'ring-2 ring-emerald-400 ring-offset-1')}
+                      className={cn(
+                        'font-mono',
+                        flashing && 'ring-2 ring-emerald-400 ring-offset-1',
+                      )}
                     />
                     <Button type="submit" disabled={!manualBarcode.trim()}>
                       Add
@@ -361,7 +397,10 @@ export default function BSTScanPage() {
                         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Syncing {pendingCount}…
                       </span>
                     ) : null}
-                    <span>Only the bill&apos;s items are accepted, up to the bill box count, from the source warehouse.</span>
+                    <span>
+                      Only the bill&apos;s items are accepted, up to the bill box count, from the
+                      source warehouse.
+                    </span>
                   </p>
                   {scanner.error && <p className="text-xs text-red-600">{scanner.error}</p>}
                 </form>
@@ -378,16 +417,29 @@ export default function BSTScanPage() {
               </div>
               <div className="divide-y">
                 {failedScans.map((f) => (
-                  <div key={f.barcode} className="flex items-center justify-between gap-2 p-3 text-sm">
+                  <div
+                    key={f.barcode}
+                    className="flex items-center justify-between gap-2 p-3 text-sm"
+                  >
                     <span className="min-w-0">
                       <span className="font-medium">{f.barcode}</span>{' '}
                       <span className="text-muted-foreground">— {f.reason}</span>
                     </span>
                     <span className="flex shrink-0 gap-1">
-                      <Button size="sm" variant="outline" className="h-7" onClick={() => retryFailed(f.barcode)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7"
+                        onClick={() => retryFailed(f.barcode)}
+                      >
                         Retry
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7" onClick={() => dismissFailed(f.barcode)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7"
+                        onClick={() => dismissFailed(f.barcode)}
+                      >
                         <X className="h-3 w-3" />
                       </Button>
                     </span>
@@ -407,9 +459,7 @@ export default function BSTScanPage() {
             {editable && removableScans.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 {pickedIds.length > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    {pickedIds.length} selected
-                  </span>
+                  <span className="text-sm text-muted-foreground">{pickedIds.length} selected</span>
                 )}
                 <Button size="sm" variant="outline" className="h-8" onClick={toggleAllPicked}>
                   {allPicked ? 'Clear selection' : `Select all (${removableScans.length})`}

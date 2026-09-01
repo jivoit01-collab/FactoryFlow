@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { ScanGroupCard, ScanMetricTile, ScanStatusBadge } from '@/shared/components/scanReview';
 import { Badge, Button, Card, CardContent, Textarea } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
@@ -16,6 +17,7 @@ import {
 import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
 import { isLiveBst } from './bstFormat';
+import { formatBstNumber, summarizeBstBill } from './bstScanSummary';
 import { BSTStatusBadge } from './bstStatus';
 import { BSTVehicleDriverCard } from './BSTVehicleDriverCard';
 
@@ -31,6 +33,7 @@ export default function BSTReviewPage() {
   const approveMut = useApproveBST();
   const requestMut = useRequestBSTPartialTransfer();
   const [reason, setReason] = useState('');
+  const [billOpen, setBillOpen] = useState(true);
 
   if (isLoading || !t) {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
@@ -55,6 +58,8 @@ export default function BSTReviewPage() {
   const partial = t.partial_transfer;
   const shortLocked = !!scanStatus?.is_partial && !partial?.is_approved;
   const requestPending = !!partial?.is_pending;
+  // Same tallies the bill table renders — reused for the header tiles and badges.
+  const bill = summarizeBstBill(t.items, t.box_scans);
 
   const handleRequest = async () => {
     if (!reason.trim()) {
@@ -102,7 +107,10 @@ export default function BSTReviewPage() {
         <CardContent className="pt-6 grid gap-x-8 gap-y-2 sm:grid-cols-2 text-sm">
           {(
             [
-              ['SAP Documents', t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—'],
+              [
+                'SAP Documents',
+                t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—',
+              ],
               ['Invoice / Ref', t.invoice_no || '—'],
               ['Scanned boxes', String(totalBoxes)],
               // Vehicle + driver get their own card below — the truck can still
@@ -130,11 +138,62 @@ export default function BSTReviewPage() {
         </Card>
       )}
 
-      {/* Bill vs scanned */}
+      {/* Bill vs scanned — the same review layout as the dispatch scan page */}
       <Card>
-        <CardContent className="pt-6">
-          <p className="font-medium mb-3">Bill vs scanned ({t.items.length} items)</p>
-          <BSTBillTable items={t.items} scans={t.box_scans} manualEntries={t.manual_entries} />
+        <CardContent className="pt-6 space-y-4">
+          <p className="font-medium">Bill vs scanned</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <ScanMetricTile
+              label="Expected Boxes"
+              value={bill.expectedBoxes > 0 ? formatBstNumber(bill.expectedBoxes) : '-'}
+            />
+            <ScanMetricTile
+              label="Scanned Boxes"
+              value={formatBstNumber(bill.scannedBoxes)}
+              hint={bill.offBillBoxes > 0 ? `${formatBstNumber(bill.offBillBoxes)} off-bill` : ''}
+            />
+            <ScanMetricTile
+              label="Scanned Qty"
+              value={bill.scannedQty > 0 ? formatBstNumber(bill.scannedQty) : '-'}
+              hint={bill.expectedQty > 0 ? `of ${formatBstNumber(bill.expectedQty)}` : ''}
+            />
+          </div>
+          <ScanGroupCard
+            isOpen={billOpen}
+            onToggle={() => setBillOpen((open) => !open)}
+            title={
+              <>
+                {t.doc_count > 1
+                  ? `${t.doc_count} SAP documents`
+                  : `Bill ${t.sap_doc_num || t.entry_no}`}
+                {t.customer_name ? (
+                  <span className="font-normal text-muted-foreground"> · {t.customer_name}</span>
+                ) : null}
+              </>
+            }
+            subtitle={`${t.items.length} item${t.items.length === 1 ? '' : 's'}`}
+            badges={
+              <>
+                <Badge variant="outline">
+                  {bill.scannedBoxes}
+                  {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
+                  {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
+                </Badge>
+                <ScanStatusBadge
+                  status={
+                    bill.status === 'Complete'
+                      ? 'complete'
+                      : bill.status === 'Partial'
+                        ? 'partial'
+                        : 'open'
+                  }
+                  label={bill.status}
+                />
+              </>
+            }
+          >
+            <BSTBillTable items={t.items} scans={t.box_scans} manualEntries={t.manual_entries} />
+          </ScanGroupCard>
         </CardContent>
       </Card>
 
@@ -162,8 +221,9 @@ export default function BSTReviewPage() {
             <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                <span className="font-medium">No scanning required.</span> This transfer is packaging
-                material (PM) only — {live ? 'seal it' : 'approve it'} without scanning boxes.
+                <span className="font-medium">No scanning required.</span> This transfer is
+                packaging material (PM) only — {live ? 'seal it' : 'approve it'} without scanning
+                boxes.
               </span>
             </div>
           )}
@@ -237,15 +297,14 @@ export default function BSTReviewPage() {
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}
-            >
+            <Button variant="outline" onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}>
               <ScanLine className="h-4 w-4 mr-1" /> Back to scanning
             </Button>
             <Button
               onClick={handleApprove}
-              disabled={(requiresScanning && totalBoxes === 0) || shortLocked || approveMut.isPending}
+              disabled={
+                (requiresScanning && totalBoxes === 0) || shortLocked || approveMut.isPending
+              }
             >
               {approveMut.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />

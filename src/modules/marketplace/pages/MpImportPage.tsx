@@ -1,9 +1,13 @@
 /**
- * Step 1 — Import a Flipkart order sheet (CSV), with a duplicate-safe review.
+ * Step 1 — Import a Flipkart order sheet (CSV), with a pre-import review.
  *
- * Flow: choose file → Analyze → review (new vs duplicate orders + unmapped SKUs).
- * Orders that already exist are shown as duplicates and are NOT re-imported until
- * the user explicitly acknowledges them; otherwise only the new orders import.
+ * Flow: choose file → Analyze → review (order counts + unmapped SKUs) → import.
+ *
+ * EVERY order in the sheet is imported. Each upload is an independent scanning
+ * session: an order that also appears on an earlier sheet gets its own row here and
+ * is scanned and confirmed here on its own, while the earlier sheet keeps its own
+ * status for it. Orders seen before are surfaced for information only — there is
+ * nothing to acknowledge and nothing is held back.
  */
 import { AlertTriangle, FileUp, Search, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -18,7 +22,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Checkbox,
 } from '@/shared/components/ui';
 
 import { useBatches, useImportOrders, useImportPreview } from '../api/marketplace.queries';
@@ -34,7 +37,6 @@ export default function MpImportPage() {
   const [file, setFile] = useState<{ name: string; file: File; rows: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [ack, setAck] = useState(false);
   const [result, setResult] = useState<OrderImportBatch | null>(null);
 
   const previewMut = useImportPreview();
@@ -43,7 +45,6 @@ export default function MpImportPage() {
 
   function reset() {
     setPreview(null);
-    setAck(false);
     setResult(null);
   }
 
@@ -77,10 +78,10 @@ export default function MpImportPage() {
     );
   }
 
-  function runImport(skipDuplicates: boolean) {
+  function runImport() {
     if (!file) return;
     importMut.mutate(
-      { file: file.file, channel, skip_duplicates: skipDuplicates },
+      { file: file.file, channel },
       {
         onSuccess: (batch) => {
           setResult(batch);
@@ -105,8 +106,9 @@ export default function MpImportPage() {
           />
         </div>
         <p className="text-sm text-muted-foreground">
-          Upload the {channel === 'AMAZON' ? 'Amazon' : 'Flipkart'} order sheet. We check for
-          duplicates before importing. Flipkart and Amazon are kept completely separate.
+          Upload the {channel === 'AMAZON' ? 'Amazon' : 'Flipkart'} order sheet. Every order in
+          it becomes part of this sheet, which is scanned on its own. Flipkart and Amazon are
+          kept completely separate.
         </p>
         <MpFlowSteps current={1} />
       </header>
@@ -195,17 +197,22 @@ export default function MpImportPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Stat label="New orders" value={preview.new_count} tone="emerald" />
-              <Stat label="Duplicates" value={preview.duplicate_count} tone={preview.duplicate_count ? 'amber' : undefined} />
+              <Stat label="Orders in sheet" value={preview.total_orders} tone="emerald" />
+              <Stat label="Also on an earlier sheet" value={preview.duplicate_count} />
               <Stat label="Unmapped SKUs" value={preview.unmapped_skus.length} tone={preview.unmapped_skus.length ? 'amber' : undefined} />
             </div>
 
             {preview.has_duplicates && (
-              <div className="space-y-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
-                  <AlertTriangle className="h-4 w-4" />
-                  {preview.duplicate_count} order(s) already imported earlier
+              <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  {preview.duplicate_count} order(s) also appear on an earlier sheet
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  They are imported here like any other order and scanned on this sheet. The
+                  earlier sheet keeps its own status for them. Because their stock has already
+                  been issued, confirming one here cuts no second delivery note.
+                </p>
                 <div className="max-h-32 overflow-y-auto text-xs">
                   <div className="flex flex-wrap gap-1">
                     {preview.duplicate_order_ids.map((id) => (
@@ -215,37 +222,14 @@ export default function MpImportPage() {
                     ))}
                   </div>
                 </div>
-                <label className="flex items-start gap-2 text-sm">
-                  <Checkbox checked={ack} onCheckedChange={(v) => setAck(Boolean(v))} className="mt-0.5" />
-                  <span>
-                    Yes, these are duplicates — re-import and <strong>refresh</strong> them with the
-                    latest sheet data.
-                  </span>
-                </label>
               </div>
             )}
 
             <div className="flex flex-wrap gap-2">
-              {preview.has_duplicates ? (
-                <>
-                  <Button onClick={() => runImport(false)} disabled={!ack || importMut.isPending}>
-                    <FileUp className="mr-2 h-4 w-4" />
-                    Import all ({preview.total_orders}) & refresh duplicates
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => runImport(true)}
-                    disabled={importMut.isPending || preview.new_count === 0}
-                  >
-                    Import new only ({preview.new_count})
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={() => runImport(false)} disabled={importMut.isPending}>
-                  <FileUp className="mr-2 h-4 w-4" />
-                  Import {preview.new_count} orders
-                </Button>
-              )}
+              <Button onClick={runImport} disabled={importMut.isPending}>
+                <FileUp className="mr-2 h-4 w-4" />
+                Import {preview.total_orders} orders
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -260,9 +244,9 @@ export default function MpImportPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Imported" value={result.order_count} />
-              <Stat label="New" value={result.summary?.created ?? 0} />
-              <Stat label="Refreshed" value={result.summary?.updated ?? 0} />
-              <Stat label="Skipped dups" value={result.summary?.duplicates_skipped ?? 0} />
+              <Stat label="Lines" value={result.summary?.lines ?? 0} />
+              <Stat label="Also on an earlier sheet" value={result.summary?.repeat_orders ?? 0} />
+              <Stat label="Rows without an order id" value={result.summary?.skipped ?? 0} />
             </div>
             {/* Row reconciliation so the operator sees no rows were lost. */}
             <div className="rounded-md border bg-muted/30 p-3 text-sm">

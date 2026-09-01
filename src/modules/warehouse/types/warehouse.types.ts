@@ -172,3 +172,31 @@ export interface CreateFGReceiptPayload {
   posting_date?: string;
 }
 
+
+// ============================================================================
+// Branch Stock Transfer print — letterhead data
+// ============================================================================
+
+/** One warehouse's postal address (OWHS) + its SAP branch's GST/state (OBPL). */
+export interface WarehousePrintAddress {
+  code: string;
+  name: string;
+  street: string;
+  block: string;
+  building: string;
+  city: string;
+  zip_code: string;
+  state_code: string;
+  state_name: string;
+  country: string;
+  gstin: string;
+  branch_name: string;
+}
+
+export interface WarehousePrintInfo {
+  /** The company's legal name as SAP prints it, e.g. "JIVO WELLNESS PVT LTD". */
+  company_name: string;
+  company_email: string;
+  /** Keyed by warehouse code; a code SAP doesn't know is simply absent. */
+  warehouses: Record<string, WarehousePrintAddress>;
+}

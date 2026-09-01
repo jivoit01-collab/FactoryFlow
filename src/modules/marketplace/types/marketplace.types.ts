@@ -42,6 +42,12 @@ export interface DeliveryNoteDispatch {
   fg_line_count: number;
   amount: string;
   variants?: LineVariant[];
+  /** Parcels of the order this note carries, and how many the order has in all.
+   *  A part-confirmed order cuts a note per shipped box, so `is_partial` says the
+   *  note covers some of the order and the rest follow on their own notes. */
+  parcel_count?: number;
+  parcel_total?: number;
+  is_partial?: boolean;
 }
 
 /** One short finished-good line: how much is needed vs on hand. */
@@ -438,7 +444,15 @@ export interface MarketplaceDispatch {
   scanned_count?: number;
   sap_delivery_note_num?: string;
   internal_billing_num?: string;
-  sap_post_status?: 'PENDING' | 'POSTED' | 'FAILED';
+  /**
+   * NOT_REQUIRED — a repeat of an order already shipped on an earlier sheet. Sheets
+   * are independent scanning sessions, so it is scanned and confirmed here, but its
+   * stock left SAP on the first sheet's note and no second note is cut.
+   */
+  sap_post_status?: 'PENDING' | 'POSTED' | 'FAILED' | 'AWAITING_APPROVAL' | 'NOT_REQUIRED';
+  /** Dispatch id whose delivery note already covered these goods (NOT_REQUIRED only). */
+  dn_covered_by?: number | null;
+  dn_covered_by_note?: string;
   sap_error?: string;
   confirmed_at?: string | null;
   created_at?: string;
@@ -604,6 +618,9 @@ export interface OrderImportBatch {
     created?: number;
     updated?: number;
     skipped?: number;
+    /** Orders on this sheet that also exist on an earlier one — informational. */
+    repeat_orders?: number;
+    /** Always 0 now (kept: batches imported under the old carry-over behaviour). */
     duplicates_skipped?: number;
     dispatched_skipped?: number;
     blank_sku_skipped?: number;
@@ -704,6 +721,13 @@ export interface DispatchBoardOrder {
   invoice_number?: string;
   invoice_date?: string | null;
   dn_number?: string;
+  /**
+   * Set when this order shipped on an EARLIER sheet: the delivery note that already
+   * issued its stock. Sheets are independent scanning sessions, so the order is
+   * scanned and confirmed here too — but no second note is cut for the same goods,
+   * and `dn_number` is empty. Show this instead of a blank DN.
+   */
+  dn_covered_by_note?: string;
   gi_number?: string;
   confirmed_at?: string | null;
   confirmed_by?: string;
@@ -1029,8 +1053,16 @@ export interface MpGatePass {
   channel: MarketplaceChannel;
   status: MpGatePassStatus;
   status_display: string;
-  import_batch: number;
+  /** Null on a manual gate out — a truck can leave on a delivery note alone. */
+  import_batch: number | null;
   sheet: string;
+  is_manual: boolean;
+
+  /** What a MANUAL trip carries, stated by the gate person: a sheet-based one
+   *  derives its load from the parcels stamped onto it instead. */
+  delivery_note_no: string;
+  delivery_note_date: string | null;
+  box_count: number;
 
   vehicle: number | null;
   vehicle_no: string;
@@ -1074,8 +1106,23 @@ export interface MpGatePass {
   remarks: string;
   cancel_reason: string;
   cancelled_at: string | null;
+  attachments: MpGatePassAttachment[];
   created_at: string;
   updated_at: string;
+}
+
+/** A document travelling with the trip — the delivery note, bilty, e-way bill. */
+export interface MpGatePassAttachment {
+  id: number;
+  document_type: 'DELIVERY_NOTE' | 'GATEPASS' | 'BILTY' | 'EWAY_BILL' | 'TRUCK_PHOTO' | 'OTHER';
+  document_type_display: string;
+  file_url: string;
+  original_filename: string;
+  document_no: string;
+  document_date: string | null;
+  notes: string;
+  uploaded_by_name: string;
+  uploaded_at: string;
 }
 
 export interface MpGatePassCreatePayload {
@@ -1084,6 +1131,42 @@ export interface MpGatePassCreatePayload {
   transporter_id?: number | null;
   driver_id?: number | null;
   remarks?: string;
+}
+
+/**
+ * A gate out raised at the gate, with no sheet behind it.
+ *
+ * Vehicle and driver may come from the masters (``*_id``) or be typed — a truck
+ * nobody has registered must not stop a load leaving.
+ */
+export interface MpManualGateOutPayload {
+  vehicle_id?: number | null;
+  transporter_id?: number | null;
+  driver_id?: number | null;
+  vehicle_no?: string;
+  driver_name?: string;
+  driver_mobile_no?: string;
+
+  delivery_note_no?: string;
+  delivery_note_date?: string | null;
+  box_count?: number;
+  remarks?: string;
+
+  /** Optional here, unlike a sheet-based trip: a tempo of parcels often never
+   *  sees the weighbridge, and holding the truck for it is the friction this
+   *  entry point exists to remove. */
+  tare_weight?: string;
+  gross_weight?: string;
+  weighbridge_slip_no?: string;
+
+  /** The delivery note itself, filed against the trip. */
+  file?: File | null;
+
+  /** Defaults true — one action opens the trip and sends it out. */
+  mark_out?: boolean;
+  security_name?: string;
+  out_date?: string | null;
+  out_time?: string | null;
 }
 
 export interface MpGatePassWeighmentPayload {
@@ -1107,6 +1190,35 @@ export interface ReportPreview {
   columns: string[];
   rows: (string | number)[][];
   totals: Record<string, string | number>;
+}
+
+/** One posted delivery note, shaped for the printable SAP-layout challan.
+ *  Header, parties, GST identity and lines mirror the SAP document; `billed_by_ji`
+ *  is ours, because SAP's DocTotal on these notes is 0.00 (posted quantity-only). */
+export interface DeliveryNotePrint {
+  doc_num: string;
+  doc_entry: number;
+  doc_date: string;
+  doc_time: string;
+  series: number | null;
+  reference: string;
+  comments: string;
+  currency: string;
+  cancelled: boolean;
+  branch: { id: number | null; name: string };
+  seller: { name: string; gstin: string; state_code: string; address: string[]; place: string; zip: string };
+  bill_to: { code: string; name: string; gstin: string; address: string[]; city: string; state: string; zip: string; country: string };
+  ship_to: { code: string; address: string[]; city: string; state: string; zip: string; country: string };
+  place_of_supply: string;
+  eway: { supply_type: string; transaction_type: string; document_type: string; vehicle_no: string };
+  lines: Array<{
+    no: number; item_code: string; item_name: string; hsn: string; quantity: string;
+    uom: string; warehouse: string; cost_centre: string; tax_code: string;
+    tax_rate: string; batches: string[];
+  }>;
+  tax_summary: Array<{ code: string; rate: string }>;
+  totals: { lines: number; quantity: string; billed_by_ji: string; orders: number };
+  orders: Array<{ order_id: string; buyer_name: string; invoice_number: string; amount: string }>;
 }
 
 export interface TrackingReport {

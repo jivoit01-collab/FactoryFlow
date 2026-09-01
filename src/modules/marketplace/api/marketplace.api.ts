@@ -36,6 +36,7 @@ import type {
   MpGatePassCreatePayload,
   MpGatePassDispatchPayload,
   MpGatePassWeighmentPayload,
+  MpManualGateOutPayload,
   MpPaginated,
   MpReturnCondition,
   MpReturnScan,
@@ -51,6 +52,7 @@ import type {
   ReconciliationParams,
   ReconciliationReport,
   ReportPreview,
+  DeliveryNotePrint,
   ResolvedOrder,
   ReturnCreateRequest,
   ReturnListParams,
@@ -64,8 +66,8 @@ import type {
   SkuMapping,
   SkuMappingUpsert,
   StockList,
-  WarehouseInsights,
   TrackingReport,
+  WarehouseInsights,
 } from '../types/marketplace.types';
 
 const EP = API_ENDPOINTS.MARKETPLACE;
@@ -373,6 +375,28 @@ export const marketplaceApi = {
     );
     return data;
   },
+  /**
+   * Raise a gate out at the gate itself — no sheet, no scanning.
+   *
+   * Sent as multipart because the delivery-note PDF rides along with it, and as
+   * ONE request because the server does the whole thing in one transaction: an
+   * abandoned form must not leave a half-made trip behind.
+   */
+  async gatePassManual(
+    channel: MarketplaceChannel,
+    payload: MpManualGateOutPayload,
+  ): Promise<MpGatePass> {
+    const form = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      form.append(key, value instanceof File ? value : String(value));
+    });
+    const { data } = await apiClient.post<MpGatePass>(
+      `${EP.GATE_PASS_MANUAL}${buildQuery({ channel })}`,
+      form,
+    );
+    return data;
+  },
   async gatePassWeigh(id: number, payload: MpGatePassWeighmentPayload): Promise<MpGatePass> {
     const { data } = await apiClient.post<MpGatePass>(EP.GATE_PASS_WEIGHMENT(id), payload);
     return data;
@@ -401,6 +425,17 @@ export const marketplaceApi = {
     return data;
   },
 
+  /** One posted delivery note, shaped for the printable SAP-layout challan. */
+  async deliveryNotePrint(
+    docEntry: number,
+    channel: MarketplaceChannel,
+  ): Promise<DeliveryNotePrint> {
+    const { data } = await apiClient.get<DeliveryNotePrint>(
+      `${EP.DN_PRINT(docEntry)}${buildQuery({ channel })}`,
+    );
+    return data;
+  },
+
   /** On-screen preview of an insight report — columns, rows and the totals behind them. */
   async reportPreview(reportType: string, params: ReportParams): Promise<ReportPreview> {
     const { data } = await apiClient.get<ReportPreview>(
@@ -421,13 +456,19 @@ export const marketplaceApi = {
     const match = disposition.match(/filename="?([^"]+)"?/);
     return { blob: resp.data, filename: match?.[1] ?? `${reportType}.csv` };
   },
+  /**
+   * `batchId` is the sheet being worked. A re-listed parcel carries the same Tracking
+   * ID on every sheet it appears on, so without it the scan lands on the newest sheet
+   * rather than the one the operator is looking at.
+   */
   async scanDispatchByTracking(
     channel: MarketplaceChannel,
     barcode: string,
+    batchId?: number | null,
   ): Promise<MarketplaceDispatch & { created: boolean; duplicate: boolean }> {
     const { data } = await apiClient.post<MarketplaceDispatch & { created: boolean; duplicate: boolean }>(
       EP.DISPATCH_SCAN_TRACKING,
-      { channel, barcode },
+      { channel, barcode, ...(batchId ? { batch_id: batchId } : {}) },
     );
     return data;
   },
@@ -435,10 +476,11 @@ export const marketplaceApi = {
   async scanDispatchBulk(
     channel: MarketplaceChannel,
     barcodes: string[],
+    batchId?: number | null,
   ): Promise<BulkScanResponse> {
     const { data } = await apiClient.post<BulkScanResponse>(
       EP.DISPATCH_SCAN_BULK,
-      { channel, barcodes },
+      { channel, barcodes, ...(batchId ? { batch_id: batchId } : {}) },
     );
     return data;
   },

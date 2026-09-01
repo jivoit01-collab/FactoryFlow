@@ -1,5 +1,19 @@
 export const API_CONFIG = {
-  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  // The fallback differs by build, and both halves matter.
+  //
+  // A PRODUCTION build with no VITE_API_BASE_URL used to fall back to localhost,
+  // which fails silently: the bundle looks perfectly fine and simply cannot
+  // reach the API. That is easy to ship by accident, because the variable lives
+  // only in GitHub secrets — anyone building the bundle by hand (as we had to
+  // while the CI deploy was blocked) gets a broken app with no warning.
+  //
+  // A DEV server keeps localhost, and must: defaulting `npm run dev` to
+  // production would let a developer write to live SAP and production data from
+  // their laptop without realising it. The .env here sets VITE_API_URL, not
+  // VITE_API_BASE_URL, so local runs really do land on this fallback.
+  baseUrl:
+    import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : 'https://factory.jivo.in/api/v1'),
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
@@ -610,6 +624,14 @@ export const API_ENDPOINTS = {
   },
   // Dispatch
   DISPATCH: {
+    // Bill summary — the picking sheet the warehouse floor works from.
+    BILL_SUMMARY_LOOKUP: '/dispatch/bill-summaries/lookup/',
+    BILL_SUMMARIES: '/dispatch/bill-summaries/',
+    BILL_SUMMARY_DETAIL: (id: number) => `/dispatch/bill-summaries/${id}/`,
+    BILL_SUMMARY_PICK: (id: number) => `/dispatch/bill-summaries/${id}/pick/`,
+    BILL_SUMMARY_STAMP_SAP: (id: number) => `/dispatch/bill-summaries/${id}/stamp-sap/`,
+    BILL_SUMMARY_CANCEL: (id: number) => `/dispatch/bill-summaries/${id}/cancel/`,
+
     OPEN_BILTIES: '/dispatch/open-bilties/',
     BILTY_GRPO_PENDING: '/dispatch/bilty-grpo/pending/',
     BILTY_GRPO_OPTIONS: '/dispatch/bilty-grpo/options/',
@@ -1104,6 +1126,17 @@ export const API_ENDPOINTS = {
     // `POST_SECOND_LEG` is only ever needed for a cross-branch move, where SAP
     // forces the stock through an in-transit warehouse and the receipt is what
     // writes the second document.
+    // Warehouse managers (per-user warehouse scoping). MY_WAREHOUSES is not
+    // admin-gated -- any screen may ask which warehouses the current user runs.
+    MY_WAREHOUSES: '/warehouse/my-warehouses/',
+    USER_WAREHOUSES: '/warehouse/user-warehouses/',
+    USER_WAREHOUSE_GAPS: '/warehouse/user-warehouses/gaps/',
+    USER_WAREHOUSE_DETAIL: (id: number) => `/warehouse/user-warehouses/${id}/`,
+
+    // Letterhead/address/GST data for the Branch Stock Transfer print — used
+    // by both the transfer-request and BST detail pages.
+    PRINT_INFO: '/warehouse/print-info/',
+
     TRANSFER_REQUESTS: '/warehouse/transfer-requests/',
     TRANSFER_REQUESTS_PENDING: '/warehouse/transfer-requests/pending/',
     TRANSFER_REQUESTS_IN_TRANSIT: '/warehouse/transfer-requests/in-transit/',
@@ -1257,6 +1290,7 @@ export const API_ENDPOINTS = {
     GATE_HOLD: (batchId: number) => `/marketplace/gate/${batchId}/hold/`,
     // Gate pass — the outward trip (vehicle, weighment, gatepass, out).
     GATE_PASSES: '/marketplace/gate-passes/',
+    GATE_PASS_MANUAL: '/marketplace/gate-passes/manual/',
     GATE_PASS_DETAIL: (id: number) => `/marketplace/gate-passes/${id}/`,
     GATE_PASS_WEIGHMENT: (id: number) => `/marketplace/gate-passes/${id}/weighment/`,
     GATE_PASS_PRINT: (id: number) => `/marketplace/gate-passes/${id}/print/`,

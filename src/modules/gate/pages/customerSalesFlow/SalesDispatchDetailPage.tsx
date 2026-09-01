@@ -3,7 +3,6 @@ import {
   CalendarClock,
   ChevronDown,
   FileText,
-  Filter,
   PackageCheck,
   Paperclip,
   Printer,
@@ -29,6 +28,13 @@ import {
 import { useArrivalDockings } from '@/modules/gate/api/arrivals/arrivals.queries';
 import { GateStatusBadge, StepLoadingSpinner } from '@/modules/gate/components';
 import {
+  ALL_SCAN_SHEET_FILTER,
+  matchesScanSearch,
+  ScannedBoxesSheet as ScannedBoxesSheetShell,
+  type ScannedBoxSheetRow,
+  type ScanSheetFilter,
+} from '@/shared/components/scanReview';
+import {
   Button,
   Card,
   CardContent,
@@ -41,16 +47,6 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   Textarea,
 } from '@/shared/components/ui';
 import { cn, getErrorMessage, resolveFileUrl } from '@/shared/utils';
@@ -499,14 +495,10 @@ function DockingOverviewCard({
   );
 }
 
-interface ScanSheetFilter {
-  document: string;
-  item: string;
-}
-
-// Right-side panel of all scanned boxes for the load, with Bill + Item filters. Opened
-// either from the header button (unfiltered) or by clicking an item row (pre-filtered to
-// that bill + item). Filtering is display-only — it never changes what was scanned.
+// Right-side panel of all scanned boxes for the load, with search + Bill/Item filters.
+// Opened either from the header button (unfiltered) or by clicking an item row
+// (pre-filtered to that bill + item). Filtering is display-only — it never changes what
+// was scanned. Renders through the shared shell so this panel and the BST one can't drift.
 function ScannedBoxesSheet({
   entry,
   documents,
@@ -539,7 +531,15 @@ function ScannedBoxesSheet({
     ) {
       return false;
     }
-    return true;
+    return matchesScanSearch(filter.query, [
+      scan.box_barcode,
+      scan.barcode_raw,
+      scan.pallet_code,
+      scan.item_code,
+      scan.item_name,
+      scan.batch_number,
+      scan.scanned_by_name,
+    ]);
   });
 
   const scopedItems =
@@ -581,178 +581,55 @@ function ScannedBoxesSheet({
       label: `${doc.sap_doc_num}${doc.customer_name ? ` · ${doc.customer_name}` : ''}`,
     }));
   const itemOptions = buildScanItemOptions(scopeDocs);
-  const hasActiveFilter = filter.document !== 'ALL' || filter.item !== 'ALL';
+
+  const rows: ScannedBoxSheetRow[] = scans.map((scan) => ({
+    key: scan.id,
+    barcode: formatValue(scan.box_barcode || scan.barcode_raw),
+    item: formatValue(scan.item_name || scan.item_code),
+    batch: scan.batch_number,
+    quantity: formatQuantityWithUom(scan.quantity, scan.uom),
+    pallet: formatValue(scan.pallet_code),
+    scannedAt: formatTimestamp(scan.scanned_at),
+    scannedBy: formatValue(scan.scanned_by_name),
+  }));
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex h-full w-full flex-col gap-4 overflow-hidden sm:max-w-2xl lg:max-w-3xl"
-      >
-        <SheetHeader className="shrink-0">
-          <SheetTitle className="flex items-center gap-2">
-            <PackageCheck className="h-5 w-5" />
-            Scanned Boxes
-          </SheetTitle>
-          <SheetDescription asChild>
-            <div>
-              <ScanProgressBadge
-                progress={progress}
-                expected={expected}
-                expectedLoose={expectedLoose}
-              />
-            </div>
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="flex shrink-0 flex-col gap-3 rounded-md border bg-muted/20 p-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Filter className="h-4 w-4" />
-            Filters
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Select
-              value={filter.document}
-              onValueChange={(value) => onFilterChange({ document: value, item: 'ALL' })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All bills" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All bills</SelectItem>
-                {billOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={filter.item}
-              onValueChange={(value) => onFilterChange({ ...filter, item: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All items" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All items</SelectItem>
-                {itemOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {hasActiveFilter ? (
-            <div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onFilterChange({ document: 'ALL', item: 'ALL' })}
-              >
-                Clear filters
-              </Button>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="grid shrink-0 gap-3 text-sm sm:grid-cols-2">
-          <InfoItem
-            label="Scanned Boxes"
-            // Full boxes, with the part boxes named separately: a part box carries the
-            // bill's printed loose pieces, so lumping it in read as one box too many.
-            value={
-              progress.looseBoxes > 0
-                ? `${formatCount(progress.fullBoxes)} + ${progress.looseBoxes} loose box${
-                    progress.looseBoxes === 1 ? '' : 'es'
-                  } (${formatCount(progress.loosePieces)} pcs)`
-                : formatCount(progress.fullBoxes)
-            }
-          />
-          <InfoItem
-            label={expectedLoose > 0 && expected === 0 ? 'Expected Pieces (loose)' : 'Expected Boxes'}
-            value={
-              expectedLoose > 0 && expected === 0
-                ? formatCount(expectedLoose)
-                : expectedLoose > 0
-                  ? `${formatCount(expected)} + ${formatCount(expectedLoose)} pcs loose`
-                  : formatCount(expected)
-            }
-          />
-          <InfoItem
-            label="Total Scanned Quantity"
-            value={formatScannedQuantity(scans, entry.uom)}
-          />
-          <InfoItem label="Last Scan" value={formatTimestamp(scans[0]?.scanned_at || null)} />
-        </div>
-
-        {scans.length > 0 ? (
-          <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-            <table className="w-full border-collapse">
-              <thead className="sticky top-0 z-10 bg-muted">
-                <tr>
-                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
-                    Barcode
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
-                    Item
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium">
-                    Quantity
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
-                    Pallet
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
-                    Scanned At
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium">
-                    Scanned By
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {scans.map((scan) => (
-                  <tr key={scan.id} className="border-t">
-                    <td className="whitespace-nowrap px-3 py-1.5 text-sm font-semibold">
-                      {formatValue(scan.box_barcode || scan.barcode_raw)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-sm">
-                      <span className="font-medium">
-                        {formatValue(scan.item_name || scan.item_code)}
-                      </span>
-                      {scan.batch_number ? (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          Batch: {scan.batch_number}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-right text-sm tabular-nums">
-                      {formatQuantityWithUom(scan.quantity, scan.uom)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-sm">
-                      {formatValue(scan.pallet_code)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-sm">
-                      {formatTimestamp(scan.scanned_at)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-sm">
-                      {formatValue(scan.scanned_by_name)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="flex min-h-20 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-            {hasActiveFilter ? 'No boxes match the current filter.' : 'No boxes scanned yet'}
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
+    <ScannedBoxesSheetShell
+      open={open}
+      onOpenChange={onOpenChange}
+      filter={filter}
+      onFilterChange={onFilterChange}
+      billOptions={billOptions}
+      itemOptions={itemOptions}
+      badge={
+        <ScanProgressBadge progress={progress} expected={expected} expectedLoose={expectedLoose} />
+      }
+      stats={[
+        {
+          label: 'Scanned Boxes',
+          // Full boxes, with the part boxes named separately: a part box carries the
+          // bill's printed loose pieces, so lumping it in read as one box too many.
+          value:
+            progress.looseBoxes > 0
+              ? `${formatCount(progress.fullBoxes)} + ${progress.looseBoxes} loose box${
+                  progress.looseBoxes === 1 ? '' : 'es'
+                } (${formatCount(progress.loosePieces)} pcs)`
+              : formatCount(progress.fullBoxes),
+        },
+        {
+          label: expectedLoose > 0 && expected === 0 ? 'Expected Pieces (loose)' : 'Expected Boxes',
+          value:
+            expectedLoose > 0 && expected === 0
+              ? formatCount(expectedLoose)
+              : expectedLoose > 0
+                ? `${formatCount(expected)} + ${formatCount(expectedLoose)} pcs loose`
+                : formatCount(expected),
+        },
+        { label: 'Total Scanned Quantity', value: formatScannedQuantity(scans, entry.uom) },
+        { label: 'Last Scan', value: formatTimestamp(scans[0]?.scanned_at || null) },
+      ]}
+      rows={rows}
+    />
   );
 }
 
@@ -889,11 +766,7 @@ function ScanProgressField({
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <div className="mt-1">
-        <ScanProgressBadge
-          progress={progress}
-          expected={expected}
-          expectedLoose={expectedLoose}
-        />
+        <ScanProgressBadge progress={progress} expected={expected} expectedLoose={expectedLoose} />
       </div>
       {progress.unplannedScanCount > 0 ? (
         <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
@@ -955,7 +828,7 @@ function DocumentsCard({
 }) {
   const scans = entry.box_scans ?? [];
   const [isScanSheetOpen, setIsScanSheetOpen] = useState(false);
-  const [scanFilter, setScanFilter] = useState<ScanSheetFilter>({ document: 'ALL', item: 'ALL' });
+  const [scanFilter, setScanFilter] = useState<ScanSheetFilter>(ALL_SCAN_SHEET_FILTER);
 
   const openScanSheet = (filter: ScanSheetFilter) => {
     setScanFilter(filter);
@@ -975,7 +848,7 @@ function DocumentsCard({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => openScanSheet({ document: 'ALL', item: 'ALL' })}
+            onClick={() => openScanSheet(ALL_SCAN_SHEET_FILTER)}
           >
             <PackageCheck className="mr-2 h-4 w-4" />
             Scanned Boxes
@@ -1003,7 +876,7 @@ function DocumentsCard({
                 scans={getDocumentScans(scans, document)}
                 showCompany={showCompany}
                 onOpenItem={(itemCode) =>
-                  openScanSheet({ document: document.sap_doc_num, item: itemCode })
+                  openScanSheet({ document: document.sap_doc_num, item: itemCode, query: '' })
                 }
               />
             ))}

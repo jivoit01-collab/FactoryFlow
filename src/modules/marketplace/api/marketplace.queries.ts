@@ -583,10 +583,16 @@ export function useCompleteItemGroup(channel: MarketplaceChannel) {
   });
 }
 
-export function useScanDispatchByTracking(channel: MarketplaceChannel) {
+/** `batchId` is the sheet being worked — the scan lands on that sheet's copy of the
+ *  order rather than the newest sheet that lists the same Tracking ID. */
+export function useScanDispatchByTracking(
+  channel: MarketplaceChannel,
+  batchId?: number | null,
+) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (barcode: string) => marketplaceApi.scanDispatchByTracking(channel, barcode),
+    mutationFn: (barcode: string) =>
+      marketplaceApi.scanDispatchByTracking(channel, barcode, batchId),
     onSuccess: () => invalidateMarketplace(qc),
   });
 }
@@ -603,6 +609,7 @@ const BULK_SCAN_CHUNK = 25;
 export function useScanDispatchBulk(
   channel: MarketplaceChannel,
   onProgress?: (done: number, total: number) => void,
+  batchId?: number | null,
 ) {
   const qc = useQueryClient();
   return useMutation({
@@ -611,7 +618,7 @@ export function useScanDispatchBulk(
       onProgress?.(0, barcodes.length);
       for (let i = 0; i < barcodes.length; i += BULK_SCAN_CHUNK) {
         const res = await marketplaceApi.scanDispatchBulk(
-          channel, barcodes.slice(i, i + BULK_SCAN_CHUNK),
+          channel, barcodes.slice(i, i + BULK_SCAN_CHUNK), batchId,
         );
         merged.total += res.total;
         merged.scanned += res.scanned;

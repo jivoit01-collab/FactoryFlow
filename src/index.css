@@ -944,3 +944,296 @@
     width: 14%;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Branch Stock Transfer print (warehouse transfer-request + BST detail pages).
+ * Modelled on SAP B1's Crystal "Branch Stock Transfer" layout. Same host
+ * pattern as .sap-gatepass-print: hidden off-screen on screen, shown in print.
+ * ------------------------------------------------------------------------- */
+
+.bst-doc-print-host {
+  height: 0;
+  left: -10000px;
+  overflow: hidden;
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  width: 210mm;
+}
+
+.bst-doc-print {
+  background: #ffffff;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10.5px;
+  line-height: 1.2;
+  margin: 0 auto;
+  width: 186mm;
+}
+
+.bst-doc-print * {
+  box-sizing: border-box;
+}
+
+.bst-doc-strong {
+  font-weight: 700;
+}
+
+.bst-doc-center {
+  text-align: center;
+}
+
+.bst-doc-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bst-doc-masthead {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+
+.bst-doc-company-name {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.bst-doc-copy {
+  font-size: 11px;
+  font-style: italic;
+  padding-top: 2mm;
+}
+
+.bst-doc-subhead {
+  align-items: start;
+  display: grid;
+  gap: 2mm;
+  grid-template-columns: 64mm 1fr 44mm;
+  margin: 0.5mm 0 1.5mm;
+}
+
+.bst-doc-company-address {
+  font-size: 10px;
+  font-weight: 700;
+  padding-left: 6mm;
+}
+
+.bst-doc-title {
+  font-size: 15px;
+  font-weight: 700;
+  padding-top: 2mm;
+  text-align: center;
+}
+
+.bst-doc-barcode {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bst-doc-barcode svg {
+  height: 10mm;
+  width: 42mm;
+}
+
+.bst-doc-box {
+  border: 1px solid #111111;
+  display: flex;
+  flex-direction: column;
+  min-height: 240mm;
+}
+
+.bst-doc-parties {
+  border-bottom: 1px solid #111111;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.bst-doc-party-left {
+  border-right: 1px solid #111111;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6mm;
+  padding: 1.5mm 2mm;
+}
+
+.bst-doc-gst-row {
+  display: flex;
+  gap: 6mm;
+}
+
+.bst-doc-consignee {
+  border-top: 1px solid #111111;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6mm;
+  margin-top: 1.5mm;
+  padding-top: 1mm;
+}
+
+.bst-doc-consignee-label {
+  font-size: 11.5px;
+}
+
+.bst-doc-cellgrid {
+  display: grid;
+  grid-auto-rows: min-content;
+  grid-template-columns: 1fr 1fr;
+}
+
+.bst-doc-cell {
+  border-bottom: 1px solid #111111;
+  min-height: 9mm;
+  padding: 0.8mm 1.5mm;
+}
+
+.bst-doc-cell:nth-child(odd) {
+  border-right: 1px solid #111111;
+}
+
+.bst-doc-cell-label {
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.bst-doc-cell-value {
+  min-height: 3.5mm;
+}
+
+.bst-doc-cell-wide {
+  border-bottom: none;
+  grid-column: 1 / -1;
+}
+
+.bst-doc-cell-wide .bst-doc-cell-label {
+  line-height: 1.5;
+}
+
+.bst-doc-items {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.bst-doc-items th,
+.bst-doc-items td {
+  border-right: 1px solid #111111;
+  padding: 1mm 1.5mm;
+  vertical-align: top;
+}
+
+.bst-doc-items th:last-child,
+.bst-doc-items td:last-child {
+  border-right: none;
+}
+
+.bst-doc-items thead th {
+  border-bottom: 1px solid #111111;
+  font-weight: 700;
+  text-align: center;
+}
+
+.bst-doc-items-filler td {
+  height: 12mm;
+}
+
+.bst-doc-total-row td {
+  border-bottom: 1px solid #111111;
+  border-top: 1px solid #111111;
+}
+
+.bst-doc-col-sno {
+  width: 9mm;
+}
+
+.bst-doc-col-hsn {
+  width: 20mm;
+}
+
+.bst-doc-col-qty {
+  width: 26mm;
+}
+
+.bst-doc-col-box {
+  width: 14mm;
+}
+
+.bst-doc-col-rate {
+  width: 15mm;
+}
+
+.bst-doc-col-per {
+  width: 10mm;
+}
+
+.bst-doc-col-amount {
+  width: 26mm;
+}
+
+.bst-doc-words {
+  border-bottom: 1px solid #111111;
+  padding: 1mm 2mm;
+}
+
+.bst-doc-filler {
+  flex: 1 1 auto;
+  min-height: 30mm;
+}
+
+.bst-doc-declaration {
+  padding: 1mm 2mm;
+}
+
+.bst-doc-for {
+  font-weight: 700;
+  text-align: right;
+}
+
+.bst-doc-signatures {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 8mm 2mm 2mm;
+  text-align: center;
+}
+
+.bst-doc-footer {
+  font-size: 9px;
+  margin-top: 1mm;
+}
+
+.bst-doc-footer-row {
+  display: flex;
+  font-style: italic;
+  justify-content: space-between;
+}
+
+.bst-doc-footer-center {
+  font-style: italic;
+  text-align: center;
+}
+
+@media print {
+  .bst-doc-print-host {
+    height: auto !important;
+    left: auto !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    position: static !important;
+    top: auto !important;
+    width: 100% !important;
+  }
+
+  .bst-doc-print,
+  .bst-doc-print * {
+    overflow: visible !important;
+  }
+
+  .bst-doc-print {
+    color: #111111 !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+    width: 186mm !important;
+  }
+}
