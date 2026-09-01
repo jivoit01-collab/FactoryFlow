@@ -1,5 +1,6 @@
+export { type BoardDay, useBoardDay } from './boardDay.context';
+export { BoardDayProvider } from './BoardDayProvider';
 export { useAutoScroll } from './useAutoScroll';
-export { type BoardDay, useBoardDay } from './useBoardDay';
 export {
   type DispatchDayTotals,
   type TrendPoint,

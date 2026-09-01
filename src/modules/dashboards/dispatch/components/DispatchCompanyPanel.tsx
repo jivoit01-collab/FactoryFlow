@@ -3,14 +3,11 @@ import { useMemo } from 'react';
 
 import { cn } from '@/shared/utils';
 
+import { useWallPalette } from '../constants/wall.palette';
 import type { CompanySlice, DispatchDayVehicles } from '../hooks';
-import { useNow } from '../hooks';
+import { useBoardDay, useNow } from '../hooks';
 import { compact, count, money, weight } from '../utils/format';
 import { BoardPanel, PanelBadge, PanelEmpty } from './BoardPanel';
-
-/** One colour per company, in the order they rank. Fixed hues so the same
- *  company keeps the same colour between the bars and the share strip. */
-const COMPANY_HEX = ['#34d399', '#60a5fa', '#fbbf24', '#f472b6', '#22d3ee'];
 
 /** The working day the hour strip covers; out-of-hours gate-outs fold into the
  *  end bars rather than being dropped. */
@@ -34,6 +31,8 @@ export function DispatchCompanyPanel({
   knownCompanyCodes: string[];
 }) {
   const now = useNow(30_000);
+  const day = useBoardDay();
+  const palette = useWallPalette();
 
   const rows = useMemo(() => {
     const seen = new Set(vehicles.byCompany.map((row) => row.code));
@@ -60,18 +59,20 @@ export function DispatchCompanyPanel({
     <BoardPanel
       title="By company"
       icon={Building2}
-      hex="#60a5fa"
+      hex={palette.hue('value')}
       aside={<PanelBadge tone="good">{money(totalAmount)}</PanelBadge>}
     >
       {rows.length === 0 ? (
         <PanelEmpty>
-          {vehicles.isLoading ? 'Reading the docking register...' : 'No company has shipped today.'}
+          {vehicles.isLoading
+            ? 'Reading the docking register...'
+            : 'No company shipped on this day.'}
         </PanelEmpty>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {/* share of the day, as one stacked strip */}
           <div className="shrink-0">
-            <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-black/[0.07] dark:bg-white/10">
               {rows.map((row, index) =>
                 row.amount > 0 ? (
                   <span
@@ -79,7 +80,7 @@ export function DispatchCompanyPanel({
                     className="h-full transition-[width] duration-700"
                     style={{
                       width: `${(row.amount / (totalAmount || 1)) * 100}%`,
-                      backgroundColor: COMPANY_HEX[index % COMPANY_HEX.length],
+                      backgroundColor: palette.company(index),
                     }}
                   />
                 ) : null,
@@ -95,7 +96,7 @@ export function DispatchCompanyPanel({
               <CompanyBlock
                 key={row.code}
                 row={row}
-                hex={COMPANY_HEX[index % COMPANY_HEX.length]}
+                hex={palette.company(index)}
                 max={maxAmount}
                 share={totalAmount > 0 ? Math.round((row.amount / totalAmount) * 100) : 0}
               />
@@ -104,8 +105,10 @@ export function DispatchCompanyPanel({
 
           <OutByHour
             outByHour={vehicles.outByHour}
-            currentHour={now.getHours()}
+            // No hour is "current" on a finished day, so nothing is highlighted.
+            currentHour={day.isToday ? now.getHours() : -1}
             totalOut={totalOut}
+            label={day.isToday ? 'today' : 'that day'}
           />
         </div>
       )}
@@ -130,7 +133,9 @@ function CompanyBlock({
     <div
       className={cn(
         'rounded-xl border px-3 py-2 transition-colors',
-        silent ? 'border-white/5 bg-white/[0.02]' : 'border-white/10 bg-white/[0.04]',
+        silent
+          ? 'border-black/[0.06] dark:border-white/5 bg-black/[0.012] dark:bg-white/[0.02]'
+          : 'border-black/[0.09] dark:border-white/10 bg-black/[0.025] dark:bg-white/[0.04]',
       )}
     >
       <div className="flex items-baseline justify-between gap-2">
@@ -139,7 +144,7 @@ function CompanyBlock({
           <span
             className={cn(
               'truncate text-sm font-bold uppercase tracking-wide',
-              silent ? 'text-slate-500' : 'text-white',
+              silent ? 'text-muted-foreground/80' : 'text-foreground',
             )}
           >
             {row.name}
@@ -147,16 +152,19 @@ function CompanyBlock({
         </span>
         <span className="flex shrink-0 items-baseline gap-2">
           <span
-            className="text-lg font-bold tabular-nums leading-none"
-            style={{ color: silent ? '#475569' : hex }}
+            className={cn(
+              'text-lg font-bold tabular-nums leading-none',
+              silent && 'text-muted-foreground/50',
+            )}
+            style={silent ? undefined : { color: hex }}
           >
             {row.trucksOut}
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
             out
           </span>
           {row.trucksIn > 0 && (
-            <span className="rounded border border-amber-400/30 bg-amber-400/10 px-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+            <span className="rounded border border-amber-600/30 dark:border-amber-400/30 bg-amber-500/10 dark:bg-amber-400/10 px-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
               {row.trucksIn} in
             </span>
           )}
@@ -164,7 +172,7 @@ function CompanyBlock({
       </div>
 
       <div className="mt-1.5 flex items-center gap-2">
-        <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+        <span className="h-2 flex-1 overflow-hidden rounded-full bg-black/[0.07] dark:bg-white/10">
           <span
             className="block h-full rounded-full transition-[width] duration-700"
             style={{
@@ -173,17 +181,19 @@ function CompanyBlock({
             }}
           />
         </span>
-        <span className="w-20 shrink-0 text-right text-sm font-bold tabular-nums text-white">
+        <span className="w-20 shrink-0 text-right text-sm font-bold tabular-nums text-foreground">
           {row.amount > 0 ? money(row.amount) : '—'}
         </span>
       </div>
 
-      <div className="mt-1 flex items-center justify-between text-[11px] tabular-nums text-slate-500">
+      <div className="mt-1 flex items-center justify-between text-[11px] tabular-nums text-muted-foreground/80">
         <span>
           {count(row.bills)} {row.bills === 1 ? 'bill' : 'bills'} &middot; {compact(row.boxes)} bx
           &middot; {weight(row.weightKg)}
         </span>
-        <span className={silent ? 'text-slate-600' : 'text-slate-400'}>{share}% of day</span>
+        <span className={silent ? 'text-muted-foreground/60' : 'text-muted-foreground'}>
+          {share}% of day
+        </span>
       </div>
     </div>
   );
@@ -194,10 +204,12 @@ function OutByHour({
   outByHour,
   currentHour,
   totalOut,
+  label,
 }: {
   outByHour: number[];
   currentHour: number;
   totalOut: number;
+  label: string;
 }) {
   const slots = useMemo(() => {
     const out: { hour: number; value: number }[] = [];
@@ -214,10 +226,12 @@ function OutByHour({
   const peak = Math.max(...slots.map((slot) => slot.value), 1);
 
   return (
-    <div className="shrink-0 border-t border-white/10 pt-2">
-      <p className="mb-1 flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+    <div className="shrink-0 border-t border-black/[0.09] dark:border-white/10 pt-2">
+      <p className="mb-1 flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
         <span>Gate-outs by hour</span>
-        <span className="tabular-nums">{count(totalOut)} today</span>
+        <span className="tabular-nums">
+          {count(totalOut)} {label}
+        </span>
       </p>
       <div className="flex h-10 items-end gap-[3px]">
         {slots.map((slot) => (
@@ -226,8 +240,8 @@ function OutByHour({
             title={`${String(slot.hour).padStart(2, '0')}:00 — ${slot.value}`}
             className={cn(
               'flex-1 rounded-sm transition-[height] duration-500',
-              slot.value > 0 ? 'bg-emerald-400' : 'bg-white/10',
-              slot.hour === currentHour && 'ring-1 ring-white/50',
+              slot.value > 0 ? 'bg-emerald-400' : 'bg-black/[0.07] dark:bg-white/10',
+              slot.hour === currentHour && 'ring-1 ring-foreground/40',
             )}
             style={{
               height: slot.value > 0 ? `${Math.max((slot.value / peak) * 100, 14)}%` : '6%',
@@ -241,7 +255,9 @@ function OutByHour({
             key={slot.hour}
             className={cn(
               'flex-1 text-center text-[9px] tabular-nums',
-              slot.hour === currentHour ? 'font-bold text-slate-300' : 'text-slate-600',
+              slot.hour === currentHour
+                ? 'font-bold text-foreground/75'
+                : 'text-muted-foreground/60',
             )}
           >
             {slot.hour % 4 === 0 ? String(slot.hour).padStart(2, '0') : ''}

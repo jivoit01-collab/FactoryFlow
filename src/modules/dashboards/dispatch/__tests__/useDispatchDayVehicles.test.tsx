@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SalesDispatchGateOut } from '@/modules/gate/api/salesDispatch/salesDispatch.api';
 
+import { useBoardDay } from '../hooks/boardDay.context';
+import { BoardDayProvider } from '../hooks/BoardDayProvider';
 import { useDispatchDayVehicles } from '../hooks/useDispatchDayVehicles';
 
 const list = vi.fn();
@@ -51,11 +53,32 @@ function docking(overrides: Partial<SalesDispatchGateOut>) {
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <BoardDayProvider>{children}</BoardDayProvider>
+    </QueryClientProvider>
+  );
 }
 
 async function renderVehicles() {
   const view = renderHook(() => useDispatchDayVehicles(), { wrapper });
+  await waitFor(() => expect(view.result.current.isLoading).toBe(false));
+  return view;
+}
+
+/** Same, but with the board back-dated to `date` before it reads anything. */
+async function renderVehiclesOn(date: string) {
+  const view = renderHook(
+    () => {
+      const day = useBoardDay();
+      const setDate = day.setDate;
+      useEffect(() => {
+        setDate(date);
+      }, [setDate]);
+      return useDispatchDayVehicles();
+    },
+    { wrapper },
+  );
   await waitFor(() => expect(view.result.current.isLoading).toBe(false));
   return view;
 }
@@ -276,5 +299,49 @@ describe('useDispatchDayVehicles', () => {
 
     expect(result.current.inside.map((truck) => truck.arrivalNo)).toEqual(['IN-early', 'IN-late']);
     expect(result.current.out.map((truck) => truck.arrivalNo)).toEqual(['OUT-new', 'OUT-old']);
+  });
+
+  it('reads IN as "was inside when that day ended", not as "inside now"', async () => {
+    list.mockResolvedValue([
+      // Docked on the 25th and dispatched on the 27th. On the 26th it was
+      // standing in the yard, even though today it is long gone — a live status
+      // flag would call it dispatched and lose it from that Wednesday entirely.
+      docking({
+        arrival_no: 'ARV-SLOW',
+        status: 'DISPATCHED',
+        docked_at: new Date(2026, 7, 25, 10, 0).toISOString(),
+        created_at: new Date(2026, 7, 25, 10, 0).toISOString(),
+        gate_out_date: TODAY,
+        dispatched_at: new Date(2026, 7, 27, 9, 0).toISOString(),
+      }),
+    ]);
+
+    const { result } = await renderVehiclesOn('2026-08-26');
+
+    expect(result.current.inCount).toBe(1);
+    expect(result.current.outCount).toBe(0);
+    expect(result.current.inside[0].arrivalNo).toBe('ARV-SLOW');
+  });
+
+  it('counts a truck as OUT on the day it actually left, not on today', async () => {
+    list.mockResolvedValue([
+      docking({
+        arrival_no: 'ARV-GONE',
+        status: 'DISPATCHED',
+        docked_at: new Date(2026, 7, 26, 8, 0).toISOString(),
+        created_at: new Date(2026, 7, 26, 8, 0).toISOString(),
+        gate_out_date: '2026-08-26',
+        dispatched_at: new Date(2026, 7, 26, 15, 0).toISOString(),
+        sap_doc_total: '70000',
+      }),
+    ]);
+
+    const onThatDay = await renderVehiclesOn('2026-08-26');
+    expect(onThatDay.result.current.outCount).toBe(1);
+    expect(onThatDay.result.current.byVendor[0].amount).toBe(70_000);
+
+    // …and it is simply absent from today, which it had nothing to do with.
+    const { result } = await renderVehicles();
+    expect(result.current.totalCount).toBe(0);
   });
 });

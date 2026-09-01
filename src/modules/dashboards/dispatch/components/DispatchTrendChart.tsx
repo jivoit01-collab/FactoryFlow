@@ -12,7 +12,9 @@ import {
 
 import { cn } from '@/shared/utils';
 
+import { useWallPalette, type WallHueKey, type WallPalette } from '../constants/wall.palette';
 import type { DispatchDayTotals, TrendPoint } from '../hooks';
+import { useBoardDay } from '../hooks';
 import { compact, count, money, weight } from '../utils/format';
 
 /** Every KPI tile above the chart, as a series. Colours are the tile colours —
@@ -20,7 +22,7 @@ import { compact, count, money, weight } from '../utils/format';
 interface SeriesSpec {
   key: keyof Pick<TrendPoint, 'trucks' | 'amount' | 'bills' | 'boxes' | 'litres' | 'weightKg'>;
   label: string;
-  hex: string;
+  hue: WallHueKey;
   /** Renders the raw value for the legend and the tooltip. */
   format: (value: number) => string;
   /** SVG stroke pattern. Undefined draws solid. */
@@ -43,28 +45,28 @@ interface SeriesSpec {
  * first, and a pattern would cost it that.
  */
 const SERIES: SeriesSpec[] = [
-  { key: 'amount', label: 'Dispatched value', hex: '#60a5fa', format: money, hero: true },
-  { key: 'trucks', label: 'Trucks out', hex: '#34d399', format: count, dash: '9 5' },
+  { key: 'amount', label: 'Dispatched value', hue: 'value', format: money, hero: true },
+  { key: 'trucks', label: 'Trucks out', hue: 'trucks', format: count, dash: '9 5' },
   {
     key: 'bills',
     label: 'Invoices shipped',
-    hex: '#22d3ee',
+    hue: 'invoices',
     format: count,
     dash: '1 5',
     round: true,
   },
-  { key: 'boxes', label: 'Boxes out', hex: '#a78bfa', format: compact, dash: '12 4 2 4' },
+  { key: 'boxes', label: 'Boxes out', hue: 'boxes', format: compact, dash: '12 4 2 4' },
   {
     key: 'litres',
     label: 'Volume out',
-    hex: '#fbbf24',
+    hue: 'volume',
     format: (v) => `${compact(v)} L`,
     dash: '5 5',
   },
   {
     key: 'weightKg',
     label: 'Weight out',
-    hex: '#f472b6',
+    hue: 'weight',
     format: weight,
     dash: '2 3',
     round: true,
@@ -72,7 +74,15 @@ const SERIES: SeriesSpec[] = [
 ];
 
 /** The legend/tooltip key: the series' actual stroke, not a generic dot. */
-function SeriesSwatch({ series, muted }: { series: SeriesSpec; muted?: boolean }) {
+function SeriesSwatch({
+  series,
+  hex,
+  muted,
+}: {
+  series: SeriesSpec;
+  hex: string;
+  muted?: boolean;
+}) {
   return (
     <svg width="20" height="8" viewBox="0 0 20 8" aria-hidden className="shrink-0 overflow-visible">
       <line
@@ -80,7 +90,7 @@ function SeriesSwatch({ series, muted }: { series: SeriesSpec; muted?: boolean }
         y1="4"
         x2="19"
         y2="4"
-        stroke={muted ? '#475569' : series.hex}
+        stroke={muted ? 'currentColor' : hex}
         strokeWidth={series.hero ? 3 : 2.25}
         strokeDasharray={series.dash}
         strokeLinecap={series.round ? 'round' : 'butt'}
@@ -124,6 +134,8 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
   // On a wall nobody can click, so every series starts visible. Toggling is for
   // whoever opens the same board at a desk.
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const day = useBoardDay();
+  const palette = useWallPalette();
 
   const { rows, averages, live, dead, maxIndex } = useMemo(() => {
     const points = totals.trend;
@@ -201,12 +213,12 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
     });
 
   return (
-    <section className="flex h-[236px] shrink-0 flex-col rounded-2xl border border-white/10 bg-white/[0.035] px-4 pb-2 pt-3">
+    <section className="flex h-[236px] shrink-0 flex-col rounded-2xl border border-black/[0.09] dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.035] px-4 pb-2 pt-3">
       <header className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-300">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground/75">
           14-day trend
         </h2>
-        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        <span className="rounded-full border border-black/[0.09] dark:border-white/10 bg-black/[0.035] dark:bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           % of own 14-day average
         </span>
 
@@ -219,19 +231,19 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
                 key={series.key}
                 type="button"
                 onClick={() => toggle(series.key)}
-                title={`${series.label} — today ${
+                title={`${series.label} — ${day.isToday ? 'today' : day.date} ${
                   typeof raw === 'number' ? series.format(raw) : '—'
                 }`}
                 className={cn(
                   'flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-opacity',
                   off
-                    ? 'border-white/10 bg-transparent text-slate-600 opacity-50'
-                    : 'border-white/10 bg-white/5 text-slate-300',
+                    ? 'border-black/[0.09] dark:border-white/10 bg-transparent text-muted-foreground/60 opacity-50'
+                    : 'border-black/[0.09] dark:border-white/10 bg-black/[0.035] dark:bg-white/5 text-foreground/75',
                 )}
               >
-                <SeriesSwatch series={series} muted={off} />
+                <SeriesSwatch series={series} hex={palette.hue(series.hue)} muted={off} />
                 {series.label}
-                <span className="font-bold tabular-nums text-white">
+                <span className="font-bold tabular-nums text-foreground">
                   {typeof raw === 'number' ? series.format(raw) : '—'}
                 </span>
               </button>
@@ -241,9 +253,9 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
             <span
               key={series.key}
               title="The backend reports no daily history for this measure."
-              className="flex items-center gap-1.5 rounded-full border border-dashed border-white/10 px-2 py-0.5 text-[11px] text-slate-600"
+              className="flex items-center gap-1.5 rounded-full border border-dashed border-black/[0.09] dark:border-white/10 px-2 py-0.5 text-[11px] text-muted-foreground/60"
             >
-              <span className="h-2 w-2 shrink-0 rounded-full bg-slate-700" />
+              <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/30" />
               {series.label}
               <span className="italic">no history</span>
             </span>
@@ -254,10 +266,14 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
       <div className="min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="#ffffff" strokeOpacity={0.06} vertical={false} />
+            <CartesianGrid
+              stroke={palette.chart.grid}
+              strokeOpacity={palette.chart.gridOpacity}
+              vertical={false}
+            />
             <XAxis
               dataKey="label"
-              tick={{ fill: '#64748b', fontSize: 10 }}
+              tick={{ fill: palette.chart.axis, fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               tickMargin={6}
@@ -267,7 +283,7 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
             <YAxis
               yAxisId="index"
               domain={[0, maxIndex]}
-              tick={{ fill: '#64748b', fontSize: 10 }}
+              tick={{ fill: palette.chart.axis, fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               width={40}
@@ -284,7 +300,7 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
               orientation="right"
               domain={[0, maxIndex]}
               ticks={moneyTicks}
-              tick={{ fill: '#64748b', fontSize: 10 }}
+              tick={{ fill: palette.chart.axis, fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               width={58}
@@ -294,7 +310,7 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
             <ReferenceLine
               yAxisId="index"
               y={100}
-              stroke="#94a3b8"
+              stroke={palette.chart.baseline}
               strokeOpacity={0.35}
               // Sparser than any series pattern, so the baseline never reads as
               // one of the six lines.
@@ -306,7 +322,7 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
               yAxisId="index"
               type="stepAfter"
               dataKey="best"
-              stroke="#94a3b8"
+              stroke={palette.chart.baseline}
               strokeOpacity={0.45}
               strokeWidth={1.5}
               dot={false}
@@ -321,11 +337,11 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
                 yAxisId="index"
                 type="monotone"
                 dataKey={series.key}
-                stroke={series.hex}
+                stroke={palette.hue(series.hue)}
                 strokeWidth={series.hero ? 3 : 2}
                 strokeDasharray={series.dash}
                 strokeLinecap={series.round ? 'round' : 'butt'}
-                dot={<SeriesDot hex={series.hex} />}
+                dot={<SeriesDot hex={palette.hue(series.hue)} surface={palette.chart.surface} />}
                 activeDot={{ r: 4, strokeWidth: 0 }}
                 connectNulls={false}
                 isAnimationActive={false}
@@ -334,8 +350,8 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
             ))}
 
             <Tooltip
-              cursor={{ stroke: '#ffffff', strokeOpacity: 0.15 }}
-              content={<TrendTooltip series={visible} />}
+              cursor={{ stroke: palette.chart.grid, strokeOpacity: 0.25 }}
+              content={<TrendTooltip series={visible} palette={palette} isLive={day.isToday} />}
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -345,8 +361,15 @@ export function DispatchTrendChart({ totals }: { totals: DispatchDayTotals }) {
 }
 
 /** Solid dot for a finished day, hollow for today — the day is not done yet. */
-function SeriesDot(props: { hex: string; cx?: number; cy?: number; payload?: ChartRow }) {
-  const { hex, cx, cy, payload } = props;
+function SeriesDot(props: {
+  hex: string;
+  /** The board surface, painted inside the hollow "today" marker. */
+  surface: string;
+  cx?: number;
+  cy?: number;
+  payload?: ChartRow;
+}) {
+  const { hex, surface, cx, cy, payload } = props;
   if (cx == null || cy == null) return null;
   const isToday = payload?.isToday === true;
   return (
@@ -354,7 +377,7 @@ function SeriesDot(props: { hex: string; cx?: number; cy?: number; payload?: Cha
       cx={cx}
       cy={cy}
       r={isToday ? 4 : 2.4}
-      fill={isToday ? '#070b14' : hex}
+      fill={isToday ? surface : hex}
       stroke={hex}
       strokeWidth={isToday ? 2 : 0}
     />
@@ -364,10 +387,15 @@ function SeriesDot(props: { hex: string; cx?: number; cy?: number; payload?: Cha
 /** Every visible series for that day, in its own real unit. */
 function TrendTooltip({
   series,
+  palette,
+  isLive,
   active,
   payload,
 }: {
   series: SeriesSpec[];
+  palette: WallPalette;
+  /** Only the running day is "still running"; a back-dated one is finished. */
+  isLive: boolean;
   active?: boolean;
   payload?: { payload: ChartRow }[];
 }) {
@@ -375,10 +403,13 @@ function TrendTooltip({
   const row = payload[0].payload;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#0d1424] px-3 py-2 shadow-xl">
-      <p className="mb-1 text-xs font-bold text-white">
+    <div
+      className="rounded-xl border px-3 py-2 shadow-xl"
+      style={{ background: palette.chart.tooltipBg, borderColor: palette.chart.tooltipBorder }}
+    >
+      <p className="mb-1 text-xs font-bold text-foreground">
         {row.label}
-        {row.isToday ? ' · today (still running)' : ''}
+        {row.isToday ? (isLive ? ' · today (still running)' : ' · the day shown') : ''}
       </p>
       <ul className="space-y-0.5">
         {series.map((spec) => {
@@ -386,12 +417,12 @@ function TrendTooltip({
           const index = row[spec.key];
           return (
             <li key={spec.key} className="flex items-center gap-2 text-[11px]">
-              <SeriesSwatch series={spec} />
-              <span className="text-slate-400">{spec.label}</span>
-              <span className="ml-auto font-semibold tabular-nums text-white">
+              <SeriesSwatch series={spec} hex={palette.hue(spec.hue)} />
+              <span className="text-muted-foreground">{spec.label}</span>
+              <span className="ml-auto font-semibold tabular-nums text-foreground">
                 {typeof raw === 'number' ? spec.format(raw) : '—'}
               </span>
-              <span className="w-11 shrink-0 text-right tabular-nums text-slate-500">
+              <span className="w-11 shrink-0 text-right tabular-nums text-muted-foreground/80">
                 {typeof index === 'number' ? `${Math.round(index)}%` : ''}
               </span>
             </li>

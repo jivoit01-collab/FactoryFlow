@@ -5,4 +5,4 @@ export { DispatchDayKpis } from './DispatchDayKpis';
 export { DispatchTrendChart } from './DispatchTrendChart';
 export { DispatchVehiclesPanel } from './DispatchVehiclesPanel';
 export { DispatchVendorsPanel } from './DispatchVendorsPanel';
-export { WallStat, type WallStatProps } from './WallStat';
+export { type SparkPoint, WallStat, type WallStatProps } from './WallStat';

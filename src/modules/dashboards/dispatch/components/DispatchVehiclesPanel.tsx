@@ -8,6 +8,7 @@ import { DISPATCH_TRACKING_QUERY_KEYS } from '@/modules/gate/api/dispatch-tracki
 import { cn } from '@/shared/utils';
 
 import { DISPATCH_DAY_REFRESH_MS, DOCKING_STATUS_LABEL } from '../constants/dispatch-day.constants';
+import { useWallPalette } from '../constants/wall.palette';
 import type { DayTruck, DispatchDayVehicles } from '../hooks';
 import { useAutoScroll, useBoardDay, useNow } from '../hooks';
 import { clockTime, count, since } from '../utils/format';
@@ -22,11 +23,15 @@ const STUCK_MINUTES = 180;
 /**
  * Every truck the day has touched, each stamped IN or OUT on the left.
  *
- * IN means the truck is standing in the plant right now, whichever day it docked
- * -- a load that has been at the dock since Tuesday is exactly what a wall board
- * exists to make impossible to ignore. OUT means it cleared the gate today.
- * Trucks still inside sort first, longest-waiting at the top; the ones that left
- * follow, most recent first.
+ * IN means the truck was still standing in the plant when the shown day ended
+ * -- on today, that is "right now", and a load at the dock since Tuesday is
+ * exactly what a wall board exists to make impossible to ignore. OUT means it
+ * cleared the gate on that day. Trucks still inside sort first, longest-waiting
+ * at the top; the ones that left follow, most recent first.
+ *
+ * Dwell is measured to the END of the shown day, not to the wall clock. On a
+ * back-date "inside 4h 20m" has to mean four hours on that Tuesday, not the six
+ * days that have passed since.
  */
 export function DispatchVehiclesPanel({
   vehicles,
@@ -37,18 +42,24 @@ export function DispatchVehiclesPanel({
   canSeeTracking: boolean;
 }) {
   const navigate = useNavigate();
+  const day = useBoardDay();
+  const palette = useWallPalette();
   const listRef = useRef<HTMLUListElement>(null);
-  const now = useNow(30_000).getTime();
-  const lateCount = useLateOnRoad(canSeeTracking);
+  // Clamped to the day's close: on today this is simply now, and on a finished
+  // day every dwell figure freezes at what it was when the gate shut.
+  const now = Math.min(useNow(30_000).getTime(), day.endOfDay);
+  // "Late on road" is a fact about this minute, not about a finished Tuesday,
+  // so the chip is only offered while the board is live.
+  const lateCount = useLateOnRoad(canSeeTracking && day.isToday);
 
   const rows = [...vehicles.inside, ...vehicles.out];
   useAutoScroll(listRef, rows.length >= AUTO_SCROLL_FROM);
 
   return (
     <BoardPanel
-      title="Today's vehicles"
+      title={day.isToday ? "Today's vehicles" : 'Vehicles that day'}
       icon={Truck}
-      hex="#22d3ee"
+      hex={palette.hue('invoices')}
       flush
       aside={
         lateCount > 0 ? (
@@ -66,20 +77,20 @@ export function DispatchVehiclesPanel({
         <VehicleStat
           label="Total vehicles"
           value={vehicles.totalCount}
-          hex="#e2e8f0"
+          hex={palette.hue('neutral')}
           loading={vehicles.isLoading}
         />
         <VehicleStat
-          label="In vehicles"
+          label={day.isToday ? 'In vehicles' : 'In at day end'}
           value={vehicles.inCount}
-          hex="#fbbf24"
+          hex={palette.hue('volume')}
           icon={LogIn}
           loading={vehicles.isLoading}
         />
         <VehicleStat
           label="Out vehicles"
           value={vehicles.outCount}
-          hex="#34d399"
+          hex={palette.hue('trucks')}
           icon={LogOut}
           loading={vehicles.isLoading}
         />
@@ -89,12 +100,12 @@ export function DispatchVehiclesPanel({
         <PanelEmpty>The docking register could not be read.</PanelEmpty>
       ) : rows.length === 0 ? (
         <PanelEmpty>
-          {vehicles.isLoading ? 'Reading the gate...' : 'No vehicle has come in or gone out today.'}
+          {vehicles.isLoading ? 'Reading the gate...' : 'No vehicle came in or went out that day.'}
         </PanelEmpty>
       ) : (
         <ul
           ref={listRef}
-          className="wall-scroll min-h-0 flex-1 divide-y divide-white/5 overflow-y-auto border-t border-white/5"
+          className="wall-scroll min-h-0 flex-1 divide-y divide-black/[0.06] dark:divide-white/5 overflow-y-auto border-t border-black/[0.06] dark:border-white/5"
         >
           {rows.map((truck) => (
             <VehicleRow
@@ -126,15 +137,15 @@ function VehicleRow({ truck, now, onOpen }: { truck: DayTruck; now: number; onOp
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/[0.05] focus:outline-none focus-visible:bg-white/[0.07]"
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-black/[0.035] dark:hover:bg-white/[0.05] focus:outline-none focus-visible:bg-black/[0.05] dark:focus-visible:bg-white/[0.07]"
       >
         {/* the IN / OUT stamp, on the left where the eye lands first */}
         <span
           className={cn(
             'flex w-14 shrink-0 flex-col items-center gap-0.5 rounded-lg border py-1.5',
             isIn
-              ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
-              : 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300',
+              ? 'border-amber-600/40 dark:border-amber-400/40 bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300'
+              : 'border-emerald-600/40 dark:border-emerald-400/40 bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300',
           )}
         >
           {isIn ? <LogIn className="h-3.5 w-3.5" /> : <LogOut className="h-3.5 w-3.5" />}
@@ -144,14 +155,14 @@ function VehicleRow({ truck, now, onOpen }: { truck: DayTruck; now: number; onOp
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-bold tracking-wide text-white">
+          <span className="block truncate text-sm font-bold tracking-wide text-foreground">
             {truck.vehicleNo || truck.arrivalNo || 'Vehicle not recorded'}
           </span>
-          <span className="block truncate text-xs text-slate-400">
+          <span className="block truncate text-xs text-muted-foreground">
             {truck.companies.join(' + ') || '—'}
             {truck.transporters.length > 0 ? ` · ${truck.transporters[0]}` : ''}
           </span>
-          <span className="block truncate text-[11px] text-slate-500">
+          <span className="block truncate text-[11px] text-muted-foreground/80">
             {truck.customers[0] || 'Customer not recorded'}
             {truck.bills > 1 ? ` · ${truck.bills} bills` : ''}
           </span>
@@ -162,8 +173,8 @@ function VehicleRow({ truck, now, onOpen }: { truck: DayTruck; now: number; onOp
             className={cn(
               'rounded-full border px-2 py-0.5 text-[11px] font-semibold',
               isIn
-                ? 'border-white/10 bg-white/5 text-slate-300'
-                : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+                ? 'border-black/[0.09] dark:border-white/10 bg-black/[0.035] dark:bg-white/5 text-foreground/75'
+                : 'border-emerald-600/30 dark:border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300',
             )}
           >
             {isIn ? (DOCKING_STATUS_LABEL[truck.status] ?? truck.status) : clockTime(truck.outAt)}
@@ -171,7 +182,9 @@ function VehicleRow({ truck, now, onOpen }: { truck: DayTruck; now: number; onOp
           <span
             className={cn(
               'text-[11px] tabular-nums',
-              isStuck ? 'font-semibold text-amber-300' : 'text-slate-500',
+              isStuck
+                ? 'font-semibold text-amber-700 dark:text-amber-300'
+                : 'text-muted-foreground/80',
             )}
           >
             {isIn ? `inside ${since(truck.inAt, now)}` : 'left the gate'}
@@ -196,20 +209,20 @@ function VehicleStat({
   loading: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2.5 py-2">
+    <div className="rounded-xl border border-black/[0.09] dark:border-white/10 bg-black/[0.018] dark:bg-white/[0.03] px-2.5 py-2">
       <div className="flex items-center gap-1.5">
         {Icon && <Icon className="h-3.5 w-3.5" style={{ color: hex }} />}
         <span
           className={cn(
             'text-2xl font-bold tabular-nums leading-none',
-            loading && 'animate-pulse text-slate-600',
+            loading && 'animate-pulse text-muted-foreground/60',
           )}
           style={loading ? undefined : { color: hex }}
         >
           {loading ? '--' : count(value)}
         </span>
       </div>
-      <div className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+      <div className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/80">
         {label}
       </div>
     </div>
@@ -223,7 +236,7 @@ function VehicleStat({
  */
 function useLateOnRoad(enabled: boolean): number {
   const day = useBoardDay();
-  const filters = { from_date: day.trackingFrom, to_date: day.today };
+  const filters = { from_date: day.trackingFrom, to_date: day.date };
 
   const query = useQuery({
     queryKey: DISPATCH_TRACKING_QUERY_KEYS.summary(filters),

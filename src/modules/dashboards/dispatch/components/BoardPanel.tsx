@@ -6,7 +6,8 @@ import { cn } from '@/shared/utils';
 export interface BoardPanelProps {
   title: string;
   icon?: LucideIcon;
-  /** Accent hex for the icon chip and the hairline above the title. */
+  /** Accent hex for the icon chip and the hairline above the title. Resolved by
+   *  the caller from the theme palette, since it is painted as a raw colour. */
   hex?: string;
   /** Right-hand slot — counts, badges, a legend. */
   aside?: ReactNode;
@@ -34,7 +35,7 @@ export function BoardPanel({
   return (
     <section
       className={cn(
-        'relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset]',
+        'relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-black/[0.09] dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.035] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset]',
         className,
       )}
     >
@@ -56,7 +57,7 @@ export function BoardPanel({
               <Icon className="h-4 w-4" style={{ color: hex ?? '#94a3b8' }} />
             </span>
           )}
-          <h2 className="truncate text-sm font-semibold uppercase tracking-[0.14em] text-slate-300">
+          <h2 className="truncate text-sm font-semibold uppercase tracking-[0.14em] text-foreground/75">
             {title}
           </h2>
         </div>
@@ -79,10 +80,11 @@ export function PanelBadge({
   tone?: 'neutral' | 'good' | 'warn' | 'bad';
 }) {
   const tones = {
-    neutral: 'border-white/10 bg-white/5 text-slate-300',
-    good: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
-    warn: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
-    bad: 'border-rose-400/30 bg-rose-400/10 text-rose-300',
+    neutral:
+      'border-black/[0.09] dark:border-white/10 bg-black/[0.035] dark:bg-white/5 text-foreground/75',
+    good: 'border-emerald-600/30 dark:border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300',
+    warn: 'border-amber-600/30 dark:border-amber-400/30 bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300',
+    bad: 'border-rose-600/30 dark:border-rose-400/30 bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300',
   } as const;
 
   return (
@@ -100,7 +102,7 @@ export function PanelBadge({
 /** What a panel shows when its query came back with nothing. */
 export function PanelEmpty({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-1 items-center justify-center px-4 py-10 text-center text-sm text-slate-500">
+    <div className="flex flex-1 items-center justify-center px-4 py-10 text-center text-sm text-muted-foreground/80">
       {children}
     </div>
   );
