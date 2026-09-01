@@ -126,6 +126,9 @@ export function BSTScannedBoxesSheet({
       : scopedItems;
   const expectedBoxes = expectedItems.reduce((n, item) => n + expectedBstItemBoxes(item), 0);
   const totalQty = scopedScans.reduce((n, scan) => n + (Number(scan.quantity) || 0), 0);
+  // The destination's side: of the visible boxes, how many it has accepted/rejected.
+  const acceptedCount = scopedScans.filter((s) => s.receive_status === 'ACCEPTED').length;
+  const rejectedCount = scopedScans.filter((s) => s.receive_status === 'REJECTED').length;
   const uom = scopedScans[0]?.uom || expectedItems[0]?.uom || '';
   const lastScanAt = scans.reduce<string | null>(
     (latest, scan) => (!latest || scan.scanned_at > latest ? scan.scanned_at : latest),
@@ -190,6 +193,12 @@ export function BSTScannedBoxesSheet({
         {
           label: 'Total Scanned Quantity',
           value: totalQty > 0 ? `${formatBstNumber(totalQty)} ${uom}`.trim() : '—',
+        },
+        {
+          label: 'Received by destination',
+          value: `${formatBstNumber(acceptedCount)} of ${formatBstNumber(scopedScans.length)}${
+            rejectedCount > 0 ? ` · ${formatBstNumber(rejectedCount)} rejected` : ''
+          }`,
         },
         { label: 'Last Scan', value: lastScanAt ? formatBstDateTime(lastScanAt) : '—' },
       ]}

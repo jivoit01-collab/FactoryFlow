@@ -194,7 +194,7 @@ export default function BSTDetailPage() {
               />
             </Button>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ScanMetricTile
               label="Expected Boxes"
               value={bill.expectedBoxes > 0 ? formatBstNumber(bill.expectedBoxes) : '-'}
@@ -208,6 +208,13 @@ export default function BSTDetailPage() {
               label="Scanned Qty"
               value={bill.scannedQty > 0 ? formatBstNumber(bill.scannedQty) : '-'}
               hint={bill.expectedQty > 0 ? `of ${formatBstNumber(bill.expectedQty)}` : ''}
+            />
+            {/* The destination's side of the ledger: boxes we sent vs boxes they have
+                accepted so far — the figure the old Boxes card carried. */}
+            <ScanMetricTile
+              label="Received by destination"
+              value={`${formatBstNumber(t.accepted_count)} of ${formatBstNumber(t.box_scans.length)}`}
+              hint={t.rejected_count > 0 ? `${formatBstNumber(t.rejected_count)} rejected` : ''}
             />
           </div>
           <div className="space-y-2">
