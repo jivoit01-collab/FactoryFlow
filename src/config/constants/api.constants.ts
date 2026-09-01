@@ -533,6 +533,8 @@ export const API_ENDPOINTS = {
     RUNS: '/sap-reports/runs/',
     CATEGORIES: '/sap-reports/categories/',
     SYNC: '/sap-reports/sync/',
+    ACCESS: '/sap-reports/access/',
+    ACCESS_DETAIL: (id: number) => `/sap-reports/access/${id}/`,
   },
   GOODS_RETURN: {
     LIST: '/goods-return/',

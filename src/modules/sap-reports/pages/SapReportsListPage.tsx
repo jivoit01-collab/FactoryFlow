@@ -140,7 +140,13 @@ export default function SapReportsListPage() {
       {query.isLoading ? (
         <ReportSkeleton />
       ) : visible.length === 0 ? (
-        <EmptyState canManage={canManage} hasSearch={Boolean(search)} />
+        <EmptyState
+          canManage={canManage}
+          hasSearch={Boolean(search)}
+          // Strict === true so a backend without the field fails open to the
+          // generic wording rather than telling everyone they are unassigned.
+          restricted={query.data?.meta.restricted === true}
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((report) => (
@@ -207,16 +213,32 @@ function ReportCard({ report }: { report: SapReportListItem }) {
   );
 }
 
-function EmptyState({ canManage, hasSearch }: { canManage: boolean; hasSearch: boolean }) {
+function EmptyState({
+  canManage,
+  hasSearch,
+  restricted,
+}: {
+  canManage: boolean;
+  hasSearch: boolean;
+  restricted: boolean;
+}) {
   return (
     <div className="rounded-md border border-dashed p-10 text-center">
       <Database className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-      <p className="font-medium">{hasSearch ? 'No report matches that search.' : 'No reports yet.'}</p>
+      <p className="font-medium">
+        {hasSearch
+          ? 'No report matches that search.'
+          : restricted
+            ? 'No reports have been assigned to you yet.'
+            : 'No reports yet.'}
+      </p>
       {!hasSearch && (
         <p className="mt-1 text-sm text-muted-foreground">
           {canManage
             ? 'Press “Sync from SAP” to pull this company’s saved queries in.'
-            : 'An administrator needs to sync the reports from SAP first.'}
+            : restricted
+              ? 'An administrator assigns reports on Admin → SAP Report Access.'
+              : 'An administrator needs to sync the reports from SAP first.'}
         </p>
       )}
     </div>

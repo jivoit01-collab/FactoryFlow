@@ -69,6 +69,12 @@ export interface SapReportListResponse {
     total: number;
     categories: string[];
     can_manage: boolean;
+    /**
+     * True when the per-user assignment rule applies to this user — their
+     * list holds only the reports assigned to them. Optional so a frontend
+     * deployed ahead of its backend fails open to the old wording.
+     */
+    restricted?: boolean;
   };
 }
 
@@ -146,6 +152,34 @@ export interface SapReportSyncSummary {
 export interface LookupOption {
   value: string;
   label: string;
+}
+
+/** One "this user may run this report" row — the SAP-report twin of UserWarehouse. */
+export interface SapReportAccess {
+  id: number;
+  user: number;
+  user_name: string;
+  user_email: string;
+  user_code: string;
+  report: number;
+  report_slug: string;
+  report_title: string;
+  report_category: string;
+  is_active: boolean;
+  assigned_by_name: string;
+  created_at: string;
+}
+
+export interface GrantAccessPayload {
+  user: number;
+  report_slugs: string[];
+}
+
+export interface GrantAccessResult {
+  created: string[];
+  reactivated: string[];
+  already_assigned: string[];
+  assignments: SapReportAccess[];
 }
 
 /** Filter values keyed by prompt position, e.g. `{ '0': '2026-08-01' }`. */
@@ -252,6 +286,26 @@ export const sapReportsApi = {
   async sync(payload?: { category?: string; all_categories?: boolean; dry_run?: boolean }) {
     const response = await apiClient.post<{ data: SapReportSyncSummary }>(EP.SYNC, payload ?? {});
     return response.data.data;
+  },
+
+  async listAccess(params?: { user?: number; activeOnly?: boolean }) {
+    const response = await apiClient.get<{ data: SapReportAccess[] }>(EP.ACCESS, {
+      params: {
+        ...(params?.user ? { user: params.user } : {}),
+        ...(params?.activeOnly ? { active_only: 'true' } : {}),
+      },
+    });
+    return response.data.data;
+  },
+
+  async grantAccess(payload: GrantAccessPayload) {
+    const response = await apiClient.post<GrantAccessResult>(EP.ACCESS, payload);
+    return response.data;
+  },
+
+  /** Removes by deactivating, so the audit trail keeps who was allowed when. */
+  async removeAccess(id: number) {
+    await apiClient.delete(EP.ACCESS_DETAIL(id));
   },
 };
 

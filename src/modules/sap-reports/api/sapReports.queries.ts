@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  type GrantAccessPayload,
   type SapReportParameterValues,
   sapReportsApi,
   type UpdateSapReportPayload,
@@ -15,6 +16,7 @@ export const sapReportKeys = {
     ['sap-reports', 'options', slug, position, search] as const,
   runs: (slug: string) => ['sap-reports', 'runs', slug] as const,
   categories: () => ['sap-reports', 'categories'] as const,
+  access: (user?: number) => ['sap-reports', 'access', user ?? 0] as const,
 };
 
 export function useSapReports(params?: { search?: string; include_hidden?: boolean }) {
@@ -110,6 +112,35 @@ export function useUpdateSapReport(slug: string | undefined) {
       sapReportsApi.update(slug as string, payload),
     onSuccess: (report) => {
       queryClient.setQueryData(sapReportKeys.detail(report.slug), report);
+      queryClient.invalidateQueries({ queryKey: sapReportKeys.all });
+    },
+  });
+}
+
+export function useSapReportAccess(user?: number) {
+  return useQuery({
+    queryKey: sapReportKeys.access(user),
+    queryFn: () => sapReportsApi.listAccess({ user }),
+  });
+}
+
+export function useGrantSapReportAccess() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: GrantAccessPayload) => sapReportsApi.grantAccess(payload),
+    onSuccess: () => {
+      // The whole module key, not just `access`: an admin may be assigning
+      // themselves, and a stale report list would stay empty until a reload.
+      queryClient.invalidateQueries({ queryKey: sapReportKeys.all });
+    },
+  });
+}
+
+export function useRemoveSapReportAccess() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => sapReportsApi.removeAccess(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sapReportKeys.all });
     },
   });
