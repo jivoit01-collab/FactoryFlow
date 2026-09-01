@@ -42,6 +42,12 @@ export interface DeliveryNoteDispatch {
   fg_line_count: number;
   amount: string;
   variants?: LineVariant[];
+  /** Parcels of the order this note carries, and how many the order has in all.
+   *  A part-confirmed order cuts a note per shipped box, so `is_partial` says the
+   *  note covers some of the order and the rest follow on their own notes. */
+  parcel_count?: number;
+  parcel_total?: number;
+  is_partial?: boolean;
 }
 
 /** One short finished-good line: how much is needed vs on hand. */

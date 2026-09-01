@@ -728,7 +728,19 @@ export default function MpDeliveryNotesPage() {
                                 pickable.length > 0 && 'bg-amber-50/60 dark:bg-amber-950/20',
                               )}
                             >
-                              <td className="p-3 font-mono font-medium">{d.order_id}</td>
+                              <td className="p-3 font-mono font-medium">
+                                {d.order_id}
+                                {/* A part-order note: this order ships a box at a time, so
+                                    this note carries only the parcels confirmed so far. */}
+                                {d.is_partial ? (
+                                  <span
+                                    className="ml-2 rounded border border-amber-400/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400"
+                                    title={`Part of the order — this note carries ${d.parcel_count} of its ${d.parcel_total} items. The rest go out on their own note once scanned and confirmed.`}
+                                  >
+                                    Part {d.parcel_count}/{d.parcel_total}
+                                  </span>
+                                ) : null}
+                              </td>
                               <td className="p-3 whitespace-nowrap text-muted-foreground">{d.order_date || '—'}</td>
                               <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
                               <td className="p-3">
