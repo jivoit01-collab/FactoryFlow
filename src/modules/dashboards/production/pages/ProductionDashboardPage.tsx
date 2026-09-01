@@ -1,191 +1,175 @@
-import { Boxes, ClipboardCheck, Coins, Factory, Info, OctagonAlert } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { Boxes, Maximize2, Recycle } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '@/core/auth';
-import { useLines, useRuns } from '@/modules/production/execution/api/execution.queries';
-import type { AnalyticsParams } from '@/modules/production/execution/types';
-import { Button } from '@/shared/components/ui';
+import { useLines } from '@/modules/production/execution/api';
+import { cn } from '@/shared/utils';
 
-function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-import { useProductionReconciliation } from '../api/reconciliation.queries';
+import { useFullscreen } from '../../dispatch/hooks';
 import {
-  BreakdownAnalysis,
-  MaterialSection,
-  ProductionEconomics,
-  ReconciliationPanel,
-  RunningLinesSummary,
-  WastageSection,
+  CostBreakdownPanel,
+  MaterialWallPanel,
+  ProductionRunsPanel,
+  ProductionTrendChart,
+  ProductionWallHeader,
+  ProductionWallKpis,
+  ReconWallPanel,
 } from '../components';
 import { variantForCompany } from '../constants/production-dashboard.constants';
-
-function SectionHeading({ icon: Icon, title }: { icon: typeof Coins; title: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <Icon className="h-5 w-5 text-muted-foreground" />
-      <h2 className="text-xl font-bold tracking-tight">{title}</h2>
-    </div>
-  );
-}
+import { useProductionBoard, useProductionDay } from '../hooks';
 
 /**
- * Company-aware Production dashboard (Dashboards module, /dashboards/production).
- * Three sections — Production (running lines, App-vs-SAP reconciliation, OEE),
- * Wastage (App-vs-SAP reconciliation + trend), and Cost analysis. Company decides
- * the variant (Oil / Beverages); a from→to range drives every panel.
+ * Production, today, on a wall.
+ *
+ * Built for the screen in the plant office rather than for a laptop: one glance
+ * answers "what came off the lines, is SAP holding the same figures, what did it
+ * cost and what did we throw away". Everything fits one viewport — nothing below
+ * the fold exists on a wall — and every list creeps past on its own, so the
+ * board is complete without anybody touching it.
+ *
+ * Two sources, and which one a number comes from decides how it behaves:
+ *   - the runs themselves are app-only, so output, line state and the daily
+ *     trend keep working when SAP is down;
+ *   - the three reconciliations go out to SAP for the other half of their
+ *     comparison, so a Service Layer outage empties those three panels and says
+ *     so on their faces rather than quietly showing the app side alone under a
+ *     heading that promises a comparison.
+ *
+ * The FG panel deliberately shows every SKU the plant produced that day, not
+ * only the ones still running. The old desk version scoped it to in-progress
+ * SKUs, which meant a wall reading zero all morning — a line that finished at
+ * 11:00 still produced those cases, and the day's total has to include them.
  */
 export default function ProductionDashboardPage() {
   const { currentCompany } = useAuth();
   const variant = useMemo(() => variantForCompany(currentCompany), [currentCompany]);
+  const unitNoun = variant.unitNoun;
 
-  // Whole dashboard is driven by a single day (defaults to today).
-  const [date, setDate] = useState(() => todayISO());
+  const day = useProductionDay();
   const [selectedLine, setSelectedLine] = useState<number | undefined>(undefined);
 
-  // Downstream panels still take a {from, to} range — here from === to.
-  const range = useMemo(() => ({ from: date, to: date }), [date]);
-
   const linesQuery = useLines(true);
-  const lines = linesQuery.data ?? [];
-
-  const params: AnalyticsParams = useMemo(
-    () => ({ date_from: date, date_to: date, line: selectedLine }),
-    [date, selectedLine],
-  );
-  const today = useMemo(() => todayISO(), []);
-
-  // SKUs (product names) running today — used to scope the production panel.
-  const runningToday = useRuns({ status: 'IN_PROGRESS', date: today });
-  const todaySkus = useMemo(
-    () =>
-      new Set(
-        (runningToday.data ?? []).map((r) => (r.product || '').trim().toUpperCase()).filter(Boolean),
-      ),
-    [runningToday.data],
+  const lines = useMemo(
+    () => (linesQuery.data ?? []).map((line) => ({ id: line.id, name: line.name })),
+    [linesQuery.data],
   );
 
-  // All reconciliations follow the selected date + line.
-  const reconParams = useMemo(
-    () => ({ date_from: date, date_to: date, line: selectedLine }),
-    [date, selectedLine],
-  );
-  // Only restrict to "SKUs running today" when the selected day is today.
-  const isToday = date === today;
+  const board = useProductionBoard(day, selectedLine);
 
-  const prodRecon = useProductionReconciliation(reconParams);
-
-  const onDate = useCallback((d: string) => {
-    if (d) setDate(d);
-  }, []);
-  const resetToday = useCallback(() => {
-    setDate(todayISO());
-  }, []);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggle } = useFullscreen(boardRef);
 
   return (
-    <div className="relative min-h-full space-y-8 p-6">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-56 bg-gradient-to-b from-primary/[0.05] to-transparent" />
+    <div
+      ref={boardRef}
+      className={cn(
+        'relative flex flex-col gap-3 overflow-hidden bg-background text-foreground',
+        isFullscreen
+          ? 'h-screen w-screen p-4'
+          : 'h-[calc(100vh-11rem)] min-h-[880px] rounded-3xl border border-black/[0.09] p-3 dark:border-white/10',
+      )}
+    >
+      {/* ambient wash — keeps a mostly-black board from looking switched off */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-violet-500/[0.07] to-transparent"
+      />
 
-      {/* header */}
-      <header className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both flex flex-col gap-4 duration-500 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Factory className="h-5 w-5 text-muted-foreground" />
-            <h1 className="text-3xl font-bold tracking-tight">Production</h1>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${variant.accent.iconBg} ${variant.accent.icon}`}
-            >
-              {variant.label}
-            </span>
+      <ProductionWallHeader
+        day={day}
+        companyName={currentCompany?.company_name ?? 'No company selected'}
+        variantLabel={variant.label}
+        lines={lines}
+        selectedLine={selectedLine}
+        onPickLine={setSelectedLine}
+        isFetching={board.isFetching}
+        updatedAt={board.updatedAt}
+        onRefresh={board.refetch}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggle}
+      />
+
+      {board.runsLoading ? (
+        <BoardSkeleton />
+      ) : (
+        <>
+          <ProductionWallKpis board={board} day={day} unitNoun={unitNoun} />
+
+          <div className="grid h-[27%] min-h-[190px] shrink-0 grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr]">
+            <ProductionTrendChart trend={board.trend} unitNoun={unitNoun} />
+            <CostBreakdownPanel cost={board.cost} unitNoun={unitNoun} />
           </div>
-          <p className="max-w-xl text-sm text-muted-foreground">
-            {currentCompany?.company_name ?? 'Select a company'} — live production, App-vs-SAP
-            reconciliation, wastage and cost in one view.
-          </p>
-        </div>
 
-        {/* line + date */}
-        <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/60 bg-card/60 p-3 shadow-sm backdrop-blur-sm">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Line
-            <select
-              value={selectedLine ?? ''}
-              onChange={(e) => setSelectedLine(e.target.value ? Number(e.target.value) : undefined)}
-              className="min-w-[140px] rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground"
-            >
-              <option value="">All lines</option>
-              {lines.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Date
-            <input
-              type="date"
-              value={date}
-              max={today}
-              onChange={(e) => onDate(e.target.value)}
-              className="rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground"
+          {/* Four panels across on a wall, two on a laptop. */}
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <ProductionRunsPanel
+              runs={board.runs}
+              isLoading={board.runsLoading}
+              isToday={day.isToday}
+              unitNoun={unitNoun}
             />
-          </label>
-          <Button variant="outline" size="sm" onClick={resetToday} className="bg-background">
-            Today
-          </Button>
-        </div>
-      </header>
+            <ReconWallPanel
+              title="Produced · App vs SAP"
+              icon={Boxes}
+              hue="match"
+              slice={board.fg}
+              appLabel="Produced"
+              unitNoun={unitNoun}
+              showLitres
+              emptyText="Nothing was produced on this day."
+            />
+            <MaterialWallPanel slice={board.material} />
+            <ReconWallPanel
+              title="Wastage · BH-WST"
+              icon={Recycle}
+              hue="waste"
+              slice={board.waste}
+              appLabel="Wasted"
+              unitNoun="unit"
+              emptyText="No wastage was logged on this day."
+            />
+          </div>
+        </>
+      )}
 
-      {/* production lines for the selected date */}
-      <RunningLinesSummary variant={variant} range={range} />
-
-      {/* ---------------- Section 1: Production ---------------- */}
-      <section className="space-y-4">
-        <SectionHeading icon={ClipboardCheck} title="Production (FG) — App vs SAP · TransType 59" />
-        <ReconciliationPanel
-          title={isToday ? 'Production reconciliation · SKUs running today' : 'Production reconciliation'}
-          icon={Boxes}
-          report={prodRecon.data}
-          isLoading={prodRecon.isLoading || (isToday && runningToday.isLoading)}
-          isError={prodRecon.isError}
-          unitNoun={variant.unitNoun}
-          appLabel="Produced"
-          showInProgress
-          appOnly
-          showLitres
-          filterSkus={isToday ? todaySkus : undefined}
-          emptyLabel={isToday ? 'No SKUs are running today.' : 'No production in this range.'}
-        />
-      </section>
-
-      {/* ---------------- Section 2: Material (RM / PM) ---------------- */}
-      <MaterialSection range={range} lines={lines} />
-
-      {/* ---------------- Section 3: Wastage ---------------- */}
-      <WastageSection range={range} />
-
-      {/* ---------------- Section 4: Breakdowns ---------------- */}
-      <section className="space-y-4">
-        <SectionHeading icon={OctagonAlert} title="Breakdown analysis — what stopped the line" />
-        <BreakdownAnalysis params={params} />
-      </section>
-
-      {/* ---------------- Section 5: Cost analysis ---------------- */}
-      <section className="space-y-4">
-        <SectionHeading icon={Coins} title="Cost analysis" />
-        <ProductionEconomics params={params} variant={variant} />
-        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Output is recorded in <strong className="mx-1">cases</strong>, so cost and reconciliation
-          are shown per {variant.unitNoun} with litres alongside. Litres are derived from the SKU
-          name (unit volume × pack size) — SAP&apos;s item master
-          (<code className="mx-1">U_UNE_TOTL</code>) is the authoritative source and would also cover
-          weight-based and combo packs, which the name can&apos;t describe.
+      {!isFullscreen && (
+        <p className="flex shrink-0 items-center justify-center gap-1.5 text-[11px] text-muted-foreground/60">
+          <Maximize2 className="h-3 w-3" />
+          Built for a wall screen &mdash; open wall mode for the full-height board.
         </p>
-      </section>
+      )}
+    </div>
+  );
+}
+
+/** Keeps the wall's shape while the first read is in flight. */
+function BoardSkeleton() {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="grid shrink-0 grid-cols-3 gap-3 xl:grid-cols-6">
+        {[0, 1, 2, 3, 4, 5].map((index) => (
+          <div
+            key={index}
+            className="h-32 animate-pulse rounded-2xl border border-black/[0.09] bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.035]"
+          />
+        ))}
+      </div>
+      <div className="grid h-[27%] min-h-[190px] shrink-0 grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr]">
+        {[0, 1].map((index) => (
+          <div
+            key={index}
+            className="animate-pulse rounded-2xl border border-black/[0.09] bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.035]"
+          />
+        ))}
+      </div>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((index) => (
+          <div
+            key={index}
+            className="animate-pulse rounded-2xl border border-black/[0.09] bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.035]"
+          />
+        ))}
+      </div>
     </div>
   );
 }

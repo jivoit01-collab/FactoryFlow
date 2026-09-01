@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '@/core/auth';
 
-import { PRODUCTION_REFRESH_MS } from '../constants/production-dashboard.constants';
+import { PRODUCTION_WALL_REFRESH_MS } from '../constants/production-wall.constants';
 import { reconciliationApi,type ReconParams } from './reconciliation.api';
 
 function sapRetry(failureCount: number, error: unknown): boolean {
@@ -18,8 +18,8 @@ export function useProductionReconciliation(params: ReconParams) {
   return useQuery({
     queryKey: ['prod-recon', 'production', currentCompany?.company_id, params],
     queryFn: () => reconciliationApi.production(params),
-    staleTime: PRODUCTION_REFRESH_MS,
-    refetchInterval: PRODUCTION_REFRESH_MS,
+    staleTime: PRODUCTION_WALL_REFRESH_MS,
+    refetchInterval: PRODUCTION_WALL_REFRESH_MS,
     retry: sapRetry,
     enabled: !!params.date_from && !!params.date_to,
   });
@@ -30,8 +30,8 @@ export function useMaterialReconciliation(params: ReconParams) {
   return useQuery({
     queryKey: ['prod-recon', 'material', currentCompany?.company_id, params],
     queryFn: () => reconciliationApi.material(params),
-    staleTime: PRODUCTION_REFRESH_MS,
-    refetchInterval: PRODUCTION_REFRESH_MS,
+    staleTime: PRODUCTION_WALL_REFRESH_MS,
+    refetchInterval: PRODUCTION_WALL_REFRESH_MS,
     retry: sapRetry,
     enabled: !!params.date_from && !!params.date_to,
   });
@@ -42,8 +42,8 @@ export function useWastageReconciliation(params: ReconParams) {
   return useQuery({
     queryKey: ['prod-recon', 'wastage', currentCompany?.company_id, params],
     queryFn: () => reconciliationApi.wastage(params),
-    staleTime: PRODUCTION_REFRESH_MS,
-    refetchInterval: PRODUCTION_REFRESH_MS,
+    staleTime: PRODUCTION_WALL_REFRESH_MS,
+    refetchInterval: PRODUCTION_WALL_REFRESH_MS,
     retry: sapRetry,
     enabled: !!params.date_from && !!params.date_to,
   });
