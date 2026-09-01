@@ -1,7 +1,6 @@
 import {
   AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
   Loader2,
   Printer,
   RefreshCw,
@@ -21,7 +20,6 @@ import { getErrorMessage } from '@/shared/utils';
 import {
   useBillSummary,
   useCancelBillSummary,
-  useMarkBillSummaryPicked,
   usePostBillSummaryToSap,
 } from '../../api';
 import { BILL_SUMMARY_PRINT_STYLE, BillSummaryPrint } from './BillSummaryPrint';
@@ -40,7 +38,6 @@ export default function BillSummaryDetailPage() {
   const { hasPermission } = usePermission();
 
   const { data: summary, isLoading } = useBillSummary(Number.isFinite(id) ? id : null);
-  const markPicked = useMarkBillSummaryPicked(id);
   const post = usePostBillSummaryToSap(id);
   const cancel = useCancelBillSummary(id);
 
@@ -57,7 +54,6 @@ export default function BillSummaryDetailPage() {
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
   if (!summary) return <p className="p-6 text-sm text-red-600">Bill summary not found.</p>;
 
-  const canPick = hasPermission(DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY);
   const canPost = hasPermission(DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY);
   const canCancel = hasPermission(DISPATCH_PERMISSIONS.CANCEL_BILL_SUMMARY);
   const isOpen = summary.status === 'GENERATED';
@@ -112,7 +108,6 @@ export default function BillSummaryDetailPage() {
             }
           />
           <Field label="Issued by" value={summary.issued_by_name || '—'} />
-          <Field label="Picked by" value={summary.picked_by_name || '—'} />
           {summary.remarks && (
             <div className="sm:col-span-2">
               <p className="text-xs uppercase text-muted-foreground">Remarks</p>
@@ -127,7 +122,12 @@ export default function BillSummaryDetailPage() {
       {summary.sap_status === 'FAILED' && (
         <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
           <p className="flex items-center gap-2 font-semibold">
-            <AlertTriangle className="h-4 w-4" /> Not posted to SAP
+            <AlertTriangle className="h-4 w-4" />
+            {/* A cancelled sheet's SAP job is to REMOVE the stamp, so a failure
+                there means the invoice still claims a dispatch nobody is making. */}
+            {summary.status === 'CANCELLED'
+              ? 'Cancelled here, but the dispatch is still on the SAP invoice'
+              : 'Not posted to SAP'}
           </p>
           <pre className="whitespace-pre-wrap font-sans text-xs">{summary.sap_error}</pre>
           {canPost && (
@@ -136,7 +136,13 @@ export default function BillSummaryDetailPage() {
               variant="outline"
               disabled={post.isPending}
               onClick={() =>
-                run(() => post.mutateAsync(), 'Posted to SAP', 'SAP refused it again')
+                run(
+                  () => post.mutateAsync(),
+                  summary.status === 'CANCELLED'
+                    ? 'Cleared from SAP'
+                    : 'Posted to SAP',
+                  'SAP refused it again',
+                )
               }
             >
               {post.isPending ? (
@@ -144,7 +150,9 @@ export default function BillSummaryDetailPage() {
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Retry the SAP posting
+              {summary.status === 'CANCELLED'
+                ? 'Retry clearing it from SAP'
+                : 'Retry the SAP posting'}
             </Button>
           )}
         </div>
@@ -157,9 +165,17 @@ export default function BillSummaryDetailPage() {
         </div>
       )}
 
-      {summary.status === 'CANCELLED' && summary.cancel_reason && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-          <strong>Cancelled:</strong> {summary.cancel_reason}
+      {summary.status === 'CANCELLED' && (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-200">
+          <strong>Cancelled</strong>
+          {summary.cancel_reason && <> — {summary.cancel_reason}</>}
+          {summary.sap_status === 'NOT_POSTED' && (
+            <div className="mt-1 text-xs">
+              The dispatch date and quantities have been cleared from invoice{' '}
+              {summary.sap_invoice_doc_num}. The bilty number is left as it was — it
+              belongs to the transporter&apos;s consignment note, not to this sheet.
+            </div>
+          )}
         </div>
       )}
 
@@ -196,25 +212,6 @@ export default function BillSummaryDetailPage() {
               <XCircle className="mr-2 h-4 w-4" /> Cancel sheet
             </Button>
           )}
-          {canPick && (
-            <Button
-              disabled={markPicked.isPending}
-              onClick={() =>
-                run(
-                  () => markPicked.mutateAsync(),
-                  'Marked as picked',
-                  'Could not mark it picked.',
-                )
-              }
-            >
-              {markPicked.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-              )}
-              Mark picked
-            </Button>
-          )}
         </div>
       )}
 
@@ -222,6 +219,12 @@ export default function BillSummaryDetailPage() {
         <Card className="border-rose-300">
           <CardContent className="space-y-3 p-4">
             <Label htmlFor="bs-cancel">Why is this sheet being cancelled?</Label>
+            {summary.sap_status === 'POSTED' && (
+              <p className="text-xs text-muted-foreground">
+                This will also clear the dispatch date and quantities from SAP invoice{' '}
+                {summary.sap_invoice_doc_num}.
+              </p>
+            )}
             <Input
               id="bs-cancel"
               value={cancelReason}
