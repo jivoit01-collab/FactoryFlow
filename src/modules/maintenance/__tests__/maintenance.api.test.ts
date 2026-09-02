@@ -5,6 +5,7 @@ vi.mock('@/core/api', () => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
     post: vi.fn().mockResolvedValue({ data: {} }),
     put: vi.fn().mockResolvedValue({ data: {} }),
+    delete: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
 
@@ -23,11 +24,9 @@ vi.mock('@/config/constants', () => ({
       ASSET_DEACTIVATE: (assetId: number) => `/maintenance/assets/${assetId}/deactivate/`,
       ASSET_QR: (assetId: number) => `/maintenance/assets/${assetId}/qr/`,
       ASSET_CATEGORIES: '/maintenance/asset-categories/',
-      ASSET_CATEGORY_DETAIL: (categoryId: number) =>
-        `/maintenance/asset-categories/${categoryId}/`,
+      ASSET_CATEGORY_DETAIL: (categoryId: number) => `/maintenance/asset-categories/${categoryId}/`,
       ASSET_LOCATIONS: '/maintenance/asset-locations/',
-      ASSET_LOCATION_DETAIL: (locationId: number) =>
-        `/maintenance/asset-locations/${locationId}/`,
+      ASSET_LOCATION_DETAIL: (locationId: number) => `/maintenance/asset-locations/${locationId}/`,
       ASSET_DEPARTMENTS: '/maintenance/asset-departments/',
       ASSET_DEPARTMENT_DETAIL: (departmentId: number) =>
         `/maintenance/asset-departments/${departmentId}/`,
@@ -35,22 +34,22 @@ vi.mock('@/config/constants', () => ({
       ASSET_DOCUMENTS: '/maintenance/asset-documents/',
       WORK_ORDERS: '/maintenance/work-orders/',
       WORK_ORDER_DETAIL: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/`,
-      WORK_ORDER_ASSIGN: (workOrderId: number) =>
-        `/maintenance/work-orders/${workOrderId}/assign/`,
-      WORK_ORDER_START: (workOrderId: number) =>
-        `/maintenance/work-orders/${workOrderId}/start/`,
+      WORK_ORDER_ASSIGN: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/assign/`,
+      WORK_ORDER_START: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/start/`,
       WORK_ORDER_COMPLETE: (workOrderId: number) =>
         `/maintenance/work-orders/${workOrderId}/complete/`,
       WORK_ORDER_APPROVE: (workOrderId: number) =>
         `/maintenance/work-orders/${workOrderId}/approve/`,
-      WORK_ORDER_CLOSE: (workOrderId: number) =>
-        `/maintenance/work-orders/${workOrderId}/close/`,
+      WORK_ORDER_CLOSE: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/close/`,
       WORK_ORDER_SEND_BACK: (workOrderId: number) =>
         `/maintenance/work-orders/${workOrderId}/send-back/`,
       WORK_ORDER_LOGS: (workOrderId: number) => `/maintenance/work-orders/${workOrderId}/logs/`,
       WORK_ORDER_SET_STATUS: (workOrderId: number) =>
         `/maintenance/work-orders/${workOrderId}/set-status/`,
       WORK_ORDER_PHOTOS: '/maintenance/work-order-photos/',
+      WORK_ORDER_ATTACHMENTS: '/maintenance/work-order-attachments/',
+      WORK_ORDER_ATTACHMENT_DETAIL: (attachmentId: number) =>
+        `/maintenance/work-order-attachments/${attachmentId}/`,
       SPARE_ADJUST_STOCK: (spareId: number) => `/maintenance/spares/${spareId}/adjust-stock/`,
     },
   },
@@ -377,6 +376,64 @@ describe('maintenanceApi', () => {
     expect(formData.get('photo')).toBe(file);
     expect(formData.get('photo_type')).toBe('BEFORE');
     expect(formData.get('caption')).toBe('Before repair');
+  });
+
+  it('lists work order attachments and uploads one as multipart form data', async () => {
+    const file = new File(['quote'], 'vendor-quote.pdf', { type: 'application/pdf' });
+
+    await maintenanceApi.getWorkOrderAttachments(12);
+    await maintenanceApi.uploadWorkOrderAttachment({
+      work_order: 12,
+      file,
+      doc_type: 'QUOTATION',
+      title: 'Vendor quote',
+    });
+
+    expect(mockedApiClient.get).toHaveBeenCalledWith('/maintenance/work-order-attachments/', {
+      params: { work_order: 12 },
+    });
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/maintenance/work-order-attachments/',
+      expect.any(FormData),
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+
+    const formData = mockedApiClient.post.mock.calls.at(-1)?.[1] as FormData;
+    expect(formData.get('work_order')).toBe('12');
+    expect(formData.get('file')).toBe(file);
+    expect(formData.get('doc_type')).toBe('QUOTATION');
+    expect(formData.get('title')).toBe('Vendor quote');
+  });
+
+  it('pushes every staged attachment, falling back to the file name as title', async () => {
+    const fault = new File(['fault'], 'fault.jpg', { type: 'image/jpeg' });
+    const drawing = new File(['dwg'], 'layout.pdf', { type: 'application/pdf' });
+
+    await maintenanceApi.uploadWorkOrderAttachments(21, [
+      { file: fault, doc_type: 'COMPLAINT', title: 'Bearing noise' },
+      // Blank title: the file name stands in so nothing lands untitled.
+      { file: drawing, doc_type: 'DRAWING', title: '   ' },
+    ]);
+
+    const posts = mockedApiClient.post.mock.calls.filter(
+      (call) => call[0] === '/maintenance/work-order-attachments/',
+    );
+    expect(posts).toHaveLength(2);
+
+    const first = posts[0]?.[1] as FormData;
+    expect(first.get('work_order')).toBe('21');
+    expect(first.get('doc_type')).toBe('COMPLAINT');
+    expect(first.get('title')).toBe('Bearing noise');
+
+    const second = posts[1]?.[1] as FormData;
+    expect(second.get('doc_type')).toBe('DRAWING');
+    expect(second.get('title')).toBe('layout.pdf');
+  });
+
+  it('deletes a work order attachment by id', async () => {
+    await maintenanceApi.deleteWorkOrderAttachment(77);
+
+    expect(mockedApiClient.delete).toHaveBeenCalledWith('/maintenance/work-order-attachments/77/');
   });
 
   it('adjusts spare stock through the adjust-stock endpoint', async () => {

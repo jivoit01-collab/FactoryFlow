@@ -22,6 +22,7 @@ import type {
   MaintenanceVendorVisitPayload,
   MaintenanceWorkOrderApprovalPayload,
   MaintenanceWorkOrderAssignPayload,
+  MaintenanceWorkOrderAttachmentUploadPayload,
   MaintenanceWorkOrderCompletePayload,
   MaintenanceWorkOrderFilters,
   MaintenanceWorkOrderPayload,
@@ -43,6 +44,7 @@ import type {
   SpareRequestPayload,
   SpareStockAdjustPayload,
   StagedAssetDocument,
+  StagedWorkOrderAttachment,
   WorkOrderSpareRequestPayload,
 } from '../types';
 import { maintenanceApi } from './maintenance.api';
@@ -72,6 +74,8 @@ export const MAINTENANCE_QUERY_KEYS = {
     [...MAINTENANCE_QUERY_KEYS.all, 'work-order', workOrderId] as const,
   workOrderPhotos: (workOrderId: number) =>
     [...MAINTENANCE_QUERY_KEYS.all, 'work-order-photos', workOrderId] as const,
+  workOrderAttachments: (workOrderId: number) =>
+    [...MAINTENANCE_QUERY_KEYS.all, 'work-order-attachments', workOrderId] as const,
   workOrderLogs: (workOrderId: number) =>
     [...MAINTENANCE_QUERY_KEYS.all, 'work-order-logs', workOrderId] as const,
   pmPlans: (filters?: PreventiveMaintenancePlanFilters) =>
@@ -194,6 +198,15 @@ export function useWorkOrderPhotos(workOrderId: number | null) {
   });
 }
 
+/** Paperwork attached to the order — fault note, quote, service sheet, bill. */
+export function useWorkOrderAttachments(workOrderId: number | null) {
+  return useQuery({
+    queryKey: MAINTENANCE_QUERY_KEYS.workOrderAttachments(workOrderId!),
+    queryFn: () => maintenanceApi.getWorkOrderAttachments(workOrderId!),
+    enabled: workOrderId !== null,
+  });
+}
+
 /** The hand-off trail: assigned, started, completed, sent back, verified. */
 export function useWorkOrderLogs(workOrderId: number | null) {
   return useQuery({
@@ -280,6 +293,18 @@ export function useVendorVisits(filters?: MaintenanceVendorVisitFilters, enabled
 
 function invalidateMaintenance(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.all });
+}
+
+/** Attachment list plus the order itself, whose `attachments_count` just moved. */
+function invalidateWorkOrderAttachments(
+  queryClient: ReturnType<typeof useQueryClient>,
+  workOrderId: number,
+) {
+  invalidateMaintenance(queryClient);
+  queryClient.invalidateQueries({
+    queryKey: MAINTENANCE_QUERY_KEYS.workOrderAttachments(workOrderId),
+  });
+  queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.workOrder(workOrderId) });
 }
 
 export function useCreateMaintenanceAsset() {
@@ -549,6 +574,44 @@ export function useUploadWorkOrderPhoto() {
       queryClient.invalidateQueries({
         queryKey: MAINTENANCE_QUERY_KEYS.workOrder(payload.work_order),
       });
+    },
+  });
+}
+
+export function useUploadWorkOrderAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: MaintenanceWorkOrderAttachmentUploadPayload) =>
+      maintenanceApi.uploadWorkOrderAttachment(payload),
+    onSuccess: (_attachment, payload) => {
+      invalidateWorkOrderAttachments(queryClient, payload.work_order);
+    },
+  });
+}
+
+/** Pushes the files staged in the work order form once the order has been saved. */
+export function useUploadWorkOrderAttachments() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      workOrderId,
+      staged,
+    }: {
+      workOrderId: number;
+      staged: StagedWorkOrderAttachment[];
+    }) => maintenanceApi.uploadWorkOrderAttachments(workOrderId, staged),
+    onSuccess: (_attachments, { workOrderId }) => {
+      invalidateWorkOrderAttachments(queryClient, workOrderId);
+    },
+  });
+}
+
+export function useDeleteWorkOrderAttachment(workOrderId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: number) => maintenanceApi.deleteWorkOrderAttachment(attachmentId),
+    onSuccess: () => {
+      invalidateWorkOrderAttachments(queryClient, workOrderId);
     },
   });
 }

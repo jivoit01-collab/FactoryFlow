@@ -43,14 +43,40 @@ export default function FactoryExpenseWallPage() {
   const { hasPermission } = usePermission();
   const canConfigure = hasPermission(DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE);
 
-  const [date, setDate] = useState(localToday);
-  const isToday = date === localToday();
+  // From and To both start on today, so the board opens on a single day — what
+  // a wall in the admin's room is for — and widens only when asked.
+  const [range, setRange] = useState(() => ({ from: localToday(), to: localToday() }));
+  const isSingleDay = range.from === range.to;
+  const isToday = isSingleDay && range.to === localToday();
+
+  /**
+   * Moving From carries To with it while the board is on a single day, so
+   * picking another day stays one click. Once a real range is open, From moves
+   * on its own and only clamps if it would overtake To.
+   */
+  const changeFrom = (next: string) => {
+    if (!next) return;
+    setRange((current) =>
+      current.from === current.to
+        ? { from: next, to: next }
+        : { from: next, to: next > current.to ? next : current.to },
+    );
+  };
+
+  const changeTo = (next: string) => {
+    if (!next) return;
+    setRange((current) => ({
+      from: next < current.from ? next : current.from,
+      to: next,
+    }));
+  };
 
   const boardRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggle } = useFullscreen(boardRef);
 
   const { data, isLoading, isFetching, isError, error, refetch, dataUpdatedAt } = useExpenseBoard(
-    isToday ? undefined : date,
+    isToday ? undefined : range.from,
+    isToday ? undefined : range.to,
   );
 
   const visible = useMemo<ExpenseBucketKey[]>(() => {
@@ -83,13 +109,18 @@ export default function FactoryExpenseWallPage() {
       />
 
       <ExpenseWallHeader
-        date={date}
+        dateFrom={range.from}
+        dateTo={range.to}
         isToday={isToday}
-        onResetToToday={() => setDate(localToday())}
-        onPickDate={setDate}
+        isSingleDay={isSingleDay}
+        days={data?.days ?? 1}
+        onResetToToday={() => setRange({ from: localToday(), to: localToday() })}
+        onChangeFrom={changeFrom}
+        onChangeTo={changeTo}
         companyCode={data?.company_code ?? '—'}
-        todayTotal={Number(data?.total.today ?? 0)}
+        rangeTotal={Number(data?.total.today ?? 0)}
         mtdTotal={Number(data?.total.mtd ?? 0)}
+        perDay={Number(data?.total.per_day ?? 0)}
         isFetching={isFetching}
         updatedAt={dataUpdatedAt}
         refreshSeconds={refreshSeconds}
@@ -144,7 +175,7 @@ export default function FactoryExpenseWallPage() {
                 icon={HardHat}
                 hex={BUCKET_META.LABOUR.hex}
                 badge={`${data.labour_departments.reduce((sum, row) => sum + row.headcount, 0)} in`}
-                emptyText="Nobody has been recorded through the gate today."
+                emptyText={`Nobody has been recorded through the gate ${data.is_single_day ? 'today' : 'in this range'}.`}
                 rows={data.labour_departments.map((row) => ({
                   id: row.department,
                   label: row.department,
@@ -178,7 +209,7 @@ export default function FactoryExpenseWallPage() {
                 icon={Bolt}
                 hex={BUCKET_META.ELECTRICITY.hex}
                 badge={`${Number(data.buckets.ELECTRICITY.unit ?? 0).toLocaleString('en-IN')} units`}
-                emptyText="No reading entered today — Maintenance › Daily Electricity."
+                emptyText={`No reading entered ${data.is_single_day ? 'today' : 'in this range'} — Maintenance › Daily Electricity.`}
                 rows={data.meters.map((row) => ({
                   id: row.meter,
                   label: row.meter,
@@ -191,11 +222,11 @@ export default function FactoryExpenseWallPage() {
             {data.settings.show_maintenance && (
               <ExpenseListPanel
                 pauseSeconds={data.settings.rotate_seconds}
-                title="Maintenance today"
+                title={data.is_single_day ? 'Maintenance today' : 'Maintenance in range'}
                 icon={Wrench}
                 hex={BUCKET_META.MAINTENANCE.hex}
                 badge={`${data.maintenance_items.length} entries`}
-                emptyText="No spares consumed and no indent committed today."
+                emptyText={`No spares consumed and no indent committed ${data.is_single_day ? 'today' : 'in this range'}.`}
                 rows={data.maintenance_items.map((row, index) => ({
                   id: `${row.kind}-${index}-${row.label}`,
                   label: row.label,
@@ -215,7 +246,7 @@ export default function FactoryExpenseWallPage() {
                 icon={Building2}
                 hex={BUCKET_META.LABOUR.hex}
                 badge={`${data.labour_contractors.length} contractors`}
-                emptyText="No contractor brought labour in today."
+                emptyText={`No contractor brought labour in ${data.is_single_day ? 'today' : 'in this range'}.`}
                 rows={data.labour_contractors.map((row) => ({
                   id: row.contractor,
                   label: row.contractor,

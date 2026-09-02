@@ -311,6 +311,7 @@ export const API_ENDPOINTS = {
     // QC PDF Document Library
     QC_DOCUMENT_FILES: '/quality-control/document-files/',
     QC_DOCUMENT_FILE_BY_ID: (id: number) => `/quality-control/document-files/${id}/`,
+    QC_DOCUMENT_FILE_DOWNLOAD: (id: number) => `/quality-control/document-files/${id}/download/`,
 
     // QC Record Forms (Documents) — blank forms and filled sheets
     RECORD_TEMPLATES: '/quality-control/record-templates/',
@@ -658,6 +659,9 @@ export const API_ENDPOINTS = {
     WORK_ORDER_REQUEST_SPARE: (workOrderId: number) =>
       `/maintenance/work-orders/${workOrderId}/request-spare/`,
     WORK_ORDER_PHOTOS: '/maintenance/work-order-photos/',
+    WORK_ORDER_ATTACHMENTS: '/maintenance/work-order-attachments/',
+    WORK_ORDER_ATTACHMENT_DETAIL: (attachmentId: number) =>
+      `/maintenance/work-order-attachments/${attachmentId}/`,
     PM_PLANS: '/maintenance/pm-plans/',
     PM_PLAN_DETAIL: (planId: number) => `/maintenance/pm-plans/${planId}/`,
     PM_PLAN_GENERATE: (planId: number) => `/maintenance/pm-plans/${planId}/generate/`,

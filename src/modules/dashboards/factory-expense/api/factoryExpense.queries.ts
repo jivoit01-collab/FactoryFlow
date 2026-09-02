@@ -8,8 +8,8 @@ import { factoryExpenseApi } from './factoryExpense.api';
 
 export const FACTORY_EXPENSE_KEYS = {
   all: ['factory-expense'] as const,
-  board: (date: string | undefined, companyId?: number | string) =>
-    [...FACTORY_EXPENSE_KEYS.all, 'board', companyId, date ?? 'today'] as const,
+  board: (from: string | undefined, to: string | undefined, companyId?: number | string) =>
+    [...FACTORY_EXPENSE_KEYS.all, 'board', companyId, from ?? 'today', to ?? 'today'] as const,
   settings: (companyId?: number | string) =>
     [...FACTORY_EXPENSE_KEYS.all, 'settings', companyId] as const,
   rates: (date: string | undefined, companyId?: number | string) =>
@@ -26,12 +26,12 @@ export const FACTORY_EXPENSE_KEYS = {
  * then it uses the module default rather than hammering the server while the
  * settings are still unknown.
  */
-export function useExpenseBoard(date?: string) {
+export function useExpenseBoard(dateFrom?: string, dateTo?: string) {
   const { currentCompany } = useAuth();
 
   return useQuery({
-    queryKey: FACTORY_EXPENSE_KEYS.board(date, currentCompany?.company_id),
-    queryFn: () => factoryExpenseApi.getBoard(date),
+    queryKey: FACTORY_EXPENSE_KEYS.board(dateFrom, dateTo, currentCompany?.company_id),
+    queryFn: () => factoryExpenseApi.getBoard(dateFrom, dateTo),
     staleTime: BOARD_STALE_TIME,
     refetchInterval: (query) => {
       const seconds = query.state.data?.settings?.refresh_seconds;

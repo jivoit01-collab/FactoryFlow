@@ -38,6 +38,15 @@ export type WorkImpact = 'NO_IMPACT' | 'DEGRADED' | 'STOPPAGE' | 'SAFETY_RISK';
 
 export type WorkOrderPhotoType = 'BEFORE' | 'AFTER' | 'GENERAL';
 
+/** What a file hung off a work order is — paperwork, not before/after photos. */
+export type WorkOrderAttachmentDocType =
+  | 'COMPLAINT'
+  | 'QUOTATION'
+  | 'SERVICE_REPORT'
+  | 'INVOICE'
+  | 'DRAWING'
+  | 'OTHER';
+
 export type SpareRequestStatus =
   | 'REQUESTED'
   | 'PARTIALLY_ISSUED'
@@ -409,6 +418,7 @@ export interface MaintenanceWorkOrder {
   /** True when the signed-in user may verify: the raiser, or a maintenance head. */
   can_verify: boolean;
   photos_count: number;
+  attachments_count: number;
   spare_requests_count: number;
   spare_consumed_qty: MaintenanceDecimal;
   spare_consumed_cost: MaintenanceDecimal;
@@ -523,6 +533,36 @@ export interface MaintenanceWorkOrderPhotoUploadPayload {
   photo_type: WorkOrderPhotoType;
   caption?: string;
   taken_on?: string;
+}
+
+export interface MaintenanceWorkOrderAttachment {
+  id: number;
+  work_order: number;
+  work_order_no: string;
+  /** Stored path or absolute URL — run it through resolveFileUrl before linking. */
+  file: string;
+  file_name: string;
+  doc_type: WorkOrderAttachmentDocType;
+  doc_type_display: string;
+  title: string;
+  uploaded_by_name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceWorkOrderAttachmentUploadPayload {
+  work_order: number;
+  file: File;
+  doc_type: WorkOrderAttachmentDocType;
+  title?: string;
+}
+
+/** A file picked in the work order form, uploaded once the order has an id. */
+export interface StagedWorkOrderAttachment {
+  file: File;
+  doc_type: WorkOrderAttachmentDocType;
+  title: string;
 }
 
 export interface PreventiveMaintenancePlan {
@@ -1069,6 +1109,7 @@ export interface MaintenanceOptions {
   work_statuses: MaintenanceChoice<WorkOrderStatus>[];
   work_impacts: MaintenanceChoice<WorkImpact>[];
   work_photo_types: MaintenanceChoice<WorkOrderPhotoType>[];
+  work_attachment_types: MaintenanceChoice<WorkOrderAttachmentDocType>[];
   spare_request_statuses: MaintenanceChoice<SpareRequestStatus>[];
   spare_movement_types: MaintenanceChoice<SpareMovementType>[];
   gate_qc_statuses: MaintenanceChoice<GateQCStatus>[];

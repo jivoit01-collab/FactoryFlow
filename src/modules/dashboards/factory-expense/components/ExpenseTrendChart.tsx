@@ -11,23 +11,29 @@ export interface ExpenseTrendChartProps {
 }
 
 /**
- * A fortnight of daily cost, stacked by bucket.
+ * Daily cost, stacked by bucket.
  *
  * Stacked rather than four separate lines: on a wall the question is "was
  * yesterday dearer than the day before, and what drove it", and a stack answers
- * both in one shape. Today's column is drawn at full opacity and labelled, so
- * the eye lands on it without a legend lookup.
+ * both in one shape.
+ *
+ * A single-day board still draws a fortnight so the day has something to be
+ * judged against; days outside the selected span are dimmed to mark them as
+ * context rather than answer. The average line is drawn from the selected days
+ * only — averaging in the context days would move the very line the spike is
+ * being measured against.
  */
 export function ExpenseTrendChart({ trend, className }: ExpenseTrendChartProps) {
   const totals = trend.map((point) => Number(point.total ?? 0));
   const max = Math.max(...totals, 1);
-  const average = totals.length
-    ? totals.reduce((sum, value) => sum + value, 0) / totals.length
-    : 0;
+  const selected = trend.filter((point) => point.in_range);
+  const basis = (selected.length ? selected : trend).map((point) => Number(point.total ?? 0));
+  const average = basis.length ? basis.reduce((sum, value) => sum + value, 0) / basis.length : 0;
+  const spanLabel = selected.length > 1 ? `${selected.length} days` : `${trend.length} days`;
 
   return (
     <BoardPanel
-      title="Last 14 days"
+      title={spanLabel}
       icon={TrendingUp}
       hex="#38bdf8"
       className={className}
@@ -70,7 +76,8 @@ export function ExpenseTrendChart({ trend, className }: ExpenseTrendChartProps) 
                         style={{
                           height: `${(value / total) * 100}%`,
                           backgroundColor: BUCKET_META[key].hex,
-                          opacity: point.is_today ? 1 : 0.42,
+                          // In-range days are the answer; the rest are context.
+                          opacity: point.in_range ? (point.is_today ? 1 : 0.85) : 0.3,
                         }}
                       />
                     );
@@ -97,7 +104,7 @@ export function ExpenseTrendChart({ trend, className }: ExpenseTrendChartProps) 
             ))}
           </div>
           <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
-            {shortDay(trend[0]?.date)} → today
+            {shortDay(trend[0]?.date)} → {shortDay(trend[trend.length - 1]?.date)}
           </span>
         </div>
       </div>

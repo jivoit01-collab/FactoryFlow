@@ -14,6 +14,7 @@ import {
   useMaintenanceOptions,
   useMaintenanceWorkOrders,
   useUpdateMaintenanceWorkOrder,
+  useUploadWorkOrderAttachments,
 } from '../api';
 import { WorkOrderFormDialog, WorkOrderStatusBadge } from '../components';
 import type {
@@ -22,6 +23,7 @@ import type {
   MaintenanceWorkOrder,
   MaintenanceWorkOrderFilters,
   MaintenanceWorkOrderPayload,
+  StagedWorkOrderAttachment,
   WorkOrderStatus,
   WorkType,
 } from '../types';
@@ -98,6 +100,10 @@ export default function MaintenanceWorkOrdersPage() {
     hasPermission(MAINTENANCE_PERMISSIONS.CREATE_WORK_ORDER) ||
     hasPermission(MAINTENANCE_PERMISSIONS.CREATE_MAINTENANCE_WORK_ORDER);
   const canEdit = canManage || hasPermission(MAINTENANCE_PERMISSIONS.EDIT_MAINTENANCE_WORK_ORDER);
+  // The raise form uploads the staged files itself, so anyone who may raise or
+  // edit an order may attach to it.
+  const canAttachFiles =
+    canCreate || canEdit || hasPermission(MAINTENANCE_PERMISSIONS.CREATE_WORK_ORDER_ATTACHMENT);
 
   const [filters, setFilters] = useState<MaintenanceWorkOrderFilters>({
     search: '',
@@ -116,6 +122,7 @@ export default function MaintenanceWorkOrdersPage() {
   const workOrdersQuery = useMaintenanceWorkOrders(filters);
   const createWorkOrder = useCreateMaintenanceWorkOrder();
   const updateWorkOrder = useUpdateMaintenanceWorkOrder();
+  const uploadAttachments = useUploadWorkOrderAttachments();
 
   const workOrders = useMemo(() => workOrdersQuery.data ?? [], [workOrdersQuery.data]);
   const lineOptions = useMemo(
@@ -136,21 +143,42 @@ export default function MaintenanceWorkOrdersPage() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = async (payload: MaintenanceWorkOrderPayload) => {
-    if (editingWorkOrder) {
-      await updateWorkOrder.mutateAsync({ workOrderId: editingWorkOrder.id, payload });
-      toast.success('Work order updated');
-    } else {
-      const created = await createWorkOrder.mutateAsync(payload);
-      toast.success('Work order created');
-      navigate(`/maintenance/work-orders/${created.id}`);
+  const handleSubmit = async (
+    payload: MaintenanceWorkOrderPayload,
+    attachments: StagedWorkOrderAttachment[],
+  ) => {
+    const saved = editingWorkOrder
+      ? await updateWorkOrder.mutateAsync({ workOrderId: editingWorkOrder.id, payload })
+      : await createWorkOrder.mutateAsync(payload);
+    toast.success(editingWorkOrder ? 'Work order updated' : 'Work order created');
+
+    // Files need the work order id, so they upload after the save. The order is
+    // already stored — a failed upload is a warning, not a rollback.
+    if (attachments.length) {
+      try {
+        await uploadAttachments.mutateAsync({ workOrderId: saved.id, staged: attachments });
+        toast.success(
+          attachments.length === 1
+            ? 'Attachment uploaded'
+            : `${attachments.length} attachments uploaded`,
+        );
+      } catch {
+        toast.warning(
+          `${saved.work_order_no} was saved, but some attachments failed to upload. Add them again from the work order.`,
+        );
+      }
     }
+
+    if (!editingWorkOrder) navigate(`/maintenance/work-orders/${saved.id}`);
     setDialogOpen(false);
   };
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Work Orders" description="Complaints, breakdowns, and maintenance jobs">
+      <DashboardHeader
+        title="Work Orders"
+        description="Complaints, breakdowns, and maintenance jobs"
+      >
         <Button
           variant="outline"
           size="sm"
@@ -266,7 +294,9 @@ export default function MaintenanceWorkOrdersPage() {
           <NativeSelect
             id="work_line"
             value={filters.line ?? ''}
-            onChange={(event) => setFilters((current) => ({ ...current, line: event.target.value }))}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, line: event.target.value }))
+            }
           >
             <SelectOption value="">All</SelectOption>
             {lineOptions.map((line) => (
@@ -406,7 +436,10 @@ export default function MaintenanceWorkOrdersPage() {
           workOrder={editingWorkOrder}
           options={optionsQuery.data}
           assets={assetsQuery.data ?? []}
-          isSubmitting={createWorkOrder.isPending || updateWorkOrder.isPending}
+          isSubmitting={
+            createWorkOrder.isPending || updateWorkOrder.isPending || uploadAttachments.isPending
+          }
+          canAttachFiles={canAttachFiles}
           onSubmit={handleSubmit}
         />
       )}

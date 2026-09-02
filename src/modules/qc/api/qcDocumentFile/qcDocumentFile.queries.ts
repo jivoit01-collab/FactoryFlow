@@ -57,3 +57,19 @@ export function useDeleteQCDocumentFile() {
     },
   });
 }
+
+/**
+ * The PDF bytes for the viewer.
+ *
+ * Kept out of the list cache (blobs are large) and only fetched while a
+ * document is actually open.
+ */
+export function useQCDocumentFileBlob(id: number | null) {
+  return useQuery({
+    queryKey: [...QC_DOCUMENT_FILE_QUERY_KEYS.detail(id!), 'blob'],
+    queryFn: () => qcDocumentFileApi.download(id!),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
