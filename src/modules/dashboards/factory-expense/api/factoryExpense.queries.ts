@@ -3,13 +3,25 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/core/auth';
 
 import { BOARD_STALE_TIME, CONFIG_STALE_TIME, DEFAULT_REFRESH_MS } from '../constants';
-import type { FactoryExpenseSettings, MonthlyBudgetPayload } from '../types';
+import type { ExpenseScope, FactoryExpenseSettings, MonthlyBudgetPayload } from '../types';
 import { factoryExpenseApi } from './factoryExpense.api';
 
 export const FACTORY_EXPENSE_KEYS = {
   all: ['factory-expense'] as const,
-  board: (from: string | undefined, to: string | undefined, companyId?: number | string) =>
-    [...FACTORY_EXPENSE_KEYS.all, 'board', companyId, from ?? 'today', to ?? 'today'] as const,
+  board: (
+    from: string | undefined,
+    to: string | undefined,
+    scope: ExpenseScope,
+    companyId?: number | string,
+  ) =>
+    [
+      ...FACTORY_EXPENSE_KEYS.all,
+      'board',
+      companyId,
+      scope,
+      from ?? 'today',
+      to ?? 'today',
+    ] as const,
   settings: (companyId?: number | string) =>
     [...FACTORY_EXPENSE_KEYS.all, 'settings', companyId] as const,
   rates: (date: string | undefined, companyId?: number | string) =>
@@ -26,12 +38,12 @@ export const FACTORY_EXPENSE_KEYS = {
  * then it uses the module default rather than hammering the server while the
  * settings are still unknown.
  */
-export function useExpenseBoard(dateFrom?: string, dateTo?: string) {
+export function useExpenseBoard(dateFrom?: string, dateTo?: string, scope: ExpenseScope = 'all') {
   const { currentCompany } = useAuth();
 
   return useQuery({
-    queryKey: FACTORY_EXPENSE_KEYS.board(dateFrom, dateTo, currentCompany?.company_id),
-    queryFn: () => factoryExpenseApi.getBoard(dateFrom, dateTo),
+    queryKey: FACTORY_EXPENSE_KEYS.board(dateFrom, dateTo, scope, currentCompany?.company_id),
+    queryFn: () => factoryExpenseApi.getBoard(dateFrom, dateTo, scope),
     staleTime: BOARD_STALE_TIME,
     refetchInterval: (query) => {
       const seconds = query.state.data?.settings?.refresh_seconds;

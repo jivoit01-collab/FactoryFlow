@@ -84,7 +84,10 @@ export interface ExpenseBoard {
   days: number;
   is_single_day: boolean;
   month: string;
+  /** "All companies" when the board spans more than one. */
   company_code: string;
+  company_codes: string[];
+  company_count: number;
   settings: ExpenseBoardSettings;
   buckets: Record<ExpenseBucketKey, ExpenseBucketFigures>;
   total: {
@@ -158,3 +161,6 @@ export interface FactoryExpenseSettings extends ExpenseBoardSettings {
   electricity_only_company_meters: boolean;
   updated_at: string;
 }
+
+/** Whether the board covers every company the viewer can see, or just one. */
+export type ExpenseScope = 'all' | 'company';
