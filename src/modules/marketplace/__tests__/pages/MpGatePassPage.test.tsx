@@ -13,14 +13,35 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-const post = vi.hoisted(() => vi.fn());
-vi.mock('@/core/api', () => ({
-  apiClient: {
-    get: vi.fn().mockResolvedValue({
-      data: [{ id: 1, vehicle_number: 'DL01LAT2433', name: 'Soyab' }],
-    }),
-    post: (...a: unknown[]) => post(...a),
-  },
+// The page uses the app-wide searchable vehicle/driver pickers (they fetch their
+// own master lists and carry their own "add new" dialogs — tested in the gate
+// module). Stub them with one-click pickers so these tests drive the PAGE flow.
+vi.mock('@/modules/gate/components', () => ({
+  VehicleSelect: ({ onChange }: {
+    onChange: (v: { vehicleId: number; vehicleNumber: string; vehicleType: string;
+      vehicleCapacity: string; transporterId: number; transporterName: string;
+      transporterContactPerson: string; transporterMobile: string; transporterGstin?: string;
+    }) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() => onChange({
+        vehicleId: 1, vehicleNumber: 'DL01LAT2433', vehicleType: 'Truck',
+        vehicleCapacity: '10 Tons', transporterId: 3,
+        transporterName: 'Arnav Transport Service',
+        transporterContactPerson: '', transporterMobile: '', transporterGstin: '',
+      })}
+    >
+      pick vehicle DL01LAT2433
+    </button>
+  ),
+  DriverSelect: ({ onChange }: {
+    onChange: (d: { driverId: number; driverName: string }) => void;
+  }) => (
+    <button type="button" onClick={() => onChange({ driverId: 1, driverName: 'Soyab' })}>
+      pick driver Soyab
+    </button>
+  ),
 }));
 vi.mock('../../api/marketplace.api', () => ({
   marketplaceApi: {
@@ -75,12 +96,9 @@ const btn = (name: RegExp) => screen.getByRole('button', { name });
 const shows = (needle: RegExp | string) =>
   waitFor(() => expect(document.body.textContent).toMatch(needle));
 
-/** The vehicle list loads asynchronously; selecting before it arrives is a no-op. */
+/** Drive the stubbed searchable picker: one click selects the vehicle. */
 async function pickVehicle() {
-  await screen.findByRole('option', { name: 'DL01LAT2433' });
-  // Two selects on the page (vehicle, driver); the vehicle is the first.
-  const [vehicle] = screen.getAllByRole('combobox');
-  fireEvent.change(vehicle, { target: { value: '1' } });
+  fireEvent.click(await screen.findByRole('button', { name: /pick vehicle DL01LAT2433/ }));
 }
 
 beforeEach(() => {
@@ -169,34 +187,18 @@ describe('MpGatePassPage — send an approved sheet out', () => {
     api.list.mockResolvedValue([trip({ status: 'DISPATCHED' })]);
     renderPage();
     // The vehicle form is offered again rather than resuming a trip that has gone.
-    await screen.findByRole('option', { name: 'DL01LAT2433' });
+    await screen.findByRole('button', { name: /pick vehicle DL01LAT2433/ });
     expect(btn(/Save & continue/)).toBeTruthy();
   });
 
-  it('lets a vehicle that is not on file be added without leaving the page', async () => {
-    // A truck can turn up unregistered; sending the gate person to the masters
-    // screen would lose the trip they are mid-way through.
-    post.mockReset().mockResolvedValue({ data: { id: 9, vehicle_number: 'HR55AZ3926' } });
+  it('will not open a trip until a vehicle is picked', async () => {
+    // Adding an unregistered truck now lives inside the shared VehicleSelect
+    // (its own "Add New Vehicle" dialog); the page only insists on a real pick.
     renderPage();
-    await screen.findByRole('option', { name: 'DL01LAT2433' });
-    const [vehicle] = screen.getAllByRole('combobox');
-    fireEvent.change(vehicle, { target: { value: '__new__' } });
-
-    fireEvent.change(screen.getByPlaceholderText('Vehicle number'), {
-      target: { value: 'HR55AZ3926' },
-    });
-    fireEvent.click(btn(/Add vehicle/));
-    await waitFor(() => expect(post).toHaveBeenCalled());
-    // The sentinel must never reach the server as a vehicle id.
-    expect(api.create).not.toHaveBeenCalled();
-  });
-
-  it('will not open a trip while "not listed" is still selected', async () => {
-    renderPage();
-    await screen.findByRole('option', { name: 'DL01LAT2433' });
-    const [vehicle] = screen.getAllByRole('combobox');
-    fireEvent.change(vehicle, { target: { value: '__new__' } });
+    await screen.findByRole('button', { name: /pick vehicle DL01LAT2433/ });
     expect(btn(/Save & continue/)).toBeDisabled();
+    await pickVehicle();
+    expect(btn(/Save & continue/)).not.toBeDisabled();
   });
 
   it('shows trips already sent out from this sheet, with their detail', async () => {

@@ -25,6 +25,7 @@ import {
   Loader2,
   PackageCheck,
   ScanLine,
+  Trash2,
   Truck,
   XCircle,
 } from 'lucide-react';
@@ -47,6 +48,7 @@ import {
   MARKETPLACE_QUERY_KEYS,
   useCancelDispatch,
   useConfirmDispatch,
+  useDeleteRemaining,
   useDispatchBoard,
   useDispatchSheets,
   useScanDispatchBulk,
@@ -68,7 +70,13 @@ import type {
   MarketplaceChannel,
 } from '../types/marketplace.types';
 
-const WARN_CODES = ['NOT_PACKED', 'NOT_ISSUED', 'ORDER_CANCELLED', 'EMPTY'];
+// NOT_ON_SHEET / SHEET_DELETED / TRACKING_DELETED are operator guidance, not
+// failures: the message names the sheet the tracking lives on, or says it was
+// deleted and must be re-uploaded on a new sheet.
+const WARN_CODES = [
+  'NOT_PACKED', 'NOT_ISSUED', 'ORDER_CANCELLED', 'EMPTY',
+  'NOT_ON_SHEET', 'SHEET_DELETED', 'TRACKING_DELETED',
+];
 
 function errorCode(e: unknown): string | undefined {
   return (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
@@ -166,6 +174,28 @@ export default function MpOutwardPage() {
   const board = boardQuery.data;
   const orders = board?.orders ?? [];
   const insights = board?.insights;
+
+  // "Delete remaining": the day's leftovers are cleared off the sheet — never shown
+  // or scannable again — while everything scanned/confirmed (and the sheet itself,
+  // with its total / scanned / deleted tallies) stays. The deleted parcels come back
+  // as fresh rows when the user uploads them on a new sheet.
+  const deleteRemainingMut = useDeleteRemaining();
+  function handleDeleteRemaining(s: DispatchSheetSummary) {
+    const name = s.filename || `Sheet #${s.id}`;
+    const left = s.insights.tracking_remaining;
+    if (!window.confirm(
+      `Delete the ${left} remaining (unscanned) tracking ID${left === 1 ? '' : 's'} from "${name}"?\n\n`
+      + 'They can never be scanned on this sheet again — re-upload those orders on a '
+      + 'new sheet instead. Everything already scanned or confirmed stays untouched.',
+    )) return;
+    deleteRemainingMut.mutate(s.id, {
+      onSuccess: (res) => toast.success(
+        `Deleted ${res.lines_deleted} remaining tracking ID${res.lines_deleted === 1 ? '' : 's'} `
+        + `(${res.orders_deleted} whole order${res.orders_deleted === 1 ? '' : 's'}) from ${name}.`,
+      ),
+      onError: (e) => toast.error(getErrorMessage(e)),
+    });
+  }
 
   // Scans land on the sheet being viewed: a re-listed parcel carries the same Tracking
   // ID on every sheet it appears on, and each sheet is scanned independently.
@@ -342,7 +372,14 @@ export default function MpOutwardPage() {
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {sheets.map((s) => (
-                <SheetTile key={s.id} sheet={s} active={s.id === sheetId} onSelect={() => { setPickedSheet(s.id); setFeedback(null); }} />
+                <SheetTile
+                  key={s.id}
+                  sheet={s}
+                  active={s.id === sheetId}
+                  onSelect={() => { setPickedSheet(s.id); setFeedback(null); }}
+                  onDelete={() => handleDeleteRemaining(s)}
+                  deleting={deleteRemainingMut.isPending && deleteRemainingMut.variables === s.id}
+                />
               ))}
             </div>
           )}
@@ -367,11 +404,16 @@ export default function MpOutwardPage() {
                     style={{ width: `${insights.progress_pct}%` }}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className={`grid grid-cols-2 gap-3 ${
+                  (insights.tracking_deleted ?? 0) > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'
+                }`}>
                   <Stat label="Total orders" value={insights.total_orders} />
                   <Stat label="Completed" value={insights.completed_orders} tone="emerald" />
                   <Stat label="Pending" value={insights.pending_orders} tone="amber" />
                   <Stat label="Tracking left" value={insights.tracking_remaining} tone="slate" />
+                  {(insights.tracking_deleted ?? 0) > 0 && (
+                    <Stat label="Deleted" value={insights.tracking_deleted} tone="rose" />
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -578,49 +620,82 @@ function SheetTile({
   sheet,
   active,
   onSelect,
+  onDelete,
+  deleting,
 }: {
   sheet: DispatchSheetSummary;
   active: boolean;
   onSelect: () => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
   const i = sheet.insights;
   const done = i.completed_orders === i.total_orders && i.total_orders > 0;
   return (
-    <button
-      type="button"
+    // A div acting as a button (role/tabIndex/Enter+Space) because the delete is a
+    // real <button> inside the tile, and buttons cannot nest.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
-      className={`rounded-lg border p-3 text-left transition-colors ${
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={`cursor-pointer rounded-lg border p-3 text-left transition-colors ${
         active ? 'border-primary bg-primary/5 ring-1 ring-primary/40' : 'hover:bg-muted/50'
       }`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-sm font-medium">{sheet.filename || `Sheet #${sheet.id}`}</span>
-        {done ? (
-          <Badge className="bg-emerald-600">Done</Badge>
-        ) : (
-          <Badge variant="secondary" className="tabular-nums">{i.completed_orders}/{i.total_orders}</Badge>
-        )}
+        <span className="flex shrink-0 items-center gap-1">
+          {done ? (
+            <Badge className="bg-emerald-600">Done</Badge>
+          ) : (
+            <Badge variant="secondary" className="tabular-nums">{i.completed_orders}/{i.total_orders}</Badge>
+          )}
+          {(i.tracking_remaining > 0 || deleting) && (
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              title="Delete this sheet's remaining (unscanned) tracking IDs — they can never be scanned here again; scanned and confirmed work is kept"
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-600 disabled:opacity-50"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </button>
+          )}
+        </span>
       </div>
       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div className="h-full rounded-full bg-emerald-500" style={{ width: `${i.progress_pct}%` }} />
       </div>
       <div className="mt-1.5 text-xs text-muted-foreground tabular-nums">
         {i.tracking_scanned}/{i.tracking_total} tracking IDs · {i.pending_orders} pending
+        {(i.tracking_deleted ?? 0) > 0 && (
+          <span className="text-rose-600 dark:text-rose-400"> · {i.tracking_deleted} deleted</span>
+        )}
       </div>
       {sheet.carried_over_count > 0 && (
         <div className="mt-1 text-[11px] text-muted-foreground">
           +{sheet.carried_over_count} carried over from an earlier sheet
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
-function Stat({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'emerald' | 'amber' | 'slate' }) {
+function Stat({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'emerald' | 'amber' | 'slate' | 'rose' }) {
   const color =
     tone === 'emerald' ? 'text-emerald-600 dark:text-emerald-400'
     : tone === 'amber' ? 'text-amber-600 dark:text-amber-400'
     : tone === 'slate' ? 'text-slate-600 dark:text-slate-300'
+    : tone === 'rose' ? 'text-rose-600 dark:text-rose-400'
     : 'text-foreground';
   return (
     <div className="rounded-lg border bg-card p-3">

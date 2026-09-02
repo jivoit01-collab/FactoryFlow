@@ -9,6 +9,7 @@ import type {
   ComboDefinitionUpsert,
   CompleteItemGroupResult,
   ConfirmRequest,
+  DeleteRemainingResult,
   DeliveryNoteCutResult,
   DeliveryNoteReconcileResult,
   DeliveryNoteSheet,
@@ -52,7 +53,6 @@ import type {
   ReconciliationParams,
   ReconciliationReport,
   ReportPreview,
-  DeliveryNotePrint,
   ResolvedOrder,
   ReturnCreateRequest,
   ReturnListParams,
@@ -394,6 +394,7 @@ export const marketplaceApi = {
     const { data } = await apiClient.post<MpGatePass>(
       `${EP.GATE_PASS_MANUAL}${buildQuery({ channel })}`,
       form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return data;
   },
@@ -421,17 +422,6 @@ export const marketplaceApi = {
   ): Promise<TrackingReport> {
     const { data } = await apiClient.get<TrackingReport>(
       `${EP.REPORT_TRACKING(batchId)}${buildQuery({ ...params })}`,
-    );
-    return data;
-  },
-
-  /** One posted delivery note, shaped for the printable SAP-layout challan. */
-  async deliveryNotePrint(
-    docEntry: number,
-    channel: MarketplaceChannel,
-  ): Promise<DeliveryNotePrint> {
-    const { data } = await apiClient.get<DeliveryNotePrint>(
-      `${EP.DN_PRINT(docEntry)}${buildQuery({ channel })}`,
     );
     return data;
   },
@@ -587,6 +577,15 @@ export const marketplaceApi = {
   },
   async batch(id: number): Promise<OrderImportBatch> {
     const { data } = await apiClient.get<OrderImportBatch>(EP.BATCH_BY_ID(id));
+    return data;
+  },
+  /** Delete a sheet's REMAINING work (soft): unscanned orders/parcels leave the
+   *  board and can never be scanned again; scanned/confirmed work is untouched.
+   *  The sheet stays, reporting total / scanned / deleted. */
+  async deleteRemaining(id: number): Promise<DeleteRemainingResult> {
+    const { data } = await apiClient.post<DeleteRemainingResult>(
+      `${EP.BATCH_BY_ID(id)}delete-remaining/`, {},
+    );
     return data;
   },
   async batchStockList(id: number): Promise<StockList> {
