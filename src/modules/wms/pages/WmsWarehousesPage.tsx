@@ -18,6 +18,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import {
   Button,
   Card,
@@ -101,14 +102,14 @@ export default function WmsWarehousesPage() {
   }
 
   async function handleDelete(warehouse: Warehouse) {
-    if (
-      !window.confirm(
-        `Delete "${warehouse.name}" and all its locations? It will be removed from ` +
-          `Warehouse Ops (an admin can recover it if needed).`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirmDialog({
+      title: `Delete "${warehouse.name}" and all its locations?`,
+      description:
+        'It will be removed from Warehouse Ops (an admin can recover it if needed).',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     setBusyId(warehouse.id);
     try {
       await wmsStore.deleteWarehouseCascade(warehouse.id);

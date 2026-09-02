@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api';
 import { usePermission } from '@/core/auth';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, NativeSelect, SelectOption } from '@/shared/components/ui';
 
@@ -87,12 +88,14 @@ export default function DispatchPlansDashboardPage() {
    * Selection brings it back as it was, which is what the prompt says.
    */
   const handleRemove = useCallback(
-    (bill: DispatchBill) => {
-      const confirmed = window.confirm(
-        `Remove bill ${bill.doc_num} from dispatch planning?\n\n` +
+    async (bill: DispatchBill) => {
+      const confirmed = await confirmDialog({
+        title: `Remove bill ${bill.doc_num} from dispatch planning?`,
+        description:
           'It leaves this page and returns to Bill Selection. Anything already ' +
           'planned against it is kept, so you can add it back.',
-      );
+        confirmLabel: 'Remove',
+      });
       if (!confirmed) return;
 
       removeFromPlan.mutate(bill.doc_entry, {

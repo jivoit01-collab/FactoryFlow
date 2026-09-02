@@ -122,7 +122,8 @@ describe('QCParametersPage — Remove Vendor', () => {
 
   it('confirms before deleting', () => {
     const content = readSource();
-    expect(content).toContain('if (!confirm(warning)) return;');
+    expect(content).toContain('await confirmDialog({');
+    expect(content).toContain('if (!confirmed) return;');
   });
 
   it('does not move the selection by hand after deleting', () => {

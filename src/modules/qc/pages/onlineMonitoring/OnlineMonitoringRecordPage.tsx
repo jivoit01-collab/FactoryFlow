@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { promptDialog } from '@/shared/components';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
@@ -78,8 +79,15 @@ export default function OnlineMonitoringRecordPage() {
       },
     );
 
-  const doReject = () => {
-    const remarks = window.prompt('Reason for rejection?') ?? '';
+  const doReject = async () => {
+    const remarks = await promptDialog({
+      title: 'Reject this record?',
+      label: 'Reason for rejection',
+      required: false,
+      confirmLabel: 'Reject',
+      destructive: true,
+    });
+    if (remarks === null) return; // dismissed the dialog — don't reject
     reject.mutate(
       { recordId, args: { remarks } },
       {

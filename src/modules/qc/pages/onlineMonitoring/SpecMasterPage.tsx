@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import {
   Badge,
   Button,
@@ -116,8 +117,14 @@ export default function SpecMasterPage() {
     );
   };
 
-  const doReset = (spec: OnlineQualitySpec) => {
-    if (!window.confirm(`Reset “${spec.parameter_name}” to the default specification?`)) return;
+  const doReset = async (spec: OnlineQualitySpec) => {
+    const confirmed = await confirmDialog({
+      title: `Reset “${spec.parameter_name}”?`,
+      description: 'The specification goes back to the default.',
+      confirmLabel: 'Reset',
+      destructive: true,
+    });
+    if (!confirmed) return;
     reset.mutate(spec.id, {
       onSuccess: () => toast.success('Reset to default'),
       onError: (e) => toast.error(getErrorMessage(e, 'Could not reset')),

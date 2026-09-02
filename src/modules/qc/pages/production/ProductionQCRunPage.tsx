@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { QC_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { useRunDetail } from '@/modules/production/execution/api';
+import { confirmDialog } from '@/shared/components';
 import {
   Button,
   Card,
@@ -118,7 +119,12 @@ export default function ProductionQCRunPage() {
 
   const handleDelete = async (sessionId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Delete this draft QC session?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete this draft QC session?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteSession.mutateAsync(sessionId);
       toast.success('Session deleted');

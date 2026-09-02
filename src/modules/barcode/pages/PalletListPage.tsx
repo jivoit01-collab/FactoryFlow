@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useWMSWarehouses } from '@/modules/warehouse/api';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
@@ -88,7 +89,13 @@ export default function PalletListPage() {
   };
 
   const handleDeleteEmptyPallet = async (palletId: number, palletCode: string) => {
-    if (!confirm(`Delete empty pallet ${palletCode}? This cannot be undone.`)) return;
+    const confirmed = await confirmDialog({
+      title: `Delete empty pallet ${palletCode}?`,
+      description: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       await deleteEmptyPalletMutation.mutateAsync(palletId);

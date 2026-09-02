@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
@@ -189,7 +190,12 @@ function LineManagementPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this configuration?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete this configuration?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteConfig.mutateAsync(id);
       toast.success('Configuration deleted');

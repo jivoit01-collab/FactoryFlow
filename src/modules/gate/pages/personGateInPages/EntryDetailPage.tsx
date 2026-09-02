@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { GateStatusBadge } from '@/modules/gate/components';
+import { confirmDialog } from '@/shared/components';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import {
@@ -97,7 +98,13 @@ export default function EntryDetailPage() {
   const handleCancel = async () => {
     if (!entryIdNumber) return;
 
-    if (!window.confirm('Are you sure you want to cancel this entry?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Cancel this entry?',
+      confirmLabel: 'Cancel entry',
+      cancelLabel: 'Keep entry',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       await cancelMutation.mutateAsync(entryIdNumber);

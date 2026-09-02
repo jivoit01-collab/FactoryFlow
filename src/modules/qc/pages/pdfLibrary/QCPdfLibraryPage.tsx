@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { QC_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
 import { usePermission } from '@/core/auth';
+import { confirmDialog } from '@/shared/components';
 import {
   Badge,
   Button,
@@ -156,7 +157,13 @@ export default function QCPdfLibraryPage() {
   };
 
   const handleDelete = async (document: QCDocumentFile) => {
-    if (!confirm(`Retire ${document.document_code}? It drops out of this list.`)) return;
+    const confirmed = await confirmDialog({
+      title: `Retire ${document.document_code}?`,
+      description: 'It drops out of this list.',
+      confirmLabel: 'Retire',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteDocument.mutateAsync(document.id);
       toast.success(`${document.document_code} retired.`);

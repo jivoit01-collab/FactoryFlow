@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { confirmDialog } from '@/shared/components';
 import {
   Button,
   Card,
@@ -127,7 +128,12 @@ export default function PrintDocumentsPage() {
   };
 
   const handleDelete = async (document: QCPrintDocument) => {
-    if (!confirm(`Remove document ID for ${document.document_key_label}?`)) return;
+    const confirmed = await confirmDialog({
+      title: `Remove document ID for ${document.document_key_label}?`,
+      confirmLabel: 'Remove',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       await deletePrintDocument.mutateAsync(document.id);

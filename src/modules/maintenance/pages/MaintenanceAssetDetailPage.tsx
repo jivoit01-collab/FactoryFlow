@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -266,7 +267,13 @@ export default function MaintenanceAssetDetailPage() {
   };
 
   const handleDeactivate = async () => {
-    if (!asset || !window.confirm(`Deactivate ${asset.asset_code}?`)) return;
+    if (!asset) return;
+    const confirmed = await confirmDialog({
+      title: `Deactivate ${asset.asset_code}?`,
+      confirmLabel: 'Deactivate',
+      destructive: true,
+    });
+    if (!confirmed) return;
     await deactivateAsset.mutateAsync(asset.id);
     toast.success('Asset deactivated');
   };

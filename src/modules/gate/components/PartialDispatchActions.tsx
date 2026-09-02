@@ -7,6 +7,7 @@ import {
   useRemoveDispatchDocument,
   useRequestPartialApproval,
 } from '@/modules/gate/api/partialDispatch/partialDispatch.queries';
+import { confirmDialog } from '@/shared/components';
 import { Badge, Button, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
@@ -55,9 +56,13 @@ export function PartialDispatchActions({
   const [creditNo, setCreditNo] = useState<Record<number, string>>({});
 
   const handleRemove = async (documentId: number) => {
-    if (!window.confirm('Remove this bill from the load? It returns to Expected Dispatch.')) {
-      return;
-    }
+    const confirmed = await confirmDialog({
+      title: 'Remove this bill from the load?',
+      description: 'It returns to Expected Dispatch.',
+      confirmLabel: 'Remove bill',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await removeDoc.mutateAsync({ salesDispatchId, documentId });
       toast.success('Bill removed; it will reschedule onto a future trip.');

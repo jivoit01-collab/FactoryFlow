@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
@@ -374,8 +375,12 @@ export default function MaintenancePMPage() {
   };
 
   const handleSkipExecution = async (execution: PreventiveMaintenanceExecution) => {
-    const reason = window.prompt(`Skip ${execution.pm_plan_code}? Enter reason`);
-    if (!reason?.trim()) return;
+    const reason = await promptDialog({
+      title: `Skip ${execution.pm_plan_code}?`,
+      label: 'Reason',
+      confirmLabel: 'Skip',
+    });
+    if (!reason) return;
     await skipExecutionMutation.mutateAsync({
       executionId: execution.id,
       payload: { skip_reason: reason.trim() },

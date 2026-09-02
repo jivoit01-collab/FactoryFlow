@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -185,7 +186,7 @@ function QCPage() {
                         </td>
                         <td className="p-2 text-muted-foreground truncate max-w-[150px]">{c.remarks || '-'}</td>
                         <td className="p-2">
-                          <Button variant="ghost" size="sm" onClick={async () => { if (confirm('Delete this check?')) { try { await deleteInProcess.mutateAsync(c.id); toast.success('Deleted'); } catch { toast.error('Failed'); } } }}>
+                          <Button variant="ghost" size="sm" onClick={async () => { const confirmed = await confirmDialog({ title: 'Delete this check?', confirmLabel: 'Delete', destructive: true }); if (!confirmed) return; try { await deleteInProcess.mutateAsync(c.id); toast.success('Deleted'); } catch { toast.error('Failed'); } }}>
                             <Trash2 className="h-3.5 w-3.5 text-red-500" />
                           </Button>
                         </td>

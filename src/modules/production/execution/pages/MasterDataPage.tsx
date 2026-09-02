@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button, Card, CardContent, CardHeader, CardTitle,
@@ -67,7 +68,12 @@ function MasterDataPage() {
   };
 
   const handleDeleteTemplate = async (id: number) => {
-    if (!confirm('Delete this template?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete this template?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try { await deleteTemplate.mutateAsync(id); toast.success('Template deleted'); } catch { toast.error('Failed'); }
   };
 

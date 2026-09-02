@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { BARCODE_PERMISSIONS } from '@/config/permissions/barcode.permissions';
 import { usePermission } from '@/core/auth';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
@@ -73,7 +74,12 @@ export default function PalletVerifyRequestDetailPage() {
 
   const handleCancel = async () => {
     if (!id) return;
-    if (!window.confirm('Cancel this request?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Cancel this request?',
+      confirmLabel: 'Cancel request',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await cancelMutation.mutateAsync({ requestId: id, data: { reason: cancelReason } });
       toast.success('Request cancelled.');
