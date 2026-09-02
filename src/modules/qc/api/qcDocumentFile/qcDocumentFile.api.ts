@@ -42,13 +42,25 @@ export const qcDocumentFileApi = {
     return response.data;
   },
 
-  async update(
-    id: number,
-    data: UpdateQCDocumentFileRequest,
-  ): Promise<QCDocumentFile> {
+  async update(id: number, data: UpdateQCDocumentFileRequest): Promise<QCDocumentFile> {
     const response = await apiClient.put<QCDocumentFile>(
       API_ENDPOINTS.QUALITY_CONTROL_V2.QC_DOCUMENT_FILE_BY_ID(id),
       data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Fetch the PDF bytes through the authenticated API.
+   *
+   * The viewer renders these from a blob rather than pointing an iframe at the
+   * media URL: that URL is unauthenticated, and every Django response carries
+   * `X-Frame-Options: DENY`, which stops a frame rendering it at all.
+   */
+  async download(id: number): Promise<Blob> {
+    const response = await apiClient.get<Blob>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.QC_DOCUMENT_FILE_DOWNLOAD(id),
+      { responseType: 'blob' },
     );
     return response.data;
   },

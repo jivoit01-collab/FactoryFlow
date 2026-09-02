@@ -1,4 +1,5 @@
-import { ExternalLink } from 'lucide-react';
+import { AlertCircle, Download, Loader2 } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 
 import {
   Badge,
@@ -10,6 +11,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui';
 
+import { useQCDocumentFileBlob } from '../../api/qcDocumentFile';
 import type { QCDocumentFile } from '../../types/qcDocumentFile.types';
 
 interface PdfViewerDialogProps {
@@ -20,14 +22,46 @@ interface PdfViewerDialogProps {
 /**
  * Shows the stored PDF exactly as uploaded.
  *
- * An `<iframe>` on the file's own URL hands rendering to the browser's built-in
- * PDF viewer — no conversion, no re-layout, so what appears is the document as
- * issued, with its own zoom, search and print controls.
+ * The bytes are fetched through the authenticated API and rendered from an
+ * object URL rather than framing the media URL directly. Two reasons: the
+ * media URL needs no login, and every Django response carries
+ * `X-Frame-Options: DENY`, so a frame pointed at it renders nothing at all.
+ * A blob URL is same-origin to this page, so the browser's own PDF viewer
+ * handles it — real zoom, search, scroll and print, document unchanged.
  */
 export default function PdfViewerDialog({ document, onClose }: PdfViewerDialogProps) {
+  const documentId = document?.id ?? null;
+  const { data: blob, isLoading, error: fetchError } = useQCDocumentFileBlob(documentId);
+
+  const blobUrl = useMemo(() => {
+    if (!blob) return null;
+    // Force the PDF type: a blob typed application/octet-stream is downloaded
+    // by the browser instead of rendered.
+    const pdf =
+      blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+    return URL.createObjectURL(pdf);
+  }, [blob]);
+
+  // Release the object URL once it is replaced or the dialog closes, so the
+  // file is not held in memory for the rest of the session.
+  useEffect(() => {
+    if (!blobUrl) return undefined;
+    return () => URL.revokeObjectURL(blobUrl);
+  }, [blobUrl]);
+
+  const error = fetchError ? fetchError.message || 'Could not load this PDF.' : '';
+
+  // Save under the name it was uploaded with; fall back to the document code
+  // so the file is still identifiable if the original name was lost.
+  const downloadName =
+    document?.original_name || (document ? `${document.document_code}.pdf` : 'document.pdf');
+
   return (
     <Dialog open={document !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-[90vh] max-w-5xl flex-col">
+      {/* Full-screen: a controlled document is read at full size, not in a
+          window. `100dvh` rather than `vh` so mobile browser chrome does not
+          push the bottom of the page out of view. */}
+      <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-3 rounded-none border-0 p-4 sm:rounded-none">
         {document && (
           <>
             <DialogHeader className="shrink-0">
@@ -35,38 +69,45 @@ export default function PdfViewerDialog({ document, onClose }: PdfViewerDialogPr
               <DialogDescription className="flex flex-wrap items-center gap-2 pt-1">
                 <span className="font-mono">{document.document_code}</span>
                 {document.revision && <Badge variant="outline">Rev {document.revision}</Badge>}
-                {document.uploaded_by_name && (
-                  <span>Uploaded by {document.uploaded_by_name}</span>
-                )}
-                {document.url && (
+                {document.uploaded_by_name && <span>Uploaded by {document.uploaded_by_name}</span>}
+                {blobUrl && (
                   <a
-                    href={document.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ml-auto inline-flex items-center gap-1 text-primary hover:underline"
+                    href={blobUrl}
+                    download={downloadName}
+                    className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Open in new tab
+                    <Download className="h-3.5 w-3.5" />
+                    Download
                   </a>
                 )}
               </DialogDescription>
             </DialogHeader>
 
-            {document.url ? (
-              <iframe
-                src={document.url}
-                title={`${document.document_code} — ${document.title}`}
-                className="min-h-0 w-full flex-1 rounded-md border"
-              />
-            ) : (
+            {isLoading && (
+              <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {error && (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-                <p className="text-sm text-muted-foreground">
-                  This document has no file attached.
-                </p>
+                <AlertCircle className="h-8 w-8 text-destructive" />
+                <p className="text-sm text-destructive">{error}</p>
                 <Button variant="outline" onClick={onClose}>
                   Close
                 </Button>
               </div>
+            )}
+
+            {blobUrl && !error && (
+              <iframe
+                // `#toolbar=0&navpanes=0` hides the built-in PDF toolbar and
+                // sidebar, so the page is shown on its own. Saving is offered
+                // by the Download button above instead.
+                src={`${blobUrl}#toolbar=0&navpanes=0`}
+                title={`${document.document_code} — ${document.title}`}
+                className="min-h-0 w-full flex-1 rounded-md border"
+              />
             )}
           </>
         )}
