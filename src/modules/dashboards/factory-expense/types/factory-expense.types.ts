@@ -24,6 +24,8 @@ export interface ExpenseBucketFigures {
 export interface ExpenseTrendPoint {
   date: string;
   is_today: boolean;
+  /** Inside the selected from/to span. Days outside it are context only. */
+  in_range: boolean;
   labour: string;
   salary: string;
   electricity: string;
@@ -76,14 +78,20 @@ export interface ExpenseBoardSettings {
 }
 
 export interface ExpenseBoard {
-  date: string;
+  date_from: string;
+  date_to: string;
+  /** Days in the selected span, inclusive. 1 when from and to are the same. */
+  days: number;
+  is_single_day: boolean;
   month: string;
   company_code: string;
   settings: ExpenseBoardSettings;
   buckets: Record<ExpenseBucketKey, ExpenseBucketFigures>;
   total: {
+    /** The selected span's total. Named `today` because a single day is the default. */
     today: string;
     mtd: string;
+    per_day: string;
     budget: string | null;
     budget_used_pct: number | null;
   };
