@@ -5,8 +5,10 @@ import {
   Edit,
   ExternalLink,
   PackagePlus,
+  Paperclip,
   Play,
   RefreshCw,
+  Trash2,
   Undo2,
   Upload,
   UserCheck,
@@ -47,6 +49,7 @@ import {
   useCompleteMaintenanceWorkOrder,
   useCompleteVendorVisit,
   useCreateVendorVisit,
+  useDeleteWorkOrderAttachment,
   useMaintenanceAssets,
   useMaintenanceOptions,
   useMaintenanceSpares,
@@ -58,14 +61,17 @@ import {
   useStartMaintenanceWorkOrder,
   useStartVendorVisit,
   useUpdateMaintenanceWorkOrder,
+  useUploadWorkOrderAttachments,
   useUploadWorkOrderPhoto,
   useVendorVisits,
+  useWorkOrderAttachments,
   useWorkOrderLogs,
   useWorkOrderPhotos,
 } from '../api';
 import {
   WorkOrderApprovalDialog,
   WorkOrderAssignDialog,
+  WorkOrderAttachmentUploadDialog,
   WorkOrderCompleteDialog,
   WorkOrderFormDialog,
   WorkOrderPhotoUploadDialog,
@@ -82,6 +88,7 @@ import type {
   MaintenanceWorkOrder,
   MaintenanceWorkOrderApprovalPayload,
   MaintenanceWorkOrderAssignPayload,
+  MaintenanceWorkOrderAttachment,
   MaintenanceWorkOrderCompletePayload,
   MaintenanceWorkOrderLog,
   MaintenanceWorkOrderPayload,
@@ -90,7 +97,9 @@ import type {
   MaintenanceWorkOrderSendBackPayload,
   MaintenanceWorkOrderStatusPayload,
   SpareRequest,
+  StagedWorkOrderAttachment,
   WorkImpact,
+  WorkOrderAttachmentDocType,
   WorkOrderPhotoType,
   WorkOrderSpareRequestPayload,
   WorkType,
@@ -101,7 +110,13 @@ function valueOrDash(value: string | number | null | undefined) {
   return value;
 }
 
-function DetailItem({ label, value }: { label: string; value: string | number | null | undefined }) {
+function DetailItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+}) {
   return (
     <div>
       <div className="text-xs font-medium uppercase text-muted-foreground">{label}</div>
@@ -208,16 +223,25 @@ function WorkOrderPhotoList({
   photoTypes?: MaintenanceChoice<WorkOrderPhotoType>[];
 }) {
   if (isLoading) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading photos...</div>;
+    return (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading photos...</div>
+    );
   }
   if (photos.length === 0) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">No work photos uploaded yet.</div>;
+    return (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+        No work photos uploaded yet.
+      </div>
+    );
   }
 
   return (
     <div className="space-y-2">
       {photos.map((photo) => (
-        <div key={photo.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+        <div
+          key={photo.id}
+          className="flex items-center justify-between gap-3 rounded-md border p-3"
+        >
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">
               {photo.caption || fileNameFromUrl(photo.photo)}
@@ -232,6 +256,78 @@ function WorkOrderPhotoList({
               Open
             </a>
           </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Paperwork hung off the order — the raiser's evidence, quotes, bills. */
+function WorkOrderAttachmentList({
+  attachments,
+  isLoading,
+  attachmentTypes,
+  canDelete,
+  isDeleting,
+  onDelete,
+}: {
+  attachments: MaintenanceWorkOrderAttachment[];
+  isLoading: boolean;
+  attachmentTypes?: MaintenanceChoice<WorkOrderAttachmentDocType>[];
+  canDelete: boolean;
+  isDeleting: boolean;
+  onDelete: (attachment: MaintenanceWorkOrderAttachment) => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+        Loading attachments...
+      </div>
+    );
+  }
+  if (attachments.length === 0) {
+    return (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+        No attachments on this work order yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {attachments.map((attachment) => (
+        <div
+          key={attachment.id}
+          className="flex items-center justify-between gap-3 rounded-md border p-3"
+        >
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">
+              {attachment.title || attachment.file_name || fileNameFromUrl(attachment.file)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {attachment.doc_type_display || choiceLabel(attachmentTypes, attachment.doc_type)}
+              {attachment.uploaded_by_name ? ` - ${attachment.uploaded_by_name}` : ''}
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <a href={resolveFileUrl(attachment.file)} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                Open
+              </a>
+            </Button>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isDeleting}
+                onClick={() => onDelete(attachment)}
+                aria-label={`Remove ${attachment.title || attachment.file_name}`}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -313,7 +409,8 @@ function WorkOrderSpareRequestDialog({
                 Stock: {formatQty(selectedSpare.current_stock)} {selectedSpare.uom}
               </div>
               <div className="text-xs text-muted-foreground">
-                Reorder {formatQty(selectedSpare.reorder_level)} - {selectedSpare.storage_location || 'No bin'}
+                Reorder {formatQty(selectedSpare.reorder_level)} -{' '}
+                {selectedSpare.storage_location || 'No bin'}
               </div>
             </div>
           )}
@@ -371,10 +468,18 @@ function WorkOrderSpareRequestList({
   isLoading: boolean;
 }) {
   if (isLoading) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading spare requests...</div>;
+    return (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+        Loading spare requests...
+      </div>
+    );
   }
   if (requests.length === 0) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">No spares requested yet.</div>;
+    return (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+        No spares requested yet.
+      </div>
+    );
   }
 
   return (
@@ -404,7 +509,9 @@ function WorkOrderSpareRequestList({
               <td className="px-4 py-3 text-right tabular-nums">
                 {formatQty(request.consumed_qty)}
               </td>
-              <td className="px-4 py-3 text-right tabular-nums">{formatMoney(request.total_cost)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">
+                {formatMoney(request.total_cost)}
+              </td>
               <td className="px-4 py-3">
                 <SpareRequestBadge status={request.status} />
               </td>
@@ -617,10 +724,18 @@ function VendorVisitList({
   onComplete: (visitId: number) => void;
 }) {
   if (isLoading) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading vendor visits...</div>;
+    return (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+        Loading vendor visits...
+      </div>
+    );
   }
   if (visits.length === 0) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">No vendor visits planned.</div>;
+    return (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+        No vendor visits planned.
+      </div>
+    );
   }
 
   return (
@@ -711,6 +826,7 @@ export default function MaintenanceWorkOrderDetailPage() {
   const [sendBackDialogOpen, setSendBackDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
+  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [spareDialogOpen, setSpareDialogOpen] = useState(false);
   const [vendorVisitDialogOpen, setVendorVisitDialogOpen] = useState(false);
 
@@ -723,6 +839,13 @@ export default function MaintenanceWorkOrderDetailPage() {
   const canClose = canManage || hasPermission(MAINTENANCE_PERMISSIONS.CLOSE_WORK_ORDER);
   const canUploadPhoto =
     canManage || hasPermission(MAINTENANCE_PERMISSIONS.CREATE_WORK_ORDER_PHOTO);
+  const canAttachFiles =
+    canManage ||
+    canEdit ||
+    hasPermission(MAINTENANCE_PERMISSIONS.CREATE_WORK_ORDER) ||
+    hasPermission(MAINTENANCE_PERMISSIONS.CREATE_WORK_ORDER_ATTACHMENT);
+  const canDeleteAttachment =
+    canManage || hasPermission(MAINTENANCE_PERMISSIONS.DELETE_WORK_ORDER_ATTACHMENT);
   const canRequestSpare =
     canManage ||
     hasPermission(MAINTENANCE_PERMISSIONS.REQUEST_SPARE) ||
@@ -732,6 +855,7 @@ export default function MaintenanceWorkOrderDetailPage() {
   const workOrderQuery = useMaintenanceWorkOrder(validWorkOrderId);
   const workOrder = workOrderQuery.data;
   const photosQuery = useWorkOrderPhotos(validWorkOrderId);
+  const attachmentsQuery = useWorkOrderAttachments(validWorkOrderId);
   const logsQuery = useWorkOrderLogs(validWorkOrderId);
   const optionsQuery = useMaintenanceOptions();
   const assetsQuery = useMaintenanceAssets({ is_active: true });
@@ -756,12 +880,15 @@ export default function MaintenanceWorkOrderDetailPage() {
   const sendBackWorkOrder = useSendBackMaintenanceWorkOrder();
   const setWorkOrderStatus = useSetMaintenanceWorkOrderStatus();
   const uploadPhoto = useUploadWorkOrderPhoto();
+  const uploadAttachments = useUploadWorkOrderAttachments();
+  const deleteAttachment = useDeleteWorkOrderAttachment(validWorkOrderId ?? 0);
   const requestSpare = useRequestWorkOrderSpare();
   const createVendorVisit = useCreateVendorVisit();
   const startVendorVisit = useStartVendorVisit();
   const completeVendorVisit = useCompleteVendorVisit();
 
   const photos = photosQuery.data ?? [];
+  const attachments = attachmentsQuery.data ?? [];
   const logs = logsQuery.data ?? [];
   // Verification belongs to whoever raised the job; a maintenance head can
   // stand in. The backend decides and says so on the work order.
@@ -772,16 +899,36 @@ export default function MaintenanceWorkOrderDetailPage() {
   const handleRefresh = () => {
     void workOrderQuery.refetch();
     void photosQuery.refetch();
+    void attachmentsQuery.refetch();
     void logsQuery.refetch();
     void sparesQuery.refetch();
     void spareRequestsQuery.refetch();
     void vendorVisitsQuery.refetch();
   };
 
-  const handleEdit = async (payload: MaintenanceWorkOrderPayload) => {
+  /**
+   * The order is already saved when these upload, so a failure is a warning
+   * rather than a rollback — the files can be added again from this page.
+   */
+  const pushAttachments = async (workOrderId: number, staged: StagedWorkOrderAttachment[]) => {
+    try {
+      await uploadAttachments.mutateAsync({ workOrderId, staged });
+      toast.success(
+        staged.length === 1 ? 'Attachment uploaded' : `${staged.length} attachments uploaded`,
+      );
+    } catch {
+      toast.warning('Some attachments failed to upload. Add them again.');
+    }
+  };
+
+  const handleEdit = async (
+    payload: MaintenanceWorkOrderPayload,
+    staged: StagedWorkOrderAttachment[],
+  ) => {
     if (!workOrder) return;
     await updateWorkOrder.mutateAsync({ workOrderId: workOrder.id, payload });
     toast.success('Work order updated');
+    if (staged.length) await pushAttachments(workOrder.id, staged);
     setEditDialogOpen(false);
   };
 
@@ -836,6 +983,19 @@ export default function MaintenanceWorkOrderDetailPage() {
     await uploadPhoto.mutateAsync(payload);
     toast.success('Work photo uploaded');
     setPhotoDialogOpen(false);
+  };
+
+  const handleAttachmentUpload = async (staged: StagedWorkOrderAttachment[]) => {
+    if (!workOrder) return;
+    await pushAttachments(workOrder.id, staged);
+    setAttachmentDialogOpen(false);
+  };
+
+  const handleAttachmentDelete = async (attachment: MaintenanceWorkOrderAttachment) => {
+    const label = attachment.title || attachment.file_name || 'this attachment';
+    if (!window.confirm(`Remove ${label}?`)) return;
+    await deleteAttachment.mutateAsync(attachment.id);
+    toast.success('Attachment removed');
   };
 
   const handleSpareRequest = async (payload: WorkOrderSpareRequestPayload) => {
@@ -914,7 +1074,9 @@ export default function MaintenanceWorkOrderDetailPage() {
         <Button
           size="sm"
           onClick={() => void handleStart()}
-          disabled={!workOrder || !canStart || !canStartStatus(workOrder) || startWorkOrder.isPending}
+          disabled={
+            !workOrder || !canStart || !canStartStatus(workOrder) || startWorkOrder.isPending
+          }
         >
           <Play className="h-4 w-4" />
           Start
@@ -1002,7 +1164,10 @@ export default function MaintenanceWorkOrderDetailPage() {
                 <CardTitle className="text-lg">Time</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <DetailItem label="Response" value={formatMinutes(workOrder.response_time_minutes)} />
+                <DetailItem
+                  label="Response"
+                  value={formatMinutes(workOrder.response_time_minutes)}
+                />
                 <DetailItem label="Repair" value={formatMinutes(workOrder.repair_time_minutes)} />
                 <DetailItem label="Downtime" value={formatMinutes(workOrder.downtime_minutes)} />
               </CardContent>
@@ -1039,7 +1204,8 @@ export default function MaintenanceWorkOrderDetailPage() {
               <div>
                 <CardTitle className="text-lg">Spare Usage</CardTitle>
                 <CardDescription>
-                  {workOrder.spare_requests_count} requests - {formatQty(workOrder.spare_consumed_qty)} consumed
+                  {workOrder.spare_requests_count} requests -{' '}
+                  {formatQty(workOrder.spare_consumed_qty)} consumed
                 </CardDescription>
               </div>
               <Button
@@ -1055,7 +1221,10 @@ export default function MaintenanceWorkOrderDetailPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <DetailItem label="Requests" value={workOrder.spare_requests_count} />
                 <DetailItem label="Consumed Qty" value={formatQty(workOrder.spare_consumed_qty)} />
-                <DetailItem label="Consumed Cost" value={formatMoney(workOrder.spare_consumed_cost)} />
+                <DetailItem
+                  label="Consumed Cost"
+                  value={formatMoney(workOrder.spare_consumed_cost)}
+                />
               </div>
               <WorkOrderSpareRequestList
                 requests={spareRequests}
@@ -1108,7 +1277,10 @@ export default function MaintenanceWorkOrderDetailPage() {
                 <DetailItem label="Date" value={workOrder.production_run_date} />
                 <DetailItem label="Line" value={workOrder.production_line_name} />
                 <DetailItem label="Product" value={workOrder.production_product} />
-                <DetailItem label="Breakdown Reason" value={workOrder.production_breakdown_reason} />
+                <DetailItem
+                  label="Breakdown Reason"
+                  value={workOrder.production_breakdown_reason}
+                />
               </CardContent>
             </Card>
           )}
@@ -1135,7 +1307,9 @@ export default function MaintenanceWorkOrderDetailPage() {
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <div>
                   <CardTitle className="text-lg">Work Photos</CardTitle>
-                  <CardDescription>{photos.length || workOrder.photos_count} uploaded</CardDescription>
+                  <CardDescription>
+                    {photos.length || workOrder.photos_count} uploaded
+                  </CardDescription>
                 </div>
                 <Button
                   size="sm"
@@ -1209,6 +1383,40 @@ export default function MaintenanceWorkOrderDetailPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Paperclip className="h-4 w-4 text-muted-foreground" />
+                  Attachments
+                </CardTitle>
+                <CardDescription>
+                  {attachments.length || workOrder.attachments_count} file
+                  {(attachments.length || workOrder.attachments_count) === 1 ? '' : 's'} - fault
+                  notes, quotations, service reports, bills
+                </CardDescription>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setAttachmentDialogOpen(true)}
+                disabled={!canAttachFiles || isClosed(workOrder)}
+              >
+                <Upload className="h-4 w-4" />
+                Add Files
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <WorkOrderAttachmentList
+                attachments={attachments}
+                isLoading={attachmentsQuery.isLoading}
+                attachmentTypes={optionsQuery.data?.work_attachment_types}
+                canDelete={canDeleteAttachment && !isClosed(workOrder)}
+                isDeleting={deleteAttachment.isPending}
+                onDelete={(attachment) => void handleAttachmentDelete(attachment)}
+              />
+            </CardContent>
+          </Card>
         </>
       )}
 
@@ -1221,7 +1429,8 @@ export default function MaintenanceWorkOrderDetailPage() {
               workOrder={workOrder}
               options={optionsQuery.data}
               assets={assetsQuery.data ?? []}
-              isSubmitting={updateWorkOrder.isPending}
+              isSubmitting={updateWorkOrder.isPending || uploadAttachments.isPending}
+              canAttachFiles={canAttachFiles}
               onSubmit={handleEdit}
             />
           )}
@@ -1278,6 +1487,15 @@ export default function MaintenanceWorkOrderDetailPage() {
               photoTypes={optionsQuery.data?.work_photo_types}
               isSubmitting={uploadPhoto.isPending}
               onSubmit={handlePhotoUpload}
+            />
+          )}
+          {attachmentDialogOpen && (
+            <WorkOrderAttachmentUploadDialog
+              open={attachmentDialogOpen}
+              onOpenChange={setAttachmentDialogOpen}
+              attachmentTypes={optionsQuery.data?.work_attachment_types}
+              isSubmitting={uploadAttachments.isPending}
+              onSubmit={handleAttachmentUpload}
             />
           )}
           {spareDialogOpen && (

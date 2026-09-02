@@ -658,6 +658,9 @@ export const API_ENDPOINTS = {
     WORK_ORDER_REQUEST_SPARE: (workOrderId: number) =>
       `/maintenance/work-orders/${workOrderId}/request-spare/`,
     WORK_ORDER_PHOTOS: '/maintenance/work-order-photos/',
+    WORK_ORDER_ATTACHMENTS: '/maintenance/work-order-attachments/',
+    WORK_ORDER_ATTACHMENT_DETAIL: (attachmentId: number) =>
+      `/maintenance/work-order-attachments/${attachmentId}/`,
     PM_PLANS: '/maintenance/pm-plans/',
     PM_PLAN_DETAIL: (planId: number) => `/maintenance/pm-plans/${planId}/`,
     PM_PLAN_GENERATE: (planId: number) => `/maintenance/pm-plans/${planId}/generate/`,

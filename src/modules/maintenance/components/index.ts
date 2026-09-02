@@ -7,6 +7,7 @@ export * from './MaterialIndentQuotations';
 export * from './MaterialIndentStatusBadge';
 export * from './SafetyFineStatusBadge';
 export * from './statusLabels';
+export * from './WorkOrderAttachmentsField';
 export * from './WorkOrderDialogs';
 export * from './WorkOrderStatusBadge';
 export * from './WorkPermitStatusBadge';

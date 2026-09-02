@@ -28,11 +28,13 @@ import type {
   MaintenanceWorkOrderPhotoUploadPayload,
   MaintenanceWorkOrderSendBackPayload,
   MaintenanceWorkOrderStatusPayload,
+  StagedWorkOrderAttachment,
   WorkImpact,
   WorkOrderPhotoType,
   WorkOrderStatus,
   WorkType,
 } from '../types';
+import { WorkOrderAttachmentsField } from './WorkOrderAttachmentsField';
 
 interface WorkOrderFormDialogProps {
   open: boolean;
@@ -40,8 +42,13 @@ interface WorkOrderFormDialogProps {
   options?: MaintenanceOptions;
   assets?: MaintenanceAsset[];
   isSubmitting?: boolean;
+  /** Hides the attachments field when the user cannot add work order files. */
+  canAttachFiles?: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: MaintenanceWorkOrderPayload) => Promise<void> | void;
+  onSubmit: (
+    payload: MaintenanceWorkOrderPayload,
+    attachments: StagedWorkOrderAttachment[],
+  ) => Promise<void> | void;
 }
 
 interface WorkOrderAssignDialogProps {
@@ -92,6 +99,14 @@ interface WorkOrderPhotoUploadDialogProps {
   isSubmitting?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: MaintenanceWorkOrderPhotoUploadPayload) => Promise<void> | void;
+}
+
+interface WorkOrderAttachmentUploadDialogProps {
+  open: boolean;
+  attachmentTypes?: MaintenanceOptions['work_attachment_types'];
+  isSubmitting?: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (staged: StagedWorkOrderAttachment[]) => Promise<void> | void;
 }
 
 interface WorkOrderFormState {
@@ -145,7 +160,12 @@ function assetInputFromWorkOrder(workOrder?: MaintenanceWorkOrder | null) {
   return workOrder.asset_text;
 }
 
-const WAITING_STATUSES: WorkOrderStatus[] = ['WAITING_SPARE', 'WAITING_VENDOR', 'ON_HOLD', 'IN_PROGRESS'];
+const WAITING_STATUSES: WorkOrderStatus[] = [
+  'WAITING_SPARE',
+  'WAITING_VENDOR',
+  'ON_HOLD',
+  'IN_PROGRESS',
+];
 
 function formFromWorkOrder(workOrder?: MaintenanceWorkOrder | null): WorkOrderFormState {
   if (!workOrder) return EMPTY_WORK_ORDER_FORM;
@@ -183,10 +203,12 @@ export function WorkOrderFormDialog({
   options,
   assets = [],
   isSubmitting,
+  canAttachFiles = true,
   onOpenChange,
   onSubmit,
 }: WorkOrderFormDialogProps) {
   const [form, setForm] = useState<WorkOrderFormState>(() => formFromWorkOrder(workOrder));
+  const [attachments, setAttachments] = useState<StagedWorkOrderAttachment[]>([]);
 
   const selectedAsset = useMemo(
     () => findAsset(assets, form.asset_input),
@@ -212,19 +234,22 @@ export function WorkOrderFormDialog({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await onSubmit({
-      work_type: form.work_type,
-      priority: form.priority,
-      asset: selectedAsset ? selectedAsset.id : null,
-      asset_text: selectedAsset ? '' : form.asset_input.trim(),
-      department: form.department ? Number(form.department) : undefined,
-      target_date: nullableDate(form.target_date),
-      title: form.title.trim(),
-      problem_statement: form.problem_statement.trim(),
-      impact: form.impact,
-      impact_notes: form.impact_notes.trim(),
-      downtime_reason: form.downtime_reason.trim(),
-    });
+    await onSubmit(
+      {
+        work_type: form.work_type,
+        priority: form.priority,
+        asset: selectedAsset ? selectedAsset.id : null,
+        asset_text: selectedAsset ? '' : form.asset_input.trim(),
+        department: form.department ? Number(form.department) : undefined,
+        target_date: nullableDate(form.target_date),
+        title: form.title.trim(),
+        problem_statement: form.problem_statement.trim(),
+        impact: form.impact,
+        impact_notes: form.impact_notes.trim(),
+        downtime_reason: form.downtime_reason.trim(),
+      },
+      attachments,
+    );
   };
 
   return (
@@ -296,7 +321,8 @@ export function WorkOrderFormDialog({
               </datalist>
               {selectedAsset && (
                 <div className="text-xs text-muted-foreground">
-                  {selectedAsset.department_name} / {selectedAsset.line || selectedAsset.area || '-'}
+                  {selectedAsset.department_name} /{' '}
+                  {selectedAsset.line || selectedAsset.area || '-'}
                 </div>
               )}
               {typedAsset && (
@@ -364,6 +390,16 @@ export function WorkOrderFormDialog({
               />
             </div>
           </div>
+
+          {canAttachFiles && (
+            <WorkOrderAttachmentsField
+              value={attachments}
+              onChange={setAttachments}
+              attachmentTypes={options?.work_attachment_types}
+              disabled={isSubmitting}
+            />
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
@@ -794,6 +830,53 @@ export function WorkOrderPhotoUploadDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || !file}>
+              <Upload className="h-4 w-4" />
+              Upload
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Adds paperwork to an order that already exists. Same staging field as the
+ * raise form, so type and title are set once per file before anything uploads.
+ */
+export function WorkOrderAttachmentUploadDialog({
+  open,
+  attachmentTypes,
+  isSubmitting,
+  onOpenChange,
+  onSubmit,
+}: WorkOrderAttachmentUploadDialogProps) {
+  const [staged, setStaged] = useState<StagedWorkOrderAttachment[]>([]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!staged.length) return;
+    await onSubmit(staged);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add Attachments</DialogTitle>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <WorkOrderAttachmentsField
+            value={staged}
+            onChange={setStaged}
+            attachmentTypes={attachmentTypes}
+            disabled={isSubmitting}
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting || !staged.length}>
               <Upload className="h-4 w-4" />
               Upload
             </Button>

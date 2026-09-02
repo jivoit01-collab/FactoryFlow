@@ -42,6 +42,8 @@ import type {
   MaintenanceWorkOrder,
   MaintenanceWorkOrderApprovalPayload,
   MaintenanceWorkOrderAssignPayload,
+  MaintenanceWorkOrderAttachment,
+  MaintenanceWorkOrderAttachmentUploadPayload,
   MaintenanceWorkOrderCompletePayload,
   MaintenanceWorkOrderFilters,
   MaintenanceWorkOrderLog,
@@ -72,6 +74,7 @@ import type {
   SpareRequestPayload,
   SpareStockAdjustPayload,
   StagedAssetDocument,
+  StagedWorkOrderAttachment,
   WorkOrderSpareRequestPayload,
 } from '../types';
 
@@ -398,6 +401,60 @@ export const maintenanceApi = {
       },
     );
     return response.data;
+  },
+
+  async getWorkOrderAttachments(workOrderId: number): Promise<MaintenanceWorkOrderAttachment[]> {
+    const response = await apiClient.get<MaintenanceWorkOrderAttachment[]>(
+      EP.WORK_ORDER_ATTACHMENTS,
+      { params: { work_order: workOrderId } },
+    );
+    return response.data;
+  },
+
+  async uploadWorkOrderAttachment(
+    payload: MaintenanceWorkOrderAttachmentUploadPayload,
+  ): Promise<MaintenanceWorkOrderAttachment> {
+    const formData = new FormData();
+    formData.append('work_order', String(payload.work_order));
+    formData.append('doc_type', payload.doc_type);
+    formData.append('file', payload.file);
+    appendOptionalField(formData, 'title', payload.title?.trim());
+
+    const response = await apiClient.post<MaintenanceWorkOrderAttachment>(
+      EP.WORK_ORDER_ATTACHMENTS,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
+    );
+    return response.data;
+  },
+
+  /**
+   * Files staged in the work order form need the order id, so they upload one
+   * by one once the order has been saved. Sequential rather than parallel so a
+   * partial failure leaves an obvious prefix uploaded, not a random subset.
+   */
+  async uploadWorkOrderAttachments(
+    workOrderId: number,
+    staged: StagedWorkOrderAttachment[],
+  ): Promise<MaintenanceWorkOrderAttachment[]> {
+    const uploaded: MaintenanceWorkOrderAttachment[] = [];
+    for (const item of staged) {
+      uploaded.push(
+        await maintenanceApi.uploadWorkOrderAttachment({
+          work_order: workOrderId,
+          file: item.file,
+          doc_type: item.doc_type,
+          title: item.title.trim() || item.file.name,
+        }),
+      );
+    }
+    return uploaded;
+  },
+
+  async deleteWorkOrderAttachment(attachmentId: number): Promise<void> {
+    await apiClient.delete(EP.WORK_ORDER_ATTACHMENT_DETAIL(attachmentId));
   },
 
   async getPMPlans(
