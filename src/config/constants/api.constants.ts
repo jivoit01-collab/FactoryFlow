@@ -533,6 +533,8 @@ export const API_ENDPOINTS = {
     RUNS: '/sap-reports/runs/',
     CATEGORIES: '/sap-reports/categories/',
     SYNC: '/sap-reports/sync/',
+    ACCESS: '/sap-reports/access/',
+    ACCESS_DETAIL: (id: number) => `/sap-reports/access/${id}/`,
   },
   GOODS_RETURN: {
     LIST: '/goods-return/',
@@ -1234,6 +1236,7 @@ export const API_ENDPOINTS = {
     REPORT_EXPORT: (type: string) => `/marketplace/reports/${type}/export.csv`,
     REPORT_TRACKING: (batchId: number) => `/marketplace/reports/tracking/${batchId}/`,
     REPORT_PREVIEW: (type: string) => `/marketplace/reports/${type}/preview/`,
+    DN_PRINT: (docEntry: number) => `/marketplace/delivery-notes/${docEntry}/print/`,
     GATE_QUEUE: '/marketplace/gate/queue/',
     GATE_DETAIL: (batchId: number) => `/marketplace/gate/${batchId}/`,
     GATE_APPROVE: (batchId: number) => `/marketplace/gate/${batchId}/approve/`,

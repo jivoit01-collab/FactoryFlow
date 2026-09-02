@@ -29,6 +29,17 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
+      // Ship a service worker whose only job is to unregister itself and drop its
+      // caches. We stopped REGISTERING the workbox worker when push notifications
+      // were fixed, but every browser that loaded the app before then still has the
+      // old one running, still serving that build's precached assets. A client stuck
+      // that way loads a fresh page chunk against a stale constants chunk, and the
+      // call into it dies as "s.DN_PRINT is not a function" — the newest module is
+      // always the one that breaks. Turning it off is not enough; the orphan has to
+      // be told to go away, which is what this emits. Updates come from the
+      // version.json poller, and firebase-messaging-sw.js is a separate worker with
+      // its own registration, so push is unaffected.
+      selfDestroying: true,
       // Include the assets the generator actually created
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'factoryLogoNew.png'],
       manifest: {
