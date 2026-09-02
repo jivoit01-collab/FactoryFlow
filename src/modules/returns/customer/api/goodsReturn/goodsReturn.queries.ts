@@ -102,6 +102,18 @@ export function useCreateGoodsReturn() {
   });
 }
 
+/** Soft delete — the entry becomes CANCELLED and stays listed under that filter. */
+export function useCancelGoodsReturn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => goodsReturnApi.cancel(id),
+    onSuccess: (data) => {
+      qc.setQueryData(goodsReturnKeys.detail(data.id), data);
+      qc.invalidateQueries({ queryKey: goodsReturnKeys.all });
+    },
+  });
+}
+
 export function useSaveGoodsReturnItems(id: number) {
   const qc = useQueryClient();
   return useMutation({

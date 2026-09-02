@@ -1,11 +1,13 @@
-import { PackageX, Plus, RefreshCw, Search, Undo2 } from 'lucide-react';
+import { PackageX, Plus, RefreshCw, Search, Trash2, Undo2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { Badge, Button, Card, CardContent, Input } from '@/shared/components/ui';
-import { cn } from '@/shared/utils';
+import { cn, getErrorMessage } from '@/shared/utils';
 
-import { type GoodsReturnStatus, useGoodsReturns } from '../api';
+import { type GoodsReturnStatus, useCancelGoodsReturn, useGoodsReturns } from '../api';
 import { BASIS_LABELS, formatDate, STATUS_BADGE_CLASS, STATUS_LABELS } from '../utils';
 
 const STATUS_FILTERS: { value: '' | GoodsReturnStatus; label: string }[] = [
@@ -29,6 +31,23 @@ export default function GoodsReturnListPage() {
     isFetching,
     refetch,
   } = useGoodsReturns(statusFilter ? { status: statusFilter } : undefined);
+  const cancelReturn = useCancelGoodsReturn();
+
+  async function handleDelete(id: number, entryNo: string) {
+    const confirmed = await confirmDialog({
+      title: `Delete draft ${entryNo}?`,
+      description: 'It will be kept as a cancelled entry.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await cancelReturn.mutateAsync(id);
+      toast.success(`Draft ${entryNo} deleted`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not delete the draft.'));
+    }
+  }
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -120,6 +139,7 @@ export default function GoodsReturnListPage() {
                       <th className="px-4 py-3">Vehicle</th>
                       <th className="px-4 py-3">Expected</th>
                       <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3" aria-label="Actions" />
                     </tr>
                   </thead>
                   <tbody>
@@ -147,6 +167,23 @@ export default function GoodsReturnListPage() {
                           <Badge className={cn('border-0', STATUS_BADGE_CLASS[entry.status])}>
                             {STATUS_LABELS[entry.status]}
                           </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {entry.status === 'DRAFT' && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Delete draft ${entry.entry_no}`}
+                              disabled={cancelReturn.isPending}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDelete(entry.id, entry.entry_no);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}
