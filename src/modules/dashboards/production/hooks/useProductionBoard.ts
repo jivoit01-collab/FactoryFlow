@@ -5,9 +5,14 @@ import {
   EXECUTION_QUERY_KEYS,
   executionApi,
   useCostAnalysisReport,
+  useCostRates,
   useRuns,
 } from '@/modules/production/execution/api';
-import type { ProductionRun } from '@/modules/production/execution/types';
+import type {
+  CostRate,
+  ProductionRun,
+  ProductionRunCost,
+} from '@/modules/production/execution/types';
 
 import type { MaterialReport, MaterialRow, ReconReport, ReconRow } from '../api/reconciliation.api';
 import {
@@ -79,6 +84,23 @@ export interface MaterialSlice {
   isError: boolean;
 }
 
+/**
+ * A cost head the day *will* be priced under, whether or not it has produced a
+ * rupee yet — one row of the Cost Master, plus the BOM material line that has
+ * no rate behind it.
+ */
+export interface CostHeadRow {
+  /** The backend category code. */
+  key: string;
+  label: string;
+  /** "₹1,200 · Per Person per Day", or "varies by line" where the overrides
+   *  disagree and no single figure is honest. */
+  rate: string;
+  credit: boolean;
+  /** Priced off the run's BOM snapshot rather than a Cost Master rate. */
+  fromBom: boolean;
+}
+
 export interface CostCategoryRow {
   /** The backend's category code — what the RM/PM switch is matched on. */
   key: string;
@@ -95,9 +117,18 @@ export interface CostSlice {
   /** The same, after the waste-recovery credit. */
   net: number;
   wasteRecovery: number;
+  /** Zero when no cases have been closed yet — there is no rate to state, and
+   *  the UI must show a dash rather than ₹0. */
   perCase: number;
+  /** Cases behind `perCase`. Runs still open have produced nothing closed. */
+  costedCases: number;
   runCount: number;
   categories: CostCategoryRow[];
+  /**
+   * Every head the day would be costed under. Drawn when nothing has been
+   * costed yet, so an empty panel still answers "what do we charge a run for".
+   */
+  heads: CostHeadRow[];
   /** Bought-in material for the day, whether or not it is being counted. */
   material: number;
   /** False while the figures above are conversion cost only. */
@@ -246,6 +277,148 @@ function materialSlice(
   };
 }
 
+/** A 404 from the per-run cost endpoint means "not costed yet", not a fault. */
+function isMissing(error: unknown): boolean {
+  return (error as { status?: number } | null)?.status === 404;
+}
+
+/**
+ * The day's cost, folded from each run's own rollup.
+ *
+ * Deliberately NOT the cost-analysis report, which counts COMPLETED runs only
+ * (`_base_runs_qs` defaults to `status='COMPLETED'`). On a wall that made the
+ * whole cost half of the board read empty for the entire shift and then fill in
+ * after the last run closed — the panel looked broken while the plant was
+ * spending money. Each run's rollup is costed the moment its resources are
+ * entered, whatever state the run is in, which is what a live board needs.
+ */
+function foldRunCosts(
+  rollups: (ProductionRunCost | undefined)[],
+  includeMaterial: boolean,
+): {
+  gross: number;
+  net: number;
+  material: number;
+  wasteRecovery: number;
+  cases: number;
+  runCount: number;
+  categories: Omit<CostCategoryRow, 'pct'>[];
+} {
+  let grossAll = 0;
+  let netAll = 0;
+  let material = 0;
+  let wasteRecovery = 0;
+  let cases = 0;
+  let runCount = 0;
+  const byCategory = new Map<string, Omit<CostCategoryRow, 'pct'>>();
+
+  for (const rollup of rollups) {
+    if (!rollup) continue;
+    runCount += 1;
+    grossAll += norm(Number(rollup.total_cost));
+    netAll += norm(Number(rollup.net_cost));
+    material += norm(Number(rollup.raw_material_cost));
+    wasteRecovery += norm(Number(rollup.waste_recovery_credit));
+    cases += norm(Number(rollup.produced_qty));
+
+    for (const costLine of rollup.lines ?? []) {
+      if (!includeMaterial && costLine.category === MATERIAL_COST_CATEGORY) continue;
+      const amount = norm(Number(costLine.amount));
+      if (amount <= 0) continue;
+      const existing = byCategory.get(costLine.category);
+      if (existing) existing.amount += amount;
+      else
+        byCategory.set(costLine.category, {
+          key: costLine.category,
+          label: costLine.category_display || costLine.category,
+          amount,
+          credit: costLine.is_credit,
+        });
+    }
+  }
+
+  return {
+    gross: includeMaterial ? grossAll : grossAll - material,
+    net: includeMaterial ? netAll : netAll - material,
+    material,
+    wasteRecovery,
+    cases,
+    runCount,
+    categories: [...byCategory.values()].sort((a, b) => b.amount - a.amount),
+  };
+}
+
+/**
+ * The cost heads a run is priced under, from the Cost Master rows.
+ *
+ * Resolved the way the costing engine resolves them: one rate per category,
+ * with a per-line override beating the company default. Listing the rows raw
+ * would show a category twice and imply the run is charged twice for it.
+ *
+ * On "All lines" a category that exists only as per-line overrides has no one
+ * true figure, and says "varies by line" rather than picking a line's rate and
+ * presenting it as the plant's.
+ *
+ * MATERIAL is appended by hand because it is the one head with no rate behind
+ * it: the engine prices it off the run's own BOM snapshot at last purchase
+ * price, so it never appears in the Cost Master however well that is filled in.
+ */
+function costHeads(
+  rates: CostRate[] | undefined,
+  includeMaterial: boolean,
+  line: number | undefined,
+): CostHeadRow[] {
+  const byCategory = new Map<string, CostRate[]>();
+  for (const rate of rates ?? []) {
+    if (!rate.is_active) continue;
+    // With a line picked, another line's override says nothing about this run.
+    if (line != null && rate.line != null && rate.line !== line) continue;
+    const rows = byCategory.get(rate.category);
+    if (rows) rows.push(rate);
+    else byCategory.set(rate.category, [rate]);
+  }
+
+  const describe = (row: CostRate) =>
+    `₹${Number(row.rate).toLocaleString('en-IN')} · ${row.basis_display || row.basis}`;
+
+  const heads: CostHeadRow[] = [];
+  for (const [category, rows] of byCategory) {
+    if (!includeMaterial && category === MATERIAL_COST_CATEGORY) continue;
+
+    const override = line == null ? undefined : rows.find((row) => row.line === line);
+    const global = rows.find((row) => row.line == null);
+    const chosen = override ?? global;
+    const shapes = new Set(rows.map((row) => `${Number(row.rate)}|${row.basis}`));
+
+    heads.push({
+      key: category,
+      label: (chosen ?? rows[0]).category_display || category,
+      rate: chosen
+        ? describe(chosen)
+        : shapes.size > 1
+          ? `varies by line · ${rows.length} rates`
+          : describe(rows[0]),
+      credit: (chosen ?? rows[0]).is_credit,
+      fromBom: false,
+    });
+  }
+
+  if (includeMaterial && !byCategory.has(MATERIAL_COST_CATEGORY)) {
+    heads.push({
+      key: MATERIAL_COST_CATEGORY,
+      label: 'Material',
+      rate: "BOM snapshot · the run's own last purchase price",
+      credit: false,
+      fromBom: true,
+    });
+  }
+
+  // Credits last — they read as a discount on everything above them.
+  return heads.sort(
+    (a, b) => Number(a.credit) - Number(b.credit) || a.label.localeCompare(b.label),
+  );
+}
+
 /** Every day in the window, oldest first — including the ones nothing ran on. */
 function windowDays(from: string, to: string): string[] {
   const days: string[] = [];
@@ -288,12 +461,14 @@ export function useProductionBoard(
   // One list for the whole fortnight: the shown day's rows are a filter on it,
   // so the panel and the trend can never disagree about what was produced.
   const windowRuns = useRuns({ date_from: day.trendFrom, date_to: day.date, line_id: line });
-  const costDay = useCostAnalysisReport(reconParams);
   const costWindow = useCostAnalysisReport({
     date_from: day.trendFrom,
     date_to: day.date,
     line,
   });
+  // Master data, not day data: what the plant charges a run for. Read even on a
+  // day with cost, so the panel can name the heads the moment there is none.
+  const rateRows = useCostRates();
   const fgQuery = useProductionReconciliation(reconParams);
   const materialQuery = useMaterialReconciliation(reconParams);
   const wasteQuery = useWastageReconciliation(reconParams);
@@ -311,6 +486,18 @@ export function useProductionBoard(
       queryKey: EXECUTION_QUERY_KEYS.runDetail(run.id),
       queryFn: () => executionApi.getRunDetail(run.id),
       staleTime: PRODUCTION_WALL_REFRESH_MS,
+    })),
+  });
+
+  // Each run's own cost rollup. The day report cannot serve this — it counts
+  // completed runs only — and a 404 here simply means the run has not been
+  // costed yet, so it is never retried into an error.
+  const costQueries = useQueries({
+    queries: dayRuns.map((run) => ({
+      queryKey: EXECUTION_QUERY_KEYS.runCost(run.id),
+      queryFn: () => executionApi.getRunCost(run.id),
+      staleTime: PRODUCTION_WALL_REFRESH_MS,
+      retry: false,
     })),
   });
 
@@ -346,54 +533,39 @@ export function useProductionBoard(
   );
   const material = materialSlice(materialQuery.data, materialQuery);
 
-  const costSummary = costDay.data?.summary;
-  // Bought-in material for the day. Summed off the runs rather than read from
-  // the category breakdown, because the breakdown is a newer field and a
-  // frontend deployed ahead of the backend would otherwise silently subtract
-  // nothing and call the result a conversion cost.
-  const materialCost = (costDay.data?.per_run ?? []).reduce(
-    (sum, run) => sum + norm(run.raw_material_cost),
-    0,
+  const dayCost = foldRunCosts(
+    costQueries.map((query) => query.data),
+    includeMaterial,
   );
-  const grossAll = norm(costSummary?.total_cost);
-  const netAll = norm(costSummary?.total_net_cost ?? costSummary?.total_cost);
-  const costedCases = norm(costSummary?.total_production);
 
-  const gross = includeMaterial ? grossAll : grossAll - materialCost;
-  const net = includeMaterial ? netAll : netAll - materialCost;
-
-  const categories: CostCategoryRow[] = (costDay.data?.category_breakdown ?? [])
-    .filter((row) => row.amount > 0)
-    .filter((row) => includeMaterial || row.category !== MATERIAL_COST_CATEGORY)
-    .map((row) => ({
-      key: row.category,
-      label: row.label,
-      amount: row.amount,
-      credit: row.is_credit,
-      // Against the total actually on show, so the shares still add to 100 once
-      // the material line is taken out.
-      pct: gross ? (row.amount / gross) * 100 : 0,
-    }))
-    .sort((a, b) => b.amount - a.amount);
+  const categories: CostCategoryRow[] = dayCost.categories.map((row) => ({
+    ...row,
+    // Against the total actually on show, so the shares still add to 100 once
+    // the material line is taken out.
+    pct: dayCost.gross ? (row.amount / dayCost.gross) * 100 : 0,
+  }));
 
   const cost: CostSlice = {
-    total: gross,
-    net,
-    wasteRecovery: norm(costSummary?.total_waste_recovery),
-    // Derived rather than taken from the summary's `avg_per_unit`, so both
-    // bases are divided by the same denominator and can be compared.
-    perCase: costedCases > 0 ? net / costedCases : 0,
-    runCount: norm(costSummary?.run_count),
+    total: dayCost.gross,
+    net: dayCost.net,
+    wasteRecovery: dayCost.wasteRecovery,
+    // A run that has produced nothing closed has no per-case rate. Dividing by
+    // the day's live output instead would price cases the cost does not cover.
+    perCase: dayCost.cases > 0 ? dayCost.net / dayCost.cases : 0,
+    costedCases: dayCost.cases,
+    runCount: dayCost.runCount,
     categories,
-    material: materialCost,
+    heads: costHeads(rateRows.data, includeMaterial, line),
+    material: dayCost.material,
     includesMaterial: includeMaterial,
-    isLoading: costDay.isLoading,
-    isError: costDay.isError,
+    isLoading: costQueries.some((query) => query.isLoading),
+    // A missing cost row is a state, not a failure; anything else is a fault
+    // worth admitting on the panel.
+    isError: costQueries.some((query) => query.isError && !isMissing(query.error)),
   };
 
-  // Cases per day from the runs; cost per day from the cost report. A day that
-  // ran but was never costed keeps its bar and loses its cost line — drawing a
-  // ₹0 there would read as a free day of production.
+  // Cases per day from the runs themselves — every run, costed or not, so a
+  // day that produced always keeps its bar.
   const casesByDate = new Map<string, number>();
   for (const run of allRuns) {
     casesByDate.set(
@@ -401,6 +573,7 @@ export function useProductionBoard(
       (casesByDate.get(run.date) ?? 0) + norm(Number(run.total_production)),
     );
   }
+
   // Built off the costed runs rather than the report's own daily trend: the
   // trend carries no material split, and the RM/PM switch needs one. Cost per
   // case is divided by the COSTED cases, not the day's cases — on a day where
@@ -421,21 +594,25 @@ export function useProductionBoard(
     // only one where the closing figures are not yet the truth.
     const dayCases = isToday ? cases : (casesByDate.get(date) ?? 0);
     const bucket = costByDate.get(date);
-    const dayCost = bucket ? (includeMaterial ? bucket.net : bucket.net - bucket.material) : 0;
+    const reported = bucket ? (includeMaterial ? bucket.net : bucket.net - bucket.material) : 0;
+    // The shown day comes from the live rollups instead, so the chart, the tile
+    // and the breakdown cannot disagree while runs are still open — the window
+    // report would report nothing for it until every run closed.
+    const pointCost = isToday ? cost.total : reported;
+    const pointCases = isToday ? cost.costedCases : (bucket?.cases ?? 0);
     return {
       date,
       cases: dayCases,
-      cost: dayCost,
-      perCase: bucket && bucket.cases > 0 ? dayCost / bucket.cases : 0,
-      material: bucket?.material ?? 0,
+      cost: pointCost,
+      perCase: pointCases > 0 ? pointCost / pointCases : 0,
+      material: isToday ? cost.material : (bucket?.material ?? 0),
       isToday,
-      costMissing: !bucket && dayCases > 0,
+      costMissing: pointCost === 0 && dayCases > 0,
     };
   });
 
   const updatedAt = Math.max(
     windowRuns.dataUpdatedAt,
-    costDay.dataUpdatedAt,
     costWindow.dataUpdatedAt,
     fgQuery.dataUpdatedAt,
     materialQuery.dataUpdatedAt,
@@ -444,21 +621,21 @@ export function useProductionBoard(
 
   const isFetching =
     windowRuns.isFetching ||
-    costDay.isFetching ||
     costWindow.isFetching ||
     fgQuery.isFetching ||
     materialQuery.isFetching ||
     wasteQuery.isFetching ||
-    detailQueries.some((query) => query.isFetching);
+    detailQueries.some((query) => query.isFetching) ||
+    costQueries.some((query) => query.isFetching);
 
   const refetch = () => {
     void windowRuns.refetch();
-    void costDay.refetch();
     void costWindow.refetch();
     void fgQuery.refetch();
     void materialQuery.refetch();
     void wasteQuery.refetch();
     detailQueries.forEach((query) => void query.refetch());
+    costQueries.forEach((query) => void query.refetch());
   };
 
   // The board polls itself; nobody is standing at a wall to press refresh.
@@ -467,9 +644,9 @@ export function useProductionBoard(
   // load this screen puts on SAP.
   const poll = () => {
     void windowRuns.refetch();
-    void costDay.refetch();
     void costWindow.refetch();
     detailQueries.forEach((query) => void query.refetch());
+    costQueries.forEach((query) => void query.refetch());
   };
   // Held in a ref so the interval below is installed once and still calls the
   // current day's queries — re-installing it on every render would reset the

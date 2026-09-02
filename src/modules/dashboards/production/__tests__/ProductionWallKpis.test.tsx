@@ -44,6 +44,7 @@ function cost(overrides: Partial<CostSlice> = {}): CostSlice {
     net: 0,
     wasteRecovery: 0,
     perCase: 0,
+    costedCases: 0,
     runCount: 0,
     categories: [],
     material: 0,
@@ -123,7 +124,7 @@ describe('ProductionWallKpis', () => {
   it('names the missing setup instead of showing a confident zero cost', () => {
     renderKpis(board({ cost: cost({ total: 0 }) }));
 
-    expect(screen.getByText('No cost yet — set rates in Cost Master')).toBeInTheDocument();
+    expect(screen.getByText('No cost on these runs yet')).toBeInTheDocument();
   });
 
   it('says so on the tile when the cost on show leaves RM/PM out', () => {
@@ -133,6 +134,7 @@ describe('ProductionWallKpis', () => {
           total: 40_000,
           net: 40_000,
           perCase: 21,
+          costedCases: 1_900,
           runCount: 3,
           material: 260_000,
           includesMaterial: false,
@@ -142,6 +144,18 @@ describe('ProductionWallKpis', () => {
 
     expect(screen.getByText('₹21')).toBeInTheDocument();
     expect(screen.getByText('₹40K conversion only · excl. RM/PM ₹2.6 L')).toBeInTheDocument();
+  });
+
+  it('will not price a case before any case has been closed', () => {
+    renderKpis(
+      board({
+        cost: cost({ total: 8_140_000, net: 8_140_000, costedCases: 0, runCount: 8 }),
+      }),
+    );
+
+    expect(screen.getByText('₹81 L spent · no cases closed yet')).toBeInTheDocument();
+    // ...and never a per-case rate divided by nothing.
+    expect(screen.queryByText('₹0')).not.toBeInTheDocument();
   });
 
   it('refuses to state a volume or a SAP gap when SAP could not be read', () => {

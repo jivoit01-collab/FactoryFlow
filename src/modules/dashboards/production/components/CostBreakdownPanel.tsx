@@ -1,4 +1,4 @@
-import { Coins } from 'lucide-react';
+import { Coins, Hourglass } from 'lucide-react';
 import { useRef } from 'react';
 
 import { cn } from '@/shared/utils';
@@ -8,7 +8,7 @@ import { useWallPalette } from '../../dispatch/constants/wall.palette';
 import { useAutoScroll } from '../../dispatch/hooks';
 import { count, money } from '../../dispatch/utils/format';
 import { AUTO_SCROLL_FROM } from '../constants/production-wall.constants';
-import type { CostSlice } from '../hooks';
+import type { CostHeadRow, CostSlice } from '../hooks';
 
 /**
  * Where the day's money went, biggest line first.
@@ -27,6 +27,16 @@ import type { CostSlice } from '../hooks';
  * from this list and the shares are re-based on what is left. The badge says so
  * — a breakdown that silently dropped its biggest line would read as a plant
  * that suddenly stopped buying oil.
+ *
+ * The figures are each run's own rollup, summed — not the cost-analysis report,
+ * which counts completed runs only and left this panel empty for the whole
+ * shift. A run is costed the moment its resources are entered, and that is when
+ * it should appear here.
+ *
+ * Until any run is costed there is still nothing to break down, and a wall
+ * panel that simply said so would look broken. So it lists the heads the day
+ * WILL be priced under instead, straight from the Cost Master, and names what
+ * has to happen for figures to appear.
  */
 export function CostBreakdownPanel({
   cost,
@@ -58,23 +68,23 @@ export function CostBreakdownPanel({
               <PanelBadge tone="warn">excl. RM/PM {money(cost.material)}</PanelBadge>
             )}
             <PanelBadge>{money(cost.total)}</PanelBadge>
-            <PanelBadge tone="good">
-              {money(cost.perCase)}/{unitNoun}
-            </PanelBadge>
+            {cost.costedCases > 0 ? (
+              <PanelBadge tone="good">
+                {money(cost.perCase)}/{unitNoun}
+              </PanelBadge>
+            ) : (
+              <PanelBadge tone="warn">no {unitNoun}s closed</PanelBadge>
+            )}
           </>
         ) : undefined
       }
     >
       {cost.isError ? (
         <PanelEmpty>The cost report could not be read for this day.</PanelEmpty>
+      ) : cost.isLoading ? (
+        <PanelEmpty>Costing the day…</PanelEmpty>
       ) : cost.categories.length === 0 ? (
-        <PanelEmpty>
-          {cost.isLoading
-            ? 'Costing the day…'
-            : !cost.includesMaterial && cost.material > 0
-              ? `The whole of this day's cost was bought-in material (${money(cost.material)}) — nothing is left once RM/PM is switched out.`
-              : 'No cost behind this day yet — set rates in Cost Master and the runs cost themselves.'}
-        </PanelEmpty>
+        <PendingHeads cost={cost} />
       ) : (
         <>
           {cost.wasteRecovery > 0 && (
@@ -135,5 +145,89 @@ export function CostBreakdownPanel({
         </>
       )}
     </BoardPanel>
+  );
+}
+
+/**
+ * The panel with nothing to break down yet: what the plant charges a run for,
+ * and why none of it has landed.
+ *
+ * Deliberately not a bare "no data" — the heads are the answer to the question
+ * somebody standing at this screen is actually asking, and the line underneath
+ * says which action makes the numbers appear. When the Cost Master itself is
+ * empty that IS the finding, and it is the only thing shown.
+ */
+function PendingHeads({ cost }: { cost: CostSlice }) {
+  const materialOnly = !cost.includesMaterial && cost.material > 0;
+
+  if (cost.heads.length === 0) {
+    return (
+      <PanelEmpty>
+        No cost heads are configured — open Cost Master and set the rates a run should be charged
+        at. Until then no run can be costed.
+      </PanelEmpty>
+    );
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-start gap-2 border-y border-black/[0.06] bg-black/[0.03] px-4 py-2 text-[11px] leading-snug text-muted-foreground dark:border-white/5 dark:bg-white/[0.035]">
+        <Hourglass className="mt-px h-3.5 w-3.5 shrink-0" />
+        <span>
+          {materialOnly ? (
+            <>
+              All of this day&apos;s cost was bought-in material (
+              <span className="font-semibold text-foreground">{money(cost.material)}</span>) —
+              nothing is left with RM/PM switched out.
+            </>
+          ) : (
+            <>
+              No run has been costed yet. Cost lands on a run once its resources are entered —
+              labour, electricity, machine hours, BOM material.
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="wall-scroll min-h-0 flex-1 overflow-y-auto px-4 py-2">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+          Heads this day will be priced under
+        </p>
+        <ul className="flex flex-col gap-1">
+          {cost.heads.map((head) => (
+            <HeadRow key={head.key} head={head} />
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function HeadRow({ head }: { head: CostHeadRow }) {
+  return (
+    <li className="flex items-baseline justify-between gap-3 rounded-lg border border-black/[0.06] bg-black/[0.015] px-2.5 py-1.5 dark:border-white/[0.07] dark:bg-white/[0.02]">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className={cn(
+            'h-2 w-2 shrink-0 rounded-full',
+            head.credit ? 'bg-emerald-500' : 'bg-muted-foreground/40',
+          )}
+        />
+        <span className="truncate text-xs font-semibold text-foreground/85">{head.label}</span>
+        {head.credit && (
+          <span className="shrink-0 rounded bg-emerald-500/10 px-1 text-[9px] font-bold uppercase text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+            credit
+          </span>
+        )}
+        {head.fromBom && (
+          <span className="shrink-0 rounded bg-black/[0.05] px-1 text-[9px] font-bold uppercase text-muted-foreground dark:bg-white/10">
+            no rate
+          </span>
+        )}
+      </span>
+      <span className="shrink-0 truncate text-[11px] tabular-nums text-muted-foreground/80">
+        {head.rate}
+      </span>
+    </li>
   );
 }

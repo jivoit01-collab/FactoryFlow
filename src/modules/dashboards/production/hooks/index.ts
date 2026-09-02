@@ -1,5 +1,6 @@
 export {
   type CostCategoryRow,
+  type CostHeadRow,
   type CostSlice,
   type MaterialSlice,
   type ProductionBoard,

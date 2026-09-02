@@ -119,15 +119,20 @@ export function ProductionWallKpis({
       <WallStat
         icon={Coins}
         label={`Cost / ${unitNoun}`}
-        value={board.cost.total > 0 ? money(board.cost.perCase) : '—'}
+        // A run that has closed no cases has no per-case rate yet, however much
+        // it has spent — the day's spend goes in the sub-line instead of being
+        // divided by nothing.
+        value={board.cost.costedCases > 0 ? money(board.cost.perCase) : '—'}
         sub={
-          board.cost.total > 0
-            ? board.cost.includesMaterial
-              ? `${money(board.cost.net)} for ${count(board.cost.runCount)} costed runs`
-              : `${money(board.cost.net)} conversion only · excl. RM/PM ${money(board.cost.material)}`
-            : board.cost.material > 0
-              ? `All of it was RM/PM — ${money(board.cost.material)} switched out`
-              : 'No cost yet — set rates in Cost Master'
+          board.cost.total > 0 && board.cost.costedCases === 0
+            ? `${money(board.cost.net)} spent · no ${unitNoun}s closed yet`
+            : board.cost.total > 0
+              ? board.cost.includesMaterial
+                ? `${money(board.cost.net)} for ${count(board.cost.runCount)} costed runs`
+                : `${money(board.cost.net)} conversion only · excl. RM/PM ${money(board.cost.material)}`
+              : board.cost.material > 0
+                ? `All of it was RM/PM — ${money(board.cost.material)} switched out`
+                : 'No cost on these runs yet'
         }
         hex={palette.hue('cost')}
         delta={costDelta}
