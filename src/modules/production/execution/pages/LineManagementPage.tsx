@@ -263,7 +263,7 @@ function LineManagementPage() {
               </span>
               <span className="text-xs">
                 Cost rates live in{' '}
-                <Link to="/production/execution/cost-master" className="text-primary underline">
+                <Link to="/admin/cost-master" className="text-primary underline">
                   Cost Master
                 </Link>
               </span>

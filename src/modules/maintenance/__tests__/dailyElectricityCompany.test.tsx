@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 import { COMPANY_CODES } from '@/config/constants';
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
@@ -80,14 +81,14 @@ const companyFilter = () => screen.getByLabelText('Company') as HTMLSelectElemen
 
 describe('Daily Electricity — company attribution', () => {
   it('shows which companies a reading’s meter feeds', () => {
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     const row = screen.getByText('2026-08-20').closest('tr') as HTMLElement;
     expect(within(row).getByText('Jivo Oil, Jivo Beverages')).toBeInTheDocument();
   });
 
   it('filters the register by company', () => {
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     expect(readingFilters.current).toMatchObject({ company: undefined });
 
@@ -99,7 +100,7 @@ describe('Daily Electricity — company attribution', () => {
   });
 
   it('tags a new meter with every company it feeds', async () => {
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /^meters$/i }));
 
     // The master list flags a meter nobody has attributed yet.

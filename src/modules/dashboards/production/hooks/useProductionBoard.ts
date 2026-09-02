@@ -1,18 +1,15 @@
 import { useQueries } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 
+import { usePermission } from '@/core/auth';
+import { type CostRate as CentralCostRate,useCostMasterRates } from '@/modules/admin/api';
 import {
   EXECUTION_QUERY_KEYS,
   executionApi,
   useCostAnalysisReport,
-  useCostRates,
   useRuns,
 } from '@/modules/production/execution/api';
-import type {
-  CostRate,
-  ProductionRun,
-  ProductionRunCost,
-} from '@/modules/production/execution/types';
+import type { ProductionRun, ProductionRunCost } from '@/modules/production/execution/types';
 
 import type { MaterialReport, MaterialRow, ReconReport, ReconRow } from '../api/reconciliation.api';
 import {
@@ -363,30 +360,101 @@ function foldRunCosts(
  * it: the engine prices it off the run's own BOM snapshot at last purchase
  * price, so it never appears in the Cost Master however well that is filled in.
  */
+// The board's own view of a Cost Master row: the central store keys line
+// overrides as VALUE rates "line:<name>", so the override match is by name.
+interface BoardRate {
+  category: string;
+  category_display: string;
+  rate: string;
+  basis: string;
+  basis_display: string;
+  is_credit: boolean;
+  lineName: string | null;
+}
+
+// Central cost-type code → the engine category the run cost lines carry
+// (mirrors production_execution's COST_TYPE_CODES map, reversed).
+const CENTRAL_CODE_TO_CATEGORY: Record<string, string> = {
+  'prod-material': 'MATERIAL',
+  'prod-electricity-variable': 'ELECTRICITY_VARIABLE',
+  'prod-electricity-fixed': 'ELECTRICITY_FIXED',
+  'prod-labour': 'LABOUR',
+  'prod-salary': 'MANPOWER_SALARIED',
+  'prod-lubrication': 'LUBRICATION',
+  'prod-lab-chemicals': 'LAB_CHEMICALS',
+  'prod-batch-coding': 'BATCH_CODING',
+  'prod-maintenance': 'MAINTENANCE',
+  'prod-water': 'WATER',
+  'prod-overhead': 'OVERHEAD',
+  'prod-waste-recovery': 'WASTE_RECOVERY',
+  'prod-other': 'OTHER',
+};
+
+const LINE_KEY_PREFIX = 'line:';
+
+const SCOPE_RANK: Record<CentralCostRate['scope'], number> = {
+  VALUE: 3,
+  DEPARTMENT: 2,
+  COMPANY: 1,
+  FACTORY: 0,
+};
+
+/**
+ * Central Cost Master rows → board rates. Only production codes matter here;
+ * where a category has both a factory-wide and a company row, the company row
+ * is the one the engine would charge, so the factory one is dropped.
+ */
+function toBoardRates(rows: CentralCostRate[]): BoardRate[] {
+  const bySlot = new Map<string, CentralCostRate>();
+  for (const row of rows) {
+    const category = CENTRAL_CODE_TO_CATEGORY[row.cost_type_code];
+    if (!category) continue;
+    const lineName = row.value_key.startsWith(LINE_KEY_PREFIX)
+      ? row.value_key.slice(LINE_KEY_PREFIX.length)
+      : '';
+    const slot = `${category}|${lineName}`;
+    const current = bySlot.get(slot);
+    if (!current || SCOPE_RANK[row.scope] > SCOPE_RANK[current.scope]) {
+      bySlot.set(slot, row);
+    }
+  }
+  return [...bySlot.values()].map((row) => ({
+    category: CENTRAL_CODE_TO_CATEGORY[row.cost_type_code],
+    category_display: row.cost_type_name,
+    rate: row.rate,
+    basis: row.basis,
+    basis_display: row.basis_display,
+    is_credit: row.is_credit,
+    lineName: row.value_key.startsWith(LINE_KEY_PREFIX)
+      ? row.value_key.slice(LINE_KEY_PREFIX.length)
+      : null,
+  }));
+}
+
 function costHeads(
-  rates: CostRate[] | undefined,
+  rates: BoardRate[],
   includeMaterial: boolean,
-  line: number | undefined,
+  lineName: string | undefined,
 ): CostHeadRow[] {
-  const byCategory = new Map<string, CostRate[]>();
-  for (const rate of rates ?? []) {
-    if (!rate.is_active) continue;
+  const byCategory = new Map<string, BoardRate[]>();
+  for (const rate of rates) {
     // With a line picked, another line's override says nothing about this run.
-    if (line != null && rate.line != null && rate.line !== line) continue;
+    if (lineName != null && rate.lineName != null && rate.lineName !== lineName) continue;
     const rows = byCategory.get(rate.category);
     if (rows) rows.push(rate);
     else byCategory.set(rate.category, [rate]);
   }
 
-  const describe = (row: CostRate) =>
+  const describe = (row: BoardRate) =>
     `₹${Number(row.rate).toLocaleString('en-IN')} · ${row.basis_display || row.basis}`;
 
   const heads: CostHeadRow[] = [];
   for (const [category, rows] of byCategory) {
     if (!includeMaterial && category === MATERIAL_COST_CATEGORY) continue;
 
-    const override = line == null ? undefined : rows.find((row) => row.line === line);
-    const global = rows.find((row) => row.line == null);
+    const override =
+      lineName == null ? undefined : rows.find((row) => row.lineName === lineName);
+    const global = rows.find((row) => row.lineName == null);
     const chosen = override ?? global;
     const shapes = new Set(rows.map((row) => `${Number(row.rate)}|${row.basis}`));
 
@@ -468,7 +536,13 @@ export function useProductionBoard(
   });
   // Master data, not day data: what the plant charges a run for. Read even on a
   // day with cost, so the panel can name the heads the moment there is none.
-  const rateRows = useCostRates();
+  // Rates live in the central Cost Master: the current company's rows (which
+  // include its line overrides) plus the factory-wide defaults.
+  const { currentCompany } = usePermission();
+  const companyRateRows = useCostMasterRates(
+    currentCompany ? { company_id: currentCompany.company_id } : { scope: 'FACTORY' },
+  );
+  const factoryRateRows = useCostMasterRates({ scope: 'FACTORY' });
   const fgQuery = useProductionReconciliation(reconParams);
   const materialQuery = useMaterialReconciliation(reconParams);
   const wasteQuery = useWastageReconciliation(reconParams);
@@ -555,7 +629,13 @@ export function useProductionBoard(
     costedCases: dayCost.cases,
     runCount: dayCost.runCount,
     categories,
-    heads: costHeads(rateRows.data, includeMaterial, line),
+    heads: costHeads(
+      toBoardRates([...(companyRateRows.data ?? []), ...(factoryRateRows.data ?? [])]),
+      includeMaterial,
+      // The central store keys line overrides by name; the board only holds the
+      // id, so the name comes from the window's runs on that line.
+      line != null ? allRuns.find((run) => run.line === line)?.line_name : undefined,
+    ),
     material: dayCost.material,
     includesMaterial: includeMaterial,
     isLoading: costQueries.some((query) => query.isLoading),

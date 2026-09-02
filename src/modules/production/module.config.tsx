@@ -48,14 +48,13 @@ const WasteTrendReportPage = lazy(() => import('./execution/pages/WasteTrendRepo
 const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
-const CostMasterPage = lazy(() => import('./execution/pages/CostMasterPage'));
+// Cost rates are managed centrally on the admin Cost Master page (/admin/cost-master).
 
 // Lazy load Blowing (preform -> bottle) pages
 const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
 const BlowingRunFormPage = lazy(() => import('./blowing/pages/RunFormPage'));
 const BlowingRunDetailPage = lazy(() => import('./blowing/pages/RunDetailPage'));
 const BlowingMasterDataPage = lazy(() => import('./blowing/pages/MasterDataPage'));
-const BlowingCostMasterPage = lazy(() => import('./blowing/pages/CostMasterPage'));
 const BlowingReportsPage = lazy(() => import('./blowing/pages/ReportsPage'));
 const BlowingMakeVsBuyPage = lazy(() => import('./blowing/pages/MakeVsBuyPage'));
 
@@ -268,12 +267,6 @@ export const productionModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
     },
-    {
-      path: '/production/execution/cost-master',
-      element: <CostMasterPage />,
-      layout: 'main',
-      permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
-    },
     // ---- Blowing (preform -> bottle) ----
     {
       path: '/production/blowing',
@@ -304,12 +297,6 @@ export const productionModuleConfig: ModuleConfig = {
       element: <BlowingMasterDataPage />,
       layout: 'main',
       permissions: [BLOWING_PERMISSIONS.MANAGE_MACHINES],
-    },
-    {
-      path: '/production/blowing/cost-master',
-      element: <BlowingCostMasterPage />,
-      layout: 'main',
-      permissions: [BLOWING_PERMISSIONS.MANAGE_RATE_CONFIG],
     },
     {
       path: '/production/blowing/reports',
@@ -350,11 +337,6 @@ export const productionModuleConfig: ModuleConfig = {
           permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
         },
         {
-          path: '/production/blowing/cost-master',
-          title: 'Blowing Cost Master',
-          permissions: [BLOWING_PERMISSIONS.MANAGE_RATE_CONFIG],
-        },
-        {
           path: '/production/execution/line-clearance',
           title: 'Line Clearance',
           permissions: [EXECUTION_PERMISSIONS.VIEW_CLEARANCE],
@@ -379,11 +361,6 @@ export const productionModuleConfig: ModuleConfig = {
         {
           path: '/production/execution/line-management',
           title: 'Line Management',
-          permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
-        },
-        {
-          path: '/production/execution/cost-master',
-          title: 'Cost Master',
           permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
         },
       ],

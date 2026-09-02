@@ -41,7 +41,7 @@ function ResourceTrackingPage() {
             Electricity page. To change rates, edit:
           </span>
           <Link
-            to="/production/execution/cost-master"
+            to="/admin/cost-master"
             className="inline-flex items-center gap-1 text-primary underline"
           >
             <SlidersHorizontal className="h-4 w-4" /> Cost Master (rates)
