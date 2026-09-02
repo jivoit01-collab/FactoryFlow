@@ -653,10 +653,21 @@ export interface DispatchSheetInsights {
   pending_orders: number;
   confirmed_orders: number;
   cancelled_orders: number;
+  /** Orders removed whole by "Delete remaining" (never scanned). */
+  deleted_orders: number;
+  /** Live trackings only — the original upload = tracking_total + tracking_deleted. */
   tracking_total: number;
   tracking_scanned: number;
+  /** Parcels removed by "Delete remaining" — never scannable again. */
+  tracking_deleted: number;
   tracking_remaining: number;
   progress_pct: number;
+}
+
+/** What "Delete remaining" removed from a sheet. */
+export interface DeleteRemainingResult {
+  orders_deleted: number;
+  lines_deleted: number;
 }
 
 export interface DispatchSheetSummary {
@@ -1190,35 +1201,6 @@ export interface ReportPreview {
   columns: string[];
   rows: (string | number)[][];
   totals: Record<string, string | number>;
-}
-
-/** One posted delivery note, shaped for the printable SAP-layout challan.
- *  Header, parties, GST identity and lines mirror the SAP document; `billed_by_ji`
- *  is ours, because SAP's DocTotal on these notes is 0.00 (posted quantity-only). */
-export interface DeliveryNotePrint {
-  doc_num: string;
-  doc_entry: number;
-  doc_date: string;
-  doc_time: string;
-  series: number | null;
-  reference: string;
-  comments: string;
-  currency: string;
-  cancelled: boolean;
-  branch: { id: number | null; name: string };
-  seller: { name: string; gstin: string; state_code: string; address: string[]; place: string; zip: string };
-  bill_to: { code: string; name: string; gstin: string; address: string[]; city: string; state: string; zip: string; country: string };
-  ship_to: { code: string; address: string[]; city: string; state: string; zip: string; country: string };
-  place_of_supply: string;
-  eway: { supply_type: string; transaction_type: string; document_type: string; vehicle_no: string };
-  lines: Array<{
-    no: number; item_code: string; item_name: string; hsn: string; quantity: string;
-    uom: string; warehouse: string; cost_centre: string; tax_code: string;
-    tax_rate: string; batches: string[];
-  }>;
-  tax_summary: Array<{ code: string; rate: string }>;
-  totals: { lines: number; quantity: string; billed_by_ji: string; orders: number };
-  orders: Array<{ order_id: string; buyer_name: string; invoice_number: string; amount: string }>;
 }
 
 export interface TrackingReport {

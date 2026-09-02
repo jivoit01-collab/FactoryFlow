@@ -48,6 +48,12 @@ interface Props {
   onDone?: () => void;
 }
 
+/** A weighbridge reading the operator actually took — blank or 0 means none. */
+function weighed(value: string): string | undefined {
+  const n = Number(value);
+  return value.trim() !== '' && Number.isFinite(n) && n > 0 ? value : undefined;
+}
+
 export function MpManualGateOutDialog({ channel, open, onOpenChange, onDone }: Props) {
   const qc = useQueryClient();
 
@@ -90,8 +96,12 @@ export function MpManualGateOutDialog({ channel, open, onOpenChange, onDone }: P
         delivery_note_no: noteNo.trim(),
         delivery_note_date: noteNo.trim() ? noteDate : undefined,
         box_count: boxCount ? Number(boxCount) : undefined,
-        tare_weight: tare || undefined,
-        gross_weight: gross || undefined,
+        // A typed 0 means "never went on the weighbridge", not "weighs nothing" —
+        // the same reading gate_core gives a 0 tare. Sending it would make the
+        // server reject the whole gate out over a weighment this entry point
+        // deliberately treats as optional, stranding the truck at the gate.
+        tare_weight: weighed(tare),
+        gross_weight: weighed(gross),
         weighbridge_slip_no: slip.trim(),
         security_name: security.trim(),
         remarks: remarks.trim(),

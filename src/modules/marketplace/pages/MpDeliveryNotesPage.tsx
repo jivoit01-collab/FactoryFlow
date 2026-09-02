@@ -19,12 +19,10 @@ import {
   PackageCheck,
   PackageX,
   Plus,
-  Printer,
   RefreshCw,
   Send,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -57,8 +55,6 @@ import { MpChannelSelect } from '../components/MpChannelSelect';
 import { EMPTY_RANGE, inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
 import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import { MpVariantPicker } from '../components/MpVariantPicker';
-import { DN_PRINT_PAGE_STYLE, MpDeliveryNotePrint } from '../components/MpDeliveryNotePrint';
-import type { DeliveryNotePrint } from '../types/marketplace.types';
 import { useMpChannel } from '../hooks/useMpChannel';
 import type {
   DeliveryNoteLine,
@@ -276,32 +272,6 @@ function StockShortfallDialog({
 export default function MpDeliveryNotesPage() {
   const navigate = useNavigate();
   const [channel, setChannel] = useMpChannel();
-
-  // Print a posted delivery note in the SAP challan layout. The payload is read
-  // live from SAP, so fetch it on click rather than for every row on the page.
-  const printRef = useRef<HTMLDivElement>(null);
-  const [printDn, setPrintDn] = useState<DeliveryNotePrint | null>(null);
-  const [printing, setPrinting] = useState<number | null>(null);
-  const runPrint = useReactToPrint({
-    contentRef: printRef,
-    pageStyle: DN_PRINT_PAGE_STYLE,
-    documentTitle: printDn ? `Delivery-Note-${printDn.doc_num}` : 'Delivery-Note',
-  });
-
-  async function printDeliveryNote(docEntry: number) {
-    setPrinting(docEntry);
-    try {
-      const dn = await marketplaceApi.deliveryNotePrint(docEntry, channel);
-      setPrintDn(dn);
-      // Let React paint the hidden document before handing it to the printer.
-      await new Promise((resolve) => setTimeout(resolve, 60));
-      runPrint();
-    } catch (e) {
-      toast.error(getErrorMessage(e, 'Could not build the delivery note for printing.'));
-    } finally {
-      setPrinting(null);
-    }
-  }
 
   // Download a posted delivery note's items (item, qty + DN/warehouse/order/HSN/amount).
   async function downloadDnCsv(docEntry: number) {
@@ -905,16 +875,6 @@ export default function MpDeliveryNotesPage() {
                             >
                               <Download className="mr-1.5 h-3.5 w-3.5" /> CSV
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={printing === n.doc_entry}
-                              onClick={() => printDeliveryNote(n.doc_entry)}
-                              title="Print / save this delivery note as a PDF in the SAP layout"
-                            >
-                              <Printer className="mr-1.5 h-3.5 w-3.5" />
-                              {printing === n.doc_entry ? 'Preparing…' : 'PDF'}
-                            </Button>
                           </div>
                         </div>
 
@@ -1054,12 +1014,6 @@ export default function MpDeliveryNotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Off-screen print host. Positioned rather than hidden: display:none would
-          give react-to-print nothing to measure and the page would come out blank. */}
-      <div aria-hidden className="pointer-events-none fixed -left-[10000px] top-0 w-[210mm]">
-        {printDn ? <MpDeliveryNotePrint ref={printRef} dn={printDn} /> : null}
-      </div>
     </div>
   );
 }

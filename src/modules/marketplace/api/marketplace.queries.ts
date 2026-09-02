@@ -204,6 +204,17 @@ export function useDispatchSheets(channel: MarketplaceChannel) {
   });
 }
 
+/** Delete a sheet's REMAINING work: unscanned orders/parcels leave the board and
+ *  can never be scanned again. Scanned/confirmed work and the sheet itself stay —
+ *  it keeps reporting total / scanned / deleted. */
+export function useDeleteRemaining() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => marketplaceApi.deleteRemaining(id),
+    onSuccess: () => invalidateMarketplace(qc),
+  });
+}
+
 export function useTrackingReport(
   channel: MarketplaceChannel,
   batchId?: number | null,
