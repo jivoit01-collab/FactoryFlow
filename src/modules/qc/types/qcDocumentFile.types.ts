@@ -6,11 +6,16 @@
  * shown back exactly as uploaded.
  */
 
+/** Same two families as a typed-up procedure. */
+export type PdfProcedureType = 'INHOUSE' | 'STANDARD';
+
 export interface QCDocumentFile {
   id: number;
   document_code: string;
   title: string;
   revision: string;
+  procedure_type: PdfProcedureType;
+  procedure_type_label: string;
   /** Absolute URL of the stored PDF, ready to load in a viewer. */
   url: string | null;
   original_name: string;
@@ -26,6 +31,7 @@ export interface UploadQCDocumentFileRequest {
   document_code: string;
   title: string;
   revision: string;
+  procedure_type: PdfProcedureType;
   file: File;
 }
 
@@ -34,4 +40,5 @@ export interface UpdateQCDocumentFileRequest {
   document_code?: string;
   title?: string;
   revision?: string;
+  procedure_type?: PdfProcedureType;
 }

@@ -1,12 +1,4 @@
-import {
-  ArrowLeft,
-  FileText,
-  Loader2,
-  Search,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Search, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -24,6 +16,9 @@ import {
   CardTitle,
   Input,
   Label,
+  Tabs,
+  TabsList,
+  TabsTrigger,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
@@ -32,7 +27,7 @@ import {
   useQCDocumentFiles,
   useUploadQCDocumentFile,
 } from '../../api/qcDocumentFile';
-import type { QCDocumentFile } from '../../types/qcDocumentFile.types';
+import type { PdfProcedureType, QCDocumentFile } from '../../types/qcDocumentFile.types';
 import PdfViewerDialog from './PdfViewerDialog';
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -44,11 +39,23 @@ function formatSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Read the type out of the document code.
+ *
+ * The code is the authority — `QA-TST-INH-…` is in-house, `-STD-` is standard
+ * — so typing the code sets the toggle for you. Returns null when the code
+ * says nothing either way, leaving whatever the user picked alone.
+ */
+function typeFromCode(code: string): PdfProcedureType | null {
+  const upper = code.toUpperCase();
+  if (/(^|-)INH(-|$)/.test(upper)) return 'INHOUSE';
+  if (/(^|-)STD(-|$)/.test(upper)) return 'STANDARD';
+  return null;
+}
+
 /** A PDF by MIME type, or by extension when the browser is vague about it. */
 function isPdf(file: File): boolean {
-  return (
-    file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  );
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }
 
 /**
@@ -72,6 +79,8 @@ export default function QCPdfLibraryPage() {
   const [documentCode, setDocumentCode] = useState('');
   const [title, setTitle] = useState('');
   const [revision, setRevision] = useState('');
+  const [procedureType, setProcedureType] = useState<PdfProcedureType>('INHOUSE');
+  const [typeTab, setTypeTab] = useState<'ALL' | PdfProcedureType>('ALL');
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [viewing, setViewing] = useState<QCDocumentFile | null>(null);
@@ -116,6 +125,7 @@ export default function QCPdfLibraryPage() {
     setDocumentCode('');
     setTitle('');
     setRevision('');
+    setProcedureType('INHOUSE');
     setErrors({});
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -133,6 +143,7 @@ export default function QCPdfLibraryPage() {
         document_code: documentCode.trim().toUpperCase(),
         title: title.trim(),
         revision: revision.trim(),
+        procedure_type: procedureType,
         file: file!,
       });
       toast.success(`Stored ${saved.document_code}.`);
@@ -142,10 +153,7 @@ export default function QCPdfLibraryPage() {
       if (failure.errors) {
         setErrors(
           Object.fromEntries(
-            Object.entries(failure.errors).map(([field, messages]) => [
-              field,
-              messages[0],
-            ]),
+            Object.entries(failure.errors).map(([field, messages]) => [field, messages[0]]),
           ),
         );
       } else {
@@ -165,14 +173,23 @@ export default function QCPdfLibraryPage() {
     }
   };
 
+  const counts = {
+    ALL: documents.length,
+    INHOUSE: documents.filter((d) => d.procedure_type === 'INHOUSE').length,
+    STANDARD: documents.filter((d) => d.procedure_type === 'STANDARD').length,
+  };
+
+  // Filtered here rather than by refetching: the library is small master data,
+  // so switching tabs is instant.
   const term = search.trim().toLowerCase();
-  const visible = term
-    ? documents.filter(
-        (document) =>
-          document.title.toLowerCase().includes(term) ||
-          document.document_code.toLowerCase().includes(term),
-      )
-    : documents;
+  const visible = documents
+    .filter((document) => typeTab === 'ALL' || document.procedure_type === typeTab)
+    .filter(
+      (document) =>
+        !term ||
+        document.title.toLowerCase().includes(term) ||
+        document.document_code.toLowerCase().includes(term),
+    );
 
   return (
     <div className="space-y-6 pb-6">
@@ -196,8 +213,8 @@ export default function QCPdfLibraryPage() {
           <CardHeader>
             <CardTitle className="text-lg">Add a document</CardTitle>
             <CardDescription>
-              Drop a PDF below, choose one, or copy a PDF file and press Ctrl+V anywhere
-              on this page.
+              Drop a PDF below, choose one, or copy a PDF file and press Ctrl+V anywhere on this
+              page.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -225,9 +242,7 @@ export default function QCPdfLibraryPage() {
                   <FileText className="h-6 w-6 text-primary" />
                   <div className="text-left">
                     <p className="font-medium">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatSize(file.size)}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{formatSize(file.size)}</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -244,9 +259,7 @@ export default function QCPdfLibraryPage() {
               ) : (
                 <>
                   <Upload className="h-7 w-7 text-muted-foreground" />
-                  <p className="mt-2 text-sm font-medium">
-                    Drop a PDF here, or click to choose
-                  </p>
+                  <p className="mt-2 text-sm font-medium">Drop a PDF here, or click to choose</p>
                   <p className="text-xs text-muted-foreground">
                     You can also paste one with Ctrl+V · max 25 MB
                   </p>
@@ -262,6 +275,37 @@ export default function QCPdfLibraryPage() {
             </div>
             {errors.file && <p className="text-sm text-red-600">{errors.file}</p>}
 
+            {/* ---- in-house or standard ---- */}
+            <div className="space-y-1.5">
+              <Label>Procedure type</Label>
+              <div className="inline-flex rounded-md border p-0.5">
+                {(
+                  [
+                    { value: 'INHOUSE', label: 'In-house' },
+                    { value: 'STANDARD', label: 'Standard' },
+                  ] as Array<{ value: PdfProcedureType; label: string }>
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setProcedureType(option.value)}
+                    className={cn(
+                      'rounded px-4 py-1.5 text-sm font-medium transition-colors',
+                      procedureType === option.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-muted',
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Set automatically from the INH / STD part of the document code — change it here if
+                the code does not say.
+              </p>
+            </div>
+
             {/* ---- the three fields ---- */}
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
@@ -269,7 +313,13 @@ export default function QCPdfLibraryPage() {
                 <Input
                   id="document_code"
                   value={documentCode}
-                  onChange={(event) => setDocumentCode(event.target.value)}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setDocumentCode(next);
+                    // The code is the authority on the type, so follow it.
+                    const derived = typeFromCode(next);
+                    if (derived) setProcedureType(derived);
+                  }}
                   placeholder="QA-TST-INH-14-02-10"
                   className="font-mono"
                 />
@@ -327,6 +377,17 @@ export default function QCPdfLibraryPage() {
           <CardTitle className="text-lg">Stored documents ({documents.length})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <Tabs
+            value={typeTab}
+            onValueChange={(value) => setTypeTab(value as 'ALL' | PdfProcedureType)}
+          >
+            <TabsList>
+              <TabsTrigger value="ALL">All ({counts.ALL})</TabsTrigger>
+              <TabsTrigger value="INHOUSE">In-house ({counts.INHOUSE})</TabsTrigger>
+              <TabsTrigger value="STANDARD">Standard ({counts.STANDARD})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -347,7 +408,7 @@ export default function QCPdfLibraryPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 {documents.length === 0
                   ? 'No PDFs stored yet.'
-                  : 'No document matches that search.'}
+                  : 'No document matches that search or type.'}
               </p>
             </div>
           ) : (
@@ -357,6 +418,7 @@ export default function QCPdfLibraryPage() {
                   <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="px-3 py-2 font-medium">Document code</th>
                     <th className="px-3 py-2 font-medium">Title</th>
+                    <th className="px-3 py-2 font-medium">Type</th>
                     <th className="px-3 py-2 font-medium">Revision</th>
                     <th className="px-3 py-2 font-medium">Size</th>
                     <th className="w-10 px-3 py-2" />
@@ -369,10 +431,15 @@ export default function QCPdfLibraryPage() {
                       className="cursor-pointer border-b last:border-0 hover:bg-muted/40"
                       onClick={() => setViewing(document)}
                     >
-                      <td className="px-3 py-2 font-mono text-xs">
-                        {document.document_code}
-                      </td>
+                      <td className="px-3 py-2 font-mono text-xs">{document.document_code}</td>
                       <td className="px-3 py-2 font-medium">{document.title}</td>
+                      <td className="px-3 py-2">
+                        <Badge
+                          variant={document.procedure_type === 'INHOUSE' ? 'default' : 'secondary'}
+                        >
+                          {document.procedure_type === 'INHOUSE' ? 'In-house' : 'Standard'}
+                        </Badge>
+                      </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {document.revision || '—'}
                       </td>
