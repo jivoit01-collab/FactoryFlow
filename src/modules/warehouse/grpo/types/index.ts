@@ -22,6 +22,8 @@ export type {
   PendingGRPOEntry,
   PendingGRPOEntryWithSuppliers,
   PendingSupplierGroup,
+  PlanAttachmentAuditEntry,
+  PlanBiltyAttachmentState,
   PostGRPOAttachmentResult,
   PostGRPOItemRequest,
   PostGRPORequest,

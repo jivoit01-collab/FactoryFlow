@@ -111,6 +111,16 @@ pending → preview → post → history). The pages (`ServiceGRPODashboardPage`
 **5-minute timeout** (`SAP_SERVICE_GRPO_POST_TIMEOUT_MS`) because the SAP write
 is slow.
 
+The preview page also manages the **bilty attachment of record** on the dispatch
+plan (`/dispatch/bilty-grpo/attachment/<planId>/` via
+`getPlanBiltyAttachment` / `replacePlanBiltyAttachment` /
+`deletePlanBiltyAttachment`): the vehicle-linking bilty is sometimes the wrong
+document, so the operator can replace or delete it *before posting* — after
+which the correction persists on the plan (unlike the form's one-off "Choose
+Files" uploads, which live only in that form session). Every change is audited
+server-side and the page shows the trail under "Attachment history". Once the
+GRPO is POSTED the server refuses changes and the controls disappear.
+
 ---
 
 ## State, data fetching & offline behaviour

@@ -27,6 +27,8 @@ export const GRPO_QUERY_KEYS = {
     [...GRPO_QUERY_KEYS.all, 'service', 'detail', postingId] as const,
   warehouses: () => ['warehouses'] as const,
   attachments: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'attachments', postingId] as const,
+  planBiltyAttachment: (dispatchPlanId: number) =>
+    [...GRPO_QUERY_KEYS.all, 'service', 'plan-attachment', dispatchPlanId] as const,
 };
 
 // Get material GRPO dashboard insights
@@ -178,6 +180,56 @@ export function useServiceGRPOPreview(dispatchPlanId: number | null) {
     queryKey: GRPO_QUERY_KEYS.servicePreview(dispatchPlanId!),
     queryFn: () => grpoApi.getServicePreview(dispatchPlanId!),
     enabled: !!dispatchPlanId,
+  });
+}
+
+/** Bilty attachment of record on the plan, with its change history (audit trail). */
+export function usePlanBiltyAttachment(dispatchPlanId: number | null) {
+  return useQuery({
+    queryKey: GRPO_QUERY_KEYS.planBiltyAttachment(dispatchPlanId!),
+    queryFn: () => grpoApi.getPlanBiltyAttachment(dispatchPlanId!),
+    enabled: !!dispatchPlanId,
+  });
+}
+
+/** Both attachment mutations refresh the preview too — it renders the same file. */
+function usePlanBiltyAttachmentInvalidation() {
+  const queryClient = useQueryClient();
+  return (dispatchPlanId: number) => {
+    queryClient.invalidateQueries({
+      queryKey: GRPO_QUERY_KEYS.planBiltyAttachment(dispatchPlanId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: GRPO_QUERY_KEYS.servicePreview(dispatchPlanId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: [...GRPO_QUERY_KEYS.all, 'service', 'pending'],
+    });
+  };
+}
+
+export function useReplacePlanBiltyAttachment() {
+  const invalidate = usePlanBiltyAttachmentInvalidation();
+  return useMutation({
+    mutationFn: ({
+      dispatchPlanId,
+      file,
+      reason,
+    }: {
+      dispatchPlanId: number;
+      file: File;
+      reason?: string;
+    }) => grpoApi.replacePlanBiltyAttachment(dispatchPlanId, file, reason),
+    onSuccess: (_, variables) => invalidate(variables.dispatchPlanId),
+  });
+}
+
+export function useDeletePlanBiltyAttachment() {
+  const invalidate = usePlanBiltyAttachmentInvalidation();
+  return useMutation({
+    mutationFn: ({ dispatchPlanId, reason }: { dispatchPlanId: number; reason?: string }) =>
+      grpoApi.deletePlanBiltyAttachment(dispatchPlanId, reason),
+    onSuccess: (_, variables) => invalidate(variables.dispatchPlanId),
   });
 }
 
