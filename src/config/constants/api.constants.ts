@@ -498,6 +498,12 @@ export const API_ENDPOINTS = {
     EXPORT: '/dashboards/stock/export/',
     ITEM_DETAIL: (itemCode: string) => `/dashboards/stock/${itemCode}/warehouses/`,
   },
+  // Budget Approvals Dashboard — Factory budget draft approvals read from
+  // SAP's DRAFT_APPROVAL_Budget procedure (Oil + Beverages in one feed).
+  BUDGET_APPROVALS: {
+    REPORT: '/dashboards/budget-approvals/report/',
+    COLUMN_VALUES: '/dashboards/budget-approvals/column-values/',
+  },
   // Non-Moving RM Dashboard
   NON_MOVING_RM: {
     REPORT: '/non-moving-rm/report/',
