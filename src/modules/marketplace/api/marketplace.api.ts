@@ -122,9 +122,7 @@ export const marketplaceApi = {
   },
 
   // ── SAP Delivery Notes (bulk) ────────────────────────────────────────────────
-  async deliveryNoteSheets(
-    channel: MarketplaceChannel,
-  ): Promise<{ sheets: DeliveryNoteSheet[] }> {
+  async deliveryNoteSheets(channel: MarketplaceChannel): Promise<{ sheets: DeliveryNoteSheet[] }> {
     const { data } = await apiClient.get<{ sheets: DeliveryNoteSheet[] }>(
       `${EP.DELIVERY_NOTE_SHEETS}${buildQuery({ channel })}`,
     );
@@ -161,9 +159,9 @@ export const marketplaceApi = {
     return data;
   },
   async reconcileDeliveryNotes(channel: MarketplaceChannel): Promise<DeliveryNoteReconcileResult> {
-    const { data } = await apiClient.post<DeliveryNoteReconcileResult>(
-      EP.DELIVERY_NOTE_RECONCILE, { channel },
-    );
+    const { data } = await apiClient.post<DeliveryNoteReconcileResult>(EP.DELIVERY_NOTE_RECONCILE, {
+      channel,
+    });
     return data;
   },
   async awaitingApprovalCount(channel: MarketplaceChannel): Promise<AwaitingApprovalCount> {
@@ -222,7 +220,9 @@ export const marketplaceApi = {
 
   // ── Combos ─────────────────────────────────────────────────────────────────
   async combos(channel?: MarketplaceChannel): Promise<ComboDefinition[]> {
-    const { data } = await apiClient.get<ComboDefinition[]>(`${EP.COMBOS}${buildQuery({ channel })}`);
+    const { data } = await apiClient.get<ComboDefinition[]>(
+      `${EP.COMBOS}${buildQuery({ channel })}`,
+    );
     return data;
   },
   async upsertCombo(payload: ComboDefinitionUpsert): Promise<ComboDefinition> {
@@ -255,9 +255,9 @@ export const marketplaceApi = {
 
   // ── Dispatches ─────────────────────────────────────────────────────────────
   async dispatches(params?: DispatchListParams): Promise<MarketplaceDispatch[]> {
-    const { data } = await apiClient.get<MarketplaceDispatch[] | { results: MarketplaceDispatch[] }>(
-      `${EP.DISPATCHES}${buildQuery(params)}`,
-    );
+    const { data } = await apiClient.get<
+      MarketplaceDispatch[] | { results: MarketplaceDispatch[] }
+    >(`${EP.DISPATCHES}${buildQuery(params)}`);
     // Endpoint returns the shared pagination envelope; unwrap to the list (tolerate
     // a bare array too, for resilience).
     return Array.isArray(data) ? data : (data.results ?? []);
@@ -277,7 +277,8 @@ export const marketplaceApi = {
     return data;
   },
   async exportDeliveryNoteCsv(
-    docEntry: number, channel: MarketplaceChannel,
+    docEntry: number,
+    channel: MarketplaceChannel,
   ): Promise<{ blob: Blob; filename: string }> {
     const resp = await apiClient.get<Blob>(
       `${EP.DELIVERY_NOTE_EXPORT(docEntry)}${buildQuery({ channel })}`,
@@ -468,10 +469,9 @@ export const marketplaceApi = {
     barcode: string,
     batchId?: number | null,
   ): Promise<MarketplaceDispatch & { created: boolean; duplicate: boolean }> {
-    const { data } = await apiClient.post<MarketplaceDispatch & { created: boolean; duplicate: boolean }>(
-      EP.DISPATCH_SCAN_TRACKING,
-      { channel, barcode, ...(batchId ? { batch_id: batchId } : {}) },
-    );
+    const { data } = await apiClient.post<
+      MarketplaceDispatch & { created: boolean; duplicate: boolean }
+    >(EP.DISPATCH_SCAN_TRACKING, { channel, barcode, ...(batchId ? { batch_id: batchId } : {}) });
     return data;
   },
   /** Bulk-scan tracking IDs read off an uploaded Excel/CSV sheet. */
@@ -480,10 +480,11 @@ export const marketplaceApi = {
     barcodes: string[],
     batchId?: number | null,
   ): Promise<BulkScanResponse> {
-    const { data } = await apiClient.post<BulkScanResponse>(
-      EP.DISPATCH_SCAN_BULK,
-      { channel, barcodes, ...(batchId ? { batch_id: batchId } : {}) },
-    );
+    const { data } = await apiClient.post<BulkScanResponse>(EP.DISPATCH_SCAN_BULK, {
+      channel,
+      barcodes,
+      ...(batchId ? { batch_id: batchId } : {}),
+    });
     return data;
   },
   async scanDispatch(id: number, payload: ScanRequest): Promise<MpScan> {
@@ -525,10 +526,9 @@ export const marketplaceApi = {
     channel: MarketplaceChannel,
     barcode: string,
   ): Promise<MarketplaceReturn & { created: boolean; duplicate: boolean }> {
-    const { data } = await apiClient.post<MarketplaceReturn & { created: boolean; duplicate: boolean }>(
-      EP.RETURN_SCAN_TRACKING,
-      { channel, barcode },
-    );
+    const { data } = await apiClient.post<
+      MarketplaceReturn & { created: boolean; duplicate: boolean }
+    >(EP.RETURN_SCAN_TRACKING, { channel, barcode });
     return data;
   },
   async scanReturn(id: number, payload: ScanRequest): Promise<MpReturnScan> {
@@ -584,7 +584,9 @@ export const marketplaceApi = {
     return data;
   },
   async batches(channel?: MarketplaceChannel): Promise<OrderImportBatch[]> {
-    const { data } = await apiClient.get<OrderImportBatch[]>(`${EP.BATCHES}${buildQuery({ channel })}`);
+    const { data } = await apiClient.get<OrderImportBatch[]>(
+      `${EP.BATCHES}${buildQuery({ channel })}`,
+    );
     return data;
   },
   async batch(id: number): Promise<OrderImportBatch> {
@@ -596,7 +598,8 @@ export const marketplaceApi = {
    *  The sheet stays, reporting total / scanned / deleted. */
   async deleteRemaining(id: number): Promise<DeleteRemainingResult> {
     const { data } = await apiClient.post<DeleteRemainingResult>(
-      `${EP.BATCH_BY_ID(id)}delete-remaining/`, {},
+      `${EP.BATCH_BY_ID(id)}delete-remaining/`,
+      {},
     );
     return data;
   },
@@ -676,10 +679,10 @@ export const marketplaceApi = {
     channel: MarketplaceChannel,
     itemCode: string,
   ): Promise<CompleteItemGroupResult> {
-    const { data } = await apiClient.post<CompleteItemGroupResult>(
-      EP.PACKING_SUMMARY_COMPLETE,
-      { channel, item_code: itemCode },
-    );
+    const { data } = await apiClient.post<CompleteItemGroupResult>(EP.PACKING_SUMMARY_COMPLETE, {
+      channel,
+      item_code: itemCode,
+    });
     return data;
   },
   async packingQueue(params?: {
@@ -693,7 +696,8 @@ export const marketplaceApi = {
     return data;
   },
   async packScan(
-    barcode: string, channel: MarketplaceChannel = 'FLIPKART',
+    barcode: string,
+    channel: MarketplaceChannel = 'FLIPKART',
   ): Promise<MarketplacePacking & { already_packed: boolean }> {
     const { data } = await apiClient.post<MarketplacePacking & { already_packed: boolean }>(
       EP.PACKING_SCAN,
@@ -701,10 +705,14 @@ export const marketplaceApi = {
     );
     return data;
   },
-  async openPacking(orderId: string, channel: MarketplaceChannel = 'FLIPKART'): Promise<MarketplacePacking> {
-    const { data } = await apiClient.post<MarketplacePacking>(
-      EP.PACKING_OPEN, { order_id: orderId, channel },
-    );
+  async openPacking(
+    orderId: string,
+    channel: MarketplaceChannel = 'FLIPKART',
+  ): Promise<MarketplacePacking> {
+    const { data } = await apiClient.post<MarketplacePacking>(EP.PACKING_OPEN, {
+      order_id: orderId,
+      channel,
+    });
     return data;
   },
   async packing(id: number): Promise<MarketplacePacking> {

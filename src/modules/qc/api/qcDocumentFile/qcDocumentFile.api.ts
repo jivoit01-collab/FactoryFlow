@@ -29,6 +29,7 @@ export const qcDocumentFileApi = {
     form.append('document_code', data.document_code);
     form.append('title', data.title);
     form.append('revision', data.revision);
+    form.append('procedure_type', data.procedure_type);
     form.append('file', data.file);
 
     // The shared client defaults every request to application/json, which

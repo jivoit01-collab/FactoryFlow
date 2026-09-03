@@ -151,7 +151,12 @@ export interface PostedDeliveryNote {
   posted_at: string | null;
   dispatch_count: number;
   sap_post_status: string;
-  orders: { order_id: string; buyer_name: string; order_date: string | null; invoice_number: string }[];
+  orders: {
+    order_id: string;
+    buyer_name: string;
+    order_date: string | null;
+    invoice_number: string;
+  }[];
   lines?: PostedDeliveryNoteLine[];
   total_quantity?: string;
   sap?: {
@@ -912,7 +917,13 @@ export interface InsightShortfall {
 export interface WarehouseInsights {
   requests: { total: number; by_status: Record<string, number> };
   orders: { awaiting_dispatch: number; dispatched: number };
-  totals: { required: string; approved: string; issued: string; received: string; dispatched: string };
+  totals: {
+    required: string;
+    approved: string;
+    issued: string;
+    received: string;
+    dispatched: string;
+  };
   by_item: InsightItem[];
   shortfalls: InsightShortfall[];
 }
@@ -1203,31 +1214,88 @@ export interface ReportPreview {
   totals: Record<string, string | number>;
 }
 
-/** One posted delivery note, shaped for the printable SAP-layout challan.
- *  Header, parties, GST identity and lines mirror the SAP document; `billed_by_ji`
- *  is ours, because SAP's DocTotal on these notes is 0.00 (posted quantity-only). */
+/** One posted delivery note, shaped for the printable SAP delivery-note layout.
+ *  Mirrors the SAP document field for field — header, parties, GST identity, lines
+ *  and the money SAP totals. `billed_by_ji` is ours: these notes are posted
+ *  quantity-only, so SAP's own amounts are usually (not always) 0.00. */
 export interface DeliveryNotePrint {
   doc_num: string;
   doc_entry: number;
   doc_date: string;
   doc_time: string;
+  posting_date: string;
+  delivery_date: string;
   series: number | null;
+  series_name: string;
+  sales_employee: string;
   reference: string;
   comments: string;
   currency: string;
   cancelled: boolean;
   branch: { id: number | null; name: string };
-  seller: { name: string; gstin: string; state_code: string; address: string[]; place: string; zip: string };
-  bill_to: { code: string; name: string; gstin: string; address: string[]; city: string; state: string; zip: string; country: string };
-  ship_to: { code: string; address: string[]; city: string; state: string; zip: string; country: string };
+  warehouse: { code: string; name: string };
+  seller: {
+    name: string;
+    gstin: string;
+    state_code: string;
+    state: string;
+    address: string[];
+    place: string;
+    zip: string;
+  };
+  bill_to: {
+    code: string;
+    name: string;
+    gstin: string;
+    address: string[];
+    place_lines: string[];
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  };
+  ship_to: {
+    code: string;
+    address: string[];
+    place_lines: string[];
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  };
   place_of_supply: string;
-  eway: { supply_type: string; transaction_type: string; document_type: string; vehicle_no: string };
+  eway: {
+    supply_type: string;
+    transaction_type: string;
+    document_type: string;
+    vehicle_no: string;
+  };
   lines: Array<{
-    no: number; item_code: string; item_name: string; hsn: string; quantity: string;
-    uom: string; warehouse: string; cost_centre: string; tax_code: string;
-    tax_rate: string; batches: string[];
+    no: number;
+    item_code: string;
+    item_name: string;
+    hsn: string;
+    quantity: string;
+    uom: string;
+    warehouse: string;
+    cost_centre: string;
+    tax_code: string;
+    tax_rate: string;
+    unit_price: string;
+    line_total: string;
+    batches: string[];
   }>;
-  tax_summary: Array<{ code: string; rate: string }>;
+  /** SAP's jurisdiction rows: `code` as SAP stores it, `label` as SAP prints it. */
+  tax_summary: Array<{ code: string; rate: string; label: string; amount: string }>;
+  money: {
+    before_discount: string;
+    discount: string;
+    freight: string;
+    rounding: string;
+    tax_total: string;
+    doc_total: string;
+    amount_in_words: string;
+  };
   totals: { lines: number; quantity: string; billed_by_ji: string; orders: number };
   orders: Array<{ order_id: string; buyer_name: string; invoice_number: string; amount: string }>;
 }
