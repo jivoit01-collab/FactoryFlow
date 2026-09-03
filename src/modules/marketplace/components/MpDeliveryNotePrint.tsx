@@ -1,359 +1,380 @@
-/** Printable delivery note in the SAP challan layout — the document that travels
- *  with the goods.
+/** The delivery note in SAP's own print layout — the document that travels with
+ *  the goods.
  *
- *  Mirrors the posted SAP note field for field (ODLN header, both address blocks, the
- *  GST identity, the e-way bill block and every DLN1 line), because a challan must say
- *  what SAP says rather than what we hoped we posted.
+ *  This is a replica, not a redesign. It reproduces the SAP Business One delivery
+ *  note field for field and box for box: the letterhead and doc-meta header, BILL
+ *  TO / SHIP TO, the customer strip, the item grid, amount in words, the totals
+ *  ladder and the three signature blocks. A warehouse or a checkpost comparing
+ *  this against a note printed from SAP should not be able to tell them apart,
+ *  which is the whole point — the same layout the business already reads.
  *
- *  The money is the one place the two disagree. This module posts delivery notes with
- *  quantities only, so every amount on the SAP document is genuinely 0.00. The value
- *  figure therefore comes from JI's own internal bills and says so on its face — the
- *  SAP half and the JI half stay visibly separate rather than blended into a number
- *  nobody can source.
+ *  Every figure is SAP's. These notes are posted quantity-only, so the amounts are
+ *  usually 0.00; where SAP does hold a price it is printed as SAP holds it. What we
+ *  billed on our own invoices is deliberately NOT on this page — it is not part of
+ *  the SAP document, and the CSV export beside it carries the order-by-order list.
  *
- *  The orders behind the note are summarised as a count, never listed: one bulk note
- *  can cover 300-plus orders and the table ran for pages, burying the goods being
- *  delivered. The CSV export is where that list belongs.
- *
- *  Designed for ink and photocopiers: one dark ink, hairline rules, no fill heavier
- *  than a 4% grey. The item table's header repeats on every page and no row splits
- *  across a page break.
+ *  Designed for ink and photocopiers: black hairlines, one grey fill for header
+ *  bands, no half-tones. The item header repeats on every page and no row, block
+ *  or signature panel splits across a page break.
  */
 import { forwardRef } from 'react';
 
 import type { DeliveryNotePrint } from '../types/marketplace.types';
 
 export const DN_PRINT_PAGE_STYLE = `
-  @page { size: A4 portrait; margin: 12mm 10mm; }
+  @page { size: A4 portrait; margin: 10mm; }
   @media print {
     body { margin: 0; background: #fff !important; }
-    .mp-dn { color: #000 !important; }
+    .sapdn { color: #000 !important; }
   }
 `;
 
 const dash = (v?: string | number | null) =>
-  v === undefined || v === null || v === '' ? '—' : String(v);
+  v === undefined || v === null || v === '' ? '' : String(v);
 
-const money = (v: string) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : v;
+/** SAP prints dates as 02.09.2026. Split by parts, never through Date — a date-only
+ *  value has no timezone, and `new Date('2026-09-02')` is UTC midnight, which reads
+ *  as the 1st anywhere west of Greenwich. */
+const fmtDate = (iso: string) => {
+  const [y, m, d] = (iso || '').split('-');
+  return y && m && d ? `${d}.${m}.${y}` : (iso ?? '');
 };
 
-/** SAP's enum-ish codes read badly on paper: ewb_st_Outward → Outward. */
-const humanise = (v: string) =>
-  (v || '').replace(/^ewb_(st|tt)_/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+/** SAP prints quantities to three decimals: 7 → 7.000. */
+const qty = (v: string) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(3) : v;
+};
 
-function Field({ label, value }: { label: string; value?: string | number | null }) {
+/** Amounts print grouped, two decimals: 161086 → 161,086.00. */
+const amt = (v: string) => {
+  const n = Number(v);
+  return Number.isFinite(n)
+    ? n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : v;
+};
+
+/** SAP annotates an unregistered buyer rather than printing a bare code. */
+const gstin = (v: string) => (v.toUpperCase() === 'URP' ? 'URP (Unregistered)' : dash(v));
+
+function Row({ label, value }: { label: string; value?: string | number | null }) {
   return (
-    <div className="mp-dn-field">
-      <span className="mp-dn-k">{label}</span>
-      <span className="mp-dn-v">{dash(value)}</span>
-    </div>
+    <tr>
+      <th>{label}</th>
+      <td>{dash(value)}</td>
+    </tr>
   );
 }
 
 interface Props {
   dn: DeliveryNotePrint;
+  /** Total sheets, measured from the rendered height before printing. */
+  pages?: number;
 }
 
-export const MpDeliveryNotePrint = forwardRef<HTMLDivElement, Props>(({ dn }, ref) => {
-  const sellerPlace = [dn.seller.place, dn.seller.zip].filter(Boolean).join(' – ');
-  const billRegion = [dn.bill_to.city, dn.bill_to.state, dn.bill_to.zip, dn.bill_to.country]
-    .filter(Boolean)
-    .join(', ');
-  const shipRegion = [dn.ship_to.city, dn.ship_to.state, dn.ship_to.zip, dn.ship_to.country]
-    .filter(Boolean)
-    .join(', ');
+export const MpDeliveryNotePrint = forwardRef<HTMLDivElement, Props>(({ dn, pages = 1 }, ref) => {
+  const taxRows = dn.tax_summary ?? [];
+  const money = dn.money;
+  const warehouse = [dn.warehouse?.code, dn.warehouse?.name].filter(Boolean).join(' – ');
+  const eway = dn.eway ?? null;
+  const hasEway = Boolean(eway?.vehicle_no);
 
   return (
-    <div ref={ref} className="mp-dn">
+    <div ref={ref} className="sapdn">
       <style>{`
-        .mp-dn {
-          --ink: #111; --mid: #565656; --rule: #b9b9b9; --hair: #e5e5e5;
-          font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-          font-size: 9pt; line-height: 1.35; color: var(--ink); background: #fff;
+        .sapdn {
+          --ink: #000; --rule: #000; --band: #ececec;
+          font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+          font-size: 8.5pt; line-height: 1.25; color: var(--ink); background: #fff;
           -webkit-font-smoothing: antialiased;
         }
-        .mp-dn * { box-sizing: border-box; }
+        .sapdn * { box-sizing: border-box; }
+        .sapdn table { width: 100%; border-collapse: collapse; }
+        .sapdn .n { text-align: right; font-variant-numeric: tabular-nums; }
+        .sapdn .c { text-align: center; }
+        .sapdn .b { font-weight: 700; }
 
-        /* masthead */
-        .mp-dn-band { display: flex; align-items: baseline; justify-content: space-between;
-                      gap: 12px; background: var(--ink); color: #fff; padding: 7px 10px; }
-        .mp-dn-band h1 { margin: 0; font-size: 14pt; font-weight: 700;
-                         letter-spacing: 3.5px; text-transform: uppercase; }
-        .mp-dn-docno { font-size: 12pt; font-weight: 700; font-variant-numeric: tabular-nums; }
-        .mp-dn-void { border: 1px solid #fff; padding: 1px 6px; font-size: 7.5pt;
-                      letter-spacing: 1px; text-transform: uppercase; }
+        /* ── letterhead + document meta ── */
+        .sapdn-top { display: flex; border: 1px solid var(--rule); }
+        .sapdn-top-l { flex: 1 1 58%; padding: 7px 9px; }
+        .sapdn-top-r { flex: 0 0 42%; border-left: 1px solid var(--rule); padding: 7px 9px; }
+        .sapdn-co { font-size: 14pt; font-weight: 700; letter-spacing: .2px; }
+        .sapdn-addr { font-size: 7.8pt; margin-top: 2px; }
+        .sapdn-gst { font-size: 8.2pt; margin-top: 3px; }
+        .sapdn-gap { margin-left: 14px; }
+        .sapdn-doctype { font-size: 15pt; font-weight: 700; letter-spacing: 4px;
+                         text-align: right; text-transform: uppercase; }
+        .sapdn-void { display: block; font-size: 8pt; font-weight: 700; letter-spacing: 1px;
+                      text-align: right; border: 1px solid var(--rule); padding: 1px 4px;
+                      margin-top: 3px; }
+        .sapdn-docmeta { margin-top: 4px; }
+        .sapdn-docmeta th { text-align: left; font-size: 7.6pt; font-weight: 700;
+                            letter-spacing: .3px; padding: 1px 0; white-space: nowrap; }
+        .sapdn-docmeta td { text-align: right; font-size: 8.4pt; padding: 1px 0;
+                            font-variant-numeric: tabular-nums; }
 
-        .mp-dn-seller { display: flex; justify-content: space-between; gap: 16px;
-                        padding: 9px 10px; border: 1px solid var(--rule); border-top: none; }
-        .mp-dn-seller-name { font-size: 13pt; font-weight: 700; }
-        .mp-dn-addr { color: var(--mid); font-size: 8.5pt; }
-        .mp-dn-gst { text-align: right; white-space: nowrap; }
+        /* ── parties ── */
+        .sapdn-parties { display: flex; border: 1px solid var(--rule); border-top: none; }
+        .sapdn-party { flex: 1 1 50%; }
+        .sapdn-party + .sapdn-party { border-left: 1px solid var(--rule); }
+        .sapdn-band { background: var(--band); border-bottom: 1px solid var(--rule);
+                      padding: 2px 9px; font-size: 7.4pt; font-weight: 700; letter-spacing: .8px; }
+        .sapdn-party-body { padding: 5px 9px 6px; }
+        .sapdn-party-name { font-size: 9.5pt; }
+        .sapdn-party-sub { font-size: 7.8pt; margin-top: 3px; }
 
-        /* label / value */
-        .mp-dn-k { display: block; font-size: 6.6pt; letter-spacing: 1px;
-                   text-transform: uppercase; color: var(--mid); }
-        .mp-dn-v { display: block; font-size: 9pt; }
-        .mp-dn-field + .mp-dn-field { margin-top: 5px; }
-        .mp-dn-code { font-variant-numeric: tabular-nums; letter-spacing: .2px; }
+        /* ── customer / posting strip ── */
+        .sapdn-strip { display: flex; border: 1px solid var(--rule); border-top: none; }
+        .sapdn-strip > div { flex: 1 1 50%; padding: 5px 9px; }
+        .sapdn-strip > div + div { border-left: 1px solid var(--rule); }
+        .sapdn-strip th { text-align: left; font-size: 7.6pt; font-weight: 700;
+                          letter-spacing: .3px; padding: 1px 0; width: 42%; white-space: nowrap; }
+        .sapdn-strip td { font-size: 8.4pt; padding: 1px 0; }
 
-        .mp-dn-meta { display: grid; grid-template-columns: repeat(4, 1fr);
-                      border: 1px solid var(--rule); border-top: none; }
-        .mp-dn-meta > div { padding: 6px 10px; }
-        .mp-dn-meta > div + div { border-left: 1px solid var(--rule); }
-        .mp-dn-meta .mp-dn-v { font-variant-numeric: tabular-nums; }
+        /* ── items ── */
+        .sapdn-items { border: 1px solid var(--rule); border-top: none; }
+        .sapdn-items thead { display: table-header-group; }
+        .sapdn-items tr { break-inside: avoid; page-break-inside: avoid; }
+        .sapdn-items th { background: var(--band); font-size: 7.6pt; font-weight: 700;
+                          padding: 3px 4px; border: 1px solid var(--rule); border-top: none;
+                          text-align: center; }
+        .sapdn-items td { padding: 2.5px 4px; border: 1px solid var(--rule); vertical-align: top; }
+        .sapdn-items tbody tr:first-child td { border-top: none; }
+        .sapdn-batch { font-size: 7pt; }
+        .sapdn-items tfoot td { padding: 3px 4px; border: 1px solid var(--rule); font-weight: 700; }
 
-        /* parties */
-        .mp-dn-parties { display: grid; grid-template-columns: 1fr 1fr;
-                         border: 1px solid var(--rule); border-top: none; }
-        .mp-dn-party { padding: 8px 10px; }
-        .mp-dn-party + .mp-dn-party { border-left: 1px solid var(--rule); }
-        .mp-dn-cap { font-size: 6.6pt; letter-spacing: 1.3px; text-transform: uppercase;
-                     color: var(--mid); margin-bottom: 3px; }
-        .mp-dn-party-name { font-size: 10pt; font-weight: 700; }
+        /* ── words / remarks / totals ── */
+        .sapdn-lower { display: flex; align-items: flex-start; gap: 0;
+                       break-inside: avoid; page-break-inside: avoid; margin-top: 7px; }
+        .sapdn-lower-l { flex: 1 1 56%; }
+        .sapdn-lower-r { flex: 0 0 44%; padding-left: 10px; }
+        .sapdn-box { border: 1px solid var(--rule); }
+        .sapdn-box + .sapdn-box { margin-top: 6px; }
+        .sapdn-box-body { padding: 4px 9px 6px; font-size: 8.4pt; }
+        .sapdn-totals th { text-align: right; font-weight: 400; font-size: 8.4pt;
+                           padding: 2px 8px 2px 0; border-bottom: 1px solid #d0d0d0; }
+        .sapdn-totals td { text-align: right; font-size: 8.4pt; padding: 2px 9px;
+                           border: 1px solid var(--rule); border-top: none;
+                           font-variant-numeric: tabular-nums; width: 38%; }
+        .sapdn-totals tr:first-child td { border-top: 1px solid var(--rule); }
+        .sapdn-totals tr.due th { font-size: 10pt; font-weight: 700; border-bottom: none;
+                                  padding-top: 4px; }
+        .sapdn-totals tr.due td { font-size: 10pt; font-weight: 700;
+                                  border-top: 2px solid var(--rule); }
 
-        /* items */
-        table.mp-dn-items { width: 100%; border-collapse: collapse; margin-top: 11px; font-size: 8.5pt; }
-        .mp-dn-items thead { display: table-header-group; }
-        .mp-dn-items tr { break-inside: avoid; page-break-inside: avoid; }
-        .mp-dn-items th { background: var(--ink); color: #fff; font-size: 6.6pt; font-weight: 600;
-                          letter-spacing: .9px; text-transform: uppercase; padding: 6px;
-                          text-align: left; }
-        .mp-dn-items td { padding: 5px 6px; border-bottom: 1px solid var(--hair); vertical-align: top; }
-        .mp-dn-items tbody tr:nth-child(even) td { background: #fafafa; }
-        .mp-dn-items .n { text-align: right; font-variant-numeric: tabular-nums; }
-        .mp-dn-items .c { text-align: center; }
-        .mp-dn-desc { font-weight: 500; }
-        .mp-dn-sub { color: var(--mid); font-size: 7.2pt; margin-top: 1px; }
-        .mp-dn-items tfoot td { border-top: 1.5px solid var(--ink); border-bottom: none;
-                                font-weight: 700; padding: 7px 6px; background: #fff; }
-
-        /* summary cards */
-        .mp-dn-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-                       margin-top: 11px; break-inside: avoid; page-break-inside: avoid; }
-        .mp-dn-card { border: 1px solid var(--rule); padding: 8px 10px; }
-        .mp-dn-card h4 { margin: 0 0 6px; font-size: 6.6pt; letter-spacing: 1.3px;
-                         text-transform: uppercase; color: var(--mid); font-weight: 600;
-                         border-bottom: 1px solid var(--hair); padding-bottom: 4px; }
-        .mp-dn-row { display: flex; justify-content: space-between; gap: 8px; font-size: 8.5pt; }
-        .mp-dn-row + .mp-dn-row { margin-top: 3px; }
-        .mp-dn-row span:last-child { font-variant-numeric: tabular-nums; text-align: right; }
-        .mp-dn-figure { font-size: 14pt; font-weight: 700; font-variant-numeric: tabular-nums;
-                        letter-spacing: -.3px; margin-bottom: 3px; }
-        .mp-dn-fine { color: var(--mid); font-size: 7pt; line-height: 1.35; margin-top: 5px; }
-
-        .mp-dn-remarks { border: 1px solid var(--rule); padding: 8px 10px; margin-top: 8px;
-                         break-inside: avoid; }
-
-        /* signatures + footer */
-        .mp-dn-sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px;
-                      margin-top: 28px; break-inside: avoid; page-break-inside: avoid; }
-        .mp-dn-sign div { border-top: 1px solid var(--ink); padding-top: 5px;
-                          font-size: 7.2pt; letter-spacing: .6px; text-transform: uppercase;
-                          color: var(--mid); text-align: center; }
-        .mp-dn-foot { margin-top: 11px; padding-top: 5px; border-top: 1px solid var(--hair);
-                      display: flex; justify-content: space-between;
-                      color: var(--mid); font-size: 7pt; letter-spacing: .3px; }
+        /* ── signatures + footnote ── */
+        .sapdn-sign { display: flex; border: 1px solid var(--rule); margin-top: 16px;
+                      break-inside: avoid; page-break-inside: avoid; }
+        .sapdn-sign > div { flex: 1 1 33.33%; height: 62px; padding: 4px 8px;
+                            display: flex; flex-direction: column; justify-content: flex-end;
+                            text-align: center; font-size: 8.2pt; }
+        .sapdn-sign > div + div { border-left: 1px solid var(--rule); }
+        .sapdn-foot { margin-top: 5px; text-align: center; font-size: 7.4pt; }
       `}</style>
 
-      <header className="mp-dn-band">
-        <h1>Delivery Note</h1>
-        {dn.cancelled ? <span className="mp-dn-void">Cancelled in SAP</span> : null}
-        <span className="mp-dn-docno">{dash(dn.doc_num)}</span>
-      </header>
-
-      <section className="mp-dn-seller">
-        <div>
-          <div className="mp-dn-seller-name">{dash(dn.seller.name)}</div>
-          <div className="mp-dn-addr">
-            {dn.seller.address.join(', ')}
-            {sellerPlace ? `, ${sellerPlace}` : ''}
+      <section className="sapdn-top">
+        <div className="sapdn-top-l">
+          <div className="sapdn-co">{dash(dn.seller.name)}</div>
+          <div className="sapdn-addr">{(dn.seller.address ?? []).join(', ')}</div>
+          <div className="sapdn-gst">
+            <span className="b">GSTIN:</span> {dash(dn.seller.gstin)}
+            {dn.seller.state ? (
+              <span className="sapdn-gap">
+                <span className="b">State:</span> {dn.seller.state}
+              </span>
+            ) : null}
           </div>
         </div>
-        <div className="mp-dn-gst">
-          <span className="mp-dn-k">GSTIN</span>
-          <span className="mp-dn-v mp-dn-code">
-            <strong>{dash(dn.seller.gstin)}</strong>
-          </span>
-          {dn.seller.state_code ? (
-            <div className="mp-dn-addr">State code {dn.seller.state_code}</div>
-          ) : null}
+        <div className="sapdn-top-r">
+          <div className="sapdn-doctype">Delivery</div>
+          {dn.cancelled ? <span className="sapdn-void">Cancelled in SAP</span> : null}
+          <table className="sapdn-docmeta">
+            <tbody>
+              <tr>
+                <th>DOC. NO.</th>
+                <td className="b">{dash(dn.doc_num)}</td>
+              </tr>
+              <Row label="DOC. DATE" value={fmtDate(dn.doc_date)} />
+              <Row label="SERIES" value={dn.series_name || dn.series} />
+              <Row label="PAGE" value={`1 of ${pages}`} />
+            </tbody>
+          </table>
         </div>
       </section>
 
-      <section className="mp-dn-meta">
-        <div>
-          <Field label="Date" value={dn.doc_date} />
-          <Field label="Time" value={dn.doc_time ? dn.doc_time.slice(0, 5) : ''} />
-        </div>
-        <div>
-          <Field label="Reference" value={dn.reference} />
-          <Field label="Currency" value={dn.currency} />
-        </div>
-        <div>
-          <Field
-            label="Branch"
-            value={
-              dn.branch.name
-                ? `${dn.branch.name}${dn.branch.id != null ? ` (${dn.branch.id})` : ''}`
-                : dn.branch.id
-            }
-          />
-          <Field label="Place of supply" value={dn.place_of_supply} />
-        </div>
-        <div>
-          <Field label="SAP doc entry" value={dn.doc_entry} />
-          <Field label="Series" value={dn.series} />
-        </div>
-      </section>
-
-      <section className="mp-dn-parties">
-        <div className="mp-dn-party">
-          <div className="mp-dn-cap">Bill to</div>
-          <div className="mp-dn-party-name">{dash(dn.bill_to.name)}</div>
-          <div className="mp-dn-addr">
-            <div className="mp-dn-code">{dn.bill_to.code}</div>
-            {dn.bill_to.address.join(', ')}
-            {billRegion ? <div>{billRegion}</div> : null}
-          </div>
-          <div style={{ marginTop: 4 }}>
-            <span className="mp-dn-k">GSTIN</span>
-            <span className="mp-dn-v mp-dn-code">{dash(dn.bill_to.gstin)}</span>
+      <section className="sapdn-parties">
+        <div className="sapdn-party">
+          <div className="sapdn-band">BILL TO</div>
+          <div className="sapdn-party-body">
+            <div className="sapdn-party-name">{dash(dn.bill_to.name)}</div>
+            {(dn.bill_to.place_lines?.length
+              ? dn.bill_to.place_lines
+              : (dn.bill_to.address ?? [])
+            ).map((l) => (
+              <div key={l}>{l}</div>
+            ))}
+            <div className="sapdn-party-sub">
+              GSTIN: {gstin(dn.bill_to.gstin)}
+              {dn.bill_to.state ? (
+                <span className="sapdn-gap">State: {dn.bill_to.state}</span>
+              ) : null}
+            </div>
           </div>
         </div>
-        <div className="mp-dn-party">
-          <div className="mp-dn-cap">Ship to</div>
-          <div className="mp-dn-party-name">{dash(dn.ship_to.code)}</div>
-          <div className="mp-dn-addr">
-            {dn.ship_to.address.join(', ')}
-            {shipRegion ? <div>{shipRegion}</div> : null}
+        <div className="sapdn-party">
+          <div className="sapdn-band">SHIP TO</div>
+          <div className="sapdn-party-body">
+            <div className="sapdn-party-name">{dash(dn.ship_to.code)}</div>
+            {(dn.ship_to.place_lines?.length
+              ? dn.ship_to.place_lines
+              : (dn.ship_to.address ?? [])
+            ).map((l) => (
+              <div key={l}>{l}</div>
+            ))}
+            <div className="sapdn-party-sub">
+              {dn.place_of_supply ? `Place of Supply: ${dn.place_of_supply}` : ''}
+            </div>
           </div>
         </div>
       </section>
 
-      <table className="mp-dn-items">
+      <section className="sapdn-strip">
+        <div>
+          <table>
+            <tbody>
+              <Row label="CUSTOMER NO." value={dn.bill_to.code} />
+              <Row label="CUSTOMER REF. NO." value={dn.reference} />
+              <Row label="SALES EMPLOYEE" value={dn.sales_employee} />
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <table>
+            <tbody>
+              <Row label="POSTING DATE" value={fmtDate(dn.posting_date || dn.doc_date)} />
+              <Row label="DELIVERY DATE" value={fmtDate(dn.delivery_date || dn.doc_date)} />
+              <Row label="WAREHOUSE" value={warehouse} />
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <table className="sapdn-items">
         <thead>
           <tr>
-            <th className="c" style={{ width: '4%' }}>#</th>
-            <th style={{ width: '13%' }}>Item code</th>
-            <th>Description of goods</th>
-            <th className="c" style={{ width: '10%' }}>HSN</th>
-            <th className="n" style={{ width: '8%' }}>Qty</th>
-            <th className="c" style={{ width: '6%' }}>UoM</th>
-            <th className="c" style={{ width: '10%' }}>Warehouse</th>
-            <th className="c" style={{ width: '10%' }}>Cost centre</th>
-            <th className="c" style={{ width: '11%' }}>Tax</th>
+            <th style={{ width: '3.5%' }}>#</th>
+            <th style={{ width: '9.5%' }}>Item No.</th>
+            <th>Item Description</th>
+            <th style={{ width: '9%' }}>HSN / SAC</th>
+            <th style={{ width: '7.5%' }}>Quantity</th>
+            <th style={{ width: '4.5%' }}>UoM</th>
+            <th style={{ width: '8.5%' }}>Tax Code</th>
+            <th style={{ width: '9%' }}>Unit Price</th>
+            <th style={{ width: '10%' }}>Total (LC)</th>
           </tr>
         </thead>
         <tbody>
           {dn.lines.map((l) => (
             <tr key={`${l.no}-${l.item_code}`}>
               <td className="c">{l.no}</td>
-              <td className="mp-dn-code">{l.item_code}</td>
+              <td>{l.item_code}</td>
               <td>
-                <div className="mp-dn-desc">{l.item_name}</div>
+                {l.item_name}
                 {l.batches.length ? (
-                  <div className="mp-dn-sub">Batch {l.batches.join(', ')}</div>
+                  <div className="sapdn-batch">Batch: {l.batches.join(', ')}</div>
                 ) : null}
               </td>
-              <td className="c mp-dn-code">{l.hsn}</td>
-              <td className="n">{l.quantity}</td>
+              <td className="c">{l.hsn}</td>
+              <td className="n">{qty(l.quantity)}</td>
               <td className="c">{l.uom}</td>
-              <td className="c mp-dn-code">{l.warehouse}</td>
-              <td className="c">{l.cost_centre}</td>
-              <td className="c">
-                {l.tax_code}
-                {l.tax_rate ? <div className="mp-dn-sub">{l.tax_rate}%</div> : null}
-              </td>
+              <td>{l.tax_code}</td>
+              <td className="n">{amt(l.unit_price)}</td>
+              <td className="n">{amt(l.line_total)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan={4} style={{ textAlign: 'right' }}>
-              Total — {dn.totals.lines} item{dn.totals.lines === 1 ? '' : 's'}
+            <td colSpan={4} className="n">
+              Total Quantity
             </td>
-            <td className="n">{dn.totals.quantity}</td>
-            <td colSpan={4} />
+            <td className="n">{qty(dn.totals.quantity)}</td>
+            <td colSpan={3} />
+            <td className="n">{amt(money.before_discount)}</td>
           </tr>
         </tfoot>
       </table>
 
-      <section className="mp-dn-strip">
-        <div className="mp-dn-card">
-          <h4>Tax</h4>
-          {dn.tax_summary.length ? (
-            dn.tax_summary.map((t) => (
-              <div className="mp-dn-row" key={t.code}>
-                <span>{t.code.replace('@', ' ')}</span>
-                <span>{t.rate}%</span>
-              </div>
-            ))
-          ) : (
-            <div className="mp-dn-row">
-              <span>—</span>
+      <section className="sapdn-lower">
+        <div className="sapdn-lower-l">
+          <div className="sapdn-box">
+            <div className="sapdn-band">AMOUNT IN WORDS</div>
+            <div className="sapdn-box-body">{dash(money.amount_in_words)}</div>
+          </div>
+          {dn.comments ? (
+            <div className="sapdn-box">
+              <div className="sapdn-band">REMARKS</div>
+              <div className="sapdn-box-body">{dn.comments}</div>
             </div>
-          )}
-          <div className="mp-dn-fine">
-            Rates as posted in SAP. This note carries no line values — it is posted
-            quantity-only.
-          </div>
+          ) : null}
+          {hasEway ? (
+            <div className="sapdn-box">
+              <div className="sapdn-band">E-WAY BILL</div>
+              <div className="sapdn-box-body">Vehicle No.: {dash(eway?.vehicle_no)}</div>
+            </div>
+          ) : null}
         </div>
 
-        <div className="mp-dn-card">
-          <h4>Value — JI internal bills</h4>
-          <div className="mp-dn-figure">{money(dn.totals.billed_by_ji)}</div>
-          <div className="mp-dn-row">
-            <span>Orders covered</span>
-            <span>{dn.totals.orders}</span>
-          </div>
-          <div className="mp-dn-fine">
-            Billed on JI&apos;s own invoices for these orders; the order-by-order list is
-            in the CSV export. SAP&apos;s DocTotal on this note is 0.00.
-          </div>
-        </div>
-
-        <div className="mp-dn-card">
-          <h4>E-way bill</h4>
-          <div className="mp-dn-row">
-            <span>Document</span>
-            <span>{dash(dn.eway.document_type)}</span>
-          </div>
-          <div className="mp-dn-row">
-            <span>Supply</span>
-            <span>{dash(humanise(dn.eway.supply_type))}</span>
-          </div>
-          <div className="mp-dn-row">
-            <span>Transaction</span>
-            <span>{dash(humanise(dn.eway.transaction_type))}</span>
-          </div>
-          <div className="mp-dn-row">
-            <span>Vehicle</span>
-            <span>{dash(dn.eway.vehicle_no)}</span>
-          </div>
+        <div className="sapdn-lower-r">
+          <table className="sapdn-totals">
+            <tbody>
+              <tr>
+                <th>Total Before Discount</th>
+                <td>{amt(money.before_discount)}</td>
+              </tr>
+              <tr>
+                <th>Discount</th>
+                <td>{amt(money.discount)}</td>
+              </tr>
+              <tr>
+                <th>Freight</th>
+                <td>{amt(money.freight)}</td>
+              </tr>
+              {taxRows.map((t) => (
+                <tr key={t.code}>
+                  <th>{t.label}</th>
+                  <td>{amt(t.amount)}</td>
+                </tr>
+              ))}
+              <tr>
+                <th>Rounding</th>
+                <td>{amt(money.rounding)}</td>
+              </tr>
+              <tr className="due">
+                <th>Total Payment Due ({dash(dn.currency) || 'INR'})</th>
+                <td>{amt(money.doc_total)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
-      {dn.comments ? (
-        <section className="mp-dn-remarks">
-          <div className="mp-dn-cap">Remarks</div>
-          <div>{dn.comments}</div>
-        </section>
-      ) : null}
-
-      <section className="mp-dn-sign">
-        <div>Prepared by</div>
-        <div>Authorised signatory</div>
-        <div>Received in good condition</div>
+      <section className="sapdn-sign">
+        <div>Prepared By</div>
+        <div>
+          <div>Authorised Signatory</div>
+          <div className="b">For {dash(dn.seller.name)}</div>
+        </div>
+        <div>
+          <div>Received the above goods in good condition</div>
+          <div>Receiver&rsquo;s Signature</div>
+        </div>
       </section>
 
-      <footer className="mp-dn-foot">
-        <span>
-          Delivery note {dash(dn.doc_num)} · {dash(dn.doc_date)}
-        </span>
-        <span>Computer generated · JIVO</span>
-      </footer>
+      <div className="sapdn-foot">
+        This is a delivery document and not a tax invoice. Goods once delivered are subject to the
+        terms agreed with the customer.
+      </div>
     </div>
   );
 });
