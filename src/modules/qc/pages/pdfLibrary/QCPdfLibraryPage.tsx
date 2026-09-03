@@ -62,9 +62,9 @@ function isPdf(file: File): boolean {
 /**
  * QC → PDF Documents.
  *
- * Drop, choose or paste a PDF, give it a document code, title and revision,
- * and it is stored as-is. Clicking a row opens the original file unchanged —
- * these are documents that must be read exactly as issued.
+ * Drop, choose or paste a PDF, give it a title and (optionally) a document
+ * code, and it is stored as-is. Clicking a row opens the original file
+ * unchanged — these are documents that must be read exactly as issued.
  */
 export default function QCPdfLibraryPage() {
   const navigate = useNavigate();
@@ -79,7 +79,6 @@ export default function QCPdfLibraryPage() {
   const [file, setFile] = useState<File | null>(null);
   const [documentCode, setDocumentCode] = useState('');
   const [title, setTitle] = useState('');
-  const [revision, setRevision] = useState('');
   const [procedureType, setProcedureType] = useState<PdfProcedureType>('INHOUSE');
   const [typeTab, setTypeTab] = useState<'ALL' | PdfProcedureType>('ALL');
   const [isDragging, setIsDragging] = useState(false);
@@ -125,7 +124,6 @@ export default function QCPdfLibraryPage() {
     setFile(null);
     setDocumentCode('');
     setTitle('');
-    setRevision('');
     setProcedureType('INHOUSE');
     setErrors({});
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -133,7 +131,6 @@ export default function QCPdfLibraryPage() {
 
   const handleUpload = async () => {
     const nextErrors: Record<string, string> = {};
-    if (!documentCode.trim()) nextErrors.document_code = 'Document code is required.';
     if (!title.trim()) nextErrors.title = 'Title is required.';
     if (!file) nextErrors.file = 'Attach the PDF.';
     setErrors(nextErrors);
@@ -143,7 +140,9 @@ export default function QCPdfLibraryPage() {
       const saved = await uploadDocument.mutateAsync({
         document_code: documentCode.trim().toUpperCase(),
         title: title.trim(),
-        revision: revision.trim(),
+        // Not collected on this page any more; the column stays on the
+        // record for documents that were filed with one.
+        revision: '',
         procedure_type: procedureType,
         file: file!,
       });
@@ -313,10 +312,13 @@ export default function QCPdfLibraryPage() {
               </p>
             </div>
 
-            {/* ---- the three fields ---- */}
-            <div className="grid gap-4 sm:grid-cols-3">
+            {/* ---- identifiers ---- */}
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="document_code">Document code</Label>
+                <Label htmlFor="document_code">
+                  Document code{' '}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
                 <Input
                   id="document_code"
                   value={documentCode}
@@ -343,15 +345,6 @@ export default function QCPdfLibraryPage() {
                   placeholder="ARGEMONE OIL ADULTERATION TESTING"
                 />
                 {errors.title && <p className="text-xs text-red-600">{errors.title}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="revision">Revision</Label>
-                <Input
-                  id="revision"
-                  value={revision}
-                  onChange={(event) => setRevision(event.target.value)}
-                  placeholder="00/15-10-2023"
-                />
               </div>
             </div>
 
@@ -426,7 +419,6 @@ export default function QCPdfLibraryPage() {
                     <th className="px-3 py-2 font-medium">Document code</th>
                     <th className="px-3 py-2 font-medium">Title</th>
                     <th className="px-3 py-2 font-medium">Type</th>
-                    <th className="px-3 py-2 font-medium">Revision</th>
                     <th className="px-3 py-2 font-medium">Size</th>
                     <th className="w-10 px-3 py-2" />
                   </tr>
@@ -446,9 +438,6 @@ export default function QCPdfLibraryPage() {
                         >
                           {document.procedure_type === 'INHOUSE' ? 'In-house' : 'Standard'}
                         </Badge>
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {document.revision || '—'}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         <Badge variant="outline">{formatSize(document.file_size)}</Badge>
