@@ -2,10 +2,9 @@
  * Warehouses list (Step 3).
  *
  * Manage saved warehouses — open in the editor, clone, delete (cascading its
- * zones + locations), export a JSON backup, or import one. "New warehouse" opens
- * the designer.
+ * zones, purposes, locations and the stock held in them), export a JSON backup,
+ * or import one. "New warehouse" opens the designer.
  */
-import { useMemo, useRef, useState } from 'react';
 import {
   Copy,
   Download,
@@ -15,6 +14,7 @@ import {
   Upload,
   Warehouse as WarehouseIcon,
 } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -34,9 +34,8 @@ import {
 import { useHasPermission } from '@/core/auth';
 import { WMS_PERMISSIONS } from '@/config/permissions';
 
-import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import { AdminOnlyNotice } from '../components/AdminOnlyNotice';
-import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsRole, wmsStore } from '../store';
+import { WmsDisabledNotice } from '../components/WmsDisabledNotice';
 import {
   buildWarehouseExport,
   instantiateTemplate,
@@ -44,6 +43,7 @@ import {
   parseWarehouseExport,
   rekeyWarehouseBundle,
 } from '../services';
+import { useWarehouses, useWmsCollection, useWmsEnabled, useWmsRole, wmsStore } from '../store';
 import type { LayoutTemplate, Warehouse } from '../types';
 
 export default function WmsWarehousesPage() {
@@ -101,6 +101,19 @@ export default function WmsWarehousesPage() {
     }
   }
 
+  /** Surface what the server actually said — a bare "Delete failed." hides the cause. */
+  function deleteErrorMessage(error: unknown): string {
+    const response = (error as { response?: { status?: number; data?: unknown } } | null)?.response;
+    const body = response?.data as { error?: string; detail?: string } | undefined;
+    const detail = body?.error || body?.detail;
+    if (detail) return detail;
+    if (response?.status === 403) {
+      return 'You do not have permission to delete everything in this warehouse.';
+    }
+    if (error instanceof Error && error.message) return error.message;
+    return 'Delete failed.';
+  }
+
   async function handleDelete(warehouse: Warehouse) {
     const confirmed = await confirmDialog({
       title: `Delete "${warehouse.name}" and all its locations?`,
@@ -115,7 +128,7 @@ export default function WmsWarehousesPage() {
       await wmsStore.deleteWarehouseCascade(warehouse.id);
       toast.success(`Deleted "${warehouse.name}".`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Delete failed.');
+      toast.error(deleteErrorMessage(error));
     } finally {
       setBusyId(null);
     }
