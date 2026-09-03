@@ -11,6 +11,7 @@ import type {
   ConfirmRequest,
   DeleteRemainingResult,
   DeliveryNoteCutResult,
+  DeliveryNotePrint,
   DeliveryNoteReconcileResult,
   DeliveryNoteSheet,
   DeliveryNoteSummary,
@@ -422,6 +423,17 @@ export const marketplaceApi = {
   ): Promise<TrackingReport> {
     const { data } = await apiClient.get<TrackingReport>(
       `${EP.REPORT_TRACKING(batchId)}${buildQuery({ ...params })}`,
+    );
+    return data;
+  },
+
+  /** One posted delivery note, shaped for the printable SAP-layout challan. */
+  async deliveryNotePrint(
+    docEntry: number,
+    channel: MarketplaceChannel,
+  ): Promise<DeliveryNotePrint> {
+    const { data } = await apiClient.get<DeliveryNotePrint>(
+      `${EP.DN_PRINT(docEntry)}${buildQuery({ channel })}`,
     );
     return data;
   },
