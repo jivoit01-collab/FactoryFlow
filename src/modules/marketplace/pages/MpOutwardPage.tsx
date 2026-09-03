@@ -41,6 +41,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui';
+import { confirmDialog, promptDialog } from '@/shared/components';
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
@@ -180,14 +181,18 @@ export default function MpOutwardPage() {
   // with its total / scanned / deleted tallies) stays. The deleted parcels come back
   // as fresh rows when the user uploads them on a new sheet.
   const deleteRemainingMut = useDeleteRemaining();
-  function handleDeleteRemaining(s: DispatchSheetSummary) {
+  async function handleDeleteRemaining(s: DispatchSheetSummary) {
     const name = s.filename || `Sheet #${s.id}`;
     const left = s.insights.tracking_remaining;
-    if (!window.confirm(
-      `Delete the ${left} remaining (unscanned) tracking ID${left === 1 ? '' : 's'} from "${name}"?\n\n`
-      + 'They can never be scanned on this sheet again — re-upload those orders on a '
-      + 'new sheet instead. Everything already scanned or confirmed stays untouched.',
-    )) return;
+    const confirmed = await confirmDialog({
+      title: `Delete the ${left} remaining (unscanned) tracking ID${left === 1 ? '' : 's'} from "${name}"?`,
+      description:
+        'They can never be scanned on this sheet again — re-upload those orders on a '
+        + 'new sheet instead. Everything already scanned or confirmed stays untouched.',
+      confirmLabel: 'Delete remaining',
+      destructive: true,
+    });
+    if (!confirmed) return;
     deleteRemainingMut.mutate(s.id, {
       onSuccess: (res) => toast.success(
         `Deleted ${res.lines_deleted} remaining tracking ID${res.lines_deleted === 1 ? '' : 's'} `
@@ -853,12 +858,19 @@ function CancelButton({ dispatchId, orderId }: { dispatchId: number; orderId: st
       size="sm"
       variant="outline"
       disabled={cancel.isPending}
-      onClick={() => {
-        const reason = window.prompt(
-          `Cancel ${orderId} after scan? It moves to "Cancel after scan" — no delivery note is cut and its scan data is kept.\n\nReason:`,
-          'Cancelled at pickup',
-        );
-        if (reason === null) return; // operator dismissed the prompt
+      onClick={async () => {
+        const reason = await promptDialog({
+          title: `Cancel ${orderId} after scan?`,
+          description:
+            'It moves to "Cancel after scan" — no delivery note is cut and its scan data is kept.',
+          label: 'Reason',
+          defaultValue: 'Cancelled at pickup',
+          required: false,
+          confirmLabel: 'Cancel order',
+          cancelLabel: 'Keep order',
+          destructive: true,
+        });
+        if (reason === null) return; // operator dismissed the dialog
         cancel.mutate(
           { reason },
           {
@@ -894,12 +906,17 @@ function ConfirmButton({ dispatchId, orderId, partialOf = null }: {
       variant={partialOf ? 'outline' : 'default'}
       className={partialOf ? 'border-amber-400 text-amber-700 dark:text-amber-400' : undefined}
       disabled={confirm.isPending}
-      onClick={() => {
-        if (partialOf && !window.confirm(
-          `${orderId} — ship the ${partialOf.scanned} scanned parcel(s) of ${partialOf.total} now?\n\n`
-          + `They get their own delivery note. The ${partialOf.remaining} still to scan stay `
-          + `in "To scan" — scan them later and confirm again.`,
-        )) return;
+      onClick={async () => {
+        if (partialOf) {
+          const shipPartial = await confirmDialog({
+            title: `${orderId} — ship the ${partialOf.scanned} scanned parcel(s) of ${partialOf.total} now?`,
+            description:
+              `They get their own delivery note. The ${partialOf.remaining} still to scan stay `
+              + `in "To scan" — scan them later and confirm again.`,
+            confirmLabel: 'Ship scanned now',
+          });
+          if (!shipPartial) return;
+        }
         confirm.mutate(
           {},
           {

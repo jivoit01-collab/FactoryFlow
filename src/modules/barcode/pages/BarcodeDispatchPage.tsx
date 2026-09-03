@@ -21,6 +21,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
@@ -1335,7 +1336,12 @@ export default function BarcodeDispatchPage() {
 
   const handleRemoveScannedBox = async (unit: DispatchScannedUnit) => {
     if (!session) return;
-    if (!window.confirm('Are you sure you want to remove this scanned box?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Remove this scanned box?',
+      confirmLabel: 'Remove',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await removeScannedBoxMutation.mutateAsync({
         sessionId: session.id,

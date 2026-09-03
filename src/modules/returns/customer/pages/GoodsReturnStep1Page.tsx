@@ -7,7 +7,13 @@ import { StepHeader } from '@/modules/gate/components';
 import { Button, Card, CardContent, Input, Label, Textarea } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import { goodsReturnApi, type GoodsReturnBasis, useCreateGoodsReturn, useInvoiceSearch } from '../api';
+import {
+  goodsReturnApi,
+  type GoodsReturnBasis,
+  type GoodsReturnInvoicePreviewLine,
+  useCreateGoodsReturn,
+  useInvoiceSearch,
+} from '../api';
 import { ATTACHMENT_TYPE_BY_BASIS, BASIS_LABELS } from '../utils';
 
 interface AddedInvoice {
@@ -16,6 +22,7 @@ interface AddedInvoice {
   card_name: string;
   line_count: number;
   total_quantity: number;
+  items: GoodsReturnInvoicePreviewLine[];
 }
 
 const BASIS_OPTIONS: { value: GoodsReturnBasis; description: string }[] = [
@@ -81,6 +88,7 @@ export default function GoodsReturnStep1Page() {
           card_name: result.card_name,
           line_count: result.line_count,
           total_quantity: result.total_quantity,
+          items: result.items ?? [],
         },
       ]);
       setInvoiceNumber('');
@@ -209,26 +217,47 @@ export default function GoodsReturnStep1Page() {
             ) : (
               <div className="space-y-2">
                 {addedInvoices.map((inv) => (
-                  <div
-                    key={inv.doc_num}
-                    className="flex items-center justify-between rounded-md border p-3 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">Invoice {inv.doc_num}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {inv.line_count} items · qty {inv.total_quantity}
-                      </p>
+                  <div key={inv.doc_num} className="rounded-md border p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Invoice {inv.doc_num}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {inv.line_count} items · qty {inv.total_quantity}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() =>
+                          setAddedInvoices((prev) => prev.filter((item) => item.doc_num !== inv.doc_num))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() =>
-                        setAddedInvoices((prev) => prev.filter((item) => item.doc_num !== inv.doc_num))
-                      }
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    {/* The billed lines, so the clerk can confirm this is the right bill
+                        before booking a return against it. */}
+                    {inv.items.length > 0 && (
+                      <div className="mt-2 divide-y rounded-md border bg-muted/30">
+                        {inv.items.map((line) => (
+                          <div
+                            key={line.line_num}
+                            className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{line.item_name || line.item_code}</p>
+                              {line.item_name && (
+                                <p className="text-muted-foreground">{line.item_code}</p>
+                              )}
+                            </div>
+                            <p className="shrink-0 text-muted-foreground">
+                              {line.quantity.toLocaleString('en-IN')} {line.uom}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

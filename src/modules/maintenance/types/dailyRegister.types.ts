@@ -13,6 +13,7 @@ export interface ElectricityMeter {
   // attributed to any company yet.
   company_codes: CompanyCode[];
   companies_display: string;
+  // Read-only: resolved from the admin Cost Master (value "meter:<name>").
   rate_per_unit: string;
   // Grid multiplying factor: the dial difference is multiplied by it to get the
   // billed units. "1.0000" means the dial reads true.
@@ -31,7 +32,7 @@ export interface ElectricityMeterPayload {
   meter_number?: string;
   location?: string;
   company_codes?: CompanyCode[];
-  rate_per_unit?: string;
+  // ₹/unit is not writable here — it is set on the admin Cost Master page.
   multiplying_factor?: string;
   is_active?: boolean;
 }

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
@@ -71,22 +72,21 @@ function toggle(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-/** Manage the violation-type master (name + standard fine amount). */
+/** Manage the violation-type master. The standard fine amount lives in the
+ * admin Cost Master (VALUE rate "violation:<name>") — this dialog only shows it. */
 function ViolationTypesDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
   const typesQuery = useSafetyViolationTypes();
   const createType = useCreateSafetyViolationType();
   const deleteType = useDeleteSafetyViolationType();
 
   const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
 
   const handleAdd = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!name.trim()) return;
-    await createType.mutateAsync({ name: name.trim(), default_fine_amount: amount || '0' });
+    await createType.mutateAsync({ name: name.trim() });
     setName('');
-    setAmount('');
-    toast.success('Violation type added');
+    toast.success('Violation type added — set its fine on the Cost Master page');
   };
 
   const types = typesQuery.data ?? [];
@@ -108,22 +108,18 @@ function ViolationTypesDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
               placeholder="e.g. No Helmet"
             />
           </div>
-          <div className="w-40 space-y-1">
-            <Label htmlFor="vt_amount">Default fine (₹)</Label>
-            <Input
-              id="vt_amount"
-              type="number"
-              min="0"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
           <Button type="submit" disabled={createType.isPending}>
             <Plus className="h-4 w-4" />
             Add
           </Button>
         </form>
+        <p className="text-xs text-muted-foreground">
+          Standard fine amounts are set on the{' '}
+          <Link to="/admin/cost-master" className="text-primary underline">
+            Cost Master
+          </Link>{' '}
+          page (value “violation:&lt;name&gt;”).
+        </p>
 
         {types.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">

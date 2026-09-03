@@ -223,6 +223,15 @@ export const goodsReturnApi = {
     return response.data;
   },
 
+  /** Soft delete: the entry is marked CANCELLED and kept for the audit trail.
+   *  The backend refuses anything already received at the gate. */
+  async cancel(id: number): Promise<GoodsReturnDetail> {
+    const response = await apiClient.delete<GoodsReturnDetail>(
+      API_ENDPOINTS.GOODS_RETURN.BY_ID(id),
+    );
+    return response.data;
+  },
+
   async addInvoiceRef(id: number, invoiceNumber: string): Promise<GoodsReturnDetail> {
     const response = await apiClient.post<GoodsReturnDetail>(
       API_ENDPOINTS.GOODS_RETURN.INVOICE_REFS(id),

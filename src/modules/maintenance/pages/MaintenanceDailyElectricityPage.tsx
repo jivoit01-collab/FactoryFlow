@@ -1,10 +1,12 @@
 import { Gauge, Loader2, Pencil, Plus, Trash2, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { COMPANY_CODE_LIST, COMPANY_LABELS, type CompanyCode } from '@/config/constants';
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -62,7 +64,8 @@ const EMPTY_METER_FORM = {
   name: '',
   meter_number: '',
   location: '',
-  rate_per_unit: '',
+  // ₹/unit is not edited here — it lives in the admin Cost Master
+  // (VALUE rate "meter:<name>"); the API serves the resolved rate.
   // Grid MF — left blank the backend keeps it at 1 (dial read as-is).
   multiplying_factor: '',
   // Companies the meter feeds — several for a shared meter, one for a meter on
@@ -216,7 +219,13 @@ export default function MaintenanceDailyElectricityPage() {
   };
 
   const removeReading = async (reading: DailyElectricityReading) => {
-    if (!window.confirm(`Delete the ${reading.date} reading for ${reading.meter_name}?`)) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete reading?',
+      description: `The ${reading.date} reading for ${reading.meter_name} will be deleted.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteReading.mutateAsync(reading.id);
       toast.success('Reading deleted');
@@ -231,7 +240,6 @@ export default function MaintenanceDailyElectricityPage() {
       name: meter.name,
       meter_number: meter.meter_number,
       location: meter.location,
-      rate_per_unit: meter.rate_per_unit,
       multiplying_factor: meter.multiplying_factor,
       company_codes: meter.company_codes ?? [],
     });
@@ -246,7 +254,6 @@ export default function MaintenanceDailyElectricityPage() {
       name: meterForm.name.trim(),
       meter_number: meterForm.meter_number,
       location: meterForm.location,
-      rate_per_unit: meterForm.rate_per_unit === '' ? undefined : meterForm.rate_per_unit,
       multiplying_factor:
         meterForm.multiplying_factor === '' ? undefined : meterForm.multiplying_factor,
       company_codes: meterForm.company_codes,
@@ -703,15 +710,12 @@ export default function MaintenanceDailyElectricityPage() {
                     onChange={(e) => setMeterForm((p) => ({ ...p, location: e.target.value }))}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="meter-rate">Rate per Unit (₹)</Label>
-                  <Input
-                    id="meter-rate"
-                    type="number"
-                    step="0.0001"
-                    value={meterForm.rate_per_unit}
-                    onChange={(e) => setMeterForm((p) => ({ ...p, rate_per_unit: e.target.value }))}
-                  />
+                <div className="flex items-end pb-2 text-xs text-muted-foreground">
+                  ₹/unit is set on the{' '}
+                  <Link to="/admin/cost-master" className="mx-1 text-primary underline">
+                    Cost Master
+                  </Link>{' '}
+                  (value “meter:&lt;name&gt;”).
                 </div>
                 <div className="col-span-2">
                   <Label htmlFor="meter-factor">Multiplying Factor (MF)</Label>

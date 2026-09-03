@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 
 import { ETP_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
@@ -202,8 +203,12 @@ export default function EtpCalibrationPage() {
   };
 
   const remove = async (record: CalibrationRecord) => {
-    if (!window.confirm(`Delete the ${record.date} calibration of ${record.instrument_code}?`))
-      return;
+    const confirmed = await confirmDialog({
+      title: `Delete the ${record.date} calibration of ${record.instrument_code}?`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteRecord.mutateAsync(record.id);
       toast.success('Calibration deleted');

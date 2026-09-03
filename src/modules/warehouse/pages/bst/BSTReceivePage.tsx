@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { useScanner } from '@/modules/barcode/hooks/useScanner';
 import { WmsEnabledGate } from '@/modules/wms/components/WmsEnabledGate';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input } from '@/shared/components/ui';
 import {
@@ -219,11 +220,13 @@ export default function BSTReceivePage() {
       return;
     }
     if (pending > 0) {
-      const ok = window.confirm(
-        `${pending} box(es) are still pending. Finalizing now records them as not received ` +
-          `and marks this transfer partially received. Continue?`,
-      );
-      if (!ok) return;
+      const confirmed = await confirmDialog({
+        title: `Finalize with ${pending} box(es) still pending?`,
+        description:
+          'Finalizing now records them as not received and marks this transfer partially received.',
+        confirmLabel: 'Finalize',
+      });
+      if (!confirmed) return;
     }
     try {
       await completeMut.mutateAsync(transferId);

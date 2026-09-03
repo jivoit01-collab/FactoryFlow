@@ -1,4 +1,10 @@
 export { ControlledDocumentFrame } from './ControlledDocumentPrint';
+export {
+  ConfirmDialogHost,
+  confirmDialog,
+  promptDialog,
+} from './ConfirmDialog';
+export type { ConfirmDialogOptions, PromptDialogOptions } from './ConfirmDialog';
 export * from './dashboard';
 export { DocumentCodeBadge } from './DocumentCodeBadge';
 export { EntryTimeSummary } from './EntryTimeSummary';

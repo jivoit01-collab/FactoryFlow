@@ -220,38 +220,8 @@ export type BlowingCostCategory =
   | 'WASTAGE'
   | 'BENCHMARK_BLOWING_PER_BOTTLE';
 
-export type BlowingCostBasis = 'PER_DAY' | 'PER_PERSON_DAY' | 'PER_UNIT' | 'PER_BOTTLE';
-
-export interface BlowingCostRate {
-  id: number;
-  machine: number | null; // null = company-wide default; set = per-machine override
-  machine_name: string | null;
-  category: BlowingCostCategory;
-  category_display: string;
-  basis: BlowingCostBasis;
-  basis_display: string;
-  rate: string;
-  is_credit: boolean;
-  label: string;
-  // Applies to runs dated on/after this. A rate change is a NEW dated row, so a
-  // past run always reprices at the rate that applied on its own date.
-  effective_from: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface UpsertBlowingCostRateRequest {
-  machine_id?: number | null; // null / omitted = company-wide default
-  category: BlowingCostCategory;
-  basis: BlowingCostBasis;
-  rate: string | number;
-  is_credit?: boolean;
-  label?: string;
-  // Omitted = effective today. A later date schedules the change; re-posting an
-  // existing date corrects that day's row instead of adding one.
-  effective_from?: string;
-}
+// Cost-rate types removed: rates are managed on the admin Cost Master page
+// (/admin/cost-master); the category union stays for run cost lines.
 
 export interface BlowingRunCostLine {
   id: number;

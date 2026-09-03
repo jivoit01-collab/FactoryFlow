@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import type { CompanyCode } from '@/config/constants';
 import { ETP_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -209,7 +210,12 @@ export default function EtpDailyLogPage() {
   };
 
   const remove = async (log: DailyPlantLog) => {
-    if (!window.confirm(`Delete the ${log.date} log for ${log.plant_code}?`)) return;
+    const confirmed = await confirmDialog({
+      title: `Delete the ${log.date} log for ${log.plant_code}?`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteLog.mutateAsync(log.id);
       toast.success('Entry deleted');

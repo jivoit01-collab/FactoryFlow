@@ -63,10 +63,10 @@ describe('safetyFineApi', () => {
   });
 
   it('creates violation types on the master endpoint', async () => {
-    await safetyFineApi.createViolationType({ name: 'No Helmet', default_fine_amount: '500' });
+    // The standard fine amount lives in the central Cost Master, not here.
+    await safetyFineApi.createViolationType({ name: 'No Helmet' });
     expect(mockedApiClient.post).toHaveBeenCalledWith('/maintenance/safety-violation-types/', {
       name: 'No Helmet',
-      default_fine_amount: '500',
     });
   });
 

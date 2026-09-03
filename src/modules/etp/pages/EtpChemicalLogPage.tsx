@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import type { CompanyCode } from '@/config/constants';
 import { ETP_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -209,7 +210,12 @@ export default function EtpChemicalLogPage() {
   };
 
   const remove = async (log: ChemicalConsumptionLog) => {
-    if (!window.confirm(`Delete the ${log.date} entry for ${log.plant_code}?`)) return;
+    const confirmed = await confirmDialog({
+      title: `Delete the ${log.date} entry for ${log.plant_code}?`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteLog.mutateAsync(log.id);
       toast.success('Entry deleted');

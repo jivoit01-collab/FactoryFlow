@@ -466,7 +466,7 @@ function MasterDataPage() {
     <div className="space-y-6">
       <DashboardHeader title="Blowing — Master Data" description="Machines, preform specs and buy prices">
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/production/blowing/cost-master')}>
+          <Button variant="outline" onClick={() => navigate('/admin/cost-master')}>
             Cost Master
           </Button>
           <Button variant="outline" onClick={() => navigate('/production/blowing')}>

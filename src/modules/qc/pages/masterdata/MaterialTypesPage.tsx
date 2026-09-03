@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { QC_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
 import { usePermission } from '@/core/auth';
+import { confirmDialog } from '@/shared/components';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
   Badge,
@@ -252,7 +253,12 @@ export default function MaterialTypesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this material type?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete this material type?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       await deleteMaterialType.mutateAsync(id);

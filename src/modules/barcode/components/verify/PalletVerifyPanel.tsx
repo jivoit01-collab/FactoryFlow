@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import {
@@ -196,9 +197,13 @@ export default function PalletVerifyPanel({
       toast.info('Nothing to apply for the selected actions.');
       return;
     }
-    if (!window.confirm(`Apply reconciliation: ${parts.join(' and ')}? This moves stock.`)) {
-      return;
-    }
+    const confirmed = await confirmDialog({
+      title: `Apply reconciliation: ${parts.join(' and ')}?`,
+      description: 'This moves stock.',
+      confirmLabel: 'Apply',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       const res = await applyReconcile({
         palletId,

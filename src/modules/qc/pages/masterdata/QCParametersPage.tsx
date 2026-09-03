@@ -14,6 +14,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { VendorSelect } from '@/modules/gate/components/VendorSelect';
+import { confirmDialog } from '@/shared/components';
 import {
   Button,
   Card,
@@ -228,7 +229,12 @@ export default function QCParametersPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this parameter?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete this parameter?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       await deleteParameter.mutateAsync(id);
@@ -297,13 +303,20 @@ export default function QCParametersPage() {
 
     // A vendor added by mistake is usually still empty, so don't make that case
     // sound alarming — but spell out what is being thrown away when it isn't.
-    const warning = set.parameter_count
-      ? `Remove ${set.label} and its ${set.parameter_count} parameter${
-          set.parameter_count === 1 ? '' : 's'
-        }?\n\nInspections for this vendor will fall back to the default set. ` +
-        `Completed inspections and their reports keep the values they were judged on.`
-      : `Remove ${set.label}? It has no parameters of its own yet.`;
-    if (!confirm(warning)) return;
+    const confirmed = await confirmDialog({
+      title: set.parameter_count
+        ? `Remove ${set.label} and its ${set.parameter_count} parameter${
+            set.parameter_count === 1 ? '' : 's'
+          }?`
+        : `Remove ${set.label}?`,
+      description: set.parameter_count
+        ? 'Inspections for this vendor will fall back to the default set. ' +
+          'Completed inspections and their reports keep the values they were judged on.'
+        : 'It has no parameters of its own yet.',
+      confirmLabel: 'Remove',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       setApiErrors({});

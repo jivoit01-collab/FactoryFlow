@@ -32,6 +32,7 @@ import {
 } from '@/modules/gate/api/arrivals/arrivals.queries';
 import { StepFooter, StepHeader, StepLoadingSpinner } from '@/modules/gate/components';
 import { useEntryId } from '@/modules/gate/hooks';
+import { confirmDialog } from '@/shared/components';
 import {
   Button,
   Card,
@@ -568,11 +569,12 @@ export default function SalesDispatchAttachmentsPage() {
           const bills = (respData.undocked_bills ?? [])
             .map((b) => b.sap_doc_num)
             .join(', ');
-          const proceed = window.confirm(
-            `${respData.detail ?? 'This truck has booked bills not on this docking.'}\n\n` +
-              `OK = dispatch partial (leave ${bills} behind).\n` +
-              `Cancel = go dock the remaining bills onto this docking first.`,
-          );
+          const proceed = await confirmDialog({
+            title: 'Dispatch partial load?',
+            description: `${respData.detail ?? 'This truck has booked bills not on this docking.'} Dispatching partial leaves ${bills} behind; otherwise go dock the remaining bills onto this docking first.`,
+            confirmLabel: 'Dispatch partial',
+            cancelLabel: 'Dock remaining first',
+          });
           if (!proceed) {
             toast.info('Dock the remaining bills onto this docking, then upload the photo.');
             return;

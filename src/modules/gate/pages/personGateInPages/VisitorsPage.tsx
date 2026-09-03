@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { VALIDATION_PATTERNS } from '@/config/constants';
+import { confirmDialog } from '@/shared/components';
 import {
   Button,
   Card,
@@ -133,7 +134,12 @@ export default function VisitorsPage() {
 
   // Handle delete
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this visitor?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete this visitor?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       await deleteMutation.mutateAsync(id);

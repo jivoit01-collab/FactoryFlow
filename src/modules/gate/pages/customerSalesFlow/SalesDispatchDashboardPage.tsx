@@ -44,6 +44,7 @@ import {
   useUpdateSalesDispatchLock,
 } from '@/modules/gate/api';
 import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
+import { promptDialog } from '@/shared/components';
 import {
   Button,
   Dialog,
@@ -263,14 +264,14 @@ export default function SalesDispatchDashboardPage() {
         return;
       }
 
-      const reason = window.prompt('Reason for locking Gate pass printing');
+      const reason = await promptDialog({
+        title: 'Lock Gate pass printing?',
+        label: 'Reason',
+        placeholder: 'Reason for locking Gate pass printing',
+        confirmLabel: 'Lock printing',
+      });
       if (reason === null) return;
-      const trimmedReason = reason.trim();
-      if (!trimmedReason) {
-        toast.error('A reason is required to lock Gate pass printing');
-        return;
-      }
-      await updateLock.mutateAsync({ is_locked: true, reason: trimmedReason });
+      await updateLock.mutateAsync({ is_locked: true, reason });
       toast.success('Gate pass printing locked');
     } catch (lockError) {
       toast.error(getErrorMessage(lockError, 'Failed to update Docking lock'));

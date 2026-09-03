@@ -5,4 +5,5 @@ export {
   DEFAULT_SERVICE_GRPO_GL_ACCOUNT,
   GRPO_STATUS,
   GRPO_STATUS_CONFIG,
+  PM_WAREHOUSE_CODE,
 } from './grpo.constants';

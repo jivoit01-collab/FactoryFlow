@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import type { CompanyCode } from '@/config/constants';
 import { ETP_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -201,7 +202,12 @@ export default function EtpBackwashPage() {
   };
 
   const remove = async (entry: BackwashEntry) => {
-    if (!window.confirm(`Delete ${entry.equipment_name} on ${entry.date}?`)) return;
+    const confirmed = await confirmDialog({
+      title: `Delete ${entry.equipment_name} on ${entry.date}?`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteEntry.mutateAsync(entry.id);
       toast.success('Entry deleted');

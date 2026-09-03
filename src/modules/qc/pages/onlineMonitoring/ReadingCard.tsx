@@ -2,6 +2,7 @@ import { AlertTriangle, ChevronDown, ChevronRight, Paperclip, Pencil, Trash2, Up
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { Badge, Button, Input, NativeSelect, SelectOption } from '@/shared/components/ui';
 import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
@@ -109,9 +110,14 @@ export function ReadingCard({ recordId, reading, specMap, editable, onClose }: P
     else update.mutate({ recordId, args: { readingId: reading!.id, payload } }, { onSuccess, onError });
   }
 
-  function del() {
+  async function del() {
     if (!reading) return;
-    if (!window.confirm('Delete this reading?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete this reading?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     remove.mutate(
       { recordId, args: { readingId: reading.id } },
       { onError: (e) => toast.error(getErrorMessage(e, 'Could not delete')) },

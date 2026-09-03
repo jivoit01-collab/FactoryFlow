@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 
@@ -66,7 +67,7 @@ const dialog = () => within(screen.getByRole('dialog'));
 
 describe('Daily Electricity — multiplying factor', () => {
   it('shows the factor next to the billed units', () => {
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     const row = screen.getByText('2026-08-20').closest('tr') as HTMLElement;
     expect(within(row).getByText('×40')).toBeInTheDocument();
@@ -74,7 +75,7 @@ describe('Daily Electricity — multiplying factor', () => {
   });
 
   it('carries the meter’s factor into a new reading and previews the billed units', async () => {
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /add reading/i }));
 
     // Picking the meter prefills its opening, rate and factor.
@@ -96,7 +97,7 @@ describe('Daily Electricity — multiplying factor', () => {
   });
 
   it('sends the factor set on a new meter', async () => {
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /^meters$/i }));
 
     fireEvent.change(dialog().getByLabelText('Name'), { target: { value: 'LT Incomer' } });

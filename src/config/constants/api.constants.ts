@@ -842,8 +842,7 @@ export const API_ENDPOINTS = {
     PREFORM_SPEC_DETAIL: (specId: number) => `/blowing/preform-specs/${specId}/`,
     RATE_CONFIGS: '/blowing/rate-configs/',
     RATE_CONFIG_DETAIL: (configId: number) => `/blowing/rate-configs/${configId}/`,
-    COST_RATES: '/blowing/cost-rates/',
-    COST_RATE_DETAIL: (rateId: number) => `/blowing/cost-rates/${rateId}/`,
+    // Cost rates moved to the central Cost Master (COST_MASTER block below).
     BUY_PRICES: '/blowing/buy-prices/',
     BUY_PRICE_DETAIL: (buyId: number) => `/blowing/buy-prices/${buyId}/`,
     // Runs
@@ -1021,9 +1020,7 @@ export const API_ENDPOINTS = {
     LINE_CONFIGS: '/production-execution/line-configs/',
     LINE_CONFIG_DETAIL: (id: number) => `/production-execution/line-configs/${id}/`,
     LINE_CONFIG_AUTO_FILL: '/production-execution/line-configs/auto-fill/',
-    // Cost Master
-    COST_RATES: '/production-execution/cost-rates/',
-    COST_RATE_DETAIL: (id: number) => `/production-execution/cost-rates/${id}/`,
+    // Cost rates moved to the central Cost Master (COST_MASTER block below).
   },
   // Warehouse
   WAREHOUSE: {

@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { queryClient } from '@/core/api';
 import { NotificationPermissionPrompt } from '@/core/notifications';
 import { store } from '@/core/store';
+import { ConfirmDialogHost } from '@/shared/components';
 import { SettingsProvider, ThemeProvider, useTheme } from '@/shared/contexts';
 
 import { NotificationProvider } from './NotificationProvider';
@@ -30,6 +31,7 @@ export function AppProviders({ children }: AppProvidersProps) {
                 {children}
                 <NotificationPermissionPrompt />
                 <ThemedToaster />
+                <ConfirmDialogHost />
               </NotificationProvider>
             </SettingsProvider>
           </ThemeProvider>

@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
@@ -111,7 +112,13 @@ export default function PalletDetailPage() {
 
   const handleDeleteEmptyPallet = async () => {
     if (!pallet) return;
-    if (!confirm(`Delete empty pallet ${pallet.pallet_id}? This cannot be undone.`)) return;
+    const confirmed = await confirmDialog({
+      title: `Delete empty pallet ${pallet.pallet_id}?`,
+      description: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       await deleteEmptyPalletMutation.mutateAsync(pallet.id);

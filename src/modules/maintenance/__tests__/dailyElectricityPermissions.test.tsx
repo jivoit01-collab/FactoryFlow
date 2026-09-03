@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -113,7 +114,7 @@ describe('Daily Electricity page — per-group gating', () => {
 
   it('shows a viewer the register and none of the actions', () => {
     signInAs('Daily Electricity Viewer');
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     expect(screen.getAllByText('Main Incomer').length).toBeGreaterThan(0);
     expect(metersButton()).not.toBeInTheDocument();
@@ -124,7 +125,7 @@ describe('Daily Electricity page — per-group gating', () => {
 
   it('gives the meter manager the meter master only', () => {
     signInAs('Electricity Meter Manager');
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     expect(metersButton()).toBeInTheDocument();
     expect(addReadingButton()).not.toBeInTheDocument();
@@ -134,7 +135,7 @@ describe('Daily Electricity page — per-group gating', () => {
 
   it('lets the reading operator add a reading but not correct or delete one', () => {
     signInAs('Electricity Reading Operator');
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     expect(addReadingButton()).toBeInTheDocument();
     expect(metersButton()).not.toBeInTheDocument();
@@ -144,7 +145,7 @@ describe('Daily Electricity page — per-group gating', () => {
 
   it('lets the reading supervisor correct and delete, still without the meter master', () => {
     signInAs('Electricity Reading Supervisor');
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     expect(addReadingButton()).toBeInTheDocument();
     expect(editReadingButton()).toBeInTheDocument();
@@ -154,7 +155,7 @@ describe('Daily Electricity page — per-group gating', () => {
 
   it('keeps the legacy manage permission a full superset', () => {
     granted.current = new Set<string>([MAINTENANCE_PERMISSIONS.MANAGE_DAILY_ELECTRICITY]);
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     expect(metersButton()).toBeInTheDocument();
     expect(addReadingButton()).toBeInTheDocument();
@@ -164,7 +165,7 @@ describe('Daily Electricity page — per-group gating', () => {
 
   it('shows every action to the full manager group', () => {
     signInAs('Daily Electricity Manager');
-    render(<MaintenanceDailyElectricityPage />);
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
 
     expect(metersButton()).toBeInTheDocument();
     expect(addReadingButton()).toBeInTheDocument();

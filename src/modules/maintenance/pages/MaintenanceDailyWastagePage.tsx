@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -122,7 +123,13 @@ export default function MaintenanceDailyWastagePage() {
   };
 
   const remove = async (log: DailyWastageLog) => {
-    if (!window.confirm(`Delete the ${log.date} entry for ${log.material_name}?`)) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete wastage entry?',
+      description: `The ${log.date} entry for ${log.material_name} will be deleted.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteLog.mutateAsync(log.id);
       toast.success('Wastage entry deleted');

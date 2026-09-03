@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 
 import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
@@ -967,7 +968,12 @@ export default function MaintenanceWorkOrderDetailPage() {
   };
 
   const handleClose = async () => {
-    if (!workOrder || !window.confirm(`Close ${workOrder.work_order_no}?`)) return;
+    if (!workOrder) return;
+    const confirmed = await confirmDialog({
+      title: `Close ${workOrder.work_order_no}?`,
+      confirmLabel: 'Close',
+    });
+    if (!confirmed) return;
     await closeWorkOrder.mutateAsync(workOrder.id);
     toast.success('Work order closed');
   };
@@ -993,7 +999,12 @@ export default function MaintenanceWorkOrderDetailPage() {
 
   const handleAttachmentDelete = async (attachment: MaintenanceWorkOrderAttachment) => {
     const label = attachment.title || attachment.file_name || 'this attachment';
-    if (!window.confirm(`Remove ${label}?`)) return;
+    const confirmed = await confirmDialog({
+      title: `Remove ${label}?`,
+      confirmLabel: 'Remove',
+      destructive: true,
+    });
+    if (!confirmed) return;
     await deleteAttachment.mutateAsync(attachment.id);
     toast.success('Attachment removed');
   };

@@ -27,6 +27,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import {
   Badge,
   Button,
@@ -334,8 +335,13 @@ export default function WmsWarehouseEditorPage() {
 
   // -- selection-based edits (all undoable via mutate) ----------------------
 
-  function deleteSelected() {
-    if (!window.confirm(`Delete ${selectedArray.length} location(s)?`)) return;
+  async function deleteSelected() {
+    const confirmed = await confirmDialog({
+      title: `Delete ${selectedArray.length} location(s)?`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     const ids = new Set(selectedArray);
     void run(
       () => mutate((current) => ({ ...current, locations: current.locations.filter((l) => !ids.has(l.id)) })),

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
+import { confirmDialog } from '@/shared/components';
 import { Badge, Button, Input } from '@/shared/components/ui';
 
 import { useDeleteTestingProcedure, useTestingProcedures } from '../../api/testingProcedure';
@@ -35,7 +36,13 @@ export default function ProcedureList({ procedureType, canManage }: ProcedureLis
     : procedures;
 
   const handleDelete = async (id: number, code: string) => {
-    if (!confirm(`Retire ${code}? It stays in the records but drops out of this list.`)) return;
+    const confirmed = await confirmDialog({
+      title: `Retire ${code}?`,
+      description: 'It stays in the records but drops out of this list.',
+      confirmLabel: 'Retire',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteProcedure.mutateAsync(id);
       toast.success(`${code} retired.`);

@@ -71,39 +71,8 @@ export type CostCategory =
 
 export type CostBasis = 'PER_UNIT' | 'PER_PERSON_DAY' | 'PER_DAY' | 'PER_HOUR' | 'PER_MONTH';
 
-export interface CostRate {
-  id: number;
-  /** null = company-wide default; set = per-line override. */
-  line: number | null;
-  line_name: string | null;
-  category: CostCategory;
-  category_display: string;
-  basis: CostBasis;
-  basis_display: string;
-  rate: string;
-  is_credit: boolean;
-  label: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface UpsertCostRatePayload {
-  /** null / omitted = company-wide default. */
-  line_id?: number | null;
-  category: CostCategory;
-  basis: CostBasis;
-  rate: string | number;
-  is_credit?: boolean;
-  label?: string;
-}
-
-export interface UpdateCostRatePayload {
-  basis?: CostBasis;
-  rate?: string | number;
-  is_credit?: boolean;
-  label?: string;
-}
+// Cost-rate types removed: rates are managed on the admin Cost Master page
+// (/admin/cost-master); the category/basis unions stay for run cost lines.
 
 export interface LineSkuConfig {
   id: number;

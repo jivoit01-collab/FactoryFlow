@@ -8,6 +8,7 @@ export interface SafetyViolationType {
   company: number;
   name: string;
   description: string;
+  // Read-only: resolved from the admin Cost Master (value "violation:<name>").
   default_fine_amount: string;
   fines_count: number;
   is_active: boolean;
@@ -79,7 +80,7 @@ export interface SafetyFine {
 export interface SafetyViolationTypePayload {
   name: string;
   description?: string;
-  default_fine_amount?: string;
+  // The standard fine is not writable here — set it on the admin Cost Master page.
   is_active?: boolean;
 }
 

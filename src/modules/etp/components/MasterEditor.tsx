@@ -12,6 +12,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import {
   Button,
   Card,
@@ -229,7 +230,12 @@ export function MasterEditor<T extends { id: number; is_active?: boolean }>({
   const remove = async (row: T) => {
     if (!onDelete) return;
     const label = rowLabel ? rowLabel(row) : `#${row.id}`;
-    if (!window.confirm(`Delete ${label}?`)) return;
+    const confirmed = await confirmDialog({
+      title: `Delete ${label}?`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await onDelete(row.id);
       toast.success('Deleted');
