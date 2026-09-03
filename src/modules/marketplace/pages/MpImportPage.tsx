@@ -119,7 +119,8 @@ export default function MpImportPage() {
           <CardDescription>
             {channel === 'AMAZON'
               ? 'Amazon order report — .xlsx or .csv (Merchant Tax Report).'
-              : 'CSV exported from the Flipkart Seller portal.'}
+              : 'Flipkart Seller portal export — prefer the .xlsx (the .csv variant can '
+                + 'corrupt numeric tracking IDs into scientific notation).'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -202,6 +203,34 @@ export default function MpImportPage() {
               <Stat label="Unmapped SKUs" value={preview.unmapped_skus.length} tone={preview.unmapped_skus.length ? 'amber' : undefined} />
             </div>
 
+            {(preview.corrupted_tracking_count ?? 0) > 0 && (
+              <div className="space-y-2 rounded-md border border-rose-500/40 bg-rose-500/5 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-rose-700 dark:text-rose-400">
+                  <AlertTriangle className="h-4 w-4" />
+                  {preview.corrupted_tracking_count} tracking ID
+                  {preview.corrupted_tracking_count === 1 ? ' is' : 's are'} corrupted in this file
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The file stores them as scientific notation (e.g. 5.26845E+12) — the real
+                  digits are NOT in the file, so these parcels can never be scanned by
+                  tracking ID on this sheet. This happens when the file passes through a
+                  spreadsheet (opening + saving in Excel), and some Flipkart report exports
+                  arrive like this already. Generate a NEW export and upload it without
+                  opening it; if the new export shows the same warning, correct these IDs
+                  from the parcel labels or the seller portal.
+                </p>
+                <div className="max-h-32 overflow-y-auto text-xs">
+                  <div className="flex flex-wrap gap-1">
+                    {(preview.corrupted_trackings ?? []).map((c) => (
+                      <Badge key={c.order_id} variant="outline" className="border-rose-500/40">
+                        {c.order_id} · {c.tracking}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {preview.has_duplicates && (
               <div className="space-y-2 rounded-md border bg-muted/30 p-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
@@ -267,6 +296,15 @@ export default function MpImportPage() {
                   {' · '}
                   {result.summary?.blank_sku_skipped} row
                   {result.summary?.blank_sku_skipped === 1 ? '' : 's'} had no SKU
+                </span>
+              ) : null}
+              {(result.summary?.corrupted_trackings ?? 0) > 0 ? (
+                <span className="text-rose-700 dark:text-rose-400">
+                  {' · '}
+                  {result.summary?.corrupted_trackings} corrupted tracking ID
+                  {result.summary?.corrupted_trackings === 1 ? '' : 's'} (scientific
+                  notation) — these parcels cannot be scanned by tracking; fix them from a
+                  clean re-export or the parcel labels
                 </span>
               ) : null}
             </div>

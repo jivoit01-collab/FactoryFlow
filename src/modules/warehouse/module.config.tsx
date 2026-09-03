@@ -5,7 +5,7 @@ import {
   DISPATCH_PERMISSIONS,
   GATE_PERMISSIONS,
   GRPO_PERMISSIONS,
-  OMS_PERMISSIONS,
+  INVOICE_APPROVAL_PERMISSIONS,
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -224,7 +224,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST,
         GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
         GRPO_PERMISSIONS.VIEW_PENDING,
-        OMS_PERMISSIONS.VIEW_INVOICE,
+        INVOICE_APPROVAL_PERMISSIONS.VIEW_INVOICE,
         // A floor picker may hold only the bill-summary permissions; without
         // these the Warehouse menu would not appear for them at all.
         ...billSummaryViewPermissions,

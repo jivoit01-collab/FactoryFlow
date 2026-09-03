@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Reject requires a non-trivial reason (OMS also enforces this server-side). */
+/** Reject requires a non-trivial reason (the backend also enforces this server-side). */
 export const rejectInvoiceSchema = z.object({
   rejection_reason: z
     .string()

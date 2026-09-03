@@ -9,7 +9,7 @@ import { useFullscreen } from '../../dispatch/hooks';
 import { useExpenseBoard } from '../api';
 import { ExpenseListPanel, ExpenseStat, ExpenseTrendChart, ExpenseWallHeader } from '../components';
 import { BUCKET_META, BUCKET_ORDER, DEFAULT_REFRESH_MS } from '../constants';
-import type { ExpenseBucketKey } from '../types';
+import type { ExpenseBucketKey, ExpenseScope } from '../types';
 
 /** Local YYYY-MM-DD — never `toISOString()`, which shifts the day in IST. */
 function localToday(): string {
@@ -45,6 +45,9 @@ export default function FactoryExpenseWallPage() {
 
   // From and To both start on today, so the board opens on a single day — what
   // a wall in the admin's room is for — and widens only when asked.
+  // The whole factory by default: the plant shares a campus, a gate and four
+  // electricity meters, so "what did we spend" spans the companies.
+  const [scope, setScope] = useState<ExpenseScope>('all');
   const [range, setRange] = useState(() => ({ from: localToday(), to: localToday() }));
   const isSingleDay = range.from === range.to;
   const isToday = isSingleDay && range.to === localToday();
@@ -77,6 +80,7 @@ export default function FactoryExpenseWallPage() {
   const { data, isLoading, isFetching, isError, error, refetch, dataUpdatedAt } = useExpenseBoard(
     isToday ? undefined : range.from,
     isToday ? undefined : range.to,
+    scope,
   );
 
   const visible = useMemo<ExpenseBucketKey[]>(() => {
@@ -118,6 +122,9 @@ export default function FactoryExpenseWallPage() {
         onChangeFrom={changeFrom}
         onChangeTo={changeTo}
         companyCode={data?.company_code ?? '—'}
+        companyCount={data?.company_count ?? 1}
+        scope={scope}
+        onChangeScope={setScope}
         rangeTotal={Number(data?.total.today ?? 0)}
         mtdTotal={Number(data?.total.mtd ?? 0)}
         perDay={Number(data?.total.per_day ?? 0)}

@@ -54,8 +54,8 @@ import {
   useReconcileDeliveryNotes,
 } from '../api/marketplace.queries';
 import { MpChannelSelect } from '../components/MpChannelSelect';
-import { DN_PRINT_PAGE_STYLE, MpDeliveryNotePrint } from '../components/MpDeliveryNotePrint';
 import { EMPTY_RANGE, inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
+import { DN_PRINT_PAGE_STYLE, MpDeliveryNotePrint } from '../components/MpDeliveryNotePrint';
 import { MpFilterBar, MpFilterChips, MpResultCount, MpSearchInput } from '../components/MpFilters';
 import { MpVariantPicker } from '../components/MpVariantPicker';
 import { useMpChannel } from '../hooks/useMpChannel';
@@ -69,10 +69,26 @@ import type {
 } from '../types/marketplace.types';
 
 const inr = (v: string | number) =>
-  Number(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
+  Number(v).toLocaleString('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  });
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 
 /** Format a plain YYYY-MM-DD posting date. Parsed by parts, never through Date —
  *  a date-only value has no timezone, and `new Date('2026-07-31')` is UTC midnight,
@@ -189,9 +205,12 @@ function buildRequestText(summary: DeliveryNoteSummary, lines: StockShortfallLin
     summary.warehouse_code ? ` · ${summary.warehouse_code}` : ''
   }`;
   const body = lines
-    .map((l) => `${l.item_code} ${l.item_name ? `(${l.item_name}) ` : ''}— need ${Number(
-      l.shortfall_quantity,
-    )} ${l.uom} (have ${Number(l.available_quantity)}, required ${Number(l.required_quantity)})`)
+    .map(
+      (l) =>
+        `${l.item_code} ${l.item_name ? `(${l.item_name}) ` : ''}— need ${Number(
+          l.shortfall_quantity,
+        )} ${l.uom} (have ${Number(l.available_quantity)}, required ${Number(l.required_quantity)})`,
+    )
     .join('\n');
   return `${header}\n\n${body}`;
 }
@@ -281,21 +300,42 @@ export default function MpDeliveryNotesPage() {
   // live from SAP, so fetch it on click rather than for every row on the page.
   const printRef = useRef<HTMLDivElement>(null);
   const [printDn, setPrintDn] = useState<DeliveryNotePrint | null>(null);
+  const [printPages, setPrintPages] = useState(1);
   const [printing, setPrinting] = useState<number | null>(null);
   const runPrint = useReactToPrint({
     contentRef: printRef,
     pageStyle: DN_PRINT_PAGE_STYLE,
     documentTitle: printDn ? `Delivery-Note-${printDn.doc_num}` : 'Delivery-Note',
   });
+  // Always print through the newest hook: its options close over the render they
+  // were built in, so the one captured before the fetch still carries the previous
+  // note's file name (or none at all, on the first print).
+  const runPrintRef = useRef(runPrint);
+  runPrintRef.current = runPrint;
 
   async function printDeliveryNote(docEntry: number) {
     setPrinting(docEntry);
     try {
       const dn = await marketplaceApi.deliveryNotePrint(docEntry, channel);
       setPrintDn(dn);
-      // Let React paint the hidden document before handing it to the printer.
+      setPrintPages(1);
+      // Let React paint the hidden document before measuring or printing it.
       await new Promise((resolve) => setTimeout(resolve, 60));
-      runPrint();
+
+      // SAP's header says "PAGE 1 of N". Nothing in CSS can count printed pages, so
+      // measure: the host is exactly 210mm wide and therefore calibrates its own
+      // px-per-mm, against A4 minus the 10mm margins the page style sets.
+      const host = printRef.current;
+      if (host) {
+        const perMm = host.offsetWidth / 210;
+        const printable = (297 - 20) * perMm;
+        const total = Math.max(1, Math.ceil(host.scrollHeight / printable));
+        if (total !== 1) {
+          setPrintPages(total);
+          await new Promise((resolve) => setTimeout(resolve, 40));
+        }
+      }
+      runPrintRef.current();
     } catch (e) {
       toast.error(getErrorMessage(e, 'Could not build the delivery note for printing.'));
     } finally {
@@ -421,42 +461,45 @@ export default function MpDeliveryNotesPage() {
             : postedNotes.length;
 
   function doCut() {
-    cut.mutate({ warehouseId: selectedWh, batchId, docDate: docDate || null }, {
-      onSuccess: (r) => {
-        setConfirmOpen(false);
-        setDocDate('');
-        if (r.backdated) {
-          // Posting into a closed month is the exception, so say so on its own —
-          // a line inside the normal success toast would be skimmed past.
-          toast.warning(`Posted into ${r.doc_month}`, {
-            description: `These delivery notes carry ${fmtDate(r.doc_date)}, not today. SAP booked the stock movement into ${r.doc_month}.`,
-            duration: 10000,
-          });
-        }
-        const groups = r.groups ?? [];
-        if (groups.length > 1) {
-          const parts = groups.map(
-            (g) =>
-              `${g.ship_to_code || 'default'}: ${
-                g.pending_approval ? 'awaiting approval' : g.delivery_note_num || 'posted'
-              } (${g.dispatch_count})`,
-          );
-          toast.success(`Cut ${groups.length} delivery notes — ${parts.join(' · ')}`);
-        } else if (r.pending_approval) {
-          toast.success(
-            `Delivery note submitted to SAP for approval (draft ${r.draft_entry ?? ''}) for ${r.dispatch_count} dispatch(es). It posts once approved in SAP.`,
-          );
-        } else {
-          toast.success(
-            `Delivery note ${r.delivery_note_num || '(posted)'} cut for ${r.dispatch_count} dispatch(es).`,
-          );
-        }
+    cut.mutate(
+      { warehouseId: selectedWh, batchId, docDate: docDate || null },
+      {
+        onSuccess: (r) => {
+          setConfirmOpen(false);
+          setDocDate('');
+          if (r.backdated) {
+            // Posting into a closed month is the exception, so say so on its own —
+            // a line inside the normal success toast would be skimmed past.
+            toast.warning(`Posted into ${r.doc_month}`, {
+              description: `These delivery notes carry ${fmtDate(r.doc_date)}, not today. SAP booked the stock movement into ${r.doc_month}.`,
+              duration: 10000,
+            });
+          }
+          const groups = r.groups ?? [];
+          if (groups.length > 1) {
+            const parts = groups.map(
+              (g) =>
+                `${g.ship_to_code || 'default'}: ${
+                  g.pending_approval ? 'awaiting approval' : g.delivery_note_num || 'posted'
+                } (${g.dispatch_count})`,
+            );
+            toast.success(`Cut ${groups.length} delivery notes — ${parts.join(' · ')}`);
+          } else if (r.pending_approval) {
+            toast.success(
+              `Delivery note submitted to SAP for approval (draft ${r.draft_entry ?? ''}) for ${r.dispatch_count} dispatch(es). It posts once approved in SAP.`,
+            );
+          } else {
+            toast.success(
+              `Delivery note ${r.delivery_note_num || '(posted)'} cut for ${r.dispatch_count} dispatch(es).`,
+            );
+          }
+        },
+        onError: (e: unknown) => {
+          setConfirmOpen(false);
+          toast.error(getErrorMessage(e, 'Could not cut delivery note'));
+        },
       },
-      onError: (e: unknown) => {
-        setConfirmOpen(false);
-        toast.error(getErrorMessage(e, 'Could not cut delivery note'));
-      },
-    });
+    );
   }
 
   // ── Posting date ──────────────────────────────────────────────────────────
@@ -470,13 +513,14 @@ export default function MpDeliveryNotesPage() {
   const canBackdate = Boolean(summary?.can_backdate);
   // Earliest selectable: the goods must already be confirmed out, and without the
   // permission the operator cannot leave the current month at all.
-  const minDate = [
-    summary?.doc_date_min ?? '',
-    canBackdate ? (summary?.doc_date_floor ?? '') : `${monthOf(today)}-01`,
-  ]
-    .filter(Boolean)
-    .sort()
-    .pop() ?? '';
+  const minDate =
+    [
+      summary?.doc_date_min ?? '',
+      canBackdate ? (summary?.doc_date_floor ?? '') : `${monthOf(today)}-01`,
+    ]
+      .filter(Boolean)
+      .sort()
+      .pop() ?? '';
 
   function doReconcile() {
     reconcile.mutate(undefined, {
@@ -512,7 +556,8 @@ export default function MpDeliveryNotesPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Sheet</CardTitle>
           <CardDescription>
-            Post a delivery note for one sheet, or keep &quot;All sheets&quot; to cut everything awaiting.
+            Post a delivery note for one sheet, or keep &quot;All sheets&quot; to cut everything
+            awaiting.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -552,25 +597,59 @@ export default function MpDeliveryNotesPage() {
 
       {isLoading ? (
         <Card>
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">Loading…</CardContent>
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            Loading…
+          </CardContent>
         </Card>
       ) : !hasAnything ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
             <PackageCheck className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No dispatches are awaiting a delivery note.</p>
+            <p className="text-sm text-muted-foreground">
+              No dispatches are awaiting a delivery note.
+            </p>
           </CardContent>
         </Card>
       ) : (
         <>
           {/* KPI overview — click a tile to jump to its list */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <KpiTile label="Ready to cut" value={count} tone="emerald" active={tab === 'READY'} onClick={() => setTab('READY')} />
-            <KpiTile label="Held — stock" value={heldForStock.length} tone="amber" active={tab === 'HELD'} onClick={() => setTab('HELD')} />
-            <KpiTile label="Blocked" value={blocked.length} tone="red" active={tab === 'BLOCKED'} onClick={() => setTab('BLOCKED')} />
-            <KpiTile label="Already shipped" value={alreadyShipped.length} tone="slate" active={tab === 'SHIPPED'} onClick={() => setTab('SHIPPED')} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <KpiTile
+              label="Ready to cut"
+              value={count}
+              tone="emerald"
+              active={tab === 'READY'}
+              onClick={() => setTab('READY')}
+            />
+            <KpiTile
+              label="Held — stock"
+              value={heldForStock.length}
+              tone="amber"
+              active={tab === 'HELD'}
+              onClick={() => setTab('HELD')}
+            />
+            <KpiTile
+              label="Blocked"
+              value={blocked.length}
+              tone="red"
+              active={tab === 'BLOCKED'}
+              onClick={() => setTab('BLOCKED')}
+            />
+            <KpiTile
+              label="Already shipped"
+              value={alreadyShipped.length}
+              tone="slate"
+              active={tab === 'SHIPPED'}
+              onClick={() => setTab('SHIPPED')}
+            />
             <KpiTile label="Awaiting SAP" value={awaitingApproval} tone="violet" />
-            <KpiTile label="Posted" value={postedNotes.length} tone="sky" active={tab === 'POSTED'} onClick={() => setTab('POSTED')} />
+            <KpiTile
+              label="Posted"
+              value={postedNotes.length}
+              tone="sky"
+              active={tab === 'POSTED'}
+              onClick={() => setTab('POSTED')}
+            />
           </div>
 
           {/* Awaiting-approval banner (its own action) */}
@@ -581,12 +660,19 @@ export default function MpDeliveryNotesPage() {
                   <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                   <span>
                     <strong>{awaitingApproval}</strong> delivery note dispatch(es) are{' '}
-                    <strong>awaiting approval in SAP</strong>. They post automatically once approved —
-                    use refresh to check.
+                    <strong>awaiting approval in SAP</strong>. They post automatically once approved
+                    — use refresh to check.
                   </span>
                 </div>
-                <Button variant="outline" onClick={doReconcile} disabled={reconcile.isPending} className="shrink-0">
-                  <RefreshCw className={`mr-2 h-4 w-4 ${reconcile.isPending ? 'animate-spin' : ''}`} />
+                <Button
+                  variant="outline"
+                  onClick={doReconcile}
+                  disabled={reconcile.isPending}
+                  className="shrink-0"
+                >
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${reconcile.isPending ? 'animate-spin' : ''}`}
+                  />
                   {reconcile.isPending ? 'Checking…' : 'Refresh approval status'}
                 </Button>
               </CardContent>
@@ -598,7 +684,9 @@ export default function MpDeliveryNotesPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Delivery note summary</CardTitle>
-                <CardDescription>Exactly what will be sent to SAP in a single request.</CardDescription>
+                <CardDescription>
+                  Exactly what will be sent to SAP in a single request.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -608,7 +696,9 @@ export default function MpDeliveryNotesPage() {
                       <div className="text-xs text-muted-foreground">Warehouse</div>
                       <select
                         value={selectedWh ?? ''}
-                        onChange={(e) => setWarehouseId(e.target.value ? Number(e.target.value) : null)}
+                        onChange={(e) =>
+                          setWarehouseId(e.target.value ? Number(e.target.value) : null)
+                        }
                         className="mt-1 h-8 w-full rounded border bg-background px-1 text-sm font-medium"
                       >
                         {warehouses.map((w) => (
@@ -623,14 +713,20 @@ export default function MpDeliveryNotesPage() {
                     <Field label="Warehouse" value={summary!.warehouse_code || '—'} />
                   )}
                   <Field label="Doc date" value={summary!.doc_date} />
-                  <Field label="Goods issue" value={summary!.post_goods_issue ? 'Yes (packing)' : 'No'} />
+                  <Field
+                    label="Goods issue"
+                    value={summary!.post_goods_issue ? 'Yes (packing)' : 'No'}
+                  />
                 </div>
 
                 {/* Totals band */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <Field label="Dispatches" value={String(count)} />
                   <Field label="Line items" value={String(summary!.totals.fg_item_count)} />
-                  <Field label="Total qty" value={String(Number(summary!.totals.fg_total_quantity))} />
+                  <Field
+                    label="Total qty"
+                    value={String(Number(summary!.totals.fg_total_quantity))}
+                  />
                   <Field label="Total value" value={inr(summary!.totals.total_amount)} />
                 </div>
 
@@ -643,14 +739,22 @@ export default function MpDeliveryNotesPage() {
                       className="h-8 px-2 text-muted-foreground"
                       onClick={() => setShowLines((v) => !v)}
                     >
-                      <ChevronDown className={`mr-1 h-4 w-4 transition-transform ${showLines ? 'rotate-180' : ''}`} />
+                      <ChevronDown
+                        className={`mr-1 h-4 w-4 transition-transform ${showLines ? 'rotate-180' : ''}`}
+                      />
                       {showLines ? 'Hide' : 'View'} line items ({summary!.totals.fg_item_count})
                     </Button>
                     {showLines && (
                       <div className="mt-2 space-y-4">
-                        <LineTable title="Delivery note lines (finished goods)" lines={summary!.fg_lines} />
+                        <LineTable
+                          title="Delivery note lines (finished goods)"
+                          lines={summary!.fg_lines}
+                        />
                         {summary!.post_goods_issue && (
-                          <LineTable title="Goods issue lines (packing material)" lines={summary!.pm_lines} />
+                          <LineTable
+                            title="Goods issue lines (packing material)"
+                            lines={summary!.pm_lines}
+                          />
                         )}
                       </div>
                     )}
@@ -658,7 +762,10 @@ export default function MpDeliveryNotesPage() {
                 )}
 
                 <div className="flex justify-end">
-                  <Button onClick={() => setConfirmOpen(true)} disabled={cut.isPending || count === 0}>
+                  <Button
+                    onClick={() => setConfirmOpen(true)}
+                    disabled={cut.isPending || count === 0}
+                  >
                     <Send className="mr-2 h-4 w-4" /> Cut delivery note ({count})
                     {currentSheet ? ' · this sheet' : ''}
                   </Button>
@@ -687,12 +794,24 @@ export default function MpDeliveryNotesPage() {
                 <MpSearchInput
                   value={search}
                   onChange={setSearch}
-                  placeholder={tab === 'POSTED' ? 'Search DN no. or order…' : 'Search order ID or buyer…'}
+                  placeholder={
+                    tab === 'POSTED' ? 'Search DN no. or order…' : 'Search order ID or buyer…'
+                  }
                   className="w-full sm:max-w-sm"
                 />
-                <MpResultCount shown={shownCount} total={totalForTab} noun={tab === 'POSTED' ? 'note' : 'order'} />
+                <MpResultCount
+                  shown={shownCount}
+                  total={totalForTab}
+                  noun={tab === 'POSTED' ? 'note' : 'order'}
+                />
               </MpFilterBar>
-              {tab !== 'BLOCKED' && <MpDateRange value={range} onChange={setRange} label={tab === 'POSTED' ? 'Posted date' : 'Order date'} />}
+              {tab !== 'BLOCKED' && (
+                <MpDateRange
+                  value={range}
+                  onChange={setRange}
+                  label={tab === 'POSTED' ? 'Posted date' : 'Order date'}
+                />
+              )}
 
               {tab === 'HELD' && stockShortfall.length > 0 && (
                 <div className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50/50 p-2 text-sm dark:bg-amber-950/20">
@@ -713,7 +832,13 @@ export default function MpDeliveryNotesPage() {
               {/* READY */}
               {tab === 'READY' &&
                 (readyList.length === 0 ? (
-                  <EmptyRow text={dispatches.length === 0 ? 'Nothing is ready to cut.' : 'Nothing matches this filter.'} />
+                  <EmptyRow
+                    text={
+                      dispatches.length === 0
+                        ? 'Nothing is ready to cut.'
+                        : 'Nothing matches this filter.'
+                    }
+                  />
                 ) : (
                   <div className="-mx-2 overflow-x-auto sm:mx-0">
                     <table className="w-full min-w-[640px] text-sm">
@@ -754,7 +879,9 @@ export default function MpDeliveryNotesPage() {
                                   </span>
                                 ) : null}
                               </td>
-                              <td className="p-3 whitespace-nowrap text-muted-foreground">{d.order_date || '—'}</td>
+                              <td className="p-3 whitespace-nowrap text-muted-foreground">
+                                {d.order_date || '—'}
+                              </td>
                               <td className="p-3 text-muted-foreground">{d.buyer_name || '—'}</td>
                               <td className="p-3">
                                 {pickable.length > 0 ? (
@@ -783,13 +910,19 @@ export default function MpDeliveryNotesPage() {
               {/* HELD */}
               {tab === 'HELD' &&
                 (heldList.length === 0 ? (
-                  <EmptyRow text={heldForStock.length === 0 ? 'No orders held for stock.' : 'Nothing matches this filter.'} />
+                  <EmptyRow
+                    text={
+                      heldForStock.length === 0
+                        ? 'No orders held for stock.'
+                        : 'Nothing matches this filter.'
+                    }
+                  />
                 ) : (
                   <div className="space-y-2 text-sm">
                     <p className="text-xs text-muted-foreground">
                       Ready orders the warehouse can&apos;t stock yet — kept out so one short line
-                      can&apos;t fail the whole document. They join automatically once stock arrives,
-                      or switch a variant below to an item you have.
+                      can&apos;t fail the whole document. They join automatically once stock
+                      arrives, or switch a variant below to an item you have.
                     </p>
                     {heldList.map((h) => {
                       const pickable = (h.variants ?? []).filter((v) => v.has_choice);
@@ -819,7 +952,9 @@ export default function MpDeliveryNotesPage() {
                                     <tr key={s.item_code} className="border-b last:border-0">
                                       <td className="p-2">
                                         <div className="font-mono">{s.item_code}</div>
-                                        <div className="text-muted-foreground">{s.item_name || '—'}</div>
+                                        <div className="text-muted-foreground">
+                                          {s.item_name || '—'}
+                                        </div>
                                       </td>
                                       <td className="p-2 text-right">
                                         {Number(s.required_quantity)} {s.uom}
@@ -851,8 +986,8 @@ export default function MpDeliveryNotesPage() {
                           {pickable.length > 0 ? (
                             <div className="mt-2 border-t pt-2">
                               <p className="mb-1.5 text-xs text-muted-foreground">
-                                This product can ship as another SAP item — switch it to one you have
-                                in stock and the order joins this delivery note.
+                                This product can ship as another SAP item — switch it to one you
+                                have in stock and the order joins this delivery note.
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {pickable.map((v) => (
@@ -870,15 +1005,22 @@ export default function MpDeliveryNotesPage() {
               {/* BLOCKED */}
               {tab === 'BLOCKED' &&
                 (blockedList.length === 0 ? (
-                  <EmptyRow text={blocked.length === 0 ? 'Nothing is blocked.' : 'Nothing matches this filter.'} />
+                  <EmptyRow
+                    text={
+                      blocked.length === 0 ? 'Nothing is blocked.' : 'Nothing matches this filter.'
+                    }
+                  />
                 ) : (
                   <div className="space-y-1 text-sm">
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <AlertTriangle className="h-3.5 w-3.5" /> Confirmed dispatches that can&apos;t be
-                      included until resolved.
+                      <AlertTriangle className="h-3.5 w-3.5" /> Confirmed dispatches that can&apos;t
+                      be included until resolved.
                     </p>
                     {blockedList.map((b) => (
-                      <div key={b.dispatch_id} className="flex flex-wrap justify-between gap-3 rounded-md border bg-background p-2">
+                      <div
+                        key={b.dispatch_id}
+                        className="flex flex-wrap justify-between gap-3 rounded-md border bg-background p-2"
+                      >
                         <span className="font-mono font-medium">{b.order_id}</span>
                         <span className="text-muted-foreground">{b.reason}</span>
                       </div>
@@ -915,14 +1057,22 @@ export default function MpDeliveryNotesPage() {
               {/* POSTED */}
               {tab === 'POSTED' &&
                 (postedList.length === 0 ? (
-                  <EmptyRow text={postedNotes.length === 0 ? 'No delivery notes posted yet.' : 'Nothing matches this filter.'} />
+                  <EmptyRow
+                    text={
+                      postedNotes.length === 0
+                        ? 'No delivery notes posted yet.'
+                        : 'Nothing matches this filter.'
+                    }
+                  />
                 ) : (
                   <div className="space-y-3">
                     {postedList.map((n) => (
                       <div key={n.doc_entry} className="rounded-lg border p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-base font-semibold">{n.sap?.doc_num || n.doc_num}</span>
+                            <span className="font-mono text-base font-semibold">
+                              {n.sap?.doc_num || n.doc_num}
+                            </span>
                             {n.sap?.cancelled ? (
                               <Badge variant="destructive">Cancelled in SAP</Badge>
                             ) : (
@@ -934,7 +1084,9 @@ export default function MpDeliveryNotesPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">
-                              {n.sap?.doc_date ? String(n.sap.doc_date).slice(0, 10) : (n.posted_at ?? '').slice(0, 10)}
+                              {n.sap?.doc_date
+                                ? String(n.sap.doc_date).slice(0, 10)
+                                : (n.posted_at ?? '').slice(0, 10)}
                             </span>
                             <Button
                               size="sm"
@@ -960,10 +1112,15 @@ export default function MpDeliveryNotesPage() {
                         <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
                           <Meta label="SAP DocEntry" value={String(n.doc_entry)} mono />
                           <Meta label="Customer" value={n.sap?.card_code || '—'} mono />
-                          <Meta label="Branch" value={n.sap?.branch_id != null ? String(n.sap.branch_id) : '—'} />
+                          <Meta
+                            label="Branch"
+                            value={n.sap?.branch_id != null ? String(n.sap.branch_id) : '—'}
+                          />
                           <Meta label="Reference" value={n.sap?.num_at_card || '—'} mono />
                         </dl>
-                        {n.sap?.card_name ? <p className="mt-1 text-xs text-muted-foreground">{n.sap.card_name}</p> : null}
+                        {n.sap?.card_name ? (
+                          <p className="mt-1 text-xs text-muted-foreground">{n.sap.card_name}</p>
+                        ) : null}
 
                         {(n.lines ?? []).length > 0 && (
                           <div className="mt-2 overflow-x-auto rounded-md border">
@@ -983,7 +1140,9 @@ export default function MpDeliveryNotesPage() {
                                       <span className="font-mono">{l.item_code}</span>
                                       <div className="text-muted-foreground">{l.item_name}</div>
                                     </td>
-                                    <td className="p-2 text-right font-medium">{Number(l.quantity)}</td>
+                                    <td className="p-2 text-right font-medium">
+                                      {Number(l.quantity)}
+                                    </td>
                                     <td className="p-2 font-mono">{l.warehouse_code || '—'}</td>
                                     <td className="p-2">{l.cost_center || '—'}</td>
                                   </tr>
@@ -1027,7 +1186,8 @@ export default function MpDeliveryNotesPage() {
           <p className="text-sm text-muted-foreground">
             This posts the SAP delivery note(s) for <strong>{scopeLabel}</strong>, covering{' '}
             <strong>{count}</strong> dispatch(es) with{' '}
-            <strong>{summary?.totals.fg_item_count ?? 0}</strong> line item(s). This can&apos;t be undone.
+            <strong>{summary?.totals.fg_item_count ?? 0}</strong> line item(s). This can&apos;t be
+            undone.
           </p>
 
           <div className="space-y-2">
@@ -1059,8 +1219,8 @@ export default function MpDeliveryNotesPage() {
                 </p>
                 <p className="text-amber-800 dark:text-amber-300/90">
                   The note will carry <strong>{fmtDate(chosenDate)}</strong>, not today. SAP books
-                  the stock movement into that month and numbers the document from that
-                  month&apos;s series. Make sure the period is still open and accounts expect it.
+                  the stock movement into that month and numbers the document from that month&apos;s
+                  series. Make sure the period is still open and accounts expect it.
                 </p>
               </div>
             </div>
@@ -1079,7 +1239,11 @@ export default function MpDeliveryNotesPage() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={cut.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={cut.isPending}
+            >
               Cancel
             </Button>
             <Button onClick={doCut} disabled={cut.isPending || (isBackdated && spansMonths)}>
@@ -1097,7 +1261,7 @@ export default function MpDeliveryNotesPage() {
       {/* Off-screen print host. Positioned rather than hidden: display:none would
           give react-to-print nothing to measure and the page would come out blank. */}
       <div aria-hidden className="pointer-events-none fixed -left-[10000px] top-0 w-[210mm]">
-        {printDn ? <MpDeliveryNotePrint ref={printRef} dn={printDn} /> : null}
+        {printDn ? <MpDeliveryNotePrint ref={printRef} dn={printDn} pages={printPages} /> : null}
       </div>
     </div>
   );

@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { SearchableSelect } from '@/shared/components';
 
 import { useWarehouses } from '../api';
@@ -11,6 +13,12 @@ interface WarehouseSelectProps {
   error?: string;
   label?: string;
   required?: boolean;
+  /**
+   * When provided, only these warehouse codes are offered (case-insensitive).
+   * Used to scope the picker to the warehouses a user manages. `null`/undefined
+   * leaves the full list — the default for every existing caller.
+   */
+  restrictToCodes?: Set<string> | null;
 }
 
 export function WarehouseSelect({
@@ -21,13 +29,19 @@ export function WarehouseSelect({
   error,
   label,
   required = false,
+  restrictToCodes = null,
 }: WarehouseSelectProps) {
   const { data: warehouses = [], isLoading } = useWarehouses(true);
+
+  const items = useMemo(() => {
+    if (!restrictToCodes) return warehouses;
+    return warehouses.filter((w) => restrictToCodes.has(w.warehouse_code.toUpperCase()));
+  }, [warehouses, restrictToCodes]);
 
   return (
     <SearchableSelect<Warehouse>
       value={value}
-      items={warehouses}
+      items={items}
       isLoading={isLoading}
       placeholder={placeholder}
       disabled={disabled}

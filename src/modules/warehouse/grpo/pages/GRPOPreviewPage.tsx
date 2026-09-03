@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
@@ -16,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { isPmItemCode } from '@/modules/warehouse/pages/bst/bstBoxCounts';
 import {
   Badge,
   Button,
@@ -47,7 +49,7 @@ import {
   useQCReportPrint,
   WarehouseSelect,
 } from '../components';
-import { DEFAULT_BRANCH_ID, GRPO_STATUS } from '../constants';
+import { DEFAULT_BRANCH_ID, GRPO_STATUS, PM_WAREHOUSE_CODE } from '../constants';
 import type { ExtraCharge, GRPOAttachment, PostGRPOResponse, PreviewPOReceipt } from '../types';
 
 // Per-item form state
@@ -264,6 +266,20 @@ export default function GRPOPreviewPage() {
   }, [selectedPOs]);
 
   const hasMixedSuppliers = selectedPOs.length > 1 && !selectedSupplier;
+
+  // PM items belong in the packing-material godown. When any selected line is a
+  // PM item and a different warehouse is chosen, the operator must explicitly
+  // confirm before saving or posting. The acknowledgement is remembered per
+  // warehouse code, so re-saving without changing the warehouse doesn't re-ask.
+  const hasPmItems = useMemo(
+    () => selectedPOs.some((po) => po.items.some((item) => isPmItemCode(item.item_code))),
+    [selectedPOs],
+  );
+  const isNonPmWarehouse = hasPmItems && (mergedForm?.warehouseCode ?? '') !== PM_WAREHOUSE_CODE;
+  const [pmWarningAction, setPmWarningAction] = useState<'save' | 'post' | null>(null);
+  const [pmAckedWarehouse, setPmAckedWarehouse] = useState<string | null>(null);
+  const needsPmWarehouseAck =
+    isNonPmWarehouse && pmAckedWarehouse !== (mergedForm?.warehouseCode ?? '');
 
   const getPrintableQCReportItems = useCallback((pos: PreviewPOReceipt[]) => {
     return pos.flatMap((po) =>
@@ -609,8 +625,7 @@ export default function GRPOPreviewPage() {
     return draft.id;
   };
 
-  const handleSaveDraft = async () => {
-    if (!validateMergedForm(false)) return;
+  const performSaveDraft = async () => {
     try {
       setApiErrors({});
       await saveCurrentDraft();
@@ -620,9 +635,34 @@ export default function GRPOPreviewPage() {
     }
   };
 
+  const handleSaveDraft = () => {
+    if (!validateMergedForm(false)) return;
+    if (needsPmWarehouseAck) {
+      setPmWarningAction('save');
+      return;
+    }
+    void performSaveDraft();
+  };
+
   // Handle post click — must pass the full (post-time) validation first.
   const handlePostClick = () => {
-    if (validateMergedForm(true)) {
+    if (!validateMergedForm(true)) return;
+    if (needsPmWarehouseAck) {
+      setPmWarningAction('post');
+      return;
+    }
+    setShowConfirm(true);
+  };
+
+  // Operator accepted receiving PM items outside the packing godown — resume
+  // whichever action the warning interrupted.
+  const handlePmWarningContinue = () => {
+    const action = pmWarningAction;
+    setPmAckedWarehouse(mergedForm?.warehouseCode ?? '');
+    setPmWarningAction(null);
+    if (action === 'save') {
+      void performSaveDraft();
+    } else if (action === 'post') {
       setShowConfirm(true);
     }
   };
@@ -1223,12 +1263,21 @@ export default function GRPOPreviewPage() {
                   <p className="text-xs text-destructive">{apiErrors.vendorRef}</p>
                 )}
               </div>
-              <WarehouseSelect
-                label="Warehouse Code"
-                value={mergedForm.warehouseCode}
-                onChange={(code) => updateFormField('warehouseCode', code)}
-                placeholder="Select warehouse"
-              />
+              <div className="space-y-1">
+                <WarehouseSelect
+                  label="Warehouse Code"
+                  value={mergedForm.warehouseCode}
+                  onChange={(code) => updateFormField('warehouseCode', code)}
+                  placeholder="Select warehouse"
+                />
+                {isNonPmWarehouse && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                    This is not the packing material godown ({PM_WAREHOUSE_CODE}), but this GRPO
+                    has PM items.
+                  </p>
+                )}
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs">Posting Date</Label>
                 <Input
@@ -1454,6 +1503,56 @@ export default function GRPOPreviewPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* PM warehouse warning — PM items headed anywhere but the packing godown.
+          Deliberately loud: it must not read like a routine confirm dialog. */}
+      <Dialog open={pmWarningAction !== null} onOpenChange={() => setPmWarningAction(null)}>
+        <DialogContent className="max-w-md border-2 border-amber-500 p-0 overflow-hidden">
+          <div className="bg-amber-500/15 border-b-2 border-amber-500 px-6 py-4">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-amber-700 dark:text-amber-400">
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-500/20">
+                  <AlertTriangle className="h-6 w-6" />
+                </span>
+                <span className="text-base font-bold uppercase tracking-wide">
+                  Wrong godown for PM items
+                </span>
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+          <div className="px-6 space-y-3">
+            <DialogDescription className="text-sm text-foreground">
+              This GRPO contains <span className="font-semibold">packing material (PM) items</span>
+              , but the selected warehouse{' '}
+              {mergedForm?.warehouseCode ? (
+                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono font-bold text-amber-700 dark:text-amber-400">
+                  {mergedForm.warehouseCode}
+                </span>
+              ) : (
+                'is empty and'
+              )}{' '}
+              is <span className="font-semibold">not</span> the packing material godown (
+              <span className="font-mono font-semibold">{PM_WAREHOUSE_CODE}</span>).
+            </DialogDescription>
+            <p className="text-xs text-muted-foreground">
+              Posting will book the stock into the wrong godown in SAP. Only continue if this is
+              intentional.
+            </p>
+          </div>
+          <DialogFooter className="px-6 pb-6">
+            <Button variant="outline" autoFocus onClick={() => setPmWarningAction(null)}>
+              Go Back
+            </Button>
+            <Button
+              className="bg-amber-600 text-white hover:bg-amber-700"
+              onClick={handlePmWarningContinue}
+            >
+              <AlertTriangle className="h-4 w-4 mr-1.5" />
+              Continue Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirm} onOpenChange={() => setShowConfirm(false)}>

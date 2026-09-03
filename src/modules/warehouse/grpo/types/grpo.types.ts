@@ -537,6 +537,30 @@ export interface ServiceGRPOPreview extends ServiceGRPOPendingEntry {
   invoice_lines: ServiceGRPOInvoiceLinePreview[];
 }
 
+/** One row of the bilty-attachment change history for a dispatch plan. */
+export interface PlanAttachmentAuditEntry {
+  id: number;
+  action: 'ADDED' | 'REPLACED' | 'DELETED';
+  source: 'MANUAL' | 'VEHICLE_LINKING';
+  old_filename: string;
+  old_file_url: string | null;
+  new_filename: string;
+  new_file_url: string | null;
+  reason: string;
+  performed_by_name: string;
+  performed_at: string;
+}
+
+/** Current bilty attachment of a dispatch plan plus its full change history. */
+export interface PlanBiltyAttachmentState {
+  dispatch_plan_id: number;
+  bilty_attachment: string | null;
+  bilty_attachment_name: string;
+  can_modify: boolean;
+  locked_reason: string | null;
+  audit: PlanAttachmentAuditEntry[];
+}
+
 export interface ServiceGRPOInvoiceLinePreview {
   dispatch_plan_id: number;
   sap_invoice_doc_entry: number;

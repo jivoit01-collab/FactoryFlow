@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * The warehouse the approver is currently working in. OMS now scopes the invoice
- * list/count by warehouse (`whs`), so both the approval page and the sidebar
- * pending-count badge need to share this selection reactively (same tab) and
- * remember it across reloads.
+ * The warehouse the approver is currently working in. The backend scopes the
+ * invoice list/count by warehouse (`whs`), so both the approval page and the
+ * sidebar pending-count badge need to share this selection reactively (same tab)
+ * and remember it across reloads.
  */
-const STORAGE_KEY = 'oms:invoice-approval:whs';
+const STORAGE_KEY = 'invoice-approval:whs';
 
 const listeners = new Set<() => void>();
 

@@ -3,6 +3,7 @@ import { apiClient } from '@/core/api';
 
 import type {
   ExpenseBoard,
+  ExpenseScope,
   FactoryExpenseSettings,
   MonthlyBudgetPayload,
   MonthlyBudgetRow,
@@ -18,9 +19,17 @@ export const factoryExpenseApi = {
    * Both ends omitted means today, server-side — the board's normal state is a
    * single day, not a range.
    */
-  async getBoard(dateFrom?: string, dateTo?: string): Promise<ExpenseBoard> {
-    const params = dateFrom || dateTo ? { from: dateFrom, to: dateTo ?? dateFrom } : undefined;
-    const response = await apiClient.get<ExpenseBoard>(EP.BOARD, { params });
+  async getBoard(
+    dateFrom?: string,
+    dateTo?: string,
+    scope: ExpenseScope = 'all',
+  ): Promise<ExpenseBoard> {
+    const response = await apiClient.get<ExpenseBoard>(EP.BOARD, {
+      params: {
+        scope,
+        ...(dateFrom || dateTo ? { from: dateFrom, to: dateTo ?? dateFrom } : {}),
+      },
+    });
     return response.data;
   },
 
@@ -40,9 +49,9 @@ export const factoryExpenseApi = {
    * Read-only: there is no create/update counterpart here by design. A rate is
    * changed in Admin > Cost Master so there is exactly one place it can be set.
    */
-  async getResolvedRates(date?: string): Promise<ResolvedRates> {
+  async getResolvedRates(date?: string, scope: ExpenseScope = 'all'): Promise<ResolvedRates> {
     const response = await apiClient.get<ResolvedRates>(EP.RATES, {
-      params: date ? { date } : undefined,
+      params: { scope, ...(date ? { date } : {}) },
     });
     return response.data;
   },

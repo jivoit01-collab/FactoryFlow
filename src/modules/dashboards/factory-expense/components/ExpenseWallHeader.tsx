@@ -1,10 +1,20 @@
-import { ArrowRight, Maximize2, Minimize2, RefreshCw, RotateCcw, Settings2 } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  Factory,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+  RotateCcw,
+  Settings2,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { cn } from '@/shared/utils';
 
 import { useNow } from '../../dispatch/hooks';
 import { longDate, money, since } from '../../dispatch/utils/format';
+import type { ExpenseScope } from '../types';
 
 export interface ExpenseWallHeaderProps {
   dateFrom: string;
@@ -17,6 +27,9 @@ export interface ExpenseWallHeaderProps {
   onChangeFrom: (date: string) => void;
   onChangeTo: (date: string) => void;
   companyCode: string;
+  companyCount: number;
+  scope: ExpenseScope;
+  onChangeScope: (scope: ExpenseScope) => void;
   rangeTotal: number;
   mtdTotal: number;
   perDay: number;
@@ -54,6 +67,9 @@ export function ExpenseWallHeader({
   onChangeFrom,
   onChangeTo,
   companyCode,
+  companyCount,
+  scope,
+  onChangeScope,
   rangeTotal,
   mtdTotal,
   perDay,
@@ -120,6 +136,7 @@ export function ExpenseWallHeader({
               ? longDate(new Date(`${dateTo}T00:00:00`))
               : `${longDate(new Date(`${dateFrom}T00:00:00`))} → ${longDate(new Date(`${dateTo}T00:00:00`))}`}{' '}
             · {companyCode}
+            {scope === 'all' && companyCount > 1 && ` (${companyCount})`}
           </p>
         </div>
       </div>
@@ -156,6 +173,39 @@ export function ExpenseWallHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {/* Whole factory vs one legal entity. The plant shares a campus, a gate
+            and four meters, so the whole factory is the default question. */}
+        <div className="flex items-center rounded-lg border border-black/[0.09] dark:border-white/10 p-0.5">
+          <button
+            type="button"
+            onClick={() => onChangeScope('all')}
+            title="Every company you can see, counted once"
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30',
+              scope === 'all'
+                ? 'bg-black/[0.06] dark:bg-white/[0.1] text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Factory className="h-3.5 w-3.5" />
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeScope('company')}
+            title="Only the company you are signed into"
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30',
+              scope === 'company'
+                ? 'bg-black/[0.06] dark:bg-white/[0.1] text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Building2 className="h-3.5 w-3.5" />
+            This company
+          </button>
+        </div>
+
         <div className="flex items-center gap-1.5 rounded-lg border border-black/[0.09] dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] px-2.5 py-1.5">
           <label className="flex items-center gap-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">

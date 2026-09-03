@@ -1,5 +1,6 @@
 import {
   ArrowLeftRight,
+  ClipboardCheck,
   DoorOpen,
   Factory,
   IndianRupee,
@@ -78,6 +79,15 @@ const dashboardsModules: DashboardsModuleCard[] = [
       DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
       DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
     ],
+  },
+  {
+    title: 'Budget Approvals',
+    description:
+      'Factory budget draft approvals from SAP - pending, approved and rejected expense drafts',
+    icon: <ClipboardCheck className="h-5 w-5" />,
+    route: '/dashboards/budget-approvals',
+    color: 'text-violet-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS],
   },
   {
     title: 'Dispatch',
