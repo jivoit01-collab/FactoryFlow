@@ -866,6 +866,11 @@ export interface ImportPreview {
   duplicate_order_ids: string[];
   unmapped_skus: string[];
   has_duplicates: boolean;
+  /** Tracking IDs Excel destroyed (display-precision scientific notation) before
+   *  the file was uploaded. Their digits are NOT in the file — those parcels can
+   *  never be scanned by tracking on this sheet. */
+  corrupted_tracking_count: number;
+  corrupted_trackings: { order_id: string; tracking: string }[];
 }
 
 export interface SendIssueRequest {
