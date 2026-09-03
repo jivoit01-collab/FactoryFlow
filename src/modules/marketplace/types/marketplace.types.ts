@@ -124,6 +124,15 @@ export interface DeliveryNoteSummary {
   /** Orders the warehouse can't fulfil yet — excluded so one short line can't
    *  fail the whole document. They cut automatically once stock arrives. */
   held_for_stock: DeliveryNoteBlocked[];
+  /** Confirmed here, but their parcels went out on an earlier sheet's note, so they
+   *  owe nothing. Shown so every confirmed dispatch is accounted for on screen. */
+  already_shipped?: {
+    order_id: string;
+    dispatch_id: number;
+    buyer_name: string;
+    order_date: string | null;
+    covered_by_note: string;
+  }[];
   /** Per-item top-up the warehouse must supply so every held order can ship.
    *  Empty when nothing is short or on-hand can't be read. */
   stock_shortfall: StockShortfallLine[];
