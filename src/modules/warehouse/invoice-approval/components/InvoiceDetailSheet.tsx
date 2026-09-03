@@ -76,7 +76,7 @@ function InvoiceDetailBody({
   const auditContext = {
     so_number: invoice.so_number,
     party_name: invoice.party_name,
-    total_amount: invoice.total_amount,
+    total_amount: invoice.total_amount ?? undefined,
   };
 
   const approve = async () => {
@@ -113,7 +113,9 @@ function InvoiceDetailBody({
           <InvoiceStatusBadge status={invoice.status} />
         </SheetTitle>
         <SheetDescription>
-          SO {invoice.so_number} · raised {formatDateTimeShort(invoice.created_at)}
+          SO {invoice.so_number}
+          {invoice.created_at ? ` · raised ${formatDateTimeShort(invoice.created_at)}` : ''}
+          {invoice.created_by ? ` by ${invoice.created_by}` : ''}
         </SheetDescription>
       </SheetHeader>
 
@@ -145,7 +147,7 @@ function InvoiceDetailBody({
 
       <Separator />
 
-      {/* Approval history (from OMS) */}
+      {/* Approval history (from SAP) */}
       <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
         <CollapsibleTrigger className="flex w-full items-center justify-between text-sm font-semibold">
           <span className="flex items-center gap-2">
@@ -159,16 +161,21 @@ function InvoiceDetailBody({
           ) : historyQuery.data && historyQuery.data.length > 0 ? (
             <ol className="space-y-2">
               {historyQuery.data.map((record) => (
-                <li key={record.id} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="flex items-center gap-2">
-                    <InvoiceStatusBadge status={record.status} />
-                    <span className="text-muted-foreground">
-                      {record.created_by || record.created_by_name || 'Unknown'}
+                <li key={record.id} className="space-y-0.5 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2">
+                      <InvoiceStatusBadge status={record.status} />
+                      <span className="text-muted-foreground">
+                        {record.created_by_name || 'Unknown'}
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDateTimeShort(record.created_at)}
-                  </span>
+                    <span className="text-xs text-muted-foreground">
+                      {record.created_at ? formatDateTimeShort(record.created_at) : '-'}
+                    </span>
+                  </div>
+                  {record.remarks ? (
+                    <p className="pl-1 text-xs text-muted-foreground">{record.remarks}</p>
+                  ) : null}
                 </li>
               ))}
             </ol>
@@ -209,7 +216,7 @@ function InvoiceDetailBody({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Actions (only on PENDING / EDITED, and only for approvers) */}
+      {/* Actions (only on PENDING, and only for approvers) */}
       {isActionable ? (
         <div className="mt-auto border-t pt-4">
           {!canApprove ? (

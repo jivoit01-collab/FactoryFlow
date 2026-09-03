@@ -4,7 +4,7 @@ import type { InvoiceStatus, StatusUpdateRequest } from '../types';
 import { invoiceApprovalApi } from './invoice-approval.api';
 
 export const INVOICE_APPROVAL_QUERY_KEYS = {
-  all: ['oms-invoice-approval'] as const,
+  all: ['invoice-approval'] as const,
   list: (warehouse: string, status?: InvoiceStatus) =>
     [...INVOICE_APPROVAL_QUERY_KEYS.all, 'list', warehouse, status ?? 'ALL'] as const,
   history: (id: number) => [...INVOICE_APPROVAL_QUERY_KEYS.all, 'history', id] as const,
@@ -54,7 +54,7 @@ export function useUpdateInvoiceStatus() {
     mutationFn: ({ id, data }: { id: number; data: StatusUpdateRequest }) =>
       invoiceApprovalApi.updateStatus(id, data),
     onSuccess: (_response, { id }) => {
-      // The entry moves out of PENDING/EDITED — `all` covers every tab, the nav
+      // The entry moves out of PENDING — `all` covers every tab, the nav
       // badge (pending-count) and this invoice's audit.
       queryClient.invalidateQueries({ queryKey: INVOICE_APPROVAL_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: INVOICE_APPROVAL_QUERY_KEYS.audit(id) });
