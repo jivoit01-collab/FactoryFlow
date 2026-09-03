@@ -13,6 +13,7 @@ import type {
   GRPOListParams,
   PaginatedResponse,
   PendingGRPOEntryWithSuppliers,
+  PlanBiltyAttachmentState,
   PostGRPORequest,
   PostGRPOResponse,
   PostServiceGRPORequest,
@@ -234,6 +235,43 @@ export const grpoApi = {
   async getServicePreview(dispatchPlanId: number): Promise<ServiceGRPOPreview> {
     const response = await apiClient.get<ServiceGRPOPreview>(
       API_ENDPOINTS.DISPATCH.BILTY_GRPO_PREVIEW(dispatchPlanId),
+    );
+    return response.data;
+  },
+
+  // Bilty attachment of record on the dispatch plan: current file + audit trail
+  async getPlanBiltyAttachment(dispatchPlanId: number): Promise<PlanBiltyAttachmentState> {
+    const response = await apiClient.get<PlanBiltyAttachmentState>(
+      API_ENDPOINTS.DISPATCH.BILTY_GRPO_ATTACHMENT(dispatchPlanId),
+    );
+    return response.data;
+  },
+
+  // Replace (or set) the plan's stored bilty attachment. Audited server-side.
+  async replacePlanBiltyAttachment(
+    dispatchPlanId: number,
+    file: File,
+    reason?: string,
+  ): Promise<PlanBiltyAttachmentState> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (reason) formData.append('reason', reason);
+    const response = await apiClient.post<PlanBiltyAttachmentState>(
+      API_ENDPOINTS.DISPATCH.BILTY_GRPO_ATTACHMENT(dispatchPlanId),
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  },
+
+  // Detach the plan's stored bilty attachment. Audited server-side.
+  async deletePlanBiltyAttachment(
+    dispatchPlanId: number,
+    reason?: string,
+  ): Promise<PlanBiltyAttachmentState> {
+    const response = await apiClient.delete<PlanBiltyAttachmentState>(
+      API_ENDPOINTS.DISPATCH.BILTY_GRPO_ATTACHMENT(dispatchPlanId),
+      reason ? { data: { reason } } : undefined,
     );
     return response.data;
   },

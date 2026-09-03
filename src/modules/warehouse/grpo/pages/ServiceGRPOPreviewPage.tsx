@@ -4,11 +4,14 @@ import {
   CheckCircle2,
   Eye,
   FileText,
+  History,
   Paperclip,
   Printer,
   RefreshCw,
   ShieldX,
+  Trash2,
   Truck,
+  Upload,
   X,
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -36,7 +39,14 @@ import {
 } from '@/shared/components/ui';
 import { resolveFileUrl } from '@/shared/utils';
 
-import { usePostServiceGRPO, useServiceGRPOOptions, useServiceGRPOPreview } from '../api';
+import {
+  useDeletePlanBiltyAttachment,
+  usePlanBiltyAttachment,
+  usePostServiceGRPO,
+  useReplacePlanBiltyAttachment,
+  useServiceGRPOOptions,
+  useServiceGRPOPreview,
+} from '../api';
 import { ExtraChargesSection } from '../components';
 import { DEFAULT_BRANCH_ID, DEFAULT_SERVICE_GRPO_GL_ACCOUNT, GRPO_STATUS } from '../constants';
 import type {
@@ -414,6 +424,15 @@ export default function ServiceGRPOPreviewPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [successResult, setSuccessResult] = useState<PostServiceGRPOResponse | null>(null);
 
+  // The bilty attachment of record on the plan (from vehicle linking) — with
+  // its change history, and whether it may still be replaced/deleted.
+  const { data: planAttachment } = usePlanBiltyAttachment(planId);
+  const replaceBiltyAttachment = useReplacePlanBiltyAttachment();
+  const deleteBiltyAttachment = useDeletePlanBiltyAttachment();
+  const [showDeleteAttachment, setShowDeleteAttachment] = useState(false);
+  const [attachmentReason, setAttachmentReason] = useState('');
+  const [showAttachmentHistory, setShowAttachmentHistory] = useState(false);
+
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
@@ -598,6 +617,56 @@ export default function ServiceGRPOPreviewPage() {
     }));
   };
 
+  const clearAttachmentError = () =>
+    setApiErrors((prev) => {
+      if (!prev.attachments) return prev;
+      const next = { ...prev };
+      delete next.attachments;
+      return next;
+    });
+
+  const handleReplaceBiltyAttachment = () => {
+    if (!planId) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx';
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        await replaceBiltyAttachment.mutateAsync({ dispatchPlanId: planId, file });
+        clearAttachmentError();
+      } catch (err) {
+        setApiErrors((prev) => ({
+          ...prev,
+          attachments:
+            (err as ApiError).message || 'Could not replace the bilty attachment.',
+        }));
+      }
+    };
+    input.click();
+  };
+
+  const handleDeleteBiltyAttachment = async () => {
+    if (!planId) return;
+    try {
+      await deleteBiltyAttachment.mutateAsync({
+        dispatchPlanId: planId,
+        reason: attachmentReason.trim() || undefined,
+      });
+      setShowDeleteAttachment(false);
+      setAttachmentReason('');
+      clearAttachmentError();
+    } catch (err) {
+      setShowDeleteAttachment(false);
+      setApiErrors((prev) => ({
+        ...prev,
+        attachments:
+          (err as ApiError).message || 'Could not delete the bilty attachment.',
+      }));
+    }
+  };
+
   const calcTotal = useCallback(() => {
     if (!form) return 0;
     const lineTax = isReverseChargeTaxCode(taxCodeOptions, form.taxCode)
@@ -732,6 +801,12 @@ export default function ServiceGRPOPreviewPage() {
   const estimatedTotal = calcTotal();
   const biltyAttachmentUrl = resolveFileUrl(preview?.bilty_attachment);
   const biltyAttachmentName = preview?.bilty_attachment_name || 'Bilty attachment';
+  const canManageBiltyAttachment = planAttachment
+    ? planAttachment.can_modify
+    : preview?.grpo_status !== GRPO_STATUS.POSTED;
+  const isAttachmentMutating =
+    replaceBiltyAttachment.isPending || deleteBiltyAttachment.isPending;
+  const attachmentAudit = planAttachment?.audit ?? [];
   const attachmentCount = (form?.attachments.length ?? 0) + (preview?.bilty_attachment ? 1 : 0);
   const isMultiInvoicePreview = (preview?.invoice_count || 1) > 1;
   const canPrintPostedPreview = preview?.grpo_status === GRPO_STATUS.POSTED;
@@ -1480,6 +1555,100 @@ export default function ServiceGRPOPreviewPage() {
                           Preview
                         </a>
                       </Button>
+                      {canManageBiltyAttachment && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            disabled={isAttachmentMutating}
+                            onClick={handleReplaceBiltyAttachment}
+                            title="Replace this document with the correct one"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            {replaceBiltyAttachment.isPending ? 'Replacing...' : 'Replace'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-destructive hover:text-destructive"
+                            disabled={isAttachmentMutating}
+                            onClick={() => setShowDeleteAttachment(true)}
+                            title="Remove this document from the dispatch plan"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {!preview.bilty_attachment && canManageBiltyAttachment && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>No bilty on the plan yet.</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2"
+                        disabled={isAttachmentMutating}
+                        onClick={handleReplaceBiltyAttachment}
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        {replaceBiltyAttachment.isPending
+                          ? 'Uploading...'
+                          : 'Attach bilty to plan'}
+                      </Button>
+                    </div>
+                  )}
+                  {attachmentAudit.length > 0 && (
+                    <div className="space-y-1">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowAttachmentHistory((open) => !open)}
+                      >
+                        <History className="h-3.5 w-3.5" />
+                        Attachment history ({attachmentAudit.length})
+                      </button>
+                      {showAttachmentHistory && (
+                        <div className="space-y-1 rounded border bg-muted/20 p-2">
+                          {attachmentAudit.map((entry) => (
+                            <div key={entry.id} className="text-xs">
+                              <span className="font-medium">
+                                {entry.action === 'DELETED'
+                                  ? `Deleted ${entry.old_filename || 'attachment'}`
+                                  : entry.action === 'REPLACED'
+                                    ? `Replaced ${entry.old_filename || 'attachment'} with ${entry.new_filename}`
+                                    : `Added ${entry.new_filename}`}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {' — '}
+                                {entry.performed_by_name || 'system'},{' '}
+                                {new Date(entry.performed_at).toLocaleString('en-IN', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                })}
+                                {entry.source === 'VEHICLE_LINKING'
+                                  ? ' (via vehicle linking)'
+                                  : ''}
+                                {entry.reason ? ` — ${entry.reason}` : ''}
+                              </span>
+                              {entry.old_file_url && (
+                                <a
+                                  href={resolveFileUrl(entry.old_file_url)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="ml-1 text-primary hover:underline"
+                                >
+                                  view old file
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                   {form.attachments.length > 0 && (
@@ -1538,6 +1707,43 @@ export default function ServiceGRPOPreviewPage() {
           )}
         </>
       )}
+
+      <Dialog
+        open={showDeleteAttachment}
+        onOpenChange={() => setShowDeleteAttachment(false)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete bilty attachment?</DialogTitle>
+            <DialogDescription>
+              {biltyAttachmentName} will be removed from this dispatch plan and will not
+              go to SAP with the GRPO. The change is recorded in the attachment history,
+              and the old file stays viewable there.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1">
+            <Label className="text-xs">Reason (optional)</Label>
+            <Input
+              value={attachmentReason}
+              onChange={(e) => setAttachmentReason(e.target.value)}
+              placeholder="e.g. wrong truck's LR copy"
+              className="h-8 text-sm"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteAttachment(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteBiltyAttachment}
+              disabled={deleteBiltyAttachment.isPending}
+            >
+              {deleteBiltyAttachment.isPending ? 'Deleting...' : 'Delete attachment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showConfirm} onOpenChange={() => setShowConfirm(false)}>
         <DialogContent className="max-w-md">
