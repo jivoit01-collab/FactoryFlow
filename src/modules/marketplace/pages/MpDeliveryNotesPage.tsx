@@ -1028,8 +1028,11 @@ export default function MpDeliveryNotesPage() {
                   </div>
                 ))}
 
-              {/* ALREADY SHIPPED — confirmed here, but the goods went out on an
-                  earlier sheet's note, so there is nothing left to cut for them. */}
+              {/* ALREADY SHIPPED — confirmed here, and their goods also went out on an
+                  earlier sheet's note. These are NOT held back: since the suppression
+                  was removed they sit in Ready to cut like everything else, so this
+                  tab overlaps it rather than replacing it. It is a warning list — the
+                  rows here are the ones whose stock a cut would issue twice. */}
               {tab === 'SHIPPED' &&
                 (shippedList.length === 0 ? (
                   <EmptyRow text={alreadyShipped.length === 0
@@ -1038,9 +1041,9 @@ export default function MpDeliveryNotesPage() {
                 ) : (
                   <div className="space-y-1 text-sm">
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <PackageCheck className="h-3.5 w-3.5" /> Confirmed on this sheet, but their
-                      parcels already went out on an earlier note — their stock is issued, so no
-                      second delivery note is cut.
+                      <PackageCheck className="h-3.5 w-3.5" /> Confirmed on this sheet, and their
+                      parcels already went out on an earlier note. They are still listed in Ready
+                      to cut — cutting one issues its stock a second time.
                     </p>
                     {shippedList.map((s) => (
                       <div key={s.dispatch_id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-background p-2">
