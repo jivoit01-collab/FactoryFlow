@@ -37,6 +37,21 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
     );
   }, [rows, search]);
 
+  const docNumIndex = useMemo(
+    () => columns.findIndex((column) => column.key.toLowerCase() === 'docnum'),
+    [columns],
+  );
+
+  const uniqueDocNums = useMemo(() => {
+    if (docNumIndex === -1) return null;
+    const values = new Set<string>();
+    for (const row of filtered) {
+      const cell = row[docNumIndex];
+      if (cell !== null && cell !== undefined && cell !== '') values.add(String(cell));
+    }
+    return values.size;
+  }, [filtered, docNumIndex]);
+
   const sorted = useMemo(() => {
     if (!sort) return filtered;
     const isNumeric = columns[sort.index]?.type === 'number';
@@ -76,6 +91,9 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
               ? `${rows.length.toLocaleString()} rows`
               : `${sorted.length.toLocaleString()} of ${rows.length.toLocaleString()} rows`}
           </span>
+          {uniqueDocNums !== null && (
+            <span>· {uniqueDocNums.toLocaleString()} unique DocNums</span>
+          )}
           {wasTruncated && (
             <Badge variant="outline" className="border-amber-500 text-amber-600">
               Cut off at {rowLimit.toLocaleString()} rows — narrow the filters
