@@ -13,6 +13,7 @@ export const DASHBOARDS_PERMISSIONS = {
   // are deliberately separate rights.
   VIEW_FACTORY_EXPENSE: 'factory_expense.can_view_factory_expense',
   CONFIGURE_FACTORY_EXPENSE: 'factory_expense.can_configure_factory_expense',
+  VIEW_BUDGET_APPROVALS: 'budget_approvals.can_view_budget_approvals',
 } as const;
 
 export type DashboardsPermission =

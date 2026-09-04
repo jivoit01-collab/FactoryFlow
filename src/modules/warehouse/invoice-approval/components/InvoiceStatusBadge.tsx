@@ -6,11 +6,7 @@ import type { InvoiceStatus } from '../types';
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pending',
   APPROVED: 'Approved',
-  EDITED: 'Edited',
   REJECTED: 'Rejected',
-  ERROR: 'Error',
-  POSTED_TO_SAP: 'Posted to SAP',
-  CL_RAISED: 'CL Raised',
 };
 
 /**

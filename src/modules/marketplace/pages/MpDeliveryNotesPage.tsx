@@ -102,7 +102,7 @@ const fmtMonth = (iso: string) => {
   return y && m ? `${MONTHS[Number(m) - 1]} ${y}` : (iso ?? '');
 };
 
-type Tab = 'READY' | 'HELD' | 'BLOCKED' | 'POSTED';
+type Tab = 'READY' | 'HELD' | 'BLOCKED' | 'SHIPPED' | 'POSTED';
 
 function LineTable({ title, lines }: { title: string; lines: DeliveryNoteLine[] }) {
   if (lines.length === 0) return null;
@@ -400,6 +400,10 @@ export default function MpDeliveryNotesPage() {
   const dispatches = summary?.dispatches ?? [];
   const heldForStock = summary?.held_for_stock ?? [];
   const blocked = summary?.blocked ?? [];
+  // Confirmed, but their parcels went out on an earlier sheet's note. They owe
+  // nothing and so appear in no other tab — without them the tiles cannot add up to
+  // the number of orders the operator knows they confirmed.
+  const alreadyShipped = summary?.already_shipped ?? [];
   const stockShortfall = summary?.stock_shortfall ?? [];
   const postedNotes = posted?.notes ?? [];
   const awaitingApproval = approval?.awaiting_approval ?? 0;
@@ -423,6 +427,9 @@ export default function MpDeliveryNotesPage() {
     (h) => inRange(h.order_date ?? null, range) && matches(h.order_id, h.buyer_name),
   );
   const blockedList = blocked.filter((b) => matches(b.order_id, b.reason));
+  const shippedList = alreadyShipped.filter(
+    (s) => inRange(s.order_date ?? null, range) && matches(s.order_id, s.buyer_name),
+  );
   const postedList = postedNotes.filter((n) => {
     if (!inRange((n.sap?.doc_date ?? n.posted_at ?? '').slice(0, 10) || null, range)) return false;
     if (!q) return true;
@@ -439,7 +446,9 @@ export default function MpDeliveryNotesPage() {
         ? heldList.length
         : tab === 'BLOCKED'
           ? blockedList.length
-          : postedList.length;
+          : tab === 'SHIPPED'
+            ? shippedList.length
+            : postedList.length;
   const totalForTab =
     tab === 'READY'
       ? dispatches.length
@@ -447,7 +456,9 @@ export default function MpDeliveryNotesPage() {
         ? heldForStock.length
         : tab === 'BLOCKED'
           ? blocked.length
-          : postedNotes.length;
+          : tab === 'SHIPPED'
+            ? alreadyShipped.length
+            : postedNotes.length;
 
   function doCut() {
     cut.mutate(
@@ -602,7 +613,7 @@ export default function MpDeliveryNotesPage() {
       ) : (
         <>
           {/* KPI overview — click a tile to jump to its list */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <KpiTile
               label="Ready to cut"
               value={count}
@@ -623,6 +634,13 @@ export default function MpDeliveryNotesPage() {
               tone="red"
               active={tab === 'BLOCKED'}
               onClick={() => setTab('BLOCKED')}
+            />
+            <KpiTile
+              label="Already shipped"
+              value={alreadyShipped.length}
+              tone="slate"
+              active={tab === 'SHIPPED'}
+              onClick={() => setTab('SHIPPED')}
             />
             <KpiTile label="Awaiting SAP" value={awaitingApproval} tone="violet" />
             <KpiTile
@@ -766,6 +784,7 @@ export default function MpDeliveryNotesPage() {
                   { value: 'READY', label: 'Ready to cut', count },
                   { value: 'HELD', label: 'Held — stock', count: heldForStock.length },
                   { value: 'BLOCKED', label: 'Blocked', count: blocked.length },
+                  { value: 'SHIPPED', label: 'Already shipped', count: alreadyShipped.length },
                   { value: 'POSTED', label: 'Posted', count: postedNotes.length },
                 ]}
               />
@@ -1004,6 +1023,35 @@ export default function MpDeliveryNotesPage() {
                       >
                         <span className="font-mono font-medium">{b.order_id}</span>
                         <span className="text-muted-foreground">{b.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+
+              {/* ALREADY SHIPPED — confirmed here, and their goods also went out on an
+                  earlier sheet's note. These are NOT held back: since the suppression
+                  was removed they sit in Ready to cut like everything else, so this
+                  tab overlaps it rather than replacing it. It is a warning list — the
+                  rows here are the ones whose stock a cut would issue twice. */}
+              {tab === 'SHIPPED' &&
+                (shippedList.length === 0 ? (
+                  <EmptyRow text={alreadyShipped.length === 0
+                    ? 'Nothing here shipped on an earlier sheet.'
+                    : 'Nothing matches this filter.'} />
+                ) : (
+                  <div className="space-y-1 text-sm">
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <PackageCheck className="h-3.5 w-3.5" /> Confirmed on this sheet, and their
+                      parcels already went out on an earlier note. They are still listed in Ready
+                      to cut — cutting one issues its stock a second time.
+                    </p>
+                    {shippedList.map((s) => (
+                      <div key={s.dispatch_id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-background p-2">
+                        <span className="font-mono font-medium">{s.order_id}</span>
+                        <span className="text-muted-foreground">{s.buyer_name || '—'}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {s.covered_by_note ? `on delivery note ${s.covered_by_note}` : 'note not yet cut'}
+                        </span>
                       </div>
                     ))}
                   </div>

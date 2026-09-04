@@ -13,8 +13,8 @@ const InspectionDetailPage = lazy(() => import('./pages/InspectionDetailPage'));
 const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'));
 const DecisionChangedInspectionsPage = lazy(() => import('./pages/DecisionChangedInspectionsPage'));
 
-// PDF library — controlled documents kept as the original file
-const QCPdfLibraryPage = lazy(() => import('./pages/pdfLibrary/QCPdfLibraryPage'));
+// QA Procedures — controlled documents kept as the original PDF file
+const QAProceduresPage = lazy(() => import('./pages/qaProcedures/QAProceduresPage'));
 
 // Documents submodule — fillable QC record sheets
 const QCDocumentsPage = lazy(() => import('./pages/documents/QCDocumentsPage'));
@@ -211,13 +211,13 @@ export const qcModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Record' },
     },
 
-    // ==================== PDF Document Library ====================
+    // ==================== QA Procedures (PDF library) ====================
     {
-      path: '/qc/pdf-documents',
-      element: <QCPdfLibraryPage />,
+      path: '/qc/qa-procedures',
+      element: <QAProceduresPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
-      breadcrumb: { label: 'PDF Documents' },
+      breadcrumb: { label: 'QA Procedures' },
     },
 
     // ==================== Shared Master Data ====================
@@ -271,6 +271,14 @@ export const qcModuleConfig: ModuleConfig = {
         QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
         QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
       ],
+    },
+    // The PDF library used to live at /qc/pdf-documents; keep bookmarks working.
+    {
+      path: '/qc/pdf-documents',
+      element: <QAProceduresPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
+      breadcrumb: { label: 'QA Procedures' },
     },
   ],
   navigation: [
@@ -366,8 +374,8 @@ export const qcModuleConfig: ModuleConfig = {
           ],
         },
         {
-          path: '/qc/pdf-documents',
-          title: 'PDF Documents',
+          path: '/qc/qa-procedures',
+          title: 'QA Procedures',
           permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
         },
         {

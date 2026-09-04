@@ -4,9 +4,9 @@ import type { FgStock, InvoiceLine } from '../types';
  * Line items from the invoice payload — Item / Qty / In stock / Warehouse / Batches —
  * laid out for the approver to compare against physical stock at the warehouse.
  *
- * `fgStock` (live HANA on-hand, from OMS) is joined per line to surface the item
- * name and the warehouse's current stock next to the invoiced quantity. It only
- * covers FG lines, so non-FG rows simply show no name/stock.
+ * `fgStock` (live HANA on-hand, read from SAP with the list) is joined per line to
+ * surface the item name and the warehouse's current stock next to the invoiced
+ * quantity. Rows without an OITW entry simply show no name/stock.
  */
 export function DocumentLinesTable({
   lines,

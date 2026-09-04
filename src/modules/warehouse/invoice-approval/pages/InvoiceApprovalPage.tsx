@@ -1,9 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, FileCheck2, RefreshCw, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { OMS_PERMISSIONS } from '@/config/permissions';
+import { INVOICE_APPROVAL_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { useWarehouseScope } from '@/modules/warehouse/api';
 import { WarehouseSelect } from '@/modules/warehouse/grpo/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -21,13 +22,12 @@ import { formatCurrency } from '@/shared/utils';
 import { INVOICE_APPROVAL_QUERY_KEYS, useInvoiceList } from '../api/invoice-approval.queries';
 import { InvoiceDetailSheet } from '../components/InvoiceDetailSheet';
 import { InvoiceStatusBadge } from '../components/InvoiceStatusBadge';
-import { VISIBLE_INVOICE_TABS, type InvoiceLog, type InvoiceTab } from '../types';
+import { INVOICE_TABS, type InvoiceLog, type InvoiceTab } from '../types';
 import { useSelectedWarehouse } from '../useSelectedWarehouse';
 
 const TAB_LABELS: Record<InvoiceTab, string> = {
   PENDING: 'Pending',
   APPROVED: 'Approved',
-  EDITED: 'Edited',
   REJECTED: 'Rejected',
 };
 
@@ -129,14 +129,15 @@ function InvoiceList({
 }
 
 /**
- * Factory Invoice Approval — the approver reviews invoices raised in OMS, checks them
- * against physical stock at the warehouse, and approves or rejects each one. Four tabs
- * mirror the OMS invoice-log statuses; Pending/Edited are actionable, Approved/Rejected
+ * Factory Invoice Approval — the approver reviews A/R invoices awaiting approval in
+ * SAP (drafts held by SAP's approval procedure), checks them against physical stock
+ * at the warehouse, and approves or rejects each one directly in SAP. Three tabs
+ * mirror the SAP approval-request states; Pending is actionable, Approved/Rejected
  * are read-only.
  */
 export default function InvoiceApprovalPage() {
   const { hasPermission } = usePermission();
-  const canApprove = hasPermission(OMS_PERMISSIONS.APPROVE_INVOICE);
+  const canApprove = hasPermission(INVOICE_APPROVAL_PERMISSIONS.APPROVE_INVOICE);
   const queryClient = useQueryClient();
 
   const [warehouse, setWarehouse] = useSelectedWarehouse();
@@ -144,11 +145,29 @@ export default function InvoiceApprovalPage() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<InvoiceLog | null>(null);
 
+  // Scope the page to the warehouses this user manages (warehouse.UserWarehouse).
+  // Superusers (and any user whose scope can't be determined) see the full list.
+  const scope = useWarehouseScope();
+  const restrictToCodes = scope.unrestricted ? null : scope.codes;
+
+  // Drop a remembered selection the user no longer manages, so we never query —
+  // and the backend never 403s on — an out-of-scope warehouse.
+  useEffect(() => {
+    if (
+      scope.scopeKnown &&
+      !scope.unrestricted &&
+      warehouse &&
+      !scope.codes.has(warehouse.toUpperCase())
+    ) {
+      setWarehouse('');
+    }
+  }, [scope.scopeKnown, scope.unrestricted, scope.codes, warehouse, setWarehouse]);
+
   return (
     <div className="space-y-4">
       <DashboardHeader
         title="Invoice Approval"
-        description="Verify invoices raised in OMS against physical stock, then approve or reject."
+        description="Verify invoices awaiting approval in SAP against physical stock, then approve or reject."
       >
         <Button
           variant="outline"
@@ -161,6 +180,17 @@ export default function InvoiceApprovalPage() {
         </Button>
       </DashboardHeader>
 
+      {scope.managesNothing ? (
+        <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
+          <FileCheck2 className="h-8 w-8" />
+          <p className="max-w-md text-sm">
+            You are not set as the manager of any warehouse in this company, so there are no
+            invoices for you to approve. An administrator assigns this on Admin → Warehouse
+            Managers.
+          </p>
+        </div>
+      ) : (
+        <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-72">
           <WarehouseSelect
@@ -169,6 +199,7 @@ export default function InvoiceApprovalPage() {
             label="Warehouse"
             placeholder="Select warehouse"
             required
+            restrictToCodes={restrictToCodes}
           />
         </div>
         <div className="relative w-full sm:max-w-sm">
@@ -191,13 +222,13 @@ export default function InvoiceApprovalPage() {
       ) : (
         <Tabs value={tab} onValueChange={(value) => setTab(value as InvoiceTab)}>
           <TabsList>
-            {VISIBLE_INVOICE_TABS.map((value) => (
+            {INVOICE_TABS.map((value) => (
               <TabsTrigger key={value} value={value}>
                 {TAB_LABELS[value]}
               </TabsTrigger>
             ))}
           </TabsList>
-          {VISIBLE_INVOICE_TABS.map((value) => (
+          {INVOICE_TABS.map((value) => (
             <TabsContent key={value} value={value} className="mt-4">
               <InvoiceList
                 warehouse={warehouse}
@@ -208,6 +239,8 @@ export default function InvoiceApprovalPage() {
             </TabsContent>
           ))}
         </Tabs>
+      )}
+        </>
       )}
 
       <InvoiceDetailSheet

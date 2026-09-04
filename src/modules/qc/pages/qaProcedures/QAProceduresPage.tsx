@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, Loader2, Search, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -12,9 +12,13 @@ import {
   Button,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   Input,
   Label,
   Tabs,
@@ -60,13 +64,13 @@ function isPdf(file: File): boolean {
 }
 
 /**
- * QC → PDF Documents.
+ * QC → QA Procedures.
  *
  * Drop, choose or paste a PDF, give it a title and (optionally) a document
  * code, and it is stored as-is. Clicking a row opens the original file
  * unchanged — these are documents that must be read exactly as issued.
  */
-export default function QCPdfLibraryPage() {
+export default function QAProceduresPage() {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
   const canManage = hasAnyPermission([QC_PERMISSIONS.DOCUMENT_FILE.MANAGE]);
@@ -76,6 +80,7 @@ export default function QCPdfLibraryPage() {
   const uploadDocument = useUploadQCDocumentFile();
   const deleteDocument = useDeleteQCDocumentFile();
 
+  const [addOpen, setAddOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [documentCode, setDocumentCode] = useState('');
   const [title, setTitle] = useState('');
@@ -103,7 +108,8 @@ export default function QCPdfLibraryPage() {
     if (!title) setTitle(candidate.name.replace(/\.pdf$/i, ''));
   };
 
-  // Ctrl+V anywhere on the page drops a copied PDF straight into the form.
+  // Ctrl+V anywhere on the page drops a copied PDF straight into the form,
+  // opening the dialog if it is not already showing.
   useEffect(() => {
     if (!canManage) return undefined;
     const onPaste = (event: ClipboardEvent) => {
@@ -112,6 +118,7 @@ export default function QCPdfLibraryPage() {
       if (pdf) {
         event.preventDefault();
         acceptFile(pdf);
+        setAddOpen(true);
         toast.success('PDF pasted.');
       }
     };
@@ -127,6 +134,11 @@ export default function QCPdfLibraryPage() {
     setProcedureType('INHOUSE');
     setErrors({});
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const closeAddDialog = () => {
+    setAddOpen(false);
+    resetForm();
   };
 
   const handleUpload = async () => {
@@ -147,7 +159,7 @@ export default function QCPdfLibraryPage() {
         file: file!,
       });
       toast.success(`Stored ${saved.document_code}.`);
-      resetForm();
+      closeAddDialog();
     } catch (error) {
       const failure = error as ApiError;
       if (failure.errors) {
@@ -199,31 +211,43 @@ export default function QCPdfLibraryPage() {
 
   return (
     <div className="space-y-6 pb-6">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => navigate('/qc')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="space-y-1">
           <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
             <FileText className="h-8 w-8" />
-            PDF Documents
+            QA Procedures
           </h2>
           <p className="text-sm text-muted-foreground">
             Controlled documents kept as the original PDF, shown exactly as issued.
           </p>
         </div>
+        {canManage && (
+          <Button className="ml-auto" onClick={() => setAddOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add document
+          </Button>
+        )}
       </div>
 
       {canManage && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Add a document</CardTitle>
-            <CardDescription>
-              Drop a PDF below, choose one, or copy a PDF file and press Ctrl+V anywhere on this
-              page.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Dialog
+          open={addOpen}
+          onOpenChange={(open) => {
+            if (!open) closeAddDialog();
+          }}
+        >
+          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add a document</DialogTitle>
+              <DialogDescription>
+                Drop a PDF below, choose one, or copy a PDF file and press Ctrl+V anywhere on
+                this page.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
             {/* ---- drop zone ---- */}
             <div
               onDragOver={(event) => {
@@ -354,7 +378,10 @@ export default function QCPdfLibraryPage() {
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button variant="outline" onClick={closeAddDialog}>
+                Cancel
+              </Button>
               <Button onClick={handleUpload} disabled={uploadDocument.isPending}>
                 {uploadDocument.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -363,12 +390,10 @@ export default function QCPdfLibraryPage() {
                 )}
                 Save document
               </Button>
-              <Button variant="outline" onClick={resetForm}>
-                Clear
-              </Button>
             </div>
-          </CardContent>
-        </Card>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* ---- the library ---- */}

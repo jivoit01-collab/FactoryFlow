@@ -42,6 +42,9 @@ const DispatchFulfilmentDashboardPage = lazy(
 const DispatchTrackingDashboardPage = lazy(
   () => import('./dispatch-tracking/pages/DispatchTrackingDashboardPage'),
 );
+const BudgetApprovalsDashboardPage = lazy(
+  () => import('./budget-approvals/pages/BudgetApprovalsDashboardPage'),
+);
 const FactoryExpenseWallPage = lazy(
   () => import('./factory-expense/pages/FactoryExpenseWallPage'),
 );
@@ -62,6 +65,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
+        DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS,
         BLOWING_PERMISSIONS.VIEW_REPORTS,
       ],
     },
@@ -127,6 +131,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
       breadcrumb: { label: 'Production Movement' },
+    },
+    {
+      path: '/dashboards/budget-approvals',
+      element: <BudgetApprovalsDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS],
+      breadcrumb: { label: 'Budget Approvals' },
     },
     {
       // The wall board. Route sits first among the dispatch entries because it
@@ -218,6 +229,8 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // able to reach the Dashboards menu.
         DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
         DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
+        // Budget Approvals lives here too.
+        DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS,
       ],
       hasSubmenu: true,
       // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
@@ -285,6 +298,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
             DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
             DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
           ],
+        },
+        {
+          path: '/dashboards/budget-approvals',
+          title: 'Budget Approvals',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS],
         },
         {
           path: '/dashboards/dispatch-pipeline',

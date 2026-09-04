@@ -124,6 +124,15 @@ export interface DeliveryNoteSummary {
   /** Orders the warehouse can't fulfil yet — excluded so one short line can't
    *  fail the whole document. They cut automatically once stock arrives. */
   held_for_stock: DeliveryNoteBlocked[];
+  /** Confirmed here, but their parcels went out on an earlier sheet's note, so they
+   *  owe nothing. Shown so every confirmed dispatch is accounted for on screen. */
+  already_shipped?: {
+    order_id: string;
+    dispatch_id: number;
+    buyer_name: string;
+    order_date: string | null;
+    covered_by_note: string;
+  }[];
   /** Per-item top-up the warehouse must supply so every held order can ship.
    *  Empty when nothing is short or on-hand can't be read. */
   stock_shortfall: StockShortfallLine[];
@@ -866,6 +875,11 @@ export interface ImportPreview {
   duplicate_order_ids: string[];
   unmapped_skus: string[];
   has_duplicates: boolean;
+  /** Tracking IDs Excel destroyed (display-precision scientific notation) before
+   *  the file was uploaded. Their digits are NOT in the file — those parcels can
+   *  never be scanned by tracking on this sheet. */
+  corrupted_tracking_count: number;
+  corrupted_trackings: { order_id: string; tracking: string }[];
 }
 
 export interface SendIssueRequest {

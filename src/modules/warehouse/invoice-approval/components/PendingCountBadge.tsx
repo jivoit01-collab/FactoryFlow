@@ -4,8 +4,8 @@ import { usePendingCount } from '../api/invoice-approval.queries';
 import { useSelectedWarehouse } from '../useSelectedWarehouse';
 
 /**
- * Live count of invoices awaiting action (PENDING + EDITED) in the approver's
- * selected warehouse, rendered next to the "Invoice Approval" sidebar item.
+ * Live count of invoices awaiting approval in SAP for the approver's selected
+ * warehouse, rendered next to the "Invoice Approval" sidebar item.
  * Renders nothing until a warehouse is chosen or when there is nothing to show.
  */
 export function PendingCountBadge({ className }: { className?: string }) {

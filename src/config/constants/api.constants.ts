@@ -493,6 +493,12 @@ export const API_ENDPOINTS = {
     EXPORT: '/dashboards/stock/export/',
     ITEM_DETAIL: (itemCode: string) => `/dashboards/stock/${itemCode}/warehouses/`,
   },
+  // Budget Approvals Dashboard — Factory budget draft approvals read from
+  // SAP's DRAFT_APPROVAL_Budget procedure (Oil + Beverages in one feed).
+  BUDGET_APPROVALS: {
+    REPORT: '/dashboards/budget-approvals/report/',
+    COLUMN_VALUES: '/dashboards/budget-approvals/column-values/',
+  },
   // Non-Moving RM Dashboard
   NON_MOVING_RM: {
     REPORT: '/non-moving-rm/report/',
@@ -601,13 +607,13 @@ export const API_ENDPOINTS = {
     TRANSPORTER_INVOICE_DETAIL: (postingId: number) =>
       `/dispatch/transporter-invoices/${postingId}/`,
   },
-  // OMS Invoice Approval (proxy to the external OMS service)
-  OMS: {
-    INVOICES: '/oms/invoices/',
-    INVOICE_STATUS: (id: number) => `/oms/invoices/${id}/status/`,
-    INVOICE_HISTORY: (id: number) => `/oms/invoices/${id}/history/`,
-    INVOICE_PENDING_COUNT: '/oms/invoices/pending-count/',
-    INVOICE_AUDIT: (id: number) => `/oms/invoices/${id}/audit/`,
+  // Invoice Approval (SAP approval requests on A/R invoice drafts, read/decided directly in SAP)
+  INVOICE_APPROVAL: {
+    INVOICES: '/invoice-approvals/invoices/',
+    INVOICE_STATUS: (id: number) => `/invoice-approvals/invoices/${id}/status/`,
+    INVOICE_HISTORY: (id: number) => `/invoice-approvals/invoices/${id}/history/`,
+    INVOICE_PENDING_COUNT: '/invoice-approvals/invoices/pending-count/',
+    INVOICE_AUDIT: (id: number) => `/invoice-approvals/invoices/${id}/audit/`,
   },
   // Daily Tasks — each user's job sheet for one day, derived from every other module
   DAILY_TASKS: {
