@@ -4,5 +4,6 @@ export * from './parameterSet';
 export * from './printDocument';
 export * from './productionQC';
 export * from './qcDocumentFile';
+export * from './qcDocumentFileAudit';
 export * from './qcParameter';
 export * from './qcRecord';

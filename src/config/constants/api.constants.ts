@@ -312,6 +312,11 @@ export const API_ENDPOINTS = {
     QC_DOCUMENT_FILES: '/quality-control/document-files/',
     QC_DOCUMENT_FILE_BY_ID: (id: number) => `/quality-control/document-files/${id}/`,
     QC_DOCUMENT_FILE_DOWNLOAD: (id: number) => `/quality-control/document-files/${id}/download/`,
+    /** Who changed which controlled PDF, and when. */
+    QC_DOCUMENT_FILE_AUDIT_LOG: '/quality-control/document-files/audit-log/',
+    QC_DOCUMENT_FILE_AUDIT_FILTERS: '/quality-control/document-files/audit-log/filters/',
+    QC_DOCUMENT_FILE_AUDIT_LOG_FOR: (id: number) =>
+      `/quality-control/document-files/${id}/audit-log/`,
 
     // QC Record Forms (Documents) — blank forms and filled sheets
     RECORD_TEMPLATES: '/quality-control/record-templates/',

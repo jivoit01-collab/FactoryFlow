@@ -72,6 +72,13 @@ export const QC_PERMISSIONS = {
     VIEW: 'quality_control.can_view_document_files',
     /** Upload / edit / retire PDFs */
     MANAGE: 'quality_control.can_manage_document_files',
+    /**
+     * Read the trail of who changed which procedure.
+     *
+     * Deliberately separate from MANAGE: the people being logged are not the
+     * people who read the log.
+     */
+    VIEW_AUDIT: 'quality_control.can_view_document_file_audit',
   },
 
   // ============================================

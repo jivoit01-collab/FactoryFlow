@@ -15,6 +15,7 @@ const DecisionChangedInspectionsPage = lazy(() => import('./pages/DecisionChange
 
 // QA Procedures — controlled documents kept as the original PDF file
 const QAProceduresPage = lazy(() => import('./pages/qaProcedures/QAProceduresPage'));
+const QAProcedureLogPage = lazy(() => import('./pages/qaProcedures/QAProcedureLogPage'));
 
 // Documents submodule — fillable QC record sheets
 const QCDocumentsPage = lazy(() => import('./pages/documents/QCDocumentsPage'));
@@ -219,6 +220,15 @@ export const qcModuleConfig: ModuleConfig = {
       permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
       breadcrumb: { label: 'QA Procedures' },
     },
+    {
+      // Gated on the audit permission alone: whoever may upload a procedure is
+      // not thereby entitled to read the trail of who changed it.
+      path: '/qc/qa-procedures/log',
+      element: <QAProcedureLogPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW_AUDIT],
+      breadcrumb: { label: 'Audit Log' },
+    },
 
     // ==================== Shared Master Data ====================
     {
@@ -303,6 +313,11 @@ export const qcModuleConfig: ModuleConfig = {
         // daily records still needs the module to appear.
         QC_PERMISSIONS.QC_RECORD.VIEW,
         QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
+        // And for the audit reader: the log permission is deliberately held on
+        // its own, without the rights to view or manage the library, so
+        // without this the whole module would be hidden and the log
+        // unreachable from the sidebar.
+        QC_PERMISSIONS.DOCUMENT_FILE.VIEW_AUDIT,
       ],
       hasSubmenu: true,
       children: [
@@ -377,6 +392,11 @@ export const qcModuleConfig: ModuleConfig = {
           path: '/qc/qa-procedures',
           title: 'QA Procedures',
           permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
+        },
+        {
+          path: '/qc/qa-procedures/log',
+          title: 'QA Procedure Log',
+          permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW_AUDIT],
         },
         {
           path: '/qc/master/material-types',
