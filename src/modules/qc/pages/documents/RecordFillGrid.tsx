@@ -4,10 +4,7 @@ import { Fragment, useMemo } from 'react';
 import { Button, Input } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import type {
-  QCRecord,
-  RecordTemplateParameter,
-} from '../../types/qcRecord.types';
+import type { QCRecord, RecordTemplateParameter } from '../../types/qcRecord.types';
 import { cellKey, toHHMM } from '../../utils/recordGrid';
 
 interface RecordFillGridProps {
@@ -95,8 +92,7 @@ export default function RecordFillGrid({
   const choiceParameters = record.template_detail.sections
     .flatMap((section) => section.parameters)
     .filter(
-      (parameter) =>
-        parameter.value_type === 'CHOICE' && parameter.allowed_values.length > 0,
+      (parameter) => parameter.value_type === 'CHOICE' && parameter.allowed_values.length > 0,
     );
 
   return (
@@ -136,33 +132,24 @@ export default function RecordFillGrid({
           {record.template_detail.sections.map((section) => (
             <Fragment key={section.id}>
               <tr className="border-b bg-muted/30">
-                <td
-                  colSpan={5 + slots.length}
-                  className="px-2 py-1.5 text-sm font-semibold"
-                >
+                <td colSpan={5 + slots.length} className="px-2 py-1.5 text-sm font-semibold">
                   {section.title}
                 </td>
               </tr>
 
               {section.parameters.map((parameter) => (
                 <tr key={parameter.id} className="border-b last:border-0">
-                  <td className="border-r px-2 py-1.5 text-muted-foreground">
-                    {parameter.sr_no}
-                  </td>
+                  <td className="border-r px-2 py-1.5 text-muted-foreground">{parameter.sr_no}</td>
                   <td className="border-r px-2 py-1.5 font-medium">
                     {parameter.name}
                     {parameter.unit && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({parameter.unit})
-                      </span>
+                      <span className="ml-1 text-xs text-muted-foreground">({parameter.unit})</span>
                     )}
                   </td>
                   <td className="border-r px-2 py-1.5 text-xs text-muted-foreground">
                     {parameter.frequency}
                   </td>
-                  <td className="border-r px-2 py-1.5 text-xs">
-                    {parameter.specification}
-                  </td>
+                  <td className="border-r px-2 py-1.5 text-xs">{parameter.specification}</td>
                   {slots.map((slot) => (
                     <td key={slot.id} className="border-r px-1 py-1">
                       {renderCell(parameter, slot.slot_time)}
@@ -177,16 +164,11 @@ export default function RecordFillGrid({
       </table>
 
       {slots.length === 0 && (
-        <div className="space-y-3 border-t px-4 py-8 text-center">
+        <div className="border-t px-4 py-8 text-center">
           <p className="text-sm text-muted-foreground">
-            No observation times yet. Each time you take a reading, add a column for it.
+            No observation times yet. Use the <span className="font-medium">+ Time</span> button
+            above to add a column each time you take a reading.
           </p>
-          {!readOnly && (
-            <Button onClick={onAddTimeSlot}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add first observation time
-            </Button>
-          )}
         </div>
       )}
     </div>
