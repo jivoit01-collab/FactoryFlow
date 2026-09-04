@@ -322,11 +322,6 @@ export const API_ENDPOINTS = {
     QC_RECORD_SUBMIT: (id: number) => `/quality-control/qc-records/${id}/submit/`,
     QC_RECORD_APPROVE: (id: number) => `/quality-control/qc-records/${id}/approve/`,
 
-    // Testing Procedures (QC Procedures)
-    TESTING_PROCEDURES: '/quality-control/testing-procedures/',
-    TESTING_PROCEDURE_COUNTS: '/quality-control/testing-procedures/counts/',
-    TESTING_PROCEDURE_BY_ID: (id: number) => `/quality-control/testing-procedures/${id}/`,
-
     // QC Parameters
     QC_PARAMETER_BY_ID: (id: number) => `/quality-control/parameters/${id}/`,
 
