@@ -11,12 +11,7 @@ const QCDashboardPage = lazy(() => import('./pages/QCDashboardPage'));
 const PendingInspectionsPage = lazy(() => import('./pages/PendingInspectionsPage'));
 const InspectionDetailPage = lazy(() => import('./pages/InspectionDetailPage'));
 const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'));
-const DecisionChangedInspectionsPage = lazy(
-  () => import('./pages/DecisionChangedInspectionsPage'),
-);
-
-// Procedures submodule — controlled testing procedures
-const QCProceduresPage = lazy(() => import('./pages/procedures/QCProceduresPage'));
+const DecisionChangedInspectionsPage = lazy(() => import('./pages/DecisionChangedInspectionsPage'));
 
 // QA Procedures — controlled documents kept as the original PDF file
 const QAProceduresPage = lazy(() => import('./pages/qaProcedures/QAProceduresPage'));
@@ -192,18 +187,6 @@ export const qcModuleConfig: ModuleConfig = {
       permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
       breadcrumb: { label: 'Return QC' },
     },
-    // ==================== Procedures Submodule ====================
-    {
-      path: '/qc/procedures',
-      element: <QCProceduresPage />,
-      layout: 'main',
-      permissions: [
-        QC_PERMISSIONS.TESTING_PROCEDURE.VIEW,
-        QC_PERMISSIONS.TESTING_PROCEDURE.MANAGE,
-      ],
-      breadcrumb: { label: 'Procedures' },
-    },
-
     // ==================== Documents Submodule ====================
     {
       path: '/qc/documents',
@@ -233,10 +216,7 @@ export const qcModuleConfig: ModuleConfig = {
       path: '/qc/qa-procedures',
       element: <QAProceduresPage />,
       layout: 'main',
-      permissions: [
-        QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
-        QC_PERMISSIONS.DOCUMENT_FILE.MANAGE,
-      ],
+      permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
       breadcrumb: { label: 'QA Procedures' },
     },
 
@@ -297,10 +277,7 @@ export const qcModuleConfig: ModuleConfig = {
       path: '/qc/pdf-documents',
       element: <QAProceduresPage />,
       layout: 'main',
-      permissions: [
-        QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
-        QC_PERMISSIONS.DOCUMENT_FILE.MANAGE,
-      ],
+      permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
       breadcrumb: { label: 'QA Procedures' },
     },
   ],
@@ -322,10 +299,6 @@ export const qcModuleConfig: ModuleConfig = {
         QC_PERMISSIONS.INSPECTION.VIEW,
         QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
         ...lineClearanceQCPermissions,
-        // Procedures is reachable on its own perm so a QA documentation user
-        // who holds nothing else still gets the module in the sidebar. Safe to
-        // add to the gate above: no existing group holds this permission.
-        QC_PERMISSIONS.TESTING_PROCEDURE.VIEW,
         // Same reasoning for the record sheets: a QA operator who only fills
         // daily records still needs the module to appear.
         QC_PERMISSIONS.QC_RECORD.VIEW,
@@ -392,14 +365,6 @@ export const qcModuleConfig: ModuleConfig = {
           permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
         },
         {
-          path: '/qc/procedures',
-          title: 'Procedures',
-          permissions: [
-            QC_PERMISSIONS.TESTING_PROCEDURE.VIEW,
-            QC_PERMISSIONS.TESTING_PROCEDURE.MANAGE,
-          ],
-        },
-        {
           path: '/qc/documents',
           title: 'Documents',
           permissions: [
@@ -411,10 +376,7 @@ export const qcModuleConfig: ModuleConfig = {
         {
           path: '/qc/qa-procedures',
           title: 'QA Procedures',
-          permissions: [
-            QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
-            QC_PERMISSIONS.DOCUMENT_FILE.MANAGE,
-          ],
+          permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
         },
         {
           path: '/qc/master/material-types',

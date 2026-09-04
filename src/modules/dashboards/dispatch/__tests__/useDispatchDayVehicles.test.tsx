@@ -249,6 +249,34 @@ describe('useDispatchDayVehicles', () => {
     expect(vendor.amount).toBe(100_000);
   });
 
+  it('totals a vendor by litres, which SAP records more reliably than weight', async () => {
+    list.mockResolvedValue([
+      // Taken from a real docking: SAP put 195 kg against 2,195 litres of olive
+      // oil -- the litres figure with its leading digit lost. The panel leads
+      // with litres precisely so one row like this cannot make a vendor look
+      // like it shipped nothing.
+      docking({
+        arrival_no: 'ARV-OIL',
+        transporter_name: 'Jivo Wellness',
+        status: 'DISPATCHED',
+        gate_out_date: TODAY,
+        dispatched_at: new Date(2026, 7, 27, 10, 0).toISOString(),
+        sap_doc_total: '504850',
+        total_litres: '2195',
+        total_weight: '195',
+        total_boxes: '0',
+      }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    const vendor = result.current.byVendor[0];
+    expect(vendor.litres).toBe(2195);
+    expect(vendor.boxes).toBe(0);
+    // The bad figure is still carried, just not what the row leads with.
+    expect(vendor.weightKg).toBe(195);
+  });
+
   it('bins departures by local hour', async () => {
     list.mockResolvedValue([
       docking({

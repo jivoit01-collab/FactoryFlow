@@ -7,7 +7,7 @@ import { cn } from '@/shared/utils';
 import { useWallPalette } from '../constants/wall.palette';
 import type { DispatchDayVehicles } from '../hooks';
 import { useAutoScroll, useBoardDay } from '../hooks';
-import { compact, count, money, weight } from '../utils/format';
+import { compact, count, money, volume, weight } from '../utils/format';
 import { BoardPanel, PanelBadge, PanelEmpty } from './BoardPanel';
 
 /** Below this many rows the list fits, and creeping it would just be motion. */
@@ -86,8 +86,19 @@ export function DispatchVendorsPanel({ vehicles }: { vehicles: DispatchDayVehicl
                         }}
                       />
                     </span>
-                    <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/80">
-                      {compact(row.boxes)} bx &middot; {weight(row.weightKg)}
+                    {/* Litres first, weight only as the fallback for a load
+                        that carries none. A single mis-recorded weight can
+                        dominate one vendor's row -- 2,195 L has arrived from SAP
+                        as 195 kg -- and it was the weight that was wrong on
+                        every such row, never the litres. The weight is still
+                        one hover away rather than lost. */}
+                    <span
+                      title={`${weight(row.weightKg)} recorded weight`}
+                      className="shrink-0 text-[11px] tabular-nums text-muted-foreground/80"
+                    >
+                      {row.litres > 0
+                        ? `${volume(row.litres)} · ${compact(row.boxes)} bx`
+                        : `${compact(row.boxes)} bx · ${weight(row.weightKg)}`}
                     </span>
                   </span>
                 </span>
