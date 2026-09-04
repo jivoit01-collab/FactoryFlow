@@ -76,53 +76,59 @@ export const CONTROLLED_DOCUMENTS = {
   },
 
   // --- ETP / STP plant registers -------------------------------------------
-  // Codes read off the plants' own forms. The sludge (…-08-06), STP chemical
-  // (…-08-04), back-washing (QA-FRM-14-09-00-03) and calibration
-  // (CAL-FRM-08-03-00-01) codes are the printed ones; the daily-record,
-  // monitoring and ETP-chemical serials were illegible on the scanned forms and
-  // are assigned within the same QA-FRM-14-00-08 group — confirm them against
-  // the controlled originals before the first audit.
+  // Revisions and issue dates read off photographs of the FILLED registers
+  // (Aug 2026 set), so these are the forms as the plant actually keeps them.
+  // Two codes are still open:
+  //   * ETP_DAILY_RECORD - illegible on both photos, left BLANK on purpose. It
+  //     used to carry QA-FRM-14-00-08-01, which is really the Shelf Life Study
+  //     Record's number, so printing it stamped another form's controlled code
+  //     on this register.
+  //   * ETP_MONITORING_RECORD - the footer confirms the QA-FRM-14-00-08- group
+  //     but the last segment is lost in the curl of the page.
+  // ETP_CHEMICAL_CONSUMPTION is the "A" variant of the STP sheet's number, read
+  // off a blurred footer - worth one confirmation from QA.
+  // These are only the fallback: a row in ETP Settings always wins.
   ETP_DAILY_RECORD: {
     name: 'EFFLUENT TREATMENT PLANT RECORD',
-    code: 'QA-FRM-14-00-08-01',
-    revision: '00',
-    issueDate: '23-07-2026',
+    code: '',
+    revision: '01',
+    issueDate: '01-06-2024',
   },
   ETP_MONITORING_RECORD: {
     name: 'ETP ON LINE MONITORING RECORD',
     code: 'QA-FRM-14-00-08-02',
     revision: '00',
-    issueDate: '23-07-2026',
+    issueDate: '05-10-2023',
   },
   ETP_CHEMICAL_CONSUMPTION: {
     name: 'CHEMICAL CONSUMPTION RECORD FOR ETP PLANT',
-    code: 'QA-FRM-14-00-08-05',
-    revision: '00',
-    issueDate: '23-07-2026',
+    code: 'QA-FRM-14-00-08-04 A',
+    revision: '01',
+    issueDate: '01-07-2024',
   },
   STP_CHEMICAL_CONSUMPTION: {
     name: 'CHEMICAL CONSUMPTION RECORD FOR STP PLANT',
     code: 'QA-FRM-14-00-08-04',
-    revision: '00',
-    issueDate: '23-07-2026',
+    revision: '01',
+    issueDate: '01-07-2024',
   },
   ETP_SLUDGE_GENERATION: {
     name: 'SLUDGE GENERATION RECORD',
     code: 'QA-FRM-14-00-08-06',
     revision: '00',
-    issueDate: '23-07-2026',
+    issueDate: '01-01-2025',
   },
   ETP_BACKWASH_RECORD: {
     name: 'DAILY BACK WASHING RECORD',
     code: 'QA-FRM-14-09-00-03',
     revision: '00',
-    issueDate: '23-07-2026',
+    issueDate: '05-10-2023',
   },
   ETP_CALIBRATION_RECORD: {
     name: 'CALIBRATION RECORD',
     code: 'CAL-FRM-08-03-00-01',
-    revision: '00',
-    issueDate: '23-07-2026',
+    revision: '01',
+    issueDate: '06-09-2023',
   },
 } as const satisfies Record<string, ControlledDocumentMeta>;
 
