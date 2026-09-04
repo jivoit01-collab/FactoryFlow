@@ -1,14 +1,31 @@
 /**
  * Types for the Factory Invoice Approval feature.
  *
- * Head-office billing raises A/R invoices in SAP; the approval procedure holds
- * each one as a draft with a pending approval request. Our backend reads those
- * requests straight from SAP (`/invoice-approvals/…`) and records the decision
- * back through the SAP Service Layer. `InvoiceLog.id` is the SAP approval-request
- * code (OWDD.WddCode).
+ * The page serves two sources, both through `/invoice-approvals/…`:
+ *
+ * - **OMS** (the default): entries head-office billing logged in the external
+ *   OMS service, proxied by our backend (`oms-invoices/`). `InvoiceLog.id` is
+ *   the OMS invoice-log id.
+ * - **SAP** (behind a toggle): A/R invoice drafts held by SAP's own approval
+ *   procedure, read from HANA and decided through the Service Layer
+ *   (`invoices/`). `InvoiceLog.id` is the approval-request code (OWDD.WddCode).
+ *
+ * The two id-spaces are unrelated, so an invoice is only ever identified by
+ * `(source, id)` — never by id alone.
  */
 
-/** An approval request is pending, approved, or rejected — also the page tabs. */
+/** Which backend a listed invoice came from, and where a decision is recorded. */
+export type InvoiceSource = 'OMS' | 'SAP';
+
+/** The source shown when the page first loads. */
+export const DEFAULT_INVOICE_SOURCE: InvoiceSource = 'OMS';
+
+/**
+ * An approval request is pending, approved, or rejected — also the page tabs.
+ * OMS additionally reports states past the approver's reach (ERROR,
+ * POSTED_TO_SAP, CL_RAISED, and the retired EDITED); they are never tabs, but
+ * a row can carry one, so the badge renders whatever it is given.
+ */
 export type InvoiceStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /** Statuses shown as tabs on the approval page, in order. */
@@ -61,14 +78,18 @@ export interface FgStock {
 }
 
 export interface InvoiceLog {
-  /** SAP approval-request code (OWDD.WddCode) — what approve/reject acts on. */
+  /**
+   * What approve/reject acts on: the SAP approval-request code (OWDD.WddCode)
+   * for SAP rows, or the OMS invoice-log id for OMS rows.
+   */
   id: number;
-  /** The underlying draft document (ODRF). */
-  doc_entry: number;
-  doc_num: number | null;
+  /** The underlying SAP draft document (ODRF). Absent on OMS rows. */
+  doc_entry?: number;
+  doc_num?: number | null;
   /** Base sales order DocNum when the draft was copied from one, else the draft DocNum. */
   so_number: string;
-  card_code: string;
+  /** SAP rows only — OMS keeps the customer inside `invoice_payload.CardCode`. */
+  card_code?: string;
   party_name: string;
   total_amount: string | null;
   branch: string | null;
@@ -80,16 +101,22 @@ export interface InvoiceLog {
   // Per-line on-hand stock in each line's warehouse.
   fg_stock: FgStock[];
   created_at: string | null;
-  /** SAP user who raised the draft (the request originator). */
-  created_by: string | null;
+  /**
+   * Who raised it: the SAP user name (SAP rows) or the OMS numeric user id
+   * (OMS rows, which is why this isn't just a string).
+   */
+  created_by: string | number | null;
 }
 
-/** One step of the SAP approval trail (request raised / approver decided). */
+/**
+ * One step of the approval trail — a SAP approval step (raised / decided), or
+ * an OMS status-change entry. `remarks` is SAP-only.
+ */
 export interface InvoiceHistoryRecord {
   id: number;
   status: InvoiceStatus | string;
   created_by_name: string | null;
-  remarks: string | null;
+  remarks?: string | null;
   created_at: string | null;
 }
 
@@ -97,6 +124,8 @@ export interface InvoiceHistoryRecord {
 export interface InvoiceApprovalAudit {
   id: number;
   approval_code: number;
+  /** Which backend the decision was recorded against. */
+  source: InvoiceSource;
   draft_entry: number | null;
   so_number: string;
   party_name: string;
@@ -114,10 +143,16 @@ export interface PendingCount {
   total: number;
 }
 
-/** Body sent to PATCH /invoice-approvals/invoices/<id>/status/. */
+/** Body sent to PATCH /invoice-approvals/{oms-,}invoices/<id>/status/. */
 export interface StatusUpdateRequest {
   status: 'APPROVED' | 'REJECTED';
   rejection_reason?: string;
+  /**
+   * The invoice's warehouse. OMS has no per-id read endpoint, so the backend
+   * scopes an OMS decision on this; SAP decisions resolve it from SAP and
+   * ignore the field.
+   */
+  warehouse?: string;
   // Optional display context stored on the local audit row (avoids an extra SAP call).
   so_number?: string;
   party_name?: string;

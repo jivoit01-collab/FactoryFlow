@@ -25,7 +25,12 @@ import {
   useUpdateInvoiceStatus,
 } from '../api/invoice-approval.queries';
 import { type RejectInvoiceFormData, rejectInvoiceSchema } from '../schemas/invoice-approval.schema';
-import { ACTIONABLE_TABS, type InvoiceLog, type InvoiceTab } from '../types';
+import {
+  ACTIONABLE_TABS,
+  type InvoiceLog,
+  type InvoiceSource,
+  type InvoiceTab,
+} from '../types';
 import { DocumentLinesTable } from './DocumentLinesTable';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 
@@ -50,10 +55,12 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
  */
 function InvoiceDetailBody({
   invoice,
+  source,
   canApprove,
   onClose,
 }: {
   invoice: InvoiceLog;
+  source: InvoiceSource;
   canApprove: boolean;
   onClose: () => void;
 }) {
@@ -61,9 +68,9 @@ function InvoiceDetailBody({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
 
-  const updateStatus = useUpdateInvoiceStatus();
-  const historyQuery = useInvoiceHistory(historyOpen ? invoice.id : null);
-  const auditQuery = useInvoiceAudit(auditOpen ? invoice.id : null);
+  const updateStatus = useUpdateInvoiceStatus(source);
+  const historyQuery = useInvoiceHistory(source, historyOpen ? invoice.id : null);
+  const auditQuery = useInvoiceAudit(source, auditOpen ? invoice.id : null);
 
   const {
     register,
@@ -73,7 +80,10 @@ function InvoiceDetailBody({
 
   const isActionable = ACTIONABLE_TABS.includes(invoice.status as InvoiceTab);
   const busy = updateStatus.isPending;
+  // Display context stored on the local audit row, plus the warehouse an OMS
+  // decision is scope-checked against (SAP resolves its own and ignores it).
   const auditContext = {
+    warehouse: invoice.warehouse ?? undefined,
     so_number: invoice.so_number,
     party_name: invoice.party_name,
     total_amount: invoice.total_amount ?? undefined,
@@ -147,11 +157,11 @@ function InvoiceDetailBody({
 
       <Separator />
 
-      {/* Approval history (from SAP) */}
+      {/* Approval history (from whichever backend this invoice came from) */}
       <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
         <CollapsibleTrigger className="flex w-full items-center justify-between text-sm font-semibold">
           <span className="flex items-center gap-2">
-            <History className="h-4 w-4" /> Approval history
+            <History className="h-4 w-4" /> Approval history ({source})
           </span>
           <ChevronDown className={cn('h-4 w-4 transition-transform', historyOpen && 'rotate-180')} />
         </CollapsibleTrigger>
@@ -272,11 +282,13 @@ function InvoiceDetailBody({
 
 export function InvoiceDetailSheet({
   invoice,
+  source,
   open,
   onOpenChange,
   canApprove,
 }: {
   invoice: InvoiceLog | null;
+  source: InvoiceSource;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canApprove: boolean;
@@ -286,8 +298,10 @@ export function InvoiceDetailSheet({
       <SheetContent side="right" className="flex w-full flex-col gap-4 overflow-y-auto sm:max-w-xl">
         {invoice ? (
           <InvoiceDetailBody
-            key={invoice.id}
+            // Remount on a source switch too — ids collide across the two.
+            key={`${source}:${invoice.id}`}
             invoice={invoice}
+            source={source}
             canApprove={canApprove}
             onClose={() => onOpenChange(false)}
           />
