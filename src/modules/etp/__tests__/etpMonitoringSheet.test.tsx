@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ETP_PERMISSIONS } from '@/config/permissions';
 
@@ -64,6 +64,8 @@ const STAFF = [
 ];
 
 const createRecord = vi.hoisted(() => vi.fn().mockResolvedValue({}));
+/** The sheet already on file for the chosen plant/date. Empty unless a test sets it. */
+const saved = vi.hoisted(() => ({ current: [] as unknown[] }));
 
 vi.mock('../api', () => ({
   useEtpPlants: () => ({ data: [PLANT], isLoading: false }),
@@ -72,8 +74,7 @@ vi.mock('../api', () => ({
     data: { plant: 1, interval_hours: 2, time_slots: ['06:00', '08:00'], parameters: [PH, DO] },
     isLoading: false,
   }),
-  // No sheet saved for this plant/date yet.
-  useEtpMonitoringRecords: () => ({ data: [], isLoading: false }),
+  useEtpMonitoringRecords: () => ({ data: saved.current, isLoading: false }),
   useCreateEtpMonitoringRecord: () => ({ mutateAsync: createRecord, isPending: false }),
   useUpdateEtpMonitoringRecord: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useVerifyEtpMonitoringRecord: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -107,6 +108,10 @@ function rowAt(time: string) {
 }
 
 describe('ETP on-line monitoring sheet', () => {
+  beforeEach(() => {
+    saved.current = [];
+  });
+
   it('lays the sheet out from the configured parameters and time slots', () => {
     openSheet();
 
@@ -147,5 +152,42 @@ describe('ETP on-line monitoring sheet', () => {
       { parameter: 11, value: '7.44' },
       { parameter: 12, value: '2.4' },
     ]);
+  });
+
+  it('reopens a filed sheet with its blank slots still laid out', () => {
+    // 06:00 was filled and filed; 08:00 was left blank so it was never filed.
+    saved.current = [
+      {
+        id: 9,
+        plant: 1,
+        date: '2026-09-04',
+        interval_hours: 2,
+        chemist: null,
+        verified_by: null,
+        verified_at: null,
+        remarks: '',
+        readings: [
+          {
+            id: 3,
+            reading_time: '06:00:00',
+            operator: 5,
+            remarks: '',
+            values: [
+              { id: 1, parameter: 11, value: '7.440', is_out_of_spec: false },
+              { id: 2, parameter: 12, value: '2.400', is_out_of_spec: false },
+            ],
+          },
+        ],
+      },
+    ];
+
+    openSheet();
+
+    // The filed row keeps its values...
+    const [phInput] = within(rowAt('06:00')).getAllByRole('spinbutton');
+    expect((phInput as HTMLInputElement).value).toBe('7.440');
+    // ...and the unfiled slot is still on the sheet to be filled in later, the
+    // way the paper form is pre-printed for the whole day.
+    expect(rowAt('08:00')).toBeInTheDocument();
   });
 });

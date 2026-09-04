@@ -95,17 +95,62 @@ function groupByStage(parameters: MonitoringParameter[]) {
   return groups;
 }
 
+function blankRow(time: string): GridRow {
+  return { time, operator: '', values: {} };
+}
+
+/** The times a sheet is laid out at: every `interval` hours from `startHour`. */
+function slotsFrom(startHour: number, interval: number): string[] {
+  const step = Math.min(24, Math.max(1, Math.trunc(interval) || 1));
+  return Array.from(
+    { length: Math.floor(24 / step) },
+    (_, index) => `${String((startHour + index * step) % 24).padStart(2, '0')}:00`,
+  );
+}
+
+/** Minutes after the sheet's first slot, so an after-midnight row sorts last. */
+function minutesFromStart(time: string, startMinutes: number): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return ((hours * 60 + minutes - startMinutes) % 1440 + 1440) % 1440;
+}
+
+/**
+ * The grid's initial rows: always the full sheet, with anything saved dropped in.
+ *
+ * Empty slots are deliberately never FILED (see `save`), but the sheet still has
+ * to come back laid out the way the paper form is pre-printed — a row per
+ * interval, all day. Rendering only the saved readings collapsed a sheet to
+ * whichever rows had been filled so far, so the operator had to re-add every
+ * later time by hand and the print came out short.
+ *
+ * The layout follows the SAVED sheet's own interval, so a sheet filled hourly
+ * still reads hourly whatever the page's dropdown says. A time the operator
+ * typed off-grid (07:15) is kept and sorted into place rather than dropped.
+ */
 function initialRows(record: MonitoringRecord | undefined, timeSlots: string[]): GridRow[] {
-  if (record) {
-    return record.readings.map((reading) => ({
-      time: reading.reading_time.slice(0, 5),
+  if (!record) return timeSlots.map(blankRow);
+
+  const saved = new Map<string, GridRow>();
+  record.readings.forEach((reading) => {
+    const time = reading.reading_time.slice(0, 5);
+    saved.set(time, {
+      time,
       operator: reading.operator ? String(reading.operator) : '',
       values: Object.fromEntries(
         reading.values.map((value) => [value.parameter, value.value ?? '']),
       ),
-    }));
-  }
-  return timeSlots.map((slot) => ({ time: slot, operator: '', values: {} }));
+    });
+  });
+
+  const startHour = Number((timeSlots[0] ?? '00:00').slice(0, 2)) || 0;
+  const layout = slotsFrom(startHour, record.interval_hours);
+  const startMinutes = startHour * 60;
+
+  const offGrid = [...saved.values()].filter((row) => !layout.includes(row.time));
+  return [...layout.map((slot) => saved.get(slot) ?? blankRow(slot)), ...offGrid].sort(
+    (left, right) =>
+      minutesFromStart(left.time, startMinutes) - minutesFromStart(right.time, startMinutes),
+  );
 }
 
 interface SheetEditorProps {
@@ -542,8 +587,8 @@ export default function EtpMonitoringPage() {
             </NativeSelect>
           </div>
           <p className="ml-auto max-w-sm text-xs text-muted-foreground">
-            Changing the frequency re-lays the blank sheet; a saved sheet keeps the times it was
-            filled at.
+            Changing the frequency re-lays the blank sheet. A saved sheet keeps its own
+            interval and every time it was filled at.
           </p>
         </CardContent>
       </Card>
