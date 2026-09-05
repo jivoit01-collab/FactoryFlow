@@ -21,13 +21,22 @@ describe('maintenance permissions', () => {
     expect(MAINTENANCE_PERMISSIONS.VIEW_WORK_ORDER).toBe('maintenance.can_view_work_order');
     expect(MAINTENANCE_PERMISSIONS.CREATE_WORK_ORDER).toBe('maintenance.can_create_work_order');
     expect(MAINTENANCE_PERMISSIONS.ASSIGN_WORK_ORDER).toBe('maintenance.can_assign_work_order');
-    expect(MAINTENANCE_PERMISSIONS.COMPLETE_WORK_ORDER).toBe(
-      'maintenance.can_complete_work_order',
-    );
-    expect(MAINTENANCE_PERMISSIONS.APPROVE_WORK_ORDER).toBe(
-      'maintenance.can_approve_work_order',
-    );
+    expect(MAINTENANCE_PERMISSIONS.COMPLETE_WORK_ORDER).toBe('maintenance.can_complete_work_order');
+    expect(MAINTENANCE_PERMISSIONS.APPROVE_WORK_ORDER).toBe('maintenance.can_approve_work_order');
     expect(MAINTENANCE_PERMISSIONS.VIEW_PM).toBe('maintenance.can_view_pm');
     expect(MAINTENANCE_PERMISSIONS.VIEW_SPARE).toBe('maintenance.can_view_spare');
+  });
+
+  it('splits raising a material indent from sending it for approval', () => {
+    expect(MAINTENANCE_PERMISSIONS.DRAFT_MATERIAL_INDENT).toBe(
+      'maintenance.can_draft_material_indent',
+    );
+    expect(MAINTENANCE_PERMISSIONS.SUBMIT_MATERIAL_INDENT).toBe(
+      'maintenance.can_submit_material_indent',
+    );
+    // The legacy superset stays, so nobody who could already do both loses it.
+    expect(MAINTENANCE_PERMISSIONS.MANAGE_MATERIAL_INDENT).toBe(
+      'maintenance.can_manage_material_indent',
+    );
   });
 });

@@ -53,16 +53,6 @@ export const QC_PERMISSIONS = {
   },
 
   // ============================================
-  // TESTING PROCEDURE (PROCEDURES) PERMISSIONS
-  // ============================================
-  TESTING_PROCEDURE: {
-    /** View controlled testing procedures */
-    VIEW: 'quality_control.can_view_testing_procedures',
-    /** Create / edit / retire controlled testing procedures */
-    MANAGE: 'quality_control.can_manage_testing_procedures',
-  },
-
-  // ============================================
   // QC RECORD FORMS (DOCUMENTS) PERMISSIONS
   // ============================================
   QC_RECORD: {
@@ -82,6 +72,13 @@ export const QC_PERMISSIONS = {
     VIEW: 'quality_control.can_view_document_files',
     /** Upload / edit / retire PDFs */
     MANAGE: 'quality_control.can_manage_document_files',
+    /**
+     * Read the trail of who changed which procedure.
+     *
+     * Deliberately separate from MANAGE: the people being logged are not the
+     * people who read the log.
+     */
+    VIEW_AUDIT: 'quality_control.can_view_document_file_audit',
   },
 
   // ============================================
@@ -147,7 +144,6 @@ export type QCPermission =
   | (typeof QC_PERMISSIONS.INSPECTION)[keyof typeof QC_PERMISSIONS.INSPECTION]
   | (typeof QC_PERMISSIONS.APPROVAL)[keyof typeof QC_PERMISSIONS.APPROVAL]
   | (typeof QC_PERMISSIONS.MASTER_DATA)[keyof typeof QC_PERMISSIONS.MASTER_DATA]
-  | (typeof QC_PERMISSIONS.TESTING_PROCEDURE)[keyof typeof QC_PERMISSIONS.TESTING_PROCEDURE]
   | (typeof QC_PERMISSIONS.QC_RECORD)[keyof typeof QC_PERMISSIONS.QC_RECORD]
   | (typeof QC_PERMISSIONS.PRODUCTION_QC)[keyof typeof QC_PERMISSIONS.PRODUCTION_QC]
   | (typeof QC_PERMISSIONS.LINE_CLEARANCE_QC)[keyof typeof QC_PERMISSIONS.LINE_CLEARANCE_QC];

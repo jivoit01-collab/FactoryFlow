@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Loader2, Save, Send, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Printer, Save, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -22,23 +22,18 @@ import {
   Label,
 } from '@/shared/components/ui';
 
-import {
-  useDecideQCRecord,
-  useQCRecord,
-  useSaveRecordValues,
-  useSubmitQCRecord,
-} from '../../api/qcRecord';
+import { useDecideQCRecord, useQCRecord, useSaveRecordValues } from '../../api/qcRecord';
 import type { RecordStatus } from '../../types/qcRecord.types';
 import { cellKey, toHHMM } from '../../utils/recordGrid';
 import RecordFillGrid from './RecordFillGrid';
+import { useQCRecordPrint } from './useQCRecordPrint';
 
-const STATUS_VARIANT: Record<RecordStatus, 'default' | 'secondary' | 'success' | 'destructive'> =
-  {
-    DRAFT: 'secondary',
-    SUBMITTED: 'default',
-    APPROVED: 'success',
-    REJECTED: 'destructive',
-  };
+const STATUS_VARIANT: Record<RecordStatus, 'default' | 'secondary' | 'success' | 'destructive'> = {
+  DRAFT: 'secondary',
+  SUBMITTED: 'default',
+  APPROVED: 'success',
+  REJECTED: 'destructive',
+};
 
 /** Current wall-clock time as HH:MM — the sensible default for a new column. */
 function nowHHMM(): string {
@@ -57,8 +52,8 @@ export default function QCRecordDetailPage() {
   const id = recordId ? Number(recordId) : null;
   const { data: record, isLoading } = useQCRecord(id);
   const saveValues = useSaveRecordValues();
-  const submitRecord = useSubmitQCRecord();
   const decideRecord = useDecideQCRecord();
+  const { print, printPortal } = useQCRecordPrint();
 
   /** Unsaved cell edits, keyed `HH:MM|parameterId`. */
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -153,19 +148,6 @@ export default function QCRecordDetailPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (dirtyCount > 0) {
-      toast.error('Save your changes before submitting.');
-      return;
-    }
-    try {
-      await submitRecord.mutateAsync(record.id);
-      toast.success('Submitted for approval.');
-    } catch (error) {
-      toast.error((error as ApiError).message || 'Failed to submit.');
-    }
-  };
-
   const handleDecision = async (decision: 'APPROVE' | 'REJECT') => {
     try {
       await decideRecord.mutateAsync({ id: record.id, decision });
@@ -201,8 +183,8 @@ export default function QCRecordDetailPage() {
 
       {isApproved && (
         <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-          Approved{record.approved_by_name ? ` by ${record.approved_by_name}` : ''} — this
-          sheet is locked and can no longer be edited.
+          Approved{record.approved_by_name ? ` by ${record.approved_by_name}` : ''} — this sheet is
+          locked and can no longer be edited.
         </div>
       )}
 
@@ -222,6 +204,11 @@ export default function QCRecordDetailPage() {
           />
 
           <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={() => print(record)}>
+              <Printer className="mr-2 h-4 w-4" />
+              Print
+            </Button>
+
             {!readOnly && (
               <Button onClick={handleSave} disabled={saveValues.isPending || dirtyCount === 0}>
                 {saveValues.isPending ? (
@@ -230,13 +217,6 @@ export default function QCRecordDetailPage() {
                   <Save className="mr-2 h-4 w-4" />
                 )}
                 Save{dirtyCount > 0 ? ` (${dirtyCount})` : ''}
-              </Button>
-            )}
-
-            {!readOnly && (record.status === 'DRAFT' || record.status === 'REJECTED') && (
-              <Button variant="outline" onClick={handleSubmit} disabled={submitRecord.isPending}>
-                <Send className="mr-2 h-4 w-4" />
-                Submit for approval
               </Button>
             )}
 
@@ -265,8 +245,8 @@ export default function QCRecordDetailPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Cells outside their specification are shown in red; amber means edited but not
-            yet saved.
+            Cells outside their specification are shown in red; amber means edited but not yet
+            saved.
           </p>
         </CardContent>
       </Card>
@@ -290,8 +270,7 @@ export default function QCRecordDetailPage() {
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Adds a column to the sheet. The column is stored when you save the first
-              value in it.
+              Adds a column to the sheet. The column is stored when you save the first value in it.
             </p>
           </div>
           <DialogFooter>
@@ -302,6 +281,8 @@ export default function QCRecordDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {printPortal}
     </div>
   );
 }
