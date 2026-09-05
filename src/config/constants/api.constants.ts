@@ -627,6 +627,20 @@ export const API_ENDPOINTS = {
     OMS_INVOICE_PENDING_COUNT: '/invoice-approvals/oms-invoices/pending-count/',
     OMS_INVOICE_AUDIT: (id: number) => `/invoice-approvals/oms-invoices/${id}/audit/`,
   },
+  // A/R Invoices (sales invoices raised from the factory app and posted to SAP)
+  AR_INVOICE: {
+    CUSTOMERS: '/ar-invoices/customers/',
+    OPEN_SO_LINES: '/ar-invoices/open-so-lines/',
+    ITEMS: '/ar-invoices/items/',
+    LINE_DEFAULTS: '/ar-invoices/line-defaults/',
+    INVOICES: '/ar-invoices/invoices/',
+    INVOICE_DETAIL: (id: number) => `/ar-invoices/invoices/${id}/`,
+    INVOICE_POST: (id: number) => `/ar-invoices/invoices/${id}/post/`,
+    INVOICE_REFRESH: (id: number) => `/ar-invoices/invoices/${id}/refresh/`,
+    INVOICE_POST_DRAFT: (id: number) => `/ar-invoices/invoices/${id}/post-draft/`,
+    INVOICE_CANCEL: (id: number) => `/ar-invoices/invoices/${id}/cancel/`,
+    INVOICE_PRINT: (id: number) => `/ar-invoices/invoices/${id}/print/`,
+  },
   // Daily Tasks — each user's job sheet for one day, derived from every other module
   DAILY_TASKS: {
     MY_TODAY: '/activity-center/me/today/',

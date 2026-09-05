@@ -13,8 +13,8 @@
 export {
   ADMIN_MODULE_PREFIX,
   ADMIN_PERMISSIONS,
-  COST_MASTER_PERMISSIONS,
   type AdminPermission,
+  COST_MASTER_PERMISSIONS,
   type CostMasterPermission,
 } from './admin.permissions';
 
@@ -108,6 +108,13 @@ export {
   INVOICE_APPROVAL_PERMISSIONS,
   type InvoiceApprovalPermission,
 } from './invoice-approval.permissions';
+
+// A/R Invoice Module (sales invoices against SOs; nav lives under Warehouse)
+export {
+  AR_INVOICE_MODULE_PREFIX,
+  AR_INVOICE_PERMISSIONS,
+  type ARInvoicePermission,
+} from './ar-invoice.permissions';
 
 // Vehicle Management Module
 export {

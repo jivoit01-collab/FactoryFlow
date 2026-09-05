@@ -2,6 +2,7 @@ import { Warehouse } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 import {
+  AR_INVOICE_PERMISSIONS,
   DISPATCH_PERMISSIONS,
   GATE_PERMISSIONS,
   GRPO_PERMISSIONS,
@@ -11,6 +12,7 @@ import {
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
+import { arInvoiceNavChildren, arInvoiceRoutes } from './ar-invoice/module.config';
 import { grpoNavChildren, grpoRoutes } from './grpo/module.config';
 import { invoiceApprovalNavChildren, invoiceApprovalRoutes } from './invoice-approval/module.config';
 import { LegacyBillSummaryRedirect } from './pages/billSummary/LegacyBillSummaryRedirect';
@@ -205,6 +207,8 @@ export const warehouseModuleConfig: ModuleConfig = {
     ...grpoRoutes,
     // Invoice Approval submodule route (/warehouse/invoice-approval)
     ...invoiceApprovalRoutes,
+    // A/R invoice submodule route (/warehouse/ar-invoices)
+    ...arInvoiceRoutes,
   ],
   navigation: [
     {
@@ -225,6 +229,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
         GRPO_PERMISSIONS.VIEW_PENDING,
         INVOICE_APPROVAL_PERMISSIONS.VIEW_INVOICE,
+        AR_INVOICE_PERMISSIONS.VIEW,
         // A floor picker may hold only the bill-summary permissions; without
         // these the Warehouse menu would not appear for them at all.
         ...billSummaryViewPermissions,
@@ -270,6 +275,8 @@ export const warehouseModuleConfig: ModuleConfig = {
         ...grpoNavChildren,
         // Invoice Approval submodule — nested under the Warehouse group
         ...invoiceApprovalNavChildren,
+        // A/R invoice submodule — nested under the Warehouse group
+        ...arInvoiceNavChildren,
       ],
     },
   ],
