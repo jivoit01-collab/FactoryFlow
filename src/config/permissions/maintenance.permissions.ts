@@ -58,7 +58,12 @@ export const MAINTENANCE_PERMISSIONS = {
   VIEW_SAFETY_FINE: 'maintenance.can_view_safety_fine',
   MANAGE_SAFETY_FINE: 'maintenance.can_manage_safety_fine',
   VIEW_MATERIAL_INDENT: 'maintenance.can_view_material_indent',
+  // Legacy superset — grants both drafting and sending for approval.
   MANAGE_MATERIAL_INDENT: 'maintenance.can_manage_material_indent',
+  /** Draft-only: raise and edit an indent, no "Send for Approval" */
+  DRAFT_MATERIAL_INDENT: 'maintenance.can_draft_material_indent',
+  /** Send a parked draft for purchase approval */
+  SUBMIT_MATERIAL_INDENT: 'maintenance.can_submit_material_indent',
   REVIEW_MATERIAL_INDENT: 'maintenance.can_review_material_indent',
   APPROVE_MATERIAL_INDENT: 'maintenance.can_approve_material_indent',
   PURCHASE_MATERIAL_INDENT: 'maintenance.can_purchase_material_indent',

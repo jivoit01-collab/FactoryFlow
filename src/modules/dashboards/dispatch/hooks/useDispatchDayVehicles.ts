@@ -61,7 +61,10 @@ export interface VendorSlice {
   bills: number;
   amount: number;
   boxes: number;
+  /** Kept, but not what the panel leads with -- see `litres`. */
   weightKg: number;
+  /** The dependable quantity on this data; SAP's weight is not. */
+  litres: number;
 }
 
 export interface DispatchDayVehicles {
@@ -317,6 +320,7 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
         amount: 0,
         boxes: 0,
         weightKg: 0,
+        litres: 0,
       };
       const seenForVendor = vendorTrucks.get(vendorName) ?? { all: new Set(), out: new Set() };
       if (!seenForVendor.all.has(truckKey)) {
@@ -331,6 +335,7 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
         vendor.amount += num(docking.sap_doc_total);
         vendor.boxes += num(docking.total_boxes);
         vendor.weightKg += num(docking.total_weight);
+        vendor.litres += num(docking.total_litres);
       }
       vendorTrucks.set(vendorName, seenForVendor);
       vendorMap.set(vendorName, vendor);
