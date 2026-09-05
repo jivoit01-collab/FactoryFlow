@@ -1,4 +1,4 @@
-import { AlertCircle, Download, Loader2 } from 'lucide-react';
+import { AlertCircle, Download, History, Loader2 } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 
 import {
@@ -17,6 +17,12 @@ import type { QCDocumentFile } from '../../types/qcDocumentFile.types';
 interface PdfViewerDialogProps {
   document: QCDocumentFile | null;
   onClose: () => void;
+  /**
+   * Opens this document's change trail. Passed only when the reader holds the
+   * audit permission, so the button is absent rather than disabled for
+   * everyone else.
+   */
+  onShowHistory?: () => void;
 }
 
 /**
@@ -29,7 +35,11 @@ interface PdfViewerDialogProps {
  * A blob URL is same-origin to this page, so the browser's own PDF viewer
  * handles it — real zoom, search, scroll and print, document unchanged.
  */
-export default function PdfViewerDialog({ document, onClose }: PdfViewerDialogProps) {
+export default function PdfViewerDialog({
+  document,
+  onClose,
+  onShowHistory,
+}: PdfViewerDialogProps) {
   const documentId = document?.id ?? null;
   const { data: blob, isLoading, error: fetchError } = useQCDocumentFileBlob(documentId);
 
@@ -70,16 +80,28 @@ export default function PdfViewerDialog({ document, onClose }: PdfViewerDialogPr
                 <span className="font-mono">{document.document_code}</span>
                 {document.revision && <Badge variant="outline">Rev {document.revision}</Badge>}
                 {document.uploaded_by_name && <span>Uploaded by {document.uploaded_by_name}</span>}
-                {blobUrl && (
-                  <a
-                    href={blobUrl}
-                    download={downloadName}
-                    className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Download
-                  </a>
-                )}
+                <span className="ml-auto flex items-center gap-2">
+                  {onShowHistory && (
+                    <button
+                      type="button"
+                      onClick={onShowHistory}
+                      className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                    >
+                      <History className="h-3.5 w-3.5" />
+                      History
+                    </button>
+                  )}
+                  {blobUrl && (
+                    <a
+                      href={blobUrl}
+                      download={downloadName}
+                      className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </a>
+                  )}
+                </span>
               </DialogDescription>
             </DialogHeader>
 

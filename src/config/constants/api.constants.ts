@@ -312,6 +312,11 @@ export const API_ENDPOINTS = {
     QC_DOCUMENT_FILES: '/quality-control/document-files/',
     QC_DOCUMENT_FILE_BY_ID: (id: number) => `/quality-control/document-files/${id}/`,
     QC_DOCUMENT_FILE_DOWNLOAD: (id: number) => `/quality-control/document-files/${id}/download/`,
+    /** Who changed which controlled PDF, and when. */
+    QC_DOCUMENT_FILE_AUDIT_LOG: '/quality-control/document-files/audit-log/',
+    QC_DOCUMENT_FILE_AUDIT_FILTERS: '/quality-control/document-files/audit-log/filters/',
+    QC_DOCUMENT_FILE_AUDIT_LOG_FOR: (id: number) =>
+      `/quality-control/document-files/${id}/audit-log/`,
 
     // QC Record Forms (Documents) — blank forms and filled sheets
     RECORD_TEMPLATES: '/quality-control/record-templates/',
@@ -321,11 +326,6 @@ export const API_ENDPOINTS = {
     QC_RECORD_VALUES: (id: number) => `/quality-control/qc-records/${id}/values/`,
     QC_RECORD_SUBMIT: (id: number) => `/quality-control/qc-records/${id}/submit/`,
     QC_RECORD_APPROVE: (id: number) => `/quality-control/qc-records/${id}/approve/`,
-
-    // Testing Procedures (QC Procedures)
-    TESTING_PROCEDURES: '/quality-control/testing-procedures/',
-    TESTING_PROCEDURE_COUNTS: '/quality-control/testing-procedures/counts/',
-    TESTING_PROCEDURE_BY_ID: (id: number) => `/quality-control/testing-procedures/${id}/`,
 
     // QC Parameters
     QC_PARAMETER_BY_ID: (id: number) => `/quality-control/parameters/${id}/`,
@@ -612,13 +612,20 @@ export const API_ENDPOINTS = {
     TRANSPORTER_INVOICE_DETAIL: (postingId: number) =>
       `/dispatch/transporter-invoices/${postingId}/`,
   },
-  // Invoice Approval (SAP approval requests on A/R invoice drafts, read/decided directly in SAP)
+  // Invoice Approval — two sources on one page: OMS invoice logs (default) and
+  // SAP approval requests on A/R invoice drafts (behind the "show SAP" toggle)
   INVOICE_APPROVAL: {
     INVOICES: '/invoice-approvals/invoices/',
     INVOICE_STATUS: (id: number) => `/invoice-approvals/invoices/${id}/status/`,
     INVOICE_HISTORY: (id: number) => `/invoice-approvals/invoices/${id}/history/`,
     INVOICE_PENDING_COUNT: '/invoice-approvals/invoices/pending-count/',
     INVOICE_AUDIT: (id: number) => `/invoice-approvals/invoices/${id}/audit/`,
+    // OMS invoice logs (proxied to the external OMS service)
+    OMS_INVOICES: '/invoice-approvals/oms-invoices/',
+    OMS_INVOICE_STATUS: (id: number) => `/invoice-approvals/oms-invoices/${id}/status/`,
+    OMS_INVOICE_HISTORY: (id: number) => `/invoice-approvals/oms-invoices/${id}/history/`,
+    OMS_INVOICE_PENDING_COUNT: '/invoice-approvals/oms-invoices/pending-count/',
+    OMS_INVOICE_AUDIT: (id: number) => `/invoice-approvals/oms-invoices/${id}/audit/`,
   },
   // Daily Tasks — each user's job sheet for one day, derived from every other module
   DAILY_TASKS: {

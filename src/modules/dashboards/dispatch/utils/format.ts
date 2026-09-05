@@ -23,6 +23,19 @@ export function money(value: number): string {
   return `₹${compact(value)}`;
 }
 
+/**
+ * Litres, short-scaled.
+ *
+ * Preferred over weight wherever one row can dominate a total. SAP's weight
+ * field is unreliable on this data -- it has arrived truncated to the tail of
+ * its own litres figure (2,195 L recorded as 195 kg) on roughly one dispatched
+ * docking in sixty -- while the litres on those same rows were correct every
+ * time. For an oil business it is also the truer measure.
+ */
+export function volume(litres: number): string {
+  return `${compact(litres)} L`;
+}
+
 /** Kilograms as tonnes once they stop fitting. */
 export function weight(kg: number): string {
   if (Math.abs(kg) >= 1000) return `${(kg / 1000).toFixed(1)} T`;

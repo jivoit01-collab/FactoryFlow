@@ -114,7 +114,7 @@ describe('QC_PERMISSIONS — Integrity', () => {
     }
   });
 
-  it('total permission count is 13', () => {
-    expect(allValues).toHaveLength(13);
+  it('total permission count is 15', () => {
+    expect(allValues).toHaveLength(15);
   });
 });

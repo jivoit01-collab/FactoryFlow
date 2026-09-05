@@ -84,7 +84,10 @@ export default function MpBatchDetailPage() {
     () =>
       [...fgLines, ...pmLines].map((l) => ({
         'Item code': l.item_code,
-        Name: l.item_name || '',
+        // The screen prints an em dash for a nameless item, which reads as "nothing
+        // here". A blank cell in a spreadsheet reads as missing data, so say what is
+        // actually wrong — the item code beside it still identifies the row.
+        Name: l.item_name || '(no name in item master)',
         Type: l.component_type,
         Required: Number(l.required_quantity),
         'From SKUs': l.source_skus.join(', '),
@@ -92,24 +95,46 @@ export default function MpBatchDetailPage() {
     [fgLines, pmLines],
   );
 
+  // An unmapped SKU resolves to NO stock line, so it was absent from the workbook
+  // altogether — on screen it sits in its own card above, but the exported file had
+  // no trace of it and the SKU simply looked missing. These are the ones the
+  // warehouse most needs to see, so they get their own sheet rather than being
+  // mixed into quantities nobody can issue.
+  const unmappedRows = useMemo(
+    () => unmapped.map((sku) => ({ 'Marketplace SKU / FSN': sku, Status: 'No mapping — not in the stock list' })),
+    [unmapped],
+  );
+
   const exportExcel = useCallback(() => {
-    if (exportRows.length === 0) {
+    if (exportRows.length === 0 && unmappedRows.length === 0) {
       toast.error('Nothing to export.');
       return;
     }
-    const ws = XLSX.utils.json_to_sheet(exportRows);
-    ws['!cols'] = Object.keys(exportRows[0]).map((key) => ({
-      wch:
-        Math.max(
-          key.length,
-          ...exportRows.map((r) => String(r[key as keyof typeof r] ?? '').length),
-        ) + 2,
-    }));
+    // Width each column to its widest cell. Capped: one row's long "From SKUs" list
+    // otherwise sets a column hundreds of characters wide, which pushes every other
+    // column off the screen and makes the file look empty until you scroll back.
+    const fit = <T extends object>(rows: T[]) =>
+      Object.keys(rows[0]).map((key) => ({
+        wch: Math.min(
+          Math.max(key.length, ...rows.map((r) => String(r[key as keyof T] ?? '').length)) + 2,
+          80,
+        ),
+      }));
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Consolidated stock');
+    if (exportRows.length > 0) {
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      ws['!cols'] = fit(exportRows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Consolidated stock');
+    }
+    if (unmappedRows.length > 0) {
+      const wsU = XLSX.utils.json_to_sheet(unmappedRows);
+      wsU['!cols'] = fit(unmappedRows);
+      XLSX.utils.book_append_sheet(wb, wsU, 'Unmapped SKUs');
+    }
     const base = (batch?.filename || `batch_${id}`).replace(/\.[^.]+$/, '');
     XLSX.writeFile(wb, `Consolidated_Stock_${base}.xlsx`);
-  }, [exportRows, batch, id]);
+  }, [exportRows, unmappedRows, batch, id]);
 
   function send() {
     if (warehouses.length > 0 && !warehouse) {
@@ -221,7 +246,7 @@ export default function MpBatchDetailPage() {
             variant="outline"
             size="sm"
             onClick={exportExcel}
-            disabled={isLoading || exportRows.length === 0}
+            disabled={isLoading || (exportRows.length === 0 && unmappedRows.length === 0)}
           >
             <Download className="mr-2 h-4 w-4" />
             Export Excel

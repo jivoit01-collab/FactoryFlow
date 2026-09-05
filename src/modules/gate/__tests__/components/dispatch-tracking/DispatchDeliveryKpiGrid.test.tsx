@@ -96,7 +96,26 @@ describe('DispatchDeliveryKpiGrid', () => {
 
   it('surfaces trucks with nothing logged since they left the gate', () => {
     renderGrid();
-    expect(tile('No update yet').textContent).toContain('5');
+    const dispatch = tile('Dispatch');
+    expect(dispatch.textContent).toContain('5');
+    expect(dispatch.textContent).toContain('Gated out, nothing logged since');
+  });
+
+  it('shows the DISPATCHED stage, not the window total', () => {
+    renderGrid();
+    // 5 trucks at the DISPATCHED stage out of 40 dispatched in the window. The
+    // tile used to read 40; showing the total here made it a headline figure
+    // rather than a stage, and the stage is what needs chasing.
+    expect(tile('Dispatch').textContent).toContain('5');
+    expect(tile('Dispatch').textContent).not.toContain('40');
+  });
+
+  it('has no separate "No update yet" tile — it was the same number', () => {
+    renderGrid();
+    // status_counts.DISPATCHED and no_update_yet can never differ: DISPATCHED is
+    // not a TruckDispatchStatus, so only the "no updates at all" branch reaches
+    // it. Two tiles for one figure could only ever agree, so there is one.
+    expect(screen.queryByText('No update yet')).toBeNull();
   });
 
   it('shows open trips against how many are closed', () => {
@@ -104,6 +123,15 @@ describe('DispatchDeliveryKpiGrid', () => {
     const trips = tile('Trips open');
     expect(trips.textContent).toContain('24');
     expect(trips.textContent).toContain('16 of 40 closed');
+  });
+
+  it('keeps the window total off the tiles — Trips open carries it', () => {
+    renderGrid();
+    // total_dispatched is a headline, not a stage: every other tile is a slice of
+    // it. It stays in Trips open's sub-line and on the Lifecycle bar so no tile
+    // competes with the stage counts.
+    expect(tile('Trips open').textContent).toContain('of 40 closed');
+    expect(tile('Dispatch').textContent).not.toContain('40');
   });
 
   it('reads "None past their reach-by date" when nothing is overdue', () => {
@@ -123,7 +151,7 @@ describe('DispatchDeliveryKpiGrid', () => {
     expect(onOpen).toHaveBeenCalledWith('IN_TRANSIT');
     tile('Partially delivered').click();
     expect(onOpen).toHaveBeenCalledWith('PARTIALLY_DELIVERED');
-    tile('No update yet').click();
+    tile('Dispatch').click();
     expect(onOpen).toHaveBeenCalledWith('DISPATCHED');
   });
 });
