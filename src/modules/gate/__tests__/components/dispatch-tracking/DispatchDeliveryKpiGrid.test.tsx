@@ -106,6 +106,22 @@ describe('DispatchDeliveryKpiGrid', () => {
     expect(trips.textContent).toContain('16 of 40 closed');
   });
 
+  it('leads with the total dispatched and how many are still out', () => {
+    renderGrid();
+    const dispatch = tile('Dispatch');
+    expect(dispatch.textContent).toContain('40');
+    expect(dispatch.textContent).toContain('24 still on the road');
+  });
+
+  it('agrees with Trips open on the total — they read the same field', () => {
+    renderGrid();
+    // Both tiles show total_dispatched; if one is ever re-pointed at a different
+    // count the two would quietly disagree on screen, which is worse than either
+    // being wrong on its own.
+    expect(tile('Dispatch').textContent).toContain('40');
+    expect(tile('Trips open').textContent).toContain('of 40 closed');
+  });
+
   it('reads "None past their reach-by date" when nothing is overdue', () => {
     renderGrid({ ...DATA, late: { count: 0, trucks: [] } });
     expect(tile('Overdue deliveries').textContent).toContain('None past their reach-by date');

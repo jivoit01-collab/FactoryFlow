@@ -252,10 +252,10 @@ function LateTrucksCard({
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      {/* ten tiles — matches DispatchDeliveryKpiGrid, so the page does not jump
-          as the summary lands */}
+      {/* eleven tiles — matches DispatchDeliveryKpiGrid, so the page does not jump
+          as the summary lands. Count this up whenever a tile is added there. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        {Array.from({ length: 10 }).map((_, i) => (
+        {Array.from({ length: 11 }).map((_, i) => (
           <div key={i} className="h-24 animate-pulse rounded-xl border bg-muted/40" />
         ))}
       </div>
