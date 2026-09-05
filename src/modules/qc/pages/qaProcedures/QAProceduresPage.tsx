@@ -1,4 +1,14 @@
-import { ArrowLeft, FileText, Loader2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  FileText,
+  Loader2,
+  Plus,
+  ScrollText,
+  Search,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -33,6 +43,7 @@ import {
   useUploadQCDocumentFile,
 } from '../../api/qcDocumentFile';
 import type { PdfProcedureType, QCDocumentFile } from '../../types/qcDocumentFile.types';
+import DocumentHistoryDialog from './DocumentHistoryDialog';
 import PdfViewerDialog from './PdfViewerDialog';
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -74,6 +85,9 @@ export default function QAProceduresPage() {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
   const canManage = hasAnyPermission([QC_PERMISSIONS.DOCUMENT_FILE.MANAGE]);
+  // Separate from MANAGE on purpose — uploading a procedure does not come with
+  // the right to read the trail of who changed it.
+  const canAudit = hasAnyPermission([QC_PERMISSIONS.DOCUMENT_FILE.VIEW_AUDIT]);
 
   const [search, setSearch] = useState('');
   const { data: documents = [], isLoading } = useQCDocumentFiles();
@@ -89,6 +103,7 @@ export default function QAProceduresPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [viewing, setViewing] = useState<QCDocumentFile | null>(null);
+  const [historyFor, setHistoryFor] = useState<QCDocumentFile | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -224,12 +239,20 @@ export default function QAProceduresPage() {
             Controlled documents kept as the original PDF, shown exactly as issued.
           </p>
         </div>
-        {canManage && (
-          <Button className="ml-auto" onClick={() => setAddOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add document
-          </Button>
-        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {canAudit && (
+            <Button variant="outline" onClick={() => navigate('/qc/qa-procedures/log')}>
+              <ScrollText className="mr-2 h-4 w-4" />
+              Audit log
+            </Button>
+          )}
+          {canManage && (
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add document
+            </Button>
+          )}
+        </div>
       </div>
 
       {canManage && (
@@ -490,7 +513,12 @@ export default function QAProceduresPage() {
         </CardContent>
       </Card>
 
-      <PdfViewerDialog document={viewing} onClose={() => setViewing(null)} />
+      <PdfViewerDialog
+        document={viewing}
+        onClose={() => setViewing(null)}
+        onShowHistory={canAudit ? () => setHistoryFor(viewing) : undefined}
+      />
+      <DocumentHistoryDialog document={historyFor} onClose={() => setHistoryFor(null)} />
     </div>
   );
 }

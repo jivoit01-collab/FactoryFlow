@@ -12,17 +12,19 @@ import {
   Card,
   CardContent,
   Input,
+  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/shared/components/ui';
-import { formatCurrency } from '@/shared/utils';
+import { formatCurrency, getErrorMessage } from '@/shared/utils';
 
 import { INVOICE_APPROVAL_QUERY_KEYS, useInvoiceList } from '../api/invoice-approval.queries';
 import { InvoiceDetailSheet } from '../components/InvoiceDetailSheet';
 import { InvoiceStatusBadge } from '../components/InvoiceStatusBadge';
-import { INVOICE_TABS, type InvoiceLog, type InvoiceTab } from '../types';
+import { INVOICE_TABS, type InvoiceLog, type InvoiceSource, type InvoiceTab } from '../types';
+import { useSelectedSource } from '../useSelectedSource';
 import { useSelectedWarehouse } from '../useSelectedWarehouse';
 
 const TAB_LABELS: Record<InvoiceTab, string> = {
@@ -75,17 +77,19 @@ function InvoiceRow({
 }
 
 function InvoiceList({
+  source,
   warehouse,
   status,
   search,
   onSelect,
 }: {
+  source: InvoiceSource;
   warehouse: string;
   status: InvoiceTab;
   search: string;
   onSelect: (invoice: InvoiceLog) => void;
 }) {
-  const { data, isLoading, isError } = useInvoiceList(warehouse, status);
+  const { data, isLoading, isError, error } = useInvoiceList(source, warehouse, status);
 
   const filtered = useMemo(() => {
     const rows = data ?? [];
@@ -104,9 +108,11 @@ function InvoiceList({
     return <p className="py-8 text-center text-sm text-muted-foreground">Loading invoices…</p>;
   }
   if (isError) {
+    // Show what the backend said — "the OMS module is not enabled" is a config
+    // problem an admin can fix, and reads nothing like a transient outage.
     return (
       <p className="py-8 text-center text-sm text-red-600">
-        Could not load invoices. Please try again.
+        {getErrorMessage(error, `Could not load invoices from ${source}. Please try again.`)}
       </p>
     );
   }
@@ -114,7 +120,9 @@ function InvoiceList({
     return (
       <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
         <FileCheck2 className="h-8 w-8" />
-        <p className="text-sm">No {TAB_LABELS[status].toLowerCase()} invoices.</p>
+        <p className="text-sm">
+          No {TAB_LABELS[status].toLowerCase()} invoices in {source}.
+        </p>
       </div>
     );
   }
@@ -129,11 +137,12 @@ function InvoiceList({
 }
 
 /**
- * Factory Invoice Approval — the approver reviews A/R invoices awaiting approval in
- * SAP (drafts held by SAP's approval procedure), checks them against physical stock
- * at the warehouse, and approves or rejects each one directly in SAP. Three tabs
- * mirror the SAP approval-request states; Pending is actionable, Approved/Rejected
- * are read-only.
+ * Factory Invoice Approval — the approver reviews A/R invoices awaiting approval,
+ * checks them against physical stock at the warehouse, and approves or rejects
+ * each one in the system it came from. Two sources: OMS invoice logs (the default
+ * view) and, behind the "Show SAP approvals" toggle, the drafts held by SAP's own
+ * approval procedure. Three tabs mirror the approval states; Pending is
+ * actionable, Approved/Rejected are read-only.
  */
 export default function InvoiceApprovalPage() {
   const { hasPermission } = usePermission();
@@ -141,6 +150,7 @@ export default function InvoiceApprovalPage() {
   const queryClient = useQueryClient();
 
   const [warehouse, setWarehouse] = useSelectedWarehouse();
+  const [source, setSource] = useSelectedSource();
   const [tab, setTab] = useState<InvoiceTab>('PENDING');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<InvoiceLog | null>(null);
@@ -167,7 +177,11 @@ export default function InvoiceApprovalPage() {
     <div className="space-y-4">
       <DashboardHeader
         title="Invoice Approval"
-        description="Verify invoices awaiting approval in SAP against physical stock, then approve or reject."
+        description={
+          source === 'OMS'
+            ? 'Verify invoices awaiting approval in OMS against physical stock, then approve or reject.'
+            : 'Verify invoices awaiting approval in SAP against physical stock, then approve or reject.'
+        }
       >
         <Button
           variant="outline"
@@ -212,6 +226,21 @@ export default function InvoiceApprovalPage() {
             disabled={!warehouse}
           />
         </div>
+        <div className="flex items-center gap-2 pb-1 sm:ml-auto">
+          <Switch
+            id="invoice-source"
+            checked={source === 'SAP'}
+            onChange={(checked) => {
+              // The two sources have unrelated ids, so never carry a selected
+              // invoice across the switch.
+              setSelected(null);
+              setSource(checked ? 'SAP' : 'OMS');
+            }}
+          />
+          <label htmlFor="invoice-source" className="cursor-pointer text-sm">
+            Show SAP approvals
+          </label>
+        </div>
       </div>
 
       {!warehouse ? (
@@ -231,6 +260,7 @@ export default function InvoiceApprovalPage() {
           {INVOICE_TABS.map((value) => (
             <TabsContent key={value} value={value} className="mt-4">
               <InvoiceList
+                source={source}
                 warehouse={warehouse}
                 status={value}
                 search={search}
@@ -245,6 +275,7 @@ export default function InvoiceApprovalPage() {
 
       <InvoiceDetailSheet
         invoice={selected}
+        source={source}
         open={selected !== null}
         onOpenChange={(open) => {
           if (!open) setSelected(null);

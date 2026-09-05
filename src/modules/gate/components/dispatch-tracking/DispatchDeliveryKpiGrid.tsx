@@ -6,8 +6,8 @@ import {
   MapPin,
   PackageX,
   Route,
-  SignalZero,
   Timer,
+  Truck,
   Undo2,
 } from 'lucide-react';
 
@@ -44,6 +44,25 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <KpiStat
+        icon={Truck}
+        label="Dispatch"
+        // Trucks sitting at the DISPATCHED stage: through the gate, with no tracking
+        // update logged against them since. NOT the window's total — that is
+        // `total_dispatched`, which every other tile is a slice of, and it stays on
+        // the Lifecycle bar and in Trips open's sub-line rather than as a tile.
+        //
+        // `no_update_yet` and `status_counts.DISPATCHED` are the same number by
+        // construction: DISPATCHED is not a member of TruckDispatchStatus, so it is
+        // only ever reached by the "no updates at all" branch of the summary. This
+        // tile replaced a separate "No update yet" one that showed the identical
+        // figure — two tiles that could never disagree.
+        value={data.no_update_yet}
+        sub="Gated out, nothing logged since"
+        accent={ACCENTS.sky}
+        onClick={() => onOpen('DISPATCHED')}
+        delayMs={0}
+      />
+      <KpiStat
         icon={AlertTriangle}
         label="Overdue deliveries"
         value={data.late.count}
@@ -57,7 +76,7 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         // road, which spans IN_TRANSIT *and* DELAYED — no single status filter
         // reproduces this number, and one that half-matched would be worse.
         onClick={() => onOpen()}
-        delayMs={0}
+        delayMs={60}
       />
       <KpiStat
         icon={Route}
@@ -66,7 +85,7 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         sub={`${counts.DELAYED ?? 0} flagged delayed`}
         accent={ACCENTS.blue}
         onClick={() => onOpen('IN_TRANSIT')}
-        delayMs={60}
+        delayMs={120}
       />
       <KpiStat
         icon={MapPin}
@@ -75,7 +94,7 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         sub={`${counts.UNLOADING ?? 0} unloading`}
         accent={ACCENTS.cyan}
         onClick={() => onOpen('REACHED_DESTINATION')}
-        delayMs={120}
+        delayMs={180}
       />
       <KpiStat
         icon={CheckCircle2}
@@ -84,7 +103,7 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         sub={`${data.delivered_today} today`}
         accent={ACCENTS.emerald}
         onClick={() => onOpen('DELIVERED')}
-        delayMs={180}
+        delayMs={240}
       />
       <KpiStat
         icon={PackageX}
@@ -96,7 +115,7 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         sub="Short-delivered, stock coming back"
         accent={ACCENTS.amber}
         onClick={() => onOpen('PARTIALLY_DELIVERED')}
-        delayMs={240}
+        delayMs={300}
       />
       <KpiStat
         icon={Undo2}
@@ -105,7 +124,7 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         sub="Came back undelivered"
         accent={ACCENTS.orange}
         onClick={() => onOpen('RETURNED')}
-        delayMs={300}
+        delayMs={360}
       />
       <KpiStat
         icon={Gauge}
@@ -114,7 +133,7 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         sub="Delivered on/before reach-by"
         accent={ACCENTS.violet}
         onClick={() => onOpen()}
-        delayMs={360}
+        delayMs={420}
       />
       <KpiStat
         icon={Timer}
@@ -123,15 +142,6 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         sub="Gate-out to delivered"
         accent={ACCENTS.indigo}
         onClick={() => onOpen()}
-        delayMs={420}
-      />
-      <KpiStat
-        icon={SignalZero}
-        label="No update yet"
-        value={data.no_update_yet}
-        sub="Dispatched, nothing logged since"
-        accent={ACCENTS.slate}
-        onClick={() => onOpen('DISPATCHED')}
         delayMs={480}
       />
       <KpiStat

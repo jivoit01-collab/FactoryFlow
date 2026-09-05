@@ -253,7 +253,8 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-6">
       {/* ten tiles — matches DispatchDeliveryKpiGrid, so the page does not jump
-          as the summary lands */}
+          as the summary lands. Keep this in step whenever a tile is added or
+          removed there. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {Array.from({ length: 10 }).map((_, i) => (
           <div key={i} className="h-24 animate-pulse rounded-xl border bg-muted/40" />

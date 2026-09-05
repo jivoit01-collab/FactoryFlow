@@ -167,7 +167,8 @@ export default function DispatchPlansDashboardPage() {
   // Export the whole filtered bill set — not just the shown page. Paging happens
   // on the server, so this asks for the same window again without page params and
   // exports what comes back. Kept to the fields dispatch actually needs: dispatch
-  // date, invoice date, party, ship-to, state, invoice no., litres, weight.
+  // date, invoice date, party, ship-to, state, invoice no., invoice amount, litres,
+  // weight.
   const handleExportExcel = useCallback(async () => {
     setIsExporting(true);
     let allBills: DispatchBill[];
@@ -196,6 +197,10 @@ export default function DispatchPlansDashboardPage() {
       'Ship To Address': bill.ship_to_address ?? '',
       State: bill.state ?? '',
       'Invoice No.': bill.doc_num ?? '',
+      // SAP's OINV.DocTotal — the same figure the table's Value column shows, and
+      // written as a number rather than formatted text so the column can be summed
+      // in Excel.
+      'Invoice Amount': bill.doc_total ?? 0,
       Litres: bill.total_litres ?? 0,
       'Weight (kg)': bill.total_weight ?? 0,
     }));
