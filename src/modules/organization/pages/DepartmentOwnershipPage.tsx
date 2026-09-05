@@ -85,6 +85,19 @@ function DepartmentOwnershipPage() {
 
   const canManage = Boolean(data?.can_manage);
 
+  /** "7 departments · 17 functions · 24 people" — the shape of the chart at a glance. */
+  const summary = useMemo(() => {
+    const functions = departments.flatMap((department) => department.functions);
+    const people = new Set(
+      functions.flatMap((row) => [...row.owners, ...row.level_1, ...row.level_2]),
+    );
+    return [
+      `${departments.length} ${departments.length === 1 ? 'department' : 'departments'}`,
+      `${functions.length} ${functions.length === 1 ? 'function' : 'functions'}`,
+      `${people.size} named`,
+    ].join(' · ');
+  }, [departments]);
+
   /** Every edit works on the draft, seeding it from the server on first touch. */
   const editDrafts = (change: (current: OrgDepartmentDraft[]) => OrgDepartmentDraft[]) => {
     setDrafts((current) => change(current ?? serverDrafts));
@@ -171,6 +184,8 @@ function DepartmentOwnershipPage() {
           ))}
       </DashboardHeader>
 
+      {departments.length > 0 && <p className="-mt-3 text-sm text-muted-foreground">{summary}</p>}
+
       {isLoading && !data ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -234,11 +249,12 @@ function DepartmentOwnershipPage() {
           {/* What each column on the chart actually means. */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {ORG_LEVELS.map((level) => (
-              <Card key={level.key}>
-                <CardContent className="space-y-1 p-4">
+              <Card key={level.key} className="border-dashed">
+                <CardContent className="space-y-1.5 p-4">
                   <p
-                    className={`text-[11px] font-semibold uppercase tracking-wider ${level.label_tone}`}
+                    className={`flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider ${level.label_tone}`}
                   >
+                    <span aria-hidden className={`h-2.5 w-2.5 rounded-full border ${level.chip}`} />
                     {level.label}
                   </p>
                   <p className="text-sm text-muted-foreground">{level.meaning}</p>
