@@ -6,7 +6,6 @@ import {
   MapPin,
   PackageX,
   Route,
-  SignalZero,
   Timer,
   Truck,
   Undo2,
@@ -47,15 +46,20 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
       <KpiStat
         icon={Truck}
         label="Dispatch"
-        // Every other tile is a slice of this one — it is the count each of them
-        // partitions, and the denominator behind the on-time rate and the closed
-        // figure on Trips open. It leads for that reason.
-        value={data.total_dispatched}
-        sub={`${data.active} still on the road`}
+        // Trucks sitting at the DISPATCHED stage: through the gate, with no tracking
+        // update logged against them since. NOT the window's total — that is
+        // `total_dispatched`, which every other tile is a slice of, and it stays on
+        // the Lifecycle bar and in Trips open's sub-line rather than as a tile.
+        //
+        // `no_update_yet` and `status_counts.DISPATCHED` are the same number by
+        // construction: DISPATCHED is not a member of TruckDispatchStatus, so it is
+        // only ever reached by the "no updates at all" branch of the summary. This
+        // tile replaced a separate "No update yet" one that showed the identical
+        // figure — two tiles that could never disagree.
+        value={data.no_update_yet}
+        sub="Gated out, nothing logged since"
         accent={ACCENTS.sky}
-        // No status filter: a dispatched truck can be at any point of its life, so
-        // this opens the whole board rather than one column of it.
-        onClick={() => onOpen()}
+        onClick={() => onOpen('DISPATCHED')}
         delayMs={0}
       />
       <KpiStat
@@ -141,22 +145,13 @@ export function DispatchDeliveryKpiGrid({ data, onOpen }: DispatchDeliveryKpiGri
         delayMs={480}
       />
       <KpiStat
-        icon={SignalZero}
-        label="No update yet"
-        value={data.no_update_yet}
-        sub="Dispatched, nothing logged since"
-        accent={ACCENTS.slate}
-        onClick={() => onOpen('DISPATCHED')}
-        delayMs={540}
-      />
-      <KpiStat
         icon={Clock}
         label="Trips open"
         value={data.active}
         sub={`${data.completed} of ${data.total_dispatched} closed`}
         accent={ACCENTS.teal}
         onClick={() => onOpen()}
-        delayMs={600}
+        delayMs={540}
       />
     </div>
   );
