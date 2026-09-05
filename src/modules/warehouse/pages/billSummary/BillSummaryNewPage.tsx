@@ -41,7 +41,11 @@ const EMPTY: FormState = {
 function fromLookup(lookup: BillLookup): FormState {
   const p = lookup.prefill;
   return {
-    dispatch_date: p.dispatch_date?.slice(0, 10) ?? '',
+    /* Never prefilled, from any source. The dispatch date is what the sheet is
+       for, it goes into SAP where nobody can change it afterwards, and a plan's
+       date is routinely days stale by the time the truck is loaded. A date
+       already sitting in the box gets accepted without being read. */
+    dispatch_date: '',
     bilty_no: p.bilty_no ?? '',
     bilty_date: p.bilty_date?.slice(0, 10) ?? '',
     transporter_name: p.transporter_name ?? '',
@@ -219,7 +223,6 @@ export default function BillSummaryNewPage() {
                   label="Dispatch date *"
                   type="date"
                   value={form.dispatch_date}
-                  missing={lookup.missing.includes('dispatch_date')}
                   onChange={(v) => set('dispatch_date', v)}
                 />
                 <Editable
