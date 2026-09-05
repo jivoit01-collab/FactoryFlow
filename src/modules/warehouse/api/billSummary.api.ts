@@ -100,6 +100,8 @@ export interface BillSummary {
   status: BillSummaryStatus;
   sap_status: BillSummarySapStatus;
   sap_error: string;
+  /** Posted, but SAP kept its own bilty/vehicle/driver — those are write-once there. */
+  sap_note: string;
   sap_posted_at: string | null;
   issued_by_name: string;
   picked_by_name: string;

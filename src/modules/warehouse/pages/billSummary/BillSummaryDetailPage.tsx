@@ -67,6 +67,27 @@ export default function BillSummaryDetailPage() {
     }
   }
 
+  /* A refused SAP posting comes back as a perfectly good HTTP 200: the server
+     records the refusal on the sheet rather than raising, precisely so a sheet
+     already in the operator's hands is never rolled back. So the reply has to be
+     read, not merely awaited — `run` above would call a rejected posting a
+     success and say "Posted to SAP" over the top of the failure it just left on
+     screen. */
+  async function retrySap() {
+    const cancelled = summary!.status === 'CANCELLED';
+    try {
+      const updated = await post.mutateAsync();
+      if (updated.sap_status === 'FAILED') {
+        toast.error(updated.sap_error || 'SAP refused it again');
+        return;
+      }
+      toast.success(cancelled ? 'Cleared from SAP' : 'Posted to SAP');
+      if (updated.sap_note) toast.warning(updated.sap_note);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'SAP refused it again'));
+    }
+  }
+
   return (
     <div className="space-y-6">
       <DashboardHeader
@@ -135,15 +156,7 @@ export default function BillSummaryDetailPage() {
               size="sm"
               variant="outline"
               disabled={post.isPending}
-              onClick={() =>
-                run(
-                  () => post.mutateAsync(),
-                  summary.status === 'CANCELLED'
-                    ? 'Cleared from SAP'
-                    : 'Posted to SAP',
-                  'SAP refused it again',
-                )
-              }
+              onClick={() => void retrySap()}
             >
               {post.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -159,9 +172,14 @@ export default function BillSummaryDetailPage() {
       )}
 
       {summary.sap_status === 'POSTED' && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
-          Posted to SAP — the dispatch date and quantities are on invoice{' '}
-          {summary.sap_invoice_doc_num}.
+        <div className="space-y-1 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
+          <p>
+            Posted to SAP — the dispatch date and quantities are on invoice{' '}
+            {summary.sap_invoice_doc_num}.
+          </p>
+          {/* Posted, but not identical: what the driver is carrying differs from
+              the invoice, and nobody can change the invoice now. */}
+          {summary.sap_note && <p className="text-xs font-medium">{summary.sap_note}</p>}
         </div>
       )}
 
