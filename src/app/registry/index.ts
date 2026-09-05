@@ -17,6 +17,7 @@ import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
+import { organizationModuleConfig } from '@/modules/organization/module.config';
 import { planningPurchaseModuleConfig } from '@/modules/planning-purchase/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
@@ -58,6 +59,9 @@ export const moduleRegistry: ModuleConfig[] = [
   marketplaceModuleConfig,
   sapReportsModuleConfig,
   notificationsModuleConfig,
+  // Reference, not a workflow: the department ownership chart lives near the
+  // bottom with the other look-it-up pages.
+  organizationModuleConfig,
   settingsModuleConfig,
 ];
 

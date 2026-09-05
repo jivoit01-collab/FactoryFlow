@@ -1366,6 +1366,12 @@ export const API_ENDPOINTS = {
     RATES: '/cost-master/rates/',
     RATE_DETAIL: (rateId: number) => `/cost-master/rates/${rateId}/`,
   },
+
+  // Department ownership chart. One endpoint: GET reads the whole chart, PUT
+  // replaces it (the page edits and saves it whole).
+  ORG_CHART: {
+    CHART: '/org-chart/chart/',
+  },
 } as const;
 
 export const HTTP_STATUS = {

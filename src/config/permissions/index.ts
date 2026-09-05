@@ -174,3 +174,11 @@ export {
   MARKETPLACE_SHEET_ACCESS,
   type MarketplacePermission,
 } from './marketplace.permissions';
+
+// Department Ownership Chart (who owns each function, and who backs them up)
+export {
+  ORG_CHART_ACCESS,
+  ORG_CHART_MODULE_PREFIX,
+  ORG_CHART_PERMISSIONS,
+  type OrgChartPermission,
+} from './org-chart.permissions';
