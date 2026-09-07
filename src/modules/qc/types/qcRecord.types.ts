@@ -134,3 +134,45 @@ export interface ListQCRecordsParams {
   date_from?: string;
   date_to?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Writing a form back (the "Customize format" screen)
+// ---------------------------------------------------------------------------
+
+/** One parameter row as sent to the form builder endpoints. */
+export interface RecordTemplateParameterWrite {
+  sequence: number;
+  sr_no: string;
+  name: string;
+  frequency: string;
+  specification: string;
+  unit: string;
+  value_type: ValueType;
+  /** Null rather than '' — the backend column is a nullable decimal. */
+  min_value: string | null;
+  max_value: string | null;
+  allowed_values: string[];
+  conforming_values: string[];
+}
+
+export interface RecordTemplateSectionWrite {
+  sequence: number;
+  title: string;
+  parameters: RecordTemplateParameterWrite[];
+}
+
+export interface RecordTemplateWrite {
+  document_code: string;
+  title: string;
+  organisation: string;
+  revision_number: string;
+  revision_date: string | null;
+  classification: string;
+  description: string;
+  /**
+   * Leave out to edit only the header. The backend refuses to rewrite the
+   * rows of a form that already carries readings, so a header-only save is
+   * the way to correct a title or revision on a form that is in use.
+   */
+  sections?: RecordTemplateSectionWrite[];
+}

@@ -20,6 +20,7 @@ const QAProcedureLogPage = lazy(() => import('./pages/qaProcedures/QAProcedureLo
 // Documents submodule — fillable QC record sheets
 const QCDocumentsPage = lazy(() => import('./pages/documents/QCDocumentsPage'));
 const QCRecordDetailPage = lazy(() => import('./pages/documents/QCRecordDetailPage'));
+const RecordFormatPage = lazy(() => import('./pages/documents/RecordFormatPage'));
 
 // Master Data (shared)
 const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'));
@@ -199,6 +200,23 @@ export const qcModuleConfig: ModuleConfig = {
         QC_PERMISSIONS.QC_RECORD.APPROVE,
       ],
       breadcrumb: { label: 'Documents' },
+    },
+    {
+      // Laying out the printed form itself. Gated on the approver permission
+      // alone — the same one the backend gates the template endpoints on — so
+      // an operator who only fills sheets cannot reshape them.
+      path: '/qc/documents/forms/new',
+      element: <RecordFormatPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
+      breadcrumb: { label: 'New Format' },
+    },
+    {
+      path: '/qc/documents/forms/:templateId',
+      element: <RecordFormatPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
+      breadcrumb: { label: 'Customize Format' },
     },
     {
       path: '/qc/documents/records/:recordId',
