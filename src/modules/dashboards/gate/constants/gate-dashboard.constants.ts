@@ -174,3 +174,29 @@ export const GATE_ACTIVITIES: readonly GateActivity[] = [
     permissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN, GATE_PERMISSIONS.LABOUR_GATE.VIEW],
   },
 ] as const;
+
+/**
+ * How long a board may go without a successful read before it stops claiming
+ * to be live. Two and a half poll cycles — one slow response is not a dead
+ * screen, but a wall that has been frozen since last night must say so.
+ */
+export const GATE_STALE_AFTER_MS = GATE_REFRESH_MS * 2.5;
+
+/** A list longer than this creeps past on its own — nobody scrolls a wall. */
+export const GATE_AUTO_SCROLL_FROM = 6;
+
+/**
+ * Inbound vehicle activity routes — their sum is "vehicles in".
+ *
+ * Derived from GATE_ACTIVITIES rather than typed out a second time, so a new
+ * inbound activity lands in the headline count the day it is added instead of
+ * quietly sitting outside it.
+ */
+export const GATE_IN_ROUTES: readonly string[] = GATE_ACTIVITIES.filter(
+  (activity) => activity.flow === 'in',
+).map((activity) => activity.route);
+
+/** Outbound activity routes — their sum is "vehicles out". */
+export const GATE_OUT_ROUTES: readonly string[] = GATE_ACTIVITIES.filter(
+  (activity) => activity.flow === 'out',
+).map((activity) => activity.route);
