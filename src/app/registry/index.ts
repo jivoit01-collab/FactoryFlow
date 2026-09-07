@@ -13,6 +13,7 @@ import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
 import { etpModuleConfig } from '@/modules/etp/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
+import { issuesModuleConfig } from '@/modules/issues/module.config';
 import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
@@ -62,6 +63,9 @@ export const moduleRegistry: ModuleConfig[] = [
   // Reference, not a workflow: the department ownership chart lives near the
   // bottom with the other look-it-up pages.
   organizationModuleConfig,
+  // The software's own bug list. Last but one: it is about the app rather than
+  // about the factory, so it sits with Settings at the bottom.
+  issuesModuleConfig,
   settingsModuleConfig,
 ];
 

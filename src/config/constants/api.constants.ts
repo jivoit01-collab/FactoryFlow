@@ -1394,6 +1394,25 @@ export const API_ENDPOINTS = {
   ORG_CHART: {
     CHART: '/org-chart/chart/',
   },
+
+  // Issue tracker. Issues are addressed by NUMBER (the "#41" people quote),
+  // not by primary key -- comments and attachments are the only things keyed
+  // by id. The list takes ?q=&state=&sort=&page=&page_size=.
+  ISSUES: {
+    META: '/issues/meta/',
+    LIST: '/issues/',
+    DETAIL: (number: number) => `/issues/${number}/`,
+    TIMELINE: (number: number) => `/issues/${number}/timeline/`,
+    COMMENTS: (number: number) => `/issues/${number}/comments/`,
+    COMMENT_DETAIL: (commentId: number) => `/issues/comments/${commentId}/`,
+    STATE: (number: number) => `/issues/${number}/state/`,
+    BULK_STATE: '/issues/bulk-state/',
+    UPLOADS: '/issues/uploads/',
+    LABELS: '/issues/labels/',
+    LABEL_DETAIL: (labelId: number) => `/issues/labels/${labelId}/`,
+    AREAS: '/issues/areas/',
+    AREA_DETAIL: (areaId: number) => `/issues/areas/${areaId}/`,
+  },
 } as const;
 
 export const HTTP_STATUS = {

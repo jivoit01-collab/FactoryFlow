@@ -1,10 +1,12 @@
-import { Menu, Monitor, Moon, Sun } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Bug, Menu, Monitor, Moon, Sun } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { type Theme, THEME_OPTIONS } from '@/config/constants/app.constants';
 import { COMPANY_CODES } from '@/config/constants/company.constants';
+import { ISSUE_CREATE_ACCESS } from '@/config/permissions';
 import { ROUTES } from '@/config/routes.config';
 import { useAuth } from '@/core/auth';
+import { usePermission } from '@/core/auth/hooks/usePermission';
 import { NotificationBell } from '@/core/notifications';
 import {
   Button,
@@ -46,6 +48,9 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
   const { currentCompany } = useAuth();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { hasAnyPermission } = usePermission();
+  const canReportIssue = hasAnyPermission(ISSUE_CREATE_ACCESS);
 
   const accent = currentCompany ? COMPANY_ACCENTS[currentCompany.company_code] : undefined;
 
@@ -81,6 +86,21 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Report a problem with the screen you are on. The current path rides
+            along so the issue says where to look without anyone asking. */}
+        {canReportIssue && (
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Report an issue with this page"
+            onClick={() =>
+              navigate(`/issues/new?from=${encodeURIComponent(location.pathname)}`)
+            }
+          >
+            <Bug className="h-5 w-5" />
+          </Button>
+        )}
+
         {/* Notification bell */}
         <NotificationBell />
 

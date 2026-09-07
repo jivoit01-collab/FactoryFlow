@@ -37,5 +37,8 @@ ssh_key*
 *.njsproj
 *.sln
 *.sw?
-*markdown*
+# Scratch / tool notes, not source. Scoped to note files so that a source
+# file legitimately named Markdown.tsx is not silently untracked.
+*markdown*.md
+*markdown*.txt
 *codex*

@@ -182,6 +182,16 @@ export {
   type MarketplacePermission,
 } from './marketplace.permissions';
 
+// Issue Tracker (the software's own bug list)
+export {
+  ISSUE_ACCESS,
+  ISSUE_CREATE_ACCESS,
+  ISSUE_PERMISSIONS,
+  ISSUE_SETTINGS_ACCESS,
+  type IssuePermission,
+  ISSUES_MODULE_PREFIX,
+} from './issues.permissions';
+
 // Department Ownership Chart (who owns each function, and who backs them up)
 export {
   ORG_CHART_ACCESS,
