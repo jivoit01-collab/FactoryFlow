@@ -24,6 +24,42 @@ export function money(value: number): string {
 }
 
 /**
+ * ₹ + every digit, Indian grouping, no paise: "₹48,021".
+ *
+ * The board compacts by default because a wall is read at four metres, but a
+ * figure somebody has to reconcile against SAP cannot be "₹48K". Used in hovers
+ * and detail, not in the headline tiles.
+ */
+export function rupees(value: number): string {
+  return `₹${count(value)}`;
+}
+
+/**
+ * Every kilogram, Indian grouping: "1,46,304 kg".
+ *
+ * `weight()` rolls over to tonnes past 1,000 kg, which is right for a total but
+ * wrong for one bill: "146.3 T" hides the digits that make a wrong weight
+ * obvious, and it is the exact kilogram figure that gets matched against SAP or
+ * the weighbridge slip.
+ */
+export function kilos(kg: number): string {
+  return `${count(kg)} kg`;
+}
+
+/**
+ * Every litre, Indian grouping: "12,220 L".
+ *
+ * Also disambiguates the board's one unit collision. `compact()` abbreviates
+ * lakh as "L", so a compacted row put "₹30 L" (thirty lakh rupees) a few pixels
+ * from "12K L" (twelve thousand litres) — the same letter meaning two different
+ * things on one line. Spelling the litres out leaves "L" after a bare number
+ * always litres, and "L" after a ₹ figure always lakh.
+ */
+export function litres(value: number): string {
+  return `${count(value)} L`;
+}
+
+/**
  * Litres, short-scaled.
  *
  * Preferred over weight wherever one row can dominate a total. SAP's weight
