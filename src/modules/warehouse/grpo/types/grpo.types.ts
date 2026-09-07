@@ -490,6 +490,12 @@ export interface ServiceGRPOPendingEntry {
   freight: string | null;
   total_freight: string | null;
   invoice_count?: number;
+  /**
+   * Every SAP invoice on this bilty. The row displays only the group leader's
+   * number, so this is what makes the other invoices on the same bilty visible
+   * (and searchable) instead of looking absent from the queue.
+   */
+  invoice_numbers?: string[];
   invoice_number?: string;
   eway_bill?: string;
   invoice_weight?: string | null;
@@ -613,6 +619,40 @@ export interface PostServiceGRPORequest {
   doc_due_date?: string;
   tax_date?: string;
   should_roundoff?: boolean;
+  /**
+   * Record the service GRPO SAP already holds under this vendor + vendor
+   * reference instead of posting a new one. Nothing is written to SAP. Only ever
+   * set on the retry that follows the operator confirming a
+   * `SAP_GRPO_ALREADY_EXISTS` conflict — never on a first attempt.
+   */
+  adopt_existing_sap_doc?: boolean;
+}
+
+/** The SAP service GRPO already filed under a vendor + vendor reference. */
+export interface ServiceGRPOExistingSapDoc {
+  doc_entry: number | null;
+  doc_num: number | null;
+  doc_date: string;
+  doc_total: string;
+  doc_type: string;
+  card_code: string;
+  card_name: string;
+  vendor_ref: string;
+  comments: string;
+  sap_absolute_entry: number | null;
+  /** False when the document holding the reference is not a service GRPO. */
+  can_adopt: boolean;
+}
+
+/**
+ * 409 body when SAP already has this bilty's freight booked. Not a failure —
+ * the operator is asked whether to record the existing document.
+ */
+export interface ServiceGRPOAlreadyInSAPConflict {
+  detail: string;
+  code: 'SAP_GRPO_ALREADY_EXISTS';
+  requires_confirmation: true;
+  existing_sap_doc: ServiceGRPOExistingSapDoc;
 }
 
 export interface PostServiceGRPOResponse {

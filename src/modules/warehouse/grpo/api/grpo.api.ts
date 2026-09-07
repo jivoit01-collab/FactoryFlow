@@ -292,6 +292,10 @@ export const grpoApi = {
         {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: SAP_SERVICE_GRPO_POST_TIMEOUT_MS,
+          // The preview page reports every outcome inline, and a 409 here is a
+          // question ("SAP already has this bilty — record it?"), not a failure.
+          // A global toast would announce it as an error over its own dialog.
+          suppressErrorToast: true,
         },
       );
       return response.data;
@@ -300,7 +304,7 @@ export const grpoApi = {
     const response = await apiClient.post<PostServiceGRPOResponse>(
       API_ENDPOINTS.DISPATCH.BILTY_GRPO_POST,
       jsonData,
-      { timeout: SAP_SERVICE_GRPO_POST_TIMEOUT_MS },
+      { timeout: SAP_SERVICE_GRPO_POST_TIMEOUT_MS, suppressErrorToast: true },
     );
     return response.data;
   },

@@ -57,6 +57,7 @@ import type {
   ServiceGRPOGLAccountOption,
   ServiceGRPOLocationOption,
   ServiceGRPOProjectOption,
+  ServiceGRPOExistingSapDoc,
   ServiceGRPOSACCodeOption,
   ServiceGRPOSubAccountOption,
   ServiceGRPOTaxCodeOption,
@@ -201,6 +202,21 @@ function describePostFailure(error: ApiError): Record<string, string> {
     ? `${error.message || 'Could not post'} — ${unmapped.join('; ')}`
     : `${error.message || 'Could not post'} — check ${named} below.`;
   return mapped;
+}
+
+/**
+ * The SAP document a 409 `SAP_GRPO_ALREADY_EXISTS` is reporting, or null when the
+ * failure is something else. SAP refuses a second document with the same
+ * (vendor, reference), so retrying that post can never succeed — but the freight
+ * IS booked, and the operator can adopt it.
+ */
+function readExistingSapDoc(error: ApiError): ServiceGRPOExistingSapDoc | null {
+  if (error.status !== 409) return null;
+  const body = error.response?.data as
+    | { code?: string; existing_sap_doc?: ServiceGRPOExistingSapDoc }
+    | undefined;
+  if (body?.code !== 'SAP_GRPO_ALREADY_EXISTS' || !body.existing_sap_doc) return null;
+  return body.existing_sap_doc;
 }
 
 const formatCurrency = (amount: number) =>
@@ -423,6 +439,10 @@ export default function ServiceGRPOPreviewPage() {
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [successResult, setSuccessResult] = useState<PostServiceGRPOResponse | null>(null);
+  // SAP already holds this bilty's freight. Not an error — the operator is asked
+  // whether to record that document here instead of posting a second one.
+  const [alreadyInSap, setAlreadyInSap] = useState<ServiceGRPOExistingSapDoc | null>(null);
+  const [didAdopt, setDidAdopt] = useState(false);
 
   // The bilty attachment of record on the plan (from vehicle linking) — with
   // its change history, and whether it may still be replaced/deleted.
@@ -748,12 +768,18 @@ export default function ServiceGRPOPreviewPage() {
     }
   };
 
-  const handleConfirmPost = async () => {
+  /**
+   * `adoptExistingSapDoc` records the GRPO SAP already holds instead of posting a
+   * new one. Everything else about the request is identical, so an adopted
+   * booking carries the same amounts, allocation and lines as a posted one.
+   */
+  const handleConfirmPost = async (adoptExistingSapDoc = false) => {
     if (!form || !preview) return;
 
     try {
       setApiErrors({});
       const result = await postServiceGRPO.mutateAsync({
+        adopt_existing_sap_doc: adoptExistingSapDoc || undefined,
         dispatch_plan_id: preview.dispatch_plan_id,
         vendor_code: form.vendorCode,
         branch_id: form.branchId,
@@ -789,10 +815,19 @@ export default function ServiceGRPOPreviewPage() {
         should_roundoff: form.shouldRoundoff || undefined,
       });
       setShowConfirm(false);
+      setAlreadyInSap(null);
+      setDidAdopt(adoptExistingSapDoc);
       setSuccessResult(result);
     } catch (err) {
       setShowConfirm(false);
       const postError = err as ApiError;
+      const existingSapDoc = readExistingSapDoc(postError);
+      if (existingSapDoc) {
+        // Ask rather than report. Nothing was sent to SAP.
+        setAlreadyInSap(existingSapDoc);
+        return;
+      }
+      setAlreadyInSap(null);
       setApiErrors(describePostFailure(postError));
     }
   };
@@ -1805,9 +1840,88 @@ export default function ServiceGRPOPreviewPage() {
             <Button variant="outline" onClick={() => setShowConfirm(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmPost} disabled={postServiceGRPO.isPending}>
+            {/* Called through a lambda on purpose: passing the handler directly
+                would hand the click event in as `adoptExistingSapDoc`. */}
+            <Button onClick={() => handleConfirmPost()} disabled={postServiceGRPO.isPending}>
               {postServiceGRPO.isPending ? 'Posting...' : 'Confirm Post'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!alreadyInSap}
+        onOpenChange={(open) => {
+          if (!open) setAlreadyInSap(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              Already booked in SAP
+            </DialogTitle>
+            <DialogDescription>
+              SAP already has a service GRPO for this transporter under vendor reference{' '}
+              <span className="font-medium">{alreadyInSap?.vendor_ref || '-'}</span>. Nothing has
+              been posted.
+            </DialogDescription>
+          </DialogHeader>
+          {alreadyInSap && (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">SAP Document Number</span>
+                <span className="font-semibold">{alreadyInSap.doc_num ?? '-'}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">SAP DocEntry</span>
+                <span className="font-semibold">{alreadyInSap.doc_entry ?? '-'}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Document Date</span>
+                <span className="font-medium">{formatDate(alreadyInSap.doc_date)}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Vendor</span>
+                <span className="font-medium text-right">
+                  {alreadyInSap.card_name || alreadyInSap.card_code}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">SAP Total</span>
+                <span className="font-semibold">
+                  {formatCurrency(parseAmount(alreadyInSap.doc_total))}
+                </span>
+              </div>
+              {alreadyInSap.comments && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">SAP Remarks</span>
+                  <span className="font-medium text-right">{alreadyInSap.comments}</span>
+                </div>
+              )}
+              <p className="border-t pt-3 text-muted-foreground">
+                {alreadyInSap.can_adopt
+                  ? 'This usually means the post reached SAP but its record was lost here. ' +
+                    'Recording it links this bilty to that document and takes it off the ' +
+                    'pending queue. Nothing is sent to SAP.'
+                  : 'The document holding this reference is not a service GRPO, so it cannot ' +
+                    'be recorded as this bilty’s freight booking. Use a different vendor ' +
+                    'reference.'}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAlreadyInSap(null)}>
+              Cancel
+            </Button>
+            {alreadyInSap?.can_adopt && (
+              <Button
+                onClick={() => handleConfirmPost(true)}
+                disabled={postServiceGRPO.isPending}
+              >
+                {postServiceGRPO.isPending ? 'Recording...' : 'Record as posted'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1819,7 +1933,12 @@ export default function ServiceGRPOPreviewPage() {
               <CheckCircle2 className="h-5 w-5 text-green-600" />
               Success
             </DialogTitle>
-            <DialogDescription>Service GRPO posted successfully to SAP.</DialogDescription>
+            <DialogDescription>
+              {didAdopt
+                ? 'Linked to the service GRPO already in SAP. This bilty is now booked ' +
+                  'and off the pending queue.'
+                : 'Service GRPO posted successfully to SAP.'}
+            </DialogDescription>
           </DialogHeader>
           {successResult && (
             <div className="space-y-2 text-sm">

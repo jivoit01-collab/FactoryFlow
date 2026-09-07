@@ -276,8 +276,24 @@ export default function ServicePendingEntriesPage({
                         <td className="p-3 text-sm whitespace-nowrap">
                           <StageBadge entry={entry} />
                         </td>
-                        <td className="p-3 text-sm font-medium whitespace-nowrap">
-                          {entry.sap_invoice_doc_num || entry.sap_invoice_doc_entry}
+                        <td className="p-3 text-sm font-medium">
+                          <div className="flex flex-col">
+                            <span className="whitespace-nowrap">
+                              {entry.sap_invoice_doc_num || entry.sap_invoice_doc_entry}
+                            </span>
+                            {/* One row covers the whole bilty. Naming the other
+                                invoices on it is what stops an operator holding
+                                the bilty from reading this row as a different
+                                consignment. */}
+                            {(entry.invoice_numbers?.length ?? 0) > 1 && (
+                              <span className="text-xs font-normal text-muted-foreground">
+                                +{' '}
+                                {entry.invoice_numbers
+                                  ?.filter((number) => number !== entry.sap_invoice_doc_num)
+                                  .join(', ')}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3 text-sm whitespace-nowrap">
                           {entry.invoice_count || 1}
