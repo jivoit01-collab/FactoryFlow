@@ -158,10 +158,19 @@ export interface SaveItemsPayload {
   }>;
 }
 
+/** Every field is optional — the vehicle step can be skipped entirely and the
+ *  gate captures the truck at mark-in. `null` clears a previously saved value. */
 export interface SetVehiclePayload {
-  vehicle_id: number;
-  driver_id: number;
-  expected_arrival_at: string;
+  vehicle_id?: number | null;
+  driver_id?: number | null;
+  expected_arrival_at?: string | null;
+}
+
+export interface MarkGoodsReturnInPayload {
+  remarks?: string;
+  /** Supplied by the gate when the return was booked without a vehicle. */
+  vehicle_id?: number | null;
+  driver_id?: number | null;
 }
 
 export interface InvoiceSearchResult {
@@ -338,10 +347,14 @@ export const goodsReturnApi = {
     return response.data;
   },
 
-  async markIn(id: number, remarks?: string): Promise<GoodsReturnDetail> {
+  async markIn(id: number, payload: MarkGoodsReturnInPayload = {}): Promise<GoodsReturnDetail> {
     const response = await apiClient.post<GoodsReturnDetail>(
       API_ENDPOINTS.GOODS_RETURN.GATE_MARK_IN(id),
-      { remarks: remarks ?? '' },
+      {
+        remarks: payload.remarks ?? '',
+        ...(payload.vehicle_id ? { vehicle_id: payload.vehicle_id } : {}),
+        ...(payload.driver_id ? { driver_id: payload.driver_id } : {}),
+      },
     );
     return response.data;
   },

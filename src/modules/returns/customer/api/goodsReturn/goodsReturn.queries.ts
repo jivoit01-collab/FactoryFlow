@@ -5,6 +5,7 @@ import {
   goodsReturnApi,
   type GoodsReturnApprovalStatus,
   type GoodsReturnAttachmentType,
+  type MarkGoodsReturnInPayload,
   type SaveItemsPayload,
   type SetVehiclePayload,
 } from './goodsReturn.api';
@@ -214,8 +215,8 @@ export function useExpectedGoodsReturns() {
 export function useMarkGoodsReturnIn() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: number; remarks?: string }) =>
-      goodsReturnApi.markIn(input.id, input.remarks),
+    mutationFn: ({ id, ...payload }: MarkGoodsReturnInPayload & { id: number }) =>
+      goodsReturnApi.markIn(id, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: goodsReturnKeys.expected() }),
   });
 }

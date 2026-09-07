@@ -3,33 +3,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { DriverSelect, VehicleSelect } from '@/modules/gate/components';
 import {
   type GoodsReturnListItem,
   useExpectedGoodsReturns,
   useMarkGoodsReturnIn,
 } from '@/modules/returns/customer/api';
 import { formatDate } from '@/modules/returns/customer/utils';
-import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
+import { Badge, Button, Card, CardContent, Label } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 export default function GoodsReturnInListPage() {
-  const navigate = useNavigate();
   const { data: expected = [], isLoading, isFetching, refetch } = useExpectedGoodsReturns();
-  const markIn = useMarkGoodsReturnIn();
-  const [markingId, setMarkingId] = useState<number | null>(null);
-
-  async function handleMarkIn(entry: GoodsReturnListItem) {
-    setMarkingId(entry.id);
-    try {
-      await markIn.mutateAsync({ id: entry.id });
-      toast.success(`${entry.vehicle_no || entry.entry_no} marked in`);
-    } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      toast.error(detail || 'Could not mark the vehicle in.');
-    } finally {
-      setMarkingId(null);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -56,50 +41,117 @@ export default function GoodsReturnInListPage() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {expected.map((entry) => (
-            <Card key={entry.id}>
-              <CardContent className="space-y-3 p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="flex items-center gap-2 text-lg font-semibold">
-                      <Truck className="h-4 w-4 text-muted-foreground" />
-                      {entry.vehicle_no || '—'}
-                    </p>
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                      onClick={() => navigate(`/returns/customer/${entry.id}`)}
-                    >
-                      {entry.entry_no}
-                    </button>
-                  </div>
-                  <Badge variant="outline">{entry.company_code}</Badge>
-                </div>
-
-                <dl className="space-y-1 text-sm">
-                  <Row label="Customer" value={entry.customer_name || entry.customer_code || '-'} />
-                  <Row label="Driver" value={entry.driver_name || '-'} />
-                  <Row label="Items" value={String(entry.line_count)} />
-                  <Row label="Expected" value={formatDate(entry.expected_arrival_at)} />
-                </dl>
-
-                <Button
-                  className="w-full"
-                  onClick={() => handleMarkIn(entry)}
-                  disabled={markingId === entry.id}
-                >
-                  {markingId === entry.id ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <LogIn className="mr-2 h-4 w-4" />
-                  )}
-                  Mark Vehicle In
-                </Button>
-              </CardContent>
-            </Card>
+            <ExpectedReturnCard key={entry.id} entry={entry} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function ExpectedReturnCard({ entry }: { entry: GoodsReturnListItem }) {
+  const navigate = useNavigate();
+  const markIn = useMarkGoodsReturnIn();
+
+  // The returns clerk may have booked this without a vehicle (that step is
+  // optional), in which case the gate is the first to know the truck.
+  const needsVehicle = !entry.vehicle_no || !entry.driver_name;
+  const [vehicleId, setVehicleId] = useState<number | null>(null);
+  const [vehicleNo, setVehicleNo] = useState('');
+  const [driverId, setDriverId] = useState<number | null>(null);
+  const [driverName, setDriverName] = useState('');
+
+  const vehicleReady = Boolean(entry.vehicle_no) || Boolean(vehicleId);
+  const driverReady = Boolean(entry.driver_name) || Boolean(driverId);
+
+  async function handleMarkIn() {
+    try {
+      await markIn.mutateAsync({ id: entry.id, vehicle_id: vehicleId, driver_id: driverId });
+      toast.success(`${entry.vehicle_no || vehicleNo || entry.entry_no} marked in`);
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(detail || 'Could not mark the vehicle in.');
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="flex items-center gap-2 text-lg font-semibold">
+              <Truck className="h-4 w-4 text-muted-foreground" />
+              {entry.vehicle_no || vehicleNo || '—'}
+            </p>
+            <button
+              type="button"
+              className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+              onClick={() => navigate(`/returns/customer/${entry.id}`)}
+            >
+              {entry.entry_no}
+            </button>
+          </div>
+          <Badge variant="outline">{entry.company_code}</Badge>
+        </div>
+
+        <dl className="space-y-1 text-sm">
+          <Row label="Customer" value={entry.customer_name || entry.customer_code || '-'} />
+          <Row label="Driver" value={entry.driver_name || driverName || '-'} />
+          <Row label="Items" value={String(entry.line_count)} />
+          <Row
+            label="Expected"
+            value={entry.expected_arrival_at ? formatDate(entry.expected_arrival_at) : 'Not given'}
+          />
+        </dl>
+
+        {needsVehicle && (
+          <div className="space-y-3 rounded-md border border-dashed p-3">
+            <p className="text-xs text-muted-foreground">
+              Booked without a vehicle — record the truck that arrived.
+            </p>
+            {!entry.vehicle_no && (
+              <div className="space-y-1">
+                <Label className="text-xs">Vehicle</Label>
+                <VehicleSelect
+                  value={vehicleNo}
+                  defaultDisplayText={vehicleNo}
+                  onChange={(vehicle) => {
+                    setVehicleId(vehicle.vehicleId);
+                    setVehicleNo(vehicle.vehicleNumber);
+                  }}
+                />
+              </div>
+            )}
+            {!entry.driver_name && (
+              <div className="space-y-1">
+                <Label className="text-xs">Driver</Label>
+                <DriverSelect
+                  value={driverName}
+                  defaultDisplayText={driverName}
+                  onChange={(driver) => {
+                    setDriverId(driver.driverId);
+                    setDriverName(driver.driverName);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        <Button
+          className="w-full"
+          onClick={handleMarkIn}
+          disabled={markIn.isPending || !vehicleReady || !driverReady}
+        >
+          {markIn.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogIn className="mr-2 h-4 w-4" />
+          )}
+          Mark Vehicle In
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

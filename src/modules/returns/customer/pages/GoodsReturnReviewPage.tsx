@@ -110,7 +110,8 @@ export default function GoodsReturnReviewPage() {
 
       <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        On submit the vehicle joins the gate's return queue. SAP is posted later, when the
+        On submit this return joins the gate's return queue — with the vehicle if you
+        entered one, or for the gate to record on arrival. SAP is posted later, when the
         goods are confirmed received.
       </p>
     </div>

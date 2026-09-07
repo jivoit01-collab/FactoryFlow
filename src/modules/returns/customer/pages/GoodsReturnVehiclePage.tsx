@@ -37,25 +37,16 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
   );
   const [error, setError] = useState<string | null>(null);
 
+  // Nothing here is required — a return is often booked before anyone knows
+  // which truck is bringing the goods back, and the gate captures the vehicle
+  // at mark-in instead.
   async function handleContinue() {
     setError(null);
-    if (!vehicleId) {
-      setError('Select the return vehicle.');
-      return;
-    }
-    if (!driverId) {
-      setError('Select the driver.');
-      return;
-    }
-    if (!expectedArrival) {
-      setError('Set the expected gate arrival.');
-      return;
-    }
     try {
       await setVehicle.mutateAsync({
         vehicle_id: vehicleId,
         driver_id: driverId,
-        expected_arrival_at: expectedArrival,
+        expected_arrival_at: expectedArrival || null,
       });
       navigate(`/returns/customer/edit/${id}/review`);
     } catch (err) {
@@ -71,12 +62,21 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
 
       <Card>
         <CardContent className="space-y-5 p-6">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Truck className="h-4 w-4" /> Return Vehicle &amp; Expected Arrival
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Truck className="h-4 w-4" /> Return Vehicle &amp; Expected Arrival
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Optional
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Fill this in only if you already know the vehicle. Otherwise leave it blank — the
+              gate records the truck when it arrives.
+            </p>
           </div>
 
           <div className="space-y-2">
-            <Label>Return Vehicle *</Label>
+            <Label>Return Vehicle</Label>
             <VehicleSelect
               value={vehicleNo}
               defaultDisplayText={vehicleNo}
@@ -88,7 +88,7 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
           </div>
 
           <div className="space-y-2">
-            <Label>Driver *</Label>
+            <Label>Driver</Label>
             <DriverSelect
               value={driverName}
               defaultDisplayText={driverName}
@@ -101,7 +101,7 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
 
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4" /> Expected Gate Arrival *
+              <CalendarClock className="h-4 w-4" /> Expected Gate Arrival
             </Label>
             <Input
               type="date"
@@ -109,7 +109,7 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
               onChange={(event) => setExpectedArrival(event.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              This vehicle will appear in the gate&apos;s “Goods Return In” queue for mark-in.
+              This return joins the gate&apos;s “Goods Return In” queue for mark-in either way.
             </p>
           </div>
         </CardContent>
@@ -125,7 +125,7 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
           ) : (
             <ArrowRight className="mr-2 h-4 w-4" />
           )}
-          Save &amp; Continue
+          {vehicleId || driverId || expectedArrival ? 'Save & Continue' : 'Skip & Continue'}
         </Button>
       </div>
     </div>
