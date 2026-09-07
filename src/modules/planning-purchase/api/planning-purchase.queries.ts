@@ -11,6 +11,7 @@ import type {
   ProducibleFilters,
   PurchaseOrderListFilters,
   RequirementFilters,
+  SimulateRequest,
   SpreadPolicy,
   UpdatePurchaseOrderRequest,
 } from '../types';
@@ -61,6 +62,8 @@ export const PLANNING_PURCHASE_KEYS = {
       filters.stock_basis ?? 'ON_HAND',
       (filters.warehouse ?? []).join(',') || null,
     ] as const,
+  bomItems: (companyId: number | string | undefined, search: string) =>
+    [...PLANNING_PURCHASE_KEYS.all, 'bom-items', companyId, search] as const,
   commitments: (
     companyId: number | string | undefined,
     itemCode: string,
@@ -142,6 +145,38 @@ export function useProducible(absId: number | undefined, filters: ProducibleFilt
     enabled: Boolean(absId),
     staleTime: REQUIREMENT_STALE_TIME,
     refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Can a typed-in run be made, and if not how much of it?
+ *
+ * A mutation rather than a query, even though it reads and writes nothing. The
+ * request is a form somebody is still filling in, and a query would re-run it
+ * on every keystroke that changed a quantity — against SAP, at a BOM explosion
+ * a time. This way "Check" means check, and the last answer stays on screen
+ * while the next request is being typed, which is exactly what you want when
+ * you are trying a smaller quantity to see if it fits.
+ */
+export function useSimulateProducible() {
+  return useMutation({
+    mutationFn: (payload: SimulateRequest) => planApi.simulate(payload),
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Could not work out what can be made.')),
+  });
+}
+
+/**
+ * Finished goods SAP holds a recipe for. The item master is effectively static,
+ * so a search result holds for the session rather than being re-fetched every
+ * time the picker reopens.
+ */
+export function useBomItems(search = '') {
+  const { currentCompany } = useAuth();
+  return useQuery({
+    queryKey: PLANNING_PURCHASE_KEYS.bomItems(currentCompany?.company_id, search),
+    queryFn: () => planApi.bomItems(search),
+    staleTime: 30 * 60 * 1000,
   });
 }
 

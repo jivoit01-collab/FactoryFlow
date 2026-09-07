@@ -483,6 +483,10 @@ export const API_ENDPOINTS = {
     PLAN_PRODUCIBLE: (absId: number) => `/planning-purchase/plans/${absId}/producible/`,
     PLAN_REQUIREMENT_EXPORT: (absId: number) =>
       `/planning-purchase/plans/${absId}/requirement/export/`,
+    // A run somebody types in rather than one the plan implies. POST because
+    // the request is a list of lines; it reads and writes nothing.
+    PRODUCIBLE_SIMULATE: '/planning-purchase/producible/simulate/',
+    BOM_ITEMS: '/planning-purchase/bom-items/',
     COMMITMENTS: '/planning-purchase/commitments/',
     VENDORS: '/planning-purchase/vendors/',
     WAREHOUSES: '/planning-purchase/warehouses/',

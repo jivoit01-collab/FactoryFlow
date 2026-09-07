@@ -1,8 +1,10 @@
 export { CommitmentDialog, CommittedCell } from './CommitmentDialog';
+export { ComponentDemandTable, type ComponentDemandTableProps } from './ComponentDemandTable';
 export * from './format';
 export { KpiCard, KpiRow, type KpiTone } from './KpiCard';
 export { PlanBucketStrip } from './PlanBucketStrip';
 export { type PlanLineSortKey,PlanLinesTable } from './PlanLinesTable';
+export { ProductPicker, type ProductPickerProps } from './ProductPicker';
 export { NO_DRILL, type RequirementDrill,sameDrill } from './requirementDrill';
 export { RequirementCaveats, RequirementHeadline } from './RequirementHeadline';
 export { RequirementTable } from './RequirementTable';
