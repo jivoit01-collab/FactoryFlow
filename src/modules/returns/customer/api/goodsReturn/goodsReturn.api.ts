@@ -129,6 +129,43 @@ export interface GoodsReturnDetail {
   invoice_preview?: GoodsReturnInvoicePreview[];
 }
 
+/** One line of SAP's own Return layout. Amounts arrive as strings — JSON floats
+ *  would round money. */
+export interface GoodsReturnPrintLine {
+  line_no: number;
+  item_code: string;
+  description: string;
+  uom: string;
+  quantity: string;
+  price: string;
+  stock_quantity: string;
+  total: string;
+  warehouse_code: string;
+}
+
+/** The posted A/R Return as SAP holds it, for the printed Return Note. */
+export interface GoodsReturnPrintPayload {
+  goods_return_id: number;
+  entry_no: string;
+  doc_entry: number;
+  doc_num: string;
+  doc_date: string;
+  doc_time: string;
+  due_date: string;
+  customer_code: string;
+  customer_name: string;
+  address_lines: string[];
+  vat_number: string;
+  currency: string;
+  doc_total: string;
+  sales_employee: string;
+  payment_terms: string;
+  comments: string;
+  cancelled: boolean;
+  branch_name: string;
+  lines: GoodsReturnPrintLine[];
+}
+
 export interface ReturnWarehouse {
   warehouse_code: string;
   warehouse_name: string;
@@ -322,6 +359,14 @@ export const goodsReturnApi = {
     const response = await apiClient.post<GoodsReturnDetail>(
       API_ENDPOINTS.GOODS_RETURN.SUBMIT(id),
       {},
+    );
+    return response.data;
+  },
+
+  /** SAP's Return Note for a posted return. 404s until the return has posted. */
+  async getPrint(id: number): Promise<GoodsReturnPrintPayload> {
+    const response = await apiClient.get<GoodsReturnPrintPayload>(
+      API_ENDPOINTS.GOODS_RETURN.PRINT(id),
     );
     return response.data;
   },

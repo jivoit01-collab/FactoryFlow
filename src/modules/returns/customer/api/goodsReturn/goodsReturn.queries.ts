@@ -21,6 +21,19 @@ export const goodsReturnKeys = {
 };
 
 /**
+ * SAP's Return Note for one posted return.
+ *
+ * A mutation rather than a query, because printing is something somebody asks
+ * for: every print is a HANA read, most people open a return to check its
+ * status rather than to print it, and nothing here should be cached — SAP can
+ * still amend the document after we post it, and a sheet printed from a stale
+ * copy is the kind of error nobody catches.
+ */
+export function useGoodsReturnPrint() {
+  return useMutation({ mutationFn: (id: number) => goodsReturnApi.getPrint(id) });
+}
+
+/**
  * Items this return's customer has been invoiced. Only the customer's own
  * history is offered — anything else has no tax code and SAP would refuse the
  * return line at posting.

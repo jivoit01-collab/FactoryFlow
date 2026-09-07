@@ -12,6 +12,7 @@ import {
   useReceiveGoodsReturn,
   useReturnWarehouses,
 } from '../api';
+import { GoodsReturnPrintButton } from '../components/GoodsReturnPrintButton';
 import {
   APPROVAL_BADGE_CLASS,
   APPROVAL_LABELS,
@@ -53,9 +54,16 @@ export default function GoodsReturnDetailPage() {
           </div>
           <p className="text-muted-foreground">{BASIS_LABELS[detail.basis]}</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/returns/customer')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Only a posted return has a SAP document to print — a DN/LP return
+              closes as RECEIVED with no document behind it. */}
+          {detail.sap_gr_doc_num && (
+            <GoodsReturnPrintButton id={id} docNum={detail.sap_gr_doc_num} />
+          )}
+          <Button variant="outline" onClick={() => navigate('/returns/customer')}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        </div>
       </div>
 
       <Card>

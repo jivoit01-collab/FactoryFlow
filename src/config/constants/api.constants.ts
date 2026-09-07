@@ -557,6 +557,7 @@ export const API_ENDPOINTS = {
       `/goods-return/${id}/attachments/${attachmentId}/`,
     SUBMIT: (id: number) => `/goods-return/${id}/submit/`,
     RECEIVE: (id: number) => `/goods-return/${id}/receive/`,
+    PRINT: (id: number) => `/goods-return/${id}/print/`,
     APPROVE: (id: number) => `/goods-return/${id}/approve/`,
     REJECT: (id: number) => `/goods-return/${id}/reject/`,
     WAREHOUSES: '/goods-return/warehouses/',
