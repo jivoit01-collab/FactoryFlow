@@ -521,6 +521,7 @@ export const API_ENDPOINTS = {
     // Read-back only. Rates are owned by cost_master and edited in
     // Admin > Cost Master; the board never writes one.
     RATES: '/dashboards/factory-expense/rates/',
+    COST_TYPES: '/dashboards/factory-expense/cost-types/',
     BUDGETS: '/dashboards/factory-expense/budgets/',
     BUDGET_DETAIL: (id: number) => `/dashboards/factory-expense/budgets/${id}/`,
   },

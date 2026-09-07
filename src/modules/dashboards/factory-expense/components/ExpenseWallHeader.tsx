@@ -26,6 +26,9 @@ export interface ExpenseWallHeaderProps {
   onResetToToday: () => void;
   onChangeFrom: (date: string) => void;
   onChangeTo: (date: string) => void;
+  onApplyPreset: (preset: 'today' | 'week' | 'month') => void;
+  /** Which preset the current range happens to match, if any. */
+  activePreset: 'today' | 'week' | 'month' | null;
   companyCode: string;
   companyCount: number;
   scope: ExpenseScope;
@@ -66,6 +69,8 @@ export function ExpenseWallHeader({
   onResetToToday,
   onChangeFrom,
   onChangeTo,
+  onApplyPreset,
+  activePreset,
   companyCode,
   companyCount,
   scope,
@@ -211,10 +216,14 @@ export function ExpenseWallHeader({
             <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               From
             </span>
+            {/* No min/max here on purpose. Clamping From to To and To to From
+                looked tidy and made the picker unusable: with both ends on
+                today, every earlier date in the To calendar was greyed out.
+                The handlers keep the range the right way round instead, and
+                the backend swaps a backwards one regardless. */}
             <input
               type="date"
               value={dateFrom}
-              max={dateTo}
               onChange={(event) => onChangeFrom(event.target.value)}
               className="bg-transparent text-xs tabular-nums text-foreground outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
             />
@@ -227,11 +236,35 @@ export function ExpenseWallHeader({
             <input
               type="date"
               value={dateTo}
-              min={dateFrom}
               onChange={(event) => onChangeTo(event.target.value)}
               className="bg-transparent text-xs tabular-nums text-foreground outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
             />
           </label>
+        </div>
+
+        {/* The three spans anyone actually asks a wall board for. */}
+        <div className="flex items-center rounded-lg border border-black/[0.09] dark:border-white/10 p-0.5">
+          {(
+            [
+              ['today', 'Today'],
+              ['week', '7D'],
+              ['month', 'Month'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onApplyPreset(key)}
+              className={cn(
+                'rounded-md px-2 py-1 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30',
+                activePreset === key
+                  ? 'bg-black/[0.06] dark:bg-white/[0.1] text-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {!(isToday && isSingleDay) && (

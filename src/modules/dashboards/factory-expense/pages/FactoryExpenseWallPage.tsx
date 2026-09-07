@@ -43,36 +43,59 @@ export default function FactoryExpenseWallPage() {
   const { hasPermission } = usePermission();
   const canConfigure = hasPermission(DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE);
 
-  // From and To both start on today, so the board opens on a single day — what
-  // a wall in the admin's room is for — and widens only when asked.
   // The whole factory by default: the plant shares a campus, a gate and four
   // electricity meters, so "what did we spend" spans the companies.
   const [scope, setScope] = useState<ExpenseScope>('all');
+  // From and To both start on today, so the board opens on a single day — what
+  // a wall in the admin's room is for — and widens only when asked.
   const [range, setRange] = useState(() => ({ from: localToday(), to: localToday() }));
   const isSingleDay = range.from === range.to;
   const isToday = isSingleDay && range.to === localToday();
 
   /**
-   * Moving From carries To with it while the board is on a single day, so
-   * picking another day stays one click. Once a real range is open, From moves
-   * on its own and only clamps if it would overtake To.
+   * Each end moves on its own; the other follows only when it would otherwise
+   * be left inside-out.
+   *
+   * An earlier version carried To along with From whenever the board was on a
+   * single day. It read well in the code and was unusable on the screen: with
+   * both ends on today, moving From to a past date dragged To back with it, so
+   * there was no sequence of clicks that opened a range at all.
    */
   const changeFrom = (next: string) => {
     if (!next) return;
-    setRange((current) =>
-      current.from === current.to
-        ? { from: next, to: next }
-        : { from: next, to: next > current.to ? next : current.to },
-    );
+    setRange((current) => ({ from: next, to: next > current.to ? next : current.to }));
   };
 
   const changeTo = (next: string) => {
     if (!next) return;
-    setRange((current) => ({
-      from: next < current.from ? next : current.from,
-      to: next,
-    }));
+    setRange((current) => ({ from: next < current.from ? next : current.from, to: next }));
   };
+
+  /** Today, the last week, this month — the three spans anyone actually asks for. */
+  const applyPreset = (preset: 'today' | 'week' | 'month') => {
+    const today = localToday();
+    if (preset === 'today') return setRange({ from: today, to: today });
+    if (preset === 'month') return setRange({ from: `${today.slice(0, 7)}-01`, to: today });
+    const start = new Date(`${today}T00:00:00`);
+    start.setDate(start.getDate() - 6);
+    const month = String(start.getMonth() + 1).padStart(2, '0');
+    const day = String(start.getDate()).padStart(2, '0');
+    setRange({ from: `${start.getFullYear()}-${month}-${day}`, to: today });
+  };
+
+  // Light up whichever preset the range currently matches, so the buttons
+  // report the state rather than only setting it.
+  const activePreset = useMemo<'today' | 'week' | 'month' | null>(() => {
+    const today = localToday();
+    if (range.to !== today) return null;
+    if (range.from === today) return 'today';
+    if (range.from === `${today.slice(0, 7)}-01`) return 'month';
+    const weekStart = new Date(`${today}T00:00:00`);
+    weekStart.setDate(weekStart.getDate() - 6);
+    const month = String(weekStart.getMonth() + 1).padStart(2, '0');
+    const day = String(weekStart.getDate()).padStart(2, '0');
+    return range.from === `${weekStart.getFullYear()}-${month}-${day}` ? 'week' : null;
+  }, [range]);
 
   const boardRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggle } = useFullscreen(boardRef);
@@ -121,6 +144,8 @@ export default function FactoryExpenseWallPage() {
         onResetToToday={() => setRange({ from: localToday(), to: localToday() })}
         onChangeFrom={changeFrom}
         onChangeTo={changeTo}
+        onApplyPreset={applyPreset}
+        activePreset={activePreset}
         companyCode={data?.company_code ?? '—'}
         companyCount={data?.company_count ?? 1}
         scope={scope}

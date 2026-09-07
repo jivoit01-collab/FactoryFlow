@@ -26,6 +26,8 @@ export const FACTORY_EXPENSE_KEYS = {
     [...FACTORY_EXPENSE_KEYS.all, 'settings', companyId] as const,
   rates: (date: string | undefined, companyId?: number | string) =>
     [...FACTORY_EXPENSE_KEYS.all, 'rates', companyId, date ?? 'today'] as const,
+  costTypes: (companyId?: number | string) =>
+    [...FACTORY_EXPENSE_KEYS.all, 'cost-types', companyId] as const,
   budgets: (month: string | undefined, companyId?: number | string) =>
     [...FACTORY_EXPENSE_KEYS.all, 'budgets', companyId, month ?? 'all'] as const,
 };
@@ -75,6 +77,16 @@ export function useResolvedRates(date?: string) {
   return useQuery({
     queryKey: FACTORY_EXPENSE_KEYS.rates(date, currentCompany?.company_id),
     queryFn: () => factoryExpenseApi.getResolvedRates(date),
+    staleTime: CONFIG_STALE_TIME,
+  });
+}
+
+export function useCostTypeOptions() {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: FACTORY_EXPENSE_KEYS.costTypes(currentCompany?.company_id),
+    queryFn: () => factoryExpenseApi.getCostTypes(),
     staleTime: CONFIG_STALE_TIME,
   });
 }
