@@ -26,6 +26,15 @@ export interface DayTruck {
   presence: TruckPresence;
   /** Furthest-along docking status on the truck. */
   status: SalesDispatchStatus;
+  /**
+   * At least one docking on this truck is still at DOCKED — the step the
+   * Docking page treats as box scanning.
+   *
+   * Tracked separately from `status`, which reports the FURTHEST-along docking:
+   * a shared truck with one company printed and another still at the dock is
+   * genuinely still being scanned, and the headline status would hide that.
+   */
+  isScanning: boolean;
   /** Company names on board -- more than one on a shared truck. */
   companies: string[];
   transporters: string[];
@@ -52,6 +61,27 @@ export interface CompanySlice {
   weightKg: number;
 }
 
+/** One customer's slice of the day. */
+export interface CustomerSlice {
+  code: string;
+  name: string;
+  /** Distinct trucks that carried something for this customer. */
+  trucks: number;
+  /** Of those, how many have cleared the gate and how many are still inside.
+   *  A customer with two loads where only one has gone reads "1 out · 1 in". */
+  trucksOut: number;
+  trucksIn: number;
+  bills: number;
+  amount: number;
+  boxes: number;
+  weightKg: number;
+  litres: number;
+  /** Loads on this row that were shared with another customer. On those the
+   *  docking carries one SAP total for every bill on it, so the value here is
+   *  apportioned rather than exact — the row says so when this is non-zero. */
+  sharedLoads: number;
+}
+
 /** One transporter's slice of the day. */
 export interface VendorSlice {
   name: string;
@@ -75,10 +105,14 @@ export interface DispatchDayVehicles {
   totalCount: number;
   inCount: number;
   outCount: number;
+  /** Of the trucks inside, how many are at the box-scanning step. */
+  scanningCount: number;
   /** Today's dispatch by company, biggest first. */
   byCompany: CompanySlice[];
   /** Today's dispatch by transporter, biggest first. */
   byVendor: VendorSlice[];
+  /** Today's dispatch by customer, biggest first. */
+  byCustomer: CustomerSlice[];
   /** Trucks that cleared the gate in each hour of the day, index 0-23. */
   outByHour: number[];
   isLoading: boolean;
@@ -123,6 +157,47 @@ function wasInsideAtEndOf(docking: SalesDispatchGateOut, date: string): boolean 
   // phantom truck in the yard forever.
   if (!leftOn) return docking.status !== 'DISPATCHED';
   return leftOn > date;
+}
+
+/**
+ * The customers on one docking.
+ *
+ * A docking that carries bills for more than one customer stores them joined
+ * into the single `customer_name` field — "RAJEEV TRADING COMPANY, ANAND
+ * ENTERPRISES" — and `customer_code` the same way. Grouping on the raw string
+ * invents a combined customer that does not exist: across sixty days it turns
+ * 257 real customers into 296 rows.
+ *
+ * Splitting is safe here rather than a guess, and both halves were checked
+ * against the live data: no docking carrying a single bill has a comma in its
+ * name (so the comma is never part of a name), and on all 104 joined dockings
+ * the name and code lists have the same number of parts (so they zip).
+ */
+function customersOn(docking: SalesDispatchGateOut): { code: string; name: string }[] {
+  const split = (value: string | null | undefined) =>
+    (value ?? '')
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+  const names = split(docking.customer_name);
+  const codes = split(docking.customer_code);
+  const size = Math.max(names.length, codes.length);
+  if (size === 0) return [];
+
+  const seen = new Set<string>();
+  const out: { code: string; name: string }[] = [];
+  for (let index = 0; index < size; index += 1) {
+    // Prefer the code as the key — it is machine-issued and never carries a
+    // comma, so it survives the split cleanly even where a name would not.
+    const code = codes[index] ?? '';
+    const name = names[index] ?? code;
+    const key = code || name;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ code: key, name: name || key });
+  }
+  return out;
 }
 
 function push(list: string[], value: string | null | undefined) {
@@ -202,6 +277,7 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
           arrivalNo: docking.arrival_no ?? null,
           presence: isInside ? 'IN' : 'OUT',
           status: docking.status,
+          isScanning: false,
           companies: [],
           transporters: [],
           customers: [],
@@ -223,6 +299,9 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
       // step, so a truck with one company gone and one still at the gatepass
       // would otherwise read "Dispatched" next to its own IN badge.
       const rank = DOCKING_STATUS_PROGRESS[docking.status] ?? 0;
+      // Any open docking sitting at DOCKED means somebody is scanning boxes on
+      // this truck right now, whatever its other dockings have reached.
+      if (isInside && docking.status === 'DOCKED') truck.isScanning = true;
       if (isInside) {
         if (truck.presence !== 'IN') {
           truck.presence = 'IN';
@@ -268,9 +347,11 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
     // company whose bills it is carrying, not to whichever one sorted first.
     const companyMap = new Map<string, CompanySlice>();
     const vendorMap = new Map<string, VendorSlice>();
+    const customerMap = new Map<string, CustomerSlice>();
     // Distinct trucks per company/vendor, so a two-docking load counts once.
     const companyTrucks = new Map<string, Set<string>>();
     const vendorTrucks = new Map<string, { all: Set<string>; out: Set<string> }>();
+    const customerTrucks = new Map<string, Set<string>>();
 
     for (const docking of rows) {
       if (docking.status === 'REJECTED' || docking.status === 'CANCELLED') continue;
@@ -339,12 +420,60 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
       }
       vendorTrucks.set(vendorName, seenForVendor);
       vendorMap.set(vendorName, vendor);
+
+      // ---- customers ----------------------------------------------------- //
+      const onLoad = customersOn(docking);
+      // One SAP total covers every bill on the docking, and the joined field
+      // does not say how many bills belong to which customer — so a shared load
+      // is divided evenly. Approximate per row, but it keeps the column adding
+      // up to the same money the headline reports, which attributing the whole
+      // amount to each customer would not.
+      const share = onLoad.length > 1 ? 1 / onLoad.length : 1;
+
+      for (const entry of onLoad) {
+        const customer = customerMap.get(entry.code) ?? {
+          code: entry.code,
+          name: entry.name,
+          trucks: 0,
+          trucksOut: 0,
+          trucksIn: 0,
+          bills: 0,
+          amount: 0,
+          boxes: 0,
+          weightKg: 0,
+          litres: 0,
+          sharedLoads: 0,
+        };
+        const seenForCustomer = customerTrucks.get(entry.code) ?? new Set<string>();
+        if (!seenForCustomer.has(truckKey)) {
+          seenForCustomer.add(truckKey);
+          customer.trucks += 1;
+          if (wentOutToday) customer.trucksOut += 1;
+          else customer.trucksIn += 1;
+        }
+        if (onLoad.length > 1) customer.sharedLoads += 1;
+        if (wentOutToday) {
+          customer.bills += (docking.document_count ?? 1) * share;
+          customer.amount += num(docking.sap_doc_total) * share;
+          customer.boxes += num(docking.total_boxes) * share;
+          customer.weightKg += num(docking.total_weight) * share;
+          customer.litres += num(docking.total_litres) * share;
+        }
+        customerTrucks.set(entry.code, seenForCustomer);
+        customerMap.set(entry.code, customer);
+      }
     }
 
     const byCompany = [...companyMap.values()].sort(
       (a, b) => b.amount - a.amount || b.trucksOut - a.trucksOut,
     );
     const byVendor = [...vendorMap.values()].sort(
+      (a, b) => b.amount - a.amount || b.trucks - a.trucks,
+    );
+    // Value first, but a customer with nothing shipped yet still has to rank by
+    // the trucks it has standing at the dock — otherwise the very rows this
+    // panel exists to surface sort to the bottom.
+    const byCustomer = [...customerMap.values()].sort(
       (a, b) => b.amount - a.amount || b.trucks - a.trucks,
     );
 
@@ -362,8 +491,10 @@ export function useDispatchDayVehicles(enabled = true): DispatchDayVehicles {
       totalCount: trucks.length,
       inCount: inside.length,
       outCount: out.length,
+      scanningCount: inside.filter((truck) => truck.isScanning).length,
       byCompany,
       byVendor,
+      byCustomer,
       outByHour,
     };
   }, [dockings, day.date]);

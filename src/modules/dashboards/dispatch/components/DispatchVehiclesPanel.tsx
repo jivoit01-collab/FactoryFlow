@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, LogIn, LogOut, Truck } from 'lucide-react';
+import { AlertTriangle, LogIn, LogOut, ScanLine, Truck } from 'lucide-react';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -73,7 +73,7 @@ export function DispatchVehiclesPanel({
       }
     >
       {/* total / in / out */}
-      <div className="grid shrink-0 grid-cols-3 gap-2 px-4 pb-3">
+      <div className="grid shrink-0 grid-cols-2 gap-2 px-4 pb-3 sm:grid-cols-4">
         <VehicleStat
           label="Total vehicles"
           value={vehicles.totalCount}
@@ -86,6 +86,18 @@ export function DispatchVehiclesPanel({
           hex={palette.hue('volume')}
           icon={LogIn}
           loading={vehicles.isLoading}
+        />
+        {/* Says what it counts, because "scanning" is a step here rather than a
+            measured activity: the board reads the docking status the Docking
+            page itself works from, and the list payload carries no per-box scan
+            count to prove a gun is in somebody's hand. */}
+        <VehicleStat
+          label="Scanning"
+          value={vehicles.scanningCount}
+          hex={palette.hue('invoices')}
+          icon={ScanLine}
+          loading={vehicles.isLoading}
+          hint="Trucks at the dock, where box scanning is the open step"
         />
         <VehicleStat
           label="Out vehicles"
@@ -201,15 +213,21 @@ function VehicleStat({
   hex,
   icon: Icon,
   loading,
+  hint,
 }: {
   label: string;
   value: number;
   hex: string;
   icon?: typeof LogIn;
   loading: boolean;
+  /** Hover text for a tile whose label needs qualifying. */
+  hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-black/[0.09] dark:border-white/10 bg-black/[0.018] dark:bg-white/[0.03] px-2.5 py-2">
+    <div
+      title={hint}
+      className="rounded-xl border border-black/[0.09] dark:border-white/10 bg-black/[0.018] dark:bg-white/[0.03] px-2.5 py-2"
+    >
       <div className="flex items-center gap-1.5">
         {Icon && <Icon className="h-3.5 w-3.5" style={{ color: hex }} />}
         <span

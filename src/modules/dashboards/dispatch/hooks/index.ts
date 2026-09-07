@@ -13,6 +13,7 @@ export {
 } from './useDispatchDayTotals';
 export {
   type CompanySlice,
+  type CustomerSlice,
   type DayTruck,
   type DispatchDayVehicles,
   type TruckPresence,

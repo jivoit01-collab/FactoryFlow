@@ -2,6 +2,7 @@ export { BacklogBillDetail } from './BacklogBillDetail';
 export { BoardPanel, type BoardPanelProps, PanelBadge, PanelEmpty } from './BoardPanel';
 export { DispatchBacklogPanel } from './DispatchBacklogPanel';
 export { DispatchCompanyPanel } from './DispatchCompanyPanel';
+export { DispatchCustomersPanel } from './DispatchCustomersPanel';
 export { DispatchDayHeader, type DispatchDayHeaderProps } from './DispatchDayHeader';
 export { DispatchDayKpis } from './DispatchDayKpis';
 export { DispatchTrendChart } from './DispatchTrendChart';

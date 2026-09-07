@@ -10,8 +10,8 @@ import { usePermission } from '@/core/auth';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import {
-  DispatchBacklogPanel,
   DispatchCompanyPanel,
+  DispatchCustomersPanel,
   DispatchDayHeader,
   DispatchDayKpis,
   DispatchTrendChart,
@@ -41,7 +41,8 @@ import {
  *     real state on one row;
  *   - the open backlog comes from the dispatch plans themselves, anchored on the
  *     SCHEDULED date, because an unshipped bill has no gate-out to anchor to.
- *     It owns its own window and its own poll — see DispatchBacklogPanel.
+ *     It owns its own window and its own poll — see useDispatchBacklogBills,
+ *     which the backlog KPI tile reads for the month-to-date figure.
  *
  * The whole board hangs off one shared day, so a back-date moves every panel at
  * once. Two figures cannot be back-dated and say so on their face: the open
@@ -130,7 +131,7 @@ function DispatchDayBoard() {
 
       {canSeeDockings ? (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[1.1fr_1fr_1.05fr]">
-          <DispatchBacklogPanel enabled={canSeeValues} />
+          <DispatchCustomersPanel vehicles={vehicles} />
           <DispatchCompanyPanel vehicles={vehicles} knownCompanyCodes={totals.companyCodes} />
           <DispatchVehiclesPanel vehicles={vehicles} canSeeTracking={canSeeTracking} />
         </div>

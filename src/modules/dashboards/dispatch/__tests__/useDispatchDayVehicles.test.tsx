@@ -372,4 +372,126 @@ describe('useDispatchDayVehicles', () => {
     const { result } = await renderVehicles();
     expect(result.current.totalCount).toBe(0);
   });
+
+  it('splits one customer into trucks out and trucks still inside', async () => {
+    list.mockResolvedValue([
+      // Two loads for the same customer on the same day. One cleared the gate,
+      // the other is still at the dock. The summary endpoint counts gate-outs
+      // only and would show this customer as a single shipped truck.
+      docking({
+        arrival_no: 'ARV-GONE',
+        customer_name: 'WAL MART INDIA PVT LTD',
+        customer_code: 'CUSTA000441',
+        status: 'DISPATCHED',
+        gate_out_date: TODAY,
+        dispatched_at: new Date(2026, 7, 27, 11, 0).toISOString(),
+        sap_doc_total: '400000',
+        total_litres: '4000',
+      }),
+      docking({
+        arrival_no: 'ARV-LOADING',
+        customer_name: 'WAL MART INDIA PVT LTD',
+        customer_code: 'CUSTA000441',
+        status: 'DOCKED',
+      }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    expect(result.current.byCustomer).toHaveLength(1);
+    const customer = result.current.byCustomer[0];
+    expect(customer.name).toBe('WAL MART INDIA PVT LTD');
+    expect(customer.trucks).toBe(2);
+    expect(customer.trucksOut).toBe(1);
+    expect(customer.trucksIn).toBe(1);
+    // Only the load that actually left is worth anything yet.
+    expect(customer.amount).toBe(400_000);
+    expect(customer.litres).toBe(4000);
+  });
+
+  it('keeps a customer whose every truck is still loading', async () => {
+    list.mockResolvedValue([
+      docking({
+        arrival_no: 'ARV-WAIT',
+        customer_name: 'SHRI HARI TRADERS',
+        customer_code: 'CUSTA001147',
+        status: 'DOCKED',
+      }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    const customer = result.current.byCustomer[0];
+    expect(customer.trucksOut).toBe(0);
+    expect(customer.trucksIn).toBe(1);
+    // Nothing shipped, so no value — but the row must still exist, because a
+    // loaded truck that has not left is the one somebody has to chase.
+    expect(customer.amount).toBe(0);
+  });
+
+  it('splits a shared docking into its real customers instead of inventing one', async () => {
+    list.mockResolvedValue([
+      // A docking carrying bills for two customers stores them joined in one
+      // field. Grouping on the raw string would create a third "customer"
+      // called "RAJEEV TRADING COMPANY, ANAND ENTERPRISES".
+      docking({
+        arrival_no: 'ARV-SHARED',
+        customer_name: 'RAJEEV TRADING COMPANY, ANAND ENTERPRISES',
+        customer_code: 'CUSTA000926, CUSTA000171',
+        document_count: 3,
+        status: 'DISPATCHED',
+        gate_out_date: TODAY,
+        dispatched_at: new Date(2026, 7, 27, 12, 0).toISOString(),
+        sap_doc_total: '300000',
+      }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    expect(result.current.byCustomer.map((c) => c.name).sort()).toEqual([
+      'ANAND ENTERPRISES',
+      'RAJEEV TRADING COMPANY',
+    ]);
+    // One SAP total covers every bill on the docking and the joined field does
+    // not say which bill belongs to whom, so it is divided evenly — and the two
+    // halves still add up to the money the headline reports.
+    const total = result.current.byCustomer.reduce((sum, c) => sum + c.amount, 0);
+    expect(total).toBe(300_000);
+    for (const customer of result.current.byCustomer) {
+      expect(customer.amount).toBe(150_000);
+      expect(customer.sharedLoads).toBe(1);
+      // One physical truck, counted once for each customer it served.
+      expect(customer.trucks).toBe(1);
+      expect(customer.trucksOut).toBe(1);
+    }
+  });
+
+  it('keys customers on the SAP code, so a renamed account stays one row', async () => {
+    list.mockResolvedValue([
+      docking({
+        arrival_no: 'ARV-A',
+        customer_name: 'VARDHMAN TRADERS',
+        customer_code: 'CUSTA000777',
+        status: 'DISPATCHED',
+        gate_out_date: TODAY,
+        dispatched_at: new Date(2026, 7, 27, 9, 0).toISOString(),
+        sap_doc_total: '100000',
+      }),
+      docking({
+        arrival_no: 'ARV-B',
+        customer_name: 'VARDHMAN TRADERS LUDHIANA',
+        customer_code: 'CUSTA000777',
+        status: 'DISPATCHED',
+        gate_out_date: TODAY,
+        dispatched_at: new Date(2026, 7, 27, 10, 0).toISOString(),
+        sap_doc_total: '50000',
+      }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    expect(result.current.byCustomer).toHaveLength(1);
+    expect(result.current.byCustomer[0].amount).toBe(150_000);
+    expect(result.current.byCustomer[0].trucksOut).toBe(2);
+  });
 });
