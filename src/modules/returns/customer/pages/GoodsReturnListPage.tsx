@@ -7,7 +7,12 @@ import { confirmDialog } from '@/shared/components';
 import { Badge, Button, Card, CardContent, Input } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { type GoodsReturnStatus, useCancelGoodsReturn, useGoodsReturns } from '../api';
+import {
+  type GoodsReturnListItem,
+  type GoodsReturnStatus,
+  useCancelGoodsReturn,
+  useGoodsReturns,
+} from '../api';
 import { BASIS_LABELS, formatDate, STATUS_BADGE_CLASS, STATUS_LABELS } from '../utils';
 
 const STATUS_FILTERS: { value: '' | GoodsReturnStatus; label: string }[] = [
@@ -35,17 +40,18 @@ export default function GoodsReturnListPage() {
 
   async function handleDelete(id: number, entryNo: string) {
     const confirmed = await confirmDialog({
-      title: `Delete draft ${entryNo}?`,
-      description: 'It will be kept as a cancelled entry.',
+      title: `Delete ${entryNo}?`,
+      description:
+        'The gate is waiting for this vehicle — deleting takes it off their queue. It will be kept as a cancelled entry.',
       confirmLabel: 'Delete',
       destructive: true,
     });
     if (!confirmed) return;
     try {
       await cancelReturn.mutateAsync(id);
-      toast.success(`Draft ${entryNo} deleted`);
+      toast.success(`${entryNo} deleted`);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not delete the draft.'));
+      toast.error(getErrorMessage(err, 'Could not delete the return.'));
     }
   }
 
@@ -61,10 +67,12 @@ export default function GoodsReturnListPage() {
   }, [entries, search]);
 
   const counts = useMemo(() => {
-    const draft = entries.filter((e) => e.status === 'DRAFT').length;
+    // Not "drafts" any more: a return is with the gate from its first page, so
+    // what matters is whether the clerk has finished the booking.
+    const unfinished = entries.filter(isUnfinished).length;
     const awaiting = entries.filter((e) => e.status === 'AWAITING_ARRIVAL').length;
     const arrived = entries.filter((e) => e.status === 'ARRIVED').length;
-    return { total: entries.length, draft, awaiting, arrived };
+    return { total: entries.length, unfinished, awaiting, arrived };
   }, [entries]);
 
   return (
@@ -91,7 +99,7 @@ export default function GoodsReturnListPage() {
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total" value={counts.total} />
-        <StatCard label="Draft" value={counts.draft} tone="text-slate-600" />
+        <StatCard label="Being Filled" value={counts.unfinished} tone="text-slate-600" />
         <StatCard label="Awaiting Arrival" value={counts.awaiting} tone="text-amber-600" />
         <StatCard label="Arrived" value={counts.arrived} tone="text-emerald-600" />
       </div>
@@ -149,7 +157,7 @@ export default function GoodsReturnListPage() {
                         className="cursor-pointer border-b transition-colors hover:bg-muted/40"
                         onClick={() =>
                           navigate(
-                            entry.status === 'DRAFT'
+                            isUnfinished(entry)
                               ? `/returns/customer/edit/${entry.id}/items`
                               : `/returns/customer/${entry.id}`,
                           )
@@ -169,12 +177,12 @@ export default function GoodsReturnListPage() {
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          {entry.status === 'DRAFT' && (
+                          {isDeletable(entry) && (
                             <Button
                               type="button"
                               size="icon"
                               variant="ghost"
-                              aria-label={`Delete draft ${entry.entry_no}`}
+                              aria-label={`Delete ${entry.entry_no}`}
                               disabled={cancelReturn.isPending}
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -196,6 +204,22 @@ export default function GoodsReturnListPage() {
       </section>
     </div>
   );
+}
+
+/** Still being filled in: a return goes to the gate from its first page, so the
+ *  status alone no longer says whether the clerk has finished with it. */
+function isUnfinished(entry: GoodsReturnListItem): boolean {
+  return (
+    !entry.submitted_at &&
+    entry.status !== 'CANCELLED' &&
+    entry.status !== 'RECEIVED' &&
+    entry.status !== 'POSTED'
+  );
+}
+
+/** The backend refuses to cancel anything the gate has already let in. */
+function isDeletable(entry: GoodsReturnListItem): boolean {
+  return entry.status === 'DRAFT' || entry.status === 'AWAITING_ARRIVAL';
 }
 
 function StatCard({ label, value, tone }: { label: string; value: number; tone?: string }) {

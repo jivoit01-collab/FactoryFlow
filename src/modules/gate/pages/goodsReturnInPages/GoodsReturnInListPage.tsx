@@ -53,8 +53,8 @@ function ExpectedReturnCard({ entry }: { entry: GoodsReturnListItem }) {
   const navigate = useNavigate();
   const markIn = useMarkGoodsReturnIn();
 
-  // The returns clerk may have booked this without a vehicle (that step is
-  // optional), in which case the gate is the first to know the truck.
+  // Returns booked before the vehicle moved to the first page can still reach the
+  // gate without one; there, the gate is the first to know the truck.
   const needsVehicle = !entry.vehicle_no || !entry.driver_name;
   const [vehicleId, setVehicleId] = useState<number | null>(null);
   const [vehicleNo, setVehicleNo] = useState('');
@@ -97,7 +97,17 @@ function ExpectedReturnCard({ entry }: { entry: GoodsReturnListItem }) {
         <dl className="space-y-1 text-sm">
           <Row label="Customer" value={entry.customer_name || entry.customer_code || '-'} />
           <Row label="Driver" value={entry.driver_name || driverName || '-'} />
-          <Row label="Items" value={String(entry.line_count)} />
+          <Row
+            label="Items"
+            // The clerk hands the truck over on their first page and keys the
+            // items in afterwards, so a not-yet-submitted return can legitimately
+            // show none. It does not hold up the mark-in.
+            value={
+              entry.submitted_at
+                ? String(entry.line_count)
+                : `${entry.line_count} · still being entered`
+            }
+          />
           <Row
             label="Expected"
             value={entry.expected_arrival_at ? formatDate(entry.expected_arrival_at) : 'Not given'}

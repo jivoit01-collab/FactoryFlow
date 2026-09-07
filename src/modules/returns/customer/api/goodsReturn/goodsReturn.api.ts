@@ -48,6 +48,8 @@ export interface GoodsReturnListItem {
   requires_approval: boolean;
   approval_status: GoodsReturnApprovalStatus;
   line_count: number;
+  /** Null while the clerk is still filling the return in. */
+  submitted_at: string | null;
   created_at: string;
 }
 
@@ -173,6 +175,11 @@ export interface ReturnWarehouse {
 
 export interface CreateGoodsReturnPayload {
   basis: GoodsReturnBasis;
+  /** Required: saving this page puts the return in the gate's arrival queue, and
+   *  the gate needs a truck to look for. */
+  vehicle_id: number;
+  driver_id: number;
+  expected_arrival_at?: string | null;
   invoice_numbers?: string[];
   customer_code?: string;
   customer_name?: string;
@@ -195,8 +202,10 @@ export interface SaveItemsPayload {
   }>;
 }
 
-/** Every field is optional — the vehicle step can be skipped entirely and the
- *  gate captures the truck at mark-in. `null` clears a previously saved value. */
+/** Corrects the truck on a return that is already in the gate's queue. The
+ *  vehicle and driver cannot be cleared (the gate is waiting on them); an
+ *  omitted key is left untouched, and `expected_arrival_at: null` clears the
+ *  date. Refused once the vehicle is marked in. */
 export interface SetVehiclePayload {
   vehicle_id?: number | null;
   driver_id?: number | null;
@@ -205,7 +214,8 @@ export interface SetVehiclePayload {
 
 export interface MarkGoodsReturnInPayload {
   remarks?: string;
-  /** Supplied by the gate when the return was booked without a vehicle. */
+  /** Fallback for the returns booked before the vehicle moved to the first page:
+   *  the gate supplies the truck it is actually looking at. */
   vehicle_id?: number | null;
   driver_id?: number | null;
 }

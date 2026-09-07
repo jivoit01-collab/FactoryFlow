@@ -1,12 +1,21 @@
-import { ArrowLeft, ArrowRight, CalendarClock, Loader2, Truck } from 'lucide-react';
+/**
+ * Change the truck on a return the gate is already waiting for.
+ *
+ * The vehicle is captured on step 1 — saving that page is what puts the return in
+ * the gate's arrival queue — so this page only ever corrects it, and cannot blank
+ * it. Once the gate has marked the vehicle in, the truck is settled and this is
+ * read-only.
+ */
+import { ArrowLeft, CalendarClock, Loader2, Save, Truck } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
-import { DriverSelect, StepHeader, VehicleSelect } from '@/modules/gate/components';
+import { DriverSelect, VehicleSelect } from '@/modules/gate/components';
 import { Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 
 import { type GoodsReturnDetail, useGoodsReturn, useSetGoodsReturnVehicle } from '../api';
-import { toDateInputValue } from '../utils';
+import { formatDateTime, toDateInputValue } from '../utils';
 
 export default function GoodsReturnVehiclePage() {
   const { entryId } = useParams<{ entryId: string }>();
@@ -37,18 +46,22 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
   );
   const [error, setError] = useState<string | null>(null);
 
-  // Nothing here is required — a return is often booked before anyone knows
-  // which truck is bringing the goods back, and the gate captures the vehicle
-  // at mark-in instead.
-  async function handleContinue() {
+  const isGatedIn = Boolean(detail.gated_in_at);
+
+  async function handleSave() {
     setError(null);
+    if (!vehicleId || !driverId) {
+      setError('Pick the vehicle and driver bringing the goods back.');
+      return;
+    }
     try {
       await setVehicle.mutateAsync({
         vehicle_id: vehicleId,
         driver_id: driverId,
         expected_arrival_at: expectedArrival || null,
       });
-      navigate(`/returns/customer/edit/${id}/review`);
+      toast.success('Vehicle updated');
+      navigate(`/returns/customer/${id}`);
     } catch (err) {
       const detailMsg = (err as { response?: { data?: { detail?: string } } })?.response?.data
         ?.detail;
@@ -58,28 +71,38 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <StepHeader currentStep={3} totalSteps={3} title="Goods Return" error={error} />
+      <div>
+        <h2 className="text-2xl font-bold">Change Vehicle</h2>
+        <p className="text-muted-foreground">
+          {detail.entry_no} · {detail.customer_name || detail.customer_code || 'No customer'}
+        </p>
+      </div>
+
+      {error && (
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       <Card>
         <CardContent className="space-y-5 p-6">
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <Truck className="h-4 w-4" /> Return Vehicle &amp; Expected Arrival
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                Optional
-              </span>
+              <Truck className="h-4 w-4" /> Vehicle &amp; Driver
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Fill this in only if you already know the vehicle. Otherwise leave it blank — the
-              gate records the truck when it arrives.
+              {isGatedIn
+                ? `Marked in at the gate on ${formatDateTime(detail.gated_in_at)} — the truck can no longer be changed.`
+                : 'The gate is waiting for this truck, so it can be swapped but not removed.'}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label>Return Vehicle</Label>
+            <Label>Return Vehicle *</Label>
             <VehicleSelect
               value={vehicleNo}
               defaultDisplayText={vehicleNo}
+              disabled={isGatedIn}
               onChange={(vehicle) => {
                 setVehicleId(vehicle.vehicleId);
                 setVehicleNo(vehicle.vehicleNumber);
@@ -88,10 +111,11 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
           </div>
 
           <div className="space-y-2">
-            <Label>Driver</Label>
+            <Label>Driver *</Label>
             <DriverSelect
               value={driverName}
               defaultDisplayText={driverName}
+              disabled={isGatedIn}
               onChange={(driver) => {
                 setDriverId(driver.driverId);
                 setDriverName(driver.driverName);
@@ -106,26 +130,24 @@ function VehicleForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) 
             <Input
               type="date"
               value={expectedArrival}
+              disabled={isGatedIn}
               onChange={(event) => setExpectedArrival(event.target.value)}
             />
-            <p className="text-xs text-muted-foreground">
-              This return joins the gate&apos;s “Goods Return In” queue for mark-in either way.
-            </p>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate(`/returns/customer/edit/${id}/items`)}>
+        <Button variant="ghost" onClick={() => navigate(`/returns/customer/${id}`)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <Button onClick={handleContinue} disabled={setVehicle.isPending}>
+        <Button onClick={handleSave} disabled={isGatedIn || setVehicle.isPending}>
           {setVehicle.isPending ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <ArrowRight className="mr-2 h-4 w-4" />
+            <Save className="mr-2 h-4 w-4" />
           )}
-          {vehicleId || driverId || expectedArrival ? 'Save & Continue' : 'Skip & Continue'}
+          Save Vehicle
         </Button>
       </div>
     </div>

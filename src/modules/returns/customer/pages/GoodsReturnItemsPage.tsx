@@ -134,7 +134,7 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
 
     try {
       await saveItems.mutateAsync({ lines: payloadLines });
-      navigate(`/returns/customer/edit/${id}/vehicle`);
+      navigate(`/returns/customer/edit/${id}/review`);
     } catch (err) {
       setError(readError(err));
     }

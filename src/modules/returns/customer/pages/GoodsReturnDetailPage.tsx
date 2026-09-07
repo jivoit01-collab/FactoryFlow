@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, Loader2, PackageCheck, Paperclip } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, PackageCheck, Paperclip, Truck } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -59,6 +59,16 @@ export default function GoodsReturnDetailPage() {
               closes as RECEIVED with no document behind it. */}
           {detail.sap_gr_doc_num && (
             <GoodsReturnPrintButton id={id} docNum={detail.sap_gr_doc_num} />
+          )}
+          {/* The gate is waiting for this truck until it marks it in, and until
+              then the customer can still send a different one. */}
+          {!detail.gated_in_at && detail.status === 'AWAITING_ARRIVAL' && (
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/returns/customer/edit/${id}/vehicle`)}
+            >
+              <Truck className="mr-2 h-4 w-4" /> Change Vehicle
+            </Button>
           )}
           <Button variant="outline" onClick={() => navigate('/returns/customer')}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back

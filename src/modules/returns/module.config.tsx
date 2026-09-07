@@ -79,11 +79,13 @@ export const returnsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Returning Items' },
     },
     {
+      // Off the wizard's path: the vehicle is captured on step 1 (saving it is
+      // what puts the return in front of the gate), and this only corrects it.
       path: '/returns/customer/edit/:entryId/vehicle',
       element: <GoodsReturnVehiclePage />,
       layout: 'main',
       permissions: [GOODS_RETURN_PERMISSIONS.EDIT],
-      breadcrumb: { label: 'Vehicle & Arrival' },
+      breadcrumb: { label: 'Change Vehicle' },
     },
     {
       path: '/returns/customer/edit/:entryId/review',

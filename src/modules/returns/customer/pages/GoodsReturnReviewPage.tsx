@@ -22,7 +22,7 @@ export default function GoodsReturnReviewPage() {
     setError(null);
     try {
       await submit.mutateAsync();
-      toast.success('Goods return submitted — awaiting gate arrival');
+      toast.success('Goods return submitted');
       navigate(`/returns/customer/${id}`);
     } catch (err) {
       const detailMsg = (err as { response?: { data?: { detail?: string } } })?.response?.data
@@ -95,7 +95,7 @@ export default function GoodsReturnReviewPage() {
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate(`/returns/customer/edit/${id}/vehicle`)}>
+        <Button variant="ghost" onClick={() => navigate(`/returns/customer/edit/${id}/items`)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button onClick={handleSubmit} disabled={submit.isPending}>
@@ -110,9 +110,8 @@ export default function GoodsReturnReviewPage() {
 
       <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        On submit this return joins the gate's return queue — with the vehicle if you
-        entered one, or for the gate to record on arrival. SAP is posted later, when the
-        goods are confirmed received.
+        The gate has had this return in its queue since step 1 — submitting records that the
+        booking is complete. SAP is posted later, when the goods are confirmed received.
       </p>
     </div>
   );
