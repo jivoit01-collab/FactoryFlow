@@ -10,12 +10,12 @@ import { usePermission } from '@/core/auth';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import {
+  DispatchBacklogPanel,
   DispatchCompanyPanel,
   DispatchDayHeader,
   DispatchDayKpis,
   DispatchTrendChart,
   DispatchVehiclesPanel,
-  DispatchVendorsPanel,
 } from '../components';
 import {
   BoardDayProvider,
@@ -28,17 +28,20 @@ import {
  * Dispatch, today, on a wall.
  *
  * Built for the screen in the admin's room rather than for a laptop: one glance
- * answers "how much went out, who moved it, which company it belonged to, and
- * which trucks are still standing in the yard". Everything fits one viewport —
- * there is no scrolling on a wall — and every list creeps past on its own, so
+ * answers "how much went out, what is still owed, which company it belonged to,
+ * and which trucks are still standing in the yard". Everything fits one viewport
+ * — there is no scrolling on a wall — and every list creeps past on its own, so
  * the board is complete without anybody touching it.
  *
  * Three sources, three different anchors, and the difference matters:
  *   - money and volume come from the fulfilment summary, anchored on the ACTUAL
  *     gate-out date, so they agree with the sales-dispatch register;
- *   - vendors, companies and the IN/OUT vehicle list come from the docking
+ *   - the companies split and the IN/OUT vehicle list come from the docking
  *     register, the only record carrying company, transporter and the truck's
- *     real state on one row.
+ *     real state on one row;
+ *   - the open backlog comes from the dispatch plans themselves, anchored on the
+ *     SCHEDULED date, because an unshipped bill has no gate-out to anchor to.
+ *     It owns its own window and its own poll — see DispatchBacklogPanel.
  *
  * The whole board hangs off one shared day, so a back-date moves every panel at
  * once. Two figures cannot be back-dated and say so on their face: the open
@@ -127,7 +130,7 @@ function DispatchDayBoard() {
 
       {canSeeDockings ? (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[1.1fr_1fr_1.05fr]">
-          <DispatchVendorsPanel vehicles={vehicles} />
+          <DispatchBacklogPanel enabled={canSeeValues} />
           <DispatchCompanyPanel vehicles={vehicles} knownCompanyCodes={totals.companyCodes} />
           <DispatchVehiclesPanel vehicles={vehicles} canSeeTracking={canSeeTracking} />
         </div>

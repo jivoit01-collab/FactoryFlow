@@ -7,7 +7,6 @@ import { bstOutApi } from '@/modules/gate/api/bstOut/bstOut.api';
 import { emptyVehicleInApi } from '@/modules/gate/api/emptyVehicleIn/emptyVehicleIn.api';
 import { emptyVehicleOutApi } from '@/modules/gate/api/emptyVehicleOut/emptyVehicleOut.api';
 import { jobWorkApi } from '@/modules/gate/api/jobWork/jobWork.api';
-import { labourGateApi } from '@/modules/gate/api/labourGate/labourGate.api';
 import { personGateInApi } from '@/modules/gate/api/personGateIn/personGateIn.api';
 import { rejectedQCReturnApi } from '@/modules/gate/api/rejectedQcReturn/rejectedQcReturn.api';
 import { salesDispatchApi } from '@/modules/gate/api/salesDispatch/salesDispatch.api';
@@ -45,6 +44,11 @@ interface CountDescriptor {
 export interface GateActivityCounts {
   counts: Record<string, number | undefined>;
   isLoading: boolean;
+  /** True while any count is in flight — the wall's spinning refresh icon. */
+  isFetching: boolean;
+  /** Newest successful read across every count; 0 until the first lands. */
+  updatedAt: number;
+  refetch: () => void;
 }
 
 /**
@@ -53,6 +57,13 @@ export interface GateActivityCounts {
  * failing endpoint just leaves that card without a number. Gate-in variants use
  * the lightweight vehicle-entries count endpoint; the rest use their list/
  * dashboard endpoints.
+ *
+ * Every descriptor must pass `dateParams` to its endpoint. The list endpoints
+ * all accept `from_date`/`to_date` and return *everything* without them, so an
+ * omission does not fail loudly — it silently reports a lifetime total under a
+ * heading that says "today", and re-fetches it on each date change (the key
+ * carries the dates) only to show the same number back. That is how this board
+ * came to claim 360 empty-vehicle entries on a single day.
  */
 export function useGateActivityCounts(range: GateRange): GateActivityCounts {
   const { hasAnyPermission } = usePermission();
@@ -65,13 +76,13 @@ export function useGateActivityCounts(range: GateRange): GateActivityCounts {
         route: '/gate/empty-vehicle-in',
         permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.VIEW],
         queryKey: ['gate-count', 'empty-vehicle-in', dateParams],
-        queryFn: async () => (await emptyVehicleInApi.list()).length,
+        queryFn: async () => (await emptyVehicleInApi.list(dateParams)).length,
       },
       {
         route: '/gate/empty-vehicle-out',
         permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_OUT.VIEW],
         queryKey: ['gate-count', 'empty-vehicle-out', dateParams],
-        queryFn: async () => (await emptyVehicleOutApi.list()).length,
+        queryFn: async () => (await emptyVehicleOutApi.list(dateParams)).length,
       },
       {
         route: '/gate/sales-dispatch',
@@ -135,19 +146,19 @@ export function useGateActivityCounts(range: GateRange): GateActivityCounts {
         route: '/gate/rejected-qc-return',
         permissions: [GATE_PERMISSIONS.REJECTED_QC_RETURN.VIEW],
         queryKey: ['gate-count', 'rejected-qc-return', dateParams],
-        queryFn: async () => (await rejectedQCReturnApi.list()).length,
+        queryFn: async () => (await rejectedQCReturnApi.list(dateParams)).length,
       },
       {
         route: '/gate/job-work',
         permissions: [GATE_PERMISSIONS.JOB_WORK.VIEW],
         queryKey: ['gate-count', 'job-work', dateParams],
-        queryFn: async () => (await jobWorkApi.list()).length,
+        queryFn: async () => (await jobWorkApi.list(dateParams)).length,
       },
       {
         route: '/gate/bst-out',
         permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
         queryKey: ['gate-count', 'bst-out', dateParams],
-        queryFn: async () => (await bstOutApi.list()).length,
+        queryFn: async () => (await bstOutApi.list(dateParams)).length,
       },
       {
         route: '/gate/visitor-labour',
@@ -155,14 +166,10 @@ export function useGateActivityCounts(range: GateRange): GateActivityCounts {
         queryKey: ['gate-count', 'visitor-labour', dateParams],
         queryFn: async () => (await personGateInApi.getDashboard(dateParams)).current.total_inside,
       },
-      {
-        // Labour is a day register (per contractor) — use the latest day in range.
-        route: '/gate/labour-in',
-        permissions: [GATE_PERMISSIONS.LABOUR_GATE.RECORD_IN, GATE_PERMISSIONS.LABOUR_GATE.VIEW],
-        queryKey: ['gate-count', 'labour-in', to],
-        queryFn: async () =>
-          (await labourGateApi.listDay(to)).reduce((sum, e) => sum + (e.count_in ?? 0), 0),
-      },
+      // Labour is deliberately absent from this list. The same day register
+      // carries both the gate head-count and its per-department split, and the
+      // wall needs the raw entries for the split, so counting it here as well
+      // would pull the same endpoint twice every poll. `useGateBoard` owns it.
     ],
     [dateParams, from, to],
   );
@@ -182,11 +189,18 @@ export function useGateActivityCounts(range: GateRange): GateActivityCounts {
   return useMemo(() => {
     const counts: Record<string, number | undefined> = {};
     let isLoading = false;
+    let isFetching = false;
+    let updatedAt = 0;
     descriptors.forEach((d, i) => {
       const r = results[i];
       counts[d.route] = r?.data;
       if (r?.isLoading && r?.fetchStatus !== 'idle') isLoading = true;
+      if (r?.isFetching) isFetching = true;
+      // Newest wins: the board is as fresh as its freshest register, and a
+      // permission-disabled query (which never updates) must not drag it down.
+      if (r?.dataUpdatedAt) updatedAt = Math.max(updatedAt, r.dataUpdatedAt);
     });
-    return { counts, isLoading };
+    const refetch = () => results.forEach((r) => void r?.refetch());
+    return { counts, isLoading, isFetching, updatedAt, refetch };
   }, [descriptors, results]);
 }

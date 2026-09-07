@@ -526,6 +526,144 @@ export interface ProducibleFilters {
 }
 
 // ---------------------------------------------------------------------------
+// A run somebody types in ("can we make this, and if not how much?")
+// ---------------------------------------------------------------------------
+
+/**
+ * How a request stock cannot cover in full is cut back to something runnable.
+ *
+ * `PRIORITY` fills the lines in the order they were entered — the first gets
+ * what it needs before the next gets a look — which is how a shift is really
+ * run, in whole batches, in a sequence somebody chose. `FAIR_SHARE` scales
+ * every line by one common factor instead, then spends what that left idle on
+ * a second pass so a line competing for nothing is not held back by a shortage
+ * it does not share.
+ */
+export type AllocationPolicy = 'PRIORITY' | 'FAIR_SHARE';
+
+/** One pickable finished good: something SAP holds a production recipe for. */
+export interface BomItem {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  pieces_per_case: number;
+  litres_per_unit: string;
+  item_group: string;
+  component_count: number;
+}
+
+/** The limiter, plus what is left of it once the whole run is allocated. */
+export interface AllocationLimiter extends LimitingComponent {
+  /**
+   * The leftover AFTER the split, which is the figure that makes a shortfall
+   * act on: 300 litres left against 5 litres a piece explains 60 pieces
+   * without anybody doing the division. Not the same as `available_qty`, which
+   * is what there was before any line drew on it.
+   */
+  remaining_qty: string;
+}
+
+/**
+ * One requested product: what was asked for, and what it can actually get.
+ *
+ * Two different quantities, deliberately kept apart:
+ *
+ *   `buildable_qty`   the STANDALONE maximum, if this product had the whole
+ *                     warehouse. An alternative to every other row's, so this
+ *                     column is never totalled.
+ *   `achievable_qty`  its share of one shared pool alongside the other lines.
+ *                     These DO add up — they describe a run that could all
+ *                     happen at once — and it is the only per-product column on
+ *                     any of these screens that may legitimately be summed.
+ *
+ * Every allocated field is null, not zero, when SAP holds no BOM: "no answer"
+ * must never render as a quantity, and a confident zero would read as "out of
+ * material" when the truth is "there is no recipe".
+ */
+export interface SimulateItem {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  pieces_per_case: number;
+  litres_per_unit: string;
+  is_litre_item: boolean;
+  has_bom: boolean;
+  component_count: number;
+
+  requested_qty: string;
+  requested_litres: string;
+  requested_cases: string;
+
+  buildable_qty: string | null;
+  buildable_litres: string | null;
+  buildable_cases: string | null;
+  limited_by: string | null;
+  limited_by_detail?: LimitingComponent | null;
+
+  achievable_qty: string | null;
+  achievable_litres: string | null;
+  achievable_cases: string | null;
+  achievable_pct: string | null;
+  unmet_qty: string | null;
+  runs_in_full: boolean | null;
+  allocation_limited_by: string | null;
+  allocation_limited_by_detail?: AllocationLimiter | null;
+}
+
+export interface SimulateMeta {
+  company_code: string;
+  allocation: AllocationPolicy;
+  stock_basis: StockBasis;
+  item_count: number;
+  answerable_item_count: number;
+  item_without_bom_count: number;
+  runnable_item_count: number;
+  short_item_count: number;
+  component_count: number;
+  blocking_component_count: number;
+  request_runs_in_full: boolean;
+  /**
+   * False when something in the request could not be checked at all — an
+   * unknown code, or an item with no BOM. The verdict has to carry the caveat
+   * in the same breath: a bare "yes" is the answer people trust most and,
+   * unqualified, should trust least.
+   */
+  fully_checked: boolean;
+  requested_litres: string;
+  achievable_litres: string;
+  achievable_pct: string;
+  unknown_item_codes: string[];
+  merged_item_codes: string[];
+  unusable_boms: { parent_code: string; component_code: string; reason: string }[];
+  over_committed_component_count: number;
+  warehouse_scope: WarehouseScope;
+  warehouse_filtered: boolean;
+  excluded_warehouses: string[];
+  fetched_at: string;
+  notes: string[];
+}
+
+export interface SimulateResponse {
+  items: SimulateItem[];
+  components: ProducibleComponent[];
+  meta: SimulateMeta;
+}
+
+export interface SimulateRequestLine {
+  item_code: string;
+  /** In the item's own SAP inventory unit — PCS means single bottles, not cases. */
+  quantity: string;
+}
+
+export interface SimulateRequest {
+  /** Order is meaningful: it is the fill priority under `PRIORITY`. */
+  lines: SimulateRequestLine[];
+  warehouse?: string[];
+  stock_basis?: StockBasis;
+  allocation?: AllocationPolicy;
+}
+
+// ---------------------------------------------------------------------------
 // Committed-stock breakdown
 // ---------------------------------------------------------------------------
 

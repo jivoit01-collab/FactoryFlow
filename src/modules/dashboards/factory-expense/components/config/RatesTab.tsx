@@ -1,13 +1,26 @@
 import { AlertTriangle, ExternalLink, HardHat, Loader2, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { COST_MASTER_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
-import { Badge, Button } from '@/shared/components/ui';
+import {
+  Badge,
+  Button,
+  Label,
+  NativeSelect as Select,
+  SelectOption,
+} from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
-import { useResolvedRates } from '../../api';
+import {
+  useCostTypeOptions,
+  useExpenseSettings,
+  useResolvedRates,
+  useSaveSettings,
+} from '../../api';
 import { BUCKET_META } from '../../constants';
-import type { ResolvedRateGroup } from '../../types';
+import type { CostTypeOption, ResolvedRateGroup } from '../../types';
 
 /**
  * What the board prices with — read from the Cost Master, not set here.
@@ -23,8 +36,22 @@ import type { ResolvedRateGroup } from '../../types';
  */
 export function RatesTab() {
   const { data, isLoading } = useResolvedRates();
+  const { data: settings } = useExpenseSettings();
+  const { data: costTypes = [] } = useCostTypeOptions();
+  const save = useSaveSettings();
   const { hasPermission } = usePermission();
   const canOpenCostMaster = hasPermission(COST_MASTER_PERMISSIONS.VIEW);
+
+  const point = (field: 'labour_cost_type_code' | 'salary_cost_type_code', code: string) => {
+    save.mutate(
+      { [field]: code },
+      {
+        onSuccess: () => toast.success(`Now reading ${code}`),
+        onError: (error) =>
+          toast.error(getErrorMessage(error, 'That cost type could not be saved.')),
+      },
+    );
+  };
 
   if (isLoading || !data) {
     return (
@@ -59,14 +86,24 @@ export function RatesTab() {
         icon={HardHat}
         hex={BUCKET_META.LABOUR.hex}
         group={data.labour}
-        emptyHint="Add a rate with basis “Per Person per Day”. The board multiplies it by the head count from Gate › Labour In."
+        options={costTypes}
+        selected={settings?.labour_cost_type_code ?? ''}
+        onSelect={(code) => point('labour_cost_type_code', code)}
+        wants="PER_PERSON_DAY"
+        wantsLabel="Per Person / Day"
+        emptyHint="Either add a rate under this cost type, or point the tile at one that already has rates."
       />
       <RateGroup
         title="Salary"
         icon={Users}
         hex={BUCKET_META.SALARY.hex}
         group={data.salary}
-        emptyHint="Add one “Per Month” rate per department. The board spreads each across the month’s days."
+        options={costTypes}
+        selected={settings?.salary_cost_type_code ?? ''}
+        onSelect={(code) => point('salary_cost_type_code', code)}
+        wants="PER_MONTH"
+        wantsLabel="Per Month"
+        emptyHint="Either add a rate under this cost type, or point the tile at one that already has rates."
       />
     </div>
   );
@@ -77,14 +114,28 @@ function RateGroup({
   icon: Icon,
   hex,
   group,
+  options,
+  selected,
+  onSelect,
+  wants,
+  wantsLabel,
   emptyHint,
 }: {
   title: string;
   icon: typeof HardHat;
   hex: string;
   group: ResolvedRateGroup;
+  options: CostTypeOption[];
+  selected: string;
+  onSelect: (code: string) => void;
+  /** The basis this tile can actually price with. */
+  wants: string;
+  wantsLabel: string;
   emptyHint: string;
 }) {
+  const chosen = options.find((option) => option.code === group.cost_type_code);
+  const basisMismatch = chosen != null && chosen.default_basis !== wants;
+
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -99,6 +150,40 @@ function RateGroup({
           {group.cost_type_code}
         </Badge>
       </div>
+
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted/30 p-4">
+        <div className="flex min-w-64 flex-col gap-1.5">
+          <Label htmlFor={`cost-type-${title}`}>Read this tile from</Label>
+          <Select
+            id={`cost-type-${title}`}
+            value={selected || group.cost_type_code}
+            onChange={(event) => onSelect(event.target.value)}
+          >
+            {options.map((option) => (
+              <SelectOption key={option.code} value={option.code}>
+                {option.name} — {option.code}
+                {option.rates_in_force ? ` (${option.rates_in_force} rates)` : ' (no rates)'}
+              </SelectOption>
+            ))}
+          </Select>
+        </div>
+        <p className="max-w-md text-xs text-muted-foreground">
+          Point this at whichever cost type your factory actually maintains. The tile
+          expects <strong>{wantsLabel}</strong>.
+        </p>
+      </div>
+
+      {basisMismatch && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-amber-600/30 bg-amber-500/10 p-4 dark:border-amber-400/30 dark:bg-amber-400/10">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            <strong>{chosen?.name}</strong> is a <strong>{chosen?.default_basis}</strong> rate
+            but this tile prices on <strong>{wantsLabel}</strong>. The board honours whatever
+            basis each rate row carries, so a mismatched one may read differently than you
+            expect — or zero, if the basis cannot price this tile at all.
+          </p>
+        </div>
+      )}
 
       {group.rates.length === 0 ? (
         <div className="flex items-start gap-2.5 rounded-xl border border-amber-600/30 bg-amber-500/10 p-4 dark:border-amber-400/30 dark:bg-amber-400/10">

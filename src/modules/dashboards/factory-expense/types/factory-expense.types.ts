@@ -68,6 +68,16 @@ export interface MaintenanceItemRow {
   amount: string;
 }
 
+/** A Cost Master type either tile can be pointed at. */
+export interface CostTypeOption {
+  code: string;
+  name: string;
+  default_basis: string;
+  is_credit: boolean;
+  /** Rate rows in force today for the companies on screen. 0 means it reads zero. */
+  rates_in_force: number;
+}
+
 export interface ExpenseBoardSettings {
   show_labour: boolean;
   show_salary: boolean;
@@ -75,6 +85,8 @@ export interface ExpenseBoardSettings {
   show_maintenance: boolean;
   refresh_seconds: number;
   rotate_seconds: number;
+  labour_cost_type_code: string;
+  salary_cost_type_code: string;
 }
 
 export interface ExpenseBoard {

@@ -483,6 +483,10 @@ export const API_ENDPOINTS = {
     PLAN_PRODUCIBLE: (absId: number) => `/planning-purchase/plans/${absId}/producible/`,
     PLAN_REQUIREMENT_EXPORT: (absId: number) =>
       `/planning-purchase/plans/${absId}/requirement/export/`,
+    // A run somebody types in rather than one the plan implies. POST because
+    // the request is a list of lines; it reads and writes nothing.
+    PRODUCIBLE_SIMULATE: '/planning-purchase/producible/simulate/',
+    BOM_ITEMS: '/planning-purchase/bom-items/',
     COMMITMENTS: '/planning-purchase/commitments/',
     VENDORS: '/planning-purchase/vendors/',
     WAREHOUSES: '/planning-purchase/warehouses/',
@@ -517,6 +521,7 @@ export const API_ENDPOINTS = {
     // Read-back only. Rates are owned by cost_master and edited in
     // Admin > Cost Master; the board never writes one.
     RATES: '/dashboards/factory-expense/rates/',
+    COST_TYPES: '/dashboards/factory-expense/cost-types/',
     BUDGETS: '/dashboards/factory-expense/budgets/',
     BUDGET_DETAIL: (id: number) => `/dashboards/factory-expense/budgets/${id}/`,
   },

@@ -126,6 +126,11 @@ export interface BillsResponse {
   limit: number;
   offset: number;
   status_counts: Record<string, number>;
+  /** Same shape as `status_counts`, over the rows that carry a value or a
+   *  quantity. `status_counts` minus this is the stub count — plans picked onto
+   *  the plan page and abandoned before any detail was entered. Optional:
+   *  older backends do not send it, and absent must read as unknown, not zero. */
+  filled_counts?: Record<string, number>;
   results: BillRow[];
 }
 
@@ -136,4 +141,12 @@ export interface DispatchBillFilters {
   search?: string;
   limit: number;
   offset: number;
+  /** Row order. Defaults to `newest` server-side — the drill-down's reading
+   *  order. `oldest` leads with the most overdue bill, which is what the open
+   *  backlog needs: the page cap decides which rows survive, and under the
+   *  default the stalest ones are exactly what gets dropped. An older backend
+   *  that does not know the param ignores it and returns `newest`. */
+  order?: 'newest' | 'oldest';
+  /** Drop rows with no value AND no quantity — the abandoned plan stubs. */
+  filled?: boolean;
 }

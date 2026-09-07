@@ -29,6 +29,8 @@ export const dispatchFulfilmentApi = {
         search: filters.search || undefined,
         limit: filters.limit,
         offset: filters.offset,
+        order: filters.order || undefined,
+        filled: filters.filled ? 1 : undefined,
       },
     });
     return response.data;

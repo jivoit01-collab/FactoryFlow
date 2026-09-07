@@ -4,6 +4,7 @@ import type {
   CreateQCRecordRequest,
   ListQCRecordsParams,
   RecordCellWrite,
+  RecordTemplateWrite,
 } from '../../types/qcRecord.types';
 import { qcRecordApi } from './qcRecord.api';
 
@@ -28,6 +29,41 @@ export function useRecordTemplate(id: number | null) {
     queryKey: QC_RECORD_QUERY_KEYS.template(id!),
     queryFn: () => qcRecordApi.getTemplate(id!),
     enabled: !!id,
+  });
+}
+
+export function useCreateRecordTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: RecordTemplateWrite) => qcRecordApi.createTemplate(data),
+    onSuccess: (template) => {
+      // Seeded so the builder can navigate straight onto the new form without
+      // a round trip for what the response already carried.
+      queryClient.setQueryData(QC_RECORD_QUERY_KEYS.template(template.id), template);
+      queryClient.invalidateQueries({ queryKey: QC_RECORD_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useUpdateRecordTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<RecordTemplateWrite> }) =>
+      qcRecordApi.updateTemplate(id, data),
+    onSuccess: (template) => {
+      queryClient.setQueryData(QC_RECORD_QUERY_KEYS.template(template.id), template);
+      queryClient.invalidateQueries({ queryKey: QC_RECORD_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useDeleteRecordTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => qcRecordApi.removeTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QC_RECORD_QUERY_KEYS.all });
+    },
   });
 }
 

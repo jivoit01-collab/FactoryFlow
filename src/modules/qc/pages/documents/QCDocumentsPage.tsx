@@ -1,4 +1,13 @@
-import { ArrowLeft, ClipboardList, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
+import {
+  ArrowLeft,
+  ClipboardList,
+  FilePlus2,
+  FileSpreadsheet,
+  Loader2,
+  Pencil,
+  Plus,
+  Settings2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -60,8 +69,13 @@ export default function QCDocumentsPage() {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
   const canFill = hasAnyPermission([QC_PERMISSIONS.QC_RECORD.FILL]);
+  // Maintaining the forms themselves rides on the approver permission, the
+  // same one the backend gates the template endpoints on.
+  const canManageForms = hasAnyPermission([QC_PERMISSIONS.QC_RECORD.APPROVE]);
 
   const { data: templates = [], isLoading: templatesLoading } = useRecordTemplates();
+  // Controlled so "Customize" can drop the user straight onto the forms.
+  const [activeTab, setActiveTab] = useState('records');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [templateFilter, setTemplateFilter] = useState<string>('');
 
@@ -119,15 +133,27 @@ export default function QCDocumentsPage() {
           </div>
         </div>
 
-        {canFill && templates.length > 0 && (
-          <Button onClick={openDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            New record
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canManageForms && (
+            <Button
+              variant="outline"
+              onClick={() => setActiveTab('forms')}
+              title="Change the layout of a report, or add a new one"
+            >
+              <Settings2 className="mr-2 h-4 w-4" />
+              Customize
+            </Button>
+          )}
+          {canFill && templates.length > 0 && (
+            <Button onClick={openDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              New record
+            </Button>
+          )}
+        </div>
       </div>
 
-      <Tabs defaultValue="records">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="records">Records ({records.length})</TabsTrigger>
           <TabsTrigger value="forms">Forms ({templates.length})</TabsTrigger>
@@ -234,7 +260,20 @@ export default function QCDocumentsPage() {
         </TabsContent>
 
         {/* ---- blank forms ---- */}
-        <TabsContent value="forms" className="mt-4">
+        <TabsContent value="forms" className="mt-4 space-y-3">
+          {canManageForms && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">
+                These are the report formats. Edit one when the controlled document is
+                revised, or add a format for a form QA still keeps on paper.
+              </p>
+              <Button size="sm" onClick={() => navigate('/qc/documents/forms/new')}>
+                <FilePlus2 className="mr-2 h-4 w-4" />
+                New format
+              </Button>
+            </div>
+          )}
+
           {templatesLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -242,7 +281,10 @@ export default function QCDocumentsPage() {
           ) : templates.length === 0 ? (
             <div className="rounded-lg border border-dashed py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                No forms defined yet. A QA manager can add one in Django admin.
+                No forms defined yet.
+                {canManageForms
+                  ? ' Press "New format" to lay one out.'
+                  : ' A QA manager can add one from this screen.'}
               </p>
             </div>
           ) : (
@@ -256,12 +298,22 @@ export default function QCDocumentsPage() {
                       {template.revision_label && ` · Rev ${template.revision_label}`}
                     </p>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                  <CardContent className="space-y-3 text-sm text-muted-foreground">
                     {template.description && <p>{template.description}</p>}
                     <p>
                       {template.parameter_count} parameters · {template.record_count}{' '}
                       record{template.record_count === 1 ? '' : 's'} filled
                     </p>
+                    {canManageForms && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/qc/documents/forms/${template.id}`)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit format
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}

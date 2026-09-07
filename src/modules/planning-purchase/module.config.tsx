@@ -8,6 +8,9 @@
  *              and months, against what was actually produced
  *   What runs  how much of it stock on hand actually allows, and what blocks
  *              the rest
+ *   Can we run the same question asked the other way round, and NOT tied to a
+ *              plan: name the products and quantities you want to make, and be
+ *              told whether stock covers it and how much of it can be made
  *   Purchase   that plan exploded through its bill of materials, netted against
  *              stock and open purchase orders, and turned into purchase orders
  *
@@ -32,6 +35,7 @@ import type { ModuleConfig } from '@/core/types';
 const PlanListPage = lazy(() => import('./pages/PlanListPage'));
 const PlanDetailPage = lazy(() => import('./pages/PlanDetailPage'));
 const ProduciblePage = lazy(() => import('./pages/ProduciblePage'));
+const WhatCanRunPage = lazy(() => import('./pages/WhatCanRunPage'));
 const PurchaseFromPlanPage = lazy(() => import('./pages/PurchaseFromPlanPage'));
 const PurchaseOrderListPage = lazy(() => import('./pages/PurchaseOrderListPage'));
 const PurchaseOrderDetailPage = lazy(() => import('./pages/PurchaseOrderDetailPage'));
@@ -61,6 +65,17 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [PLANNING_PURCHASE_PERMISSIONS.VIEW],
       breadcrumb: { label: 'What can run' },
+    },
+    {
+      // Deliberately NOT under /plans/:planId. This question is about the stock
+      // in the building, not about a plan, and making somebody pick a plan
+      // first would be demanding an input the answer never uses. Still a plain
+      // VIEW right: it changes nothing.
+      path: '/planning-purchase/what-can-run',
+      element: <WhatCanRunPage />,
+      layout: 'main',
+      permissions: [PLANNING_PURCHASE_PERMISSIONS.VIEW],
+      breadcrumb: { label: 'What can we run' },
     },
     {
       // Reading the requirement is a VIEW right; only the order bar needs
@@ -100,6 +115,11 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
         {
           path: '/planning-purchase',
           title: 'Production Plans',
+          permissions: [PLANNING_PURCHASE_PERMISSIONS.VIEW],
+        },
+        {
+          path: '/planning-purchase/what-can-run',
+          title: 'What Can We Run',
           permissions: [PLANNING_PURCHASE_PERMISSIONS.VIEW],
         },
         {

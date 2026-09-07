@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  CostTypeOption,
   ExpenseBoard,
   ExpenseScope,
   FactoryExpenseSettings,
@@ -53,6 +54,12 @@ export const factoryExpenseApi = {
     const response = await apiClient.get<ResolvedRates>(EP.RATES, {
       params: { scope, ...(date ? { date } : {}) },
     });
+    return response.data;
+  },
+
+  /** Cost Master types the tiles can be pointed at, with their bases. */
+  async getCostTypes(): Promise<CostTypeOption[]> {
+    const response = await apiClient.get<CostTypeOption[]>(EP.COST_TYPES);
     return response.data;
   },
 

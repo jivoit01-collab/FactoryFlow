@@ -9,6 +9,7 @@ import type {
   RecordCellWrite,
   RecordTemplate,
   RecordTemplateListItem,
+  RecordTemplateWrite,
 } from '../../types/qcRecord.types';
 
 export const qcRecordApi = {
@@ -26,6 +27,35 @@ export const qcRecordApi = {
       API_ENDPOINTS.QUALITY_CONTROL_V2.RECORD_TEMPLATE_BY_ID(id),
     );
     return response.data;
+  },
+
+  /** Add a form. Always saved shared, so every plant can fill it. */
+  async createTemplate(data: RecordTemplateWrite): Promise<RecordTemplate> {
+    const response = await apiClient.post<RecordTemplate>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.RECORD_TEMPLATES,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Change a form. Send `sections` only when the rows themselves changed —
+   * the backend rejects a rewrite of rows that already carry readings.
+   */
+  async updateTemplate(
+    id: number,
+    data: Partial<RecordTemplateWrite>,
+  ): Promise<RecordTemplate> {
+    const response = await apiClient.put<RecordTemplate>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.RECORD_TEMPLATE_BY_ID(id),
+      data,
+    );
+    return response.data;
+  },
+
+  /** Retire a form. Sheets already filled against it are kept. */
+  async removeTemplate(id: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.QUALITY_CONTROL_V2.RECORD_TEMPLATE_BY_ID(id));
   },
 
   // ---- filled records ----

@@ -29,7 +29,16 @@ export type WallHueKey =
   | 'cost'
   | 'waste'
   | 'match'
-  | 'material';
+  | 'material'
+  // Gate wall. Named for what crosses the gate rather than reused from the
+  // dispatch set -- "trucks" already means dispatched vehicles there, and the
+  // gate counts everything that comes *in* as well.
+  | 'gateIn'
+  | 'gateOut'
+  | 'labour'
+  | 'visitors'
+  | 'inside'
+  | 'journey';
 
 const DARK: Record<WallHueKey, string> = {
   value: '#60a5fa',
@@ -47,6 +56,12 @@ const DARK: Record<WallHueKey, string> = {
   waste: '#fb7185',
   match: '#22d3ee',
   material: '#f472b6',
+  gateIn: '#34d399',
+  gateOut: '#60a5fa',
+  labour: '#fbbf24',
+  visitors: '#22d3ee',
+  inside: '#a78bfa',
+  journey: '#fb923c',
 };
 
 const LIGHT: Record<WallHueKey, string> = {
@@ -65,6 +80,12 @@ const LIGHT: Record<WallHueKey, string> = {
   waste: '#e11d48',
   match: '#0891b2',
   material: '#db2777',
+  gateIn: '#059669',
+  gateOut: '#2563eb',
+  labour: '#b45309',
+  visitors: '#0891b2',
+  inside: '#7c3aed',
+  journey: '#ea580c',
 };
 
 /** Company blocks, in rank order. Same reasoning as the accents above. */

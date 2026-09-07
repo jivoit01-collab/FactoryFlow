@@ -2,10 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '@/core/auth';
 
-import {
-  DISPATCH_PIPELINE_REFETCH_INTERVAL,
-  DISPATCH_PIPELINE_STALE_TIME,
-} from '../constants';
+import { DISPATCH_PIPELINE_REFETCH_INTERVAL, DISPATCH_PIPELINE_STALE_TIME } from '../constants';
 import type { DispatchPipelineFilters } from '../types';
 import { dispatchPipelineApi } from './dispatch-pipeline.api';
 
@@ -33,7 +30,17 @@ function retry(failureCount: number, error: unknown): boolean {
   return failureCount < 2;
 }
 
-export function useDispatchPipelineBoard(filters: DispatchPipelineFilters) {
+/**
+ * The pipeline board for a date range.
+ *
+ * `enabled` lets a caller that only borrows the board — the gate wall draws its
+ * vehicle journey from it — hold the query back when the signed-in user lacks
+ * the pipeline permission, rather than firing a call that comes back 403.
+ */
+export function useDispatchPipelineBoard(
+  filters: DispatchPipelineFilters,
+  options?: { enabled?: boolean },
+) {
   const { currentCompany } = useAuth();
 
   return useQuery({
@@ -42,6 +49,6 @@ export function useDispatchPipelineBoard(filters: DispatchPipelineFilters) {
     staleTime: DISPATCH_PIPELINE_STALE_TIME,
     refetchInterval: DISPATCH_PIPELINE_REFETCH_INTERVAL,
     retry,
-    enabled: !!filters.date_from && !!filters.date_to,
+    enabled: (options?.enabled ?? true) && !!filters.date_from && !!filters.date_to,
   });
 }

@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  BomItem,
   BucketType,
   CommitmentResponse,
   CreatePurchaseOrdersRequest,
@@ -16,6 +17,8 @@ import type {
   PurchaseOrderListResponse,
   RequirementFilters,
   RequirementResponse,
+  SimulateRequest,
+  SimulateResponse,
   SpreadPolicy,
   UpdatePurchaseOrderRequest,
   Vendor,
@@ -109,6 +112,29 @@ export const planApi = {
       { params },
     );
     return response.data;
+  },
+
+  /**
+   * Can a typed-in run be made from stock, and if not, how much of it can?
+   *
+   * A POST for a read: the request is a list of lines, and a query string is
+   * the wrong place for one. Line order is the fill priority the server
+   * honours, so it is sent as given and never sorted here.
+   */
+  async simulate(payload: SimulateRequest): Promise<SimulateResponse> {
+    const response = await apiClient.post<SimulateResponse>(EP.PRODUCIBLE_SIMULATE, {
+      ...payload,
+      warehouse: payload.warehouse?.length ? payload.warehouse.join(',') : undefined,
+    });
+    return response.data;
+  },
+
+  /** Finished goods SAP holds a production recipe for, for the picker. */
+  async bomItems(search = '', limit = 50): Promise<BomItem[]> {
+    const response = await apiClient.get<{ data: BomItem[] }>(EP.BOM_ITEMS, {
+      params: { search, limit },
+    });
+    return response.data.data;
   },
 
   /** The documents behind one committed-stock figure. */
