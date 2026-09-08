@@ -31,6 +31,24 @@ export function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** N days before a local YYYY-MM-DD. Parsed at local midnight, never through
+ *  Date.parse of the bare string — that reads the date as UTC and slides the
+ *  whole window a day west of here. */
+export function shiftISO(anchor: string, days: number): string {
+  const d = new Date(`${anchor}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Look-back for the "which trucks are standing in the plant" read.
+ *
+ * That register filters on the gate-in DATE, so asking it only about today
+ * hides the truck that came in on Sunday and is still here on Monday morning —
+ * which is precisely the truck the road exists to show.
+ */
+export const GATE_INSIDE_DAYS_BACK = 7;
+
 /** Broad view-gate for the Gate dashboard route/section. */
 export const GATE_DASHBOARD_VIEW_PERMISSIONS = [
   GATE_PERMISSIONS.DASHBOARD.VIEW,

@@ -5,6 +5,9 @@ import { GATE_PERMISSIONS } from '@/config/permissions';
 import { useAuth, usePermission } from '@/core/auth';
 import { useDispatchPipelineBoard } from '@/modules/dashboards/dispatch-pipeline/api';
 import type { PipelineCard, PipelineStage } from '@/modules/dashboards/dispatch-pipeline/types';
+import type { EmptyVehicleGateInEntry } from '@/modules/gate/api/emptyVehicleIn/emptyVehicleIn.api';
+import { emptyVehicleInApi } from '@/modules/gate/api/emptyVehicleIn/emptyVehicleIn.api';
+import { EMPTY_VEHICLE_IN_QUERY_KEYS } from '@/modules/gate/api/emptyVehicleIn/emptyVehicleIn.queries';
 import { labourGateApi, type LabourGateEntry } from '@/modules/gate/api/labourGate/labourGate.api';
 import {
   type DashboardPersonTypeWise,
@@ -13,9 +16,12 @@ import {
 
 import {
   GATE_IN_ROUTES,
+  GATE_INSIDE_DAYS_BACK,
   GATE_OUT_ROUTES,
   GATE_REFRESH_MS,
   type GateRange,
+  shiftISO,
+  todayISO,
 } from '../constants/gate-dashboard.constants';
 import { useGateActivityCounts } from './useGateActivityCounts';
 
@@ -140,6 +146,65 @@ function dedupeByVehicle(cards: PipelineCard[]): VehiclePlate[] {
     }
   }
   return order.map((key) => map.get(key)!);
+}
+
+/**
+ * Where on the road a truck the gate can see belongs.
+ *
+ * The gate-in carries the shared stage of the bills riding on it, computed from
+ * its own covers rather than from any date window — the same stage vocabulary
+ * the pipeline cards use, so the two sources park at the same three posts. A
+ * truck whose stage says nothing the road knows about (no bills yet, or a
+ * rejected one) still gets shown, standing at the gate where it physically is.
+ */
+function journeyStepOf(entry: EmptyVehicleGateInEntry): number {
+  const stage = entry.pipeline_status?.stage;
+  if (!stage) return 0;
+  const index = JOURNEY_STEPS.findIndex((step) =>
+    (step.stages as readonly PipelineStage[]).includes(stage),
+  );
+  return index >= 0 ? index : 0;
+}
+
+/**
+ * Put the trucks that are physically inside onto the road the plans drew.
+ *
+ * The pipeline is a view of dispatch PLANS and filters them on the planned
+ * date, which is not the same question as "is the truck here". A truck that
+ * came in yesterday against yesterday's plan is standing in the yard this
+ * morning and drops off the road at midnight; one gated in early against
+ * tomorrow's plan never reaches the road at all. The gate register knows only
+ * that the truck is inside — the one thing the road must show — so anything it
+ * can see and the plans cannot is added here.
+ *
+ * Deduped against the plates already parked, so the common case (a plan dated
+ * today, whose truck is also at the gate) stays one truck at the plans' own
+ * post rather than two at different ones. Mutates `steps`, which is built fresh
+ * on every read.
+ */
+export function placeInsideTrucks(
+  steps: VehiclePlate[][],
+  entries: EmptyVehicleGateInEntry[],
+): VehiclePlate[][] {
+  const parked = new Set(
+    steps
+      .flat()
+      .map((plate) => plate.vehicle_no.trim().toUpperCase())
+      .filter((plate) => plate && plate !== '—'),
+  );
+  for (const entry of entries) {
+    const plate = (entry.vehicle_number || '').trim();
+    const key = plate.toUpperCase();
+    if (!plate || parked.has(key)) continue;
+    parked.add(key);
+    steps[journeyStepOf(entry)].push({
+      key: `gate-in:${entry.id}`,
+      vehicle_no: plate,
+      count: entry.pipeline_status?.counts?.total ?? 1,
+      stage_label: entry.pipeline_status?.stage_label ?? 'Inside, not docked',
+    });
+  }
+  return steps;
 }
 
 /**
@@ -277,13 +342,39 @@ export function useGateBoard(range: GateRange, canViewJourney: boolean): GateBoa
   );
   const pipelineQuery = useDispatchPipelineBoard(pipelineParams, { enabled: canViewJourney });
 
+  // Which trucks are physically in the plant. Only asked while the board is on
+  // today: the register answers "inside right now" and keeps no record of when
+  // that stopped being true, so on a back-date it would park this morning's
+  // trucks on a road they were nowhere near.
+  const isLive = range.to === todayISO();
+  const insideParams = useMemo(
+    () => ({
+      from_date: shiftISO(range.to, -GATE_INSIDE_DAYS_BACK),
+      to_date: range.to,
+      reason: 'DISPATCH' as const,
+      inside_only: true,
+      all_companies: 1,
+    }),
+    [range.to],
+  );
+  const insideQuery = useQuery({
+    queryKey: EMPTY_VEHICLE_IN_QUERY_KEYS.list(insideParams),
+    queryFn: () => emptyVehicleInApi.list(insideParams),
+    enabled: canViewJourney && isLive,
+    staleTime: GATE_REFRESH_MS,
+    refetchInterval: GATE_REFRESH_MS,
+    refetchOnWindowFocus: true,
+    retry,
+  });
+
   const journey = useMemo(() => {
     const cards = pipelineQuery.data?.cards ?? [];
-    return JOURNEY_STEPS.map((step) => {
+    const steps = JOURNEY_STEPS.map((step) => {
       const stages = new Set<PipelineStage>(step.stages);
       return dedupeByVehicle(cards.filter((card) => stages.has(card.stage)));
     });
-  }, [pipelineQuery.data]);
+    return placeInsideTrucks(steps, insideQuery.data ?? []);
+  }, [pipelineQuery.data, insideQuery.data]);
 
   const vehiclesIn = useMemo(
     () => GATE_IN_ROUTES.reduce((sum, route) => sum + (counts[route] ?? 0), 0),
@@ -322,17 +413,20 @@ export function useGateBoard(range: GateRange, canViewJourney: boolean): GateBoa
       countsFetching ||
       personQuery.isFetching ||
       pipelineQuery.isFetching ||
+      insideQuery.isFetching ||
       labourQuery.isFetching,
     updatedAt: Math.max(
       countsUpdatedAt,
       personQuery.dataUpdatedAt ?? 0,
       pipelineQuery.dataUpdatedAt ?? 0,
+      insideQuery.dataUpdatedAt ?? 0,
       labourQuery.dataUpdatedAt ?? 0,
     ),
     refetch: () => {
       refetchCounts();
       void personQuery.refetch();
       void pipelineQuery.refetch();
+      void insideQuery.refetch();
       void labourQuery.refetch();
     },
   };
