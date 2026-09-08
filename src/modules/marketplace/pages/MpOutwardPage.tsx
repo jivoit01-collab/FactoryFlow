@@ -70,6 +70,7 @@ import type {
   DispatchSheetSummary,
   MarketplaceChannel,
 } from '../types/marketplace.types';
+import { csvCell, triggerCsvDownload } from '../utils/csv';
 
 // NOT_ON_SHEET / SHEET_DELETED / TRACKING_DELETED are operator guidance, not
 // failures: the message names the sheet the tracking lives on, or says it was
@@ -81,12 +82,6 @@ const WARN_CODES = [
 
 function errorCode(e: unknown): string | undefined {
   return (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
-}
-
-/** Quote a CSV field only when it contains a comma, quote or newline (RFC-4180). */
-function csvCell(value: string | number | boolean | null | undefined): string {
-  const s = value === null || value === undefined ? '' : String(value);
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 const CSV_STATUS_LABEL: Record<DispatchBoardOrder['status'], string> = {
@@ -138,15 +133,6 @@ function buildOutwardCsv(orders: DispatchBoardOrder[]): string {
     }
   }
   return rows.join('\n');
-}
-
-function triggerCsvDownload(csv: string, filename: string) {
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function MpOutwardPage() {

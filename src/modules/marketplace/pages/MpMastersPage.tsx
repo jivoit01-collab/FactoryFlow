@@ -1,5 +1,5 @@
 /** Masters — SKU→FG mappings, combos (JI sales-BOM), and channel→SAP warehouse links. */
-import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { Download, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -51,6 +51,132 @@ import type {
   SkuMappingOption,
   SkuMappingUpsert,
 } from '../types/marketplace.types';
+import { buildCsv, triggerCsvDownload } from '../utils/csv';
+
+// ── Export ───────────────────────────────────────────────────────────────────
+// Each tab exports what it is showing, filters and all, as a CSV assembled in
+// the browser from the already-loaded list. The columns go wider than the table
+// does: the point of the file is to review or re-key a master elsewhere, so it
+// carries every field behind the row, not just the four on screen.
+
+/** `masters_flipkart_sku-mappings_2026-09-08.csv` */
+function mastersFilename(channel: MarketplaceChannel, what: string): string {
+  return `masters_${channel.toLowerCase()}_${what}_${new Date().toISOString().slice(0, 10)}.csv`;
+}
+
+/** One variant of a SKU mapping, as a single readable cell. `*` marks the default. */
+function variantCell(o: SkuMappingOption): string {
+  const ships = o.sku_type === 'COMBO' ? o.combo_code || 'combo' : o.fg_item_code || '—';
+  return `${o.is_default ? '* ' : ''}${o.label ? `${o.label}: ` : ''}${ships}`;
+}
+
+const SKU_CSV_HEADERS = [
+  'Channel', 'FSN', 'Marketplace SKU', 'SKU name', 'Type', 'Ships as (item code)',
+  'Ships as (item name)', 'Combo code', 'Combo name', 'Default UoM', 'Active',
+  'Variants', 'Variant detail',
+];
+
+function buildSkuCsv(mappings: SkuMapping[]): string {
+  return buildCsv(
+    SKU_CSV_HEADERS,
+    mappings.map((m) => [
+      m.channel,
+      m.fsn ?? '',
+      m.marketplace_sku,
+      m.sku_name ?? '',
+      m.sku_type,
+      m.fg_item_code ?? '',
+      m.fg_item_name ?? '',
+      m.combo_code ?? '',
+      m.combo_name ?? '',
+      m.default_uom ?? '',
+      m.is_active ? 'yes' : 'no',
+      m.options?.length ?? 0,
+      (m.options ?? []).map(variantCell).join(' | '),
+    ]),
+  );
+}
+
+const COMBO_CSV_HEADERS = [
+  'Channel', 'Combo code', 'Combo name', 'FSN', 'Marketplace SKU', 'SKU name',
+  'Active', 'Component #', 'Component type', 'Item code', 'Item name',
+  'Quantity', 'UoM', 'Alternatives',
+];
+
+/** One row per component — the grain a sales BOM is read and edited in. A combo
+ *  with no components still gets a row, so nothing disappears from the file. */
+function buildComboCsv(combos: ComboDefinition[]): string {
+  const rows = combos.flatMap((c) => {
+    const head = [
+      c.channel, c.code, c.name, c.fsn ?? '', c.marketplace_sku ?? '', c.sku_name ?? '',
+      c.is_active ? 'yes' : 'no',
+    ];
+    const components = c.components ?? [];
+    if (components.length === 0) return [[...head, 0, '', '', '', '', '', '']];
+    return components.map((cc, i) => [
+      ...head,
+      i + 1,
+      cc.component_type,
+      cc.item_code,
+      cc.item_name ?? '',
+      cc.quantity,
+      cc.uom ?? '',
+      (cc.options ?? [])
+        .map((o) => `${o.item_code}${o.quantity ? ` ×${o.quantity}` : ''}`)
+        .join(' | '),
+    ]);
+  });
+  return buildCsv(COMBO_CSV_HEADERS, rows);
+}
+
+const WAREHOUSE_CSV_HEADERS = [
+  'Channel', 'Name', 'SAP warehouse', 'SAP customer', 'Facility', 'Series',
+  'Tax code', 'Branch (BPLId)', 'Post goods issue', 'Default', 'Active',
+];
+
+function buildWarehouseCsv(warehouses: MarketplaceWarehouse[]): string {
+  return buildCsv(
+    WAREHOUSE_CSV_HEADERS,
+    warehouses.map((w) => [
+      w.channel,
+      w.name,
+      w.sap_warehouse_code,
+      w.sap_customer_card_code ?? '',
+      w.facility_code ?? '',
+      w.sap_series ?? '',
+      w.sap_tax_code ?? '',
+      w.sap_branch_id ?? '',
+      w.post_goods_issue ? 'yes' : 'no',
+      w.is_default ? 'yes' : 'no',
+      w.is_active ? 'yes' : 'no',
+    ]),
+  );
+}
+
+/** The export button every tab shares — same wording, same disabled rule. */
+function ExportCsvButton({
+  count,
+  noun,
+  hint,
+  onExport,
+}: {
+  count: number;
+  noun: string;
+  hint: string;
+  onExport: () => void;
+}) {
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={onExport}
+      disabled={count === 0}
+      title={count === 0 ? `No ${noun}s to export` : hint}
+    >
+      <Download className="mr-2 h-4 w-4" /> Export CSV ({count})
+    </Button>
+  );
+}
 
 /** Find the SKU mapping a deep-link points at (by fsn, marketplace sku, or the
  *  SAP item code it ships as — including any alternative option). */
@@ -541,6 +667,18 @@ function SkuTab({
                 { value: 'VARIANTS', label: 'Variants', count: all.filter((m) => (m.options?.length ?? 0) > 1).length },
               ]}
             />
+            <ExportCsvButton
+              count={filtered.length}
+              noun="mapping"
+              hint="Download the mappings currently shown (respects the search and filters)"
+              onExport={() => {
+                triggerCsvDownload(
+                  buildSkuCsv(filtered),
+                  mastersFilename(channel, 'sku-mappings'),
+                );
+                toast.success(`Exported ${filtered.length} mapping(s).`);
+              }}
+            />
             <Button size="sm" onClick={() => setEditing(EMPTY_SKU(channel))}>
               <Plus className="mr-2 h-4 w-4" /> Add mapping
             </Button>
@@ -986,7 +1124,17 @@ function CombosTab({
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          <ExportCsvButton
+            count={(combos ?? []).length}
+            noun="combo"
+            hint="Download every combo with its components, one row per component"
+            onExport={() => {
+              const rows = combos ?? [];
+              triggerCsvDownload(buildComboCsv(rows), mastersFilename(channel, 'combos'));
+              toast.success(`Exported ${rows.length} combo(s).`);
+            }}
+          />
           <Button size="sm" onClick={() => setEditing(EMPTY_COMBO(channel))}>
             <Plus className="mr-2 h-4 w-4" /> Add combo
           </Button>
@@ -1211,7 +1359,20 @@ function WarehousesTab({ channel }: { channel: MarketplaceChannel }) {
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          <ExportCsvButton
+            count={(warehouses ?? []).length}
+            noun="warehouse link"
+            hint="Download every channel→SAP warehouse link with its posting config"
+            onExport={() => {
+              const rows = warehouses ?? [];
+              triggerCsvDownload(
+                buildWarehouseCsv(rows),
+                mastersFilename(channel, 'warehouses'),
+              );
+              toast.success(`Exported ${rows.length} warehouse link(s).`);
+            }}
+          />
           <Button size="sm" onClick={() => setEditing(EMPTY_WH(channel))}>
             <Plus className="mr-2 h-4 w-4" /> Add warehouse
           </Button>
