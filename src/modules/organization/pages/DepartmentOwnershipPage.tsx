@@ -49,22 +49,43 @@ interface ChartDraft {
   departments: OrgDepartmentDraft[];
 }
 
+/**
+ * The boundary where the server's chart becomes ours.
+ *
+ * Everything is coerced here rather than trusted, because the frontend and the
+ * backend do not deploy in the same breath: a bundle that knows about plant
+ * heads can land in front of an API that does not yet send them. A missing
+ * field has to read as "not filled in", never as a page that will not open —
+ * the chart is a thing people come to read, and reading must survive a version
+ * skew that only writing actually depends on.
+ */
+function text(value: string | undefined | null): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function list(value: string[] | undefined | null): string[] {
+  return Array.isArray(value) ? value.filter((name) => typeof name === 'string') : [];
+}
+
 /** Server chart → editable draft. Existing rows keep their id and identity. */
-function toBlockDrafts(departments: OrgDepartmentBlock[]): OrgDepartmentDraft[] {
+function toBlockDrafts(departments: OrgDepartmentBlock[] | undefined): OrgDepartmentDraft[] {
+  if (!Array.isArray(departments)) return [];
   return departments.map((department) => ({
     key: `department-${department.id}`,
     id: department.id,
-    name: department.name,
-    head: department.head,
-    functions: department.functions.map((row) => ({
-      key: `function-${row.id}`,
-      id: row.id,
-      name: row.name,
-      subtitle: row.subtitle,
-      owners: [...row.owners],
-      level_1: [...row.level_1],
-      level_2: [...row.level_2],
-    })),
+    name: text(department.name),
+    head: text(department.head),
+    functions: (Array.isArray(department.functions) ? department.functions : []).map(
+      (row) => ({
+        key: `function-${row.id}`,
+        id: row.id,
+        name: text(row.name),
+        subtitle: text(row.subtitle),
+        owners: list(row.owners),
+        level_1: list(row.level_1),
+        level_2: list(row.level_2),
+      }),
+    ),
   }));
 }
 
@@ -74,8 +95,8 @@ const EMPTY_DRAFT: ChartDraft = { plant_name: '', plant_head: '', departments: [
 function toDraft(chart: OrgChart | undefined): ChartDraft {
   if (!chart) return EMPTY_DRAFT;
   return {
-    plant_name: chart.plant_name,
-    plant_head: chart.plant_head,
+    plant_name: text(chart.plant_name),
+    plant_head: text(chart.plant_head),
     departments: toBlockDrafts(chart.departments),
   };
 }

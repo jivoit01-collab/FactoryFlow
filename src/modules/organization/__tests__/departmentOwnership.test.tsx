@@ -82,6 +82,32 @@ function openChart(canManage = true) {
   render(<DepartmentOwnershipPage />);
 }
 
+/**
+ * The chart exactly as an OLDER backend sends it: no plant heading, no
+ * department head, no section subtitle. The two halves do not deploy together,
+ * so this shape reaches a new bundle in the wild.
+ */
+function openPreHeadingChart() {
+  chart.current = {
+    departments: CHART.departments.map((department) => ({
+      id: department.id,
+      name: department.name,
+      sort_order: department.sort_order,
+      functions: department.functions.map((row) => ({
+        id: row.id,
+        name: row.name,
+        owners: row.owners,
+        level_1: row.level_1,
+        level_2: row.level_2,
+        sort_order: row.sort_order,
+      })),
+    })),
+    can_manage: true,
+  };
+  saveChart.mockClear();
+  render(<DepartmentOwnershipPage />);
+}
+
 /** The payload of the one save the page sent. */
 function savedPayload() {
   return saveChart.mock.calls[0][0];
@@ -109,6 +135,34 @@ describe('Department ownership chart', () => {
     expect(screen.getAllByText('Packing material')).toHaveLength(2);
     expect(screen.getByText('Sunil')).toBeInTheDocument();
     expect(screen.getByText('Shahrukh')).toBeInTheDocument();
+  });
+
+  it('still reads when the backend is older than the bundle', () => {
+    openPreHeadingChart();
+
+    // The chart itself is what people came for, and it is all there.
+    expect(screen.getByText('Procurement')).toBeInTheDocument();
+    expect(screen.getByText('Raspreet')).toBeInTheDocument();
+    expect(screen.getByText('Lovepreet')).toBeInTheDocument();
+  });
+
+  it('opens the editor against an older backend instead of blowing up', async () => {
+    openPreHeadingChart();
+
+    // Used to throw: plant_name was undefined and the draft trimmed it.
+    fireEvent.click(screen.getByRole('button', { name: 'Edit chart' }));
+    expect(screen.getByRole('button', { name: /Save changes/ })).toBeDisabled();
+
+    const field = screen.getByLabelText('Add to Supported by (L2) for OIL');
+    fireEvent.change(field, { target: { value: 'Gopi' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+
+    await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
+    // The fields it never received go back empty, not undefined.
+    expect(savedPayload()).toMatchObject({ plant_name: '', plant_head: '' });
+    expect(savedPayload().departments[0]).toMatchObject({ head: '' });
+    expect(savedPayload().departments[0].functions[0]).toMatchObject({ subtitle: '' });
   });
 
   it('offers no way in for somebody who may only read it', () => {
