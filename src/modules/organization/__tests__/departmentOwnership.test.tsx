@@ -4,15 +4,19 @@ import { describe, expect, it, vi } from 'vitest';
 import DepartmentOwnershipPage from '../pages/DepartmentOwnershipPage';
 
 const CHART = {
+  plant_name: 'Oil Plant',
+  plant_head: 'Gagan Veerji',
   departments: [
     {
       id: 1,
-      name: 'Purchasing',
+      name: 'Procurement',
+      head: 'Shunty Veerji',
       sort_order: 0,
       functions: [
         {
           id: 11,
-          name: 'Oil',
+          name: 'OIL',
+          subtitle: '',
           owners: ['Shunty Veerji'],
           level_1: ['Raspreet', 'Lovepreet'],
           level_2: ['Team'],
@@ -20,9 +24,10 @@ const CHART = {
         },
         {
           id: 12,
-          name: 'Packaging Material',
-          owners: ['Gagan Veerji'],
-          level_1: ['Ravinder Veerji'],
+          name: 'Packing material',
+          subtitle: '',
+          owners: ['Ravinder Veerji'],
+          level_1: [],
           level_2: ['Team'],
           sort_order: 1,
         },
@@ -30,16 +35,27 @@ const CHART = {
     },
     {
       id: 2,
-      name: 'Quality Control',
+      name: 'Production',
+      head: 'Kulbir Veerji',
       sort_order: 1,
       functions: [
         {
           id: 21,
-          name: '',
-          owners: ['Tejinderjit Veerji'],
-          level_1: ['Team'],
-          level_2: [],
+          name: 'Storage',
+          subtitle: 'OIL',
+          owners: ['Vicky Veerji'],
+          level_1: ['Sunil'],
+          level_2: ['Team'],
           sort_order: 0,
+        },
+        {
+          id: 22,
+          name: 'Storage',
+          subtitle: 'Packing material',
+          owners: ['Kulbir Veerji'],
+          level_1: ['Shahrukh'],
+          level_2: ['Team'],
+          sort_order: 1,
         },
       ],
     },
@@ -72,17 +88,27 @@ function savedPayload() {
 }
 
 describe('Department ownership chart', () => {
-  it('draws every department, its rows and the people at each level', () => {
+  it('draws the heading, every department and the people at each level', () => {
     openChart();
 
-    expect(screen.getByText('Purchasing')).toBeInTheDocument();
-    expect(screen.getByText('Quality Control')).toBeInTheDocument();
-    expect(screen.getByText('Oil')).toBeInTheDocument();
-    expect(screen.getByText('Shunty Veerji')).toBeInTheDocument();
+    expect(screen.getByText('Oil Plant')).toBeInTheDocument();
+    expect(screen.getByText('Gagan Veerji')).toBeInTheDocument();
+    expect(screen.getByText('Procurement')).toBeInTheDocument();
+    // The department head sits under the department's name.
+    expect(screen.getByText('Shunty Veerji', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getAllByText('OIL').length).toBeGreaterThan(0);
     expect(screen.getByText('Raspreet')).toBeInTheDocument();
-    expect(screen.getByText('Lovepreet')).toBeInTheDocument();
-    // A department with no sub-divisions says so rather than showing a blank.
-    expect(screen.getByText('Whole department')).toBeInTheDocument();
+  });
+
+  it('tells two rows of one section apart by their second line', () => {
+    openChart();
+
+    // "Storage" twice, with its own second line under each.
+    expect(screen.getAllByText('Storage')).toHaveLength(2);
+    // Once as Procurement's section, once as Storage's second line.
+    expect(screen.getAllByText('Packing material')).toHaveLength(2);
+    expect(screen.getByText('Sunil')).toBeInTheDocument();
+    expect(screen.getByText('Shahrukh')).toBeInTheDocument();
   });
 
   it('offers no way in for somebody who may only read it', () => {
@@ -102,36 +128,70 @@ describe('Department ownership chart', () => {
     openChart();
     fireEvent.click(screen.getByRole('button', { name: 'Edit chart' }));
 
-    const field = screen.getByLabelText('Add to Level-01 Support for Oil');
+    const field = screen.getByLabelText('Add to Supported by (L2) for OIL');
     fireEvent.change(field, { target: { value: ' Gopi ' } });
     fireEvent.keyDown(field, { key: 'Enter' });
     fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
 
     await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
-    const [purchasing] = savedPayload().departments;
-    expect(purchasing.functions[0]).toMatchObject({
+    const [procurement] = savedPayload().departments;
+    expect(procurement.functions[0]).toMatchObject({
       id: 11,
-      name: 'Oil',
+      name: 'OIL',
       level_1: ['Raspreet', 'Lovepreet', 'Gopi'],
     });
     // Everything else went back exactly as it came.
-    expect(purchasing.functions[1]).toMatchObject({ id: 12, owners: ['Gagan Veerji'] });
+    expect(procurement).toMatchObject({ id: 1, head: 'Shunty Veerji' });
+    expect(procurement.functions[1]).toMatchObject({ id: 12, owners: ['Ravinder Veerji'] });
+  });
+
+  it('names the field by the section and its second line', async () => {
+    openChart();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit chart' }));
+
+    const field = screen.getByLabelText('Add to Leader (L1) for Storage – Packing material');
+    fireEvent.change(field, { target: { value: 'Shahrukh' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+
+    await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
+    expect(savedPayload().departments[1].functions[1]).toMatchObject({
+      id: 22,
+      name: 'Storage',
+      subtitle: 'Packing material',
+      owners: ['Kulbir Veerji', 'Shahrukh'],
+    });
+  });
+
+  it('saves an edited plant head and department head', async () => {
+    openChart();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit chart' }));
+
+    fireEvent.change(screen.getByLabelText('Plant head'), { target: { value: 'Gagan S.' } });
+    fireEvent.change(screen.getByLabelText('Head of Production'), {
+      target: { value: 'Kulbir S.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+
+    await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
+    expect(savedPayload()).toMatchObject({ plant_name: 'Oil Plant', plant_head: 'Gagan S.' });
+    expect(savedPayload().departments[1].head).toBe('Kulbir S.');
   });
 
   it('commits a name still sitting in the field when Save is pressed', async () => {
     openChart();
     fireEvent.click(screen.getByRole('button', { name: 'Edit chart' }));
 
-    const field = screen.getByLabelText('Add to Ownership for Packaging Material');
-    fireEvent.change(field, { target: { value: 'Ravinder Veerji' } });
+    const field = screen.getByLabelText('Add to Leader (L1) for Packing material');
+    fireEvent.change(field, { target: { value: 'Gagan Veerji' } });
     // No Enter: pressing Save takes focus off the field, which must commit it.
     fireEvent.blur(field);
     fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
 
     await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
     expect(savedPayload().departments[0].functions[1].owners).toEqual([
-      'Gagan Veerji',
       'Ravinder Veerji',
+      'Gagan Veerji',
     ]);
   });
 
@@ -140,7 +200,7 @@ describe('Department ownership chart', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit chart' }));
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Remove Lovepreet from Level-01 Support for Oil' }),
+      screen.getByRole('button', { name: 'Remove Lovepreet from Supported by (L2) for OIL' }),
     );
     fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
 
@@ -152,35 +212,34 @@ describe('Department ownership chart', () => {
     openChart();
     fireEvent.click(screen.getByRole('button', { name: 'Edit chart' }));
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Add function/ })[1]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Add section/ })[1]);
     // The new row is the last one on the page.
     const rows = screen.getAllByPlaceholderText('Leave blank for the whole department');
-    const rowName = rows[rows.length - 1];
-    fireEvent.change(rowName, { target: { value: 'Lab' } });
-    const owner = screen.getByLabelText('Add to Ownership for Lab');
+    fireEvent.change(rows[rows.length - 1], { target: { value: 'Lab' } });
+    const owner = screen.getByLabelText('Add to Leader (L1) for Lab');
     fireEvent.change(owner, { target: { value: 'Sonu' } });
     fireEvent.keyDown(owner, { key: 'Enter' });
     fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
 
     await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
-    const qc = savedPayload().departments[1];
-    expect(qc.functions).toHaveLength(2);
-    expect(qc.functions[0].id).toBe(21);
-    expect(qc.functions[1]).toMatchObject({ name: 'Lab', owners: ['Sonu'] });
-    expect(qc.functions[1].id).toBeUndefined();
+    const production = savedPayload().departments[1];
+    expect(production.functions).toHaveLength(3);
+    expect(production.functions[0].id).toBe(21);
+    expect(production.functions[2]).toMatchObject({ name: 'Lab', subtitle: '', owners: ['Sonu'] });
+    expect(production.functions[2].id).toBeUndefined();
   });
 
   it('sends the new order when a department is moved up', async () => {
     openChart();
     fireEvent.click(screen.getByRole('button', { name: 'Edit chart' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move Quality Control up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move Production up' }));
     fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
 
     await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
     expect(
       savedPayload().departments.map((department: { name: string }) => department.name),
-    ).toEqual(['Quality Control', 'Purchasing']);
+    ).toEqual(['Production', 'Procurement']);
   });
 
   it('refuses to save a department left unnamed', () => {
