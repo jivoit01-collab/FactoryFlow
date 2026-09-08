@@ -3,15 +3,28 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { type ReactNode, useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { SalesDispatchGateOut } from '@/modules/gate/api/salesDispatch/salesDispatch.api';
+import type { EmptyVehicleGateInEntry } from '@/modules/gate/api/emptyVehicleIn/emptyVehicleIn.api';
+import type {
+  SalesDispatchGateOut,
+  SalesDispatchPendingBooking,
+} from '@/modules/gate/api/salesDispatch/salesDispatch.api';
 
 import { useBoardDay } from '../hooks/boardDay.context';
 import { BoardDayProvider } from '../hooks/BoardDayProvider';
 import { useDispatchDayVehicles } from '../hooks/useDispatchDayVehicles';
 
 const list = vi.fn();
+const pendingBookings = vi.fn();
 vi.mock('@/modules/gate/api/salesDispatch/salesDispatch.api', () => ({
-  salesDispatchApi: { list: () => list() as Promise<SalesDispatchGateOut[]> },
+  salesDispatchApi: {
+    list: () => list() as Promise<SalesDispatchGateOut[]>,
+    pendingBookings: () => pendingBookings() as Promise<SalesDispatchPendingBooking[]>,
+  },
+}));
+
+const gateIns = vi.fn();
+vi.mock('@/modules/gate/api/emptyVehicleIn/emptyVehicleIn.api', () => ({
+  emptyVehicleInApi: { list: () => gateIns() as Promise<EmptyVehicleGateInEntry[]> },
 }));
 
 /** 2026-08-27 14:00 local — the day every fixture below is written against. */
@@ -51,6 +64,39 @@ function docking(overrides: Partial<SalesDispatchGateOut>) {
   } as unknown as SalesDispatchGateOut;
 }
 
+/** A dispatch truck standing inside the plant, as the gate register reports it. */
+function gateIn(overrides: Partial<EmptyVehicleGateInEntry>) {
+  nextId += 1;
+  return {
+    id: nextId,
+    entry_no: `EVGI-${nextId}`,
+    company_code: 'BEV',
+    company_name: 'JIVO BEVERAGES',
+    vehicle_number: 'DL01LA0000',
+    transporter_name: 'Bhargave Road Carrier',
+    reason: 'DISPATCH',
+    gate_in_date: TODAY,
+    in_time: '09:53:00',
+    ...overrides,
+  } as unknown as EmptyVehicleGateInEntry;
+}
+
+/** A bill booked to a truck that has arrived and has no docking yet. */
+function pending(overrides: Partial<SalesDispatchPendingBooking>) {
+  nextId += 1;
+  return {
+    row_type: 'PENDING_BOOKING',
+    id: `pending-${nextId}`,
+    company_code: 'BEV',
+    company_name: 'JIVO BEVERAGES',
+    vehicle_no: 'DL01LA0000',
+    transporter_name: 'Bhargave Road Carrier',
+    document_count: 1,
+    status: 'PENDING_DOCKING',
+    ...overrides,
+  } as unknown as SalesDispatchPendingBooking;
+}
+
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
@@ -87,6 +133,11 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(NOW);
   list.mockReset();
+  // The gate reads are additive, so most cases want them silent.
+  gateIns.mockReset();
+  gateIns.mockResolvedValue([]);
+  pendingBookings.mockReset();
+  pendingBookings.mockResolvedValue([]);
   nextId = 1;
 });
 
@@ -493,5 +544,131 @@ describe('useDispatchDayVehicles', () => {
     expect(result.current.byCustomer).toHaveLength(1);
     expect(result.current.byCustomer[0].amount).toBe(150_000);
     expect(result.current.byCustomer[0].trucksOut).toBe(2);
+  });
+
+  it('shows a truck from the moment it gate-ins, before anybody docks it', async () => {
+    list.mockResolvedValue([]);
+    gateIns.mockResolvedValue([
+      gateIn({ vehicle_number: 'DL01LAR2914', arrival_no: 'ARV-G1' }),
+      gateIn({ vehicle_number: 'DL01LAR7060', arrival_no: 'ARV-G2', in_time: '09:55:00' }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    expect(result.current.totalCount).toBe(2);
+    expect(result.current.inCount).toBe(2);
+    expect(result.current.outCount).toBe(0);
+    // Longest inside leads.
+    expect(result.current.inside.map((truck) => truck.vehicleNo)).toEqual([
+      'DL01LAR2914',
+      'DL01LAR7060',
+    ]);
+    expect(result.current.inside[0].status).toBe('PENDING_DOCKING');
+    // Nothing is loaded yet, so no truck is claimed to be scanning.
+    expect(result.current.scanningCount).toBe(0);
+    // The company panel has to agree with the vehicle list beside it.
+    expect(result.current.byCompany).toHaveLength(1);
+    expect(result.current.byCompany[0].trucksIn).toBe(2);
+    expect(result.current.byCompany[0].amount).toBe(0);
+  });
+
+  it('folds a gate-in onto its own docking instead of listing the truck twice', async () => {
+    list.mockResolvedValue([
+      docking({
+        arrival_no: 'ARV-H',
+        vehicle_no: 'RJ10GB3459',
+        status: 'DOCKED',
+        docked_at: `${TODAY}T13:33:00Z`,
+      }),
+    ]);
+    gateIns.mockResolvedValue([
+      gateIn({
+        vehicle_number: 'rj10gb3459',
+        arrival_no: 'ARV-H',
+        company_code: 'OIL',
+        company_name: 'JIVO OIL',
+        in_time: '15:53:00',
+      }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    // Matched on the plate whatever case the register wrote it in.
+    expect(result.current.totalCount).toBe(1);
+    // The dwell clock runs from the barrier, not from the dock: 15:53 local is
+    // the earlier of the two stamps, though it sorts later as a string than the
+    // docking's 13:33Z. Comparing them lexically is what would pick the wrong one.
+    expect(result.current.inside[0].inAt).toBe(new Date(`${TODAY}T15:53:00`).toISOString());
+    // A real docking status always outranks "waiting to dock".
+    expect(result.current.inside[0].status).toBe('DOCKED');
+    expect(result.current.inside[0].companies).toEqual(['JIVO OIL']);
+  });
+
+  it('takes the gate-in stamp when it beats the docking stamp', async () => {
+    list.mockResolvedValue([
+      docking({
+        arrival_no: 'ARV-I',
+        vehicle_no: 'RJ10GB3459',
+        status: 'DOCKED',
+        docked_at: new Date(2026, 7, 27, 13, 30).toISOString(),
+      }),
+    ]);
+    gateIns.mockResolvedValue([
+      gateIn({ vehicle_number: 'RJ10GB3459', arrival_no: 'ARV-I', in_time: '09:53:00' }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    expect(result.current.inside[0].inAt).toBe(new Date(2026, 7, 27, 9, 53).toISOString());
+  });
+
+  it('carries the bills a waiting truck is still owed', async () => {
+    list.mockResolvedValue([]);
+    gateIns.mockResolvedValue([gateIn({ vehicle_number: 'DL01LAC8007', arrival_no: 'ARV-J' })]);
+    pendingBookings.mockResolvedValue([
+      pending({
+        vehicle_no: 'DL01LAC8007',
+        company_code: 'OIL',
+        company_name: 'JIVO OIL',
+        customer_code: 'CUSTA000555',
+        customer_name: 'BANWARI LAL GARG & CO.',
+        document_count: 2,
+      }),
+      pending({ vehicle_no: 'DL01LAC8007', document_count: 1 }),
+    ]);
+
+    const { result } = await renderVehicles();
+
+    expect(result.current.totalCount).toBe(1);
+    expect(result.current.inside[0].bills).toBe(3);
+    expect(result.current.inside[0].companies).toEqual(['JIVO BEVERAGES', 'JIVO OIL']);
+    expect(result.current.inside[0].customers).toEqual(['BANWARI LAL GARG & CO.']);
+    // Waiting is not shipping: the customer is on the board with no money.
+    expect(result.current.byCustomer).toHaveLength(1);
+    expect(result.current.byCustomer[0].trucksIn).toBe(1);
+    expect(result.current.byCustomer[0].amount).toBe(0);
+  });
+
+  it('leaves a back-dated board to the docking register alone', async () => {
+    list.mockResolvedValue([]);
+    gateIns.mockResolvedValue([gateIn({ vehicle_number: 'DL01LAR2914', arrival_no: 'ARV-K' })]);
+
+    const { result } = await renderVehiclesOn(YESTERDAY);
+
+    // "Still inside" is a fact about this minute; asking it about yesterday
+    // would strand today's trucks in a day they were not in.
+    expect(result.current.totalCount).toBe(0);
+    expect(result.current.trucks).toEqual([]);
+  });
+
+  it('still paints the docked trucks when the gate read fails', async () => {
+    list.mockResolvedValue([docking({ arrival_no: 'ARV-L', status: 'DOCKED' })]);
+    gateIns.mockRejectedValue(Object.assign(new Error('nope'), { status: 500 }));
+    pendingBookings.mockRejectedValue(Object.assign(new Error('nope'), { status: 500 }));
+
+    const { result } = await renderVehicles();
+
+    expect(result.current.totalCount).toBe(1);
+    expect(result.current.isError).toBe(false);
   });
 });

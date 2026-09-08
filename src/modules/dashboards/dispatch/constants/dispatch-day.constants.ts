@@ -107,7 +107,12 @@ export const HISTORY_AUTO_RETURN_MS = 10 * 60_000;
 // -------------------------------------------------------------------------- //
 
 /** How far along each docking status is — picks the truck's headline status
- *  when it carries several dockings sitting at different steps. */
+ *  when it carries several dockings sitting at different steps.
+ *
+ *  `PENDING_DOCKING` is deliberately absent rather than zero: it is not a
+ *  docking status at all but the state of a truck that has crossed the barrier
+ *  and has no docking yet, so it must lose to every real step (the lookup falls
+ *  back to 0) the moment somebody starts one. */
 export const DOCKING_STATUS_PROGRESS: Record<string, number> = {
   DOCKED: 1,
   PHOTO_ATTACHED: 2,
@@ -119,6 +124,7 @@ export const DOCKING_STATUS_PROGRESS: Record<string, number> = {
 
 /** Human labels for the docking statuses the wall shows. */
 export const DOCKING_STATUS_LABEL: Record<string, string> = {
+  PENDING_DOCKING: 'Waiting to dock',
   DOCKED: 'Docked',
   PHOTO_ATTACHED: 'Photo attached',
   READY_FOR_GATEPASS: 'Ready for gatepass',
