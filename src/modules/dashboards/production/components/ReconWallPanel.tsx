@@ -10,6 +10,7 @@ import { compact, count } from '../../dispatch/utils/format';
 import { AUTO_SCROLL_FROM, reconTone } from '../constants/production-wall.constants';
 import type { ReconSlice } from '../hooks';
 import { formatLitres } from '../utils/litres';
+import { sharedUnit, unitLabel } from '../utils/uom';
 
 export interface ReconWallPanelProps {
   title: string;
@@ -18,7 +19,12 @@ export interface ReconWallPanelProps {
   slice: ReconSlice;
   /** What the app side is called on this panel — "Produced", "Wasted". */
   appLabel: string;
-  /** What one unit is — cases for FG, units for scrap. */
+  /**
+   * What one unit is when the rows do not say — "case" for FG, whose two sides
+   * are both stated in cases and carry no SAP UOM. Wastage rows do say, and
+   * their own UOM wins: a scrap list that is all pieces gets captioned "pcs"
+   * rather than the vaguer "unit".
+   */
   unitNoun: string;
   /** Draw the litres line under each SKU. Only FG carries a volume worth showing. */
   showLitres?: boolean;
@@ -66,6 +72,12 @@ export function ReconWallPanel({
       return gap !== 0 ? gap : b.row.app_qty - a.row.app_qty;
     });
 
+  // SAP's UOM where the rows agree on one; the caller's noun where they don't.
+  const unit = sharedUnit(
+    rows.map(({ row }) => row),
+    unitNoun,
+  );
+
   return (
     <BoardPanel
       title={title}
@@ -102,8 +114,8 @@ export function ReconWallPanel({
           {/* The panel's own totals, so a creeping list is never the only place
               the headline figures exist. */}
           <div className="grid shrink-0 grid-cols-3 gap-px border-y border-black/[0.06] bg-black/[0.04] text-center dark:border-white/5 dark:bg-white/[0.04]">
-            <Total label={appLabel} value={count(slice.produced)} unit={unitNoun} />
-            <Total label="SAP" value={count(slice.sap)} unit={unitNoun} />
+            <Total label={appLabel} value={count(slice.produced)} unit={unit} />
+            <Total label="SAP" value={count(slice.sap)} unit={unit} />
             <Total
               label="Difference"
               value={`${slice.difference > 0 ? '+' : ''}${count(slice.difference)}`}
@@ -124,6 +136,9 @@ export function ReconWallPanel({
           >
             {rows.map(({ row, litres }, index) => {
               const tone = reconTone(row.status);
+              // Only where it disagrees with the caption above — on a scrap
+              // list that mixes pieces with metres of tape, every row says so.
+              const rowUnit = unitLabel(row.uom, unit);
               return (
                 <li
                   key={`${row.sku}-${row.item_code}-${index}`}
@@ -139,6 +154,14 @@ export function ReconWallPanel({
                       </span>
                       <span className="shrink-0 text-sm font-bold tabular-nums text-foreground">
                         {compact(row.app_qty)}
+                        {rowUnit !== unit && (
+                          <>
+                            {' '}
+                            <span className="text-[11px] font-semibold text-muted-foreground">
+                              {rowUnit}
+                            </span>
+                          </>
+                        )}
                       </span>
                     </span>
                     <span className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px] tabular-nums text-muted-foreground/80">

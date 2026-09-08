@@ -26,18 +26,23 @@ describe('litresOf', () => {
 describe('formatLitres', () => {
   it('renders an em dash for unknown, never zero', () => {
     expect(formatLitres(null)).toBe('—');
-    expect(formatLitres(0)).toBe('0 L');
+    expect(formatLitres(0)).toBe('0 ltr');
   });
 
   it('groups Indian-style and keeps one decimal only when small and fractional', () => {
-    expect(formatLitres(2400)).toBe('2,400 L');
-    expect(formatLitres(12.5)).toBe('12.5 L');
-    expect(formatLitres(1234567)).toBe('12,34,567 L');
+    expect(formatLitres(2400)).toBe('2,400 ltr');
+    expect(formatLitres(12.5)).toBe('12.5 ltr');
+    expect(formatLitres(1234567)).toBe('12,34,567 ltr');
+  });
+
+  it('spells litres out, so the suffix can never be read as the lakh "L"', () => {
+    expect(formatLitres(330000)).toBe('3,30,000 ltr');
+    expect(formatLitres(330000)).not.toMatch(/ L$/);
   });
 
   it('signs a surplus so it cannot be read as a shortfall', () => {
-    expect(formatLitresSigned(120)).toBe('+120 L');
-    expect(formatLitresSigned(-120)).toBe('-120 L');
+    expect(formatLitresSigned(120)).toBe('+120 ltr');
+    expect(formatLitresSigned(-120)).toBe('-120 ltr');
     expect(formatLitresSigned(null)).toBe('—');
   });
 });

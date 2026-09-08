@@ -12,6 +12,11 @@
  * ("700 GMS POUCH", "13 KGS") carries no volume in its name at all and read as
  * a blank. Never parse a name for volume — ask SAP.
  *
+ * The SUFFIX is "ltr", not "L". The wall's short scale abbreviates lakh as
+ * "L" (`compact()`), and this board draws both a few pixels apart: a Material
+ * row reading "3.3 L" is three-and-a-third lakh pieces, while the volume beside
+ * it is litres. Spelling litres "ltr" leaves "L" meaning lakh everywhere.
+ *
  * A missing volume stays `null`, never 0, so a SKU SAP holds no volume for
  * reads as "—" instead of dragging a litre total down.
  */
@@ -25,7 +30,7 @@ export function litresOf(
   return litresPerCase * (cases || 0);
 }
 
-/** "2,400 L" — em dash for an unknown volume, so it can't be read as zero output. */
+/** "2,400 ltr" — em dash for an unknown volume, so it can't be read as zero output. */
 export function formatLitres(value: number | null | undefined): string {
   if (value == null) return '—';
   const n = value || 0;
@@ -34,7 +39,7 @@ export function formatLitres(value: number | null | undefined): string {
   return `${n.toLocaleString('en-IN', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  })} L`;
+  })} ltr`;
 }
 
 /** Same, with an explicit "+" so a positive difference reads as a surplus. */

@@ -4,6 +4,9 @@ import { apiClient } from '@/core/api';
 export interface ReconRow {
   sku: string;
   item_code: string;
+  /** SAP's inventory UOM for this item — "PCS", "LTR", "MTR", "KGS". Empty on
+   *  the FG reconciliation, where both sides are stated in cases instead. */
+  uom?: string;
   app_qty: number;
   /** live output from in-progress runs (production only) */
   in_progress?: number;
@@ -51,6 +54,10 @@ export interface ReconReport {
 export interface MaterialRow {
   sku: string;
   item_code: string;
+  /** SAP's inventory UOM for this item. BH-PC mixes them — PCS for packaging,
+   *  LTR for oil, MTR for tape, KGS for the rest — so it is per row, not per
+   *  panel. Empty when neither SAP nor the BOM line states one. */
+  uom?: string;
   should_use: number;
   app_issued: number;
   sap_issued: number;

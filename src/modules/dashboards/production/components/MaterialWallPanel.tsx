@@ -9,6 +9,7 @@ import { useAutoScroll } from '../../dispatch/hooks';
 import { compact, count } from '../../dispatch/utils/format';
 import { AUTO_SCROLL_FROM, reconTone } from '../constants/production-wall.constants';
 import type { MaterialSlice } from '../hooks';
+import { sharedUnit, unitLabel } from '../utils/uom';
 
 /**
  * Material (BOM), three quantities deep: what the BOM says the day should have
@@ -17,6 +18,14 @@ import type { MaterialSlice } from '../hooks';
  * The should-use figure is the one that makes this panel worth a slot on the
  * wall. App-vs-SAP only catches a posting that never happened; should-vs-issued
  * catches the drum that walked out of the store.
+ *
+ * Every quantity is captioned with the unit SAP counts that item in, because the
+ * BOM mixes them: labels and caps in PCS, oil in LTR, tape in MTR. The column
+ * totals only claim a unit on a day where every row agrees on one — otherwise
+ * they say "unit", and each row states its own. It has to be said out loud in
+ * either case, because `compact()` abbreviates lakh as "L": an unlabelled
+ * "3.3 L" on a board that shows litres two panels over reads as three litres
+ * and a bit, when it is three-and-a-third lakh pieces.
  */
 export function MaterialWallPanel({
   slice,
@@ -35,6 +44,9 @@ export function MaterialWallPanel({
   const rows = [...slice.rows].sort(
     (a, b) => Math.abs(b.difference) - Math.abs(a.difference) || b.app_issued - a.app_issued,
   );
+
+  // One caption for the totals only if the whole list is counted the same way.
+  const totalsUnit = sharedUnit(rows);
 
   return (
     <BoardPanel
@@ -65,11 +77,12 @@ export function MaterialWallPanel({
       ) : (
         <>
           <div className="grid shrink-0 grid-cols-3 gap-px border-y border-black/[0.06] bg-black/[0.04] text-center dark:border-white/5 dark:bg-white/[0.04]">
-            <Total label="Should use" value={compact(slice.should)} />
-            <Total label="App issued" value={compact(slice.app)} />
+            <Total label="Should use" value={compact(slice.should)} unit={totalsUnit} />
+            <Total label="App issued" value={compact(slice.app)} unit={totalsUnit} />
             <Total
               label="SAP issued"
               value={compact(slice.sap)}
+              unit={totalsUnit}
               tone={slice.status === 'MATCHED' ? 'good' : 'bad'}
             />
           </div>
@@ -80,6 +93,10 @@ export function MaterialWallPanel({
           >
             {rows.map((row, index) => {
               const tone = reconTone(row.status);
+              // Stated on the row whenever the totals could not state it for
+              // the whole list — on a mixed day this is the only thing keeping
+              // litres of oil from reading as pieces of label.
+              const unit = unitLabel(row.uom);
               // Against the BOM, not against SAP: this is the number that says
               // whether the floor used what the recipe called for.
               const overUse = row.should_use > 0 ? row.app_issued - row.should_use : null;
@@ -95,6 +112,14 @@ export function MaterialWallPanel({
                       </span>
                       <span className="shrink-0 text-sm font-bold tabular-nums text-foreground">
                         {compact(row.app_issued)}
+                        {unit !== totalsUnit && (
+                          <>
+                            {' '}
+                            <span className="text-[11px] font-semibold text-muted-foreground">
+                              {unit}
+                            </span>
+                          </>
+                        )}
                       </span>
                     </span>
                     <span className="mt-0.5 flex items-baseline gap-2 text-[11px] tabular-nums text-muted-foreground/80">
@@ -141,7 +166,17 @@ export function MaterialWallPanel({
   );
 }
 
-function Total({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'bad' }) {
+function Total({
+  label,
+  value,
+  unit,
+  tone,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  tone?: 'good' | 'bad';
+}) {
   return (
     <div className="px-2 py-1.5">
       <div
@@ -157,7 +192,7 @@ function Total({ label, value, tone }: { label: string; value: string; tone?: 'g
         {value}
       </div>
       <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
+        {label} · {unit}
       </div>
     </div>
   );
