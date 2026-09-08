@@ -53,6 +53,18 @@ export interface GoodsReturnListItem {
   created_at: string;
 }
 
+/** A return the gate has already marked in, for the gate's own history tab. */
+export interface GoodsReturnGateHistoryItem extends GoodsReturnListItem {
+  gated_in_by_name: string;
+}
+
+/** Window for the gate history tab. Omitted dates fall back to the last week. */
+export interface GoodsReturnGateHistoryParams {
+  from_date?: string;
+  to_date?: string;
+  search?: string;
+}
+
 export interface GoodsReturnInvoiceRef {
   id: number;
   sap_invoice_doc_entry: number;
@@ -398,6 +410,16 @@ export const goodsReturnApi = {
   async listExpected(): Promise<GoodsReturnListItem[]> {
     const response = await apiClient.get<GoodsReturnListItem[]>(
       API_ENDPOINTS.GOODS_RETURN.GATE_EXPECTED,
+    );
+    return response.data;
+  },
+
+  async listGateHistory(
+    params: GoodsReturnGateHistoryParams = {},
+  ): Promise<GoodsReturnGateHistoryItem[]> {
+    const response = await apiClient.get<GoodsReturnGateHistoryItem[]>(
+      API_ENDPOINTS.GOODS_RETURN.GATE_HISTORY,
+      { params },
     );
     return response.data;
   },

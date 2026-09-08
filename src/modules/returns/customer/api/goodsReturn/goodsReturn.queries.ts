@@ -5,6 +5,7 @@ import {
   goodsReturnApi,
   type GoodsReturnApprovalStatus,
   type GoodsReturnAttachmentType,
+  type GoodsReturnGateHistoryParams,
   type MarkGoodsReturnInPayload,
   type SaveItemsPayload,
   type SetVehiclePayload,
@@ -15,6 +16,8 @@ export const goodsReturnKeys = {
   list: (params?: Record<string, unknown>) => ['goods-return', 'list', params ?? {}] as const,
   detail: (id: number) => ['goods-return', 'detail', id] as const,
   expected: () => ['goods-return', 'gate', 'expected'] as const,
+  gateHistory: (params: GoodsReturnGateHistoryParams) =>
+    ['goods-return', 'gate', 'history', params] as const,
   warehouses: () => ['goods-return', 'warehouses'] as const,
   returnableItems: (id: number, search: string) =>
     ['goods-return', 'returnable-items', id, search] as const,
@@ -225,11 +228,28 @@ export function useExpectedGoodsReturns() {
   });
 }
 
+/**
+ * Returns the gate has already let in. Only fetched while its tab is open --
+ * the gate lives on the queue tab all day and this window would otherwise be
+ * refetched behind it for nothing.
+ */
+export function useGoodsReturnGateHistory(
+  params: GoodsReturnGateHistoryParams,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: goodsReturnKeys.gateHistory(params),
+    queryFn: () => goodsReturnApi.listGateHistory(params),
+    enabled,
+  });
+}
+
 export function useMarkGoodsReturnIn() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...payload }: MarkGoodsReturnInPayload & { id: number }) =>
       goodsReturnApi.markIn(id, payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: goodsReturnKeys.expected() }),
+    // The return leaves the queue and lands in the history in the same move.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['goods-return', 'gate'] }),
   });
 }

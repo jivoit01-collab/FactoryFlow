@@ -568,6 +568,7 @@ export const API_ENDPOINTS = {
     REJECT: (id: number) => `/goods-return/${id}/reject/`,
     WAREHOUSES: '/goods-return/warehouses/',
     GATE_EXPECTED: '/goods-return/gate/expected/',
+    GATE_HISTORY: '/goods-return/gate/history/',
     GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,
   },
   // Dispatch Plans Dashboard
