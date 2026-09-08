@@ -332,9 +332,9 @@ export const qcModuleConfig: ModuleConfig = {
         QC_PERMISSIONS.QC_RECORD.VIEW,
         QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
         // And for the audit reader: the log permission is deliberately held on
-        // its own, without the rights to view or manage the library, so
-        // without this the whole module would be hidden and the log
-        // unreachable from the sidebar.
+        // its own, without the rights to view or manage the library. The log has
+        // no sidebar item of its own — it is opened from the Audit log button on
+        // the QA Procedures page — but the route stays permission-gated.
         QC_PERMISSIONS.DOCUMENT_FILE.VIEW_AUDIT,
       ],
       hasSubmenu: true,
@@ -410,11 +410,6 @@ export const qcModuleConfig: ModuleConfig = {
           path: '/qc/qa-procedures',
           title: 'QA Procedures',
           permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
-        },
-        {
-          path: '/qc/qa-procedures/log',
-          title: 'QA Procedure Log',
-          permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW_AUDIT],
         },
         {
           path: '/qc/master/material-types',
