@@ -127,6 +127,20 @@ describe('MaterialTypesPage — CRUD', () => {
     expect(content).toContain('No material types match your search.');
   });
 
+  it('has an RM/PM material class filter over the fetched list', () => {
+    const content = readSource();
+    expect(content).toContain('const MATERIAL_FILTERS');
+    expect(content).toContain("{ key: 'rm', label: 'RM', prefix: 'RM' }");
+    expect(content).toContain("{ key: 'pm', label: 'PM', prefix: 'PM' }");
+    expect(content).toContain('materialFilter');
+    expect(content).toContain('filteredMaterialTypes');
+    expect(content).toContain('Material Types ({filteredMaterialTypes.length})');
+    expect(content).toContain('filteredMaterialTypes.map((type)');
+    expect(content).toContain('type.code.toUpperCase().startsWith(prefix)');
+    expect(content).toContain('item.item_code?.toUpperCase().startsWith(prefix)');
+    expect(content).toContain("materialTypeSearchTerm || materialFilter !== 'all'");
+  });
+
   it('uses useScrollToError for error display', () => {
     const content = readSource();
     expect(content).toContain('useScrollToError(apiErrors)');

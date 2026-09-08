@@ -9,7 +9,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
@@ -51,6 +51,14 @@ const getLinkedSAPItemLabel = (item: { item_code: string; item_name?: string }) 
 
 const getMaterialTypeLabel = (type: MaterialType) => `${type.code} - ${type.name}`;
 
+// Material-class toggle — derived from the SAP material code prefix (RM.../PM...)
+const MATERIAL_FILTERS = [
+  { key: 'all', label: 'All', prefix: null },
+  { key: 'rm', label: 'RM', prefix: 'RM' },
+  { key: 'pm', label: 'PM', prefix: 'PM' },
+] as const;
+type MaterialFilterKey = (typeof MATERIAL_FILTERS)[number]['key'];
+
 const emptyMaterialTypeForm: CreateMaterialTypeRequest = {
   code: '',
   name: '',
@@ -63,6 +71,7 @@ export default function MaterialTypesPage() {
   const { hasAnyPermission } = usePermission();
   const canCopyQCParameters = hasAnyPermission([QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS]);
   const [materialTypeSearch, setMaterialTypeSearch] = useState('');
+  const [materialFilter, setMaterialFilter] = useState<MaterialFilterKey>('all');
   const [debouncedMaterialTypeSearch, setDebouncedMaterialTypeSearch] = useState('');
   const normalizedMaterialTypeSearch = materialTypeSearch.trim();
   const materialTypeSearchTerm = debouncedMaterialTypeSearch.trim();
@@ -77,6 +86,17 @@ export default function MaterialTypesPage() {
     isLoading: isCopySourceMaterialTypesLoading,
     isError: isCopySourceMaterialTypesError,
   } = useMaterialTypes();
+
+  // Narrow the fetched list by material class (material type code or a linked SAP item code)
+  const filteredMaterialTypes = useMemo(() => {
+    const prefix = MATERIAL_FILTERS.find((filter) => filter.key === materialFilter)?.prefix;
+    if (!prefix) return materialTypes;
+    return materialTypes.filter(
+      (type) =>
+        type.code.toUpperCase().startsWith(prefix) ||
+        (type.sap_items || []).some((item) => item.item_code?.toUpperCase().startsWith(prefix)),
+    );
+  }, [materialTypes, materialFilter]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<MaterialType | null>(null);
@@ -326,7 +346,22 @@ export default function MaterialTypesPage() {
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <CardTitle>Material Types ({materialTypes.length})</CardTitle>
+              <div className="flex flex-wrap items-center gap-3">
+                <CardTitle>Material Types ({filteredMaterialTypes.length})</CardTitle>
+                <div className="inline-flex items-center rounded-md border p-0.5">
+                  {MATERIAL_FILTERS.map((filter) => (
+                    <Button
+                      key={filter.key}
+                      variant={materialFilter === filter.key ? 'default' : 'ghost'}
+                      size="sm"
+                      className="h-7 px-3"
+                      onClick={() => setMaterialFilter(filter.key)}
+                    >
+                      {filter.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
               <div className="relative w-full lg:max-w-md">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -409,9 +444,9 @@ export default function MaterialTypesPage() {
                   </tbody>
                 </table>
               </div>
-            ) : materialTypes.length === 0 ? (
+            ) : filteredMaterialTypes.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
-                {materialTypeSearchTerm
+                {materialTypeSearchTerm || materialFilter !== 'all'
                   ? 'No material types match your search.'
                   : 'No material types found. Click "Add Material Type" to create one.'}
               </div>
@@ -435,7 +470,7 @@ export default function MaterialTypesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {materialTypes.map((type) => (
+                    {filteredMaterialTypes.map((type) => (
                       <tr key={type.id} className="border-b hover:bg-muted/50">
                         <td className="p-3 font-medium">
                           <div className="truncate" title={type.code}>
