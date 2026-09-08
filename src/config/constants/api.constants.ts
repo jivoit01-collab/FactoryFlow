@@ -514,6 +514,11 @@ export const API_ENDPOINTS = {
     REPORT: '/non-moving-rm/report/',
     ITEM_GROUPS: '/non-moving-rm/item-groups/',
   },
+  // Packing Material Demand. One endpoint: every panel on that board is a
+  // different roll-up of the same five SAP reads over the same period.
+  PM_DEMAND: {
+    REPORT: '/pm-demand/report/',
+  },
   // Factory Expense wall board — labour, salary, electricity and maintenance,
   // all from FactoryFlow's own registers rather than SAP.
   FACTORY_EXPENSE: {

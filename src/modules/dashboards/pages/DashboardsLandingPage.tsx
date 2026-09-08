@@ -1,5 +1,6 @@
 import {
   ArrowLeftRight,
+  Boxes,
   ClipboardCheck,
   DoorOpen,
   Factory,
@@ -62,6 +63,15 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/non-moving',
     color: 'text-amber-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
+  },
+  {
+    title: 'PM Demand',
+    description:
+      'Top packing material consumed by production, and what shipped out inside finished goods',
+    icon: <Boxes className="h-5 w-5" />,
+    route: '/dashboards/pm-demand',
+    color: 'text-cyan-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PM_DEMAND],
   },
   {
     title: 'Sales Plan vs Req.',
