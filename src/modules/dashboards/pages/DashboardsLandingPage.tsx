@@ -4,6 +4,7 @@ import {
   DoorOpen,
   Factory,
   IndianRupee,
+  LayoutDashboard,
   MonitorPlay,
   Navigation,
   Package,
@@ -25,6 +26,7 @@ import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
+import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from '../warehouse-control/constants';
 
 interface DashboardsModuleCard {
   title: string;
@@ -36,6 +38,15 @@ interface DashboardsModuleCard {
 }
 
 const dashboardsModules: DashboardsModuleCard[] = [
+  {
+    title: 'Warehouse Control',
+    description:
+      "Non-moving stock, pallet space, today's bills and vehicle linking on one board",
+    icon: <LayoutDashboard className="h-5 w-5" />,
+    route: '/dashboards/warehouse-control',
+    color: 'text-indigo-600',
+    permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
+  },
   {
     title: 'Stock Benchmark',
     description: 'Monitor on-hand inventory against benchmark levels across warehouses',

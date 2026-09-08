@@ -12,6 +12,7 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
+import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from './warehouse-control/constants';
 
 const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage'));
 const ExecutiveOverviewPage = lazy(() => import('./overview/pages/ExecutiveOverviewPage'));
@@ -51,6 +52,10 @@ const FactoryExpenseWallPage = lazy(
 const FactoryExpenseConfigPage = lazy(
   () => import('./factory-expense/pages/FactoryExpenseConfigPage'),
 );
+const WarehouseControlDashboardPage = lazy(
+  () => import('./warehouse-control/pages/WarehouseControlDashboardPage'),
+);
+
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
   routes: [
@@ -82,6 +87,16 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       ],
       breadcrumb: { label: 'Command Centre' },
+    },
+    {
+      // One board folding four screens: non-moving stock, pallet space, today's
+      // bills and vehicle linking. Any one section's right opens it; the page
+      // itself hides the panels the user may not read.
+      path: '/dashboards/warehouse-control',
+      element: <WarehouseControlDashboardPage />,
+      layout: 'main',
+      permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Warehouse Control' },
     },
     {
       path: '/dashboards/gate',
@@ -231,11 +246,20 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
         // Budget Approvals lives here too.
         DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS,
+        // Warehouse Control lives here too. Its pallet-space and linking panels
+        // are the only reason a WMS operator or a dispatch linker would open the
+        // Dashboards menu, so their rights must appear on the parent as well.
+        ...WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
       // (appended after the shared list so it doesn't disturb existing entries)
       children: [
+        {
+          path: '/dashboards/warehouse-control',
+          title: 'Warehouse Control',
+          permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
+        },
         {
           path: '/dashboards/overview',
           title: 'Command Centre',
