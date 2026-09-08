@@ -48,3 +48,8 @@ export function formatWeight(value: string | number | null | undefined): string 
   if (!Number.isFinite(numeric) || numeric === 0) return '';
   return `${formatDecimal(numeric)} kg`;
 }
+
+/** Kilograms as tonnes — a day's pending load runs to five digits in kg. */
+export function formatTons(kilograms: number): string {
+  return `${(kilograms / 1000).toLocaleString('en-IN', { maximumFractionDigits: 2 })} t`;
+}

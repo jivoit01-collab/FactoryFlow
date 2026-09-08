@@ -13,6 +13,7 @@
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
 
 import type { ControlScheduledQueue } from '../types';
+import { toNumber } from './number';
 
 export interface ScheduledQueueInput {
   bills: DispatchBill[];
@@ -73,6 +74,12 @@ export function buildScheduledQueue({ bills, today }: ScheduledQueueInput): Cont
       today: dueToday.length,
       upcoming: upcoming.length,
       alreadyBooked: scheduled.filter(isBooked).length,
+    },
+    // Over `rows`, so the totals and the counts always describe the same set.
+    totals: {
+      litres: rows.reduce((sum, bill) => sum + toNumber(bill.total_litres), 0),
+      weightKg: rows.reduce((sum, bill) => sum + toNumber(bill.total_weight), 0),
+      amount: rows.reduce((sum, bill) => sum + toNumber(bill.doc_total), 0),
     },
   };
 }

@@ -115,4 +115,28 @@ describe('buildScheduledQueue', () => {
       alreadyBooked: 0,
     });
   });
+
+  it('totals litres, weight and value over the queued rows only', () => {
+    const queue = buildScheduledQueue({
+      today: TODAY,
+      bills: [
+        makeBill({ docEntry: 1, status: 'PENDING', litres: 1000, weight: 950, total: 250000 }),
+        makeBill({ docEntry: 2, status: 'PENDING', litres: 500, weight: 480, total: 125000 }),
+        // Booked, dispatched and undated bills are not in the queue, so their
+        // load must not show up in the backlog either.
+        makeBill({ docEntry: 3, status: 'BOOKED', vehicleId: 7, litres: 9000, weight: 9000, total: 9 }),
+        makeBill({ docEntry: 4, status: 'DISPATCHED', litres: 9000, weight: 9000, total: 9 }),
+        makeBill({ docEntry: 5, status: 'PENDING', dispatchDate: null, litres: 9000, weight: 9000 }),
+      ],
+    });
+
+    expect(queue.counts.total).toBe(2);
+    expect(queue.totals).toEqual({ litres: 1500, weightKg: 1430, amount: 375000 });
+  });
+
+  it('reports zero totals for an empty queue rather than NaN', () => {
+    const queue = buildScheduledQueue({ today: TODAY, bills: [] });
+
+    expect(queue.totals).toEqual({ litres: 0, weightKg: 0, amount: 0 });
+  });
 });

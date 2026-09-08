@@ -144,4 +144,16 @@ export interface ControlScheduledQueue {
     /** Scheduled bills kept out of the queue because a truck is already on them. */
     alreadyBooked: number;
   };
+  /**
+   * What the queue adds up to — the size of the backlog, not just its length.
+   *
+   * Totalled over the rows actually listed, so it always describes the same set
+   * the counts do: scheduled, unbooked, neither dispatched nor cancelled.
+   */
+  totals: {
+    litres: number;
+    /** Kilograms, as SAP reports them; the panel renders tonnes. */
+    weightKg: number;
+    amount: number;
+  };
 }

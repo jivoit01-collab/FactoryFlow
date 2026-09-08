@@ -16,6 +16,7 @@ export interface UseScheduledBillsResult {
 const EMPTY_QUEUE: ControlScheduledQueue = {
   rows: [],
   counts: { total: 0, overdue: 0, today: 0, upcoming: 0, alreadyBooked: 0 },
+  totals: { litres: 0, weightKg: 0, amount: 0 },
 };
 
 export function useScheduledBills(date: string, enabled = true): UseScheduledBillsResult {

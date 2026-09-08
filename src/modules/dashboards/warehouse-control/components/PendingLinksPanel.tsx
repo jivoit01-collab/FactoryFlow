@@ -1,4 +1,11 @@
-import { AlertTriangle, CalendarClock, ChevronRight } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarClock,
+  ChevronRight,
+  Droplets,
+  IndianRupee,
+  Weight,
+} from 'lucide-react';
 
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
@@ -8,11 +15,18 @@ import { cn } from '@/shared/utils';
 import { WAREHOUSE_CONTROL_MAX_RENDERED_ROWS } from '../constants';
 import { SECTION_ACCENT } from '../constants/warehouse-control.theme';
 import type { ControlScheduledQueue } from '../types';
-import { compactText, formatCompactCurrency, formatCount, formatDecimal } from '../utils/format';
+import {
+  compactText,
+  formatCompactCurrency,
+  formatCount,
+  formatDecimal,
+  formatTons,
+} from '../utils/format';
 import { useControlDetail } from './controlDetailContext';
 import { ControlScrollList } from './ControlScrollList';
 import { ControlSection } from './ControlSection';
 import { ControlEmpty, ControlError, ControlSkeletonRows } from './ControlStates';
+import { ControlTotal } from './ControlTotal';
 
 export interface PendingLinksPanelProps {
   queue: ControlScheduledQueue;
@@ -104,9 +118,17 @@ export function PendingLinksPanel({
   const visible = queue.rows.slice(0, WAREHOUSE_CONTROL_MAX_RENDERED_ROWS);
   const hidden = queue.rows.length - visible.length;
 
-  const meta = queue.counts.overdue
-    ? `${formatCount(queue.counts.overdue)} overdue · ${formatCount(queue.counts.today)} due today`
-    : `${formatCount(queue.counts.today)} due today · ${formatCount(queue.counts.upcoming)} upcoming`;
+  // Lead with the total, then only the buckets that are actually populated.
+  // The old line showed two of the three, so a queue with upcoming bills in it
+  // had a header that did not add up to the rows underneath.
+  const meta = [
+    `${formatCount(queue.counts.total)} waiting`,
+    queue.counts.overdue > 0 ? `${formatCount(queue.counts.overdue)} overdue` : '',
+    queue.counts.today > 0 ? `${formatCount(queue.counts.today)} due today` : '',
+    queue.counts.upcoming > 0 ? `${formatCount(queue.counts.upcoming)} upcoming` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <ControlSection
@@ -132,6 +154,29 @@ export function PendingLinksPanel({
         <ControlEmpty message="Every scheduled bill already has a vehicle." />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
+          {/* What the backlog adds up to. A queue of 72 bills means nothing until
+              you know whether it is a truckload or a fortnight's work. */}
+          <div className="grid shrink-0 grid-cols-3 gap-2">
+            <ControlTotal
+              icon={Droplets}
+              value={`${formatDecimal(queue.totals.litres)} L`}
+              label="pending litres"
+              tone="danger"
+            />
+            <ControlTotal
+              icon={Weight}
+              value={formatTons(queue.totals.weightKg)}
+              label="pending tonnes"
+              tone="danger"
+            />
+            <ControlTotal
+              icon={IndianRupee}
+              value={formatCompactCurrency(queue.totals.amount)}
+              label="pending value"
+              tone="danger"
+            />
+          </div>
+
           <ControlScrollList grow>
             {visible.map((bill) => (
               <PendingRow

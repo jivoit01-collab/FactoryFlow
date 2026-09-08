@@ -12,6 +12,7 @@ export {
   ControlSkeletonBar,
   ControlSkeletonRows,
 } from './ControlStates';
+export { ControlTotal, type ControlTotalProps } from './ControlTotal';
 export { type DetailFieldSpec, DetailSection, DetailTotals } from './DetailPrimitives';
 export { NonMovingDetailDialog, type NonMovingDetailDialogProps } from './NonMovingDetailDialog';
 export { NonMovingPanel, type NonMovingPanelProps } from './NonMovingPanel';

@@ -12,6 +12,7 @@ import { useControlDetail } from './controlDetailContext';
 import { ControlScrollList } from './ControlScrollList';
 import { ControlSection } from './ControlSection';
 import { ControlEmpty, ControlError, ControlSkeletonRows } from './ControlStates';
+import { ControlTotal } from './ControlTotal';
 
 export interface TodaysBillsPanelProps {
   board: ControlLinkingBoard;
@@ -87,27 +88,6 @@ function BillRow({
   );
 }
 
-/** A running total, shown as a small labelled figure above the list. */
-function Total({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: typeof Droplets;
-  value: string;
-  label: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold tabular-nums">{value}</p>
-        <p className="truncate text-[11px] text-muted-foreground">{label}</p>
-      </div>
-    </div>
-  );
-}
-
 /**
  * Today's bills that have a truck against them, and which truck that is.
  *
@@ -158,13 +138,17 @@ export function TodaysBillsPanel({
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="grid shrink-0 grid-cols-3 gap-2">
-            <Total
+            <ControlTotal
               icon={Droplets}
               value={`${formatDecimal(board.totals.litres)} L`}
               label="oil linked"
             />
-            <Total icon={Package} value={formatCount(board.totals.boxes)} label="boxes to move" />
-            <Total
+            <ControlTotal
+              icon={Package}
+              value={formatCount(board.totals.boxes)}
+              label="boxes to move"
+            />
+            <ControlTotal
               icon={Truck}
               value={formatCount(board.counts.trucksToday)}
               label="trucks carrying"

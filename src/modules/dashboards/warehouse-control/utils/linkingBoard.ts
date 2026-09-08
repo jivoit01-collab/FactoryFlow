@@ -11,6 +11,7 @@
 import type { DispatchBill, DispatchPlanStatus } from '@/modules/dashboards/dispatch-plans/types';
 
 import type { ControlLinkedTruck, ControlLinkingBoard } from '../types';
+import { toNumber } from './number';
 
 /** A booking nobody can act on any more. */
 function isClosed(status: DispatchPlanStatus): boolean {
@@ -31,12 +32,6 @@ function isLinked(bill: DispatchBill): boolean {
 /** Already gated out. */
 function isDispatched(bill: DispatchBill): boolean {
   return bill.plan.booking_status === 'DISPATCHED';
-}
-
-export function toNumber(value: string | number | null | undefined): number {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  const parsed = Number.parseFloat(value ?? '');
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function firstNonEmpty(values: (string | null | undefined)[]): string {
