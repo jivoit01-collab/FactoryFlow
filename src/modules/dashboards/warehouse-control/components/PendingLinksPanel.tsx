@@ -6,10 +6,11 @@ import {
   IndianRupee,
   Weight,
 } from 'lucide-react';
+import { useState } from 'react';
 
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
-import { Badge } from '@/shared/components/ui';
+import { Badge, Switch } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import { WAREHOUSE_CONTROL_MAX_RENDERED_ROWS } from '../constants';
@@ -39,6 +40,9 @@ export interface PendingLinksPanelProps {
   /** Grid placement, set by the board. */
   className?: string;
 }
+
+/** Ties the toggle's label to the switch for keyboard and screen-reader use. */
+const TODAY_TOGGLE_ID = 'pending-links-include-today';
 
 interface PendingRowProps {
   bill: DispatchBill;
@@ -114,6 +118,18 @@ export function PendingLinksPanel({
 }: PendingLinksPanelProps) {
   const { showBill } = useControlDetail();
 
+  /**
+   * Whether bills due today count toward the KPI cards.
+   *
+   * Off by default: a bill dated today has not missed its date yet, so the
+   * headline figure reads as the genuinely late backlog. The list underneath
+   * always shows every queued row either way — only the cards change scope, and
+   * their labels change with them so the number is never mislabelled.
+   */
+  const [includeToday, setIncludeToday] = useState(false);
+  const load = includeToday ? queue.totals.all : queue.totals.withoutToday;
+  const scopeLabel = includeToday ? 'pending' : 'overdue';
+
   // The whole queue is listed and the box scrolls; the slice is only the ceiling.
   const visible = queue.rows.slice(0, WAREHOUSE_CONTROL_MAX_RENDERED_ROWS);
   const hidden = queue.rows.length - visible.length;
@@ -156,25 +172,43 @@ export function PendingLinksPanel({
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {/* What the backlog adds up to. A queue of 72 bills means nothing until
               you know whether it is a truckload or a fortnight's work. */}
-          <div className="grid shrink-0 grid-cols-3 gap-2">
-            <ControlTotal
-              icon={Droplets}
-              value={`${formatDecimal(queue.totals.litres)} L`}
-              label="pending litres"
-              tone="danger"
-            />
-            <ControlTotal
-              icon={Weight}
-              value={formatTons(queue.totals.weightKg)}
-              label="pending tonnes"
-              tone="danger"
-            />
-            <ControlTotal
-              icon={IndianRupee}
-              value={formatCompactCurrency(queue.totals.amount)}
-              label="pending value"
-              tone="danger"
-            />
+          <div className="shrink-0 space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              <ControlTotal
+                icon={Droplets}
+                value={`${formatDecimal(load.litres)} L`}
+                label={`${scopeLabel} litres`}
+                tone="danger"
+              />
+              <ControlTotal
+                icon={Weight}
+                value={formatTons(load.weightKg)}
+                label={`${scopeLabel} tonnes`}
+                tone="danger"
+              />
+              <ControlTotal
+                icon={IndianRupee}
+                value={formatCompactCurrency(load.amount)}
+                label={`${scopeLabel} value`}
+                tone="danger"
+              />
+            </div>
+
+            <label
+              htmlFor={TODAY_TOGGLE_ID}
+              className="flex cursor-pointer items-center justify-end gap-2 text-xs text-muted-foreground"
+            >
+              <span>
+                Count the {formatCount(queue.counts.today)} due today
+                {includeToday ? '' : ' (excluded)'}
+              </span>
+              <Switch
+                id={TODAY_TOGGLE_ID}
+                checked={includeToday}
+                onChange={setIncludeToday}
+                className="h-5 w-9"
+              />
+            </label>
           </div>
 
           <ControlScrollList grow>

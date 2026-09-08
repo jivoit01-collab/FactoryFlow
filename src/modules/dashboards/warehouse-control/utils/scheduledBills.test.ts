@@ -124,19 +124,82 @@ describe('buildScheduledQueue', () => {
         makeBill({ docEntry: 2, status: 'PENDING', litres: 500, weight: 480, total: 125000 }),
         // Booked, dispatched and undated bills are not in the queue, so their
         // load must not show up in the backlog either.
-        makeBill({ docEntry: 3, status: 'BOOKED', vehicleId: 7, litres: 9000, weight: 9000, total: 9 }),
+        makeBill({
+          docEntry: 3,
+          status: 'BOOKED',
+          vehicleId: 7,
+          litres: 9000,
+          weight: 9000,
+          total: 9,
+        }),
         makeBill({ docEntry: 4, status: 'DISPATCHED', litres: 9000, weight: 9000, total: 9 }),
         makeBill({ docEntry: 5, status: 'PENDING', dispatchDate: null, litres: 9000, weight: 9000 }),
       ],
     });
 
     expect(queue.counts.total).toBe(2);
-    expect(queue.totals).toEqual({ litres: 1500, weightKg: 1430, amount: 375000 });
+    expect(queue.totals.all).toEqual({ litres: 1500, weightKg: 1430, amount: 375000 });
+  });
+
+  it('separates the load due today from the rest, keeping upcoming in both', () => {
+    const queue = buildScheduledQueue({
+      today: TODAY,
+      bills: [
+        makeBill({
+          docEntry: 1,
+          status: 'PENDING',
+          dispatchDate: '2026-09-01',
+          litres: 700,
+          weight: 600,
+          total: 70000,
+        }),
+        makeBill({
+          docEntry: 2,
+          status: 'PENDING',
+          dispatchDate: TODAY,
+          litres: 200,
+          weight: 150,
+          total: 20000,
+        }),
+        makeBill({
+          docEntry: 3,
+          status: 'PENDING',
+          dispatchDate: '2026-09-20',
+          litres: 100,
+          weight: 90,
+          total: 10000,
+        }),
+      ],
+    });
+
+    expect(queue.totals.all).toEqual({ litres: 1000, weightKg: 840, amount: 100000 });
+    // Today's 200 L drops out; the upcoming 100 L stays — "without today" is not
+    // the same thing as "overdue only".
+    expect(queue.totals.withoutToday).toEqual({ litres: 800, weightKg: 690, amount: 80000 });
+  });
+
+  it('leaves both totals equal when nothing is due today', () => {
+    const queue = buildScheduledQueue({
+      today: TODAY,
+      bills: [
+        makeBill({
+          docEntry: 1,
+          status: 'PENDING',
+          dispatchDate: '2026-09-01',
+          litres: 700,
+          weight: 600,
+          total: 70000,
+        }),
+      ],
+    });
+
+    expect(queue.totals.withoutToday).toEqual(queue.totals.all);
   });
 
   it('reports zero totals for an empty queue rather than NaN', () => {
     const queue = buildScheduledQueue({ today: TODAY, bills: [] });
 
-    expect(queue.totals).toEqual({ litres: 0, weightKg: 0, amount: 0 });
+    expect(queue.totals.all).toEqual({ litres: 0, weightKg: 0, amount: 0 });
+    expect(queue.totals.withoutToday).toEqual({ litres: 0, weightKg: 0, amount: 0 });
   });
 });
