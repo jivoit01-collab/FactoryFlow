@@ -23,13 +23,27 @@ interface FGItemRow {
   item_name: string;
   ordered_qty: number;
   received_prev: number; // already received on the PO
-  remaining_initial: number;
+  // SAP's POR1.OpenQty — the basis for the over-receipt ceiling. null when it has
+  // not been read yet (edit mode, before the PO is re-fetched).
+  remaining_initial: number | null;
   received_now: number;
   uom: string;
   rate: number;
 }
 
+// SAP refuses a receipt above 110% of the PO line's OPEN quantity — it checks
+// PDN1."Quantity" > PDN1."BaseOpnQty" * 1.10 (error 200017), not 110% of the
+// quantity originally ordered. Keep in step with the server's
+// raw_material_gatein/services/validations.py.
 const OVER_RECEIPT_TOLERANCE = 1.1;
+
+/**
+ * Most that may be received against a PO line — null when there is no cap to show,
+ * either because this company does not enforce the rule (the server says so per PO)
+ * or because the line's open qty has not been read yet.
+ */
+const overReceiptCeiling = (openQty: number | null, enforced: boolean): number | null =>
+  !enforced || openQty === null ? null : openQty * OVER_RECEIPT_TOLERANCE;
 
 export default function Step2Page() {
   const navigate = useNavigate();
@@ -39,6 +53,7 @@ export default function Step2Page() {
   const [supplierCode, setSupplierCode] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [poNumber, setPoNumber] = useState('');
+  const [overReceiptEnforced, setOverReceiptEnforced] = useState(false);
   const [items, setItems] = useState<FGItemRow[]>([]);
   const [receiptId, setReceiptId] = useState<number | null>(null);
   const [poDropdownOpen, setPoDropdownOpen] = useState(false);
@@ -48,10 +63,14 @@ export default function Step2Page() {
   const { data: existingReceipts, isLoading: isLoadingReceipts } = useFGReceipts(
     isEditMode ? entryIdNumber : null,
   );
-  const { data: openPOs = [], isLoading: isLoadingPOs } = useOpenFGPOs(
-    supplierCode,
-    poDropdownOpen,
-  );
+  // A saved receipt stores no open quantity, so an edit-mode page has to re-read the
+  // PO before it can show a ceiling.
+  const needsOpenQtys = items.some((it) => it.remaining_initial === null);
+  const {
+    data: openPOs = [],
+    isLoading: isLoadingPOs,
+    error: poError,
+  } = useOpenFGPOs(supplierCode, poDropdownOpen || (needsOpenQtys && !!poNumber));
 
   const createReceipt = useCreateFGReceipt(entryIdNumber ?? 0);
   const updateReceipt = useUpdateFGReceipt(entryIdNumber ?? 0);
@@ -71,7 +90,10 @@ export default function Step2Page() {
         item_name: it.item_name,
         ordered_qty: Number(it.ordered_qty) || 0,
         received_prev: 0,
-        remaining_initial: Number(it.ordered_qty) || 0,
+        // The saved receipt carries no open quantity; standing in the ordered
+        // quantity gave a ceiling of ordered x 1.1 on a line that may have almost
+        // nothing left open. Left unknown until the PO is re-read below.
+        remaining_initial: null,
         received_now: Number(it.received_qty) || 0,
         uom: it.uom,
         rate: Number(it.unit_price) || 0,
@@ -79,9 +101,37 @@ export default function Step2Page() {
     );
   }, [existingReceipts]);
 
+  // Backfill SAP's open quantities once the PO has been re-read. Only fills gaps, so
+  // it cannot fight a fresh PO selection. A failed read leaves the ceiling unknown
+  // rather than guessing at it — the server re-checks against SAP regardless.
+  useEffect(() => {
+    if (!needsOpenQtys || !poNumber || isLoadingPOs || poError) return;
+    const matchingPO = openPOs.find((po) => po.po_number === poNumber);
+    const openByLine = new Map(
+      (matchingPO?.items ?? []).map((it) => [
+        it.line_num,
+        { open: Number(it.remaining_qty) || 0, received: Number(it.received_qty) || 0 },
+      ]),
+    );
+    setOverReceiptEnforced(matchingPO?.over_receipt_enforced ?? false);
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.remaining_initial !== null) return it;
+        const fromPO = openByLine.get(it.line_num);
+        // Absent from the open-PO list means nothing is left open against the line.
+        return {
+          ...it,
+          received_prev: fromPO?.received ?? it.received_prev,
+          remaining_initial: fromPO?.open ?? 0,
+        };
+      }),
+    );
+  }, [needsOpenQtys, poNumber, isLoadingPOs, poError, openPOs]);
+
   const handleSelectPO = (po: PurchaseOrder) => {
     setPoNumber(po.po_number);
     setPoDropdownOpen(false);
+    setOverReceiptEnforced(po.over_receipt_enforced ?? false);
     setItems(
       po.items.map((it) => {
         const remaining = Number(it.remaining_qty) || 0;
@@ -141,12 +191,16 @@ export default function Step2Page() {
       setError('Enter a received quantity for at least one item.');
       return false;
     }
-    const over = items.find(
-      (it) => it.received_now > it.ordered_qty * OVER_RECEIPT_TOLERANCE,
-    );
+    const over = items.find((it) => {
+      const ceiling = overReceiptCeiling(it.remaining_initial, overReceiptEnforced);
+      return ceiling !== null && it.received_now > ceiling;
+    });
     if (over) {
+      const ceiling = overReceiptCeiling(over.remaining_initial, overReceiptEnforced) ?? 0;
       setError(
-        `Received quantity for ${over.po_item_code} exceeds 110% of the ordered quantity.`,
+        `Only ${over.remaining_initial ?? 0} ${over.uom} is open on the PO line for ` +
+          `${over.po_item_code}, so SAP will accept at most ${ceiling.toFixed(3)} ` +
+          `${over.uom} (open + 10% tolerance).`,
       );
       return false;
     }
@@ -259,12 +313,18 @@ export default function Step2Page() {
                     <td className="p-2">{it.item_name}</td>
                     <td className="p-2 text-right">{it.rate.toFixed(2)}</td>
                     <td className="p-2 text-right">{it.ordered_qty}</td>
-                    <td className="p-2 text-right">{it.remaining_initial}</td>
+                    <td className="p-2 text-right">
+                      {it.remaining_initial === null ? '—' : it.remaining_initial}
+                    </td>
                     <td className="p-2 text-right">
                       <Input
                         type="number"
                         step="0.001"
                         min="0"
+                        max={
+                          overReceiptCeiling(it.remaining_initial, overReceiptEnforced) ??
+                          undefined
+                        }
                         className="w-28 text-right"
                         value={it.received_now || ''}
                         onChange={(e) => handleReceivedChange(it.line_num, e.target.value)}

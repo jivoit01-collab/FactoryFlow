@@ -9,7 +9,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { PointerEvent } from 'react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -53,6 +53,20 @@ import { FillDataAlert, StepFooter, StepHeader, StepLoadingSpinner, VendorSelect
 import { WIZARD_CONFIG } from '../../constants';
 import { useEntryId, useEntryStepTracker } from '../../hooks';
 
+// SAP refuses a receipt above 110% of the PO line's OPEN quantity — it checks
+// PDN1."Quantity" > PDN1."BaseOpnQty" * 1.10 (error 200017), not 110% of the
+// quantity originally ordered. This must stay in step with
+// raw_material_gatein/services/validations.py on the server.
+const OVER_RECEIPT_TOLERANCE = 1.1;
+
+/**
+ * Most that may be received against a PO line — null when there is no cap to show,
+ * either because this company does not enforce the rule (the server says so per PO)
+ * or because the line's open qty has not been read yet.
+ */
+const overReceiptCeiling = (openQty: number | null, enforced: boolean): number | null =>
+  !enforced || openQty === null ? null : openQty * OVER_RECEIPT_TOLERANCE;
+
 interface POItemFormData {
   line_num: number; // SAP PO LineNum (POR1.LineNum) — unique identifier for this row
   po_item_code: string;
@@ -60,7 +74,10 @@ interface POItemFormData {
   ordered_qty: number;
   received_qty: number; // Previously received from other gate entries
   received_qty_now: number; // What user is entering now
-  remaining_qty_initial: number; // Initial remaining from PO (ordered - previously received)
+  // SAP's POR1.OpenQty for this line — the basis for the over-receipt ceiling.
+  // null when it has not been read yet (edit mode, before the PO is re-fetched);
+  // the client-side cap is skipped then and the server stays the authority.
+  remaining_qty_initial: number | null;
   remaining_qty: number; // Auto-calculated: remaining_qty_initial - received_qty_now
   uom: string;
   rate: number;
@@ -68,6 +85,9 @@ interface POItemFormData {
 
 interface POFormData {
   id: string; // Unique ID for this PO form
+  // From the PO lookup. Defaults false so a stale client never blocks a receipt the
+  // server would accept.
+  overReceiptEnforced: boolean;
   receiptId?: number;
   isEditable?: boolean;
   lockReason?: string | null;
@@ -114,6 +134,7 @@ export default function Step3Page() {
       id: 'po-initial-1',
       supplierName: '',
       supplierCode: '',
+      overReceiptEnforced: false,
       poNumber: '',
       items: [],
     },
@@ -255,6 +276,7 @@ export default function Step3Page() {
             poNumber: po.po_number,
             supplierName: po.supplier_name,
             supplierCode: po.supplier_code,
+            overReceiptEnforced: po.over_receipt_enforced ?? false,
             items: po.items.map((item) => {
               const orderedQty = parseFloat(item.ordered_qty);
               const receivedQty = parseFloat(item.received_qty || '0'); // Previously received
@@ -281,6 +303,43 @@ export default function Step3Page() {
     setPOSearchTerms((prev) => ({ ...prev, [poFormId]: '' }));
   };
 
+  // Backfill SAP's open quantities onto an edit-mode form once its PO has been
+  // re-read, so the ceiling stops being unknown. Only ever fills gaps — a row that
+  // already has an open qty is left alone, so this cannot fight the fresh path.
+  const handleOpenQtysLoaded = useCallback((poFormId: string, po: PurchaseOrder | null) => {
+    const openByLine = new Map(
+      (po?.items ?? []).map((item) => [
+        item.line_num,
+        {
+          open: parseFloat(item.remaining_qty) || 0,
+          received: parseFloat(item.received_qty || '0') || 0,
+        },
+      ]),
+    );
+
+    setPoForms((prev) =>
+      prev.map((form) => {
+        if (form.id !== poFormId) return form;
+        return {
+          ...form,
+          overReceiptEnforced: po?.over_receipt_enforced ?? false,
+          items: form.items.map((item) => {
+            if (item.remaining_qty_initial !== null) return item;
+            const fromPO = openByLine.get(item.line_num);
+            // A line that has dropped off the open PO has nothing left open.
+            const open = fromPO?.open ?? 0;
+            return {
+              ...item,
+              received_qty: fromPO?.received ?? item.received_qty,
+              remaining_qty_initial: open,
+              remaining_qty: Math.max(0, open - item.received_qty_now),
+            };
+          }),
+        };
+      }),
+    );
+  }, []);
+
   const handleReceivedQtyChange = (poFormId: string, lineNum: number, value: string) => {
     if (isPOFormLocked(poFormId)) {
       notifyLockedPO(poFormId);
@@ -296,7 +355,10 @@ export default function Step3Page() {
             items: form.items.map((item) => {
               if (item.line_num === lineNum) {
                 // Calculate remaining: remaining_qty_initial - received_qty_now
-                const newRemainingQty = Math.max(0, item.remaining_qty_initial - receivedQtyNow);
+                const newRemainingQty =
+                  item.remaining_qty_initial === null
+                    ? item.remaining_qty
+                    : Math.max(0, item.remaining_qty_initial - receivedQtyNow);
                 return {
                   ...item,
                   received_qty_now: receivedQtyNow,
@@ -338,6 +400,7 @@ export default function Step3Page() {
         id: newId,
         supplierName: '',
         supplierCode: '',
+        overReceiptEnforced: false,
         poNumber: '',
         items: [],
       },
@@ -382,6 +445,7 @@ export default function Step3Page() {
         id: `${baseId}-po-${poFormCounterRef.current}`,
         supplierName: '',
         supplierCode: '',
+        overReceiptEnforced: false,
         poNumber: '',
         items: [],
       },
@@ -402,6 +466,7 @@ export default function Step3Page() {
               lockReason: null,
               supplierName: '',
               supplierCode: '',
+              overReceiptEnforced: false,
               poNumber: '',
               items: [],
             }
@@ -421,23 +486,23 @@ export default function Step3Page() {
         lockReason: receipt.lock_reason,
         supplierName: receipt.supplier_name,
         supplierCode: receipt.supplier_code,
+        overReceiptEnforced: false, // Backfilled with the open quantities below
         poNumber: receipt.po_number,
         items: receipt.items.map((item) => {
-          // In edit mode, we need to reconstruct the data
-          // The received_qty in the receipt is what was received in this entry
-          // We'd need to fetch the PO to get the initial remaining_qty
-          // For now, we'll use a placeholder
-          const orderedQty = item.ordered_qty;
+          // The saved receipt carries no open quantity, and standing in the ordered
+          // quantity for it (as this used to) hands the operator a ceiling of
+          // ordered x 1.1 on a line that may have almost nothing left open. Leave it
+          // unknown; POCard re-fetches the PO and backfills the real OpenQty.
           const receivedQtyNow = item.received_qty;
           return {
             line_num: item.sap_line_num,
             po_item_code: item.po_item_code,
             item_name: item.item_name,
-            ordered_qty: orderedQty,
-            received_qty: 0, // Previously received - would need to fetch from PO
+            ordered_qty: item.ordered_qty,
+            received_qty: 0, // Backfilled from the PO alongside the open qty
             received_qty_now: receivedQtyNow, // What was received in this entry
-            remaining_qty_initial: orderedQty, // Placeholder - would need PO data
-            remaining_qty: orderedQty - receivedQtyNow,
+            remaining_qty_initial: null, // Unknown until the PO is re-read
+            remaining_qty: 0,
             uom: item.uom,
             rate: item.unit_price || 0,
           };
@@ -557,16 +622,24 @@ export default function Step3Page() {
         setApiErrors(itemErrors);
         return;
       }
-      // Check that received quantity does not exceed remaining PO quantity + 10% tolerance
-      const overReceivedItems = form.items.filter(
-        (item) => item.received_qty_now > (item.ordered_qty * 1.1 - item.received_qty),
-      );
+      // Received quantity must stay within 110% of what is still OPEN on the PO
+      // line. Rows whose open qty has not been read yet are left to the server.
+      const overReceivedItems = form.items.filter((item) => {
+        const ceiling = overReceiptCeiling(
+          item.remaining_qty_initial,
+          form.overReceiptEnforced,
+        );
+        return ceiling !== null && item.received_qty_now > ceiling;
+      });
       if (overReceivedItems.length > 0) {
         const itemErrors: Record<string, string> = {};
         overReceivedItems.forEach((item) => {
-          const maxAllowed = (item.ordered_qty * 1.1 - item.received_qty).toFixed(3);
+          const ceiling =
+            overReceiptCeiling(item.remaining_qty_initial, form.overReceiptEnforced) ?? 0;
           itemErrors[`${form.id}_item_${item.line_num}`] =
-            `Cannot exceed ${maxAllowed} ${item.uom} (remaining + 10% tolerance)`;
+            `Only ${(item.remaining_qty_initial ?? 0).toFixed(3)} ${item.uom} is open on this ` +
+            `PO line, so SAP will accept at most ${ceiling.toFixed(3)} ${item.uom} ` +
+            `(open + 10% tolerance)`;
         });
         setApiErrors(itemErrors);
         return;
@@ -688,6 +761,7 @@ export default function Step3Page() {
             onReceivedQtyChange={(lineNum, value) =>
               handleReceivedQtyChange(poForm.id, lineNum, value)
             }
+            onOpenQtysLoaded={(po) => handleOpenQtysLoaded(poForm.id, po)}
             onRemove={() => handleRemovePO(poForm.id)}
             canRemove={poForms.length > 1 && !poForm.receiptId}
             apiErrors={apiErrors}
@@ -789,6 +863,7 @@ interface POCardProps {
   onPOFocus: () => void;
   onPOSelect: (po: PurchaseOrder) => void;
   onReceivedQtyChange: (lineNum: number, value: string) => void;
+  onOpenQtysLoaded: (po: PurchaseOrder | null) => void;
   onRemove: () => void;
   canRemove: boolean;
   apiErrors: Record<string, string>;
@@ -810,6 +885,7 @@ function POCard({
   onPOFocus,
   onPOSelect,
   onReceivedQtyChange,
+  onOpenQtysLoaded,
   onRemove,
   canRemove,
   apiErrors,
@@ -825,13 +901,39 @@ function POCard({
   const containerRef = useRef<HTMLDivElement>(null);
   const debouncedPOSearch = useDebounce(poSearchTerm, 100);
 
-  // Fetch POs only when dropdown is opened and supplier code exists
-  const shouldFetchPOs = openPODropdown && !!poForm.supplierCode;
+  // A saved receipt stores no open quantity, so an edit-mode card has to re-read
+  // the PO before it can show a ceiling — without this the row would be capped by
+  // the server alone, with nothing on screen to warn the operator first.
+  const needsOpenQtys =
+    !!poForm.poNumber &&
+    !!poForm.supplierCode &&
+    poForm.items.some((item) => item.remaining_qty_initial === null);
+
+  // Fetch POs when the dropdown is opened, or to backfill missing open quantities
+  const shouldFetchPOs = (openPODropdown || needsOpenQtys) && !!poForm.supplierCode;
   const {
     data: purchaseOrders = [],
     isLoading: isLoadingPOs,
     error: poError,
   } = useOpenPOs(poForm.supplierCode || undefined, shouldFetchPOs);
+
+  useEffect(() => {
+    if (!needsOpenQtys || isLoadingPOs) return;
+    // A failed read leaves the ceiling unknown rather than guessing at it — the
+    // server re-checks against SAP regardless.
+    if (poError) return;
+    const matchingPO = purchaseOrders.find((po) => po.po_number === poForm.poNumber);
+    // Not in the open-PO list means nothing is open against it, which is a real
+    // answer (and passing null here also stops this effect re-running forever).
+    onOpenQtysLoaded(matchingPO ?? null);
+  }, [
+    needsOpenQtys,
+    isLoadingPOs,
+    poError,
+    purchaseOrders,
+    poForm.poNumber,
+    onOpenQtysLoaded,
+  ]);
 
   // Check if error is an API error that should show Fill Data button
   const isPOError = Boolean(
@@ -1107,7 +1209,12 @@ function POCard({
                               type="number"
                               step="0.001"
                               min="0"
-                              max={item.ordered_qty * 1.1 - item.received_qty}
+                              max={
+                                overReceiptCeiling(
+                                  item.remaining_qty_initial,
+                                  poForm.overReceiptEnforced,
+                                ) ?? undefined
+                              }
                               placeholder="0.000"
                               value={item.received_qty_now || ''}
                               onChange={(e) =>
@@ -1121,13 +1228,29 @@ function POCard({
                                 effectiveReadOnly && 'cursor-not-allowed opacity-50',
                               )}
                             />
-                            {apiErrors[`${poForm.id}_item_${item.line_num}`] && (
+                            {apiErrors[`${poForm.id}_item_${item.line_num}`] ? (
                               <p className="text-xs text-destructive mt-1">
                                 {apiErrors[`${poForm.id}_item_${item.line_num}`]}
                               </p>
+                            ) : (
+                              (() => {
+                                const ceiling = overReceiptCeiling(
+                                  item.remaining_qty_initial,
+                                  poForm.overReceiptEnforced,
+                                );
+                                if (ceiling === null) return null;
+                                return (
+                                  <p className="text-xs text-muted-foreground mt-1 whitespace-nowrap">
+                                    {item.remaining_qty_initial} open, max{' '}
+                                    {ceiling.toFixed(3)}
+                                  </p>
+                                );
+                              })()
                             )}
                           </td>
-                          <td className="p-3 text-sm font-medium">{item.remaining_qty}</td>
+                          <td className="p-3 text-sm font-medium">
+                            {item.remaining_qty_initial === null ? '—' : item.remaining_qty}
+                          </td>
                           <td className="p-3 text-sm">{item.uom}</td>
                         </tr>
                       ))}

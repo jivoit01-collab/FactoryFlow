@@ -21,6 +21,12 @@ export interface PurchaseOrder {
   vendor_ref?: string;
   doc_date?: string | null;
   items: POItem[];
+  /**
+   * Whether the gate must hold receipts to 110% of a line's open quantity. SAP only
+   * enforces its over-receipt check in some companies, so the server decides rather
+   * than the client hard-coding the list. Absent/false means do not cap.
+   */
+  over_receipt_enforced?: boolean;
 }
 
 export interface POReceiptItem {
