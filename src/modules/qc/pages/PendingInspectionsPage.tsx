@@ -139,6 +139,7 @@ export default function PendingInspectionsPage() {
     return byMaterial.filter(
       (item) =>
         item.entry_no?.toLowerCase().includes(searchLower) ||
+        item.vehicle_no?.toLowerCase().includes(searchLower) ||
         item.party_name?.toLowerCase().includes(searchLower) ||
         item.po_item_code?.toLowerCase().includes(searchLower) ||
         item.item_name?.toLowerCase().includes(searchLower) ||
@@ -184,6 +185,7 @@ export default function PendingInspectionsPage() {
 
     const rows = filteredItems.map((item) => ({
       'Gate Entry No.': item.entry_no || '-',
+      'Vehicle No.': item.vehicle_no || '-',
       Vendor: item.party_name || '-',
       'SAP Material Code': item.po_item_code || '-',
       'SAP Material': item.item_name || '-',
@@ -294,7 +296,7 @@ export default function PendingInspectionsPage() {
       <div className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search entry, vendor, SAP material, report, lot, or status..."
+          placeholder="Search entry, vehicle, vendor, SAP material, report, lot, or status..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -393,15 +395,30 @@ export default function PendingInspectionsPage() {
               <table className="w-full min-w-[1200px]">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="p-3 text-left text-sm font-medium">Gate Entry No.</th>
-                    <th className="p-3 text-left text-sm font-medium">Vendor</th>
-                    <th className="p-3 text-left text-sm font-medium">SAP Material</th>
-                    <th className="p-3 text-left text-sm font-medium">Report No.</th>
-                    <th className="p-3 text-left text-sm font-medium">Internal Lot No.</th>
-                    <th className="p-3 text-left text-sm font-medium">Material Type</th>
-                    <th className="p-3 text-left text-sm font-medium">Chemist</th>
-                    <th className="p-3 text-left text-sm font-medium">Manager</th>
-                    <th className="p-3 text-left text-sm font-medium">Date/Time</th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">
+                      Gate Entry No.
+                    </th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">
+                      Vehicle No.
+                    </th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">Vendor</th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">
+                      SAP Material
+                    </th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">
+                      Report No.
+                    </th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">
+                      Internal Lot No.
+                    </th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">
+                      Material Type
+                    </th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">Chemist</th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">Manager</th>
+                    <th className="p-3 text-left text-sm font-medium whitespace-nowrap">
+                      Date/Time
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -415,7 +432,12 @@ export default function PendingInspectionsPage() {
                         className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
                         onClick={() => navigate(getNavigateTo(item))}
                       >
-                        <td className="p-3 text-sm font-medium">{item.entry_no || '-'}</td>
+                        <td className="p-3 text-sm font-medium whitespace-nowrap">
+                          {item.entry_no || '-'}
+                        </td>
+                        <td className="p-3 text-sm font-mono text-xs whitespace-nowrap">
+                          {item.vehicle_no || '-'}
+                        </td>
                         <td className="p-3 text-sm">
                           <div className="max-w-[220px] truncate" title={item.party_name || '-'}>
                             {item.party_name || '-'}
@@ -434,24 +456,28 @@ export default function PendingInspectionsPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 text-sm">{item.report_no || '-'}</td>
-                        <td className="p-3 text-sm">{item.internal_lot_no || '-'}</td>
-                        <td className="p-3 text-sm">{item.material_type_name || '-'}</td>
+                        <td className="p-3 text-sm whitespace-nowrap">{item.report_no || '-'}</td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          {item.internal_lot_no || '-'}
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          {item.material_type_name || '-'}
+                        </td>
                         <td className="p-3 text-sm">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${chemistBadge.className}`}
+                            className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${chemistBadge.className}`}
                           >
                             {chemistBadge.label}
                           </span>
                         </td>
                         <td className="p-3 text-sm">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${managerBadge.className}`}
+                            className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${managerBadge.className}`}
                           >
                             {managerBadge.label}
                           </span>
                         </td>
-                        <td className="p-3 text-sm text-muted-foreground">
+                        <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">
                           {formatDateTime(item.submitted_at || item.created_at)}
                         </td>
                       </tr>

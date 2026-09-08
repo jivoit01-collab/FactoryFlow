@@ -113,6 +113,15 @@ describe('PendingInspectionsPage — States', () => {
     expect(content).toContain('item.party_name?.toLowerCase().includes(searchLower)');
     expect(content).toContain('item.po_item_code?.toLowerCase().includes(searchLower)');
     expect(content).toContain('item.item_name?.toLowerCase().includes(searchLower)');
-    expect(content).toContain('Search entry, vendor, SAP material, report, lot, or status...');
+    expect(content).toContain(
+      'Search entry, vehicle, vendor, SAP material, report, lot, or status...',
+    );
+  });
+
+  it('shows and searches the gate entry vehicle number', () => {
+    const content = readSource();
+    expect(content).toContain('Vehicle No.');
+    expect(content).toContain('item.vehicle_no');
+    expect(content).toContain('item.vehicle_no?.toLowerCase().includes(searchLower)');
   });
 });

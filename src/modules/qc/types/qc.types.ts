@@ -247,6 +247,8 @@ export interface InspectionListItem {
   arrival_slip_id: number;
   inspection_id: number | null;
   entry_no: string;
+  /** Truck number from the gate entry (falls back to the inspection's typed value) */
+  vehicle_no: string | null;
   report_no: string | null;
   internal_lot_no: string | null;
   po_item_code: string;
