@@ -43,6 +43,19 @@ export const WAREHOUSE_CONTROL_VIEW_PERMISSIONS: readonly string[] = [
 // ============================================================================
 
 /**
+ * Warehouses the Non-Moving panel reports on.
+ *
+ * The full Non-Moving dashboard covers every factory warehouse; this board is
+ * scoped to the one the floor actually asks about, so the panel is a single
+ * meaningful row rather than a league table nobody reads. The summary above it
+ * is recomputed over the same scope — a header counting warehouses the list does
+ * not show would be worse than no header.
+ *
+ * Leave the list empty to fall back to every factory warehouse.
+ */
+export const WAREHOUSE_CONTROL_NON_MOVING_WAREHOUSES: readonly string[] = ['BH-BT'];
+
+/**
  * Movement age the board opens on. The full Non-Moving dashboard lets the user
  * choose; this board is a glance, so it fixes the same default that page uses.
  */
@@ -54,11 +67,23 @@ export const WAREHOUSE_CONTROL_NON_MOVING_AGE_DAYS = 45;
  */
 export const WAREHOUSE_CONTROL_LINKING_FETCH_LIMIT = 2000;
 
-/** Row cap on today's SAP bills read. */
-export const WAREHOUSE_CONTROL_BILLS_FETCH_LIMIT = 500;
+/**
+ * How far the Dispatch Plans read reaches either side of today. The Plans page
+ * itself opens on a month back through today; the board also needs what is
+ * scheduled ahead, because a bill dated next week has not been dispatched either.
+ */
+export const WAREHOUSE_CONTROL_PLANS_LOOKBACK_DAYS = 30;
+export const WAREHOUSE_CONTROL_PLANS_LOOKAHEAD_DAYS = 30;
 
-/** How many rows each panel shows before "view all" takes over. */
-export const WAREHOUSE_CONTROL_PREVIEW_ROWS = 8;
+/**
+ * Safety ceiling on rendered rows.
+ *
+ * Panels list their whole set and scroll — a header that says "91 bills" has to
+ * mean 91 reachable rows. This is only a guard against a pathological day: the
+ * feeds are already capped server-side, and a normal one is well under this. If
+ * it ever bites, the panel says so rather than truncating in silence.
+ */
+export const WAREHOUSE_CONTROL_MAX_RENDERED_ROWS = 500;
 
 /** Dispatch data moves through the day; re-read it more eagerly than SAP stock. */
 export const WAREHOUSE_CONTROL_STALE_TIME = 60 * 1000;

@@ -1,32 +1,39 @@
 /**
  * Reads behind the Warehouse Control board.
  *
- * Nothing new is fetched from the server here — every panel rides an existing
- * feed. The non-moving snapshot deliberately reuses the Non-Moving dashboard's
- * own hooks so both screens share one React Query cache entry; the dispatch
- * reads are thin wrappers that add an `enabled` flag, so a panel the user may
- * not see never costs a request.
+ * Nothing new is fetched from the server here — every panel rides a feed one of
+ * the full screens already owns, so the board can never show a different number
+ * to the page it links to:
+ *
+ *   Today's Bills + Vehicle Linking  →  the Bills Linking feed (one read, two folds)
+ *   Pending Links                    →  the Dispatch Plans feed
+ *   Non-Moving                       →  the Non-Moving dashboard's own hooks
+ *
+ * The wrappers add an `enabled` flag, so a panel the user may not see never
+ * costs a request.
  */
 import { useQuery } from '@tanstack/react-query';
+import { addDays, format, subDays } from 'date-fns';
 
 import { useAuth } from '@/core/auth';
 import { dispatchPlansApi } from '@/modules/dashboards/dispatch-plans/api';
 import { dispatchLinkingApi } from '@/modules/vehicle-management/api';
 
 import {
-  WAREHOUSE_CONTROL_BILLS_FETCH_LIMIT,
   WAREHOUSE_CONTROL_LINKING_FETCH_LIMIT,
+  WAREHOUSE_CONTROL_PLANS_LOOKAHEAD_DAYS,
+  WAREHOUSE_CONTROL_PLANS_LOOKBACK_DAYS,
   WAREHOUSE_CONTROL_STALE_TIME,
 } from '../constants';
 
 export const WAREHOUSE_CONTROL_QUERY_KEYS = {
   all: ['warehouse-control'] as const,
 
-  todaysBills: (date: string, companyId?: number | string) =>
-    [...WAREHOUSE_CONTROL_QUERY_KEYS.all, 'todays-bills', companyId, date] as const,
-
   linkingFeed: (date: string, companyId?: number | string) =>
     [...WAREHOUSE_CONTROL_QUERY_KEYS.all, 'linking-feed', companyId, date] as const,
+
+  planBills: (date: string, companyId?: number | string) =>
+    [...WAREHOUSE_CONTROL_QUERY_KEYS.all, 'plan-bills', companyId, date] as const,
 };
 
 /** SAP hiccups are worth one retry; an auth/permission answer is not. */
@@ -37,30 +44,9 @@ function sapRetry(failureCount: number, error: unknown): boolean {
 }
 
 /**
- * Every SAP bill raised on `date`. Windowed on the invoice date (not the planned
- * dispatch date) — "today's bills" means the invoices cut today.
- */
-export function useControlTodaysBills(date: string, enabled = true) {
-  const { currentCompany } = useAuth();
-
-  return useQuery({
-    queryKey: WAREHOUSE_CONTROL_QUERY_KEYS.todaysBills(date, currentCompany?.company_id),
-    queryFn: () =>
-      dispatchPlansApi.getBills({
-        date_from: date,
-        date_to: date,
-        limit: WAREHOUSE_CONTROL_BILLS_FETCH_LIMIT,
-      }),
-    enabled: enabled && Boolean(date),
-    staleTime: WAREHOUSE_CONTROL_STALE_TIME,
-    retry: sapRetry,
-  });
-}
-
-/**
- * One read of every dispatch-dated bill in the linking window. Both the truck
- * fold and the pending-linking queue are derived from this, so the board asks
- * for the feed once rather than once per bucket.
+ * One read of every dispatch-dated bill in the linking window — the same feed
+ * the Bills Linking page uses. Today's Bills and Vehicle Linking are both folded
+ * from this, so the board asks for it once rather than once per panel.
  */
 export function useControlLinkingFeed(date: string, enabled = true) {
   const { currentCompany } = useAuth();
@@ -76,5 +62,41 @@ export function useControlLinkingFeed(date: string, enabled = true) {
       }),
     enabled: enabled && Boolean(date),
     staleTime: WAREHOUSE_CONTROL_STALE_TIME,
+  });
+}
+
+/**
+ * The Dispatch Plans feed, in that page's own shape.
+ *
+ * `by_dispatch_date` + `include_unscheduled: false` is what makes this "bills
+ * with a date filled in" — the server windows on the planned dispatch date and
+ * drops bills that have none. `selected_only` and `exclude_jivo_mart_transfer`
+ * match the Plans page so the board counts exactly the bills that page lists.
+ *
+ * The window reaches forward as well as back: the Plans page opens on a month
+ * back through today, but a board about what has not gone out has to show what
+ * is coming up too.
+ */
+export function useControlPlanBills(date: string, enabled = true) {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: WAREHOUSE_CONTROL_QUERY_KEYS.planBills(date, currentCompany?.company_id),
+    queryFn: () => {
+      const base = new Date(`${date}T00:00:00`);
+      return dispatchPlansApi.getBills({
+        date_from: format(subDays(base, WAREHOUSE_CONTROL_PLANS_LOOKBACK_DAYS), 'yyyy-MM-dd'),
+        date_to: format(addDays(base, WAREHOUSE_CONTROL_PLANS_LOOKAHEAD_DAYS), 'yyyy-MM-dd'),
+        booking_status: 'all',
+        exclude_jivo_mart_transfer: true,
+        by_dispatch_date: true,
+        include_unscheduled: false,
+        selected_only: true,
+        limit: WAREHOUSE_CONTROL_LINKING_FETCH_LIMIT,
+      });
+    },
+    enabled: enabled && Boolean(date),
+    staleTime: WAREHOUSE_CONTROL_STALE_TIME,
+    retry: sapRetry,
   });
 }

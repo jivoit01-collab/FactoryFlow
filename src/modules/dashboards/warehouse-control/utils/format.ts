@@ -32,3 +32,19 @@ export function formatPercent(value: number): string {
 export function compactText(value: string | null | undefined, fallback = '-'): string {
   return value?.trim() || fallback;
 }
+
+/** `2026-09-08` → `8 Sep 2026`. Anything unparseable comes back unchanged. */
+export function formatDay(value: string | null | undefined): string {
+  const text = value?.trim();
+  if (!text) return '';
+  const parsed = new Date(`${text.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return text;
+  return parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Weight in kilograms, or an empty string when there is none to show. */
+export function formatWeight(value: string | number | null | undefined): string {
+  const numeric = typeof value === 'number' ? value : Number.parseFloat(value ?? '');
+  if (!Number.isFinite(numeric) || numeric === 0) return '';
+  return `${formatDecimal(numeric)} kg`;
+}

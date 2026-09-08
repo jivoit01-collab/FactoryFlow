@@ -1,46 +1,93 @@
-import { Droplets, FileText, Package } from 'lucide-react';
+import { ChevronRight, Droplets, FileText, Package, Truck } from 'lucide-react';
 
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
-import type { DispatchBill, DispatchPlansMeta } from '@/modules/dashboards/dispatch-plans/types';
+import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
+import { cn } from '@/shared/utils';
 
-import { WAREHOUSE_CONTROL_PREVIEW_ROWS } from '../constants';
+import { WAREHOUSE_CONTROL_MAX_RENDERED_ROWS } from '../constants';
 import { SECTION_ACCENT } from '../constants/warehouse-control.theme';
+import type { ControlLinkingBoard } from '../types';
 import { compactText, formatCompactCurrency, formatCount, formatDecimal } from '../utils/format';
+import { useControlDetail } from './controlDetailContext';
+import { ControlScrollList } from './ControlScrollList';
 import { ControlSection } from './ControlSection';
 import { ControlEmpty, ControlError, ControlSkeletonRows } from './ControlStates';
 
 export interface TodaysBillsPanelProps {
-  bills: DispatchBill[];
-  meta?: DispatchPlansMeta;
+  board: ControlLinkingBoard;
   loading: boolean;
   isFetching: boolean;
   error: unknown;
   onRetry: () => void;
+  /** Grid placement, set by the board. */
+  className?: string;
 }
 
-/** One bill: identity and customer on the left, money on the right. */
-function BillRow({ bill }: { bill: DispatchBill }) {
+/**
+ * One bill, with the truck it rides on.
+ *
+ * The vehicle number is the point of this row, so it sits on its own line with a
+ * truck icon rather than being folded into the grey detail line — a reader
+ * scanning for "which truck is this on" should not have to parse a sentence.
+ *
+ * A dispatched bill keeps its place here, tinted and badged: what has already
+ * left is half of what a day's board is read for.
+ */
+function BillRow({
+  bill,
+  onSelect,
+}: {
+  bill: DispatchBill;
+  onSelect: (bill: DispatchBill) => void;
+}) {
+  const vehicleNo = compactText(bill.plan.vehicle_no, `Vehicle #${bill.plan.vehicle_id ?? '?'}`);
+  const isDispatched = bill.plan.booking_status === 'DISPATCHED';
+
   return (
-    <li className="flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-muted/40">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="shrink-0 text-sm font-semibold tabular-nums">#{bill.doc_num}</span>
-          <StatusBadge status={bill.plan.booking_status} />
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(bill)}
+        className={cn(
+          'flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none',
+          // Gone out — kept on the board as a record, tinted so it does not read
+          // as work still to do. The status badge says which.
+          isDispatched && 'bg-emerald-50/50 dark:bg-emerald-950/20',
+        )}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-sm font-semibold tabular-nums">#{bill.doc_num}</span>
+            <StatusBadge status={bill.plan.booking_status} />
+          </div>
+          <p className="truncate text-sm">{compactText(bill.card_name)}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs">
+            <Truck className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="truncate font-medium tracking-tight">{vehicleNo}</span>
+            {bill.plan.transporter_name?.trim() && (
+              <span className="truncate text-muted-foreground">
+                · {bill.plan.transporter_name.trim()}
+              </span>
+            )}
+          </p>
         </div>
-        <p className="truncate text-sm">{compactText(bill.card_name)}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {compactText(bill.city, 'No city')} · {formatDecimal(bill.total_litres)} L ·{' '}
-          {formatCount(bill.total_boxes)} boxes
-        </p>
-      </div>
-      <p className="shrink-0 text-sm font-semibold tabular-nums">
-        {formatCompactCurrency(bill.doc_total)}
-      </p>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <div className="text-right">
+            <p className="text-sm font-semibold tabular-nums">
+              {formatCompactCurrency(bill.doc_total)}
+            </p>
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {formatDecimal(bill.total_litres)} L
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </button>
     </li>
   );
 }
 
-/** A day total, shown as a small labelled figure under the header. */
+/** A running total, shown as a small labelled figure above the list. */
 function Total({
   icon: Icon,
   value,
@@ -61,77 +108,83 @@ function Total({
   );
 }
 
-/** Every SAP invoice cut today, with the day's totals above them. */
+/**
+ * Today's bills that have a truck against them, and which truck that is.
+ *
+ * Only linked bills appear: this panel answers "what is going out today and on
+ * what", so a bill with no vehicle belongs in Pending Links, not here. It reads
+ * the Bills Linking feed, the same one that page uses, and the count in the
+ * header names how many of today's bills are still waiting.
+ */
 export function TodaysBillsPanel({
-  bills,
-  meta,
+  board,
   loading,
   isFetching,
   error,
   onRetry,
+  className,
 }: TodaysBillsPanelProps) {
-  const visible = bills.slice(0, WAREHOUSE_CONTROL_PREVIEW_ROWS);
-  const hidden = bills.length - visible.length;
+  const { showBill } = useControlDetail();
+  // The whole day is listed and the box scrolls; the slice is only the ceiling.
+  const visible = board.linkedBills.slice(0, WAREHOUSE_CONTROL_MAX_RENDERED_ROWS);
+  const hidden = board.linkedBills.length - visible.length;
 
-  const metaLine = meta
-    ? `${formatCount(meta.total_bills)} bills · ${formatCompactCurrency(meta.total_doc_value)}`
-    : 'SAP invoices raised today';
+  const meta = board.counts.dispatchedBillsToday
+    ? `${formatCount(board.counts.linkedBillsToday)} on trucks · ${formatCount(board.counts.dispatchedBillsToday)} dispatched · ${formatCount(board.counts.unlinkedToday)} unlinked`
+    : `${formatCount(board.counts.linkedBillsToday)} on trucks · ${formatCount(board.counts.unlinkedToday)} still unlinked`;
 
   return (
     <ControlSection
+      className={className}
       id="todays-bills"
       title="Today's Bills"
-      description="SAP invoices raised today, with the day's running totals"
-      meta={metaLine}
+      description="Bills dated today that have a vehicle, and which vehicle — dispatched ones last"
+      meta={meta}
       icon={FileText}
       accent={SECTION_ACCENT.bills}
       isFetching={isFetching && !loading}
-      action={{ label: 'Dispatch plans', to: '/dispatch/plans' }}
+      action={{ label: 'Bill linking', to: '/dispatch/bills-linking' }}
     >
       {error ? (
         <ControlError
           error={error}
-          fallback="Today's bills could not be read from SAP."
+          fallback="The Bills Linking feed could not be read."
           onRetry={onRetry}
         />
       ) : loading ? (
         <ControlSkeletonRows rows={4} />
-      ) : !meta ? (
-        <ControlEmpty message="Today's bills could not be read." />
+      ) : visible.length === 0 ? (
+        <ControlEmpty message="No bill dated today has a vehicle attached yet." />
       ) : (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="grid shrink-0 grid-cols-3 gap-2">
             <Total
               icon={Droplets}
-              value={`${formatDecimal(meta.total_litres)} L`}
-              label="oil billed"
+              value={`${formatDecimal(board.totals.litres)} L`}
+              label="oil linked"
             />
+            <Total icon={Package} value={formatCount(board.totals.boxes)} label="boxes to move" />
             <Total
-              icon={Package}
-              value={formatCount(meta.total_boxes)}
-              label="boxes to move"
-            />
-            <Total
-              icon={FileText}
-              value={formatCount(meta.pending_count)}
-              label="still pending"
+              icon={Truck}
+              value={formatCount(board.counts.trucksToday)}
+              label="trucks carrying"
             />
           </div>
 
-          {visible.length === 0 ? (
-            <ControlEmpty message="No bills have been raised today yet." />
-          ) : (
-            <ul className="divide-y overflow-hidden rounded-lg border">
-              {visible.map((bill) => (
-                <BillRow key={`${bill.company_code ?? ''}-${bill.doc_entry}`} bill={bill} />
-              ))}
-            </ul>
-          )}
+          <ControlScrollList grow>
+            {visible.map((bill) => (
+              <BillRow
+                key={`${bill.company_code ?? ''}-${bill.doc_entry}`}
+                bill={bill}
+                onSelect={showBill}
+              />
+            ))}
+          </ControlScrollList>
 
           {hidden > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Showing {formatCount(visible.length)} of {formatCount(bills.length)} bills — open
-              Dispatch Plans for the rest.
+            <p className="shrink-0 text-xs text-muted-foreground">
+              {formatCount(hidden)} beyond the first {formatCount(visible.length)} are not drawn —
+              open Bill Linking for those.
             </p>
           )}
         </div>

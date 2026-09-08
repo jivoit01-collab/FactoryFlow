@@ -2,11 +2,12 @@ import { Warehouse } from 'lucide-react';
 
 import { cn } from '@/shared/utils';
 
-import { WAREHOUSE_CONTROL_PREVIEW_ROWS } from '../constants';
+import { WAREHOUSE_CONTROL_MAX_RENDERED_ROWS } from '../constants';
 import { ACCENTS, occupancyAccent, SECTION_ACCENT } from '../constants/warehouse-control.theme';
-import type { PalletSpaceSummary, PalletSpaceWarehouseRow } from '../types';
+import type { PalletSpaceSummary, PalletSpaceWarehouseRow, StoredGoodsRow } from '../types';
 import { formatCount, formatPercent } from '../utils/format';
 import { CapacityMeter } from './CapacityMeter';
+import { ControlScrollList } from './ControlScrollList';
 import { ControlSection } from './ControlSection';
 import { ControlEmpty, ControlSkeletonBar } from './ControlStates';
 
@@ -15,6 +16,8 @@ export interface PalletSpacePanelProps {
   loading: boolean;
   /** The WMS module is switched off, so there is no layout to measure. */
   moduleOff: boolean;
+  /** Grid placement, set by the board. */
+  className?: string;
 }
 
 function WarehouseRow({ row }: { row: PalletSpaceWarehouseRow }) {
@@ -49,16 +52,66 @@ function WarehouseRow({ row }: { row: PalletSpaceWarehouseRow }) {
 }
 
 /**
+ * One product line — "CANOLA 4 LTR · 500 boxes on 12 pallets".
+ *
+ * Boxes is the number the floor talks in, so it is the figure on the right and
+ * the one the bar is scaled against; the pallet count rides underneath as the
+ * secondary fact.
+ */
+function GoodsRow({ row, largest }: { row: StoredGoodsRow; largest: number }) {
+  const accent = ACCENTS[SECTION_ACCENT.palletSpace];
+  const width = largest > 0 ? (row.boxes / largest) * 100 : 0;
+  const palletWord = row.pallets === 1 ? 'pallet' : 'pallets';
+
+  return (
+    <li className="px-3 py-2 transition-colors hover:bg-muted/40">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">
+            {row.itemName || row.itemCode || 'Unidentified stock'}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {row.itemCode && row.itemName ? `${row.itemCode} · ` : ''}
+            {formatCount(row.pallets)} {palletWord}
+          </p>
+        </div>
+        <p className="shrink-0 text-sm font-semibold tabular-nums">
+          {formatCount(row.boxes)}
+          <span className="ml-1 text-xs font-normal text-muted-foreground">boxes</span>
+        </p>
+      </div>
+      <div className={cn('mt-1.5 h-1 w-full overflow-hidden rounded-full', accent.track)}>
+        <div
+          className={cn('h-full rounded-full transition-all', accent.fill)}
+          style={{ width: `${width}%` }}
+        />
+      </div>
+    </li>
+  );
+}
+
+/**
  * Total pallet space against what is filled, company-wide and per warehouse.
  *
  * Space comes from the WMS layout, so the panel only means anything once a
  * warehouse has been drawn there. Every other state says so in words rather than
  * showing a zero that reads like an empty warehouse.
  */
-export function PalletSpacePanel({ summary, loading, moduleOff }: PalletSpacePanelProps) {
-  const ranked = summary.warehouses.slice(0, WAREHOUSE_CONTROL_PREVIEW_ROWS);
+export function PalletSpacePanel({
+  summary,
+  loading,
+  moduleOff,
+  className,
+}: PalletSpacePanelProps) {
+  const ranked = summary.warehouses.slice(0, WAREHOUSE_CONTROL_MAX_RENDERED_ROWS);
   const hidden = summary.warehouses.length - ranked.length;
   const hasLayout = summary.warehouses.length > 0;
+
+  // The panel is the shortest of the three in its row, so the space under the
+  // warehouse bars goes to what the racking is holding.
+  const goods = summary.goods.slice(0, WAREHOUSE_CONTROL_MAX_RENDERED_ROWS);
+  const hiddenGoods = summary.goods.length - goods.length;
+  const largestGoods = goods[0]?.boxes ?? 0;
 
   const meta = hasLayout
     ? `${formatCount(summary.totalSpace)} slots across ${formatCount(summary.warehouses.length)} warehouses`
@@ -66,6 +119,7 @@ export function PalletSpacePanel({ summary, loading, moduleOff }: PalletSpacePan
 
   return (
     <ControlSection
+      className={className}
       id="pallet-space"
       title="Pallet Space"
       description="Rack slots across the warehouse layout and how many carry a pallet"
@@ -85,21 +139,47 @@ export function PalletSpacePanel({ summary, loading, moduleOff }: PalletSpacePan
       ) : !hasLayout ? (
         <ControlEmpty message="No warehouse layout has been drawn yet in Warehouse Ops." />
       ) : (
-        <div className="space-y-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
           <CapacityMeter
+            className="shrink-0"
             headline
             total={summary.totalSpace}
             used={summary.usedSpace}
             unavailable={summary.unavailableSpace}
           />
 
-          <ul className="divide-y overflow-hidden rounded-lg border">
+          <ControlScrollList maxHeight="max-h-[11rem]">
             {ranked.map((row) => (
               <WarehouseRow key={row.warehouseId} row={row} />
             ))}
-          </ul>
+          </ControlScrollList>
 
-          <div className="space-y-1 text-xs text-muted-foreground">
+          {goods.length > 0 && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="mb-1.5 flex shrink-0 items-baseline justify-between gap-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  On the pallets
+                </h4>
+                <p className="text-xs tabular-nums text-muted-foreground">
+                  {formatCount(summary.totalBoxes)} boxes · {formatCount(summary.goods.length)}{' '}
+                  items
+                </p>
+              </div>
+              <ControlScrollList grow>
+                {goods.map((row) => (
+                  <GoodsRow key={row.itemCode || row.itemName} row={row} largest={largestGoods} />
+                ))}
+              </ControlScrollList>
+              {hiddenGoods > 0 && (
+                <p className="mt-1.5 shrink-0 text-xs text-muted-foreground">
+                  {formatCount(hiddenGoods)} further item{hiddenGoods === 1 ? '' : 's'} are not
+                  drawn.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="shrink-0 space-y-1 text-xs text-muted-foreground">
             {hidden > 0 && (
               <p>
                 {formatCount(hidden)} more warehouse{hidden === 1 ? '' : 's'} in Warehouse Ops.

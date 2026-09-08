@@ -1,59 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-  DispatchBill,
-  DispatchPlan,
-  DispatchPlanStatus,
-} from '@/modules/dashboards/dispatch-plans/types';
-
 import { buildLinkingBoard } from './linkingBoard';
-
-const TODAY = '2026-09-08';
-
-interface BillSpec {
-  docEntry: number;
-  docNum?: string;
-  dispatchDate?: string | null;
-  vehicleId?: number | null;
-  vehicleNo?: string;
-  status?: DispatchPlanStatus;
-  locked?: boolean;
-  litres?: number;
-  boxes?: number;
-  total?: number;
-  companyCode?: string | null;
-}
-
-function makeBill(spec: BillSpec): DispatchBill {
-  const plan = {
-    id: spec.docEntry,
-    sap_invoice_doc_entry: spec.docEntry,
-    sap_invoice_doc_num: spec.docNum ?? String(spec.docEntry),
-    dispatch_date: spec.dispatchDate === undefined ? TODAY : spec.dispatchDate,
-    vehicle_id: spec.vehicleId ?? null,
-    vehicle_no: spec.vehicleNo ?? '',
-    transporter_id: null,
-    transporter_name: 'Sharma Roadways',
-    driver_name: 'Ramesh',
-    booking_status: spec.status ?? 'PENDING',
-    is_vehicle_link_locked: spec.locked ?? false,
-  } as unknown as DispatchPlan;
-
-  return {
-    doc_entry: spec.docEntry,
-    doc_num: spec.docNum ?? String(spec.docEntry),
-    card_name: 'Some Customer',
-    doc_total: spec.total ?? 0,
-    total_litres: spec.litres ?? 0,
-    total_boxes: spec.boxes ?? 0,
-    total_weight: 0,
-    company_code: spec.companyCode ?? null,
-    plan,
-  } as unknown as DispatchBill;
-}
+import { makeBill, TODAY } from './testBills';
 
 describe('buildLinkingBoard', () => {
-  it('folds today’s linked bills onto one card per vehicle', () => {
+  it('lists today’s linked bills and folds the same set onto one card per vehicle', () => {
     const board = buildLinkingBoard({
       today: TODAY,
       bills: [
@@ -63,6 +14,7 @@ describe('buildLinkingBoard', () => {
       ],
     });
 
+    expect(board.linkedBills).toHaveLength(3);
     expect(board.trucks).toHaveLength(2);
     expect(board.trucks[0]?.vehicleNo).toBe('PB11AA1111');
     expect(board.trucks[0]?.bills).toHaveLength(2);
@@ -70,12 +22,140 @@ describe('buildLinkingBoard', () => {
     expect(board.counts.linkedBillsToday).toBe(3);
   });
 
-  it('adds up litres, boxes and value across a truck’s bills', () => {
+  it('keeps only bills that carry a vehicle out of today’s dated set', () => {
     const board = buildLinkingBoard({
       today: TODAY,
       bills: [
-        makeBill({ docEntry: 1, vehicleId: 7, status: 'BOOKED', litres: 1000, boxes: 50, total: 250000 }),
-        makeBill({ docEntry: 2, vehicleId: 7, status: 'BOOKED', litres: 500, boxes: 25, total: 125000 }),
+        makeBill({ docEntry: 1, vehicleId: 7, status: 'BOOKED' }),
+        makeBill({ docEntry: 2 }),
+        makeBill({ docEntry: 3 }),
+      ],
+    });
+
+    expect(board.linkedBills.map((bill) => bill.doc_entry)).toEqual([1]);
+    expect(board.counts.unlinkedToday).toBe(2);
+  });
+
+  it('counts only open bills as unlinked — a cancelled one is not waiting', () => {
+    const board = buildLinkingBoard({
+      today: TODAY,
+      bills: [
+        makeBill({ docEntry: 1, status: 'CANCELLED' }),
+        makeBill({ docEntry: 2, status: 'DISPATCHED' }),
+        makeBill({ docEntry: 3, status: 'PENDING' }),
+      ],
+    });
+
+    expect(board.counts.unlinkedToday).toBe(1);
+  });
+
+  it('ignores bills dated any day but today', () => {
+    const board = buildLinkingBoard({
+      today: TODAY,
+      bills: [
+        makeBill({ docEntry: 1, vehicleId: 7, status: 'BOOKED', dispatchDate: '2026-09-01' }),
+        makeBill({ docEntry: 2, vehicleId: 8, status: 'BOOKED', dispatchDate: '2026-09-20' }),
+        makeBill({ docEntry: 3, vehicleId: 9, status: 'BOOKED', dispatchDate: null }),
+        makeBill({ docEntry: 4, vehicleId: 10, status: 'BOOKED' }),
+      ],
+    });
+
+    expect(board.linkedBills.map((bill) => bill.doc_entry)).toEqual([4]);
+    expect(board.trucks).toHaveLength(1);
+  });
+
+  it('keeps dispatched work on both views and counts it', () => {
+    const board = buildLinkingBoard({
+      today: TODAY,
+      bills: [
+        makeBill({ docEntry: 1, vehicleId: 7, vehicleNo: 'PB11AA1111', status: 'DISPATCHED' }),
+        makeBill({ docEntry: 2, vehicleId: 8, vehicleNo: 'PB11BB2222', status: 'BOOKED' }),
+      ],
+    });
+
+    expect(board.linkedBills.map((bill) => bill.doc_entry)).toEqual([2, 1]);
+    expect(board.counts.linkedBillsToday).toBe(2);
+    expect(board.counts.dispatchedBillsToday).toBe(1);
+    expect(board.counts.dispatchedTrucksToday).toBe(1);
+  });
+
+  it('drops cancelled bookings — a cancelled link is a leftover, not a load', () => {
+    const board = buildLinkingBoard({
+      today: TODAY,
+      bills: [makeBill({ docEntry: 1, vehicleId: 7, status: 'CANCELLED' })],
+    });
+
+    expect(board.trucks).toEqual([]);
+    expect(board.linkedBills).toEqual([]);
+  });
+
+  it('sorts still-to-go bills and trucks ahead of dispatched ones', () => {
+    const board = buildLinkingBoard({
+      today: TODAY,
+      bills: [
+        makeBill({ docEntry: 1, docNum: '900', vehicleId: 7, status: 'DISPATCHED' }),
+        makeBill({ docEntry: 2, docNum: '800', vehicleId: 7, status: 'DISPATCHED' }),
+        makeBill({ docEntry: 3, docNum: '100', vehicleId: 9, status: 'BOOKED' }),
+      ],
+    });
+
+    // Booked first despite the lower bill number, then dispatched newest-first.
+    expect(board.linkedBills.map((bill) => bill.doc_num)).toEqual(['100', '900', '800']);
+    expect(board.trucks[0]?.vehicleId).toBe(9);
+    expect(board.trucks[1]?.isDispatched).toBe(true);
+  });
+
+  it('marks a truck dispatched only when its whole load has gone', () => {
+    const partly = buildLinkingBoard({
+      today: TODAY,
+      bills: [
+        makeBill({ docEntry: 1, vehicleId: 7, status: 'DISPATCHED' }),
+        makeBill({ docEntry: 2, vehicleId: 7, status: 'BOOKED' }),
+      ],
+    });
+    expect(partly.trucks[0]?.isDispatched).toBe(false);
+    expect(partly.trucks[0]?.dispatchedBills).toBe(1);
+    expect(partly.counts.dispatchedTrucksToday).toBe(0);
+
+    const gone = buildLinkingBoard({
+      today: TODAY,
+      bills: [
+        makeBill({ docEntry: 1, vehicleId: 7, status: 'DISPATCHED' }),
+        makeBill({ docEntry: 2, vehicleId: 7, status: 'DISPATCHED' }),
+      ],
+    });
+    expect(gone.trucks[0]?.isDispatched).toBe(true);
+    expect(gone.trucks[0]?.dispatchedBills).toBe(2);
+  });
+
+  it('adds up litres, boxes and value per truck and across the day', () => {
+    const board = buildLinkingBoard({
+      today: TODAY,
+      bills: [
+        makeBill({
+          docEntry: 1,
+          vehicleId: 7,
+          status: 'BOOKED',
+          litres: 1000,
+          boxes: 50,
+          total: 250000,
+        }),
+        makeBill({
+          docEntry: 2,
+          vehicleId: 7,
+          status: 'BOOKED',
+          litres: 500,
+          boxes: 25,
+          total: 125000,
+        }),
+        makeBill({
+          docEntry: 3,
+          vehicleId: 9,
+          status: 'BOOKED',
+          litres: 200,
+          boxes: 10,
+          total: 50000,
+        }),
       ],
     });
 
@@ -85,63 +165,7 @@ describe('buildLinkingBoard', () => {
       amount: 375000,
       weight: 0,
     });
-  });
-
-  it('leaves dispatched and cancelled bookings off the truck board', () => {
-    const board = buildLinkingBoard({
-      today: TODAY,
-      bills: [
-        makeBill({ docEntry: 1, vehicleId: 7, status: 'DISPATCHED' }),
-        makeBill({ docEntry: 2, vehicleId: 8, status: 'CANCELLED' }),
-      ],
-    });
-
-    expect(board.trucks).toEqual([]);
-    expect(board.counts.linkedBillsToday).toBe(0);
-  });
-
-  it('queues unlinked bills overdue-first, then today, then upcoming', () => {
-    const board = buildLinkingBoard({
-      today: TODAY,
-      bills: [
-        makeBill({ docEntry: 1, dispatchDate: '2026-09-10' }),
-        makeBill({ docEntry: 2, dispatchDate: TODAY }),
-        makeBill({ docEntry: 3, dispatchDate: '2026-09-05' }),
-        makeBill({ docEntry: 4, dispatchDate: '2026-09-01' }),
-      ],
-    });
-
-    expect(board.pending.map((bill) => bill.doc_entry)).toEqual([4, 3, 2, 1]);
-    expect(board.counts.pendingOverdue).toBe(2);
-    expect(board.counts.pendingToday).toBe(1);
-    expect(board.counts.pendingUpcoming).toBe(1);
-  });
-
-  it('does not queue a bill that already holds a vehicle, or one already closed', () => {
-    const board = buildLinkingBoard({
-      today: TODAY,
-      bills: [
-        makeBill({ docEntry: 1, vehicleId: 7, status: 'BOOKED' }),
-        makeBill({ docEntry: 2, status: 'DISPATCHED' }),
-        makeBill({ docEntry: 3, status: 'CANCELLED' }),
-        makeBill({ docEntry: 4 }),
-      ],
-    });
-
-    expect(board.pending.map((bill) => bill.doc_entry)).toEqual([4]);
-  });
-
-  it('ignores bills with no dispatch date on both halves', () => {
-    const board = buildLinkingBoard({
-      today: TODAY,
-      bills: [
-        makeBill({ docEntry: 1, dispatchDate: null }),
-        makeBill({ docEntry: 2, dispatchDate: null, vehicleId: 7, status: 'BOOKED' }),
-      ],
-    });
-
-    expect(board.pending).toEqual([]);
-    expect(board.trucks).toEqual([]);
+    expect(board.totals).toEqual({ litres: 1700, boxes: 85, amount: 425000 });
   });
 
   it('marks a truck locked only when every bill on it is frozen', () => {

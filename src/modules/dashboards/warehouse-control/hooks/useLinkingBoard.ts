@@ -1,4 +1,4 @@
-/** Folds the shared linking feed into trucks + a pending-linking queue. */
+/** Folds the Bills Linking feed into today's linked bills and their trucks. */
 import { useMemo } from 'react';
 
 import { useControlLinkingFeed } from '../api';
@@ -15,14 +15,15 @@ export interface UseLinkingBoardResult {
 
 const EMPTY_BOARD: ControlLinkingBoard = {
   trucks: [],
-  pending: [],
+  linkedBills: [],
   counts: {
     trucksToday: 0,
     linkedBillsToday: 0,
-    pendingToday: 0,
-    pendingOverdue: 0,
-    pendingUpcoming: 0,
+    dispatchedBillsToday: 0,
+    dispatchedTrucksToday: 0,
+    unlinkedToday: 0,
   },
+  totals: { litres: 0, boxes: 0, amount: 0 },
 };
 
 export function useLinkingBoard(date: string, enabled = true): UseLinkingBoardResult {

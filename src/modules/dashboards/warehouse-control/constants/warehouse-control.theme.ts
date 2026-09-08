@@ -89,3 +89,14 @@ export function occupancyAccent(percent: number): ControlAccent {
   if (percent >= OCCUPANCY_BANDS.busy) return 'amber';
   return 'emerald';
 }
+
+/**
+ * Days-stuck colouring, on the same thresholds the Non-Moving dashboard uses —
+ * `getMovementStatus` there is the single definition of what "slow" means, and
+ * this only maps its answer onto the board's palette.
+ */
+export const MOVEMENT_AGE_TONE = {
+  recent: 'text-emerald-600 dark:text-emerald-400',
+  'slow-moving': 'text-amber-600 dark:text-amber-400',
+  'non-moving': 'text-rose-600 dark:text-rose-400',
+} as const;

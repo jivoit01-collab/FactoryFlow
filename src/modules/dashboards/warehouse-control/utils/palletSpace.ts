@@ -17,7 +17,7 @@ import {
   NON_OCCUPYING_PALLET_STATUSES,
   UNAVAILABLE_LOCATION_STATUSES,
 } from '../constants';
-import type { PalletSpaceSummary, PalletSpaceWarehouseRow } from '../types';
+import type { PalletSpaceSummary, PalletSpaceWarehouseRow, StoredGoodsRow } from '../types';
 
 export interface PalletSpaceInput {
   warehouses: Warehouse[];
@@ -93,6 +93,11 @@ export function summarisePalletSpace(input: PalletSpaceInput): PalletSpaceSummar
   }
 
   let unplacedPallets = 0;
+  let totalBoxes = 0;
+  // Keyed on item code where there is one, else the name — a pallet with neither
+  // still deserves a line rather than being silently dropped from the total.
+  const goodsByItem = new Map<string, StoredGoodsRow>();
+
   for (const pallet of input.pallets) {
     if (!occupiesSpace(pallet)) continue;
     if (!pallet.currentLocationId) {
@@ -104,7 +109,27 @@ export function summarisePalletSpace(input: PalletSpaceInput): PalletSpaceSummar
     // it neither fills a slot nor counts as unplaced stock.
     if (!location) continue;
     accumulatorFor(location.warehouseId).usedSpace += 1;
+
+    const boxes = Number.isFinite(pallet.boxCount) ? pallet.boxCount : 0;
+    totalBoxes += boxes;
+
+    const itemCode = pallet.itemCode?.trim() ?? '';
+    const itemName = pallet.itemName?.trim() ?? '';
+    const key = itemCode || itemName || 'UNIDENTIFIED';
+    const existing = goodsByItem.get(key);
+    if (existing) {
+      existing.pallets += 1;
+      existing.boxes += boxes;
+      // Earlier pallets may carry only a code; take a name from whichever has one.
+      if (!existing.itemName && itemName) existing.itemName = itemName;
+    } else {
+      goodsByItem.set(key, { itemCode, itemName, pallets: 1, boxes });
+    }
   }
+
+  const goods = [...goodsByItem.values()].sort(
+    (a, b) => b.boxes - a.boxes || b.pallets - a.pallets || a.itemName.localeCompare(b.itemName),
+  );
 
   const warehouseNames = new Map(input.warehouses.map((warehouse) => [warehouse.id, warehouse]));
 
@@ -148,5 +173,7 @@ export function summarisePalletSpace(input: PalletSpaceInput): PalletSpaceSummar
     unplacedPallets,
     locationsWithoutCapacity: totals.locationsWithoutCapacity,
     warehouses: rows,
+    goods,
+    totalBoxes,
   };
 }

@@ -31,6 +31,8 @@ const EMPTY_SUMMARY: PalletSpaceSummary = {
   unplacedPallets: 0,
   locationsWithoutCapacity: 0,
   warehouses: [],
+  goods: [],
+  totalBoxes: 0,
 };
 
 export function usePalletSpace(allowed = true): UsePalletSpaceResult {

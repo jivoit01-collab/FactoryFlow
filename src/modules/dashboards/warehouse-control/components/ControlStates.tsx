@@ -41,7 +41,7 @@ export function ControlSkeletonRows({ rows = 4 }: { rows?: number }) {
 
 export function ControlEmpty({ message }: { message: string }) {
   return (
-    <div className="flex min-h-[96px] items-center justify-center rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+    <div className="flex min-h-[96px] flex-1 items-center justify-center rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
       {message}
     </div>
   );

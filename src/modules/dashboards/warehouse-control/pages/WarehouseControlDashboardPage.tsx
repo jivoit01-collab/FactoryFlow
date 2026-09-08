@@ -26,13 +26,15 @@ import { Button } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import { NON_MOVING_QUERY_KEYS } from '../../non-moving/api';
-import { useControlTodaysBills, WAREHOUSE_CONTROL_QUERY_KEYS } from '../api';
+import { WAREHOUSE_CONTROL_QUERY_KEYS } from '../api';
 import {
+  ControlDetailProvider,
   ControlHeadline,
   NonMovingPanel,
   PalletSpacePanel,
+  PendingLinksPanel,
   TodaysBillsPanel,
-  VehicleLinkingSection,
+  VehicleLinkingPanel,
 } from '../components';
 import {
   WAREHOUSE_CONTROL_BILLS_PERMISSIONS,
@@ -40,7 +42,7 @@ import {
   WAREHOUSE_CONTROL_NON_MOVING_PERMISSIONS,
   WAREHOUSE_CONTROL_PALLET_SPACE_PERMISSIONS,
 } from '../constants';
-import { useLinkingBoard, useNonMovingSnapshot, usePalletSpace } from '../hooks';
+import { useLinkingBoard, useNonMovingSnapshot, usePalletSpace, useScheduledBills } from '../hooks';
 
 interface SectionLink {
   id: string;
@@ -69,23 +71,25 @@ export default function WarehouseControlDashboardPage() {
   // of the same data, so neither may hold a copy of its own.
   const nonMoving = useNonMovingSnapshot(canSeeNonMoving);
   const palletSpace = usePalletSpace(canSeePalletSpace);
-  const billsQuery = useControlTodaysBills(date, canSeeBills);
-  const linking = useLinkingBoard(date, canSeeLinking);
+  // Today's Bills and Vehicle Linking are two folds of the one Bills Linking
+  // read, so it is fetched whenever either panel is on screen.
+  const linking = useLinkingBoard(date, canSeeBills || canSeeLinking);
+  const scheduled = useScheduledBills(date, canSeeBills);
 
   const sections = useMemo<SectionLink[]>(() => {
     const links: SectionLink[] = [];
     if (canSeeNonMoving) links.push({ id: 'non-moving', label: 'Non-Moving' });
     if (canSeePalletSpace) links.push({ id: 'pallet-space', label: 'Pallet Space' });
-    if (canSeeBills) links.push({ id: 'todays-bills', label: "Today's Bills" });
-    if (canSeeLinking) {
-      links.push({ id: 'vehicle-linking', label: 'Vehicle Linking' });
+    if (canSeeLinking) links.push({ id: 'vehicle-linking', label: 'Vehicle Linking' });
+    if (canSeeBills) {
+      links.push({ id: 'todays-bills', label: "Today's Bills" });
       links.push({ id: 'pending-linkings', label: 'Pending' });
     }
     return links;
   }, [canSeeNonMoving, canSeePalletSpace, canSeeBills, canSeeLinking]);
 
   const isFetchingAny =
-    nonMoving.isFetching || billsQuery.isFetching || linking.isFetching || palletSpace.loading;
+    nonMoving.isFetching || linking.isFetching || scheduled.isFetching || palletSpace.loading;
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -144,15 +148,15 @@ export default function WarehouseControlDashboardPage() {
           loading: nonMoving.isLoading,
           available: canSeeNonMoving,
         }}
-        bills={{
-          meta: billsQuery.data?.meta,
-          loading: billsQuery.isLoading && canSeeBills,
-          available: canSeeBills,
-        }}
         linking={{
           board: linking.board,
           loading: linking.isLoading,
-          available: canSeeLinking,
+          available: canSeeBills || canSeeLinking,
+        }}
+        scheduled={{
+          queue: scheduled.queue,
+          loading: scheduled.isLoading,
+          available: canSeeBills,
         }}
       />
 
@@ -175,48 +179,73 @@ export default function WarehouseControlDashboardPage() {
         </nav>
       )}
 
-      {/* `items-start` keeps a short panel from stretching to match a tall one
-          in the other column. */}
-      <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-5">
-        {canSeeNonMoving && (
-          <NonMovingPanel
-            summary={nonMoving.summary}
-            warehouses={nonMoving.warehouses}
-            ageDays={nonMoving.ageDays}
-            loading={nonMoving.isLoading}
-            isFetching={nonMoving.isFetching}
-            error={nonMoving.error}
-            onRetry={nonMoving.refetch}
-          />
-        )}
-        {canSeePalletSpace && (
-          <PalletSpacePanel
-            summary={palletSpace.summary}
-            loading={palletSpace.loading}
-            moduleOff={palletSpace.moduleOff}
-          />
-        )}
-        {canSeeBills && (
-          <TodaysBillsPanel
-            bills={billsQuery.data?.data ?? []}
-            meta={billsQuery.data?.meta}
-            loading={billsQuery.isLoading}
-            isFetching={billsQuery.isFetching}
-            error={billsQuery.error}
-            onRetry={() => void billsQuery.refetch()}
-          />
-        )}
-        {canSeeLinking && (
-          <VehicleLinkingSection
-            board={linking.board}
-            date={date}
-            loading={linking.isLoading}
-            isFetching={linking.isFetching}
-            error={linking.error}
-            onRetry={linking.refetch}
-          />
-        )}
-      </div>
+      {/* Six columns so the five panels tile exactly, with no hole at the end.
+          Row one is the three reference panels at two columns each; row two is
+          the two long dispatch lists at three each, which is the width their
+          rows actually need. Panel order matches the spans on purpose — a panel
+          wider than the space left on a row wraps and leaves the gap this layout
+          exists to avoid. At `lg` it falls back to two columns with the pending
+          queue full-width, so that row is not left half empty either.
+
+          Panels stretch to the tallest in their row rather than sitting ragged,
+          and each hands the leftover height to its list — so a short panel shows
+          more rows instead of blank card. */}
+      <ControlDetailProvider>
+        <div className="grid gap-4 lg:grid-cols-2 lg:gap-5 xl:grid-cols-6">
+          {canSeeNonMoving && (
+            <NonMovingPanel
+              className="xl:col-span-2"
+              summary={nonMoving.summary}
+              warehouses={nonMoving.warehouses}
+              ageDays={nonMoving.ageDays}
+              scope={nonMoving.scope}
+              loading={nonMoving.isLoading}
+              isFetching={nonMoving.isFetching}
+              error={nonMoving.error}
+              onRetry={nonMoving.refetch}
+            />
+          )}
+          {canSeePalletSpace && (
+            <PalletSpacePanel
+              className="xl:col-span-2"
+              summary={palletSpace.summary}
+              loading={palletSpace.loading}
+              moduleOff={palletSpace.moduleOff}
+            />
+          )}
+          {canSeeLinking && (
+            <VehicleLinkingPanel
+              className="xl:col-span-2"
+              board={linking.board}
+              loading={linking.isLoading}
+              isFetching={linking.isFetching}
+              error={linking.error}
+              onRetry={linking.refetch}
+            />
+          )}
+          {canSeeBills && (
+            <TodaysBillsPanel
+              className="xl:col-span-3"
+              board={linking.board}
+              loading={linking.isLoading}
+              isFetching={linking.isFetching}
+              error={linking.error}
+              onRetry={linking.refetch}
+            />
+          )}
+          {canSeeBills && (
+            <PendingLinksPanel
+              className="lg:col-span-2 xl:col-span-3"
+              queue={scheduled.queue}
+              date={date}
+              loading={scheduled.isLoading}
+              isFetching={scheduled.isFetching}
+              error={scheduled.error}
+              onRetry={scheduled.refetch}
+            />
+          )}
+        </div>
+      </ControlDetailProvider>
     </div>
   );
 }

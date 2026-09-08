@@ -84,8 +84,14 @@ describe('summarisePalletSpace', () => {
     const summary = summarisePalletSpace({
       warehouses: [makeWarehouse()],
       locations: [
-        makeLocation({ id: 'loc-1', capacity: { maxPallets: 2, maxUnits: null, maxWeight: null, maxVolume: null } }),
-        makeLocation({ id: 'loc-2', capacity: { maxPallets: 3, maxUnits: null, maxWeight: null, maxVolume: null } }),
+        makeLocation({
+          id: 'loc-1',
+          capacity: { maxPallets: 2, maxUnits: null, maxWeight: null, maxVolume: null },
+        }),
+        makeLocation({
+          id: 'loc-2',
+          capacity: { maxPallets: 3, maxUnits: null, maxWeight: null, maxVolume: null },
+        }),
       ],
       pallets: [
         makePallet({ id: 'plt-1', currentLocationId: 'loc-1' }),
@@ -224,5 +230,60 @@ describe('summarisePalletSpace', () => {
     expect(summary.totalSpace).toBe(0);
     expect(summary.utilisationPct).toBe(0);
     expect(summary.warehouses).toEqual([]);
+  });
+
+  it('totals what is on the pallets by item, heaviest line first', () => {
+    const summary = summarisePalletSpace({
+      warehouses: [makeWarehouse()],
+      locations: [
+        makeLocation({
+          id: 'loc-1',
+          capacity: { maxPallets: 20, maxUnits: null, maxWeight: null, maxVolume: null },
+        }),
+      ],
+      pallets: [
+        makePallet({ id: 'p1', itemCode: 'FG001', itemName: 'CANOLA 4 LTR', boxCount: 200 }),
+        makePallet({ id: 'p2', itemCode: 'FG001', itemName: 'CANOLA 4 LTR', boxCount: 300 }),
+        makePallet({ id: 'p3', itemCode: 'FG002', itemName: 'MUSTARD 1 LTR', boxCount: 120 }),
+      ],
+      purposes: [],
+    });
+
+    expect(summary.goods).toEqual([
+      { itemCode: 'FG001', itemName: 'CANOLA 4 LTR', pallets: 2, boxes: 500 },
+      { itemCode: 'FG002', itemName: 'MUSTARD 1 LTR', pallets: 1, boxes: 120 },
+    ]);
+    expect(summary.totalBoxes).toBe(620);
+  });
+
+  it('leaves shipped, removed and unplaced pallets out of the goods total', () => {
+    const summary = summarisePalletSpace({
+      warehouses: [makeWarehouse()],
+      locations: [makeLocation({ id: 'loc-1' })],
+      pallets: [
+        makePallet({ id: 'p1', itemCode: 'FG001', boxCount: 100 }),
+        makePallet({ id: 'p2', itemCode: 'FG001', boxCount: 100, status: 'SHIPPED' }),
+        makePallet({ id: 'p3', itemCode: 'FG001', boxCount: 100, status: 'REMOVED' }),
+        makePallet({ id: 'p4', itemCode: 'FG001', boxCount: 100, currentLocationId: null }),
+      ],
+      purposes: [],
+    });
+
+    expect(summary.totalBoxes).toBe(100);
+    expect(summary.goods[0]?.pallets).toBe(1);
+  });
+
+  it('still counts a pallet with no item code, under its name', () => {
+    const summary = summarisePalletSpace({
+      warehouses: [makeWarehouse()],
+      locations: [makeLocation({ id: 'loc-1' })],
+      pallets: [makePallet({ id: 'p1', itemCode: '', itemName: 'LOOSE STOCK', boxCount: 40 })],
+      purposes: [],
+    });
+
+    expect(summary.goods).toEqual([
+      { itemCode: '', itemName: 'LOOSE STOCK', pallets: 1, boxes: 40 },
+    ]);
+    expect(summary.totalBoxes).toBe(40);
   });
 });

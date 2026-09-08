@@ -50,13 +50,19 @@ export function ControlSection({
     <section
       id={id}
       className={cn(
-        'relative flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm scroll-mt-20',
+        'relative flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm scroll-mt-20',
+        // A growing list needs a definite height to divide, and the grid needs a
+        // row height to stretch its panels to. The floor stops a thin panel from
+        // collapsing next to a full one; the ceiling stops a long list from
+        // running the board off the screen — it scrolls inside instead. Both are
+        // overridable per panel through `className` (twMerge keeps the last one).
+        'min-h-[24rem] max-h-[36rem]',
         className,
       )}
     >
       <span aria-hidden className={cn('absolute inset-y-0 left-0 w-1', accentClasses.rule)} />
 
-      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b p-4 pl-5 sm:p-5 sm:pl-6">
+      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b px-4 py-3 pl-5 sm:pl-6">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className={cn('shrink-0 rounded-lg p-2', accentClasses.chip)}>
             <Icon className="h-4 w-4" />
@@ -87,7 +93,10 @@ export function ControlSection({
         )}
       </header>
 
-      <div className="flex-1 p-4 pl-5 sm:p-5 sm:pl-6">{children}</div>
+      {/* A flex column, so a panel that opts in can hand its list the leftover
+          height instead of leaving it blank under a short body. `min-h-0` is what
+          lets that list scroll rather than pushing the card taller. */}
+      <div className="flex min-h-0 flex-1 flex-col px-4 py-4 pl-5 sm:pl-6">{children}</div>
     </section>
   );
 }

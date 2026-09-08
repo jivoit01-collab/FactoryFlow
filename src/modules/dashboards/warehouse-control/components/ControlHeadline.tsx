@@ -1,18 +1,17 @@
-import { AlertTriangle, FileText, IndianRupee, Layers, PackageX, Truck } from 'lucide-react';
+import { AlertTriangle, CalendarClock, FileText, Layers, PackageX, Truck } from 'lucide-react';
 
-import type { DispatchPlansMeta } from '@/modules/dashboards/dispatch-plans/types';
 import type { ReportSummary } from '@/modules/dashboards/non-moving/types';
 
 import { OCCUPANCY_BANDS, SECTION_ACCENT } from '../constants/warehouse-control.theme';
-import type { ControlLinkingBoard, PalletSpaceSummary } from '../types';
+import type { ControlLinkingBoard, ControlScheduledQueue, PalletSpaceSummary } from '../types';
 import { formatCompactCurrency, formatCount, formatPercent } from '../utils/format';
 import { ControlStat } from './ControlStat';
 
 export interface ControlHeadlineProps {
   palletSpace: { summary: PalletSpaceSummary; loading: boolean; available: boolean };
   nonMoving: { summary?: ReportSummary; loading: boolean; available: boolean };
-  bills: { meta?: DispatchPlansMeta; loading: boolean; available: boolean };
   linking: { board: ControlLinkingBoard; loading: boolean; available: boolean };
+  scheduled: { queue: ControlScheduledQueue; loading: boolean; available: boolean };
 }
 
 /** A tile with nothing behind it reads as a dash, never as a zero. */
@@ -30,17 +29,16 @@ const NO_VALUE = '—';
 export function ControlHeadline({
   palletSpace,
   nonMoving,
-  bills,
   linking,
+  scheduled,
 }: ControlHeadlineProps) {
   const space = palletSpace.summary;
   const hasSpace = palletSpace.available && space.totalSpace > 0;
   const packed = space.utilisationPct >= OCCUPANCY_BANDS.full;
 
   const nonMovingSummary = nonMoving.summary;
-  const billsMeta = bills.meta;
-  const counts = linking.board.counts;
-  const pendingTotal = counts.pendingOverdue + counts.pendingToday;
+  const linkCounts = linking.board.counts;
+  const scheduledCounts = scheduled.queue.counts;
 
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6">
@@ -62,7 +60,7 @@ export function ControlHeadline({
         value={hasSpace ? formatCount(space.freeSpace) : NO_VALUE}
         hint={hasSpace ? `across ${formatCount(space.warehouses.length)} warehouses` : undefined}
         icon={Layers}
-        accent={space.freeSpace === 0 && hasSpace ? 'rose' : 'emerald'}
+        accent={hasSpace && space.freeSpace === 0 ? 'rose' : 'emerald'}
         emphasise={hasSpace && space.freeSpace === 0}
         loading={palletSpace.loading}
       />
@@ -78,43 +76,49 @@ export function ControlHeadline({
         loading={nonMoving.loading}
       />
       <ControlStat
-        label="Bills Today"
-        value={billsMeta ? formatCount(billsMeta.total_bills) : NO_VALUE}
-        hint={billsMeta ? `${formatCount(billsMeta.pending_count)} still pending` : undefined}
+        label="Bills Linked"
+        value={linking.available ? formatCount(linkCounts.linkedBillsToday) : NO_VALUE}
+        hint={
+          linking.available
+            ? `${formatCompactCurrency(linking.board.totals.amount)} today`
+            : undefined
+        }
         icon={FileText}
         accent={SECTION_ACCENT.bills}
-        loading={bills.loading}
+        loading={linking.loading}
       />
       <ControlStat
-        label="Billed Value"
-        value={billsMeta ? formatCompactCurrency(billsMeta.total_doc_value) : NO_VALUE}
-        hint={billsMeta ? `${formatCount(billsMeta.total_boxes)} boxes to move` : undefined}
-        icon={IndianRupee}
-        accent={SECTION_ACCENT.bills}
-        loading={bills.loading}
+        label="Trucks Today"
+        value={linking.available ? formatCount(linkCounts.trucksToday) : NO_VALUE}
+        hint={
+          linking.available
+            ? linkCounts.dispatchedTrucksToday > 0
+              ? `${formatCount(linkCounts.dispatchedTrucksToday)} already dispatched`
+              : `${formatCount(linkCounts.unlinkedToday)} bills still unlinked`
+            : undefined
+        }
+        icon={Truck}
+        accent={SECTION_ACCENT.linking}
+        loading={linking.loading}
       />
-      {counts.pendingOverdue > 0 ? (
+      {scheduledCounts.overdue > 0 ? (
         <ControlStat
-          label="Overdue Links"
-          value={formatCount(counts.pendingOverdue)}
-          hint={`${formatCount(counts.trucksToday)} trucks linked today`}
+          label="Overdue"
+          value={formatCount(scheduledCounts.overdue)}
+          hint={`of ${formatCount(scheduledCounts.total)} awaiting a truck`}
           icon={AlertTriangle}
           accent={SECTION_ACCENT.pending}
           emphasise
-          loading={linking.loading}
+          loading={scheduled.loading}
         />
       ) : (
         <ControlStat
           label="Awaiting Link"
-          value={linking.available ? formatCount(pendingTotal) : NO_VALUE}
-          hint={
-            linking.available
-              ? `${formatCount(counts.trucksToday)} trucks linked today`
-              : undefined
-          }
-          icon={Truck}
-          accent={SECTION_ACCENT.linking}
-          loading={linking.loading}
+          value={scheduled.available ? formatCount(scheduledCounts.total) : NO_VALUE}
+          hint={scheduled.available ? `${formatCount(scheduledCounts.today)} due today` : undefined}
+          icon={CalendarClock}
+          accent={SECTION_ACCENT.pending}
+          loading={scheduled.loading}
         />
       )}
     </div>

@@ -125,6 +125,19 @@ export interface DispatchPlan {
   remarks: string;
   created_at: string | null;
   updated_at: string | null;
+  /**
+   * Who put this bill into dispatch planning, and who last touched the plan.
+   *
+   * `created_by` is the person the plan row was created by — for a bill whose
+   * plan exists only because someone filled in a dispatch date, that is who
+   * filled it. `updated_by` is whoever last saved anything on the plan, which is
+   * frequently a different person (a linker, a gate operator), so the two must
+   * never be collapsed into one "changed by" line.
+   */
+  created_by_name: string;
+  created_by_code: string;
+  updated_by_name: string;
+  updated_by_code: string;
 }
 
 export interface DispatchBill {

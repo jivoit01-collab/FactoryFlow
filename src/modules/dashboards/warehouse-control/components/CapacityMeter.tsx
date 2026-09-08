@@ -61,7 +61,10 @@ export function CapacityMeter({
         role="img"
         aria-label={`${formatCount(used)} of ${formatCount(total)} pallet slots used`}
       >
-        <div className={cn('h-full transition-all', accent.fill)} style={{ width: `${usedPct}%` }} />
+        <div
+          className={cn('h-full transition-all', accent.fill)}
+          style={{ width: `${usedPct}%` }}
+        />
         {unavailablePct > 0 && (
           <div
             className="h-full bg-slate-400/70 transition-all dark:bg-slate-500/70"
