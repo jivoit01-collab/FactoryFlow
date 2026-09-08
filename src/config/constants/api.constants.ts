@@ -201,6 +201,7 @@ export const API_ENDPOINTS = {
       `/gate-core/sales-dispatch/${id}/partial-approval/`,
     SALES_DISPATCH_PARTIAL_APPROVAL_DECIDE: (approvalId: number) =>
       `/gate-core/sales-dispatch/partial-approval/${approvalId}/decide/`,
+    SALES_DISPATCH_SCAN_REPORT: (id: number) => `/gate-core/sales-dispatch/${id}/scan-report/`,
     BST_IN_ELIGIBLE_OUTS: '/gate-core/bst-ins/eligible-outs/',
     BST_INS: '/gate-core/bst-ins/',
     BST_IN_BY_ID: (id: number) => `/gate-core/bst-ins/${id}/`,

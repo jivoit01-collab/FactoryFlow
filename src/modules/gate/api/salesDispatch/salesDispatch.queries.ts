@@ -429,3 +429,14 @@ export function useCancelSalesDispatch() {
     onSuccess: () => invalidateSalesDispatch(queryClient),
   });
 }
+
+/**
+ * Downloads the docking's scan report. Nothing on the server changes, so there is
+ * no cache to invalidate -- a mutation only for the pending / error state the
+ * button needs while the workbook is built.
+ */
+export function useSalesDispatchScanReport() {
+  return useMutation({
+    mutationFn: (id: number) => salesDispatchApi.scanReport(id),
+  });
+}

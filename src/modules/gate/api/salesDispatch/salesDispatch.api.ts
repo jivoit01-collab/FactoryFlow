@@ -1029,4 +1029,25 @@ export const salesDispatchApi = {
     );
     return response.data;
   },
+
+  /**
+   * The docking's box scanning as an .xlsx download.
+   *
+   * Fetched through the api client rather than opened as a link, because the
+   * endpoint needs the auth and Company-Code headers the client attaches. The
+   * server names the file; the disposition header is the only place that name
+   * lives, so it is read back here.
+   */
+  async scanReport(id: number): Promise<{ blob: Blob; filename: string }> {
+    const response = await apiClient.get<Blob>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_SCAN_REPORT(id),
+      { responseType: 'blob' },
+    );
+    const disposition = response.headers?.['content-disposition'];
+    const match = typeof disposition === 'string' ? disposition.match(/filename="?([^"]+)"?/) : null;
+    return {
+      blob: response.data,
+      filename: match?.[1] ?? `docking-${id}-scan-report.xlsx`,
+    };
+  },
 };

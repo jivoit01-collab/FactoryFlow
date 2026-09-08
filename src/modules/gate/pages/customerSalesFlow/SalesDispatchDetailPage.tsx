@@ -2,7 +2,9 @@ import {
   ArrowLeft,
   CalendarClock,
   ChevronDown,
+  FileSpreadsheet,
   FileText,
+  Loader2,
   PackageCheck,
   Paperclip,
   Printer,
@@ -24,6 +26,7 @@ import {
   useCancelSalesDispatch,
   useRejectSalesDispatch,
   useSalesDispatch,
+  useSalesDispatchScanReport,
 } from '@/modules/gate/api';
 import { useArrivalDockings } from '@/modules/gate/api/arrivals/arrivals.queries';
 import { GateStatusBadge, StepLoadingSpinner } from '@/modules/gate/components';
@@ -829,10 +832,18 @@ function DocumentsCard({
   const scans = entry.box_scans ?? [];
   const [isScanSheetOpen, setIsScanSheetOpen] = useState(false);
   const [scanFilter, setScanFilter] = useState<ScanSheetFilter>(ALL_SCAN_SHEET_FILTER);
+  const scanReport = useSalesDispatchScanReport();
 
   const openScanSheet = (filter: ScanSheetFilter) => {
     setScanFilter(filter);
     setIsScanSheetOpen(true);
+  };
+
+  const downloadScanReport = () => {
+    scanReport.mutate(entry.id, {
+      onSuccess: ({ blob, filename }) => downloadBlob(blob, filename),
+      onError: (error) => toast.error(getErrorMessage(error, 'Could not build the scan report')),
+    });
   };
 
   return (
@@ -859,6 +870,21 @@ function DocumentsCard({
               {...getPiecesProgress(documents, scans)}
               className="ml-2"
             />
+          </Button>
+          {/* The same figures as the sheet above, as a workbook that can be mailed. */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={downloadScanReport}
+            disabled={scanReport.isPending}
+          >
+            {scanReport.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+            )}
+            {scanReport.isPending ? 'Preparing…' : 'Excel Report'}
           </Button>
         </div>
       </CardHeader>
@@ -1479,6 +1505,18 @@ function formatPacking(boxes: number, loose: number) {
     loose > 0 ? `${formatCount(loose)} pcs loose` : '',
   ].filter(Boolean);
   return parts.join(' + ');
+}
+
+/** Hands the browser a fetched file to save, under the name the server chose. */
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function InfoItem({ label, value }: { label: string; value?: string | number | null }) {
