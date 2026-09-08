@@ -3,6 +3,10 @@
  * physically ready to leave. A gate person reviews each SHEET (parcel count, buyer,
  * destination, items, DN, tracking IDs) and marks it Approved (OK from gate) or Hold.
  * Defaults to today's sheets; filter by date, gate status or search.
+ *
+ * Trips raised here but not yet sent — the drafts of "New gate out" — sit above
+ * the sheets, since an unfinished gate out is the one thing on this screen that
+ * is nobody else's to pick up.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -40,6 +44,7 @@ import { marketplaceApi } from '../api/marketplace.api';
 import { MpChannelSelect } from '../components/MpChannelSelect';
 import { inRange, MpDateRange, type MpRange } from '../components/MpDateRange';
 import { MpManualGateOutDialog } from '../components/MpManualGateOutDialog';
+import { MpOpenGateOuts } from '../components/MpOpenGateOuts';
 import { useMpChannel } from '../hooks/useMpChannel';
 import type { GateQueueSheet, MarketplaceChannel } from '../types/marketplace.types';
 
@@ -88,6 +93,18 @@ export default function MpGatePage() {
     }
     return map;
   }, [passes.data]);
+
+  // Gate outs raised but never sent — the drafts. "New gate out" offers Save as
+  // draft for a truck whose paperwork is still being sorted out, and nothing on
+  // this page rendered the result: the draft vanished the moment the form
+  // closed, with no row to finish it and none to call it off.
+  const openPasses = useQuery({
+    queryKey: ['mp-gate-passes', channel, 'OPEN'],
+    queryFn: () => marketplaceApi.gatePasses(channel, { status: 'DRAFT,WEIGHED,GATEPASS_PRINTED' }),
+  });
+  // Never date-filtered: a draft is open work whatever day it was raised on, and
+  // hiding yesterday's behind today's default range is the same disappearance.
+  const drafts = openPasses.data ?? [];
 
   // ...and is instead shown on its own, because otherwise the record the gate
   // person just made would be invisible the moment the toast faded.
@@ -182,7 +199,7 @@ export default function MpGatePage() {
       />
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile
           icon={<PackageCheck className="h-4 w-4" />}
           label="Sheets"
@@ -195,7 +212,21 @@ export default function MpGatePage() {
           value={totals.pending}
           tone={totals.pending ? 'amber' : undefined}
         />
+        <StatTile
+          icon={<Truck className="h-4 w-4" />}
+          label="Not out yet"
+          value={drafts.length}
+          tone={drafts.length ? 'amber' : undefined}
+        />
       </div>
+
+      {/* Drafts — raised at the gate but not sent out. */}
+      <MpOpenGateOuts
+        channel={channel}
+        passes={drafts}
+        loading={openPasses.isLoading}
+        onDone={invalidate}
+      />
 
       {/* Gate outs raised here rather than off a sheet. */}
       {manualTrips.length > 0 && (
