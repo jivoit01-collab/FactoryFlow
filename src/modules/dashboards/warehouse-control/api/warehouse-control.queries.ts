@@ -13,7 +13,7 @@
  * costs a request.
  */
 import { useQuery } from '@tanstack/react-query';
-import { addDays, format, subDays } from 'date-fns';
+import { addDays, format, subMonths } from 'date-fns';
 
 import { useAuth } from '@/core/auth';
 import { dispatchPlansApi } from '@/modules/dashboards/dispatch-plans/api';
@@ -22,9 +22,33 @@ import { dispatchLinkingApi } from '@/modules/vehicle-management/api';
 import {
   WAREHOUSE_CONTROL_LINKING_FETCH_LIMIT,
   WAREHOUSE_CONTROL_PLANS_LOOKAHEAD_DAYS,
-  WAREHOUSE_CONTROL_PLANS_LOOKBACK_DAYS,
   WAREHOUSE_CONTROL_STALE_TIME,
 } from '../constants';
+
+/**
+ * The Dispatch Plans window the board reads.
+ *
+ * One calendar month back — the same edge `defaultDateRange()` gives the Plans
+ * page, so the two screens count the same bills. A fixed 30 days is NOT the same
+ * edge: across a 31-day month it lands a day late and silently drops whatever is
+ * dated on the boundary, which is how the board came to show 71 pending against
+ * the Plans page's 72. Forward it reaches further than that page, because a bill
+ * dated next week has not been dispatched either.
+ *
+ * Deliberately a named function rather than something computed inside `queryFn`:
+ * the dates go into the query key, so changing this derivation invalidates the
+ * cached answer instead of leaving a stale count on screen.
+ */
+export function warehouseControlPlanWindow(date: string): {
+  date_from: string;
+  date_to: string;
+} {
+  const base = new Date(`${date}T00:00:00`);
+  return {
+    date_from: format(subMonths(base, 1), 'yyyy-MM-dd'),
+    date_to: format(addDays(base, WAREHOUSE_CONTROL_PLANS_LOOKAHEAD_DAYS), 'yyyy-MM-dd'),
+  };
+}
 
 export const WAREHOUSE_CONTROL_QUERY_KEYS = {
   all: ['warehouse-control'] as const,
@@ -32,8 +56,18 @@ export const WAREHOUSE_CONTROL_QUERY_KEYS = {
   linkingFeed: (date: string, companyId?: number | string) =>
     [...WAREHOUSE_CONTROL_QUERY_KEYS.all, 'linking-feed', companyId, date] as const,
 
-  planBills: (date: string, companyId?: number | string) =>
-    [...WAREHOUSE_CONTROL_QUERY_KEYS.all, 'plan-bills', companyId, date] as const,
+  // Keyed on the resolved window, not the day it was derived from — two builds
+  // with different windows must not share a cache entry.
+  planBills: (date: string, companyId?: number | string) => {
+    const window = warehouseControlPlanWindow(date);
+    return [
+      ...WAREHOUSE_CONTROL_QUERY_KEYS.all,
+      'plan-bills',
+      companyId,
+      window.date_from,
+      window.date_to,
+    ] as const;
+  },
 };
 
 /** SAP hiccups are worth one retry; an auth/permission answer is not. */
@@ -82,19 +116,16 @@ export function useControlPlanBills(date: string, enabled = true) {
 
   return useQuery({
     queryKey: WAREHOUSE_CONTROL_QUERY_KEYS.planBills(date, currentCompany?.company_id),
-    queryFn: () => {
-      const base = new Date(`${date}T00:00:00`);
-      return dispatchPlansApi.getBills({
-        date_from: format(subDays(base, WAREHOUSE_CONTROL_PLANS_LOOKBACK_DAYS), 'yyyy-MM-dd'),
-        date_to: format(addDays(base, WAREHOUSE_CONTROL_PLANS_LOOKAHEAD_DAYS), 'yyyy-MM-dd'),
+    queryFn: () =>
+      dispatchPlansApi.getBills({
+        ...warehouseControlPlanWindow(date),
         booking_status: 'all',
         exclude_jivo_mart_transfer: true,
         by_dispatch_date: true,
         include_unscheduled: false,
         selected_only: true,
         limit: WAREHOUSE_CONTROL_LINKING_FETCH_LIMIT,
-      });
-    },
+      }),
     enabled: enabled && Boolean(date),
     staleTime: WAREHOUSE_CONTROL_STALE_TIME,
     retry: sapRetry,

@@ -68,11 +68,18 @@ export const WAREHOUSE_CONTROL_NON_MOVING_AGE_DAYS = 45;
 export const WAREHOUSE_CONTROL_LINKING_FETCH_LIMIT = 2000;
 
 /**
- * How far the Dispatch Plans read reaches either side of today. The Plans page
- * itself opens on a month back through today; the board also needs what is
- * scheduled ahead, because a bill dated next week has not been dispatched either.
+ * How far the Dispatch Plans read reaches ahead of today.
+ *
+ * The board also needs what is scheduled forward — a bill dated next week has
+ * not been dispatched either — which the Plans page's own window (a month back
+ * through today) does not cover.
+ *
+ * There is deliberately no matching lookback constant: the backward edge is one
+ * calendar month, taken with `subMonths` exactly as the Plans page does. Thirty
+ * days is NOT the same edge — across a 31-day month it lands a day late and
+ * silently drops any bill dated on that first day, which is precisely how the
+ * board came to show 71 pending against the Plans page's 72.
  */
-export const WAREHOUSE_CONTROL_PLANS_LOOKBACK_DAYS = 30;
 export const WAREHOUSE_CONTROL_PLANS_LOOKAHEAD_DAYS = 30;
 
 /**
