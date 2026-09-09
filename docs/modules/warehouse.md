@@ -27,6 +27,7 @@ The Warehouse module is the store operator's cockpit. It has three surfaces:
 | Screen | Route | Component | Primary user |
 |--------|-------|-----------|--------------|
 | Warehouse landing | `/warehouse` | `WarehouseDashboardPage` | Everyone (cards self-filter) |
+| Raw Material Stock | `/warehouse/rm-stock` | `RawMaterialStockPage` | Store keeper (set) / planning (read) |
 | BOM Requests list | `/warehouse/bom-requests` | `BOMRequestListPage` | Store reviewer |
 | BOM Request detail | `/warehouse/bom-requests/:requestId` | `BOMRequestDetailPage` | Store reviewer/issuer |
 | FG Receipts | `/warehouse/fg-receipts` | `FGReceiptListPage` | Store receiver |
@@ -249,6 +250,13 @@ the landing cards in `WarehouseDashboardPage`.
 
 - `module.config.tsx` — routes + sidebar (Warehouse group, WMS group, BST, GRPO).
 - `pages/WarehouseDashboardPage.tsx` — permission-filtered landing cards.
+- `pages/rmStock/RawMaterialStockPage.tsx` (+ `SetQuantityDialog.tsx`,
+  `StockHistoryDialog.tsx`) — the raw-material stock register: what each store
+  states it is holding. Item and its SAP on-hand come from SAP; the quantity is
+  typed and posted nowhere. Set buttons appear per row, gated on both
+  `SET_RM_STOCK` and the warehouses the list reports the caller manages. The
+  dialog is remounted by `key` on each open — that is how its fields reset.
+  Backend: `warehouse/docs/rm_stock.md`.
 - `pages/BOMRequestListPage.tsx`, `pages/BOMRequestDetailPage.tsx` — BOM review/approve/issue.
 - `pages/FGReceiptListPage.tsx` — receive + post FG (with action dialog).
 - `pages/WMSDashboardPage.tsx`, `StockTrackerPage.tsx`, `BillingTrackerPage.tsx`,
@@ -271,6 +279,7 @@ the landing cards in `WarehouseDashboardPage`.
 
 - **Paired backend doc:** `C:/Users/gurpa/dev/factory_app/warehouse/docs/README.md`
 - **BST:** [bst.md](./bst.md) · backend `warehouse/docs/bst.md`
+- **Raw Material Stock register:** backend `warehouse/docs/rm_stock.md`
 - **GRPO:** [grpo.md](./grpo.md) · `src/modules/warehouse/grpo/docs/README.md`
 - **Bin/pallet WMS app (different module):** [wms.md](./wms.md)
 - **Production:** [production.md](./production.md) · **QC:** [qc.md](./qc.md)

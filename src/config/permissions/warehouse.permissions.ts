@@ -54,6 +54,16 @@ export const WAREHOUSE_PERMISSIONS = {
   // scope.
   /** Assign users as managers of warehouses */
   MANAGE_USER_WAREHOUSES: 'warehouse.can_manage_user_warehouses',
+
+  // Raw-material stock register — the quantity a store keeper states is on the
+  // floor. Viewing is separate from setting because planning and supervisors
+  // read it while only the keeper of that warehouse writes it, and SET is
+  // necessary but not sufficient: the server also requires a UserWarehouse
+  // assignment for the warehouse being set.
+  /** Read the raw-material stock register */
+  VIEW_RM_STOCK: 'warehouse.can_view_rm_stock',
+  /** Set a raw-material quantity (store keeper) */
+  SET_RM_STOCK: 'warehouse.can_set_rm_stock',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';

@@ -32,6 +32,9 @@ const billSummaryViewPermissions = [
   DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY,
   DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY,
 ] as const;
+// The raw-material stock register — what each store states it is holding, as
+// distinct from SAP's own on-hand.
+const RawMaterialStockPage = lazy(() => import('./pages/rmStock/RawMaterialStockPage'));
 const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
 const BOMRequestDetailPage = lazy(() => import('./pages/BOMRequestDetailPage'));
 const FGReceiptListPage = lazy(() => import('./pages/FGReceiptListPage'));
@@ -100,6 +103,15 @@ export const warehouseModuleConfig: ModuleConfig = {
       path: '/warehouse',
       element: <WarehouseDashboardPage />,
       layout: 'main',
+    },
+    {
+      path: '/warehouse/rm-stock',
+      element: <RawMaterialStockPage />,
+      layout: 'main',
+      // View only: setting a quantity is gated per row, so a planner reaches
+      // the page and finds it read-only rather than being refused the route.
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK],
+      breadcrumb: { label: 'Raw Material Stock' },
     },
     {
       path: '/warehouse/bom-requests',
@@ -222,6 +234,7 @@ export const warehouseModuleConfig: ModuleConfig = {
       // Keep this list in sync with the union of the children's permissions below.
       permissions: [
         WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
+        WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK,
         WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
         WAREHOUSE_PERMISSIONS.VIEW_BST,
         WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL,
@@ -245,6 +258,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/dispatch-loading',
           title: 'Dispatch Loading',
           permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
+        },
+        {
+          path: '/warehouse/rm-stock',
+          title: 'Raw Material Stock',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK],
         },
         {
           path: '/warehouse/bom-requests',

@@ -1,4 +1,3 @@
-export { billSummaryApi } from './billSummary.api';
 export type {
   BillLookup,
   BillLookupLine,
@@ -13,6 +12,20 @@ export { bstApi } from './bst.api';
 export * from './bst.queries';
 export { printInfoApi } from './printInfo.api';
 export * from './printInfo.queries';
+export type {
+  RawMaterialItem,
+  RawMaterialSheetImport,
+  RawMaterialSheetItem,
+  RawMaterialStockAction,
+  RawMaterialStockDetail,
+  RawMaterialStockEntry,
+  RawMaterialStockList,
+  RawMaterialStockListParams,
+  RawMaterialStockRow,
+  SetRawMaterialStockPayload,
+} from './rmStock.api';
+export { rmStockApi } from './rmStock.api';
+export * from './rmStock.queries';
 export { transferRequestApi } from './transferRequest.api';
 export * from './transferRequest.queries';
 export type {
