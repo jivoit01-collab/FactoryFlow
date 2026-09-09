@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Boxes, ClipboardList, PackageCheck } from 'lucide-react';
+import { ArrowLeftRight, Boxes, ClipboardList, PackageCheck, Scale } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { GRPO_PERMISSIONS, WAREHOUSE_PERMISSIONS } from '@/config/permissions';
@@ -18,6 +18,13 @@ const WAREHOUSE_SECTIONS = [
     icon: ClipboardList,
     path: '/warehouse/bom-requests',
     permission: WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
+  },
+  {
+    title: 'Raw Material Stock',
+    description: 'Set the quantity of each raw material your store is holding',
+    icon: Scale,
+    path: '/warehouse/rm-stock',
+    permission: WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK,
   },
   {
     title: 'FG Receipts',

@@ -122,14 +122,14 @@ export function PalletSpacePanel({
       className={className}
       id="pallet-space"
       title="Pallet Space"
-      description="Rack slots across the warehouse layout and how many carry a pallet"
+      description="Rack slots across every company's warehouse layout, and how many carry a pallet"
       meta={meta}
       icon={Warehouse}
       accent={SECTION_ACCENT.palletSpace}
       action={moduleOff ? undefined : { label: 'Warehouse Ops', to: '/warehouse-ops' }}
     >
       {moduleOff ? (
-        <ControlEmpty message="Warehouse Ops is switched off, so there is no layout to measure." />
+        <ControlEmpty message="Warehouse Ops is switched off in every company you can see, so there is no layout to measure." />
       ) : loading ? (
         <div className="space-y-4">
           <ControlSkeletonBar className="h-10 w-40" />

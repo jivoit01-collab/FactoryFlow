@@ -66,10 +66,20 @@ export interface WmsStorageAdapter {
    * that warehouse's rows (locations/zones/… carry a ``warehouseId``); omit it for
    * the full company-wide list. Server-side scoping keeps a warehouse screen from
    * pulling every warehouse's rows.
+   *
+   * ``{ allCompanies: true }`` reads every company the user belongs to instead of
+   * the active one — for a read that measures the physical site rather than one
+   * company's books (the Warehouse Control board). It is a READ-only widening:
+   * every write still lands in the active company, so it must not be handed to
+   * the shared ``wmsStore``, whose cache the per-company screens read.
+   *
+   * Record ids are client UUIDs, so merged rows do not collide — except
+   * ``settings``, whose id is the same ``wms-settings`` in every company, so a
+   * cross-company read of it returns one row per company.
    */
   list<K extends WmsCollection>(
     collection: K,
-    params?: { warehouseId?: WmsId },
+    params?: { warehouseId?: WmsId; allCompanies?: boolean },
   ): Promise<WmsCollectionMap[K][]>;
 
   /**

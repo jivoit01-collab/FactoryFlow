@@ -29,6 +29,12 @@ export const createRunSchema = z.object({
     )
     .optional()
     .default([]),
+  // Planning fields — the screen is filled the evening before, so the run
+  // carries the window it is meant to occupy.
+  planned_start_time: z.string().optional().default(''),
+  planned_end_time: z.string().optional().default(''),
+  planned_end_is_manual: z.boolean().optional().default(false),
+  planning_remark: z.string().optional().default(''),
 }).superRefine((val, ctx) => {
   // The product must be chosen from the SKU list so its SAP item code is
   // captured — a free-typed name has no BOM and breaks "Submit BOM to WH".
@@ -38,6 +44,17 @@ export const createRunSchema = z.object({
       path: ['product'],
       message: 'Select a product from the SKU list (do not type it manually).',
     });
+  }
+  // A finish time typed by hand has to come after the start. The derived one
+  // cannot be wrong this way, so only the manual case is checked.
+  if (val.planned_end_is_manual && val.planned_start_time && val.planned_end_time) {
+    if (val.planned_end_time <= val.planned_start_time) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['planned_end_time'],
+        message: 'The finish time must be after the start time.',
+      });
+    }
   }
 });
 

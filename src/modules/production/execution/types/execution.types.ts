@@ -719,6 +719,191 @@ export interface WasteAnalytics {
 }
 
 // ============================================================================
+// Next-day plan readiness — material availability, clashes and timing
+// ============================================================================
+
+/**
+ * `UNKNOWN` means the stock read failed, NOT that stock is zero — the row's
+ * figures come back null and it must never be presented as a shortage.
+ */
+export type MaterialReadinessStatus =
+  | 'OK'
+  | 'UNKNOWN'
+  | 'TIGHT'
+  | 'CONTESTED'
+  | 'NO_STOCK_RECORD'
+  | 'SHORT';
+
+export type PlanConflictType = 'LINE_BUSY' | 'DUPLICATE_SKU' | 'MATERIAL_CONTENTION';
+
+export interface PlanCheckWarehouseStock {
+  warehouse: string;
+  on_hand: number | null;
+  /** Null on a Raw Material register holding — a hand-typed quantity carries
+   *  no SAP reservations. */
+  committed: number | null;
+  /** Set on register holdings: the date the keeper's count is true as of. */
+  as_of_date?: string | null;
+}
+
+export interface PlanCheckCompetingRun {
+  run_id: number;
+  run_number: number;
+  date: string | null;
+  status: RunStatus;
+  line_name: string;
+  product: string;
+  qty: number | null;
+  planned_start_at: string | null;
+}
+
+export interface PlanCheckMaterialRow {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  material_type: 'PACKAGING' | 'RAW' | 'OTHER';
+  item_group: string;
+  issue_warehouse: string;
+  /** The warehouses this component's stock was looked for in — RM and PM are
+   *  scoped separately, so this is per row, not per screen. */
+  searched_warehouses: string[];
+  has_own_bom: boolean;
+  /** `ITT1."Quantity"` as authored in SAP — the quantity for ONE box. */
+  qty_per_case: number | null;
+  /** `OITT."Qauntity"`, reported only for transparency; never divided by. */
+  bom_base_qty: number | null;
+  required_qty: number | null;
+  /** Per-case x case count, before any edit the supervisor made. */
+  bom_required_qty: number | null;
+  required_is_overridden: boolean;
+  on_hand: number | null;
+  committed: number | null;
+  free: number | null;
+  other_plan_demand: number | null;
+  available_after_other_plans: number | null;
+  balance_after_this_plan: number | null;
+  shortfall: number | null;
+  status: MaterialReadinessStatus;
+  /** REGISTER for raw material (the store keeper's count) and SAP for
+   *  everything else. The two must never be presented as the same number. */
+  stock_source: 'REGISTER' | 'SAP';
+  /** True when a raw material has no Raw Material register row at all — it
+   *  reads as 0, which is not the same as a counted zero. */
+  register_missing: boolean;
+  /** Oldest as-of date across the register rows behind the figure. */
+  register_as_of: string | null;
+  /** SAP's own on-hand, carried even on a register-sourced row so a stale
+   *  register is visible rather than silently authoritative. */
+  sap_on_hand: number | null;
+  sap_free: number | null;
+  /** Whether this line goes to the warehouse for approval, and for how much. */
+  approval_required: boolean;
+  approval_qty: number | null;
+  approval_reason: string;
+  qty_at_production_consumption: number | null;
+  warehouses: PlanCheckWarehouseStock[];
+  competing_runs: PlanCheckCompetingRun[];
+  on_order_qty: number | null;
+  on_order_earliest_due: string | null;
+  days_since_last_consumption: number | null;
+}
+
+export interface PlanCheckMaterialSummary {
+  total_lines: number;
+  ok_lines: number;
+  tight_lines: number;
+  contested_lines: number;
+  short_lines: number;
+  no_record_lines: number;
+  status: MaterialReadinessStatus;
+  /** How many lines will actually be sent to the warehouse. */
+  approval_lines: number;
+  /** Raw materials with no Raw Material register row. */
+  register_missing_lines: number;
+}
+
+export interface PlanCheckConflict {
+  type: PlanConflictType;
+  severity: 'WARNING';
+  message: string;
+  run_id?: number;
+  run_number?: number;
+  run_status?: RunStatus;
+  item_code?: string;
+  item_name?: string;
+  window_overlap?: boolean;
+  window_unknown?: boolean;
+  detail?: Record<string, unknown>;
+}
+
+export interface PlanCheckTiming {
+  planned_start_at: string | null;
+  planned_end_at: string | null;
+  derived_end_at: string | null;
+  planned_end_is_manual: boolean;
+  duration_minutes: number | null;
+  derived_duration_minutes: number | null;
+  bottles: number | null;
+  pieces_per_case: number | null;
+  rated_speed: number | null;
+  /** Which inputs are missing, when the finish time cannot be worked out. */
+  undecidable_because: string[];
+}
+
+export interface PlanCheckResult {
+  timing: PlanCheckTiming;
+  materials: {
+    rows: PlanCheckMaterialRow[];
+    summary: PlanCheckMaterialSummary;
+    unusable: { item_code: string; item_name: string; reason: string }[];
+    resource_lines: { item_code: string; item_name: string }[];
+    available: boolean;
+    error: string;
+    /** Every warehouse read, across all material types. */
+    warehouses: string[];
+    /** Which warehouses count per kind of material: RM from the oil stores, PM
+     *  from the packaging stores, OTHER from both. */
+    warehouse_scope: Partial<Record<'RAW' | 'PACKAGING' | 'OTHER', string[]>>;
+    basis: 'ON_HAND' | 'FREE';
+  };
+  conflicts: PlanCheckConflict[];
+  blocking: {
+    has_shortage: boolean;
+    has_contention: boolean;
+    has_conflicts: boolean;
+    requires_remark: boolean;
+  };
+  meta: {
+    company_code: string;
+    date: string;
+    line_id: number | null;
+    line_name: string;
+    item_code: string;
+    stock_basis: string;
+    checked_at: string;
+  };
+}
+
+export interface PlanCheckRequest {
+  line_id?: number | null;
+  item_code?: string;
+  required_qty?: number | null;
+  date?: string;
+  planned_start_at?: string | null;
+  planned_end_at?: string | null;
+  planned_end_is_manual?: boolean;
+  rated_speed?: string | number | null;
+  pieces_per_case?: number | null;
+  exclude_run_id?: number | null;
+  stock_basis?: 'ON_HAND' | 'FREE';
+  /**
+   * Material lines as they stand on the form. Sent so the check prices the
+   * quantities the supervisor actually edited, not only the BOM's.
+   */
+  materials?: { material_code: string; opening_qty: string }[];
+}
+
+// ============================================================================
 // Request Types
 // ============================================================================
 
@@ -758,6 +943,13 @@ export interface CreateRunRequest {
   supervisor?: string;
   operators?: string;
   materials?: MaterialInput[];
+  /** ISO datetime the run is planned to start — set the evening before. */
+  planned_start_at?: string | null;
+  planned_end_at?: string | null;
+  planned_end_is_manual?: boolean;
+  /** Reason for planning despite a shortfall or a clash. */
+  planning_remark?: string;
+  acknowledged_warnings?: boolean;
 }
 
 export interface UpdateRunRequest {
@@ -1291,4 +1483,17 @@ export interface AnalyticsParams {
   date_from?: string;
   date_to?: string;
   line?: number;
+}
+
+/**
+ * Cost analysis takes one extra scope: which run states are priced.
+ *
+ * Omitted, the backend answers on COMPLETED runs only — the basis the report
+ * page reads. `ALL` covers every costed run whatever state it is in, which is
+ * what a live board needs: a day's spend sits in its open runs too, and
+ * pricing only the closed ones divides a whole day's cost by a slice of its
+ * output.
+ */
+export interface CostAnalysisParams extends AnalyticsParams {
+  status?: 'ALL' | 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED';
 }

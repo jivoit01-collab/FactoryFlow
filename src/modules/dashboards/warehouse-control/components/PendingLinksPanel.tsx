@@ -19,6 +19,7 @@ import type { ControlScheduledQueue } from '../types';
 import {
   compactText,
   formatCompactCurrency,
+  formatCompanyChip,
   formatCount,
   formatDecimal,
   formatTons,
@@ -60,6 +61,8 @@ interface PendingRowProps {
 function PendingRow({ bill, today, onSelect }: PendingRowProps) {
   const dispatchDate = bill.plan.dispatch_date ?? '';
   const isOverdue = Boolean(dispatchDate) && dispatchDate < today;
+  // The queue spans every company, so the row says whose bill it is.
+  const company = formatCompanyChip(bill.company_code);
 
   return (
     <li>
@@ -75,6 +78,11 @@ function PendingRow({ bill, today, onSelect }: PendingRowProps) {
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-sm font-semibold tabular-nums">#{bill.doc_num}</span>
             <StatusBadge status={bill.plan.booking_status} />
+            {company && (
+              <Badge variant="outline" className="px-1.5 font-normal">
+                {company}
+              </Badge>
+            )}
             {isOverdue && (
               <Badge variant="destructive" className="gap-1">
                 <AlertTriangle className="h-3 w-3" />
@@ -151,7 +159,7 @@ export function PendingLinksPanel({
       className={className}
       id="pending-linkings"
       title="Pending Links"
-      description="Bills with a dispatch date filled in that are still waiting for a vehicle"
+      description="Bills with a dispatch date filled in, every company, still waiting for a vehicle"
       meta={meta}
       icon={CalendarClock}
       accent={SECTION_ACCENT.pending}

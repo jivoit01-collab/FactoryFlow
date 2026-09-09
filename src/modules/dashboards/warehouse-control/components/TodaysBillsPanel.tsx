@@ -2,12 +2,19 @@ import { ChevronRight, Droplets, FileText, Package, Truck } from 'lucide-react';
 
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
+import { Badge } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import { WAREHOUSE_CONTROL_MAX_RENDERED_ROWS } from '../constants';
 import { SECTION_ACCENT } from '../constants/warehouse-control.theme';
 import type { ControlLinkingBoard } from '../types';
-import { compactText, formatCompactCurrency, formatCount, formatDecimal } from '../utils/format';
+import {
+  compactText,
+  formatCompactCurrency,
+  formatCompanyChip,
+  formatCount,
+  formatDecimal,
+} from '../utils/format';
 import { useControlDetail } from './controlDetailContext';
 import { ControlScrollList } from './ControlScrollList';
 import { ControlSection } from './ControlSection';
@@ -33,6 +40,10 @@ export interface TodaysBillsPanelProps {
  *
  * A dispatched bill keeps its place here, tinted and badged: what has already
  * left is half of what a day's board is read for.
+ *
+ * The board is cross-company, so the row names the company it belongs to — two
+ * invoice numbers on this list can be the same digits in different companies,
+ * and the truck they share is one truck.
  */
 function BillRow({
   bill,
@@ -43,6 +54,7 @@ function BillRow({
 }) {
   const vehicleNo = compactText(bill.plan.vehicle_no, `Vehicle #${bill.plan.vehicle_id ?? '?'}`);
   const isDispatched = bill.plan.booking_status === 'DISPATCHED';
+  const company = formatCompanyChip(bill.company_code);
 
   return (
     <li>
@@ -60,6 +72,11 @@ function BillRow({
           <div className="flex items-center gap-2">
             <span className="shrink-0 text-sm font-semibold tabular-nums">#{bill.doc_num}</span>
             <StatusBadge status={bill.plan.booking_status} />
+            {company && (
+              <Badge variant="outline" className="shrink-0 px-1.5 font-normal">
+                {company}
+              </Badge>
+            )}
           </div>
           <p className="truncate text-sm">{compactText(bill.card_name)}</p>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs">
@@ -93,8 +110,8 @@ function BillRow({
  *
  * Only linked bills appear: this panel answers "what is going out today and on
  * what", so a bill with no vehicle belongs in Pending Links, not here. It reads
- * the Bills Linking feed, the same one that page uses, and the count in the
- * header names how many of today's bills are still waiting.
+ * every company's bills, not the active one's — the dock is shared — and the
+ * count in the header names how many of today's bills are still waiting.
  */
 export function TodaysBillsPanel({
   board,
@@ -118,7 +135,7 @@ export function TodaysBillsPanel({
       className={className}
       id="todays-bills"
       title="Today's Bills"
-      description="Bills dated today that have a vehicle, and which vehicle — dispatched ones last"
+      description="Bills dated today that have a vehicle, and which vehicle — every company, dispatched ones last"
       meta={meta}
       icon={FileText}
       accent={SECTION_ACCENT.bills}

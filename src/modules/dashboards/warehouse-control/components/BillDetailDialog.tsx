@@ -17,6 +17,7 @@ import { formatDateTimeShort } from '@/shared/utils/format';
 
 import {
   formatCompactCurrency,
+  formatCompanyChip,
   formatCount,
   formatCurrency,
   formatDay,
@@ -83,7 +84,9 @@ export function BillDetailDialog({
             <span className="tabular-nums">Bill #{bill.doc_num}</span>
             <StatusBadge status={plan.booking_status} />
             {plan.pipeline_status && <PipelineStatusBadge status={plan.pipeline_status} />}
-            {bill.company_code && <Badge variant="outline">{bill.company_code}</Badge>}
+            {bill.company_code && (
+              <Badge variant="outline">{formatCompanyChip(bill.company_code)}</Badge>
+            )}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">{bill.card_name || 'Unknown customer'}</p>
         </DialogHeader>

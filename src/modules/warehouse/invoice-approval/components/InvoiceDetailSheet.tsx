@@ -24,13 +24,11 @@ import {
   useInvoiceHistory,
   useUpdateInvoiceStatus,
 } from '../api/invoice-approval.queries';
-import { type RejectInvoiceFormData, rejectInvoiceSchema } from '../schemas/invoice-approval.schema';
 import {
-  ACTIONABLE_TABS,
-  type InvoiceLog,
-  type InvoiceSource,
-  type InvoiceTab,
-} from '../types';
+  type RejectInvoiceFormData,
+  rejectInvoiceSchema,
+} from '../schemas/invoice-approval.schema';
+import { ACTIONABLE_TABS, type InvoiceLog, type InvoiceSource, type InvoiceTab } from '../types';
 import { DocumentLinesTable } from './DocumentLinesTable';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 
@@ -163,7 +161,9 @@ function InvoiceDetailBody({
           <span className="flex items-center gap-2">
             <History className="h-4 w-4" /> Approval history ({source})
           </span>
-          <ChevronDown className={cn('h-4 w-4 transition-transform', historyOpen && 'rotate-180')} />
+          <ChevronDown
+            className={cn('h-4 w-4 transition-transform', historyOpen && 'rotate-180')}
+          />
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-2">
           {historyQuery.isLoading ? (
@@ -226,12 +226,24 @@ function InvoiceDetailBody({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Actions (only on PENDING, and only for approvers) */}
+      {/* Actions: PENDING, held by an approver, and only for the SAP
+          authorizer SAP itself named on the current stage. */}
       {isActionable ? (
         <div className="mt-auto border-t pt-4">
           {!canApprove ? (
             <p className="text-sm text-muted-foreground">
               You don't have permission to approve or reject invoices.
+            </p>
+          ) : invoice.approver_code && !invoice.is_mine ? (
+            <p className="text-sm text-muted-foreground">
+              SAP is waiting on <span className="font-medium">{invoice.approver_code}</span>
+              {invoice.approver_name ? ` (${invoice.approver_name})` : ''} to decide this, and it
+              accepts a decision from that person only.
+            </p>
+          ) : invoice.is_mine && invoice.credentials_configured === false ? (
+            <p className="text-sm text-amber-700">
+              This one is yours to decide, but your SAP password is not configured on the server yet
+              — ask an administrator to add it, or decide it in SAP.
             </p>
           ) : rejecting ? (
             <form onSubmit={handleSubmit(reject)} className="space-y-2">

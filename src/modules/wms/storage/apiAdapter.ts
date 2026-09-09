@@ -42,12 +42,16 @@ export class ApiAdapter implements WmsStorageAdapter {
 
   async list<K extends WmsCollection>(
     collection: K,
-    params?: { warehouseId?: WmsId },
+    params?: { warehouseId?: WmsId; allCompanies?: boolean },
   ): Promise<WmsCollectionMap[K][]> {
-    const query = params?.warehouseId
-      ? `?warehouseId=${encodeURIComponent(params.warehouseId)}`
-      : '';
-    const response = await apiClient.get(`${collectionUrl(collection)}${query}`);
+    const query = new URLSearchParams();
+    if (params?.warehouseId) query.set('warehouseId', params.warehouseId);
+    // Read-only widening to every company the user belongs to — see the contract
+    // in `adapter.types.ts`. Never combined with a write.
+    if (params?.allCompanies) query.set('all_companies', '1');
+    const search = query.toString();
+    const suffix = search ? `?${search}` : '';
+    const response = await apiClient.get(`${collectionUrl(collection)}${suffix}`);
     return unwrapList<WmsCollectionMap[K]>(response.data);
   }
 

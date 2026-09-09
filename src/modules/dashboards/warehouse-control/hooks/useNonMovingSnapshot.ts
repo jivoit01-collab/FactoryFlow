@@ -1,8 +1,14 @@
 /**
- * Non-moving stock, taken from the Non-Moving dashboard's own feed.
+ * Non-moving stock, read out of one pinned company's SAP schema.
  *
- * It calls that dashboard's hooks with the same default filters, so the two
- * screens share one cache entry: opening either warms the other.
+ * The board is company-independent, and for this panel that means pinned rather
+ * than merged: the warehouse it reports on (`WAREHOUSE_CONTROL_NON_MOVING_WAREHOUSES`)
+ * exists in a single company's chart of warehouses, so read through the active
+ * company the panel would go blank for anyone sitting in a sibling company.
+ *
+ * It therefore holds its own cache entry rather than sharing the Non-Moving
+ * dashboard's: that page follows the company selector, and item-group codes are
+ * per-schema — a code resolved there would name a different group here.
  *
  * The rows are then derived through that page's exact pipeline — age filter,
  * fold to one row per SKU, resolve warehouses against the visible rows — rather
@@ -17,7 +23,6 @@
  */
 import { useMemo } from 'react';
 
-import { useItemGroups, useNonMovingReport } from '@/modules/dashboards/non-moving/api';
 import type {
   BranchSummary,
   NonMovingFilters,
@@ -30,8 +35,10 @@ import {
 } from '@/modules/dashboards/non-moving/utils/nonMovingGrouping';
 
 import { findDefaultMaterialGroup } from '../../utils/itemGroupDefaults';
+import { useControlNonMovingItemGroups, useControlNonMovingReport } from '../api';
 import {
   WAREHOUSE_CONTROL_NON_MOVING_AGE_DAYS,
+  WAREHOUSE_CONTROL_NON_MOVING_COMPANY,
   WAREHOUSE_CONTROL_NON_MOVING_WAREHOUSES,
 } from '../constants';
 
@@ -42,6 +49,8 @@ export interface UseNonMovingSnapshotResult {
   ageDays: number;
   /** Warehouse codes the panel is narrowed to; empty means every factory one. */
   scope: readonly string[];
+  /** The company whose schema was read — the panel names it, since it is fixed. */
+  companyCode: string;
   isLoading: boolean;
   isFetching: boolean;
   error: unknown;
@@ -49,7 +58,8 @@ export interface UseNonMovingSnapshotResult {
 }
 
 export function useNonMovingSnapshot(enabled = true): UseNonMovingSnapshotResult {
-  const itemGroupsQuery = useItemGroups();
+  const companyCode = WAREHOUSE_CONTROL_NON_MOVING_COMPANY;
+  const itemGroupsQuery = useControlNonMovingItemGroups(companyCode, enabled);
 
   // The report needs a material group, and which one is the default is only
   // known once the dropdown feed answers (or fails).
@@ -65,7 +75,7 @@ export function useNonMovingSnapshot(enabled = true): UseNonMovingSnapshotResult
     [itemGroupsQuery.data],
   );
 
-  const reportQuery = useNonMovingReport(filters, enabled && groupsResolved);
+  const reportQuery = useControlNonMovingReport(filters, companyCode, enabled && groupsResolved);
 
   const filteredItems = useMemo(() => {
     const items = reportQuery.data?.data ?? [];
@@ -126,8 +136,12 @@ export function useNonMovingSnapshot(enabled = true): UseNonMovingSnapshotResult
     warehouses,
     ageDays: filters.age,
     scope: WAREHOUSE_CONTROL_NON_MOVING_WAREHOUSES,
+    companyCode,
     isLoading: enabled && (!groupsResolved || reportQuery.isLoading),
     isFetching: reportQuery.isFetching,
+    // Only the report's own error: a failed dropdown is survivable (the report
+    // is then read for every group), and the permission answer a user without
+    // access to the pinned company gets comes back on both queries anyway.
     error: reportQuery.error,
     refetch: () => void reportQuery.refetch(),
   };

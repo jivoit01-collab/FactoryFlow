@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Loader2, Settings2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, ArrowLeft, Loader2, Settings2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Checkbox,
   Input,
   Label,
   Select,
@@ -21,8 +22,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Textarea,
 } from '@/shared/components/ui';
-import { useScrollToError } from '@/shared/hooks';
+import { useDebounce, useScrollToError } from '@/shared/hooks';
 
 import {
   useAutoFillConfig,
@@ -30,14 +32,36 @@ import {
   useCreateRun,
   useLineConfigs,
   useLines,
+  useRunPlanCheck,
   useSearchSAPItems,
 } from '../api';
+import {
+  MaterialReadinessPanel,
+  PlanConflictsPanel,
+  PlanTimingCard,
+  type ReadinessRow,
+} from '../components';
 import { type CreateRunFormData, createRunSchema } from '../schemas';
-import type { LineSkuConfig, SAPItem } from '../types';
+import type { LineSkuConfig, PlanCheckRequest, SAPItem } from '../types';
+import { toLocalIso } from '../utils';
 
 // ============================================================================
-// Start Run Page
+// Plan Production Run
+// ----------------------------------------------------------------------------
+// Filled by the production supervisor the evening before, not at the line as
+// the run starts. That is why the material picture, the clash check and the
+// clock times are on this screen at all: the whole value of planning a day
+// ahead is finding out tonight that the caps are short or that the second
+// shift already claimed the same oil, while there is still time to do
+// something about it.
 // ============================================================================
+
+/** Tomorrow, in the `YYYY-MM-DD` an `<input type="date">` wants. */
+function tomorrowIsoDate() {
+  const day = new Date();
+  day.setDate(day.getDate() + 1);
+  return day.toISOString().split('T')[0];
+}
 
 function StartRunPage() {
   const navigate = useNavigate();
@@ -58,13 +82,14 @@ function StartRunPage() {
 
   // Store raw per-unit BOM for scaling
   const [rawBOM, setRawBOM] = useState<
-    { code: string; name: string; perUnit: number; uom: string }[]
+    { code: string; name: string; perCase: number; uom: string }[]
   >([]);
 
   const form = useForm<CreateRunFormData>({
     resolver: zodResolver(createRunSchema),
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
+      // A plan is for the next day by default — that is what this screen is for.
+      date: tomorrowIsoDate(),
       product: '',
       item_code: '',
       required_qty: '',
@@ -75,6 +100,10 @@ function StartRunPage() {
       supervisor: '',
       operators: '',
       materials: [],
+      planned_start_time: '',
+      planned_end_time: '',
+      planned_end_is_manual: false,
+      planning_remark: '',
     },
   });
 
@@ -86,56 +115,56 @@ function StartRunPage() {
   });
 
   const watchedRequiredQty = form.watch('required_qty');
+  const watchedRatedSpeed = form.watch('rated_speed');
+  const watchedDate = form.watch('date');
+  const watchedStartTime = form.watch('planned_start_time');
+  const watchedEndTime = form.watch('planned_end_time');
+  const watchedEndIsManual = form.watch('planned_end_is_manual');
+  const watchedMaterials = form.watch('materials');
+  const watchedRemark = form.watch('planning_remark');
 
-  // Store raw BOM when the selected SKU changes
+  // Keep the BOM snapshot in step with the selected SKU.
   const lastPopulatedItemCode = useRef<string | null>(null);
   useEffect(() => {
-    if (
-      bomData?.components?.length &&
-      selectedItemCode &&
-      lastPopulatedItemCode.current !== selectedItemCode
-    ) {
-      lastPopulatedItemCode.current = selectedItemCode;
-      const raw = bomData.components.map((c) => ({
+    if (!bomData?.components || !selectedItemCode) return;
+    if (lastPopulatedItemCode.current === selectedItemCode) return;
+    lastPopulatedItemCode.current = selectedItemCode;
+    setRawBOM(
+      bomData.components.map((c) => ({
         code: c.ItemCode,
         name: c.ItemName,
-        perUnit: c.PlannedQty,
+        // `PlannedQty` is SAP's `ITT1."Quantity"` untouched, and on this data
+        // that is the quantity for ONE box — 20 litres of oil and one carton on
+        // a 1 LTR x 20 PCS SKU. So it multiplies straight by the case count.
+        perCase: c.PlannedQty,
         uom: c.UomCode ?? '',
-      }));
-      setRawBOM(raw);
+      })),
+    );
+  }, [bomData, selectedItemCode]);
 
-      // Scale by required_qty if already filled, otherwise show per-unit
-      const qty = parseFloat(watchedRequiredQty || '0') || 1;
-      replace(
-        raw.map((c) => ({
-          material_code: c.code,
-          material_name: c.name,
-          opening_qty: (c.perUnit * qty).toFixed(3),
-          issued_qty: '0',
-          uom: c.uom,
-        })),
-      );
-    }
-  }, [bomData, selectedItemCode, replace, watchedRequiredQty]);
-
-  // Re-scale BOM when required_qty changes
+  // Scale the material lines from the BOM and the case count — ONE effect over
+  // both inputs. Two effects (one per input, guarded by a ref) could settle
+  // with the requirement scaled to a single case, which then showed 20.000
+  // where 4,000 was meant.
   useEffect(() => {
-    if (rawBOM.length === 0) return;
-    const qty = parseFloat(watchedRequiredQty || '0');
-    if (!qty || qty <= 0) return;
+    if (rawBOM.length === 0) {
+      replace([]);
+      return;
+    }
+    const qty = parseFloat(watchedRequiredQty || '0') || 1;
     replace(
       rawBOM.map((c) => ({
         material_code: c.code,
         material_name: c.name,
-        opening_qty: (c.perUnit * qty).toFixed(3),
+        opening_qty: (c.perCase * qty).toFixed(3),
         issued_qty: '0',
         uom: c.uom,
       })),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedRequiredQty]);
+  }, [rawBOM, watchedRequiredQty]);
 
-  // Reset config selection when line changes
+  // Reset the config selection when the line changes
   useEffect(() => {
     setSelectedConfigId('');
   }, [selectedLineId]);
@@ -203,25 +232,136 @@ function StartRunPage() {
   };
   const lockedInputProps = { readOnly: true, className: 'bg-muted/50 cursor-not-allowed' };
 
+  // ------------------------------------------------------------------------
+  // Readiness check
+  // ------------------------------------------------------------------------
+  // Debounced through a JSON string so a keystroke in the quantity field does
+  // not fire a HANA round trip, and so the array of material lines compares by
+  // value instead of by identity.
+  const checkPayload: PlanCheckRequest = useMemo(
+    () => ({
+      line_id: selectedLineId,
+      item_code: selectedItemCode ?? '',
+      required_qty: parseFloat(watchedRequiredQty || '0') || null,
+      date: watchedDate,
+      planned_start_at: toLocalIso(watchedDate, watchedStartTime || ''),
+      planned_end_at: watchedEndIsManual
+        ? toLocalIso(watchedDate, watchedEndTime || '')
+        : null,
+      planned_end_is_manual: !!watchedEndIsManual,
+      rated_speed: watchedRatedSpeed || null,
+      pieces_per_case: selectedConfig?.pieces_per_case ?? null,
+      materials: (watchedMaterials ?? [])
+        .filter((m) => m.material_code)
+        .map((m) => ({ material_code: m.material_code, opening_qty: m.opening_qty })),
+    }),
+    [
+      selectedLineId,
+      selectedItemCode,
+      watchedRequiredQty,
+      watchedDate,
+      watchedStartTime,
+      watchedEndTime,
+      watchedEndIsManual,
+      watchedRatedSpeed,
+      watchedMaterials,
+      selectedConfig?.pieces_per_case,
+    ],
+  );
+
+  const debouncedPayloadJson = useDebounce(JSON.stringify(checkPayload), 600);
+  const debouncedPayload = useMemo(
+    () => JSON.parse(debouncedPayloadJson) as PlanCheckRequest,
+    [debouncedPayloadJson],
+  );
+
+  const {
+    data: planCheck,
+    isFetching: checking,
+    error: checkError,
+  } = useRunPlanCheck(debouncedPayload);
+
+  const checkByCode = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof planCheck>['materials']['rows'][number]>();
+    planCheck?.materials.rows.forEach((row) => map.set(row.item_code, row));
+    return map;
+  }, [planCheck]);
+
+  const readinessRows: ReadinessRow[] = fields.map((field, index) => ({
+    id: field.id,
+    material_code: field.material_code,
+    material_name: field.material_name,
+    uom: field.uom,
+    per_case: rawBOM[index]?.perCase,
+    check: checkByCode.get(field.material_code),
+  }));
+
+  // The screen asks for a written reason when it found a shortfall or a
+  // contested component, and for an explicit acknowledgement when it found a
+  // clash. Neither refuses the plan — both make the override deliberate.
+  const [acknowledged, setAcknowledged] = useState(false);
+  const needsRemark =
+    !!planCheck?.blocking.has_shortage || !!planCheck?.blocking.has_contention;
+  const hasConflicts = !!planCheck?.blocking.has_conflicts;
+  const remarkGiven = (watchedRemark ?? '').trim().length > 0;
+  const blockedBySafeguard = (needsRemark && !remarkGiven) || (hasConflicts && !acknowledged);
+
+  // Clear the acknowledgement whenever the findings change, so a tick never
+  // silently carries over to a different set of clashes.
+  const conflictSignature = JSON.stringify(planCheck?.conflicts?.map((c) => c.message) ?? []);
+  useEffect(() => {
+    setAcknowledged(false);
+  }, [conflictSignature]);
+
   const onSubmit = async (data: CreateRunFormData) => {
     if (configRequired && !selectedConfig) {
       toast.error('Select a line configuration for this line');
       return;
     }
+    if (needsRemark && !remarkGiven) {
+      toast.error('Give a reason for planning against a material shortfall');
+      return;
+    }
+    if (hasConflicts && !acknowledged) {
+      toast.error('Confirm you have reviewed the clashes with other plans');
+      return;
+    }
+
+    // The two time fields are form-only — the API takes full datetimes, which
+    // the date and the clock time are combined into here.
+    const {
+      planned_start_time,
+      planned_end_time,
+      planned_end_is_manual,
+      planning_remark,
+      ...runFields
+    } = data;
+
     try {
-      const run = await createRun.mutateAsync(data);
-      toast.success('Production run created successfully');
+      const run = await createRun.mutateAsync({
+        ...runFields,
+        planned_start_at: toLocalIso(data.date, planned_start_time || ''),
+        planned_end_at: planned_end_is_manual
+          ? toLocalIso(data.date, planned_end_time || '')
+          : null,
+        planned_end_is_manual: !!planned_end_is_manual,
+        planning_remark: planning_remark ?? '',
+        acknowledged_warnings: acknowledged || !hasConflicts,
+      });
+      toast.success('Production run planned');
       navigate(`/production/execution/runs/${run.id}`);
-    } catch {
-      toast.error('Failed to create production run');
+    } catch (error) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data
+        ?.detail;
+      toast.error(detail || 'Failed to create production run');
     }
   };
 
   return (
     <div className="space-y-6">
       <DashboardHeader
-        title="Start Production Run"
-        description="Create a new production run from a product SKU"
+        title="Plan Production Run"
+        description="Plan tomorrow's run — check RM/PM availability, clashes with other plans, and the start time"
       />
 
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
@@ -229,7 +369,6 @@ function StartRunPage() {
       </Button>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-
         {/* Product SKU Card */}
         <Card>
           <CardHeader>
@@ -250,44 +389,44 @@ function StartRunPage() {
                 </p>
               </div>
             ) : (
-            <SearchableSelect<SAPItem>
-              items={skuItems}
-              isLoading={loadingSKU && skuSearch.length >= 2}
-              getItemKey={(item) => item.ItemCode}
-              getItemLabel={(item) => `${item.ItemCode} - ${item.ItemName}`}
-              filterFn={() => true}
-              renderItem={(item) => (
-                <div className="flex items-center justify-between w-full gap-3">
-                  <div className="min-w-0">
-                    <span className="font-mono text-xs">{item.ItemCode}</span>
-                    <span className="ml-2">{item.ItemName}</span>
+              <SearchableSelect<SAPItem>
+                items={skuItems}
+                isLoading={loadingSKU && skuSearch.length >= 2}
+                getItemKey={(item) => item.ItemCode}
+                getItemLabel={(item) => `${item.ItemCode} - ${item.ItemName}`}
+                filterFn={() => true}
+                renderItem={(item) => (
+                  <div className="flex items-center justify-between w-full gap-3">
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs">{item.ItemCode}</span>
+                      <span className="ml-2">{item.ItemName}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">{item.UomCode}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground shrink-0">{item.UomCode}</span>
-                </div>
-              )}
-              placeholder="Search product by SKU code or name..."
-              label="Product SKU"
-              required
-              inputId="sku-item"
-              loadingText="Searching..."
-              emptyText="Type at least 2 characters to search"
-              notFoundText="No products found"
-              onSearchChange={(s) => setSkuSearch(s)}
-              onItemSelect={(item) => {
-                form.setValue('product', item.ItemName, { shouldValidate: true });
-                form.setValue('item_code', item.ItemCode);
-                form.setValue('sap_doc_entry', undefined);
-                setSelectedItemCode(item.ItemCode);
-              }}
-              onClear={() => {
-                form.setValue('product', '');
-                form.setValue('item_code', '');
-                setSelectedItemCode(null);
-                lastPopulatedItemCode.current = null;
-                setRawBOM([]);
-                replace([]);
-              }}
-            />
+                )}
+                placeholder="Search product by SKU code or name..."
+                label="Product SKU"
+                required
+                inputId="sku-item"
+                loadingText="Searching..."
+                emptyText="Type at least 2 characters to search"
+                notFoundText="No products found"
+                onSearchChange={(s) => setSkuSearch(s)}
+                onItemSelect={(item) => {
+                  form.setValue('product', item.ItemName, { shouldValidate: true });
+                  form.setValue('item_code', item.ItemCode);
+                  form.setValue('sap_doc_entry', undefined);
+                  setSelectedItemCode(item.ItemCode);
+                }}
+                onClear={() => {
+                  form.setValue('product', '');
+                  form.setValue('item_code', '');
+                  setSelectedItemCode(null);
+                  lastPopulatedItemCode.current = null;
+                  setRawBOM([]);
+                  replace([]);
+                }}
+              />
             )}
             {form.formState.errors.product && (
               <p className="text-sm text-red-500 mt-1">{form.formState.errors.product.message}</p>
@@ -301,9 +440,11 @@ function StartRunPage() {
             <CardTitle>Run Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Production Line</Label>
+                <Label>
+                  Production Line <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   onValueChange={(v) => {
                     const id = Number(v);
@@ -334,15 +475,6 @@ function StartRunPage() {
                 )}
               </div>
               <div>
-                <Label>Date</Label>
-                <Input type="date" {...form.register('date')} />
-                {form.formState.errors.date && (
-                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.date.message}</p>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
                 <Label>Product</Label>
                 <Input
                   {...form.register('product')}
@@ -350,12 +482,9 @@ function StartRunPage() {
                   className="bg-muted/50 cursor-not-allowed"
                   placeholder="Auto-filled from selected SKU"
                 />
-                {form.formState.errors.product && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {form.formState.errors.product.message}
-                  </p>
-                )}
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Required FG Quantity (cases/boxes)</Label>
                 <Input
@@ -368,8 +497,6 @@ function StartRunPage() {
                   BOM materials scale from this finished-good case/box quantity
                 </p>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Rated Speed (bottles/hr)</Label>
                 <Input
@@ -377,9 +504,13 @@ function StartRunPage() {
                   placeholder="e.g., 3000"
                   {...(locked.rated_speed ? lockedInputProps : {})}
                 />
-                {locked.rated_speed && (
+                {locked.rated_speed ? (
                   <p className="text-xs text-muted-foreground mt-1">
                     Set by the selected line configuration
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    The expected finish time is worked out from this
                   </p>
                 )}
               </div>
@@ -387,9 +518,24 @@ function StartRunPage() {
           </CardContent>
         </Card>
 
+        {/* Schedule */}
+        <PlanTimingCard
+          date={watchedDate}
+          startTime={watchedStartTime ?? ''}
+          endTime={watchedEndTime ?? ''}
+          endIsManual={!!watchedEndIsManual}
+          timing={planCheck?.timing}
+          onDateChange={(value) => form.setValue('date', value, { shouldValidate: true })}
+          onStartTimeChange={(value) => form.setValue('planned_start_time', value)}
+          onEndTimeChange={(value) => form.setValue('planned_end_time', value)}
+          onEndIsManualChange={(value) => form.setValue('planned_end_is_manual', value)}
+          dateError={form.formState.errors.date?.message}
+          endTimeError={form.formState.errors.planned_end_time?.message}
+        />
+
         {/* Line Configuration Card — only visible when a line is selected and has configs */}
         {selectedLineId && lineConfigs.length > 0 && (
-          <Card className="border-blue-200 bg-blue-50/30">
+          <Card className="border-blue-200 bg-blue-50/30 dark:border-blue-900 dark:bg-blue-950/20">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Settings2 className="h-4 w-4 text-blue-600" />
@@ -465,85 +611,87 @@ function StartRunPage() {
           </div>
         )}
 
-        {/* Raw Materials Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Raw Materials (BOM)
-              {loadingBOM && (
-                <span className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Loading BOM...
-                </span>
-              )}
-              {bomData && fields.length > 0 && !loadingBOM && (
-                <Badge variant="secondary" className="text-xs font-normal">
-                  {bomData.component_count} from BOM
-                </Badge>
-              )}
-              {rawBOM.length > 0 && parseFloat(watchedRequiredQty || '0') > 0 && (
-                <Badge className="bg-blue-100 text-blue-800 border-0 text-xs font-normal">
-                  Scaled for {watchedRequiredQty} units
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {fields.length === 0 && !loadingBOM && (
-              <p className="text-sm text-muted-foreground">
-                {selectedItemCode
-                  ? 'No BOM components found for this item.'
-                  : 'Select a product SKU to auto-load BOM materials.'}
-              </p>
-            )}
+        {/* Material readiness — the point of planning a day ahead */}
+        <MaterialReadinessPanel
+          rows={readinessRows}
+          summary={planCheck?.materials.summary}
+          warehouses={planCheck?.materials.warehouses}
+          warehouseScope={planCheck?.materials.warehouse_scope}
+          unusable={planCheck?.materials.unusable}
+          resourceLines={planCheck?.materials.resource_lines}
+          isChecking={checking}
+          stockError={
+            planCheck && !planCheck.materials.available
+              ? planCheck.materials.error
+              : checkError
+                ? 'The readiness check could not be reached.'
+                : undefined
+          }
+          bomLoading={loadingBOM}
+          hasSku={!!selectedItemCode}
+          requiredQtyEntered={parseFloat(watchedRequiredQty || '0') > 0}
+          renderRequiredInput={(index) => (
+            <Input
+              className="h-8 w-28"
+              type="number"
+              step="any"
+              min="0"
+              {...form.register(`materials.${index}.opening_qty`)}
+            />
+          )}
+        />
 
-            {fields.length > 0 && (
-              <div className="border rounded-md overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left py-2 px-3">Code</th>
-                      <th className="text-left py-2 px-3">Name</th>
-                      <th className="text-right py-2 px-3">Per Unit</th>
-                      <th className="text-left py-2 px-3">Required Qty</th>
-                      <th className="text-left py-2 px-3">UoM</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fields.map((field, index) => {
-                      const perUnit = rawBOM[index]?.perUnit;
-                      return (
-                        <tr key={field.id} className="border-b last:border-0">
-                          <td className="py-2 px-3 font-mono text-xs">{field.material_code}</td>
-                          <td className="py-2 px-3">{field.material_name}</td>
-                          <td className="py-2 px-3 text-right text-muted-foreground text-xs">
-                            {perUnit !== undefined ? perUnit : '—'}
-                          </td>
-                          <td className="py-2 px-3">
-                            <Input
-                              className="h-8 w-28"
-                              type="number"
-                              step="any"
-                              min="0"
-                              {...form.register(`materials.${index}.opening_qty`)}
-                            />
-                          </td>
-                          <td className="py-2 px-3 text-muted-foreground">{field.uom}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        {/* Clashes with other plans */}
+        <PlanConflictsPanel conflicts={planCheck?.conflicts ?? []} checked={!!planCheck} />
 
-            {rawBOM.length > 0 && !parseFloat(watchedRequiredQty || '0') && (
-              <p className="text-xs text-amber-600 mt-2">
-                Enter "Required Quantity" above to auto-calculate scaled BOM quantities.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        {/* Override — a reason for planning past a warning */}
+        {(needsRemark || hasConflicts) && (
+          <Card className="border-amber-300 dark:border-amber-900">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                Plan this anyway?
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {needsRemark && (
+                <div>
+                  <Label htmlFor="planning-remark">
+                    Reason <span className="text-destructive">*</span>
+                  </Label>
+                  <Textarea
+                    id="planning-remark"
+                    {...form.register('planning_remark')}
+                    placeholder="e.g. GRN for 40,000 caps arriving 05:00, confirmed with stores"
+                    rows={2}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Kept on the run, so tomorrow morning everyone can see why it was planned short.
+                  </p>
+                  {!remarkGiven && (
+                    <p className="text-sm text-red-500 mt-1">
+                      A reason is required while a component is short or contested.
+                    </p>
+                  )}
+                </div>
+              )}
+              {hasConflicts && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="ack-conflicts"
+                    checked={acknowledged}
+                    onCheckedChange={(checked) => setAcknowledged(checked === true)}
+                  />
+                  <Label htmlFor="ack-conflicts" className="text-sm font-normal cursor-pointer">
+                    I have reviewed the {planCheck?.conflicts.length} clash
+                    {(planCheck?.conflicts.length ?? 0) > 1 ? 'es' : ''} with other plans and want
+                    to go ahead.
+                  </Label>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Manpower Card */}
         <Card>
@@ -551,7 +699,7 @@ function StartRunPage() {
             <CardTitle>Manpower</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Labour</Label>
                 <Input
@@ -581,7 +729,7 @@ function StartRunPage() {
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Supervisor Name</Label>
                 <Input
@@ -602,18 +750,25 @@ function StartRunPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          {blockedBySafeguard && (
+            <p className="text-sm text-amber-600 mr-auto">
+              {needsRemark && !remarkGiven
+                ? 'Give a reason above to save a plan with a shortfall.'
+                : 'Confirm you have reviewed the clashes above.'}
+            </p>
+          )}
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>
             Cancel
           </Button>
-          <Button type="submit" disabled={createRun.isPending}>
+          <Button type="submit" disabled={createRun.isPending || blockedBySafeguard}>
             {createRun.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating...
+                Saving plan...
               </>
             ) : (
-              'Start Run'
+              'Save plan'
             )}
           </Button>
         </div>

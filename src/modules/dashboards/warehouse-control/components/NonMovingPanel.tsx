@@ -6,7 +6,7 @@ import { cn } from '@/shared/utils';
 
 import { WAREHOUSE_CONTROL_MAX_RENDERED_ROWS } from '../constants';
 import { ACCENTS, MOVEMENT_AGE_TONE, SECTION_ACCENT } from '../constants/warehouse-control.theme';
-import { formatCompactCurrency, formatCount } from '../utils/format';
+import { formatCompactCurrency, formatCompanyChip, formatCount } from '../utils/format';
 import { oldestDays } from '../utils/nonMovingAge';
 import { type NonMovingItemRow, rollUpNonMovingItems } from '../utils/nonMovingItems';
 import { useControlDetail } from './controlDetailContext';
@@ -21,6 +21,14 @@ export interface NonMovingPanelProps {
   ageDays: number;
   /** Warehouse codes the panel is narrowed to; empty means every factory one. */
   scope: readonly string[];
+  /**
+   * The company whose SAP schema was read.
+   *
+   * Named in the panel because it is pinned rather than following the company
+   * selector: the warehouse in scope lives in one company's books, so a reader
+   * sitting in a sibling company has to be told whose stock this is.
+   */
+  companyCode: string;
   loading: boolean;
   isFetching: boolean;
   error: unknown;
@@ -83,7 +91,7 @@ function ItemRow({ row, largest }: { row: NonMovingItemRow; largest: number }) {
 }
 
 /**
- * Non-moving stock, summarised from the Non-Moving dashboard's own feed.
+ * Non-moving stock in the pinned company's factory warehouse.
  *
  * Warehouse rows are ranked by value and drawn with a bar relative to the
  * largest, so the one worth chasing stands out without the reader comparing
@@ -97,6 +105,7 @@ export function NonMovingPanel({
   warehouses,
   ageDays,
   scope,
+  companyCode,
   loading,
   isFetching,
   error,
@@ -119,14 +128,19 @@ export function NonMovingPanel({
     ? `${formatCount(summary.total_items)} items · ${formatCompactCurrency(summary.total_value)} · ${formatCount(summary.by_branch.length)} branches`
     : `No movement for more than ${ageDays} days`;
 
+  // The pinned company, spelled out in the panel's own line so the figure is
+  // never read as "the company I am currently in".
+  const company = formatCompanyChip(companyCode);
+  const where = [company, scope.length > 0 ? scope.join(', ') : ''].filter(Boolean).join(' · ');
+
   return (
     <ControlSection
       className={className}
       id="non-moving"
       title="Non-Moving Stock"
       description={
-        scope.length > 0
-          ? `${scope.join(', ')} — no movement for more than ${ageDays} days`
+        where
+          ? `${where} — no movement for more than ${ageDays} days`
           : `Material with no movement for more than ${ageDays} days`
       }
       meta={meta}
@@ -138,7 +152,14 @@ export function NonMovingPanel({
       {error ? (
         <ControlError
           error={error}
-          fallback="The non-moving report could not be read from SAP."
+          // A 403 here is the ordinary case of a user who does not hold the
+          // pinned company, not a broken feed — say which company that is, since
+          // switching to it is not the fix either (the read is pinned).
+          fallback={
+            (error as { status?: number })?.status === 403
+              ? `This panel reports on ${company} stock, which you do not have access to.`
+              : 'The non-moving report could not be read from SAP.'
+          }
           onRetry={onRetry}
         />
       ) : loading ? (
@@ -149,7 +170,7 @@ export function NonMovingPanel({
         <ControlEmpty
           message={
             scope.length > 0
-              ? `${scope.join(', ')} is holding no non-moving stock.`
+              ? `${scope.join(', ')} (${company}) is holding no non-moving stock.`
               : 'No factory warehouse is holding non-moving stock.'
           }
         />

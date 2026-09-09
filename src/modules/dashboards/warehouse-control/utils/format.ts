@@ -1,5 +1,7 @@
 /** Display helpers shared by the board's panels. Indian digit grouping throughout. */
 
+import { COMPANY_CODES } from '@/config/constants';
+
 export function formatCount(value: number): string {
   return Math.round(value).toLocaleString('en-IN');
 }
@@ -52,4 +54,23 @@ export function formatWeight(value: string | number | null | undefined): string 
 /** Kilograms as tonnes — a day's pending load runs to five digits in kg. */
 export function formatTons(kilograms: number): string {
   return `${(kilograms / 1000).toLocaleString('en-IN', { maximumFractionDigits: 2 })} t`;
+}
+
+/**
+ * A company code as a chip label — `JIVO_BEVERAGES` → `Bev`.
+ *
+ * The board is cross-company, so a bill row has to say whose bill it is; at chip
+ * size the full name does not fit next to an invoice number and a status badge.
+ * An unrecognised code is shown as-is rather than hidden: a row belonging to a
+ * company nobody named is exactly the thing worth seeing.
+ */
+export function formatCompanyChip(code: string | null | undefined): string {
+  const text = code?.trim() ?? '';
+  if (!text) return '';
+  const short: Record<string, string> = {
+    [COMPANY_CODES.JIVO_OIL]: 'Oil',
+    [COMPANY_CODES.JIVO_MART]: 'Mart',
+    [COMPANY_CODES.JIVO_BEVERAGES]: 'Bev',
+  };
+  return short[text] ?? text;
 }

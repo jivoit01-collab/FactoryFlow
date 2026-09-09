@@ -930,6 +930,7 @@ export const API_ENDPOINTS = {
       `/production-execution/checklist-templates/${templateId}/`,
     // Production Runs
     RUNS: '/production-execution/runs/',
+    RUN_PLAN_CHECK: '/production-execution/runs/plan-check/',
     RUN_DETAIL: (runId: number) => `/production-execution/runs/${runId}/`,
     RUN_COMPLETE: (runId: number) => `/production-execution/runs/${runId}/complete/`,
     // Breakdown Categories
@@ -1086,6 +1087,13 @@ export const API_ENDPOINTS = {
     FG_RECEIPT_DETAIL: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/`,
     FG_RECEIPT_RECEIVE: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/receive/`,
     FG_RECEIPT_POST_SAP: (receiptId: number) => `/warehouse/fg-receipts/${receiptId}/post-to-sap/`,
+    // Raw-material stock register — what a store keeper states is on the floor.
+    // ITEMS is the SAP-backed picker and the only one of the three that reads
+    // HANA, so a HANA outage costs the picker and not the register.
+    RM_STOCK: '/warehouse/rm-stock/',
+    RM_STOCK_ITEMS: '/warehouse/rm-stock/items/',
+    RM_STOCK_IMPORT: '/warehouse/rm-stock/import/',
+    RM_STOCK_DETAIL: (id: number) => `/warehouse/rm-stock/${id}/`,
     // Branch Stock Transfer (BST)
     BST_SAP_TRANSFERS: '/warehouse/bst/sap-transfers/',
     BST_SAP_TRANSFER_DETAIL: (docEntry: number) => `/warehouse/bst/sap-transfers/${docEntry}/`,

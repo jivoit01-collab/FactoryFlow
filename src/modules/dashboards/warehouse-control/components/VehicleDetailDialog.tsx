@@ -17,6 +17,7 @@ import type { ControlLinkedTruck } from '../types';
 import {
   compactText,
   formatCompactCurrency,
+  formatCompanyChip,
   formatCount,
   formatCurrency,
   formatDay,
@@ -65,7 +66,7 @@ export function VehicleDetailDialog({
             )}
             {truck.companyCodes.map((code) => (
               <Badge key={code} variant="outline">
-                {code}
+                {formatCompanyChip(code)}
               </Badge>
             ))}
           </DialogTitle>
@@ -96,7 +97,10 @@ export function VehicleDetailDialog({
                 label: 'Dispatch dates',
                 value: truck.dispatchDates.map(formatDay).join(', '),
               },
-              { label: 'Companies', value: truck.companyCodes.join(', ') },
+              {
+                label: 'Companies',
+                value: truck.companyCodes.map(formatCompanyChip).join(', '),
+              },
             ]}
           />
 
@@ -106,7 +110,8 @@ export function VehicleDetailDialog({
           >
             <ul className="divide-y overflow-hidden rounded-lg border">
               {truck.bills.map((bill) => (
-                <li key={bill.doc_entry}>
+                // A doc-entry is unique per company, not across them.
+                <li key={`${bill.company_code ?? ''}-${bill.doc_entry}`}>
                   <button
                     type="button"
                     onClick={() => onSelectBill(bill)}
@@ -116,6 +121,13 @@ export function VehicleDetailDialog({
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold tabular-nums">#{bill.doc_num}</span>
                         <StatusBadge status={bill.plan.booking_status} />
+                        {/* On a truck carrying more than one company's stock,
+                            which bill is whose is the reason to open this list. */}
+                        {truck.companyCodes.length > 1 && bill.company_code && (
+                          <Badge variant="outline" className="px-1.5 font-normal">
+                            {formatCompanyChip(bill.company_code)}
+                          </Badge>
+                        )}
                       </div>
                       <p className="truncate text-sm">{compactText(bill.card_name)}</p>
                       <p className="truncate text-xs text-muted-foreground">
