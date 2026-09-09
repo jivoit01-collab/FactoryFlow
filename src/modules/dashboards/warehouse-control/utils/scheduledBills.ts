@@ -12,7 +12,8 @@
  */
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
 
-import type { ControlScheduledQueue } from '../types';
+import type { ControlBillLoad, ControlScheduledQueue } from '../types';
+import { toNumber } from './number';
 
 export interface ScheduledQueueInput {
   bills: DispatchBill[];
@@ -50,6 +51,15 @@ function isBooked(bill: DispatchBill): boolean {
   return bill.plan.booking_status === 'BOOKED';
 }
 
+/** Sum one set of bills into a load figure. */
+function load(bills: DispatchBill[]): ControlBillLoad {
+  return {
+    litres: bills.reduce((sum, bill) => sum + toNumber(bill.total_litres), 0),
+    weightKg: bills.reduce((sum, bill) => sum + toNumber(bill.total_weight), 0),
+    amount: bills.reduce((sum, bill) => sum + toNumber(bill.doc_total), 0),
+  };
+}
+
 export function buildScheduledQueue({ bills, today }: ScheduledQueueInput): ControlScheduledQueue {
   const scheduled = bills.filter(isScheduled);
   const awaiting = scheduled.filter(isAwaitingVehicle);
@@ -73,6 +83,12 @@ export function buildScheduledQueue({ bills, today }: ScheduledQueueInput): Cont
       today: dueToday.length,
       upcoming: upcoming.length,
       alreadyBooked: scheduled.filter(isBooked).length,
+    },
+    // Both summed from their own rows, so the pair can never disagree by a
+    // rounding error the way an `all - today` subtraction would.
+    totals: {
+      all: load(rows),
+      withoutToday: load([...overdue, ...upcoming]),
     },
   };
 }

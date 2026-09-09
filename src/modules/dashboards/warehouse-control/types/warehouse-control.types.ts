@@ -144,4 +144,26 @@ export interface ControlScheduledQueue {
     /** Scheduled bills kept out of the queue because a truck is already on them. */
     alreadyBooked: number;
   };
+  /**
+   * What the queue adds up to — the size of the backlog, not just its length.
+   *
+   * Two sets rather than one number, because a bill due today is not yet late
+   * and some readers want it out of the backlog figure. Both are summed from
+   * their own rows rather than one being subtracted from the other, so neither
+   * can drift on float arithmetic.
+   */
+  totals: {
+    /** Every queued row: overdue, due today and upcoming. */
+    all: ControlBillLoad;
+    /** Queued rows except those due today — the genuinely late backlog. */
+    withoutToday: ControlBillLoad;
+  };
+}
+
+/** The physical and financial size of a set of bills. */
+export interface ControlBillLoad {
+  litres: number;
+  /** Kilograms, as SAP reports them; the panel renders tonnes. */
+  weightKg: number;
+  amount: number;
 }

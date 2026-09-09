@@ -18,6 +18,7 @@ export interface BillSpec {
   locked?: boolean;
   litres?: number;
   boxes?: number;
+  weight?: number;
   total?: number;
   companyCode?: string | null;
 }
@@ -44,7 +45,7 @@ export function makeBill(spec: BillSpec): DispatchBill {
     doc_total: spec.total ?? 0,
     total_litres: spec.litres ?? 0,
     total_boxes: spec.boxes ?? 0,
-    total_weight: 0,
+    total_weight: spec.weight ?? 0,
     company_code: spec.companyCode ?? null,
     plan,
   } as unknown as DispatchBill;
