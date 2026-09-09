@@ -330,9 +330,19 @@ export function PromoteDialog({ open, onOpenChange, employee, meta, onDone }: Ba
     (designation) => designation.level < currentLevel,
   );
 
+  // The same arithmetic the revision dialog does, for the same reason: a
+  // revision whose total is zero is refused by the server, and finding that out
+  // from a toast after the fact is worse than being told before sending it.
+  const revisionTotal =
+    (Number(basic) || 0) + (Number(allowances) || 0) + (Number(bonuses) || 0);
+
   function submit() {
     if (!designationId && !managerId && !withSalary) {
       toast.error('A promotion needs at least a new designation, a new manager or a revision.');
+      return;
+    }
+    if (withSalary && revisionTotal <= 0) {
+      toast.error('Enter the new salary, or switch the revision off to promote without one.');
       return;
     }
     promote.mutate(
@@ -474,6 +484,14 @@ export function PromoteDialog({ open, onOpenChange, employee, meta, onDone }: Ba
                       onChange={(event) => setEffectiveFrom(event.target.value)}
                       className="mt-1"
                     />
+                  </div>
+                  <div className="sm:col-span-2 flex items-baseline justify-between border-t pt-2">
+                    <span className="text-xs text-muted-foreground">
+                      New total, per year
+                    </span>
+                    <span className="text-base font-semibold tabular-nums">
+                      {money(revisionTotal)}
+                    </span>
                   </div>
                 </div>
               )}

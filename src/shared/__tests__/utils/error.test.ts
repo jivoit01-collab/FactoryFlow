@@ -516,3 +516,60 @@ describe('Error Utilities', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Nested serializer errors
+// ---------------------------------------------------------------------------
+
+describe('getErrorMessage with nested serializer errors', () => {
+  it('reads a message out of a nested serializer error', () => {
+    // What DRF answers when a nested serializer fails — a promotion carrying a
+    // salary block, for instance. This used to fall through to the fallback,
+    // leaving the user with no idea which field was wrong.
+    const error = {
+      status: 400,
+      message: 'Request failed with status code 400',
+      response: {
+        status: 400,
+        data: {
+          salary: {
+            non_field_errors: ['Total compensation has to be more than zero.'],
+          },
+        },
+      },
+    };
+    expect(getErrorMessage(error, 'Fallback')).toBe(
+      'salary: Total compensation has to be more than zero.',
+    );
+  });
+
+  it('names the nested field when the error is against one', () => {
+    const error = {
+      status: 400,
+      message: 'Request failed',
+      response: {
+        status: 400,
+        data: { salary: { effective_from: ['Enter a valid date.'] } },
+      },
+    };
+    expect(getErrorMessage(error, 'Fallback')).toBe('salary: effective from: Enter a valid date.');
+  });
+
+  it('still reads a flat field error', () => {
+    const error = {
+      status: 400,
+      message: 'Request failed',
+      response: { status: 400, data: { employee_code: ['This code is already used.'] } },
+    };
+    expect(getErrorMessage(error, 'Fallback')).toBe('employee code: This code is already used.');
+  });
+
+  it('falls back rather than printing an unreadable depth of nesting', () => {
+    const error = {
+      status: 400,
+      message: 'Request failed',
+      response: { status: 400, data: { a: { b: { c: { d: ['too deep'] } } } } },
+    };
+    expect(getErrorMessage(error, 'Fallback')).toBe('Request failed');
+  });
+});
