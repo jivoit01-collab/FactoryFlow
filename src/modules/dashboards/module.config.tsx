@@ -31,9 +31,6 @@ const SalesPlanningRequirementDashboardPage = lazy(
 const ProductionMovementDashboardPage = lazy(
   () => import('./production-movement/pages/ProductionMovementDashboardPage'),
 );
-const PmDemandDashboardPage = lazy(
-  () => import('./pm-demand/pages/PmDemandDashboardPage'),
-);
 const DispatchDayDashboardPage = lazy(
   () => import('./dispatch/pages/DispatchDayDashboardPage'),
 );
@@ -107,15 +104,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Gate' },
-    },
-    {
-      // Packing material consumed by production, and the packing material that
-      // shipped out inside finished goods, over one period.
-      path: '/dashboards/pm-demand',
-      element: <PmDemandDashboardPage />,
-      layout: 'main',
-      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PM_DEMAND],
-      breadcrumb: { label: 'PM Demand' },
     },
     {
       path: '/dashboards/production',
@@ -258,9 +246,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
         // Budget Approvals lives here too.
         DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS,
-        // PM Demand lives here too -- a purchase or costing user who holds only
-        // this right still needs the Dashboards group to appear.
-        DASHBOARDS_PERMISSIONS.VIEW_PM_DEMAND,
         // Warehouse Control lives here too. Its pallet-space and linking panels
         // are the only reason a WMS operator or a dispatch linker would open the
         // Dashboards menu, so their rights must appear on the parent as well.
@@ -320,11 +305,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/production-movement',
           title: 'Production Movement',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
-        },
-        {
-          path: '/dashboards/pm-demand',
-          title: 'PM Demand',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PM_DEMAND],
         },
         {
           path: '/dashboards/dispatch',
