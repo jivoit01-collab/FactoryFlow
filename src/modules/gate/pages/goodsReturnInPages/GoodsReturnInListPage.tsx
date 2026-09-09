@@ -183,7 +183,7 @@ export default function GoodsReturnInListPage() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search entry, vehicle, driver, customer"
+                placeholder="Search entry, vehicle, driver, customer, invoice"
                 className="pl-9"
               />
             </div>
@@ -312,6 +312,18 @@ function ExpectedReturnCard({ entry }: { entry: GoodsReturnListItem }) {
 
         <dl className="space-y-1 text-sm">
           <Row label="Customer" value={entry.customer_name || entry.customer_code || '-'} />
+          <Row
+            label="Invoices"
+            // The gate checks the driver's paperwork against the bill, so the
+            // number has to be on the card the truck is marked in from — not only
+            // in the history afterwards. A return against a debit note or a letter
+            // pad has no bill to hand over, and says so rather than showing a dash.
+            value={
+              entry.invoice_doc_nums.length
+                ? entry.invoice_doc_nums.join(', ')
+                : 'No invoice (debit note / letter pad)'
+            }
+          />
           <Row label="Driver" value={entry.driver_name || driverName || '-'} />
           <Row
             label="Items"
