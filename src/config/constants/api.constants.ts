@@ -502,6 +502,14 @@ export const API_ENDPOINTS = {
     AS_OF: '/dashboards/stock/as-of/',
     EXPORT: '/dashboards/stock/export/',
     ITEM_DETAIL: (itemCode: string) => `/dashboards/stock/${itemCode}/warehouses/`,
+    /**
+     * One warehouse's stock with the SAP pack fields needed to count pallets —
+     * `SalFactor2` (pieces per box) and `SalPackUn` (litres per piece). The
+     * pallet arithmetic itself is deliberately client-side, because the
+     * boxes-per-pallet divisor and the loose-SKU figures are board policy
+     * rather than SAP fact. Feeds the Production Control board.
+     */
+    OCCUPANCY: '/dashboards/stock/occupancy/',
   },
   // Budget Approvals Dashboard — Factory budget draft approvals read from
   // SAP's DRAFT_APPROVAL_Budget procedure (Oil + Beverages in one feed).
@@ -514,10 +522,20 @@ export const API_ENDPOINTS = {
     REPORT: '/non-moving-rm/report/',
     ITEM_GROUPS: '/non-moving-rm/item-groups/',
   },
-  // Packing Material Demand. One endpoint: every panel on that board is a
-  // different roll-up of the same five SAP reads over the same period.
-  PM_DEMAND: {
-    REPORT: '/pm-demand/report/',
+  // Packing Material board. Three endpoints for three panels rather than one
+  // for the board: stock is a snapshot of now and does not move when the month
+  // changes, the two top lists are a period, and only the dispatch list
+  // changes when the SAP/FactoryFlow toggle is flipped.
+  PACKING_MATERIAL: {
+    STOCK: '/packing-material/stock/',
+    PRODUCTION: '/packing-material/production/',
+    DISPATCH: '/packing-material/dispatch/',
+    // The requirement board. One endpoint rather than several, because every
+    // column on it belongs to a single row of arithmetic — the requirement
+    // needs the plan, the movements and the stock at once — so there is no
+    // useful partial answer to load separately.
+    PLANS: '/packing-material/plans/',
+    REQUIREMENT: '/packing-material/requirement/',
   },
   // Factory Expense wall board — labour, salary, electricity and maintenance,
   // all from FactoryFlow's own registers rather than SAP.
@@ -1430,6 +1448,51 @@ export const API_ENDPOINTS = {
   // replaces it (the page edits and saves it whole).
   ORG_CHART: {
     CHART: '/org-chart/chart/',
+  },
+
+  // Employee hierarchy & compensation. Everything is keyed by employee id
+  // rather than employee code: codes are edited when somebody was entered
+  // wrong, and a URL that changes under you is worse than one that is pretty.
+  //
+  // The structural changes each have their own endpoint (MANAGER, DEPARTMENT,
+  // DESIGNATION, STATUS, PROMOTE) instead of riding along on a PATCH, because
+  // each one takes a reason and each one does more than write a column --
+  // moving a manager carries their whole team.
+  EMPLOYEE_HIERARCHY: {
+    META: '/employee-hierarchy/meta/',
+    TREE: '/employee-hierarchy/tree/',
+    REPORTS: '/employee-hierarchy/reports/',
+
+    EMPLOYEES: '/employee-hierarchy/employees/',
+    EMPLOYEE_DETAIL: (employeeId: number) => `/employee-hierarchy/employees/${employeeId}/`,
+    EMPLOYEE_REPORTING: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/reporting/`,
+    EMPLOYEE_HISTORY: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/history/`,
+    EMPLOYEE_AUDIT: (employeeId: number) => `/employee-hierarchy/employees/${employeeId}/audit/`,
+    EMPLOYEE_MANAGER: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/manager/`,
+    EMPLOYEE_DEPARTMENT: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/department/`,
+    EMPLOYEE_DESIGNATION: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/designation/`,
+    EMPLOYEE_PROMOTE: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/promote/`,
+    EMPLOYEE_STATUS: (employeeId: number) => `/employee-hierarchy/employees/${employeeId}/status/`,
+    EMPLOYEE_SALARY: (employeeId: number) => `/employee-hierarchy/employees/${employeeId}/salary/`,
+
+    SALARY_APPROVALS: '/employee-hierarchy/salary-approvals/',
+    SALARY_REVISIONS: '/employee-hierarchy/salary-revisions/',
+    SALARY_APPROVE: (recordId: number) =>
+      `/employee-hierarchy/salary-records/${recordId}/approve/`,
+    SALARY_REJECT: (recordId: number) => `/employee-hierarchy/salary-records/${recordId}/reject/`,
+
+    DEPARTMENTS: '/employee-hierarchy/departments/',
+    DEPARTMENT_DETAIL: (departmentId: number) =>
+      `/employee-hierarchy/departments/${departmentId}/`,
+    DESIGNATIONS: '/employee-hierarchy/designations/',
+    DESIGNATION_DETAIL: (designationId: number) =>
+      `/employee-hierarchy/designations/${designationId}/`,
   },
 
   // Issue tracker. Issues are addressed by NUMBER (the "#41" people quote),

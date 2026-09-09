@@ -26,15 +26,37 @@ export function isApiError(error: unknown): error is ApiError {
  * @param fallbackMessage - Default message if no specific error message is found
  * @returns A user-friendly error message string
  */
-/** Render a DRF field-error map ({field: [msg]}) as "field: msg | field: msg". */
-function formatFieldErrors(fieldErrors: unknown): string {
+/**
+ * Render a DRF field-error map ({field: [msg]}) as "field: msg | field: msg".
+ *
+ * Nested maps are followed one level down, because a serializer with a nested
+ * serializer inside it answers that way: a promotion carrying a salary block
+ * fails as `{salary: {non_field_errors: ["Total has to be more than zero"]}}`,
+ * and a formatter that skipped the nested object left the user with a bare
+ * "it did not work" and no idea which of the four amounts was wrong.
+ *
+ * `non_field_errors` is unwrapped rather than printed, since "salary: total
+ * has to be more than zero" reads better than "salary: non field errors:
+ * total has to be…".
+ */
+function formatFieldErrors(fieldErrors: unknown, depth = 0): string {
   if (!fieldErrors || typeof fieldErrors !== 'object') return '';
   return Object.entries(fieldErrors as Record<string, unknown>)
     .filter(([field]) => !['detail', 'message', 'error', 'errors', 'success'].includes(field))
     .map(([field, value]) => {
       const formattedField = field.replaceAll('_', ' ');
-      if (Array.isArray(value)) return `${formattedField}: ${value.join(', ')}`;
+      if (Array.isArray(value)) {
+        const joined = value.filter((entry) => typeof entry === 'string').join(', ');
+        if (!joined) return '';
+        return field === 'non_field_errors' ? joined : `${formattedField}: ${joined}`;
+      }
       if (typeof value === 'string') return `${formattedField}: ${value}`;
+      // One level only: deeper than that is a payload nobody can read off a
+      // toast, and the fallback message is more use than a wall of paths.
+      if (value && typeof value === 'object' && depth < 1) {
+        const nested = formatFieldErrors(value, depth + 1);
+        return nested ? `${formattedField}: ${nested}` : '';
+      }
       return '';
     })
     .filter(Boolean)

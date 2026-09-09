@@ -12,6 +12,7 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
+import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from './production-control/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from './warehouse-control/constants';
 
 const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage'));
@@ -31,8 +32,11 @@ const SalesPlanningRequirementDashboardPage = lazy(
 const ProductionMovementDashboardPage = lazy(
   () => import('./production-movement/pages/ProductionMovementDashboardPage'),
 );
-const PmDemandDashboardPage = lazy(
-  () => import('./pm-demand/pages/PmDemandDashboardPage'),
+const PackingMaterialDashboardPage = lazy(
+  () => import('./packing-material/pages/PackingMaterialDashboardPage'),
+);
+const PmRequirementDashboardPage = lazy(
+  () => import('./pm-requirement/pages/PmRequirementDashboardPage'),
 );
 const DispatchDayDashboardPage = lazy(
   () => import('./dispatch/pages/DispatchDayDashboardPage'),
@@ -58,6 +62,9 @@ const FactoryExpenseConfigPage = lazy(
 const WarehouseControlDashboardPage = lazy(
   () => import('./warehouse-control/pages/WarehouseControlDashboardPage'),
 );
+const ProductionControlDashboardPage = lazy(
+  () => import('./production-control/pages/ProductionControlDashboardPage'),
+);
 
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
@@ -75,6 +82,10 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
         DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS,
         BLOWING_PERMISSIONS.VIEW_REPORTS,
+        // Production Control reuses these three rights rather than minting its
+        // own; they are already listed above, but keeping the spread here means
+        // the parent gate follows the board if its rights ever change.
+        ...PRODUCTION_CONTROL_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -90,6 +101,17 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       ],
       breadcrumb: { label: 'Command Centre' },
+    },
+    {
+      // Production lines and the finished-goods floor they feed, on one screen:
+      // line state and speed up top, BH-PF occupancy and its standing queue
+      // beneath. Any one section's right opens it; the page hides the panels
+      // the reader may not see.
+      path: '/dashboards/production-control',
+      element: <ProductionControlDashboardPage />,
+      layout: 'main',
+      permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Production Control' },
     },
     {
       // One board folding four screens: non-moving stock, pallet space, today's
@@ -109,13 +131,27 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Gate' },
     },
     {
-      // Packing material consumed by production, and the packing material that
-      // shipped out inside finished goods, over one period.
-      path: '/dashboards/pm-demand',
-      element: <PmDemandDashboardPage />,
+      // Packing material stock in the three packaging stores, the packing
+      // material production issued, and the packing material that shipped out
+      // inside dispatched bills.
+      path: '/dashboards/packing-material',
+      element: <PackingMaterialDashboardPage />,
       layout: 'main',
-      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PM_DEMAND],
-      breadcrumb: { label: 'PM Demand' },
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+      breadcrumb: { label: 'Packing Material' },
+    },
+    {
+      // The buyer's question rather than management's: the month's plan
+      // exploded through its bills of material, against what the floor has
+      // taken, what the stores hold and what is on order. Its own page and
+      // not a fourth panel on the board above -- that one reports what
+      // HAPPENED to packaging, this one is a 196-row buying list, and they
+      // are read by different people for different reasons.
+      path: '/dashboards/pm-requirement',
+      element: <PmRequirementDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+      breadcrumb: { label: 'PM Requirement' },
     },
     {
       path: '/dashboards/production',
@@ -258,9 +294,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
         // Budget Approvals lives here too.
         DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS,
-        // PM Demand lives here too -- a purchase or costing user who holds only
-        // this right still needs the Dashboards group to appear.
-        DASHBOARDS_PERMISSIONS.VIEW_PM_DEMAND,
         // Warehouse Control lives here too. Its pallet-space and linking panels
         // are the only reason a WMS operator or a dispatch linker would open the
         // Dashboards menu, so their rights must appear on the parent as well.
@@ -270,6 +303,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
       // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
       // (appended after the shared list so it doesn't disturb existing entries)
       children: [
+        {
+          path: '/dashboards/production-control',
+          title: 'Production Control',
+          permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+        },
         {
           path: '/dashboards/warehouse-control',
           title: 'Warehouse Control',
@@ -322,9 +360,14 @@ export const dashboardsModuleConfig: ModuleConfig = {
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
         },
         {
-          path: '/dashboards/pm-demand',
-          title: 'PM Demand',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PM_DEMAND],
+          path: '/dashboards/packing-material',
+          title: 'Packing Material',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+        },
+        {
+          path: '/dashboards/pm-requirement',
+          title: 'PM Requirement',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
         },
         {
           path: '/dashboards/dispatch',

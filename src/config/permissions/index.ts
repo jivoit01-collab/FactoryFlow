@@ -199,6 +199,17 @@ export {
   ISSUES_MODULE_PREFIX,
 } from './issues.permissions';
 
+// Employee Hierarchy & Compensation (the directory, the reporting tree, salary)
+export {
+  EMPLOYEE_ACCESS,
+  EMPLOYEE_MODULE_PREFIX,
+  EMPLOYEE_PERMISSIONS,
+  EMPLOYEE_REPORTS_ACCESS,
+  EMPLOYEE_STRUCTURE_ACCESS,
+  type EmployeePermission,
+  SALARY_ACCESS,
+} from './employee-hierarchy.permissions';
+
 // Department Ownership Chart (who owns each function, and who backs them up)
 export {
   ORG_CHART_ACCESS,
