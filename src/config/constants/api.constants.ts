@@ -502,6 +502,14 @@ export const API_ENDPOINTS = {
     AS_OF: '/dashboards/stock/as-of/',
     EXPORT: '/dashboards/stock/export/',
     ITEM_DETAIL: (itemCode: string) => `/dashboards/stock/${itemCode}/warehouses/`,
+    /**
+     * One warehouse's stock with the SAP pack fields needed to count pallets —
+     * `SalFactor2` (pieces per box) and `SalPackUn` (litres per piece). The
+     * pallet arithmetic itself is deliberately client-side, because the
+     * boxes-per-pallet divisor and the loose-SKU figures are board policy
+     * rather than SAP fact. Feeds the Production Control board.
+     */
+    OCCUPANCY: '/dashboards/stock/occupancy/',
   },
   // Budget Approvals Dashboard — Factory budget draft approvals read from
   // SAP's DRAFT_APPROVAL_Budget procedure (Oil + Beverages in one feed).

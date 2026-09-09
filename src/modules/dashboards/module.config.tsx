@@ -12,6 +12,7 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
+import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from './production-control/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from './warehouse-control/constants';
 
 const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage'));
@@ -61,6 +62,9 @@ const FactoryExpenseConfigPage = lazy(
 const WarehouseControlDashboardPage = lazy(
   () => import('./warehouse-control/pages/WarehouseControlDashboardPage'),
 );
+const ProductionControlDashboardPage = lazy(
+  () => import('./production-control/pages/ProductionControlDashboardPage'),
+);
 
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
@@ -78,6 +82,10 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
         DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS,
         BLOWING_PERMISSIONS.VIEW_REPORTS,
+        // Production Control reuses these three rights rather than minting its
+        // own; they are already listed above, but keeping the spread here means
+        // the parent gate follows the board if its rights ever change.
+        ...PRODUCTION_CONTROL_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -93,6 +101,17 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       ],
       breadcrumb: { label: 'Command Centre' },
+    },
+    {
+      // Production lines and the finished-goods floor they feed, on one screen:
+      // line state and speed up top, BH-PF occupancy and its standing queue
+      // beneath. Any one section's right opens it; the page hides the panels
+      // the reader may not see.
+      path: '/dashboards/production-control',
+      element: <ProductionControlDashboardPage />,
+      layout: 'main',
+      permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Production Control' },
     },
     {
       // One board folding four screens: non-moving stock, pallet space, today's
@@ -284,6 +303,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
       // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
       // (appended after the shared list so it doesn't disturb existing entries)
       children: [
+        {
+          path: '/dashboards/production-control',
+          title: 'Production Control',
+          permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+        },
         {
           path: '/dashboards/warehouse-control',
           title: 'Warehouse Control',
