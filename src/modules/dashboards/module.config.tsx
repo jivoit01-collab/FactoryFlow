@@ -34,6 +34,9 @@ const ProductionMovementDashboardPage = lazy(
 const PackingMaterialDashboardPage = lazy(
   () => import('./packing-material/pages/PackingMaterialDashboardPage'),
 );
+const PmRequirementDashboardPage = lazy(
+  () => import('./pm-requirement/pages/PmRequirementDashboardPage'),
+);
 const DispatchDayDashboardPage = lazy(
   () => import('./dispatch/pages/DispatchDayDashboardPage'),
 );
@@ -117,6 +120,19 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
       breadcrumb: { label: 'Packing Material' },
+    },
+    {
+      // The buyer's question rather than management's: the month's plan
+      // exploded through its bills of material, against what the floor has
+      // taken, what the stores hold and what is on order. Its own page and
+      // not a fourth panel on the board above -- that one reports what
+      // HAPPENED to packaging, this one is a 196-row buying list, and they
+      // are read by different people for different reasons.
+      path: '/dashboards/pm-requirement',
+      element: <PmRequirementDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+      breadcrumb: { label: 'PM Requirement' },
     },
     {
       path: '/dashboards/production',
@@ -322,6 +338,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
         {
           path: '/dashboards/packing-material',
           title: 'Packing Material',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+        },
+        {
+          path: '/dashboards/pm-requirement',
+          title: 'PM Requirement',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
         },
         {

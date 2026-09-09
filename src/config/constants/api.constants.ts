@@ -522,6 +522,12 @@ export const API_ENDPOINTS = {
     STOCK: '/packing-material/stock/',
     PRODUCTION: '/packing-material/production/',
     DISPATCH: '/packing-material/dispatch/',
+    // The requirement board. One endpoint rather than several, because every
+    // column on it belongs to a single row of arithmetic — the requirement
+    // needs the plan, the movements and the stock at once — so there is no
+    // useful partial answer to load separately.
+    PLANS: '/packing-material/plans/',
+    REQUIREMENT: '/packing-material/requirement/',
   },
   // Factory Expense wall board — labour, salary, electricity and maintenance,
   // all from FactoryFlow's own registers rather than SAP.

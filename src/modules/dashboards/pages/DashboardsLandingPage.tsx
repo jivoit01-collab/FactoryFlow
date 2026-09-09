@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   Boxes,
   ClipboardCheck,
+  ClipboardList,
   DoorOpen,
   Factory,
   IndianRupee,
@@ -79,6 +80,15 @@ const dashboardsModules: DashboardsModuleCard[] = [
     icon: <Boxes className="h-5 w-5" />,
     route: '/dashboards/packing-material',
     color: 'text-cyan-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+  },
+  {
+    title: 'PM Requirement',
+    description:
+      "The month's plan through its BOMs, less what the floor took and the stores hold, against open POs",
+    icon: <ClipboardList className="h-5 w-5" />,
+    route: '/dashboards/pm-requirement',
+    color: 'text-teal-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
   },
   {
