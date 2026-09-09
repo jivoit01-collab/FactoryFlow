@@ -1151,6 +1151,12 @@ export const API_ENDPOINTS = {
     // writes the second document.
     // Warehouse managers (per-user warehouse scoping). MY_WAREHOUSES is not
     // admin-gated -- any screen may ask which warehouses the current user runs.
+    // Barcode receiving (godown gate). Activating a printed label is a
+    // warehouse action, gated by the same manager assignment MY_WAREHOUSES
+    // reports, so it lives under the warehouse API rather than barcode.
+    RECEIVE_SCAN: '/warehouse/receive/scan/',
+    RECEIVE_SESSION: '/warehouse/receive/session/',
+
     MY_WAREHOUSES: '/warehouse/my-warehouses/',
     USER_WAREHOUSES: '/warehouse/user-warehouses/',
     USER_WAREHOUSE_GAPS: '/warehouse/user-warehouses/gaps/',
@@ -1198,6 +1204,20 @@ export const API_ENDPOINTS = {
   },
 
   BARCODE: {
+    // Activation — printed labels are inactive until received or approved.
+    // The receive scan itself is under WAREHOUSE (see RECEIVE_SCAN).
+    ACTIVATION_SETTINGS: '/barcode/activation/settings/',
+    ACTIVATION_PENDING: '/barcode/activation/pending/',
+    ACTIVATION_PENDING_BOXES: '/barcode/activation/pending/boxes/',
+    ACTIVATION_VOID: '/barcode/activation/void/',
+    ACTIVATION_REQUESTS: '/barcode/activation/requests/',
+    ACTIVATION_REQUEST_DETAIL: (requestId: number) => `/barcode/activation/requests/${requestId}/`,
+    ACTIVATION_REQUEST_APPROVE: (requestId: number) =>
+      `/barcode/activation/requests/${requestId}/approve/`,
+    ACTIVATION_REQUEST_REJECT: (requestId: number) =>
+      `/barcode/activation/requests/${requestId}/reject/`,
+    ACTIVATION_REQUEST_CANCEL: (requestId: number) =>
+      `/barcode/activation/requests/${requestId}/cancel/`,
     // Boxes
     BOXES_GENERATE: '/barcode/boxes/generate/',
     BOXES: '/barcode/boxes/',
@@ -1330,6 +1350,8 @@ export const API_ENDPOINTS = {
     // Gate pass — the outward trip (vehicle, weighment, gatepass, out).
     GATE_PASSES: '/marketplace/gate-passes/',
     GATE_PASS_MANUAL: '/marketplace/gate-passes/manual/',
+    // Finishing a manual draft — the same form again, on the trip already open.
+    GATE_PASS_MANUAL_UPDATE: (id: number) => `/marketplace/gate-passes/${id}/manual/`,
     GATE_PASS_DETAIL: (id: number) => `/marketplace/gate-passes/${id}/`,
     GATE_PASS_WEIGHMENT: (id: number) => `/marketplace/gate-passes/${id}/weighment/`,
     GATE_PASS_PRINT: (id: number) => `/marketplace/gate-passes/${id}/print/`,
