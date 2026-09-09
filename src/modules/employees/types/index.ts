@@ -166,6 +166,13 @@ export interface EmployeeMeta {
   departments: Department[];
   designations: Designation[];
   managers: EmployeeBrief[];
+  /**
+   * App logins not yet claimed by an employee.
+   *
+   * The link is what makes "own salary" mean anything — without it the app
+   * knows a login and the directory knows a person, and nothing joins them.
+   */
+  assignable_users: UserBrief[];
   employment_statuses: Choice[];
   revision_types: Choice[];
   salary_statuses: Choice[];
@@ -366,7 +373,23 @@ export interface EmployeePayload {
   location?: string;
   reporting_manager?: number | null;
   is_manager?: boolean;
+  /** The app login this employee is. Required for them to see their own pay. */
+  user?: number | null;
   initial_salary?: SalaryPayload | null;
+}
+
+/**
+ * Editing an employee's plain details.
+ *
+ * `photo` is a `File` and is the reason this is a separate type: a photo has to
+ * go up as multipart, which cannot carry the nested joining salary that
+ * *creating* an employee can — so a photo is always a second step, against
+ * somebody who already exists.
+ */
+export interface EmployeeEditPayload
+  extends Omit<Partial<EmployeePayload>, 'initial_salary'> {
+  photo?: File | null;
+  reason?: string;
 }
 
 export interface ManagerChangePayload {

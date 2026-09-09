@@ -19,6 +19,7 @@ import type {
   DesignationChangePayload,
   DesignationPayload,
   EmployeeDetail,
+  EmployeeEditPayload,
   EmployeeFilters,
   EmployeeListResponse,
   EmployeeMeta,
@@ -84,13 +85,38 @@ export const employeesApi = {
     return response.data;
   },
 
+  /**
+   * Edit the plain details, and optionally replace the photo.
+   *
+   * A `File` in the payload switches the request to multipart, because that is
+   * the only way an image travels; everything else goes as JSON, which keeps
+   * nulls meaning null (multipart would send the string "null" and blank a
+   * field somebody meant to clear).
+   */
   async updateEmployee(
     employeeId: number,
-    payload: Partial<EmployeePayload> & { reason?: string },
+    payload: EmployeeEditPayload,
   ): Promise<EmployeeDetail> {
+    if (!(payload.photo instanceof File)) {
+      // No file: send JSON, and drop the (empty) photo key rather than sending
+      // a null that would clear a photo nobody asked to remove.
+      const fields = { ...payload };
+      delete fields.photo;
+      const response = await apiClient.patch<EmployeeDetail>(
+        EP.EMPLOYEE_DETAIL(employeeId),
+        fields,
+      );
+      return response.data;
+    }
+
+    const form = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      form.append(key, value instanceof File ? value : String(value));
+    });
     const response = await apiClient.patch<EmployeeDetail>(
       EP.EMPLOYEE_DETAIL(employeeId),
-      payload,
+      form,
     );
     return response.data;
   },

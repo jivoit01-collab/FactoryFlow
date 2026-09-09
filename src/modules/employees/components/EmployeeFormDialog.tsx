@@ -19,6 +19,13 @@
  * it says whether what they enter will be in force immediately or will wait for
  * an approver — so nobody types a number expecting it to be paid when it will
  * not be.
+ *
+ * Two fields only exist on **edit**, for the same reason: a photo has to travel
+ * as multipart, which cannot carry the nested joining salary a *hire* can. So
+ * the photo and the linked login are set against somebody who already exists.
+ * The login link is worth finding: it is what makes "your own salary" mean
+ * anything, and without it an employee cannot read their own figure however
+ * many permissions they hold.
  */
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
@@ -64,6 +71,7 @@ interface FormState {
   designation: string;
   reporting_manager: string;
   employment_status: string;
+  user: string;
   basic_salary: string;
   allowances: string;
   bonuses: string;
@@ -90,6 +98,7 @@ function emptyForm(): FormState {
     designation: '',
     reporting_manager: '',
     employment_status: 'ACTIVE',
+    user: '',
     basic_salary: '',
     allowances: '',
     bonuses: '',
@@ -113,6 +122,7 @@ function formFrom(employee: EmployeeDetail): FormState {
     department: employee.department ? String(employee.department) : '',
     designation: employee.designation ? String(employee.designation) : '',
     employment_status: employee.employment_status,
+    user: employee.user ? String(employee.user) : '',
   };
 }
 
@@ -145,12 +155,21 @@ export function EmployeeFormDialog({
       ? formFrom(employee)
       : { ...emptyForm(), reporting_manager: defaultManagerId ? String(defaultManagerId) : '' },
   );
+  const [photo, setPhoto] = useState<File | null>(null);
   const create = useCreateEmployee();
   const update = useUpdateEmployee(employee?.id ?? 0);
   const saving = create.isPending || update.isPending;
 
   const canEnterSalary = !!meta?.permissions.salary.create;
   const approvesOwnEntry = !!meta?.permissions.salary.approve;
+  // The logins on offer: the unclaimed ones, plus whichever this employee
+  // already holds — editing somebody must not silently drop their link.
+  const logins = [
+    ...(meta?.assignable_users ?? []),
+    ...(employee?.user_detail && !meta?.assignable_users.some((u) => u.id === employee.user)
+      ? [employee.user_detail]
+      : []),
+  ];
   const departments: Department[] = meta?.departments ?? [];
   const designations: Designation[] = meta?.designations ?? [];
   const managers: EmployeeBrief[] = meta?.managers ?? [];
@@ -178,7 +197,14 @@ export function EmployeeFormDialog({
     };
 
     if (isEdit) {
-      update.mutate(base, {
+      // The login is part of the edit, and a blank choice clears it — a real
+      // thing to want when somebody leaves and their account is reassigned.
+      const edit = {
+        ...base,
+        user: form.user ? Number(form.user) : null,
+        ...(photo ? { photo } : {}),
+      };
+      update.mutate(edit, {
         onSuccess: (saved) => {
           toast.success(`${saved.full_name} updated.`);
           onSaved?.(saved);
@@ -452,6 +478,46 @@ export function EmployeeFormDialog({
                   className="mt-1"
                   placeholder="Anything payroll should know about this package."
                 />
+              </div>
+            </section>
+          )}
+
+          {isEdit && (
+            <section className="grid gap-3 border-t pt-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="employee-login">Linked login</Label>
+                <NativeSelect
+                  id="employee-login"
+                  className="mt-1"
+                  value={form.user}
+                  onChange={(event) => set('user', event.target.value)}
+                >
+                  <SelectOption value="">Not linked to an app account</SelectOption>
+                  {logins.map((login) => (
+                    <SelectOption key={login.id} value={String(login.id)}>
+                      {login.full_name} · {login.email}
+                    </SelectOption>
+                  ))}
+                </NativeSelect>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Which app account is this person. Without it they cannot see their own
+                  salary, however many permissions they hold.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="employee-photo">Profile photo</Label>
+                <Input
+                  id="employee-photo"
+                  type="file"
+                  accept="image/*"
+                  className="mt-1"
+                  onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {employee?.photo
+                    ? 'Replaces the current photo. The org chart falls back to initials without one.'
+                    : 'The org chart falls back to initials without one.'}
+                </p>
               </div>
             </section>
           )}

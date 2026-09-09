@@ -21,6 +21,7 @@ import type {
   DepartmentPayload,
   DesignationChangePayload,
   DesignationPayload,
+  EmployeeEditPayload,
   EmployeeFilters,
   EmployeePayload,
   ManagerChangePayload,
@@ -188,7 +189,7 @@ export function useCreateEmployee() {
 export function useUpdateEmployee(employeeId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: Partial<EmployeePayload> & { reason?: string }) =>
+    mutationFn: (payload: EmployeeEditPayload) =>
       employeesApi.updateEmployee(employeeId, payload),
     onSuccess: (employee) => {
       queryClient.setQueryData(EMPLOYEE_KEYS.detail(employeeId), employee);
