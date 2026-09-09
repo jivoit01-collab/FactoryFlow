@@ -6,7 +6,13 @@ import { cn } from '@/shared/utils';
 import { WAREHOUSE_CONTROL_MAX_RENDERED_ROWS } from '../constants';
 import { SECTION_ACCENT } from '../constants/warehouse-control.theme';
 import type { ControlLinkedTruck, ControlLinkingBoard } from '../types';
-import { compactText, formatCompactCurrency, formatCount, formatDecimal } from '../utils/format';
+import {
+  compactText,
+  formatCompactCurrency,
+  formatCompanyChip,
+  formatCount,
+  formatDecimal,
+} from '../utils/format';
 import { useControlDetail } from './controlDetailContext';
 import { ControlScrollList } from './ControlScrollList';
 import { ControlSection } from './ControlSection';
@@ -22,7 +28,14 @@ export interface VehicleLinkingPanelProps {
   className?: string;
 }
 
-/** One truck: its plate, who is driving it, and what it is carrying. */
+/**
+ * One truck: its plate, who is driving it, and what it is carrying.
+ *
+ * A truck is one truck across companies — the same vehicle master, the same
+ * physical dock — so a card can legitimately carry an Oil bill and a Beverages
+ * bill at once. The companies riding on it are named under the plate, because
+ * "which company is this load" is the first thing asked of a mixed truck.
+ */
 function TruckCard({
   truck,
   onSelect,
@@ -31,6 +44,7 @@ function TruckCard({
   onSelect: (truck: ControlLinkedTruck) => void;
 }) {
   const billWord = truck.bills.length === 1 ? 'bill' : 'bills';
+  const companies = truck.companyCodes.map(formatCompanyChip).filter(Boolean);
 
   return (
     <li>
@@ -53,7 +67,14 @@ function TruckCard({
               <Truck className="h-3.5 w-3.5" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-tight">{truck.vehicleNo}</p>
+              <p className="flex items-center gap-1.5 truncate text-sm font-semibold tracking-tight">
+                <span className="truncate">{truck.vehicleNo}</span>
+                {companies.length > 0 && (
+                  <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                    {companies.join(' + ')}
+                  </span>
+                )}
+              </p>
               <p className="truncate text-xs text-muted-foreground">
                 {compactText(truck.transporterName, 'No transporter')}
                 {truck.driverName ? ` · ${truck.driverName}` : ''}
@@ -114,7 +135,12 @@ function TruckCard({
 
         <div className="mt-2 flex flex-wrap gap-1">
           {truck.bills.map((bill) => (
-            <Badge key={bill.doc_entry} variant="outline" className="font-normal tabular-nums">
+            <Badge
+              // A doc-entry is unique per company, not across them.
+              key={`${bill.company_code ?? ''}-${bill.doc_entry}`}
+              variant="outline"
+              className="font-normal tabular-nums"
+            >
               #{bill.doc_num}
             </Badge>
           ))}
@@ -131,6 +157,10 @@ function TruckCard({
  * onto it is not part of today. This is the transpose of Today's Bills: same
  * feed, same set, folded on the vehicle instead of the bill, because "what is on
  * this truck" and "which truck is this bill on" are both asked on the floor.
+ *
+ * The fold is across companies, which is the only way it can be right: the
+ * vehicle master is shared, so a truck loading an Oil bill and a Beverages bill
+ * is one card here — read per company it would show as two half-loads.
  */
 export function VehicleLinkingPanel({
   board,
@@ -154,7 +184,7 @@ export function VehicleLinkingPanel({
       className={className}
       id="vehicle-linking"
       title="Vehicle Linking"
-      description="Vehicles carrying today's bills — still loading first, dispatched last"
+      description="Vehicles carrying today's bills, all companies — still loading first, dispatched last"
       meta={meta}
       icon={Truck}
       accent={SECTION_ACCENT.linking}

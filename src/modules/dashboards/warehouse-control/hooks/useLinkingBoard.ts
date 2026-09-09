@@ -1,4 +1,8 @@
-/** Folds the Bills Linking feed into today's linked bills and their trucks. */
+/**
+ * Folds the day's dispatch-dated bills into today's linked bills and their
+ * trucks. The feed is cross-company, so a truck carrying two companies' bills
+ * folds into one card rather than two half-loads.
+ */
 import { useMemo } from 'react';
 
 import { useControlLinkingFeed } from '../api';

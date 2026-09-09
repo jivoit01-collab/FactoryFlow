@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CellPurpose, Pallet, Warehouse, WarehouseLocation } from '@/modules/wms';
+import type {
+  CellPurpose,
+  Pallet,
+  Warehouse,
+  WarehouseLocation,
+  WmsSettings,
+} from '@/modules/wms';
 
-import { summarisePalletSpace } from './palletSpace';
+import { isWmsEnabledForAnyCompany, summarisePalletSpace } from './palletSpace';
 
 function makeWarehouse(overrides: Partial<Warehouse> = {}): Warehouse {
   return {
@@ -285,5 +291,28 @@ describe('summarisePalletSpace', () => {
       { itemCode: '', itemName: 'LOOSE STOCK', pallets: 1, boxes: 40 },
     ]);
     expect(summary.totalBoxes).toBe(40);
+  });
+});
+
+
+describe('isWmsEnabledForAnyCompany', () => {
+  /** Only the field the switch is read from; the rest of the singleton is noise here. */
+  function settings(masterEnabled: boolean): WmsSettings {
+    return { id: 'wms-settings', masterEnabled } as unknown as WmsSettings;
+  }
+
+  it('is on when any company has the module on', () => {
+    // The board measures one physical building: if the layout exists in a
+    // sibling company, the racking is still there to be measured.
+    expect(isWmsEnabledForAnyCompany([settings(false), settings(true)])).toBe(true);
+  });
+
+  it('is off only when every company has it off', () => {
+    expect(isWmsEnabledForAnyCompany([settings(false), settings(false)])).toBe(false);
+  });
+
+  it('is off with nothing read yet', () => {
+    expect(isWmsEnabledForAnyCompany(undefined)).toBe(false);
+    expect(isWmsEnabledForAnyCompany([])).toBe(false);
   });
 });

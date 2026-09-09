@@ -6,6 +6,15 @@
  * manager does not have to open four tabs. Every panel reads an existing feed —
  * nothing here is a second source of truth.
  *
+ * The board is deliberately **company-independent**: the factory is one physical
+ * place, so the same dock, the same racking and the same trucks serve all three
+ * companies, and a board about that place must not change when the company
+ * selector does. The bills, trucks and pallet-space feeds are read across every
+ * company the user belongs to; non-moving stock is pinned to the one company its
+ * warehouse belongs to. See `api/warehouse-control.queries.ts` for how each read
+ * gets there — and note no query key carries a company, so switching company
+ * neither changes a figure nor costs a refetch.
+ *
  * Structure is deliberately two-tier. The headline strip carries the six numbers
  * that decide whether anything needs attention; the panels below carry the
  * detail behind them, each in its own hue so a number in the strip points at the
@@ -18,14 +27,13 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarDays, RefreshCw } from 'lucide-react';
+import { Building2, CalendarDays, RefreshCw } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { usePermission } from '@/core/auth';
 import { Button } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import { NON_MOVING_QUERY_KEYS } from '../../non-moving/api';
 import { WAREHOUSE_CONTROL_QUERY_KEYS } from '../api';
 import {
   ControlDetailProvider,
@@ -71,8 +79,9 @@ export default function WarehouseControlDashboardPage() {
   // of the same data, so neither may hold a copy of its own.
   const nonMoving = useNonMovingSnapshot(canSeeNonMoving);
   const palletSpace = usePalletSpace(canSeePalletSpace);
-  // Today's Bills and Vehicle Linking are two folds of the one Bills Linking
-  // read, so it is fetched whenever either panel is on screen.
+  // Today's Bills and Vehicle Linking are two folds of one read — the day's
+  // dispatch-dated bills across every company — so it is fetched whenever
+  // either panel is on screen.
   const linking = useLinkingBoard(date, canSeeBills || canSeeLinking);
   const scheduled = useScheduledBills(date, canSeeBills);
 
@@ -91,13 +100,13 @@ export default function WarehouseControlDashboardPage() {
   const isFetchingAny =
     nonMoving.isFetching || linking.isFetching || scheduled.isFetching || palletSpace.loading;
 
+  // Every read the board makes lives under its own key prefix — including the
+  // pinned non-moving one, which no longer shares the Non-Moving dashboard's
+  // cache entry — so one invalidation refreshes the whole board.
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: WAREHOUSE_CONTROL_QUERY_KEYS.all }),
-        queryClient.invalidateQueries({ queryKey: NON_MOVING_QUERY_KEYS.all }),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: WAREHOUSE_CONTROL_QUERY_KEYS.all });
     } finally {
       setIsRefreshing(false);
     }
@@ -122,11 +131,23 @@ export default function WarehouseControlDashboardPage() {
           <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
             Warehouse Control
           </h1>
-          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">
-              {format(new Date(date), 'EEEE, d MMMM yyyy')}
-              {isFetchingAny && ' · refreshing'}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:text-sm">
+            <span className="flex items-center gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">
+                {format(new Date(date), 'EEEE, d MMMM yyyy')}
+                {isFetchingAny && ' · refreshing'}
+              </span>
+            </span>
+            {/* Stated on the page, not just in the code: the numbers here do not
+                answer to the company selector, and a reader comparing them with
+                a company-scoped screen needs to know that. */}
+            <span
+              className="flex items-center gap-1.5"
+              title="This board reads every company you have access to — the company selector does not change it"
+            >
+              <Building2 className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">All companies</span>
             </span>
           </p>
         </div>
@@ -199,6 +220,7 @@ export default function WarehouseControlDashboardPage() {
               warehouses={nonMoving.warehouses}
               ageDays={nonMoving.ageDays}
               scope={nonMoving.scope}
+              companyCode={nonMoving.companyCode}
               loading={nonMoving.isLoading}
               isFetching={nonMoving.isFetching}
               error={nonMoving.error}

@@ -1,3 +1,4 @@
+import { COMPANY_CODES } from '@/config/constants';
 import {
   DASHBOARDS_PERMISSIONS,
   VEHICLE_MANAGEMENT_PERMISSIONS,
@@ -43,11 +44,26 @@ export const WAREHOUSE_CONTROL_VIEW_PERMISSIONS: readonly string[] = [
 // ============================================================================
 
 /**
+ * The company whose SAP schema the Non-Moving panel reads.
+ *
+ * Pinned rather than taken from the company selector, because the warehouse
+ * below exists in exactly one company's chart of warehouses — read through any
+ * other company the panel would simply come back empty. The board as a whole is
+ * company-independent (see `api/warehouse-control.queries.ts`); for this panel
+ * that means "always this schema" rather than "all of them".
+ *
+ * A user without access to this company gets a permission answer, which the
+ * panel reports as such instead of as a broken feed.
+ */
+export const WAREHOUSE_CONTROL_NON_MOVING_COMPANY: string = COMPANY_CODES.JIVO_OIL;
+
+/**
  * Warehouses the Non-Moving panel reports on.
  *
  * The full Non-Moving dashboard covers every factory warehouse; this board is
  * scoped to the one the floor actually asks about, so the panel is a single
- * meaningful row rather than a league table nobody reads. The summary above it
+ * meaningful row rather than a league table nobody reads. `BH-BT` (Bhakharpur
+ * New Basement) is a Jivo Oil warehouse — hence the pinned company above. The summary above it
  * is recomputed over the same scope — a header counting warehouses the list does
  * not show would be worse than no header.
  *

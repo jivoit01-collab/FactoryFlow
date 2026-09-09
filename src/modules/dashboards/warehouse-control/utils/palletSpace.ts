@@ -9,7 +9,13 @@
  * one slot when nothing is configured. Cells that hold no stock (paths, offices,
  * obstacles) and disabled cells carry no space at all.
  */
-import type { CellPurpose, Pallet, Warehouse, WarehouseLocation } from '@/modules/wms';
+import type {
+  CellPurpose,
+  Pallet,
+  Warehouse,
+  WarehouseLocation,
+  WmsSettings,
+} from '@/modules/wms';
 import { locationHoldsStock } from '@/modules/wms';
 
 import {
@@ -176,4 +182,17 @@ export function summarisePalletSpace(input: PalletSpaceInput): PalletSpaceSummar
     goods,
     totalBoxes,
   };
+}
+
+/**
+ * Is the WMS module switched on anywhere?
+ *
+ * The master switch is a per-company singleton, so reading it across companies
+ * returns one row per company — all under the same `wms-settings` id. The board
+ * measures one physical building, so any company having switched the module on
+ * means there is a layout to measure: `some`, not `every`, and not "the first
+ * row wins".
+ */
+export function isWmsEnabledForAnyCompany(settings: WmsSettings[] | undefined): boolean {
+  return (settings ?? []).some((row) => Boolean(row?.masterEnabled));
 }
