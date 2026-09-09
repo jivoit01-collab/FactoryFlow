@@ -502,6 +502,14 @@ export const API_ENDPOINTS = {
     AS_OF: '/dashboards/stock/as-of/',
     EXPORT: '/dashboards/stock/export/',
     ITEM_DETAIL: (itemCode: string) => `/dashboards/stock/${itemCode}/warehouses/`,
+    /**
+     * One warehouse's stock with the SAP pack fields needed to count pallets —
+     * `SalFactor2` (pieces per box) and `SalPackUn` (litres per piece). The
+     * pallet arithmetic itself is deliberately client-side, because the
+     * boxes-per-pallet divisor and the loose-SKU figures are board policy
+     * rather than SAP fact. Feeds the Production Control board.
+     */
+    OCCUPANCY: '/dashboards/stock/occupancy/',
   },
   // Budget Approvals Dashboard — Factory budget draft approvals read from
   // SAP's DRAFT_APPROVAL_Budget procedure (Oil + Beverages in one feed).
@@ -514,10 +522,20 @@ export const API_ENDPOINTS = {
     REPORT: '/non-moving-rm/report/',
     ITEM_GROUPS: '/non-moving-rm/item-groups/',
   },
-  // Packing Material Demand. One endpoint: every panel on that board is a
-  // different roll-up of the same five SAP reads over the same period.
-  PM_DEMAND: {
-    REPORT: '/pm-demand/report/',
+  // Packing Material board. Three endpoints for three panels rather than one
+  // for the board: stock is a snapshot of now and does not move when the month
+  // changes, the two top lists are a period, and only the dispatch list
+  // changes when the SAP/FactoryFlow toggle is flipped.
+  PACKING_MATERIAL: {
+    STOCK: '/packing-material/stock/',
+    PRODUCTION: '/packing-material/production/',
+    DISPATCH: '/packing-material/dispatch/',
+    // The requirement board. One endpoint rather than several, because every
+    // column on it belongs to a single row of arithmetic — the requirement
+    // needs the plan, the movements and the stock at once — so there is no
+    // useful partial answer to load separately.
+    PLANS: '/packing-material/plans/',
+    REQUIREMENT: '/packing-material/requirement/',
   },
   // Factory Expense wall board — labour, salary, electricity and maintenance,
   // all from FactoryFlow's own registers rather than SAP.

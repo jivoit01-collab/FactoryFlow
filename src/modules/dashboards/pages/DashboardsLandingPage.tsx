@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   Boxes,
   ClipboardCheck,
+  ClipboardList,
   DoorOpen,
   Factory,
   IndianRupee,
@@ -65,21 +66,30 @@ const dashboardsModules: DashboardsModuleCard[] = [
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
   },
   {
-    title: 'PM Demand',
-    description:
-      'Top packing material consumed by production, and what shipped out inside finished goods',
-    icon: <Boxes className="h-5 w-5" />,
-    route: '/dashboards/pm-demand',
-    color: 'text-cyan-600',
-    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PM_DEMAND],
-  },
-  {
     title: 'Sales Plan vs Req.',
     description: 'Compare monthly forecast demand against stock, minimum stock, and open POs',
     icon: <Target className="h-5 w-5" />,
     route: '/dashboards/sales-planning-requirement',
     color: 'text-rose-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
+  },
+  {
+    title: 'Packing Material',
+    description:
+      'Packaging stock store by store, what production issued, and what shipped out inside bills',
+    icon: <Boxes className="h-5 w-5" />,
+    route: '/dashboards/packing-material',
+    color: 'text-cyan-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+  },
+  {
+    title: 'PM Requirement',
+    description:
+      "The month's plan through its BOMs, less what the floor took and the stores hold, against open POs",
+    icon: <ClipboardList className="h-5 w-5" />,
+    route: '/dashboards/pm-requirement',
+    color: 'text-teal-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
   },
   {
     title: 'Production Movement',

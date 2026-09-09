@@ -6,21 +6,23 @@ export const DASHBOARDS_PERMISSIONS = {
   REFRESH_SALES_PLANNING_REQUIREMENT:
     'sales_planning_requirement.can_refresh_sales_planning_requirement',
   VIEW_PRODUCTION_MOVEMENT: 'production_execution.can_view_reports',
-  // Packing Material Demand: which PM production consumed, and which PM
-  // walked out of the gate inside finished goods.
+  // Packing Material: stock in the three packaging stores, the packing
+  // material production issued, and the packing material that shipped out
+  // inside dispatched bills.
   //
   // Deliberately the SAME right as the production reports rather than the
-  // dedicated `pm_demand.can_view_pm_demand` the backend also defines. The
-  // board is a production report -- it reads goods issues against BOMs -- and
-  // reusing the existing right means it needs no permission row created on
-  // the live database and no group edited before anyone can open it.
+  // dedicated `packing_material.can_view_packing_material` the backend also
+  // defines. The board reads goods issues against bills of material -- it IS a
+  // production report -- and reusing the existing right means it needs no
+  // permission row created on the live database and no group edited before
+  // anyone can open it.
   //
-  // The dedicated right still exists in `pm_demand/models.py`, and the API
-  // enforces it. Move this constant back to it, run
-  // `manage.py sync_pm_demand_permission` and grant it to the right groups
-  // the day packaging spend needs restricting independently of production
+  // The dedicated right still exists in `packing_material/models.py` and the
+  // API accepts it. Move this constant onto it, run
+  // `manage.py sync_packing_material_permission` and grant it to the right
+  // groups the day packaging needs restricting independently of production
   // reports -- which is the one thing this shortcut gives up.
-  VIEW_PM_DEMAND: 'production_execution.can_view_reports',
+  VIEW_PACKING_MATERIAL: 'production_execution.can_view_reports',
   VIEW_DISPATCH_PLANS: 'dispatch_plans.can_view_dispatch_plans',
   EDIT_DISPATCH_PLANS: 'dispatch_plans.can_edit_dispatch_plans',
   VIEW_DISPATCH_PIPELINE: 'dispatch_plans.can_view_dispatch_pipeline',
