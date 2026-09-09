@@ -10,6 +10,7 @@ import { dailyTasksModuleConfig } from '@/modules/daily-tasks/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
 import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
+import { employeesModuleConfig } from '@/modules/employees/module.config';
 import { etpModuleConfig } from '@/modules/etp/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
@@ -63,6 +64,10 @@ export const moduleRegistry: ModuleConfig[] = [
   // Reference, not a workflow: the department ownership chart lives near the
   // bottom with the other look-it-up pages.
   organizationModuleConfig,
+  // The people themselves — the directory, the reporting tree and compensation.
+  // Sits next to the ownership chart: same subject, but real employees, real
+  // salaries and its own access control.
+  employeesModuleConfig,
   // The software's own bug list. Last but one: it is about the app rather than
   // about the factory, so it sits with Settings at the bottom.
   issuesModuleConfig,

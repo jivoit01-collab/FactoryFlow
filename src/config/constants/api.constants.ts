@@ -1423,6 +1423,51 @@ export const API_ENDPOINTS = {
     CHART: '/org-chart/chart/',
   },
 
+  // Employee hierarchy & compensation. Everything is keyed by employee id
+  // rather than employee code: codes are edited when somebody was entered
+  // wrong, and a URL that changes under you is worse than one that is pretty.
+  //
+  // The structural changes each have their own endpoint (MANAGER, DEPARTMENT,
+  // DESIGNATION, STATUS, PROMOTE) instead of riding along on a PATCH, because
+  // each one takes a reason and each one does more than write a column --
+  // moving a manager carries their whole team.
+  EMPLOYEE_HIERARCHY: {
+    META: '/employee-hierarchy/meta/',
+    TREE: '/employee-hierarchy/tree/',
+    REPORTS: '/employee-hierarchy/reports/',
+
+    EMPLOYEES: '/employee-hierarchy/employees/',
+    EMPLOYEE_DETAIL: (employeeId: number) => `/employee-hierarchy/employees/${employeeId}/`,
+    EMPLOYEE_REPORTING: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/reporting/`,
+    EMPLOYEE_HISTORY: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/history/`,
+    EMPLOYEE_AUDIT: (employeeId: number) => `/employee-hierarchy/employees/${employeeId}/audit/`,
+    EMPLOYEE_MANAGER: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/manager/`,
+    EMPLOYEE_DEPARTMENT: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/department/`,
+    EMPLOYEE_DESIGNATION: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/designation/`,
+    EMPLOYEE_PROMOTE: (employeeId: number) =>
+      `/employee-hierarchy/employees/${employeeId}/promote/`,
+    EMPLOYEE_STATUS: (employeeId: number) => `/employee-hierarchy/employees/${employeeId}/status/`,
+    EMPLOYEE_SALARY: (employeeId: number) => `/employee-hierarchy/employees/${employeeId}/salary/`,
+
+    SALARY_APPROVALS: '/employee-hierarchy/salary-approvals/',
+    SALARY_REVISIONS: '/employee-hierarchy/salary-revisions/',
+    SALARY_APPROVE: (recordId: number) =>
+      `/employee-hierarchy/salary-records/${recordId}/approve/`,
+    SALARY_REJECT: (recordId: number) => `/employee-hierarchy/salary-records/${recordId}/reject/`,
+
+    DEPARTMENTS: '/employee-hierarchy/departments/',
+    DEPARTMENT_DETAIL: (departmentId: number) =>
+      `/employee-hierarchy/departments/${departmentId}/`,
+    DESIGNATIONS: '/employee-hierarchy/designations/',
+    DESIGNATION_DETAIL: (designationId: number) =>
+      `/employee-hierarchy/designations/${designationId}/`,
+  },
+
   // Issue tracker. Issues are addressed by NUMBER (the "#41" people quote),
   // not by primary key -- comments and attachments are the only things keyed
   // by id. The list takes ?q=&state=&sort=&page=&page_size=.
