@@ -6,6 +6,8 @@ import { arInvoiceApi } from './ar-invoice.api';
 export const AR_INVOICE_QUERY_KEYS = {
   all: ['ar-invoice'] as const,
   customers: (search: string) => [...AR_INVOICE_QUERY_KEYS.all, 'customers', search] as const,
+  customerCredit: (customerCode: string) =>
+    [...AR_INVOICE_QUERY_KEYS.all, 'customer-credit', customerCode] as const,
   openLines: (customerCode: string, search?: string) =>
     [...AR_INVOICE_QUERY_KEYS.all, 'open-lines', customerCode, search ?? ''] as const,
   items: (warehouse: string, search: string) =>
@@ -29,6 +31,24 @@ export function useCustomerSearch(search: string, enabled: boolean) {
     queryFn: () => arInvoiceApi.searchCustomers(search || undefined),
     enabled,
     staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * One customer's credit position while an invoice is being raised.
+ *
+ * Short staleTime: the balance moves as other invoices and receipts post, and a
+ * stale limit is the one number on this screen nobody would think to doubt.
+ * Retries are off — the panel is informational and hides itself on failure
+ * rather than holding the form up.
+ */
+export function useCustomerCredit(customerCode: string) {
+  return useQuery({
+    queryKey: AR_INVOICE_QUERY_KEYS.customerCredit(customerCode),
+    queryFn: () => arInvoiceApi.getCustomerCredit(customerCode),
+    enabled: !!customerCode,
+    staleTime: 15 * 1000,
+    retry: false,
   });
 }
 

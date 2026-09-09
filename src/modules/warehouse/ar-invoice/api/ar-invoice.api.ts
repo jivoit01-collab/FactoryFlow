@@ -6,6 +6,7 @@ import type {
   ARInvoicePrintPayload,
   CreateARInvoiceRequest,
   Customer,
+  CustomerCredit,
   LineDefaults,
   OpenSOLine,
   WarehouseStockItem,
@@ -16,6 +17,20 @@ export const arInvoiceApi = {
     const response = await apiClient.get<Customer[]>(API_ENDPOINTS.AR_INVOICE.CUSTOMERS, {
       params: search ? { search } : {},
     });
+    return response.data;
+  },
+
+  /** The customer's credit limit and what is already drawn against it. */
+  async getCustomerCredit(customerCode: string): Promise<CustomerCredit> {
+    const response = await apiClient.get<CustomerCredit>(
+      API_ENDPOINTS.AR_INVOICE.CUSTOMER_CREDIT,
+      {
+        params: { customer_code: customerCode },
+        // The panel degrades to nothing on its own; a toast on top of the
+        // invoice being raised would be noise about a read that only informs.
+        suppressErrorToast: true,
+      },
+    );
     return response.data;
   },
 

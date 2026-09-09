@@ -23,6 +23,38 @@ export interface Customer {
   customer_name: string;
 }
 
+/**
+ * A customer's credit position, read live from SAP's OCRD.
+ *
+ * The same four numbers SAP's own Account Balance panel shows on a sales
+ * document. `exposure` is `balance + open_orders + open_deliveries` — the total
+ * SAP's credit check weighs against the limit — and both it and `available` are
+ * computed on the server so the screen and the log cannot disagree.
+ *
+ * `credit_limit` of 0 means NO LIMIT IS SET, not a zero limit, and most of the
+ * master is in that state. Branch on `has_credit_limit`: rendering an unset
+ * limit as a currency-formatted 0 reads as "blocked" on a customer SAP invoices
+ * happily. `available` is null in that case for the same reason.
+ */
+export interface CustomerCredit {
+  customer_code: string;
+  customer_name: string;
+  credit_limit: number;
+  has_credit_limit: boolean;
+  /** Posted, unpaid A/R (OCRD.Balance). */
+  balance: number;
+  /** Ordered, not yet delivered (OCRD.OrdersBal). */
+  open_orders: number;
+  /** Delivered, not yet invoiced (OCRD.DNotesBal). */
+  open_deliveries: number;
+  exposure: number;
+  /** `credit_limit - exposure`, or null when no limit is set. */
+  available: number | null;
+  over_limit: boolean;
+  is_active: boolean;
+  is_frozen: boolean;
+}
+
 /** One open (invoiceable) Sales Order line, straight from SAP. */
 export interface OpenSOLine {
   so_doc_entry: number;

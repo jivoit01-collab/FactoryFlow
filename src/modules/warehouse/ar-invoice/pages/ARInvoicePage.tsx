@@ -29,6 +29,7 @@ import {
 } from '../api/ar-invoice.queries';
 import { ARInvoiceDetailSheet } from '../components/ARInvoiceDetailSheet';
 import { ARInvoiceStatusBadge } from '../components/ARInvoiceStatusBadge';
+import { CustomerCreditPanel } from '../components/CustomerCreditPanel';
 import { CustomerSelect } from '../components/CustomerSelect';
 import { DirectSaleForm } from '../components/DirectSaleForm';
 import type { ARInvoicePosting, OpenSOLine } from '../types';
@@ -146,6 +147,12 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
           />
         </div>
       </div>
+
+      {/* The selected lines' value is projected onto the exposure, so the
+          panel answers "does this invoice fit?" as lines are ticked. */}
+      {customerCode ? (
+        <CustomerCreditPanel customerCode={customerCode} invoiceAmount={selectedTotal} />
+      ) : null}
 
       {!customerCode ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">

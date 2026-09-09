@@ -643,6 +643,7 @@ export const API_ENDPOINTS = {
   // A/R Invoices (sales invoices raised from the factory app and posted to SAP)
   AR_INVOICE: {
     CUSTOMERS: '/ar-invoices/customers/',
+    CUSTOMER_CREDIT: '/ar-invoices/customer-credit/',
     OPEN_SO_LINES: '/ar-invoices/open-so-lines/',
     ITEMS: '/ar-invoices/items/',
     LINE_DEFAULTS: '/ar-invoices/line-defaults/',
